@@ -7,10 +7,11 @@
  * through the route file (Rollup and Rolldown), or when any module imports
  * it through the route file and the bundler cannot bypass the route
  * module's re-export (webpack and Rspack without `"sideEffects": false`).
- * The export is then eager: the build warns once per (file, export), in
- * every host (J2.8: the user is told, the build goes on).
+ * The export is then eager: the build warns once per (file, export) per
+ * run, in every host (J2.8: the user is told, the build goes on).
  */
 import { identify } from './identity'
+import type { WarningLedger } from './diagnostics'
 
 interface EagerExtractedExport {
   /** The route file's path, with forward slashes. */
@@ -26,7 +27,7 @@ const EXTRACTED_EXPORT_RE = /[?&]tsr-split=export~([^&#]+)/
  * build loads with its entries), once each, in first-seen order. Ids are
  * the bundler's (a webpack resource with its query; a Rollup module id).
  */
-export function eagerExtractedExports(
+function eagerExtractedExports(
   moduleIds: Iterable<string>,
 ): Array<EagerExtractedExport> {
   const seen = new Set<string>()
@@ -123,11 +124,30 @@ export function initialChunkResources(
 }
 
 /**
+ * Warns once per (route file, export) per run (`ledger`) of each extracted
+ * export among `moduleIds`: the module ids of what a client build loads
+ * with its entries (`rollupEntryModuleIds`, `initialChunkResources`).
+ */
+export function warnEagerExports(
+  moduleIds: Iterable<string>,
+  bundler: 'rollup' | 'webpack',
+  ledger: WarningLedger,
+  warn: (message: string) => void,
+): void {
+  for (const e of eagerExtractedExports(moduleIds)) {
+    const message = eagerExportWarning(e, bundler)
+    if (ledger.once(e.file, { code: 'eager-export', message })) {
+      warn(message)
+    }
+  }
+}
+
+/**
  * The warning of an eager extracted export. The webpack family can bypass
  * the route module's re-export only for a side-effect-free package: its
  * message says so.
  */
-export function eagerExportWarning(
+function eagerExportWarning(
   e: EagerExtractedExport,
   bundler: 'rollup' | 'webpack',
 ): string {

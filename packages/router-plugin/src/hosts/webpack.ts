@@ -9,12 +9,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  eagerExportWarning,
-  eagerExtractedExports,
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
   pathsOf,
+  warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -63,26 +62,13 @@ export interface CompilerLike extends WatchingCompilerLike {
 }
 
 /** The parts of a compilation the eager-export check reads (webpack and Rspack). */
-export interface CompilationLike extends InitialChunksLike {
+interface CompilationLike extends InitialChunksLike {
   hooks: { processAssets: { tap: (name: string, fn: () => void) => void } }
   warnings: Array<Error>
 }
 
 const PLUGIN_NAME = 'tanstack-router:compiler'
 
-/**
- * Warns once per (route file, export) when an extracted-export output ends
- * up in an initial chunk (J2.8: the user is told, the build goes on).
- */
-export function warnEagerExports(
-  compilation: CompilationLike,
-  makeError: (message: string) => Error,
-): void {
-  const ids = initialChunkResources(compilation).map(resourceId)
-  for (const e of eagerExtractedExports(ids)) {
-    compilation.warnings.push(makeError(eagerExportWarning(e, 'webpack')))
-  }
-}
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
 
 let loaderPath: string | null = null
@@ -233,7 +219,14 @@ export function createRouterCompilerWebpackPlugin(
         const WebpackError = compiler.webpack?.WebpackError ?? Error
         compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
           compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
-            warnEagerExports(compilation, (m) => new WebpackError(m))
+            // an extracted-export output an initial chunk holds is eager
+            // whatever the splitter did: say so (J2.8)
+            warnEagerExports(
+              initialChunkResources(compilation).map(resourceId),
+              'webpack',
+              session.warnings,
+              (m) => compilation.warnings.push(new WebpackError(m)),
+            )
           })
         })
       }

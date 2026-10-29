@@ -15,13 +15,12 @@ import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   deriveId,
-  eagerExportWarning,
-  eagerExtractedExports,
   identify,
   isFinalBuild,
   releaseEnvironment,
   resolveDerivedSibling,
   rollupEntryModuleIds,
+  warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -294,9 +293,12 @@ export function createRouterCompilerVitePlugin(
       }
       // an extracted-export output an entry chunk (or a chunk it imports
       // statically) holds is eager whatever the splitter did: say so (J2.8)
-      for (const e of eagerExtractedExports(rollupEntryModuleIds(bundle))) {
-        this.warn(eagerExportWarning(e, 'rollup'))
-      }
+      warnEagerExports(
+        rollupEntryModuleIds(bundle),
+        'rollup',
+        compiler.warnings,
+        (m) => this.warn(m),
+      )
     },
 
     resolveId: {

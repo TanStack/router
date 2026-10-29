@@ -10,12 +10,11 @@
  * its pruned routes change without the tree file changing.
  */
 import {
-  eagerExportWarning,
-  eagerExtractedExports,
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
   rebuildModules,
+  warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
 import {
@@ -249,17 +248,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // an extracted-export output an initial chunk holds is eager
           // whatever the splitter did: say so once per file and export (J2.8)
           compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
-            const ids = initialChunkResources(compilation as never).map(
-              canonicalResource,
+            warnEagerExports(
+              initialChunkResources(compilation as never).map(
+                canonicalResource,
+              ),
+              'webpack',
+              session.warnings,
+              (m) => compilation.warnings.push(new WebpackError(m)),
             )
-            for (const e of eagerExtractedExports(ids)) {
-              const message = eagerExportWarning(e, 'webpack')
-              if (
-                session.warnings.once(e.file, { code: 'eager-export', message })
-              ) {
-                compilation.warnings.push(new WebpackError(message))
-              }
-            }
           })
         }
         const ipEnv = ipEnvOf()

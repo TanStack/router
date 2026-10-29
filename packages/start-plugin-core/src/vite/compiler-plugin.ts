@@ -25,8 +25,6 @@ import {
   createCompilerCaches,
   deriveId,
   digestOf,
-  eagerExportWarning,
-  eagerExtractedExports,
   identify,
   invalidate,
   isAnalyzableSpecifier,
@@ -36,6 +34,7 @@ import {
   resolveDerivedSibling,
   revision,
   rollupEntryModuleIds,
+  warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { liveModules } from '@tanstack/router-plugin/vite'
 import {
@@ -1151,14 +1150,12 @@ export function startCompilerPlugin(
           // statically) holds is eager whatever the splitter did: say so
           // once per file and export (J2.8; a pass that writes nothing
           // comes first under import protection's veto, the ledger dedups)
-          for (const e of eagerExtractedExports(
+          warnEagerExports(
             rollupEntryModuleIds(bundle as never),
-          )) {
-            const message = eagerExportWarning(e, 'rollup')
-            if (s.warnings.once(e.file, { code: 'eager-export', message })) {
-              this.warn(message)
-            }
-          }
+            'rollup',
+            s.warnings,
+            (m) => this.warn(m),
+          )
         }
         if (!s.ip) {
           return
