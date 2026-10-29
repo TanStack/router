@@ -99,6 +99,82 @@ describe('edge names (J6)', () => {
     expect(edges['static ./secret.server']).toEqual(['binding', ['everywhere']])
     expect(edges['static ./kept']).toEqual(['binding', ['kept']])
   })
+
+  // Both tiers build an output's edges alike: a planned module (Tier 1) and
+  // one only the edge planner reads (Tier 0, its source as written)
+  const tiers = {
+    'J6-only tier': (rec: Planner) => [rec],
+    'tier 1': (rec: Planner) => [toyEnvPlanner(), rec],
+  }
+
+  // classic-runtime JSX (and no pragma, with a `React` binding: the
+  // TypeScript transforms keep it) calls its factory: a read of the binding
+  it.each(Object.entries(tiers))(
+    '%s: an import read only as the JSX factory is a binding edge naming it',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import React from './react'
+        import { h } from './h'
+        import { Fragment } from './fragment'
+        export const fn = wrapServer(() => 1)
+        export const view = () => <p />
+      `)
+      const host = new MemoryHost({
+        files: {
+          '/app/auto.tsx': code,
+          '/app/classic.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code.replace('<p />', '<><p /></>')}`,
+        },
+      })
+      let rec = edgeRecorder()
+      await host.compile('/app/auto.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['binding', ['default']],
+        'static ./h': ['evaluation', []],
+      })
+      rec = edgeRecorder()
+      await host.compile('/app/classic.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['evaluation', []],
+        'static ./h': ['binding', ['h']],
+        'static ./fragment': ['binding', ['Fragment']],
+      })
+    },
+  )
+
+  // one record per logical edge: repeated statements add their locations
+  // and names, and a substitution replaces every one of them
+  it.each(Object.entries(tiers))(
+    '%s: one record per edge, substituted at every location',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import { a } from './x'
+        import { b } from './x'
+        import './x'
+        export const fn = wrapServer(() => 1)
+        export const read = () => a + b
+      `)
+      const host = new MemoryHost({ files: { '/app/m.ts': code } })
+      const rec = edgeRecorder((edges, ctx) => {
+        const x = edges.find(
+          (e) => e.form === 'static' && e.specifier === './x',
+        )
+        ctx.substitute(x!.edgeKey, './y')
+      })
+      const out = await host.compile('/app/m.ts', planners(rec))
+      const x = rec.edges.env!.filter((e) => e.specifier === './x')
+      expect(
+        x.map((e) => [e.form, e.kind, e.names, e.locations.length]),
+      ).toEqual([
+        ['static', 'binding', ['a', 'b'], 2],
+        ['bare', 'evaluation', [], 1],
+      ])
+      expect(out!.code).toContain(
+        `import { a } from './y'\nimport { b } from './y'\nimport './x'`,
+      )
+    },
+  )
 })
 
 describe('require edge names (J6.3)', () => {

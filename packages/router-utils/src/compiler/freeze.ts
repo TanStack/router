@@ -7,13 +7,14 @@
  * reference rewrites; no Yuku object is reachable from the result.
  */
 import { siblingSpecifier } from './identity'
+import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { isLineTerminator, pragmasOf } from './header'
 import type { ClassifiedRef, RefContext } from './analysis'
+import type { EdgeView } from './edges'
 import type {
   AnalysisPlan,
-  EdgeForm,
   EdgeRecord,
   EmitPlan,
   OutputRecipe,
@@ -110,15 +111,14 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
             glueExports,
           )
         : renderDerived(plan, renderer, decl, placement, included, exportNameOf)
-    sourceEdges(
-      plan,
-      id,
-      importerId,
-      included,
-      renderer.tree,
-      segments,
-      unitsOfImport,
-      recipeEdges,
+    recipeEdges.push(
+      ...sourceEdges(
+        plan.analysis,
+        (raw, form) => plan.edgeKey(raw, form),
+        id,
+        importerId,
+        outputView(plan, included, renderer.tree, segments, unitsOfImport),
+      ),
     )
     outputs[id] = {
       kind: decl.kind,
@@ -682,124 +682,51 @@ function startsWithPragmaComment(
   return false
 }
 
-/** The source import edges of an output (every live import, re-export and dynamic edge of the included units). */
-function sourceEdges(
+/** What of the module renders in `output` (`sourceEdges`): the units it includes, its tree's erasures, its rendered segments. */
+function outputView(
   plan: AnalysisPlan,
-  output: OutputId,
-  importerId: string,
   included: ReadonlySet<number>,
   tree: RenderTree,
   segments: ReadonlyArray<Segment>,
   unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
-  into: Array<EdgeRecord>,
-): void {
-  const { analysis, t1 } = plan
-  const { units } = t1
+): EdgeView {
+  const { units, refs } = plan.t1
   const includedUnit = (u: Unit) => {
     const c = plan.placement!.clusterOfRegion.get(u.region)
     return c !== undefined && included.has(c)
   }
-  for (const imp of analysis.imports) {
-    if (imp.typeOnly) {
-      continue
-    }
-    const live = (unitsOfImport.get(imp.index) ?? []).filter(
-      (u) => u.kind !== 'type' && includedUnit(u),
-    )
-    if (live.length === 0) {
-      continue
-    }
-    if (tree.isErasedAt(imp.declRange.start)) {
-      continue
-    }
-    const liveLocals = new Set(
-      live
-        .filter((u) => u.kind === 'import-specifier')
-        .flatMap((u) => u.declares),
-    )
-    const names = analysis.importEdgeNames(
-      imp,
-      (start) => !tree.isErasedAt(start),
-      (spec) => liveLocals.has(spec.local),
-    )
-    // classic-runtime JSX reads its factory implicitly (no Yuku reference)
-    for (const spec of imp.specifiers) {
-      if (
-        liveLocals.has(spec.local) &&
-        !names.includes(spec.imported) &&
-        t1.refs
-          .refsOf(spec.local)
-          .some(
-            (r) =>
-              r.kind === 'implicitJsxFactory' &&
-              !tree.isErasedAt(r.range.start),
+  return {
+    importLocals: (imp) => {
+      const live = (unitsOfImport.get(imp.index) ?? []).filter(
+        (u) => u.kind !== 'type' && includedUnit(u),
+      )
+      return live.length === 0
+        ? null
+        : new Set(
+            live
+              .filter((u) => u.kind === 'import-specifier')
+              .flatMap((u) => u.declares),
           )
-      ) {
-        names.push(spec.imported)
-      }
-    }
-    const form: EdgeForm = imp.bare ? 'bare' : 'static'
-    into.push({
-      output,
-      importerId,
-      edgeKey: plan.edgeKey(imp.specifier, form),
-      form,
-      kind: names.length > 0 ? 'binding' : 'evaluation',
-      specifier: imp.specifier,
-      locations: [{ range: imp.specifierRange }],
-      typeOnly: false,
-      names,
-      provenance: { origin: 'source' },
-    })
-  }
-  for (const re of analysis.reexports) {
-    if (re.typeOnly || tree.isErasedAt(re.statementRange.start)) {
-      continue
-    }
-    const unit = units.find(
-      (u) =>
-        u.kind === 'reexport' &&
-        u.range.start <= re.statementRange.start &&
-        u.range.end >= re.statementRange.end,
-    )
-    if (!unit || !includedUnit(unit)) {
-      continue
-    }
-    const form: EdgeForm = re.kind === 'star' ? 'star' : 'reexport'
-    into.push({
-      output,
-      importerId,
-      edgeKey: plan.edgeKey(re.specifier, form),
-      form,
-      kind: 'evaluation',
-      specifier: re.specifier,
-      locations: [{ range: re.specifierRange }],
-      typeOnly: false,
-      names: re.names,
-      provenance: { origin: 'source' },
-    })
-  }
-  for (const dyn of analysis.dynamicEdges) {
-    // only where its source text renders: not an output whose code left
-    // the call out (another output's code, erased code)
-    const { start, end } = dyn.specifierRange
-    if (
-      !segments.some((s) => s.k === 'slice' && s.start <= start && s.end >= end)
-    ) {
-      continue
-    }
-    into.push({
-      output,
-      importerId,
-      edgeKey: plan.edgeKey(dyn.specifier, dyn.form),
-      form: dyn.form,
-      kind: 'evaluation',
-      specifier: dyn.specifier,
-      locations: [{ range: dyn.specifierRange }],
-      typeOnly: false,
-      names: dyn.names,
-      provenance: { origin: 'source' },
-    })
+    },
+    erasedAt: (offset) => tree.isErasedAt(offset),
+    reexports: (range) => {
+      const unit = units.find(
+        (u) =>
+          u.kind === 'reexport' &&
+          u.range.start <= range.start &&
+          u.range.end >= range.end,
+      )
+      return unit !== undefined && includedUnit(unit)
+    },
+    dynamic: ({ start, end }) =>
+      segments.some((s) => s.k === 'slice' && s.start <= start && s.end >= end),
+    jsxFactory: (local) =>
+      refs
+        .refsOf(local)
+        .some(
+          (r) =>
+            r.kind === 'implicitJsxFactory' && !tree.isErasedAt(r.range.start),
+        ),
   }
 }
 
@@ -818,27 +745,6 @@ function isAmbientValueDeclaration(node: Node): boolean {
     default:
       return false
   }
-}
-
-function dedupeEdges(edges: Array<EdgeRecord>): Array<EdgeRecord> {
-  const byKey = new Map<string, EdgeRecord>()
-  for (const e of edges) {
-    const prev = byKey.get(e.edgeKey)
-    if (!prev) {
-      byKey.set(e.edgeKey, e)
-      continue
-    }
-    prev.locations.push(...e.locations)
-    for (const n of e.names) {
-      if (!prev.names.includes(n)) {
-        prev.names.push(n)
-      }
-    }
-    if (e.kind === 'binding') {
-      prev.kind = 'binding'
-    }
-  }
-  return [...byKey.values()]
 }
 
 /**

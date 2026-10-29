@@ -16,6 +16,7 @@ import { ModuleAnalysis } from './analysis'
 import { AnalysisPlan } from './plan'
 import { DependencyLedger, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
+import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, planCacheFor, resolveForAnalysis } from './host'
@@ -570,12 +571,12 @@ async function runAttempt(
         targetFacts: targetFactsOf,
         targetMarker: targetMarkerOf,
         substitute: (edgeKey, specifier) => {
-          // one logical edge: every record of the key (a Tier 0 plan keeps
-          // one per statement)
-          for (const edge of emitPlan.edges[output] ?? []) {
-            if (edge.edgeKey === edgeKey) {
-              substituteSpecifier(recipe, edge, specifier, input.code)
-            }
+          // one record per logical edge, with every location of it
+          const edge = emitPlan.edges[output]?.find(
+            (e) => e.edgeKey === edgeKey,
+          )
+          if (edge) {
+            substituteSpecifier(recipe, edge, specifier, input.code)
           }
         },
         diagnostic: (d) => emitPlan.diagnostics.push(d),
@@ -594,67 +595,15 @@ function tier0Plan(
   rev: string,
 ): EmitPlan {
   const code = t0.source.code
-  const edges: EmitPlan['edges'] = { env: [] }
   const segments: EmitPlan['outputs'][string]['segments'] = [
     { k: 'slice', start: 0, end: code.length },
   ]
   const edgeKey = (raw: string, form: string) =>
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
-  for (const imp of t0.imports) {
-    if (imp.typeOnly) {
-      continue
-    }
-    const form = imp.bare ? 'bare' : 'static'
-    const k = edgeKey(imp.specifier, form)
-    // binding edge iff a specifier is used as a value (an import whose
-    // bindings are unused, or only used as types, is an evaluation edge)
-    const names = t0.importEdgeNames(imp)
-    edges.env!.push({
-      output: 'env',
-      importerId: identity.canonicalId,
-      edgeKey: k,
-      form,
-      kind: names.length > 0 ? 'binding' : 'evaluation',
-      specifier: imp.specifier,
-      locations: [{ range: imp.specifierRange }],
-      typeOnly: false,
-      names,
-      provenance: { origin: 'source' },
-    })
-  }
-  for (const re of t0.reexports) {
-    if (re.typeOnly) {
-      continue
-    }
-    const form = re.kind === 'star' ? 'star' : 'reexport'
-    const k = edgeKey(re.specifier, form)
-    edges.env!.push({
-      output: 'env',
-      importerId: identity.canonicalId,
-      edgeKey: k,
-      form,
-      kind: 'evaluation',
-      specifier: re.specifier,
-      locations: [{ range: re.specifierRange }],
-      typeOnly: false,
-      names: re.names,
-      provenance: { origin: 'source' },
-    })
-  }
-  for (const dyn of t0.dynamicEdges) {
-    const k = edgeKey(dyn.specifier, dyn.form)
-    edges.env!.push({
-      output: 'env',
-      importerId: identity.canonicalId,
-      edgeKey: k,
-      form: dyn.form,
-      kind: 'evaluation',
-      specifier: dyn.specifier,
-      locations: [{ range: dyn.specifierRange }],
-      typeOnly: false,
-      names: dyn.names,
-      provenance: { origin: 'source' },
-    })
+  const edges: EmitPlan['edges'] = {
+    env: dedupeEdges(
+      sourceEdges(t0, edgeKey, 'env', identity.canonicalId, wholeModule(t0)),
+    ),
   }
   return {
     revision: rev,

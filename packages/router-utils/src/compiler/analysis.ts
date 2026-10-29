@@ -33,7 +33,7 @@ interface ImportSpecifierEntry {
   localName: string
 }
 
-interface ImportEntry {
+export interface ImportEntry {
   index: number
   specifier: string
   /** The specifier literal (quotes included). */
@@ -756,6 +756,100 @@ export class ModuleAnalysis {
     return names
   }
 
+  private jsxInfo: JsxInfo | null = null
+  /**
+   * The JSX runtime from the leading pragmas, and the bindings JSX reads
+   * implicitly under the classic runtime: the factory every element reads
+   * and the fragment factory every fragment reads. Without a pragma the
+   * project's transform decides the runtime; a module-level `React` binding
+   * with a runtime value (not `import type * as React`) is read by every
+   * JSX element when it is classic (Babel's default factory, and the
+   * TypeScript transforms keep its import whatever the runtime), so it is
+   * counted as a read.
+   */
+  jsx(): JsxInfo {
+    if (this.jsxInfo !== null) {
+      return this.jsxInfo
+    }
+    let runtime: JsxInfo['runtime'] = 'unknown'
+    let factoryName: string | null = null
+    let fragmentName: string | null = null
+    for (const p of this.header.pragmas) {
+      if (p.kind === 'jsxImportSource') {
+        runtime = 'automatic'
+      } else if (p.kind === 'jsxRuntime') {
+        runtime = p.value === 'classic' ? 'classic' : 'automatic'
+      } else if (p.kind === 'jsx') {
+        factoryName = p.value
+        if (runtime === 'unknown') {
+          runtime = 'classic'
+        }
+      } else {
+        fragmentName = p.value
+      }
+    }
+    const rootScope = this.file.rootScope
+    const rootSym = (name: string | null): SymbolId | null => {
+      if (!name) {
+        return null
+      }
+      const b = valueBinding(rootScope, name.split('.')[0]!)
+      return b ? (b.id as SymbolId) : null
+    }
+    const factory =
+      runtime === 'classic'
+        ? rootSym(factoryName ?? 'React')
+        : runtime === 'unknown'
+          ? rootSym('React')
+          : null
+    const fragment =
+      runtime === 'classic'
+        ? rootSym(fragmentName ?? factoryName ?? 'React')
+        : runtime === 'unknown'
+          ? factory
+          : null
+    return (this.jsxInfo = { runtime, factory, fragment })
+  }
+
+  private implicitReads: ReadonlySet<SymbolId> | null = null
+  /**
+   * The bindings the module's JSX reads implicitly (`jsx()`), without Tier
+   * 1: whether it has an element (the factory) and a fragment (the fragment
+   * factory), one walk that stops once it saw both.
+   */
+  implicitJsxReads(): ReadonlySet<SymbolId> {
+    if (this.implicitReads !== null) {
+      return this.implicitReads
+    }
+    const reads = new Set<SymbolId>()
+    const { factory, fragment } = this.jsx()
+    if (factory !== null) {
+      // (the walk's callbacks set them)
+      const seen = { element: false, fragment: false }
+      walk(this.file.program, {
+        JSXElement: (_n, w) => {
+          seen.element = true
+          if (seen.fragment) {
+            w.stop()
+          }
+        },
+        JSXFragment: (_n, w) => {
+          seen.fragment = true
+          if (seen.element) {
+            w.stop()
+          }
+        },
+      })
+      if (seen.element) {
+        reads.add(factory)
+      }
+      if (seen.fragment) {
+        reads.add(fragment ?? factory)
+      }
+    }
+    return (this.implicitReads = reads)
+  }
+
   t1(): Tier1 {
     if (this.tier1) {
       return this.tier1
@@ -833,48 +927,9 @@ export class ModuleAnalysis {
       })
     }
 
-    // JSX runtime from leading pragmas; classic → implicit factory reads per element.
-    let runtime: JsxInfo['runtime'] = 'unknown'
-    let factoryName: string | null = null
-    let fragmentName: string | null = null
-    for (const p of this.header.pragmas) {
-      if (p.kind === 'jsxImportSource') {
-        runtime = 'automatic'
-      } else if (p.kind === 'jsxRuntime') {
-        runtime = p.value === 'classic' ? 'classic' : 'automatic'
-      } else if (p.kind === 'jsx') {
-        factoryName = p.value
-        if (runtime === 'unknown') {
-          runtime = 'classic'
-        }
-      } else {
-        fragmentName = p.value
-      }
-    }
-    const rootSym = (name: string | null): SymbolId | null => {
-      if (!name) {
-        return null
-      }
-      const root = name.split('.')[0]!
-      const b = valueBinding(file.rootScope, root)
-      return b ? symbols.ofBinding(b) : null
-    }
-    // Without a pragma the project's transform decides the runtime; a
-    // module-level `React` binding with a runtime value (not `import type
-    // * as React`) is read by every JSX element when it is classic (Babel's
-    // default factory), so it is counted as a read.
-    const factory =
-      runtime === 'classic'
-        ? rootSym(factoryName ?? 'React')
-        : runtime === 'unknown'
-          ? rootSym('React')
-          : null
-    const fragment =
-      runtime === 'classic'
-        ? rootSym(fragmentName ?? factoryName ?? 'React')
-        : runtime === 'unknown'
-          ? factory
-          : null
+    // classic (or unknown) runtime → implicit factory reads per element
+    const jsx = this.jsx()
+    const { factory, fragment } = jsx
     if (factory !== null) {
       walk(file.program, {
         JSXElement: (n) => {
@@ -947,7 +1002,7 @@ export class ModuleAnalysis {
       symbols,
       refs: refIndex,
       freeRefs,
-      jsx: { runtime, factory, fragment },
+      jsx,
       names,
       exportNames,
       declaringUnits,
