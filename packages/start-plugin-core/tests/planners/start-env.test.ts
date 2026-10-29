@@ -222,17 +222,17 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
     [
       'export default',
       `export default createServerFn().handler(() => db.q())\n`,
-      /export default createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+      /export default createServerFn\(\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
     ],
     [
       'an object property',
       `export const api = { get: createServerFn().handler(() => db.q()) }\n`,
-      /get: createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+      /get: createServerFn\(\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
     ],
     [
       'a class static field',
       `export class Api { static get = createServerFn().handler(() => db.q()) }\n`,
-      /static get = createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+      /static get = createServerFn\(\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
     ],
   ])(
     'stubs a server fn declared by %s in the env module',
@@ -250,7 +250,7 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
       expectValid(provider)
       expect(provider).toContain('db.q()')
       expect(provider).toContain("from './db.server'")
-      expect(provider).toMatch(/createServerRpc|tsrServerRpc/)
+      expect(provider).toContain('createServerRpc')
     },
   )
 
@@ -302,9 +302,9 @@ ${body}`
         'const mw = createMiddleware().server(({ next }) => next())',
       )
       expect(r.code).toMatch(
-        /createServerFn\(\{ method: METHOD \}\)\.middleware\(\[mw\]\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+        /createServerFn\(\{ method: METHOD \}\)\.middleware\(\[mw\]\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
       )
-      expect(r.code).toContain('tsrSsrRpc } from')
+      expect(r.code).toMatch(/createSsrRpc as [\w$]+ \} from/)
       expect(r.code).not.toContain('db.q()')
       expect(r.code).not.toContain('./db.server')
       const provider = await r.derived(PROVIDER)
@@ -320,7 +320,7 @@ ${body}`
       { env: rsc, config, files },
     )
     expect(r.code).toMatch(
-      /export const fn = createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+      /export const fn = createServerFn\(\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
     )
     expect(r.code).not.toContain('tss-serverfn-split')
   })
@@ -452,11 +452,11 @@ import { db } from './db.server'
       expect(r.out.diagnostics, envName).toEqual([])
       expect(r.code, envName).toContain('export function make()')
       if (env.type === 'client') {
-        expect(r.code).toContain('tsrClientRpc')
+        expect(r.code).toContain('createClientRpc')
         expect(r.code).not.toContain('db.q(1)')
         expect(r.code).not.toContain('./db.server')
       } else if (env.isProvider) {
-        expect(r.code).toContain('tsrSsrRpc')
+        expect(r.code).toContain('createSsrRpc')
         expect(r.code).not.toContain('db.q(1)')
       } else {
         // the in-place provider's handlers live in its handler module

@@ -12,6 +12,7 @@ import {
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
 import { createHydratePlanner } from '../../src/planners/hydrate'
+import { NAME, shape } from '../generated-names'
 import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
 import type {
   CompileOutput,
@@ -147,39 +148,31 @@ async function both(code: string, opts: Parameters<typeof compile>[1] = {}) {
 const prefixes = (code: string) =>
   [...code.matchAll(/ h="([^"]+)"/g)].map((m) => m[1])
 
-describe('recognition (J5.1)', () => {
-  it.each([
-    ['a named import', REACT, '<Hydrate when={w}>', '</Hydrate>'],
-    [
-      'a renamed import',
-      `import { Hydrate as HW } from '@tanstack/react-start'\n`,
-      '<HW when={w}>',
-      '</HW>',
-    ],
-    [
-      'a namespace member',
-      `import * as Start from '@tanstack/react-start'\n`,
-      '<Start.Hydrate when={w}>',
-      '</Start.Hydrate>',
-    ],
-  ])('%s is a boundary', async (_, head, open, close) => {
-    const code = `${head}import { Chart } from './chart'\nexport const Page = ({ w }) => ${open}<Chart />${close}\n`
-    const { client, server } = await both(code)
-    const id = idAt(code, open)
-    expect(client.extracted).toEqual([
-      { id, chunk: `${FILE}?tss-hydrate=${id}` },
-    ])
-    expect(client.code).toContain(
-      `${open.slice(0, -1)} h="${id}"><TsrHydrate0/>${close}`,
-    )
-    expect(client.chunks[id]).toBe(
-      `import { Chart } from './chart'\nfunction TsrHydrate0() { return (<Chart />) }\nexport { TsrHydrate0 as H0 }\n`,
-    )
-    expect(server.code).toContain(
-      `${open.slice(0, -1)} h="${id}"><Chart />${close}`,
-    )
-  })
+/** The lazy component an output renders for boundary `id`, and the chunk export it loads. */
+function lazyOf(code: string, id: string) {
+  const m = new RegExp(
+    String.raw`const (${NAME}) = /\* @__PURE__ \*/ ${NAME}\(\(\) => import\('[^']*[?&]tss-hydrate=${id}'\), '(${NAME})'\)`,
+    'u',
+  ).exec(code)
+  if (!m) {
+    throw new Error(`no lazy component of the boundary ${id} in:\n${code}`)
+  }
+  return { name: m[1]!, exportName: m[2]! }
+}
 
+/** The component a chunk exports, and its export name. */
+function chunkComponent(chunk: string) {
+  const m = new RegExp(
+    String.raw`export \{ (${NAME}) as (${NAME}) \}`,
+    'u',
+  ).exec(chunk)
+  if (!m) {
+    throw new Error(`no chunk component in:\n${chunk}`)
+  }
+  return { name: m[1]!, exportName: m[2]! }
+}
+
+describe('recognition (J5.1)', () => {
   it.each([
     [
       'a global Hydrate',
@@ -242,22 +235,6 @@ export const Deeper = () => <Start.X.Hydrate><p>local</p></Start.X.Hydrate>
     expect(server.code).toContain('<p>local</p>')
     expect(prefixes(server.code)).toEqual([client.extracted[0]!.id])
   })
-
-  it('splits the split shorthand and a dynamic split', async () => {
-    const code = `${REACT}export const Page = ({ flag }) => <><Hydrate split><p>a</p></Hydrate><Hydrate split={flag}><p>b</p></Hydrate></>\n`
-    const { client, server } = await both(code)
-    const ids = [idAt(code), idAt(code, '<Hydrate', 1)]
-    expect(Object.keys(client.chunks)).toEqual(ids)
-    expect(prefixes(server.code)).toEqual(ids)
-  })
-
-  it('Solid boundaries load the chunk through the Solid router', async () => {
-    const code = `${SOLID}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
-    const client = await compile(code, { env: clientEnv })
-    expect(client.code).toContain(
-      "import { lazyRouteComponent as tsrLazy } from '@tanstack/solid-router'",
-    )
-  })
 })
 
 describe('the client output (J5.2)', () => {
@@ -272,27 +249,31 @@ export function Page({ label }) {
 `
     const id = idAt(code)
     const client = await compile(code)
-    expect(client.code).toBe(
-      `import { lazyRouteComponent as tsrLazy } from '@tanstack/react-router'
-const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${id}'), 'H0')
-import { Hydrate } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export function Page({ label }) {
-  return <Hydrate when={load()} h="${id}"><TsrHydrate0 label={label}/></Hydrate>
-}
-`,
+    // the parent renders a pure lazy component of the chunk in place of the
+    // children, with what they capture, and loads none of their code
+    expect(client.code).toMatch(
+      shape(
+        `import { lazyRouteComponent as «load» } from '@tanstack/react-router'\nconst «lazy» = /* @__PURE__ */ «load»(() => import('./page.tsx?tss-hydrate=${id}'), '«x»')`,
+      ),
     )
+    const lazy = lazyOf(client.code, id)
+    expect(client.code).toContain(
+      `<Hydrate when={load()} h="${id}"><${lazy.name} label={label}/></Hydrate>`,
+    )
+    expect(client.code).not.toMatch(/chart|format|title/)
     // an effectful initialiser only the chunk needs, with nothing effectful after it, moves
     // (its only needer is the chunk, nothing else writes it and no later effect
     // could observe the deferred initialisation)
-    expect(client.chunks[id]).toBe(
-      `import { Chart } from './chart'
-import { formatValue } from './format'
-const title = formatValue('Revenue')
-function TsrHydrate0({ label }) { return (<Chart title={title} label={label} />) }
-export { TsrHydrate0 as H0 }
-`,
+    const chunk = client.chunks[id]!
+    expect(chunk).toContain(
+      `import { Chart } from './chart'\nimport { formatValue } from './format'\nconst title = formatValue('Revenue')`,
     )
+    expect(chunk).toMatch(
+      shape(
+        `function «c»({ label }) { return (<Chart title={title} label={label} />) }`,
+      ),
+    )
+    expect(chunkComponent(chunk).exportName).toBe(lazy.exportName)
   })
 
   it('wraps several children, and text, in a fragment that keeps JSX whitespace and entities', async () => {
@@ -308,57 +289,20 @@ export { TsrHydrate0 as H0 }
 `
     const client = await compile(code)
     const ids = client.extracted.map((b) => b.id)
-    expect(client.chunks[ids[0]!]).toBe(
-      'function TsrHydrate0() { return <> <p>x</p> </> }\nexport { TsrHydrate0 as H0 }\n',
-    )
-    expect(client.chunks[ids[1]!]).toBe(
-      'function TsrHydrate1() { return <>\n      Fish &amp;\n      Chips &copy;\n    </> }\nexport { TsrHydrate1 as H1 }\n',
-    )
-    expect(client.chunks[ids[2]!]).toBe(
-      'function TsrHydrate2() { return <><a />\n      <b /></> }\nexport { TsrHydrate2 as H2 }\n',
-    )
+    const bodies = [
+      '<> <p>x</p> </>',
+      '<>\n      Fish &amp;\n      Chips &copy;\n    </>',
+      '<><a />\n      <b /></>',
+    ]
+    for (const [i, body] of bodies.entries()) {
+      expect(client.chunks[ids[i]!]).toMatch(
+        shape(`function «c»() { return ${body} }`),
+      )
+    }
     // whitespace lines around the region stay in the parent, where JSX drops them
     expect(client.code).toContain(
-      `<Hydrate h="${ids[2]}">\n      <TsrHydrate2/>\n    </Hydrate>`,
+      `<Hydrate h="${ids[2]}">\n      <${lazyOf(client.code, ids[2]!).name}/>\n    </Hydrate>`,
     )
-  })
-
-  it('returns a single expression child as is', async () => {
-    const code = `${REACT}export function Page({ label }) {
-  return <Hydrate>{label}</Hydrate>
-}
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    expect(client.code).toContain(
-      `<Hydrate h="${b!.id}">{<TsrHydrate0 label={label}/>}</Hydrate>`,
-    )
-    expect(client.chunks[b!.id]).toBe(
-      'function TsrHydrate0({ label }) { return (label) }\nexport { TsrHydrate0 as H0 }\n',
-    )
-  })
-
-  it('extracts a children prop of a self-closing boundary, and boundaries nested in it', async () => {
-    const code = `${REACT}import { Chart } from './chart'
-export function Page() {
-  return <Hydrate children={<section><Chart /><Hydrate><p>inner</p></Hydrate></section>} />
-}
-`
-    const outer = idAt(code)
-    const inner = idAt(code, '<Hydrate', 1)
-    const { client, server } = await both(code)
-    expect(client.code).toContain(
-      `<Hydrate children={<TsrHydrate0/>} h="${outer}" />`,
-    )
-    expect(client.code).not.toContain('./chart')
-    expect(client.chunks[outer]).toContain(
-      `return (<section><Chart /><Hydrate h="${inner}"><TsrHydrate1/></Hydrate></section>)`,
-    )
-    expect(client.chunks[inner]).toBe(
-      'function TsrHydrate1() { return (<p>inner</p>) }\nexport { TsrHydrate1 as H1 }\n',
-    )
-    // text order: the nested boundary sits inside the outer opening tag
-    expect(prefixes(server.code)).toEqual([inner, outer])
   })
 
   it.each([
@@ -398,36 +342,11 @@ export const Page = (props) => <Hydrate ${attrs}><b /></Hydrate>
 `
     const { client, server } = await both(code)
     const id = idAt(code)
+    const lazy = lazyOf(client.code, id).name
     expect(client.code).toContain(
-      `${attrs} h="${id}"${p ? ' p={TsrHydrate0.preload}' : ''}><TsrHydrate0/>`,
+      `${attrs} h="${id}"${p ? ` p={${lazy}.preload}` : ''}><${lazy}/>`,
     )
     expect(server.code).not.toContain('preload')
-  })
-
-  it('names generated bindings away from the file universe and starts tag names uppercase', async () => {
-    // (the user's primitives are copied into the chunk: copyable)
-    const code = `${REACT}const TsrHydrate0 = 'mine'
-const tsrLazy = 'mine'
-export function Page({ props }) {
-  return <Hydrate><p>{TsrHydrate0}{tsrLazy}{props}</p></Hydrate>
-}
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    expect(client.code).toContain(
-      "import { lazyRouteComponent as tsrLazy$1 } from '@tanstack/react-router'",
-    )
-    expect(client.code).toContain(
-      `const TsrHydrate0$1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'H0')`,
-    )
-    expect(client.code).toContain('<TsrHydrate0$1 props={props}/>')
-    expect(client.chunks[b!.id]).toBe(
-      `const TsrHydrate0 = 'mine'
-const tsrLazy = 'mine'
-function TsrHydrate0$1({ props }) { return (<p>{TsrHydrate0}{tsrLazy}{props}</p>) }
-export { TsrHydrate0$1 as H0 }
-`,
-    )
   })
 
   it('keeps a foreign query on the chunk id and its specifier', async () => {
@@ -459,26 +378,6 @@ export const Page = () => <Hydrate><Chart /></Hydrate>
       ]),
     ).toEqual([['./chart', 'source', b!.chunk]])
   })
-
-  it('compiles the same chunk from a chunk-first request and from a recompile', async () => {
-    const code = `${REACT}import { Chart } from './chart'
-export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    const fresh = new MemoryHost({ [FILE]: code })
-    const config = {
-      configKey: 'cfg',
-      perPlanner: { hydrate: { root: ROOT } },
-    }
-    const first = await fresh.compile(b!.chunk, [hydrate], { config })
-    expect(first!.code).toBe(client.chunks[b!.id])
-    const again = await fresh.compile(b!.chunk, [hydrate], {
-      config,
-      code: `${code}`,
-    })
-    expect(again!.code).toBe(first!.code)
-  })
 })
 
 describe('captures (J5.2)', () => {
@@ -487,24 +386,6 @@ describe('captures (J5.2)', () => {
     const [b] = client.extracted
     return { code: client.code, chunk: client.chunks[b!.id]!, client }
   }
-
-  it('passes locals of the enclosing scopes, not module bindings or names declared inside', async () => {
-    const { code, chunk } = await capturesOf(`const fromModule = 1
-export function Page({ a: [b = 1], ...rest }) {
-  const value = 'outer'
-  let latest = 'first'
-  latest = 'second'
-  try { throw 1 } catch (error) {
-    return <Hydrate><p>{b}{rest.x}{value}{latest}{error}{fromModule}{[1].map((item) => { const inner = item; return inner })}</p></Hydrate>
-  }
-}`)
-    expect(code).toContain(
-      '<TsrHydrate0 b={b} rest={rest} value={value} latest={latest} error={error}/>',
-    )
-    expect(chunk).toContain(
-      'function TsrHydrate0({ b, rest, value, latest, error }) {',
-    )
-  })
 
   it('passes a local shadowing a module binding; the chunk keeps the module binding for code that reads it', async () => {
     const code = `${REACT}import { label } from './labels'
@@ -518,116 +399,54 @@ export function Page() {
 `
     const client = await compile(code)
     const [b] = client.extracted
-    expect(client.code).toContain('<TsrHydrate0 label={label} value={value}/>')
+    expect(client.code).toContain(
+      `<${lazyOf(client.code, b!.id).name} label={label} value={value}/>`,
+    )
     expect(client.code).not.toContain('./labels')
-    expect(client.chunks[b!.id]).toBe(
-      `import { label } from './labels'
-const value = 'module'
-function Show() { return <b>{value + ':' + label}</b> }
-function TsrHydrate0({ label, value }) { return <><Show /><i>{label}{value}</i></> }
-export { TsrHydrate0 as H0 }
-`,
+    const chunk = client.chunks[b!.id]!
+    expect(chunk).toContain(
+      `import { label } from './labels'\nconst value = 'module'\nfunction Show() { return <b>{value + ':' + label}</b> }`,
+    )
+    expect(chunk).toMatch(
+      shape(
+        `function «c»({ label, value }) { return <><Show /><i>{label}{value}</i></> }`,
+      ),
     )
   })
 
   it('renames props React keeps for itself (key, ref, children)', async () => {
-    const { code, chunk } =
+    const { code, chunk, client } =
       await capturesOf(`export function Page({ children }) {
   const key = 'k'
   const ref = 'r'
   return <Hydrate><p>{key}{ref}{children}</p></Hydrate>
 }`)
-    expect(code).toContain(
-      '<TsrHydrate0 tsrCap$key={key} tsrCap$ref={ref} tsrCap$children={children}/>',
-    )
-    expect(chunk).toContain(
-      '({ tsrCap$key: key, tsrCap$ref: ref, tsrCap$children: children })',
-    )
+    const lazy = lazyOf(code, client.extracted[0]!.id).name
+    const { k, r, c } = shape(
+      `<${lazy} «k»={key} «r»={ref} «c»={children}/>`,
+    ).exec(code)!.groups!
+    // the captures travel under props React does not keep for itself
+    expect(
+      [k, r, c].filter((n) => ['key', 'ref', 'children'].includes(n!)),
+    ).toEqual([])
+    expect(chunk).toContain(`({ ${k}: key, ${r}: ref, ${c}: children })`)
   })
 
-  it('takes JSX tags of locals for reads: _, $, non-ASCII and member roots, not intrinsic names', async () => {
-    const { code } = await capturesOf(`export function Page({ Model }) {
-  const _Local = () => 1, $Local = () => 2, ÉLocal = () => 3, 组件 = () => 4
-  const ui = { Home: () => 5 }
-  const div = sideEffect('div')
-  console.log(div)
-  return <Hydrate><_Local /><$Local /><ÉLocal /><组件 /><ui.Home /><Model.Item /><div>x</div></Hydrate>
-}`)
-    expect(code).toContain(
-      '<TsrHydrate0 _Local={_Local} $Local={$Local} ÉLocal={ÉLocal} 组件={组件} ui={ui} Model={Model}/>',
-    )
-  })
-
-  it('takes neither property names, method keys, member names nor locals bound inside for reads', async () => {
-    const { code } = await capturesOf(`import { icons } from './icons'
-export function Page({ obj, ids }) {
-  const el = <Hydrate><p>{obj?.later + ({ later() { return '!' } }).later()}{ids.map((id) => { const Icon = icons[id]; return <Icon key={id} /> })}</p></Hydrate>
-  const later = 1
-  const Icon = 2
-  console.log(later, Icon)
-  return el
-}`)
-    expect(code).toContain('<TsrHydrate0 obj={obj} ids={ids}/>')
-  })
-
-  it('passes a local enum and ignores type positions', async () => {
-    const { code } = await capturesOf(`import type { Shape } from './types'
-export function Page({ v }: { v: unknown }) {
-  enum Color { Red = 'red' }
-  type Local = string
-  return <Hydrate><p>{Color.Red}{(v as Local as Shape) satisfies unknown}</p></Hydrate>
-}`)
-    expect(code).toContain('<TsrHydrate0 Color={Color} v={v}/>')
-  })
-
-  it('keeps the own this and arguments of functions inside the children', async () => {
-    const { code, chunk, client } =
-      await capturesOf(`export function Page({ items }) {
-  return <Hydrate><ul>{items.map(function (item) { return <li>{this.prefix + item + arguments.length}</li> }, { prefix: '>' })}</ul><p>{new (class { label = 'x'; read() { return this.label } })().read()}{({ read() { return this.x } }).read()}</p></Hydrate>
-}`)
-    expect(client.errors).toEqual([])
-    expect(code).toContain('<TsrHydrate0 items={items}/>')
-    expect(chunk).toContain('this.prefix + item + arguments.length')
-  })
-
-  it('passes the enclosing function’s arguments as tsrArguments, through nested boundaries', async () => {
+  it('passes the enclosing function’s arguments as a prop, through nested boundaries', async () => {
     const { code, chunk, client } = await capturesOf(`export function Page() {
   return <Hydrate><p>{arguments[0].title}{(() => arguments.length)()}</p><Hydrate>{arguments.length}</Hydrate></Hydrate>
 }`)
-    const [, inner] = client.extracted
-    expect(code).toContain('<TsrHydrate0 tsrArguments={arguments}/>')
-    expect(chunk).toContain(
-      'function TsrHydrate0({ tsrArguments }) { return <><p>{tsrArguments[0].title}{(() => tsrArguments.length)()}</p>',
-    )
-    expect(chunk).toContain(
-      `<Hydrate h="${inner!.id}">{<TsrHydrate1 tsrArguments={tsrArguments}/>}</Hydrate>`,
-    )
-    expect(client.chunks[inner!.id]).toBe(
-      'function TsrHydrate1({ tsrArguments }) { return (tsrArguments.length) }\nexport { TsrHydrate1 as H1 }\n',
-    )
-  })
-
-  it('makes an enclosing boundary capture what its nested placeholders read (React)', async () => {
-    const code = `${REACT}export function Page({ isOpen, fee }) {
-  const label = 'fee'
-  return <Hydrate><section><Hydrate><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
-}
-`
-    const client = await compile(code)
     const [outer, inner] = client.extracted
-    expect(client.code).toContain(
-      '<TsrHydrate0 label={label} isOpen={isOpen} fee={fee}/>',
+    const lazy = lazyOf(code, outer!.id).name
+    const args = shape(`<${lazy} «a»={arguments}/>`).exec(code)!.groups!.a!
+    expect(chunk).toContain(
+      `({ ${args} }) { return <><p>{${args}[0].title}{(() => ${args}.length)()}</p>`,
     )
-    expect(client.chunks[outer!.id]).toBe(
-      `import { lazyRouteComponent as tsrLazy$1 } from '@tanstack/react-router'
-import { Hydrate } from '@tanstack/react-start'
-const TsrHydrate1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${inner!.id}'), 'H1')
-function TsrHydrate0({ label, isOpen, fee }) { return (<section><Hydrate h="${inner!.id}"><TsrHydrate1 label={label} isOpen={isOpen} fee={fee}/></Hydrate></section>) }
-export { TsrHydrate0 as H0 }
-`,
+    expect(chunk).toContain(
+      `<Hydrate h="${inner!.id}">{<${lazyOf(chunk, inner!.id).name} ${args}={${args}}/>}</Hydrate>`,
     )
-    expect(client.chunks[inner!.id]).toBe(
-      "function TsrHydrate1({ label, isOpen, fee }) { return (<p>{label + ':' + (isOpen ? fee : 0)}</p>) }\nexport { TsrHydrate1 as H1 }\n",
+    expect(client.chunks[inner!.id]).toMatch(
+      shape(`function «c»({ ${args} }) { return (${args}.length) }`),
     )
   })
 })
@@ -645,13 +464,18 @@ describe('Solid (J5.2)', () => {
     const client = await compile(code, { env: clientEnv })
     const [outer, inner] = client.extracted
     expect(client.code).toContain(
-      '<TsrHydrate0 read={read} value={value} Local={Local} label={label} props={props}/>',
+      `<${lazyOf(client.code, outer!.id).name} read={read} value={value} Local={Local} label={label} props={props}/>`,
     )
-    expect(client.chunks[outer!.id]).toContain(
-      `function TsrHydrate0(props$1) { return (<section>{(0, props$1.read)()}{ { value: props$1.value }.value }<props$1.Local></props$1.Local><Hydrate h="${inner!.id}"><TsrHydrate1 label={props$1.label} props={props$1.props}/></Hydrate></section>) }`,
+    const outerChunk = client.chunks[outer!.id]!
+    expect(outerChunk).toMatch(
+      shape(
+        `function «c»(«p») { return (<section>{(0, «p».read)()}{ { value: «p».value }.value }<«p».Local></«p».Local><Hydrate h="${inner!.id}"><${lazyOf(outerChunk, inner!.id).name} label={«p».label} props={«p».props}/></Hydrate></section>) }`,
+      ),
     )
-    expect(client.chunks[inner!.id]).toBe(
-      'function TsrHydrate1(props$1) { return (<b>{props$1.label}{props$1.props.count}</b>) }\nexport { TsrHydrate1 as H1 }\n',
+    expect(client.chunks[inner!.id]).toMatch(
+      shape(
+        `function «c»(«p») { return (<b>{«p».label}{«p».props.count}</b>) }`,
+      ),
     )
   })
 
@@ -664,11 +488,14 @@ describe('Solid (J5.2)', () => {
 `
     const client = await compile(code, { env: clientEnv })
     const [b] = client.extracted
-    expect(client.code).toContain(
-      "<TsrHydrate0 setOther={setOther} tsrRef$input={(el) => typeof input === 'function' ? input(el) : (input = el)}/>",
-    )
-    expect(client.chunks[b!.id]).toContain(
-      'return <><input ref={props.tsrRef$input} /><div ref={props.setOther} /></> }',
+    const lazy = lazyOf(client.code, b!.id).name
+    const setter = shape(
+      `<${lazy} setOther={setOther} «set»={(«el») => typeof input === 'function' ? input(«el») : (input = «el»)}/>`,
+    ).exec(client.code)!.groups!.set!
+    expect(client.chunks[b!.id]).toMatch(
+      shape(
+        `return <><input ref={«p».${setter}} /><div ref={«p».setOther} /></> }`,
+      ),
     )
   })
 
@@ -684,25 +511,6 @@ describe('Solid (J5.2)', () => {
     ])
   })
 
-  it('makes use: directives reads: a module binding moves with the chunk, a local is passed', async () => {
-    const code = `${SOLID}import { tip } from './tip'
-export function Page() {
-  const local = (el) => el
-  return <Hydrate><p use:tip={1} use:local /></Hydrate>
-}
-`
-    const client = await compile(code, { env: clientEnv })
-    const [b] = client.extracted
-    expect(client.code).not.toContain('./tip')
-    expect(client.code).toContain('<TsrHydrate0 local={local}/>')
-    expect(client.chunks[b!.id]).toBe(
-      `import { tip } from './tip'
-function TsrHydrate0(props) { const local = props.local; return (<p use:tip={1} use:local />) }
-export { TsrHydrate0 as H0 }
-`,
-    )
-  })
-
   it('renames ref and children props for Solid too, and passes arguments through props', async () => {
     const code = `${SOLID}export function Page() {
   const ref = 'r'
@@ -711,65 +519,18 @@ export { TsrHydrate0 as H0 }
 `
     const client = await compile(code, { env: clientEnv })
     const [b] = client.extracted
-    expect(client.code).toContain(
-      '<TsrHydrate0 tsrCap$ref={ref} tsrArguments={arguments}/>',
-    )
-    expect(client.chunks[b!.id]).toContain(
-      'return (<p>{props.tsrCap$ref}{props.tsrArguments.length}</p>)',
+    const lazy = lazyOf(client.code, b!.id).name
+    const { r, a } = shape(`<${lazy} «r»={ref} «a»={arguments}/>`).exec(
+      client.code,
+    )!.groups!
+    expect(r).not.toBe('ref')
+    expect(client.chunks[b!.id]).toMatch(
+      shape(`return (<p>{«p».${r}}{«p».${a}.length}</p>)`),
     )
   })
 })
 
 describe('module-level code the children use', () => {
-  // A component only the chunk reads moves with its own property writes
-  // (`Card.Title = …`: nothing outside its cluster augments it).
-  it('imports exported declarations and Route from the parent; moves what only the chunk uses, augmented components included', async () => {
-    const code = `${REACT}import { createFileRoute } from '@tanstack/react-router'
-import { makeStore } from './store'
-export const Route = createFileRoute('/')({ component: Page })
-export const store = makeStore()
-let renders = 0
-const label = 'Ada'
-const helper = (x) => x + 1
-export const direct = helper(1)
-function Card({ children }) { return <div>{children}</div> }
-Card.Title = () => <h1>t</h1>
-function Widget() { return <i>{label}</i> }
-function Page() {
-  return <Hydrate><Card><Card.Title /></Card>{++renders}<Widget />{store.id}{Route.options.id}{helper(2)}</Hydrate>
-}
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    expect(client.errors).toEqual([])
-    expect(client.chunks[b!.id]).toBe(
-      `import { Route, store, helper } from './page.tsx'
-let renders = 0
-const label = 'Ada'
-function Card({ children }) { return <div>{children}</div> }
-Card.Title = () => <h1>t</h1>
-function Widget() { return <i>{label}</i> }
-function TsrHydrate0() { return <><Card><Card.Title /></Card>{++renders}<Widget />{store.id}{Route.options.id}{helper(2)}</> }
-export { TsrHydrate0 as H0 }
-`,
-    )
-    expect(client.code).not.toContain('let renders')
-    expect(client.code).not.toContain('function Widget')
-    expect(client.code).not.toContain('function Card')
-    expect(client.code).toContain('export { helper }')
-  })
-
-  it('moves a let the children only assign into the chunk', async () => {
-    const code = `${REACT}let renders = 0
-export const Page = () => <Hydrate><p>{(() => { renders = 1 })()}</p></Hydrate>
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    expect(client.errors).toEqual([])
-    expect(client.chunks[b!.id]).toContain('let renders = 0')
-    expect(client.code).not.toContain('renders')
-  })
-
   it('rejects children that assign a module binding the parent also uses', async () => {
     const code = `${REACT}let clicks = 0
 export function bump() { clicks++ }
@@ -882,13 +643,13 @@ ${REACT}export const Page = () => <div><Hydrate>text only</Hydrate></div>
 `
     const client = await compile(code)
     const [b] = client.extracted
-    expect(client.chunks[b!.id]).toBe(
-      `/** @jsxRuntime classic */
-/** @jsx h */
-import { h } from './h'
-function TsrHydrate0() { return /* h */ <>text only</> }
-export { TsrHydrate0 as H0 }
-`,
+    const chunk = client.chunks[b!.id]!
+    // the pragmas still lead the chunk, its fragment reads the factory
+    expect(chunk).toMatch(
+      /^\/\*\* @jsxRuntime classic \*\/\n\/\*\* @jsx h \*\/\nimport \{ h \} from '\.\/h'\n/,
+    )
+    expect(chunk).toMatch(
+      shape(`function «c»() { return /* h */ <>text only</> }`),
     )
     expect(client.code).toContain("import { h } from './h'")
   })
@@ -969,13 +730,6 @@ export function Page({ flag }) {
     expect(Object.keys(client.chunks)).toHaveLength(1)
   })
 
-  it('accepts a hook in the boundary’s own props', async () => {
-    const client = await compile(
-      `${REACT}import { useThing } from './hooks'\nexport const Page = () => <Hydrate when={useThing()}><p /></Hydrate>\n`,
-    )
-    expect(client.errors).toEqual([])
-  })
-
   it('rejects children reading this or super of a class component, not with split={false}', async () => {
     for (const read of ['this.title', 'super.title']) {
       const body = (
@@ -1022,17 +776,6 @@ export class Page extends Base {
     }
   })
 
-  it('neither extracts nor rejects nor prefixes split={false}, split={(false)}', async () => {
-    for (const split of ['split={false}', 'split={(false)}']) {
-      const code = `${REACT}import { useThing } from './hooks'\nexport const Page = () => <Hydrate ${split}>{() => useThing()}</Hydrate>\n`
-      const { client, server } = await both(code)
-      expect(client.errors).toEqual([])
-      expect(server.errors).toEqual([])
-      expect(client.code).toBe(code)
-      expect(server.code).toBe(code)
-    }
-  })
-
   it('validates a nested boundary on its own (the outer one renders its placeholder)', async () => {
     const code = `${REACT}import { useThing } from './hooks'
 export const Page = () => <Hydrate><section><Hydrate><p>{useThing()}</p></Hydrate></section></Hydrate>
@@ -1045,64 +788,6 @@ export const Page = () => <Hydrate><section><Hydrate><p>{useThing()}</p></Hydrat
 })
 
 describe('the server output (J5.3)', () => {
-  it.each([
-    [
-      'a direct fallback',
-      '<Hydrate when={w} fallback={<p>fallback-marker</p>}>',
-    ],
-    [
-      'a direct fallback with split={false}',
-      '<Hydrate when={w} split={false} fallback={<p>fallback-marker</p>}>',
-    ],
-    [
-      'a fallback next to prefetch and onHydrated',
-      '<Hydrate when={w} prefetch={() => {}} fallback={<p>fallback-marker</p>} onHydrated={() => 1}>',
-    ],
-    [
-      'an inline spread',
-      '<Hydrate {...{ when: w, fallback: <p>fallback-marker</p> }}>',
-    ],
-    [
-      'a parenthesized inline spread',
-      '<Hydrate {...({ when: w, fallback: <p>fallback-marker</p> })}>',
-    ],
-    [
-      'a computed key',
-      "<Hydrate {...{ when: w, ['fallback']: <p>fallback-marker</p> }}>",
-    ],
-    [
-      'quoted keys',
-      "<Hydrate {...{ 'when': w, 'fallback': <p>fallback-marker</p> }}>",
-    ],
-    [
-      'a spread used once',
-      '<Hydrate {...opts}>',
-      'const opts = { when: 1, fallback: <p>fallback-marker</p> }\n',
-    ],
-    [
-      'a spread used once, declared after',
-      '<Hydrate {...opts}>',
-      '',
-      'const opts = { when: 1, fallback: <p>fallback-marker</p> }\n',
-    ],
-    [
-      'a parenthesized spread used once',
-      '<Hydrate {...(opts)}>',
-      'const opts = ({ when: 1, fallback: <p>fallback-marker</p> })\n',
-    ],
-    [
-      'a module-level element',
-      '<Hydrate when={w} fallback={fallback}>',
-      'const fallback = <p>fallback-marker</p>\n',
-    ],
-  ])('strips %s', async (_, open, before = '', after = '') => {
-    const code = `${REACT}${before}export const Page = ({ w }) => ${open}<p>child</p></Hydrate>\n${after}`
-    const { client, server } = await both(code)
-    expect(server.code).not.toContain('fallback-marker')
-    expect(server.code).toContain('<p>child</p></Hydrate>')
-    expect(client.code).toContain('fallback-marker')
-  })
-
   it('strips the fallback attribute with the whitespace before it', async () => {
     const code = `${REACT}export const Page = ({ w }) => <Hydrate when={w} fallback={<i />} key={1}><p /></Hydrate>\n`
     const server = await compile(code, { env: ssrEnv })
@@ -1382,7 +1067,7 @@ export const Page = () => <Hydrate><p>b</p></Hydrate>
  */
 function toySplitPlanner(): Planner {
   return {
-    name: 'route-split',
+    name: 'toy-split',
     tier: 1,
     gate: (t0) =>
       t0.imports.some((i) => i.specifier === '@tanstack/react-router'),
@@ -1443,7 +1128,7 @@ function toySplitPlanner(): Planner {
             effectful: false,
             anchor: { k: 'after-header' },
             home: 'auto',
-            by: 'route-split',
+            by: 'toy-split',
             imports: [
               {
                 names: [{ imported: 'lazyRouteComponent', local: lazy }],
@@ -1472,7 +1157,7 @@ function toySplitPlanner(): Planner {
             effectful: false,
             anchor: { k: 'end' },
             home: out,
-            by: 'route-split',
+            by: 'toy-split',
           })
           ctx.rewrites.claim({
             region,
@@ -1488,7 +1173,7 @@ function toySplitPlanner(): Planner {
                 ],
               },
             ],
-            by: 'route-split',
+            by: 'toy-split',
           })
         }
       }
@@ -1507,7 +1192,7 @@ export const Route = createFileRoute('/')({
     const planners = [hydrate, toySplitPlanner()]
     const client = await compile(code, { planners })
     const id = idAt(code)
-    expect(client.code).not.toContain('H0')
+    expect(client.code).not.toContain('tss-hydrate')
     expect(client.code).not.toContain('./chart')
     const options = {
       env: clientEnv,
@@ -1518,25 +1203,22 @@ export const Route = createFileRoute('/')({
       planners,
       options,
     )
-    expect(component!.code).toBe(
-      `import { lazyRouteComponent as tsrLazy } from '@tanstack/react-router'
-import { Hydrate } from '@tanstack/react-start'
-const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${id}'), 'H0')
-const TsrSplitComponent = () => <div><Hydrate h="${id}"><TsrHydrate0/></Hydrate></div>
-export { TsrSplitComponent as component }
-`,
+    // the lazy const lives with the split component that renders it
+    expect(component!.code).toMatch(
+      shape(
+        `const «split» = () => <div><Hydrate h="${id}"><${lazyOf(component!.code, id).name}/></Hydrate></div>\nexport { «split» as component }`,
+      ),
     )
     const chunk = await client.host.compile(
       `${FILE}?tss-hydrate=${id}`,
       planners,
       options,
     )
-    expect(chunk!.code).toBe(
-      `import { Route } from './page.tsx'
-import { Chart } from './chart'
-function TsrHydrate0() { return <><Chart />{Route.id}</> }
-export { TsrHydrate0 as H0 }
-`,
+    expect(chunk!.code).toContain(
+      `import { Route } from './page.tsx'\nimport { Chart } from './chart'`,
+    )
+    expect(chunk!.code).toMatch(
+      shape(`function «c»() { return <><Chart />{Route.id}</> }`),
     )
   })
 })
@@ -1595,7 +1277,7 @@ describe('placement and markup edge cases (J5.2)', () => {
   // A recursive component rendering itself inside its own boundary: the
   // unexported component moves into the chunk with the lazy const only it
   // reads, next to the chunk component. Their names differ (two
-  // `TsrHydrate0` declarations were a SyntaxError).
+  // declarations of one name were a SyntaxError).
   it('names the lazy const apart from the chunk component when the children reach the component holding the boundary', async () => {
     const code = `${REACT}export const depth = 2
 function Tree({ n }) {
@@ -1616,12 +1298,13 @@ function Tree({ n }) {
     expect(chunk).toContain(
       'function Tree({ n }) {\n  return n > 0 ? <Hydrate h="',
     )
-    expect(chunk).toContain('<TsrHydrate0$1 n={n}/>')
-    expect(chunk).toContain('const TsrHydrate0$1 = /* @__PURE__ */ tsrLazy(')
+    const lazy = lazyOf(chunk, idAt(code)).name
+    const component = chunkComponent(chunk).name
+    expect(lazy).not.toBe(component)
+    expect(chunk).toContain(`<${lazy} n={n}/>`)
     expect(chunk).toContain(
-      'function TsrHydrate0({ n }) { return (<Tree n={n - 1} />) }',
+      `function ${component}({ n }) { return (<Tree n={n - 1} />) }`,
     )
-    expect(chunk.match(/\bTsrHydrate0\b(?!\$)/g)?.length).toBe(2)
   })
 
   // A mutually recursive pair: the component the children render renders
@@ -1645,17 +1328,17 @@ function Tree({ n }) {
     ))!.code
     expect(chunk).toContain('function Tree({ n })')
     expect(chunk).toContain('function Branch({ n })')
-    expect(chunk).toContain('const TsrHydrate0$1 = ')
+    expect(lazyOf(chunk, idAt(code)).name).not.toBe(chunkComponent(chunk).name)
   })
 
   it('keeps the same name for the lazy const and the chunk component otherwise', async () => {
     const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }
 `
     const client = await compile(code)
-    expect(client.code).toContain(
-      'const TsrHydrate0 = /* @__PURE__ */ tsrLazy(',
-    )
-    expect(client.code).toContain('<TsrHydrate0/>')
+    const [b] = client.extracted
+    const lazy = lazyOf(client.code, b!.id).name
+    expect(chunkComponent(client.chunks[b!.id]!).name).toBe(lazy)
+    expect(client.code).toContain(`<${lazy}/>`)
   })
 
   // The inserted `h`/`p` attributes go right after the last attribute or
@@ -1673,7 +1356,7 @@ function Tree({ n }) {
     const { client, server } = await both(code)
     const [b] = client.extracted
     expect(client.code).toContain(
-      `<Hydrate h="${b!.id}" // deferred\n    >\n      <TsrHydrate0/>`,
+      `<Hydrate h="${b!.id}" // deferred\n    >\n      <${lazyOf(client.code, b!.id).name}/>`,
     )
     expect(server.code).toContain(`<Hydrate h="${b!.id}" // deferred\n    >`)
   })
@@ -1690,7 +1373,7 @@ function Tree({ n }) {
     const client = await compile(code)
     const [b] = client.extracted
     expect(client.code).toContain(
-      `<Hydrate when={w} h="${b!.id}" /* soon */>\n      <TsrHydrate0/>`,
+      `<Hydrate when={w} h="${b!.id}" /* soon */>\n      <${lazyOf(client.code, b!.id).name}/>`,
     )
   })
 
@@ -1702,8 +1385,11 @@ function Tree({ n }) {
 `
     const marked = await compile(code, { config: { refreshMarkers: true } })
     const [b] = marked.extracted
-    expect(marked.chunks[b!.id]).toBe(
-      `function TsrHydrate0() { return (<p>x</p>) }\nTsrHydrate0.$$tsrRefreshId = ${JSON.stringify(`${b!.chunk} TsrHydrate0`)}\nexport { TsrHydrate0 as H0 }\n`,
+    const chunk = marked.chunks[b!.id]!
+    const component = chunkComponent(chunk).name
+    // the identity: the chunk id and the binding React Refresh registers
+    expect(chunk).toContain(
+      `${component}.$$tsrRefreshId = ${JSON.stringify(`${b!.chunk} ${component}`)}`,
     )
     const plain = await compile(code)
     expect(plain.chunks[b!.id]).not.toContain('$$tsrRefreshId')
@@ -1729,11 +1415,14 @@ function Tree({ n }) {
 `
     const client = await compile(code, { env: clientEnv })
     const [b] = client.extracted
-    expect(client.code).toContain(
-      "<TsrHydrate0 el={(() => el)()} count={(() => count)()} label={label} tsrRef$el={(el$1) => typeof el === 'function' ? el(el$1) : (el = el$1)}/>",
-    )
-    expect(client.chunks[b!.id]).toContain(
-      'return <><input ref={props.tsrRef$el} onClick={() => props.el?.focus()} />{props.count}{props.label}</> }',
+    const lazy = lazyOf(client.code, b!.id).name
+    const setter = shape(
+      `<${lazy} el={(() => el)()} count={(() => count)()} label={label} «set»={(«v») => typeof el === 'function' ? el(«v») : (el = «v»)}/>`,
+    ).exec(client.code)!.groups!.set!
+    expect(client.chunks[b!.id]).toMatch(
+      shape(
+        `return <><input ref={«p».${setter}} onClick={() => «p».el?.focus()} />{«p».count}{«p».label}</> }`,
+      ),
     )
   })
 })

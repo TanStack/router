@@ -11,6 +11,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../src/compiler/recognizer'
 import { START_ENV, startPlanners } from '../src/planners'
+import { importedAs, namesIn, shape } from './generated-names'
 import type { StartEnvConfig, StartEnvFacts } from '../src/planners'
 import type {
   CompileOutput,
@@ -98,6 +99,10 @@ async function compile(
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
+/** The local name of a client output's server-fn stub factory. */
+const clientRpc = (code: string) =>
+  importedAs(code, 'createClientRpc', '@tanstack/react-start/client-rpc')
+
 describe('start-env: server fns', () => {
   const files = {
     '/app/module.tsx': `${head}import { db } from './db.server'
@@ -112,10 +117,7 @@ export const label = () => 'client'
   test('client: a stub keeps the builder, drops the validator and the handler-only imports', async () => {
     const out = (await compile(files, 'client'))!
     expect(out.code).toContain(
-      "import { createClientRpc as tsrClientRpc } from '@tanstack/react-start/client-rpc'",
-    )
-    expect(out.code).toContain(
-      "createServerFn({ method: 'POST' }).handler(tsrClientRpc(",
+      `createServerFn({ method: 'POST' }).handler(${clientRpc(out.code)}(`,
     )
     expect(out.code).not.toContain('db.server')
     expect(out.code).not.toContain('schema')
@@ -131,17 +133,19 @@ export const label = () => 'client'
 
   test('provider: the chain stays next to a createServerRpc export, its handler loads on the first call', async () => {
     const out = (await compile(files, 'ssr'))!
-    expect(out.code).toContain(
-      "import { createServerRpc as tsrServerRpc } from '@tanstack/react-start/server-rpc'",
+    const rpc = importedAs(
+      out.code,
+      'createServerRpc',
+      '@tanstack/react-start/server-rpc',
     )
-    expect(out.code).toMatch(
-      /const fn_createServerFn_handler = tsrServerRpc\(\{ id: '[^']+', name: 'fn', filename: 'module\.tsx' \}, \(opts\) => fn\.__executeServer\(opts\)\)\nexport \{ fn_createServerFn_handler \}/,
+    // the export the resolver reads, the handler loaded on the first call
+    const { h } = namesIn(
+      out.code,
+      `const «h» = ${rpc}({ id: '«…»', name: 'fn', filename: 'module.tsx' }, («o») => fn.__executeServer(«o»))\nexport { «h» }`,
     )
-    expect(out.code).toContain(
-      "const tsrLoadHandlers = () => (tsrHandlers ??= import('./module.tsx?tss-serverfn-handler'))",
-    )
-    expect(out.code).toContain(
-      '.validator(schema).handler(fn_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$fn(...args)))',
+    const { impl } = namesIn(
+      out.code,
+      `const «load» = () => («memo» ??= import('./module.tsx?tss-serverfn-handler'))«…».validator(schema).handler(${h}, (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(out.code).not.toContain('db.server')
     const handlers = (await compile(
@@ -149,16 +153,20 @@ export const label = () => 'client'
       'ssr',
       '/app/module.tsx?tss-serverfn-handler',
     ))!
-    expect(handlers.code).toBe(`import { db } from './db.server'
-const tsrHandler$fn = async () => db.x()
-export { tsrHandler$fn }
-`)
+    expect(handlers.code).toContain("import { db } from './db.server'")
+    expect(handlers.code).toContain(`const ${impl} = async () => db.x()`)
+    expect(handlers.code).toContain(`export { ${impl} }`)
   })
 
   test('ssr caller with a separate provider: an ssr rpc stub keeps the validator', async () => {
     const out = (await compile(files, 'ssr-caller'))!
+    const rpc = importedAs(
+      out.code,
+      'createSsrRpc',
+      '@tanstack/react-start/ssr-rpc',
+    )
     expect(out.code).toContain(
-      "createServerFn({ method: 'POST' }).validator(schema).handler(tsrSsrRpc(",
+      `createServerFn({ method: 'POST' }).validator(schema).handler(${rpc}(`,
     )
     expect(out.code).not.toContain('db.server')
   })
@@ -166,7 +174,9 @@ export { tsrHandler$fn }
   test('the ids agree between the client and the provider', async () => {
     const client = (await compile(files, 'client'))!
     const ssr = (await compile(files, 'ssr'))!
-    const id = /tsrClientRpc\('([^']+)'\)/.exec(client.code)![1]
+    const id = client.code
+      .split(`${clientRpc(client.code)}('`)[1]!
+      .split("'")[0]
     expect(ssr.code).toContain(`id: '${id}'`)
     expect(id).toHaveLength(22)
   })
@@ -208,7 +218,9 @@ export const authed = () => createServerFn({ method: 'GET' })
       },
       'client',
     ))!
-    expect(out.code).toContain('authed().middleware([]).handler(tsrClientRpc(')
+    expect(out.code).toContain(
+      `authed().middleware([]).handler(${clientRpc(out.code)}(`,
+    )
     expect(out.code).not.toContain('db.server')
   })
 
@@ -225,7 +237,9 @@ export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'cli
       },
       'client',
     ))!
-    expect(out.code).toContain('F.createServerFn().handler(tsrClientRpc(')
+    expect(out.code).toContain(
+      `F.createServerFn().handler(${clientRpc(out.code)}(`,
+    )
     expect(out.code).toContain("export const iso = () => 'client'")
     expect(out.code).not.toContain('db.server')
   })
@@ -251,7 +265,7 @@ export default authed
       'client',
     ))!
     expect(out.code).toContain('export const logged = mw\n')
-    expect(out.code).toContain('authed.handler(tsrClientRpc(')
+    expect(out.code).toContain(`authed.handler(${clientRpc(out.code)}(`)
     expect(out.code).not.toContain('db.server')
   })
 
@@ -284,19 +298,20 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
       '/app/schema.ts': `export const schema = (d: unknown) => d\n`,
     }
     const client = (await compile(files, 'client'))!
+    const rpc = clientRpc(client.code)
     expect(client.code).toContain(
-      "applyStep(\n  createServerFn({ method: 'POST' }),\n).handler(tsrClientRpc(",
+      `applyStep(\n  createServerFn({ method: 'POST' }),\n).handler(${rpc}(`,
     )
-    expect(client.code).toContain(
-      'wrap(wrap(createServerFn().handler(tsrClientRpc(',
-    )
+    expect(client.code).toContain(`wrap(wrap(createServerFn().handler(${rpc}(`)
     expect(client.code).not.toContain('schema')
     const ssr = (await compile(files, 'ssr'))!
-    expect(ssr.code).toContain(
-      '.handler(fn_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$fn(...args)))',
+    expect(ssr.code).toMatch(
+      shape(
+        `.handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
+      ),
     )
-    expect(ssr.code).toContain(
-      'wrap(wrap(createServerFn().handler(wrapped_createServerFn_handler, (...args) =>',
+    expect(ssr.code).toMatch(
+      shape(`wrap(wrap(createServerFn().handler(«h», (...args) =>`),
     )
   })
 
@@ -341,12 +356,14 @@ export function make() {
     }
     const client = (await compile(files2, 'client'))!
     expect(client.code).toContain(
-      'const inner = createServerFn().handler(tsrClientRpc(',
+      `const inner = createServerFn().handler(${clientRpc(client.code)}(`,
     )
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
-    expect(ssr.code).toContain(
-      'const tsrServerFn$inner = createServerFn().handler(inner_make_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$inner_make(...args)))',
+    // hoisted: the module-level fn the nested occurrence reads
+    const { hoisted } = namesIn(
+      ssr.code,
+      `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(ssr.code).not.toContain('db.server')
     const handlers = (await compile(
@@ -355,7 +372,7 @@ export function make() {
       '/app/module.tsx?tss-serverfn-handler',
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
-    expect(ssr.code).toContain('const inner = tsrServerFn$inner')
+    expect(ssr.code).toContain(`const inner = ${hoisted}`)
     expect(ssr.code).toContain("name: 'inner'")
   })
 
@@ -581,14 +598,17 @@ export function Page() {
       '/app/module.tsx?tss-serverfn-split',
       opts,
     ))!
-    expect(env.code).toContain('.handler(tsrSsrRpc(')
-    expect(env.code).not.toContain('fn_createServerFn_handler')
-    expect(provider.code).toMatch(/^'use server-entry'/)
-    expect(provider.code).toContain(
-      '.handler(fn_createServerFn_handler, async () => render())',
+    expect(env.code).toContain(
+      `.handler(${importedAs(env.code, 'createSsrRpc', '@tanstack/react-start/ssr-rpc')}(`,
     )
+    expect(provider.code).toMatch(/^'use server-entry'/)
+    // the provider owns the handler and exports it; the env module does not
+    const { h } = namesIn(
+      provider.code,
+      `export { «h» }«…».handler(«h», async () => render())`,
+    )
+    expect(env.code).not.toContain(h)
     expect(provider.code).toContain("import { render } from './render'")
-    expect(provider.code).toContain('export { fn_createServerFn_handler }')
     expect(provider.code).not.toContain("from './module.tsx")
     expect(provider.code).not.toContain('useState')
     const facts = env.facts.planners[START_ENV] as StartEnvFacts
@@ -619,11 +639,11 @@ export const Route = createFileRoute('/posts')({
       'ssr',
       '/app/src/routes/posts.tsx',
     ))!
-    expect(out.code).toContain('export { getPosts_createServerFn_handler }')
+    // the resolver reads the export the facts name
     const facts = out.facts.planners[START_ENV] as StartEnvFacts
     expect(facts.serverFns[0]).toMatchObject({
       rootRel: 'src/routes/posts.tsx',
-      exportName: 'getPosts_createServerFn_handler',
     })
+    expect(out.code).toContain(`export { ${facts.serverFns[0]!.exportName} }`)
   })
 })
