@@ -144,7 +144,7 @@ async function compile(
   if (!out) {
     return null
   }
-  ip.env('client').afterCompile(id, out)
+  await ip.env('client').afterCompile(id, out)
   return {
     code: out.code,
     diagnostics: out.diagnostics

@@ -46,7 +46,6 @@ import {
 } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
-import { violationsOf } from '../import-protection/violations'
 import { normalizePath } from '../utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { ImportProtection } from '../import-protection/session'
@@ -151,8 +150,6 @@ export interface EnvState {
   transformImport: Array<TransformImportRule>
   /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
   compiled: Set<string>
-  /** The plan fingerprint of the last compile of each resource (a repeat is a cache hit). */
-  fingerprints: Map<string, string>
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
@@ -194,7 +191,6 @@ export class StartRsbuildCompilerSession {
         serverFns: new Map(),
         transformImport: [],
         compiled: new Set(),
-        fingerprints: new Map(),
       })
     }
     const root = opts.root()
@@ -488,8 +484,7 @@ export class StartRsbuildCompilerSession {
   /**
    * After an environment's dev compilation: forget what the session holds of
    * files the compilation no longer depends on (plans, raw facts, import
-   * protection's importer records, the per-resource fingerprints and server-fn
-   * records). Rspack reports a deleted file only while a module depends on it,
+   * protection's importer records and server-fn records). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
    * `unlink`; without this its state stayed for the session (every cache
    * must stay bounded by the live modules).
@@ -517,11 +512,9 @@ export class StartRsbuildCompilerSession {
     }
     const env = this.envs.get(envName)
     if (env) {
-      for (const map of [env.fingerprints, env.serverFns]) {
-        for (const resource of [...map.keys()]) {
-          if (!keepEnv(identify(canonicalResource(resource)).path)) {
-            map.delete(resource)
-          }
+      for (const resource of [...env.serverFns.keys()]) {
+        if (!keepEnv(identify(canonicalResource(resource)).path)) {
+          env.serverFns.delete(resource)
         }
       }
     }
@@ -538,7 +531,7 @@ export class StartRsbuildCompilerSession {
 
   /**
    * After the last pass of an environment's production build: releases
-   * its plans, its import protection and its per-resource fingerprints.
+   * its plans and its import protection.
    * Its server-fn snapshot stays (the registry is rebuilt from every
    * environment's snapshot), and so does what the environments share (raw
    * facts, registry, id allocator, warnings).
@@ -548,7 +541,6 @@ export class StartRsbuildCompilerSession {
     this.ip?.release(envName)
     const env = this.envs.get(envName)
     if (env) {
-      env.fingerprints = new Map()
       env.compiled = new Set()
     }
   }
@@ -715,26 +707,12 @@ export class StartRsbuildCompilerSession {
     env.compiled.add(ctx.resource)
     if (ipEnv) {
       // registers the edges and, in development, reports the violations of
-      // this compile once
-      const { error } = ipEnv.afterCompile(id, out)
+      // this compile (with `log: 'always'`, decided at every compile)
+      const outcome = ipEnv.afterCompile(id, out)
+      const { error } = outcome instanceof Promise ? await outcome : outcome
       if (error) {
         throw error
       }
-      // dev `log: 'always'`: a compile the plan cache answered (the same plan
-      // again: an importer Rspack rebuilt for a dependency's edit) asks
-      // `onViolation` again, like every compile; printed above, not twice
-      if (
-        this.opts.mode === 'dev' &&
-        ip!.config.log === 'always' &&
-        env.fingerprints.get(ctx.resource) === out.fingerprint
-      ) {
-        await ipEnv.reportAgain(
-          id,
-          { version: 1, env: env.name, violations: violationsOf(out) },
-          { enqueue: false },
-        )
-      }
-      env.fingerprints.set(ctx.resource, out.fingerprint)
     }
     const buildInfo = ctx._module?.buildInfo
     if (!late) {

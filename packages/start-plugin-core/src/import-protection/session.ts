@@ -373,7 +373,7 @@ export class ImportProtectionEnv {
   private readonly modules = new Map<string, RegisteredModule>()
   private readonly byImporter = new Map<string, Set<string>>()
   private readonly onceVerdicts = new Map<string, Promise<boolean | void>>()
-  /** Dev: logical edges `onViolation` vetoed at confirmation (their edge modules serve the real module). */
+  /** Dev: logical edges `onViolation` vetoed (`devVerdict`: their edge modules serve the real module). */
   private readonly allowed = new Set<string>()
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
@@ -417,14 +417,10 @@ export class ImportProtectionEnv {
   /**
    * Dev `log: 'always'` on a host whose compilation keeps modules it did not
    * compile again (Rspack): the violations of such an importer's record are
-   * reported again (`onViolation` asked again, the report printed again),
-   * as every compilation bundling them reports them.
+   * decided and reported again (`devVerdict`), as every compilation bundling
+   * them reports them.
    */
-  async reportAgain(
-    importerId: string,
-    info: unknown,
-    opts: { enqueue?: boolean } = {},
-  ): Promise<void> {
+  async reportAgain(info: unknown): Promise<void> {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (
       record?.version !== 1 ||
@@ -438,12 +434,8 @@ export class ImportProtectionEnv {
       if (v.env !== this.name || v.behavior !== 'mock' || v.pending) {
         continue
       }
-      const vi = violationInfo(v, this.ip.config, () => this.trace(importerId))
-      const verdict = await this.ip.config.onViolation?.(vi)
-      // `enqueue: false`: the compile that registered the violations printed
-      // them already; only `onViolation` sees this compile
-      if (verdict !== false && opts.enqueue !== false) {
-        this.reporter?.enqueue({ violation: v, info: vi })
+      if (await this.devVerdict(v)) {
+        this.report(v)
       }
     }
   }
@@ -498,17 +490,49 @@ export class ImportProtectionEnv {
    * registers the output's edge modules (Rspack: their virtual files are
    * written through `onEdgeModule` before the importer's dependencies
    * resolve) and, in dev, queues mock reports and returns the error of
-   * `behavior: 'error'` violations (the module must not be served).
+   * `behavior: 'error'` violations (the module must not be served). With
+   * `log: 'always'` each violation is decided first (`devVerdict`: a compile the
+   * plan cache answers asks `onViolation` too), asynchronously; otherwise
+   * the outcome is synchronous (the planner decided with `log: 'once'`).
    */
-  afterCompile(importerId: string, out: CompiledOutputLike): DevCompileOutcome {
-    return this.register(importerId, violationsOf(out))
+  afterCompile(
+    importerId: string,
+    out: CompiledOutputLike,
+  ): DevCompileOutcome | Promise<DevCompileOutcome> {
+    const violations = violationsOf(out)
+    this.register(importerId, violations)
+    if (this.ip.config.mode !== 'dev' || violations.length === 0) {
+      return { error: null }
+    }
+    if (this.ip.config.log === 'always') {
+      return this.reportDecided(violations)
+    }
+    const errors: Array<ViolationInfo> = []
+    for (const v of violations) {
+      if (v.env === this.name && !v.pending) {
+        errors.push(...this.report(v))
+      }
+    }
+    return { error: this.errorOf(errors) }
+  }
+
+  private async reportDecided(
+    violations: Array<EdgeViolation>,
+  ): Promise<DevCompileOutcome> {
+    const errors: Array<ViolationInfo> = []
+    for (const v of violations) {
+      if (v.env === this.name && !v.pending && (await this.devVerdict(v))) {
+        errors.push(...this.report(v))
+      }
+    }
+    return { error: this.errorOf(errors) }
   }
 
   /** Replays an Rspack module's `buildInfo` record (a module restored from the persistent cache). */
   replay(importerId: string, info: unknown): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
-      this.register(importerId, record.violations, false)
+      this.register(importerId, record.violations)
       // a module compiled in this process indexed its edges itself
       if (record.edges && !this.edges.has(importerId)) {
         this.edges.set(importerId, record.edges, record.revision ?? null)
@@ -579,11 +603,7 @@ export class ImportProtectionEnv {
       : null
   }
 
-  private register(
-    importerId: string,
-    violations: Array<EdgeViolation>,
-    report = true,
-  ): DevCompileOutcome {
+  private register(importerId: string, violations: Array<EdgeViolation>): void {
     const keys = new Set<string>()
     for (const v of violations) {
       if (v.env !== this.name || !v.module) {
@@ -604,17 +624,6 @@ export class ImportProtectionEnv {
         }
       }
     }
-    if (!report || this.ip.config.mode !== 'dev') {
-      return { error: null }
-    }
-    const errors: Array<ViolationInfo> = []
-    for (const v of violations) {
-      if (v.env !== this.name || v.pending) {
-        continue
-      }
-      errors.push(...this.report(v))
-    }
-    return { error: this.errorOf(errors) }
   }
 
   /** Dev: queues a mock report; returns the info of an `error` violation (the importer must fail). */
@@ -679,22 +688,34 @@ export class ImportProtectionEnv {
       const errors: Array<ViolationInfo> = []
       for (const [key, v] of pending) {
         this.confirmed.add(key)
-        const ask = async () =>
-          this.ip.config.onViolation?.(
-            violationInfo(v, this.ip.config, () => this.trace(v.importerId)),
-          )
-        const verdict =
-          this.ip.config.log === 'once'
-            ? await this.onceVerdict(dedupeKey(v), ask)
-            : await ask()
-        if (verdict === false) {
-          this.allowed.add(v.edgeKey)
-          continue
+        if (await this.devVerdict(v)) {
+          errors.push(...this.report(v))
         }
-        errors.push(...this.report(v))
       }
       return this.errorOf(errors)
     })()
+  }
+
+  /**
+   * Dev: `onViolation`'s verdict on a violation the bundler keeps (memoised
+   * per logical edge with `log: 'once'`, asked every time with `'always'`);
+   * `false` makes its edge module serve the real module. Whether it is
+   * reported.
+   */
+  private async devVerdict(v: EdgeViolation): Promise<boolean> {
+    const ask = async () =>
+      this.ip.config.onViolation?.(
+        violationInfo(v, this.ip.config, () => this.trace(v.importerId)),
+      )
+    const verdict =
+      this.ip.config.log === 'once'
+        ? await this.onceVerdict(dedupeKey(v), ask)
+        : await ask()
+    if (verdict === false) {
+      this.allowed.add(v.edgeKey)
+      return false
+    }
+    return true
   }
 
   /** An edge module of this environment: registered (and emitted, the runtime first) unless it is known. @internal */

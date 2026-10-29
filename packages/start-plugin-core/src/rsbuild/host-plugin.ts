@@ -294,10 +294,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     }
                     const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
                     if (record) {
-                      await ipEnv.reportAgain(
-                        canonicalResource(module.resource),
-                        record,
-                      )
+                      await ipEnv.reportAgain(record)
                     } else {
                       await ipEnv.confirm(module.resource)
                     }

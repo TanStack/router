@@ -445,6 +445,83 @@ console.log(typePosition, other)
     timeout,
   )
 
+  // Rspack builds an importer again with the plan it compiled before: a
+  // failed importer in every compilation (`behavior: 'error'`, here for an
+  // edit of an unrelated module), an importer of an edited target whose
+  // facts are unchanged (`mock`). With `log: 'always'` that compile asks
+  // `onViolation` again and reports again, like every compile (main asks at
+  // every compilation); with `'once'` it never asks again.
+  // Source: R80 follow-up (a cached compile of a failed importer threw
+  // before asking).
+  test.each([
+    { behavior: 'error' as const, log: 'once' as const, again: false },
+    { behavior: 'error' as const, log: 'always' as const, again: true },
+    { behavior: 'mock' as const, log: 'once' as const, again: false },
+    { behavior: 'mock' as const, log: 'always' as const, again: true },
+  ])(
+    "behavior '$behavior', log '$log': an importer built again from its cached plan asks onViolation again: $again",
+    async ({ behavior, log, again }) => {
+      const page = `import { secret } from './secret.server'
+export const read = () => secret()
+`
+      const recorder = violationRecorder({ behavior, log })
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: recorder.importProtection,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/other.ts': `export const other = 1\n`,
+          'src/page.ts': page,
+          'src/entry.ts': `import { read } from './page'
+import { other } from './other'
+console.log(read(), other)
+`,
+        },
+      })
+      const pageViolation: ExpectedViolation = {
+        environment: 'client',
+        use: locationIn('src/page.ts', page, 2, 'secret()'),
+        also: ['src/page.ts:1'],
+      }
+      const severity = behavior === 'error' ? 'error' : 'warning'
+      /** What was printed for the page since `since`. */
+      const printed = (since: number) =>
+        findDiagnostics(server.diagnostics.slice(since), {
+          severity,
+          file: 'src/page.ts',
+          root: server.root,
+        })
+      expect(recorder.violations).toHaveLength(1)
+      expect(printed(0)).toHaveLength(1)
+      const asked = recorder.violations.length
+      const since = server.diagnostics.length
+      await server.edit(
+        behavior === 'error'
+          ? { 'src/other.ts': `export const other = 2\n` }
+          : {
+              'src/secret.server.ts': `export const secret = () => 'MARK_SECRET_2'\n`,
+            },
+      )
+      expect(server.rebuilt).toContain('src/page.ts')
+      // Each compile since the edit asks once and prints once (a dev server
+      // may compile more than once for one edit)
+      const askedAgain = recorder.violations.slice(asked)
+      expect(
+        relevantViolations({ root: server.root, violations: askedAgain }, [
+          pageViolation,
+        ]),
+      ).toEqual(again ? [violationLabel(pageViolation)] : [])
+      if (again) {
+        expect(printed(since)).toHaveLength(askedAgain.length)
+      }
+      // an `error` violation fails every compilation
+      if (behavior === 'error') {
+        expect(printed(since)).not.toEqual([])
+      }
+    },
+    timeout,
+  )
+
   // The compile ends (import protection does not hang on a module that is
   // gone) with an error (SPEC G5; the module-not-found error names the
   // importer's directory and the specifier, no file and position SPEC §5.7

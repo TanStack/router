@@ -191,7 +191,7 @@ export class MemoryApp {
       this.caches,
     )
     const outcome = out
-      ? this.ip.env(env).afterCompile(id, out)
+      ? await this.ip.env(env).afterCompile(id, out)
       : { error: null }
     return { out, outcome }
   }

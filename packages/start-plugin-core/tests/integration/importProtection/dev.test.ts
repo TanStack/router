@@ -517,11 +517,14 @@ export const other = 1
     await server.load('/src/entry.ts')
     const first = warningsNaming(server, 'src/a.ts').length
     const mark = server.diagnostics.length
+    const asked = server.violations.length
     await server.edit({ 'tsconfig.json': `{ "compilerOptions": {} }\n` })
     await server.load('/src/entry.ts')
     return {
       first,
       afterReload: warningsNaming(server, 'src/a.ts', mark).length,
+      /** `onViolation` calls since the edit (the modules compile again from their cached plans). */
+      askedAgain: server.violations.length - asked,
     }
   }
 
@@ -530,9 +533,10 @@ export const other = 1
   test(
     "'once' does not log a violation again when the dev server reloads every module",
     async () => {
-      const { first, afterReload } = await logsAroundAReload('once')
+      const { first, afterReload, askedAgain } = await logsAroundAReload('once')
       expect(first).toBeGreaterThan(0)
       expect(afterReload).toBe(0)
+      expect(askedAgain).toBe(0)
     },
     timeout,
   )
@@ -541,9 +545,35 @@ export const other = 1
   test(
     "'always' logs a violation again when the dev server reloads every module",
     async () => {
-      const { first, afterReload } = await logsAroundAReload('always')
+      const { first, afterReload, askedAgain } =
+        await logsAroundAReload('always')
       expect(first).toBeGreaterThan(0)
       expect(afterReload).toBeGreaterThan(0)
+      // (each compile asks `onViolation`, those from a cached plan included)
+      expect(askedAgain).toBe(afterReload)
+    },
+    timeout,
+  )
+
+  // A module that failed (`behavior: 'error'`) is not cached by Vite: the
+  // next request compiles it again, from its cached plan. With `'always'`
+  // that compile asks `onViolation` again (main asks at every request); with
+  // `'once'` never again. Both fail the request again.
+  // Source: R80 follow-up (a cached compile threw before asking).
+  test.each([
+    { log: 'once' as const, again: 0 },
+    { log: 'always' as const, again: 1 },
+  ])(
+    "behavior 'error', log '$log': a failed module requested again asks onViolation $again time(s)",
+    async ({ log, again }) => {
+      const server = await startProtectedDevServer(deniedFileApp, {
+        behavior: 'error',
+        log,
+      })
+      await rejection(server.load('/src/entry.ts'))
+      expect(server.violations).toHaveLength(1)
+      await rejection(server.load('/src/entry.ts'))
+      expect(server.violations).toHaveLength(1 + again)
     },
     timeout,
   )

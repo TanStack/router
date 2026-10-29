@@ -6,9 +6,12 @@
  * target facts). A violation is substituted by its edge module (the specifier
  * literal only):
  *
- * - dev: `onViolation` decides now (memoised per request, or per session
- *   with `log: 'once'`); `false` leaves the edge alone; `mock` substitutes
- *   the mock, `error` leaves it and the host fails the module. An edge the
+ * - dev: with `log: 'once'`, `onViolation` decides now, once per logical
+ *   edge for the session (`false` leaves the edge alone); with `'always'`
+ *   the host asks at every compile, a cached plan's included
+ *   (`ImportProtectionEnv.afterCompile`; `false` makes the edge module serve
+ *   the real module). `mock` substitutes the mock, `error` leaves the
+ *   specifier and the host fails the module. An edge the
  *   bundler's TypeScript transform may erase (a static import of a
  *   `.ts`/`.tsx` module with no binding used as a value) is substituted in
  *   both behaviours and recorded *pending*: the host confirms it when the
@@ -263,15 +266,12 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           module: null,
           ...(pending && { pending: true }),
         }
-        if (config.mode === 'dev' && !pending) {
-          const ask = async () =>
+        if (config.mode === 'dev' && !pending && config.log === 'once') {
+          const verdict = await env.onceVerdict(dedupeKey(base), async () =>
             config.onViolation?.(
               violationInfo(base, config, () => env.trace(importerId)),
-            )
-          const verdict =
-            config.log === 'once'
-              ? await env.onceVerdict(dedupeKey(base), ask)
-              : await ctx.memo(`${IMPORT_EDGES_PLANNER}:${j.edge.edgeKey}`, ask)
+            ),
+          )
           if (verdict === false) {
             continue
           }

@@ -81,7 +81,10 @@ import {
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import type { ImportProtection } from '../import-protection/session'
+import type {
+  DevCompileOutcome,
+  ImportProtection,
+} from '../import-protection/session'
 import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ServerFnEntry } from '../server-fns/registry'
@@ -866,25 +869,36 @@ export function startCompilerPlugin(
     }
   }
 
-  /** Import protection's outcome of a compile: edge modules registered, dev reports queued; an `error`-behaviour violation fails the module. */
+  /**
+   * Import protection's outcome of a compile: edge modules registered, dev reports queued; an
+   * `error`-behaviour violation fails the module. A promise only when violations are decided
+   * now (`log: 'always'`).
+   */
   const afterCompile = (
     s: Session,
     env: StartCompilerEnvironment,
     id: string,
     out: { output: string; facts: { planners: Record<string, unknown> } },
     fail: (error: Error) => never,
-  ): void => {
+  ): Promise<void> | undefined => {
     if (!s.ip) {
-      return
+      return undefined
     }
     const ipEnv = s.ip.env(env.name, env.type)
-    const { error } = ipEnv.afterCompile(id, out)
-    if (error) {
-      fail(error)
+    const finish = ({ error }: DevCompileOutcome): void => {
+      if (error) {
+        fail(error)
+      }
+      // a host completion event (no microtask polling): print the reports whose importers the
+      // graph (or the judged edges) can reach now, before the module is served
+      ipEnv.reporter?.flush()
     }
-    // a host completion event (no microtask polling): print the reports whose importers the
-    // graph (or the judged edges) can reach now, before the module is served
-    ipEnv.reporter?.flush()
+    const outcome = ipEnv.afterCompile(id, out)
+    if (outcome instanceof Promise) {
+      return outcome.then(finish)
+    }
+    finish(outcome)
+    return undefined
   }
 
   const changeKindOf = (
@@ -1090,7 +1104,12 @@ export function startCompilerPlugin(
           if (facts && facts.serverFns.length > 0) {
             registry.record(identity.canonicalId, facts.serverFns, env.type)
           }
-          afterCompile(s, env, id, out, (error) => this.error(error))
+          const decided = afterCompile(s, env, id, out, (error) =>
+            this.error(error),
+          )
+          if (decided) {
+            await decided
+          }
           if (s.mode === 'dev') {
             outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
           }
@@ -1367,7 +1386,12 @@ export function startCompilerPlugin(
           code,
           env.type,
         )
-        afterCompile(s, env, id, out, (error) => this.error(error))
+        const decided = afterCompile(s, env, id, out, (error) =>
+          this.error(error),
+        )
+        if (decided) {
+          await decided
+        }
         if (out.code === code) {
           return null
         }

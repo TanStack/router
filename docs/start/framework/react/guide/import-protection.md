@@ -517,7 +517,7 @@ importProtection: {
 }
 ```
 
-In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import.
+In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is asked once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
 
 ## Disabling Import Protection
 
