@@ -1,10 +1,7 @@
 import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core/hmr'
 import { isServer } from '@tanstack/router-core/isServer'
-import type {
-  AnyRoute,
-  RouteHmrAdapter,
-  RouteHmrMeta,
-} from '@tanstack/router-core'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { RouteHmrAdapter, RouteHmrMeta } from '@tanstack/router-core/hmr'
 
 // Provided by the webpack/Rspack React Refresh plugins (ProvidePlugin).
 declare const __react_refresh_utils__:
@@ -96,9 +93,6 @@ export function __tsrRouteHmr(
  */
 export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    if (isServer ?? typeof window === 'undefined') {
-      return
-    }
     applyRouteChunkHmr(routeId, chunk)
   }
 }

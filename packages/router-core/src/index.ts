@@ -426,12 +426,6 @@ export {
   parseRedirect,
 } from './redirect'
 
-export type {
-  LazyRouteComponentHot,
-  RouteHmrAdapter,
-  RouteHmrMeta,
-} from './hmr'
-
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'
 

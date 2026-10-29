@@ -30,6 +30,7 @@ export interface RouteHmrAdapter {
  * present on the client only. Not a public API.
  */
 export interface LazyRouteComponentHot {
+  /** The importer and export name the wrapper was created with. */
   readonly importer: () => Promise<any>
   readonly exportName: string | undefined
   /**
@@ -73,15 +74,6 @@ const generatedOptionKeys = ['id', 'path', 'getParentRoute']
 const hotRoutes = new Map<
   string,
   { routes: WeakSet<AnyRoute>; meta: RouteHmrMeta }
->()
-
-// The importer each held lazy wrapper was created with. Vite bundled dev
-// without lazy compilation (Rolldown) turns a patch's `import()` of a chunk the
-// page never loaded into a lookup that throws `MissingFactoryError`; only the
-// first importer loads that chunk.
-const firstImporters = new WeakMap<
-  LazyRouteComponentHot,
-  LazyRouteComponentHot['importer']
 >()
 
 /**
@@ -156,8 +148,11 @@ export function applyRouteHmr(
         const valueHot: LazyRouteComponentHot | undefined = value.__tsrHot
         if (heldHot && valueHot) {
           // Keep the live wrapper; it re-imports and decides keep or swap.
-          const firstImporter = firstImporters.get(heldHot) ?? heldHot.importer
-          firstImporters.set(heldHot, firstImporter)
+          // Vite bundled dev without lazy compilation (Rolldown) turns a
+          // patch's `import()` of a chunk the page never loaded into a lookup
+          // that throws `MissingFactoryError`; only the held wrapper's own
+          // (first) importer loads that chunk.
+          const firstImporter = heldHot.importer
           const importer = valueHot.importer
           const onError = (err: unknown) => {
             if (

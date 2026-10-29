@@ -1,9 +1,6 @@
 import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core/hmr'
-import type {
-  AnyRoute,
-  RouteHmrAdapter,
-  RouteHmrMeta,
-} from '@tanstack/router-core'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { RouteHmrAdapter, RouteHmrMeta } from '@tanstack/router-core/hmr'
 
 const refreshName = (component: any): string | undefined => {
   const name = typeof component === 'function' ? component.name : undefined

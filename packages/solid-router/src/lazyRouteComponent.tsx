@@ -2,7 +2,7 @@ import { Dynamic } from 'solid-js/web'
 import { createSignal, lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import type { LazyRouteComponentHot } from '@tanstack/router-core'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
 type SolidLazyRouteComponentHot = LazyRouteComponentHot & {
@@ -134,12 +134,8 @@ export function lazyRouteComponent<
     const [version, setVersion] = createSignal(0)
     const rerender = () => setVersion((v) => v + 1)
     const hot: SolidLazyRouteComponentHot = {
-      get importer() {
-        return importer
-      },
-      get exportName() {
-        return exportName as string | undefined
-      },
+      importer,
+      exportName: exportName as string | undefined,
       read: () => {
         version()
         if (error) {

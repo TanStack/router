@@ -2,7 +2,7 @@ import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
-import type { LazyRouteComponentHot } from '@tanstack/router-core'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
 type VueLazyRouteComponentHot = LazyRouteComponentHot & {
@@ -193,12 +193,8 @@ export function lazyRouteComponent<
       version.value++
     }
     const hot: VueLazyRouteComponentHot = {
-      get importer() {
-        return importer
-      },
-      get exportName() {
-        return exportName as string | undefined
-      },
+      importer,
+      exportName: exportName as string | undefined,
       version,
       // A failed hot import renders as a component that throws it.
       read: () =>

@@ -11,7 +11,8 @@ import {
   lazyRouteComponent,
 } from '../src'
 import { __tsrRouteHmr } from '../src/hmr'
-import type { AnyRoute, RouteHmrMeta } from '@tanstack/router-core'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { RouteHmrMeta } from '@tanstack/router-core/hmr'
 
 // Each test uses its own route id: route HMR remembers routes by id for the
 // lifetime of the page, as it does in a real dev session.

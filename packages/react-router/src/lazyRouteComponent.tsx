@@ -2,7 +2,7 @@ import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { reactUse } from './utils'
-import type { LazyRouteComponentHot } from '@tanstack/router-core'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
 type ReactLazyRouteComponentHot = LazyRouteComponentHot & {
@@ -128,12 +128,8 @@ export function lazyRouteComponent<
       listeners.forEach((listener) => listener())
     }
     const hot: ReactLazyRouteComponentHot = {
-      get importer() {
-        return importer
-      },
-      get exportName() {
-        return exportName as string | undefined
-      },
+      importer,
+      exportName: exportName as string | undefined,
       subscribe: (listener) => {
         listeners.add(listener)
         return () => listeners.delete(listener)

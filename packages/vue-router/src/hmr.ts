@@ -1,9 +1,6 @@
 import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core/hmr'
-import type {
-  AnyRoute,
-  RouteHmrAdapter,
-  RouteHmrMeta,
-} from '@tanstack/router-core'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { RouteHmrAdapter, RouteHmrMeta } from '@tanstack/router-core/hmr'
 
 // plugin-vue-jsx reloads an exported `defineComponent` in place under the same
 // `__hmrId`. Anything else (function components, renames) must be swapped.
