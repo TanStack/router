@@ -2,8 +2,9 @@
  * Source maps of real Start builds point at the code the user wrote: an
  * error thrown in a server fn handler (called during SSR) or in a split
  * route component (client) maps, through the emitted source map of the chunk
- * it runs in, to the line of the throw in the user's file. The column is
- * left out: minifiers map the throw to different tokens of the statement.
+ * it runs in, to the line of the throw in the user's file, whose text the map
+ * holds. The column is left out: minifiers map the throw to different tokens
+ * of the statement.
  * (`<Hydrate>` children: hydrate-build.test.ts.)
  */
 import { describe, expect, test } from 'vitest'
@@ -57,10 +58,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
         `try { await entry.fail() } catch (error) { return error.stack }`,
       )
       expect(stack).toMatch(/MARK_HANDLER_THROW/)
-      const { file, line } = originalFrameOf(ssr, stack as string) ?? {}
-      expect({ file, line }).toEqual({
+      const { file, line, text } = originalFrameOf(ssr, stack as string) ?? {}
+      expect({ file, line, text }).toEqual({
         file: 'src/fns.ts',
         line: lineOf(fns, 'throw new Error'),
+        text: fns,
       })
     },
     timeout,
@@ -166,10 +168,11 @@ try {
   return error.stack
 }`)
   expect(stack).toMatch(/MARK_PAGE_THROW/)
-  const { file, line } = originalFrameOf(client, stack as string) ?? {}
-  expect({ file, line }).toEqual({
+  const { file, line, text } = originalFrameOf(client, stack as string) ?? {}
+  expect({ file, line, text }).toEqual({
     file: 'src/routes/index.tsx',
     line: lineOf(route, 'throw new Error'),
+    text: route,
   })
 }
 

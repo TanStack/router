@@ -202,9 +202,10 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 - **G6 Source maps.** Every emitted module derived from user source (route modules, split chunks, Start client, ssr
   and provider output, Hydrate chunks, rewritten import-protection modules) carries a map, so stack traces and
   import-protection reports resolve to the user's original line and column, through composed maps when other plugins
-  transformed the file first. Purely generated support code (registries, mock helpers) needs no mapping. Map layout
-  is free. This holds in dev as in build: the dev server serves maps for the route module and every derived module
-  (split chunk, shared module, Start client and provider module). (R6)
+  transformed the file first. Purely generated support code (registries, mock helpers) needs no mapping. The emitted
+  map holds the user's file as written (`sourcesContent`), so a debugger shows it, unless the configuration leaves
+  sources out (`nosources-*`). Map layout is free. This holds in dev as in build: the dev server serves maps for the
+  route module and every derived module (split chunk, shared module, Start client and provider module). (R6)
 - **G7 Nothing dev-only in production.** Production artifacts contain no additions whose purpose is only
   development: HMR accept/dispose code, hot-data wrappers, dev-only warnings, development mock modules, `console`
   diagnostics gated for development. Configured production behaviour stays: a production `importProtection.behavior:

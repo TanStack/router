@@ -3,9 +3,9 @@
  * are read with `@jridgewell/trace-mapping`, never a hand decoder, and
  * tests locate code by parsed tokens or executed throws, never by printed
  * syntax. Only "this generated position resolves to the user's
- * file, line (and column)" is asserted: map layout, `names`,
- * `sourcesContent`, granularity and mappings of generated support code are
- * free.
+ * file, line (and column)" and "the map holds the user's file as written"
+ * (its `sourcesContent`, what a debugger shows) are asserted: map layout,
+ * `names`, granularity and mappings of generated support code are free.
  *
  * Positions follow the source-map convention: `line` 1-based, `column`
  * 0-based. Lines are counted with every JavaScript line terminator (`\n`,
@@ -25,10 +25,15 @@
  * - `expectMapsTo(map, generated, expected)`: asserts a generated position
  *   resolves to `expected.file` (any spelling `mentionsFile` accepts, a
  *   relative source resolved against `expected.mapUrl`, the module the map
- *   belongs to), `expected.line` and, when given, `expected.column`.
+ *   belongs to), `expected.line` and, when given, `expected.column` and
+ *   the file's text `expected.text`.
  */
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
+import {
+  TraceMap,
+  originalPositionFor,
+  sourceContentFor,
+} from '@jridgewell/trace-mapping'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { mentionsFile } from './diagnostics'
@@ -278,6 +283,11 @@ export interface ExpectedOriginal {
   line: number
   /** 0-based column; checked only when given. */
   column?: number
+  /**
+   * The file as written, which the map holds for the source
+   * (`sourcesContent`: what a debugger shows); checked only when given.
+   */
+  text?: string
 }
 
 /** A URL scheme (`file:`, `webpack:`), not a Windows drive letter. */
@@ -312,7 +322,8 @@ export function expectMapsTo(
   generated: Position,
   expected: ExpectedOriginal,
 ): OriginalPosition {
-  const original = originalPositionOf(map, generated)
+  const traced = traceMap(map)
+  const original = originalPositionOf(traced, generated)
   const description = `generated ${generated.line}:${generated.column}`
   expect(original, `${description} has a mapping`).toBeDefined()
   const source = resolvedSource(original!.source, expected.mapUrl)
@@ -330,5 +341,11 @@ export function expectMapsTo(
       ? { line: expected.line }
       : { line: expected.line, column: expected.column },
   )
+  if (expected.text !== undefined) {
+    expect(
+      sourceContentFor(traced, original!.source),
+      `${description}: the text the map holds for ${source}`,
+    ).toBe(expected.text)
+  }
   return original!
 }

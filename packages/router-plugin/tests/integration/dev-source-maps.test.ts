@@ -3,7 +3,8 @@
  * the route module, in what the loader and the split component share, and
  * in the split component, executed in a real browser page served by Vite's
  * dev server and by Rsbuild's, resolves through the maps the dev server
- * serves to the user's file and line; on Vite, the module's map names the
+ * serves to the user's file and line, and the map holds the file as written
+ * (what a debugger shows); on Vite, the module's map names the
  * route file itself as its source. The modules are those the throws run
  * in, named by the executed stack frames: their ids, how many there are and
  * which of them holds which code are free (SPEC §5.3). Maps are the ones the
@@ -125,8 +126,8 @@ const frameLocations = (stack: string) =>
 /**
  * Asserts that the top frame of each throw's stack resolves, through the
  * map of the module it names (`maps`), to the route file at the line of the
- * throw. `mapUrl` gives what a relative source of a module's map resolves
- * against.
+ * throw, and that the map holds the route file. `mapUrl` gives what a
+ * relative source of a module's map resolves against.
  */
 function expectThrowsMapToRouteFile(
   stacks: Record<string, string | undefined>,
@@ -147,6 +148,7 @@ function expectThrowsMapToRouteFile(
       root,
       mapUrl: mapUrl(top!.location),
       line: lineOf(marker),
+      text: route,
     })
   }
 }

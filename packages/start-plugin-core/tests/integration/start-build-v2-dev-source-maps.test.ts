@@ -4,7 +4,8 @@
  * serve a map for the client module in which the server fn became an RPC
  * stub and for every server module derived from the file (the SSR caller,
  * the provider the server fn resolver loads), and a throw's position in
- * each resolves to the user's file and line. The derived modules are found
+ * each resolves to the user's file and line, whose text the map holds (what
+ * a debugger shows). The derived modules are found
  * by what they hold, whatever they are (Vite: every module the SSR
  * environment served for a call by id; Rsbuild: the emitted files), never
  * by their ids or by the file a module graph attaches them to (SPEC §5.3).
@@ -55,7 +56,8 @@ function lineOf(marker: string) {
 
 /**
  * Asserts that every marker `code` holds maps, through `map`, to the user's
- * file at the marker's line. Returns the markers found.
+ * file at the marker's line, and that the map holds the file. Returns the
+ * markers found.
  */
 function expectMarkersMapToFile(
   id: string,
@@ -80,6 +82,7 @@ function expectMarkersMapToFile(
       root,
       mapUrl,
       line: lineOf(marker),
+      text: fail,
     })
   }
   return held

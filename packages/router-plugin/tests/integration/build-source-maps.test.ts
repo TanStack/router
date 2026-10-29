@@ -5,8 +5,9 @@
  * column) of the throw in the route file, also when another plugin
  * transformed the file before the router plugin (composed maps); so does a
  * throw in code the splitter leaves in the route module or moves into a
- * shared module. Map layout, `names`, granularity and the source names a
- * map lists are free (SPEC G6, §5.14).
+ * shared module. The map holds the route file as written (what a debugger
+ * shows), in development builds too. Map layout, `names`, granularity and
+ * the source names a map lists are free (SPEC G6, §5.14).
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -68,7 +69,7 @@ function thrownAt(code: string) {
  * Asserts that the innermost frame of `stack` in a chunk of `app` maps to
  * the throw of `source` (`routes/index.tsx`): its line always, its column
  * unless the build minified (minifiers map the throw to different tokens of
- * the statement).
+ * the statement), and that the map holds `source` for the file.
  */
 function expectFrameAtThrow(
   app: Parameters<typeof originalFrameOf>[0],
@@ -76,15 +77,16 @@ function expectFrameAtThrow(
   source: string,
   { minify }: { minify: boolean },
 ) {
-  const { file, line, column } = originalFrameOf(app, stack as string) ?? {}
+  const { file, line, column, text } =
+    originalFrameOf(app, stack as string) ?? {}
   const expected = thrownAt(source)
   expect(
-    minify ? { file, line } : { file, line, column },
+    minify ? { file, line, text } : { file, line, column, text },
     `the frame of ${String(stack).split('\n')[1]?.trim()}`,
   ).toEqual(
     minify
-      ? { file: 'routes/index.tsx', line: expected.line }
-      : { file: 'routes/index.tsx', ...expected },
+      ? { file: 'routes/index.tsx', line: expected.line, text: source }
+      : { file: 'routes/index.tsx', ...expected, text: source },
   )
 }
 
@@ -103,12 +105,14 @@ async function expectThrowMapsToRouteFile(
   bundler: Bundler,
   options: {
     minify: boolean
+    mode?: 'development'
     routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
   },
 ) {
   const app = await build({
     bundler,
     env: 'client',
+    mode: options.mode,
     minify: options.minify,
     sourcemap: true,
     routerPlugins: options.routerPlugins,
@@ -261,6 +265,19 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile(bundler, options),
+    timeout,
+  )
+
+  // A development build hot-updates the modules whose code changed, which
+  // these bundlers tell by a module's code and map: the file's text reaches
+  // the emitted map another way than a production build's.
+  test(
+    'a throw in a split component maps to its line in the route file (development build)',
+    () =>
+      expectThrowMapsToRouteFile(bundler, {
+        minify: false,
+        mode: 'development',
+      }),
     timeout,
   )
 

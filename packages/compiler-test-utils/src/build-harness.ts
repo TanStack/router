@@ -1573,6 +1573,8 @@ export interface OriginalPosition {
   line: number
   /** 1-based. */
   column: number
+  /** The text the map holds for the source (`sourcesContent`), if any. */
+  text?: string
 }
 
 /**
@@ -1609,12 +1611,18 @@ export function originalFrameOf(
         `${chunk.fileName} has no source map (build with sourcemap)`,
       )
     }
+    const map = chunk.map as {
+      sources: Array<string>
+      sourcesContent?: Array<string | null>
+    }
     const origin = new NodeSourceMap(
-      chunk.map as ConstructorParameters<typeof NodeSourceMap>[0],
+      map as ConstructorParameters<typeof NodeSourceMap>[0],
     ).findOrigin(Number(line), Number(column))
     if (!('fileName' in origin)) {
       return undefined
     }
+    const text =
+      map.sourcesContent?.[map.sources.indexOf(origin.fileName)] ?? undefined
     // webpack and Rspack name sources `webpack://<namespace>/<path from the
     // root>`; the others relative to the map.
     const source = origin.fileName.split('?')[0]!
@@ -1627,6 +1635,7 @@ export function originalFrameOf(
       file: path.relative(build.root, absolute),
       line: origin.lineNumber,
       column: origin.columnNumber,
+      ...(text != null && { text }),
     }
   }
   return undefined
