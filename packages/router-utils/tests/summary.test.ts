@@ -13,7 +13,7 @@ const TABLE: RecognizerTable = {
   startMembers: {},
 }
 
-function summarise(code: string, revision = 'r') {
+function summarise(code: string) {
   const parsed = parseModule(code, { lang: 'ts', path: '/app/m.ts' })
   if (!parsed.ok) {
     throw new Error('parse failed')
@@ -21,7 +21,7 @@ function summarise(code: string, revision = 'r') {
   const a = new ModuleAnalysis(parsed.file, parsed.source, {
     path: '/app/m.ts',
   })
-  return buildSummary(a, revision, TABLE)
+  return buildSummary(a, TABLE)
 }
 
 describe('export facts', () => {
@@ -47,25 +47,20 @@ describe('export facts', () => {
     expect(s.exports.ns).toEqual({ kind: 'namespace', specifier: './ns' })
     expect(s.stars).toEqual(['./star'])
     expect(Object.keys(s.exports).sort()).toEqual(['b', 'default', 'ns'])
-    expect(s.hasImportOrExport).toBe(true)
   })
 
-  it('digests what importers observe: not positions, revisions or local code', () => {
+  it('digests what importers observe: not positions or local code', () => {
     const base = summarise(`
       export const options = { a: 1 }
       export const fn = () => 1
     `)
-    const moved = summarise(
-      `
+    const moved = summarise(`
       // a comment moves every position
       const local = 2
       export const fn = () => 2
       export const options = { a: 1 }
-    `,
-      'other-revision',
-    )
+    `)
     expect(moved.digest).toBe(base.digest)
-    expect(moved.rawRevision).toBe('other-revision')
 
     const star = summarise(`
       export const options = { a: 1 }

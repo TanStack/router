@@ -454,13 +454,7 @@ export class RawFactsCache {
     }
     return {
       rawRevision: digest,
-      summary: {
-        rawRevision: digest,
-        exports: exportFacts,
-        stars: [],
-        hasImportOrExport: true,
-        digest,
-      },
+      summary: { exports: exportFacts, stars: [], digest },
       targetFacts: { ...tf, digest: digestOf(tf) },
     }
   }
@@ -547,7 +541,6 @@ export class RawFactsCache {
   ): RawFacts {
     const summary = buildSummary(
       analysis,
-      rawRevision,
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()

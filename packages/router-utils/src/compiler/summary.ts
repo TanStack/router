@@ -14,17 +14,14 @@ type ExportFact =
   | { kind: 'namespace'; specifier: string }
 
 export interface ModuleSummary {
-  rawRevision: string
   exports: Record<string, ExportFact>
   stars: Array<string>
-  hasImportOrExport: boolean
   /** EXPORT-FACTS DIGEST over {exports (sites stripped), stars, marker}. */
   digest: string
 }
 
 export function buildSummary(
   analysis: ModuleAnalysis,
-  rawRevision: string,
   table: RecognizerTable,
 ): ModuleSummary {
   const file = analysis.file
@@ -89,10 +86,8 @@ export function buildSummary(
     marker: analysis.markers,
   })
   return {
-    rawRevision,
     exports: exportFacts,
     stars,
-    hasImportOrExport: analysis.hasImportOrExport,
     digest,
   }
 }
