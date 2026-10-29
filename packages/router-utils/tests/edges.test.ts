@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { invalidate } from '../src/compiler'
-import { MemoryHost, dedent, envInfo, toyEnvPlanner } from './helpers'
+import {
+  MemoryHost,
+  dedent,
+  envInfo,
+  toyEnvPlanner,
+  toySplitPlanner,
+} from './helpers'
 import type { EdgeRecord, Lang, Planner, PolicyContext } from '../src/compiler'
 
 /** A tier-0 policy planner that records every output's edges and its policy context. */
@@ -126,6 +132,49 @@ describe('require edge names (J6.3)', () => {
     expect(edges['require ./d.server']).toEqual(['evaluation', ['only']])
     expect(edges['require ./e.server']).toEqual(['evaluation', ['*']])
     expect(edges['dynamic ./f.server']).toEqual(['evaluation', []])
+  })
+})
+
+describe('dynamic edges (J6.3)', () => {
+  // an output's edges are the imports its code holds: a dynamic import in
+  // code another output renders (a split component) or no output renders
+  // (erased) is no edge of it
+  it('a dynamic import is an edge of the outputs rendering its call only', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { wrapServer } from 'toy-start'
+          const loadWidget = () => import('./widget.client')
+          export const fn = wrapServer(() => import('./handler.server'))
+          export const Route = createFileRoute('/')({
+            component: () => [loadWidget(), import('./inline.client')],
+            loader: () => import('./data'),
+          })
+        `),
+      },
+    })
+    // the source edges (the split's own generated import left out)
+    const specifiers = (edges: Array<EdgeRecord> | undefined) =>
+      (edges ?? [])
+        .filter((e) => e.form === 'dynamic' && e.provenance.origin === 'source')
+        .map((e) => e.specifier)
+    for (const type of ['client', 'server'] as const) {
+      const rec = edgeRecorder()
+      const planners = [toySplitPlanner(), toyEnvPlanner(), rec]
+      const env = envInfo({ name: type, type })
+      await host.compile('/app/route.tsx', planners, { env })
+      await host.compile('/app/route.tsx?tsr-split=component', planners, {
+        env,
+      })
+      const { env: envEdges, ...derived } = rec.edges
+      expect(specifiers(envEdges)).toEqual(
+        type === 'server' ? ['./handler.server', './data'] : ['./data'],
+      )
+      expect(Object.values(derived).map(specifiers)).toEqual([
+        ['./widget.client', './inline.client'],
+      ])
+    }
   })
 })
 

@@ -865,6 +865,7 @@ export class AnalysisPlan implements PlanContext {
         importerId,
         included,
         renderer.tree,
+        segments,
         unitsOfImport,
         recipeEdges,
       )
@@ -1438,13 +1439,13 @@ export class AnalysisPlan implements PlanContext {
     return false
   }
 
-  /** Records this output's surviving source edges and isolates their specifier literals as segments. */
   /** The source import edges of an output (every live import, re-export and dynamic edge of the included units). */
   private sourceEdges(
     output: OutputId,
     importerId: string,
     included: ReadonlySet<number>,
     tree: RenderTree,
+    segments: ReadonlyArray<Segment>,
     unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
     into: Array<EdgeRecord>,
   ): void {
@@ -1535,6 +1536,16 @@ export class AnalysisPlan implements PlanContext {
       })
     }
     for (const dyn of analysis.dynamicEdges) {
+      // only where its source text renders: not an output whose code left
+      // the call out (another output's code, erased code)
+      const { start, end } = dyn.specifierRange
+      if (
+        !segments.some(
+          (s) => s.k === 'slice' && s.start <= start && s.end >= end,
+        )
+      ) {
+        continue
+      }
       into.push({
         output,
         importerId,
