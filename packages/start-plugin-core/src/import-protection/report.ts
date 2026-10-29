@@ -14,7 +14,7 @@ import type { ImportProtectionConfig } from './config'
 import type { EdgeViolation } from './violations'
 import type { ViolationInfo } from './trace'
 
-export interface DevReport {
+interface DevReport {
   violation: EdgeViolation
   info: ViolationInfo & { freezeTrace: () => ViolationInfo['trace'] }
 }

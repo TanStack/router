@@ -240,7 +240,7 @@ export function buildTrace(
 }
 
 /** A Vite dev environment's module graph (structural: `environment.moduleGraph`). */
-export interface ViteModuleGraphLike {
+interface ViteModuleGraphLike {
   getModuleById: (
     id: string,
   ) => { importers: Iterable<{ id: string | null }> } | undefined

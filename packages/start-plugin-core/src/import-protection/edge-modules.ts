@@ -24,7 +24,7 @@ import {
 import { CLIENT_ENV_SUGGESTIONS, SERVER_ENV_SUGGESTIONS } from './trace'
 import type { MockAccess } from './config'
 
-export const EDGE_MODULE_PREFIX = 'tanstack-start-ip:'
+const EDGE_MODULE_PREFIX = 'tanstack-start-ip:'
 
 /** One of our modules: a per-edge module (by edge key and content hash) or an environment's runtime. */
 export type EdgeModuleRef =
@@ -46,12 +46,12 @@ export interface EdgeModuleIds {
 }
 
 /** `<env>/edge.<key>` or `<env>/runtime`. */
-export function edgeModuleName(ref: EdgeModuleRef): string {
+function edgeModuleName(ref: EdgeModuleRef): string {
   const env = encodeURIComponent(ref.env)
   return ref.kind === 'edge' ? `${env}/edge.${ref.key}` : `${env}/runtime`
 }
 
-export function parseEdgeModuleName(name: string): EdgeModuleRef | null {
+function parseEdgeModuleName(name: string): EdgeModuleRef | null {
   const slash = name.indexOf('/')
   if (slash <= 0) {
     return null

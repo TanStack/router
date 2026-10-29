@@ -12,7 +12,7 @@ import type { EdgeModuleIds } from './edge-modules'
 import type { ImportGraphView } from './graph-trace'
 
 /** An edge module as the readers see it: its key and whether its target is effectful. */
-export interface WitnessModule {
+interface WitnessModule {
   key: string
   effectful: boolean
 }
@@ -39,16 +39,16 @@ export function witnessLookup(
 // Vite / Rolldown
 // ---------------------------------------------------------------------------
 
-export interface RolldownRenderedModule {
+interface RolldownRenderedModule {
   renderedExports: ReadonlyArray<string>
 }
 
-export interface RolldownOutputChunk {
+interface RolldownOutputChunk {
   type: 'chunk'
   modules: Record<string, RolldownRenderedModule>
 }
 
-export type RolldownOutputBundle = Record<
+type RolldownOutputBundle = Record<
   string,
   RolldownOutputChunk | { type: 'asset' }
 >
@@ -73,7 +73,7 @@ export function readRolldownWitness(
   return [...live].sort()
 }
 
-export interface RollupModuleInfoLike {
+interface RollupModuleInfoLike {
   importers: ReadonlyArray<string>
   dynamicImporters: ReadonlyArray<string>
   isEntry: boolean
@@ -103,7 +103,7 @@ export function discardBundle(bundle: Record<string, unknown>): void {
 // Rspack
 // ---------------------------------------------------------------------------
 
-export interface RspackModuleLike {
+interface RspackModuleLike {
   resource?: string
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
@@ -111,18 +111,18 @@ export interface RspackModuleLike {
   rootModule?: RspackModuleLike
 }
 
-export interface RspackChunkLike {
+interface RspackChunkLike {
   runtime?: Iterable<string> | string
 }
 
-export interface RspackConnectionLike {
+interface RspackConnectionLike {
   originModule: RspackModuleLike | null
   /** The imported module as resolved (an inner module, when the connection moved to its ConcatenatedModule). */
   resolvedModule?: RspackModuleLike | null
   dependency?: unknown
 }
 
-export interface RspackCompilationLike {
+interface RspackCompilationLike {
   chunks: Iterable<RspackChunkLike>
   modules: Iterable<RspackModuleLike>
   chunkGraph: {

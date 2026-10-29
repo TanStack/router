@@ -65,13 +65,13 @@ export interface CreateImportProtectionOptions {
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
-export interface EdgeModuleLoad {
+interface EdgeModuleLoad {
   code: string
   /** Vite `moduleSideEffects`: false for the runtime only; edge modules are analysed (null). */
   moduleSideEffects: false | null
 }
 
-export type EdgeModuleListener = (
+type EdgeModuleListener = (
   specifier: string,
   load: EdgeModuleLoad,
   ref: EdgeModuleRef,
@@ -350,7 +350,7 @@ interface RegisteredModule {
 }
 
 /** A compile output, as `compileModule` returns it (structural). */
-export interface CompiledOutputLike {
+interface CompiledOutputLike {
   output: string
   facts: { planners: Record<string, unknown> }
 }
@@ -361,7 +361,7 @@ export interface DevCompileOutcome {
 }
 
 /** One Start environment's import protection. */
-export class ImportProtectionEnv {
+class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
   readonly edges: EdgeIndex
   /** Build verdicts of the current logical build. */

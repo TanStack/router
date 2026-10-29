@@ -11,7 +11,7 @@
 import type { EdgeViolation } from './violations'
 import type { IndexedEdge } from './graph-trace'
 
-export type EdgeState = 'mock' | 'allowed'
+type EdgeState = 'mock' | 'allowed'
 
 export interface DecideResult {
   /** The environment must be built again (a new veto). */

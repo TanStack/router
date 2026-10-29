@@ -16,11 +16,11 @@ import type { ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 
 export type ImportProtectionMode = 'dev' | 'build'
-export type ImportProtectionBehavior = 'error' | 'mock'
+type ImportProtectionBehavior = 'error' | 'mock'
 export type MockAccess = 'error' | 'warn' | 'off'
 export type MarkerKind = 'server-only' | 'client-only'
 
-export type OnViolation = (
+type OnViolation = (
   info: ViolationInfo,
 ) => boolean | void | Promise<boolean | void>
 
@@ -46,7 +46,7 @@ export interface ImportProtectionConfig {
   configKey: string
 }
 
-export interface ResolveImportProtectionContext {
+interface ResolveImportProtectionContext {
   root: string
   srcDirectory: string
   mode: ImportProtectionMode
