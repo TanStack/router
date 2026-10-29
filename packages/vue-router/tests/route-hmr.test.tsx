@@ -99,6 +99,27 @@ describe('route HMR (Vue)', () => {
     expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
   })
 
+  test('a wrapper that never loaded only takes the new importer', async () => {
+    const firstImporter = vi.fn(
+      (): Promise<Module> =>
+        Promise.resolve({ component: makeComponent('v1') }),
+    )
+    const { evaluate, router } = setup(() => ({
+      component: lazyRouteComponent(firstImporter, 'component'),
+    }))
+    const secondImporter = vi.fn(
+      (): Promise<Module> => Promise.resolve({ Renamed: makeComponent('v2') }),
+    )
+    evaluate({ component: lazyRouteComponent(secondImporter, 'Renamed') })
+
+    render(<RouterProvider router={router} />)
+    expect(
+      await screen.findByRole('button', { name: 'v2 0' }),
+    ).toBeInTheDocument()
+    expect(firstImporter).not.toHaveBeenCalled()
+    expect(secondImporter).toHaveBeenCalledOnce()
+  })
+
   test('a first load that a hot update replaced settles with the newer component', async () => {
     const first = createControlledPromise<Module>()
     const second = createControlledPromise<Module>()

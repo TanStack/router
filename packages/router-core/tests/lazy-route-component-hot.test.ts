@@ -81,7 +81,8 @@ describe('lazyRouteComponentHot', () => {
     const keep = vi.fn(() => true)
     const loaded = v('v2')
     hot.update(() => Promise.resolve({ component: loaded }), 'component', keep)
-    await state.pending
+    // what a load in flight resolves to: the held component
+    expect(await state.pending).toBe(held)
     expect(keep).toHaveBeenCalledWith(loaded, held)
     expect(state.comp).toBe(held)
     expect(state.renders).toBe(0)
@@ -115,8 +116,10 @@ describe('lazyRouteComponentHot', () => {
       for (const name of order) {
         imports[name].resolve({ component: v(name) })
       }
-      // the older import settles with the newest one
-      await stale
+      // an older import completing while the newest is pending settles with it
+      expect(await stale).toEqual(
+        order[0] === 'second' ? v('third') : undefined,
+      )
       await newest
       expect(state).toMatchObject({ comp: v('third'), renders: 1 })
       expect(state.pending).toBeUndefined()
@@ -129,7 +132,12 @@ describe('lazyRouteComponentHot', () => {
     const failure = new Error('syntax error')
     hot.update(() => Promise.reject(failure), 'component', swap)
     expect(await state.pending).toBeUndefined()
-    expect(state).toMatchObject({ comp: held, error: failure, renders: 1 })
+    expect(state).toMatchObject({
+      comp: held,
+      error: failure,
+      renders: 1,
+      pending: undefined,
+    })
 
     hot.update(() => Promise.resolve({ component: v('v2') }), 'component', swap)
     await state.pending
@@ -143,6 +151,61 @@ describe('lazyRouteComponentHot', () => {
     expect(state).toMatchObject({ comp: v('v2'), error: undefined })
   })
 
+  test('a failure of the newest import wins over a stale success, whichever settles first', async () => {
+    for (const staleFirst of [true, false]) {
+      const held = v('v1')
+      const { state, hot } = wrapper(held)
+      const second = createControlledPromise<Module>()
+      const third = createControlledPromise<Module>()
+      hot.update(() => second, 'component', swap)
+      const stale = state.pending
+      hot.update(() => third, 'component', swap)
+      const newest = state.pending
+      const failure = new Error('syntax error')
+      if (staleFirst) {
+        second.resolve({ component: v('v2') })
+        third.reject(failure)
+      } else {
+        third.reject(failure)
+        second.resolve({ component: v('v2') })
+      }
+      await newest
+      await stale
+      expect(state).toMatchObject({ comp: held, error: failure, renders: 1 })
+    }
+  })
+
+  test('the default export, when no export is named', async () => {
+    const { state, hot } = wrapper(v('v1'))
+    hot.update(
+      () => Promise.resolve({ default: v('d'), component: v('c') }),
+      undefined,
+      swap,
+    )
+    expect(state.exportName).toBeUndefined()
+    await state.pending
+    expect(state.comp).toEqual(v('d'))
+  })
+
+  test('the slot keeps the importer and export name it was created with', async () => {
+    // (the route HMR runtime falls back to the first importer in Vite's bundled dev)
+    const { state, hot } = wrapper(v('v1'))
+    const first = state.importer
+    hot.update(() => Promise.resolve({ page: v('v2') }), 'page', swap)
+    await state.pending
+    expect(hot.importer).toBe(first)
+    expect(hot.exportName).toBe('component')
+  })
+
+  test('nothing held: the loaded export is taken without asking keep', async () => {
+    const { state, hot } = wrapper(undefined, new Error('offline'))
+    const keep = vi.fn(() => true)
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', keep)
+    await state.pending
+    expect(keep).not.toHaveBeenCalled()
+    expect(state).toMatchObject({ comp: v('v2'), renders: 1 })
+  })
+
   test('a stale failure leaves the newest import alone', async () => {
     const { state, hot } = wrapper(v('v1'))
     const second = createControlledPromise<Module>()
@@ -152,6 +215,6 @@ describe('lazyRouteComponentHot', () => {
     await state.pending
     second.reject(new Error('stale'))
     await stale
-    expect(state).toMatchObject({ comp: v('v3'), error: undefined })
+    expect(state).toMatchObject({ comp: v('v3'), error: undefined, renders: 1 })
   })
 })

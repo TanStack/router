@@ -66,8 +66,9 @@ export interface LazyRouteComponentPort {
  * has loaded (or is loading), then keeps the held component if
  * `keep(loaded, held)` says so (the framework's refresh runtime patches it
  * in place) or swaps to the loaded one. The newest import is the only one
- * whose completion counts: an older one settles with it. A wrapper that never
- * loaded only takes the new importer for its first load.
+ * whose completion counts: an older one that completes while a newer one is
+ * pending settles with the newer one. A wrapper that never loaded only takes
+ * the new importer for its first load.
  *
  * Dev-only, called by the framework packages' `lazyRouteComponent` on the
  * client; not a public API.
