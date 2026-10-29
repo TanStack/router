@@ -41,6 +41,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 - Dev answers the SPA shell with `spa.enabled` (#8543) and no longer forces `server.compress: false` (#8544).
 - The server environment shares async chunks instead of duplicating the route modules the server function resolver imports.
 - `router.codeSplittingOptions.deleteNodes` applies to the server environment, as on Vite: the listed route options are removed from the server build's route modules (they were kept). The client keeps removing `ssr`, `server` and `headers` instead.
+- `rsbuild build --watch` picks up route files created while it watches: they never reached the route tree before.
 
 **Other**
 

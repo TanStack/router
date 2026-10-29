@@ -61,7 +61,6 @@ export function registerStartCompiler(
     getConfig: opts.getConfig,
     corePluginOpts: opts.corePluginOpts,
     startPluginOpts: opts.startPluginOpts,
-    dev,
   })
   const ensureSession = (): StartRsbuildCompilerSession => {
     if (session) {

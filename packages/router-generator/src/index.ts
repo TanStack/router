@@ -42,3 +42,5 @@ export { rootPathId } from './filesystem/physical/rootPathId'
 
 export { watchRouteFiles } from './watch/chokidar'
 export type { RouteFileWatcher } from './watch/chokidar'
+export { createGeneratorSession } from './watch/session'
+export type { GeneratorSession } from './watch/session'
