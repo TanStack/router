@@ -55,7 +55,8 @@ import {
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
-import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
+import { startRecognizer } from '../compiler/recognizer'
+import { reportStartDiagnostics } from '../compiler/report'
 import {
   NODE_MODULES_RE,
   opaquePackageModule,
@@ -100,8 +101,10 @@ import type { RouterPluginContext } from '@tanstack/router-plugin/context'
 import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
   CompileConfig,
+  CompileOutput,
   CompilerCaches,
   Diagnostic,
+  DiagnosticPosition,
   EnvInfo,
   HostServices,
   InputSourceMap,
@@ -371,7 +374,7 @@ export function startCompilerPlugin(
       rawFacts,
       caches: createCompilerCaches(rawFacts, 'start:vite'),
       registry: new RouteRegistryView(opts.routerPluginContext),
-      warnings: new WarningLedger(() => {}),
+      warnings: new WarningLedger(),
       planners: new Map(),
       configs: new Map(),
       entries: new Set(),
@@ -748,23 +751,7 @@ export function startCompilerPlugin(
       ? deriveId(e.definingCanonicalId, { kind: 'provider', value: '' })
       : e.definingCanonicalId
 
-  /** A diagnostic's location: 1-based line, 0-based column, counting every ECMAScript line terminator. */
-  const locationOf = (
-    source: SourceText,
-    filePath: string,
-    d: Diagnostic,
-  ): { file: string; line: number; column: number } | undefined => {
-    if (!d.range) {
-      return undefined
-    }
-    const { line, column } = source.locate(d.range.start)
-    return { file: filePath, line: line + 1, column }
-  }
-  /**
-   * Errors fail the module (every compile that produces them); warnings
-   * once per (file, reason and wording) per session: a transform that
-   * leaves a finding as it is does not repeat it, a new finding is reported.
-   */
+  /** Reports a compile's diagnostics through a hook context (`ctx.error` throws). */
   const reportDiagnostics = (
     s: Session,
     ctx: {
@@ -778,65 +765,22 @@ export function startCompilerPlugin(
         loc?: { file: string; line: number; column: number }
       }) => never
     },
-    diagnostics: ReadonlyArray<Diagnostic>,
+    out: CompileOutput,
     filePath: string,
     id: string,
     code: string,
     envType: 'client' | 'server',
   ) => {
-    if (diagnostics.length === 0) {
-      return
-    }
-    const source = new SourceText(code)
-    for (const d of diagnostics) {
-      if (d.by === 'parse') {
-        // A module the compiler cannot parse is left as it is when it names
-        // no Start package: the bundler's own parser reports a syntax error
-        // at the user's position, and a script no ESM parse accepts (a
-        // CommonJS dependency with a top-level `return`) is nothing the
-        // compiler touches (J4.16, SPEC §5.15). One that names a Start package
-        // may define server code (a handler, a server-only route option):
-        // the client build fails naming the file (never shipped
-        // untransformed, J4.12); a server build warns once.
-        if (!namesStartSpecifier(code)) {
-          continue
-        }
-        const loc = locationOf(source, filePath, d)
-        const message = `[tanstack-start] The compiler cannot parse "${filePath}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}${loc ? ` (${filePath}:${loc.line}:${loc.column + 1})` : ''}`
-        if (envType === 'client') {
-          ctx.error({ message, id, loc })
-        }
-        if (s.warnings.once(filePath, { ...d, code: 'parse' })) {
-          ctx.warn({ message, loc })
-        }
-        continue
-      }
-      if (d.severity === 'error') {
-        const loc = locationOf(source, filePath, d)
-        ctx.error({
-          message: loc
-            ? `${d.message} (${filePath}:${loc.line}:${loc.column + 1})`
-            : d.message,
-          id,
-          loc,
-        })
-      }
-    }
-    for (const d of diagnostics) {
-      if (d.severity !== 'warning') {
-        continue
-      }
-      const keyed = d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d
-      if (s.warnings.once(filePath, keyed)) {
-        const loc = locationOf(source, filePath, d)
-        ctx.warn({
-          message: loc
-            ? `${d.message} (${filePath}:${loc.line}:${loc.column + 1})`
-            : d.message,
-          loc,
-        })
-      }
-    }
+    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) => ({
+      message: at
+        ? `${d.message} (${filePath}:${at.line}:${at.column + 1})`
+        : d.message,
+      loc: at && { file: filePath, ...at },
+    })
+    reportStartDiagnostics(out, filePath, code, envType, s.warnings, {
+      error: (d, at) => ctx.error({ ...log(d, at), id }),
+      warn: (d, at) => ctx.warn(log(d, at)),
+    })
   }
 
   /**
@@ -1059,15 +1003,7 @@ export function startCompilerPlugin(
           if (!out) {
             return null
           }
-          reportDiagnostics(
-            s,
-            this,
-            out.diagnostics,
-            identity.path,
-            id,
-            code,
-            env.type,
-          )
+          reportDiagnostics(s, this, out, identity.path, id, code, env.type)
           const facts = out.facts.planners[START_ENV] as
             | StartEnvFacts
             | undefined
@@ -1219,13 +1155,7 @@ export function startCompilerPlugin(
             rollupEntryModuleIds(bundle as never),
           )) {
             const message = eagerExportWarning(e, 'rollup')
-            if (
-              s.warnings.once(e.file, {
-                severity: 'warning',
-                message,
-                code: `eager-export\u0000${e.name}`,
-              })
-            ) {
+            if (s.warnings.once(e.file, { code: 'eager-export', message })) {
               this.warn(message)
             }
           }
@@ -1347,15 +1277,7 @@ export function startCompilerPlugin(
           // not JavaScript after all: nothing to judge
           return null
         }
-        reportDiagnostics(
-          s,
-          this,
-          out.diagnostics,
-          identify(id).path,
-          id,
-          code,
-          env.type,
-        )
+        reportDiagnostics(s, this, out, identify(id).path, id, code, env.type)
         const decided = afterCompile(s, env, id, out, (error) =>
           this.error(error),
         )

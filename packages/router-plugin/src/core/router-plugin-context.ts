@@ -28,7 +28,7 @@ const internals = new WeakMap<RouterPluginContext, ContextInternals>()
 export function createRouterPluginContext(): RouterPluginContext {
   let routesByFile: GetRoutesByFileMapResult = new Map()
   const state: ContextInternals = {
-    warnings: new WarningLedger(() => {}),
+    warnings: new WarningLedger(),
     listeners: new Set(),
   }
   const context: RouterPluginContext = {

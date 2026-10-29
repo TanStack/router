@@ -14,7 +14,6 @@ import path from 'node:path'
 import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
-  SourceText,
   deriveId,
   eagerExportWarning,
   eagerExtractedExports,
@@ -35,6 +34,7 @@ import type { Config } from '../core/config'
 import type {
   CompilerCaches,
   Diagnostic,
+  DiagnosticPosition,
   PlanKey,
 } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
@@ -98,22 +98,14 @@ interface ModuleGraphLike {
   ) => void
 }
 
-interface DiagnosticLog {
-  message: string
-  id?: string
-  loc?: { file: string; line: number; column: number }
-}
-
-function logOf(d: Diagnostic, source: SourceText, file: string): DiagnosticLog {
-  if (!d.range) {
-    return { message: d.message, id: file }
-  }
-  const at = source.locate(d.range.start)
-  return {
-    message: d.message,
-    id: file,
-    loc: { file, line: at.line + 1, column: at.column },
-  }
+function logOf(
+  d: Diagnostic,
+  at: DiagnosticPosition | undefined,
+  file: string,
+) {
+  return at
+    ? { message: d.message, id: file, loc: { file, ...at } }
+    : { message: d.message, id: file }
 }
 
 /**
@@ -375,16 +367,10 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
-        if (out.diagnostics.length > 0) {
-          const source = new SourceText(code)
-          compiler.report(out, file, (d) => {
-            const log = logOf(d, source, identity.path)
-            if (d.severity === 'error') {
-              this.error(log)
-            }
-            this.warn(log)
-          })
-        }
+        compiler.report(out, file, code, {
+          error: (d, at) => this.error(logOf(d, at, identity.path)),
+          warn: (d, at) => this.warn(logOf(d, at, identity.path)),
+        })
         if (identity.derived === null && out.code === code) {
           return null
         }

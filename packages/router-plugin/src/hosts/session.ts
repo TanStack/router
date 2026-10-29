@@ -16,6 +16,7 @@ import {
   identify,
   invalidate,
   registerCompilerStats,
+  reportCompileDiagnostics,
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
@@ -34,7 +35,7 @@ import type { RouteEntryFacts } from '../planners/route'
 import type {
   CompileOutput,
   CompilerCaches,
-  Diagnostic,
+  DiagnosticSink,
   EnvInfo,
   HostServices,
   InvalidateChange,
@@ -190,45 +191,29 @@ export class RouterCompiler {
     )
   }
 
-  /** Reports a compile's diagnostics once per (file, reason) through `report`. */
+  /** Reports a compile's diagnostics (`reportCompileDiagnostics`); `file` is the module's normalized path. */
   report(
     out: CompileOutput,
-    path: string,
-    report: (d: Diagnostic) => void,
+    file: string,
+    code: string,
+    sink: DiagnosticSink,
   ): void {
-    for (const d of out.diagnostics) {
-      if (d.by === 'parse') {
-        // a route module the compiler cannot parse is left as it is (J2.8:
-        // a correct split, or unsplit plus a warning naming the file)
-        const warning: Diagnostic = {
-          severity: 'warning',
-          message: `[tanstack-router] The compiler cannot parse the route module "${path}", so it is not code-split or hot-updated: ${d.message}`,
-          range: d.range,
-          by: 'parse',
-          code: 'parse',
-        }
-        if (
-          this.warnings.once(normalizePath(path), {
-            ...warning,
-            code: `parse\u0000${warning.message}`,
-          })
-        ) {
-          report(warning)
-        }
-        continue
-      }
-      // an error refuses every compile that produces it; a warning once per
-      // (file, reason and wording) per run: an edit that leaves the finding
-      // as it is does not repeat it, a new finding is reported
-      if (d.severity === 'error') {
-        report(d)
-        continue
-      }
-      const keyed = d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d
-      if (this.warnings.once(normalizePath(path), keyed)) {
-        report(d)
-      }
-    }
+    reportCompileDiagnostics(
+      out.diagnostics,
+      file,
+      code,
+      this.warnings,
+      sink,
+      // a route module the compiler cannot parse is left as it is (J2.8: a
+      // correct split, or unsplit plus a warning naming the file)
+      (d) => ({
+        severity: 'warning',
+        message: `[tanstack-router] The compiler cannot parse the route module "${file}", so it is not code-split or hot-updated: ${d.message}`,
+        range: d.range,
+        by: 'parse',
+        code: 'parse',
+      }),
+    )
   }
 
   /** The one invalidation operation for a file event. */

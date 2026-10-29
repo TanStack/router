@@ -255,11 +255,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             for (const e of eagerExtractedExports(ids)) {
               const message = eagerExportWarning(e, 'webpack')
               if (
-                session.warnings.once(e.file, {
-                  severity: 'warning',
-                  message,
-                  code: `eager-export\u0000${e.name}`,
-                })
+                session.warnings.once(e.file, { code: 'eager-export', message })
               ) {
                 compilation.warnings.push(new WebpackError(message))
               }

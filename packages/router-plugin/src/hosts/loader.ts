@@ -8,10 +8,14 @@
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
 import remapping from '@jridgewell/remapping'
-import { SourceText, identify } from '@tanstack/router-utils/compiler'
+import { identify } from '@tanstack/router-utils/compiler'
 import { normalizePath, resourceId } from './session'
 import type { RouterCompiler } from './session'
-import type { Diagnostic, RecordMapText } from '@tanstack/router-utils/compiler'
+import type {
+  Diagnostic,
+  DiagnosticPosition,
+  RecordMapText,
+} from '@tanstack/router-utils/compiler'
 
 /** What the loader uses of the webpack / Rspack loader context. */
 export interface LoaderContextLike {
@@ -39,16 +43,11 @@ export const LOADER_REGISTRY = '__tanstackRouterCompilers'
 
 function diagnosticError(
   d: Diagnostic,
-  source: SourceText,
+  at: DiagnosticPosition | undefined,
   file: string,
 ): Error {
   // the position in the Vite host's form, `message (file:line:col)`
-  const where = d.range
-    ? (() => {
-        const at = source.locate(d.range.start)
-        return ` (${file}:${at.line + 1}:${at.column + 1})`
-      })()
-    : ''
+  const where = at ? ` (${file}:${at.line}:${at.column + 1})` : ''
   const error = new Error(`${d.message}${where}`)
   error.name = 'TanStackRouterCompilerWarning'
   return error
@@ -85,17 +84,11 @@ export function createLoaderImpl(
         ctx.addDependency(dep)
       }
     }
-    if (out.diagnostics.length > 0) {
-      const text = new SourceText(source)
-      compiler.report(out, file, (d) => {
-        const error = diagnosticError(d, text, ctx.resourcePath)
-        if (d.severity === 'error') {
-          ctx.emitError(error)
-        } else {
-          ctx.emitWarning(error)
-        }
-      })
-    }
+    compiler.report(out, file, source, {
+      error: (d, at) => ctx.emitError(diagnosticError(d, at, ctx.resourcePath)),
+      warn: (d, at) =>
+        ctx.emitWarning(diagnosticError(d, at, ctx.resourcePath)),
+    })
     if (identity.derived === null && out.code === source) {
       return { code: source, map: inputMap }
     }

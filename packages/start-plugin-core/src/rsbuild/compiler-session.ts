@@ -14,7 +14,6 @@ import path from 'node:path'
 import remapping from '@jridgewell/remapping'
 import {
   RawFactsCache,
-  SourceText,
   WarningLedger,
   collectionSizes,
   compileModule,
@@ -34,7 +33,8 @@ import {
   routerPlannerConfigDigest,
   routerPlannerConfigFrom,
 } from '@tanstack/router-plugin/planners'
-import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
+import { startRecognizer } from '../compiler/recognizer'
+import { reportStartDiagnostics } from '../compiler/report'
 import { opaquePackageModule, startCompileScope } from '../compiler/scope'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
@@ -62,7 +62,7 @@ import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
   CompileOutput,
   CompilerCaches,
-  Diagnostic,
+  DiagnosticPosition,
   EnvInfo,
   HostServices,
   InputSourceMap,
@@ -161,7 +161,7 @@ export class StartRsbuildCompilerSession {
   readonly caches: CompilerCaches
   readonly rawFacts: RawFactsCache
   readonly registry = new ServerFnRegistry()
-  readonly warnings = new WarningLedger(() => {})
+  readonly warnings = new WarningLedger()
   readonly allocator: FunctionIdAllocator | null
   readonly envs = new Map<string, EnvState>()
   /** Readers of files through the compilers' input file systems (virtual modules included), by environment. */
@@ -743,7 +743,7 @@ export class StartRsbuildCompilerSession {
     return JSON.parse(composed.toString())
   }
 
-  /** Errors fail the module (positioned, 1-based line and column); warnings once per (file, reason and wording) per run. */
+  /** Reports a compile's diagnostics: warnings to the loader context, the errors thrown together (the module fails). */
   private reportDiagnostics(
     ctx: LoaderContextLike,
     out: CompileOutput,
@@ -751,55 +751,18 @@ export class StartRsbuildCompilerSession {
     code: string,
     envType: 'client' | 'server',
   ): void {
-    if (out.diagnostics.length === 0) {
-      return
-    }
-    let text: SourceText | null = null
     // the position in the Vite host's form, `message (file:line:col)`
-    const where = (d: Diagnostic): string => {
-      if (!d.range) {
-        return ''
-      }
-      text ??= new SourceText(code)
-      const at = text.locate(d.range.start)
-      return ` (${file}:${at.line + 1}:${at.column + 1})`
-    }
+    const where = (at: DiagnosticPosition | undefined) =>
+      at ? ` (${file}:${at.line}:${at.column + 1})` : ''
     const errors: Array<string> = []
-    for (const d of out.diagnostics) {
-      if (d.by === 'parse') {
-        // a module naming no Start package is left as it is (the bundler's
-        // own parser reports the error at the user's position); one that
-        // names a Start package may define server code: the client build
-        // fails naming the file (never shipped untransformed, J4.12), a
-        // server build warns once (as the Vite host)
-        if (!namesStartSpecifier(code)) {
-          continue
-        }
-        const message = `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}${where(d)}`
-        if (envType === 'client') {
-          errors.push(message)
-        } else if (this.warnings.once(file, { ...d, code: 'parse' })) {
-          const warning = new Error(message)
-          warning.name = 'TanStackStartCompilerWarning'
-          ctx.emitWarning(warning)
-        }
-        continue
-      }
-      if (d.severity === 'error') {
-        errors.push(`${d.message}${where(d)}`)
-      } else if (
-        // once per (file, reason and wording), as the Vite hosts: two
-        // declarations kept for one reason are two findings
-        this.warnings.once(
-          file,
-          d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d,
-        )
-      ) {
-        const warning = new Error(`${d.message}${where(d)}`)
+    reportStartDiagnostics(out, file, code, envType, this.warnings, {
+      error: (d, at) => errors.push(`${d.message}${where(at)}`),
+      warn: (d, at) => {
+        const warning = new Error(`${d.message}${where(at)}`)
         warning.name = 'TanStackStartCompilerWarning'
         ctx.emitWarning(warning)
-      }
-    }
+      },
+    })
     if (errors.length > 0) {
       const error = new Error(errors.join('\n'))
       error.name = 'TanStackStartCompilerError'

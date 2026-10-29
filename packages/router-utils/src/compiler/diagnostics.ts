@@ -1,3 +1,5 @@
+import { SourceText } from './output-builder'
+
 type DiagnosticSeverity = 'error' | 'warning' | 'info'
 
 export interface Diagnostic {
@@ -12,26 +14,83 @@ export interface Diagnostic {
 }
 
 /**
- * Reports each `(file, key)` once per session through the host channel; the
- * hosts key a warning by its code and wording.
+ * The warnings a host reported this run: one per (file, reason and
+ * wording). Two findings of one reason are two (two declarations kept for
+ * one reason); the same finding of a module compiled again (another
+ * environment, an edit that leaves it as it is) is not news.
  */
 export class WarningLedger {
   private readonly seen = new Set<string>()
 
-  constructor(private readonly report: (d: Diagnostic, path: string) => void) {}
-
-  /** Returns true when the diagnostic was new and has been reported. */
-  once(path: string, d: Diagnostic): boolean {
-    const key = `${path}\u0000${d.code ?? d.message}`
+  /** Whether `d` is new for `path` this run (and records it). */
+  once(path: string, d: { code?: string; message: string }): boolean {
+    const key = `${path}\u0000${d.code ?? ''}\u0000${d.message}`
     if (this.seen.has(key)) {
       return false
     }
     this.seen.add(key)
-    this.report(d, path)
     return true
   }
 
   reset(): void {
     this.seen.clear()
+  }
+}
+
+/** A diagnostic's position: 1-based line, 0-based column (every ECMAScript line terminator counts). */
+export interface DiagnosticPosition {
+  line: number
+  column: number
+}
+
+/** Where a host reports: an error fails the module (a sink may throw), a warning is printed. */
+export interface DiagnosticSink {
+  error: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
+  warn: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
+}
+
+/**
+ * Reports a compile's diagnostics with every host's policy: the errors
+ * first, from every compile that produces them; then each warning once per
+ * (file, reason and wording) per run (`ledger`). A parse failure's
+ * diagnostics (they come alone) are the compiler's to word: `parse` turns
+ * each into the diagnostic to report, or null to leave the module as it is.
+ */
+export function reportCompileDiagnostics(
+  diagnostics: ReadonlyArray<Diagnostic>,
+  file: string,
+  code: string,
+  ledger: WarningLedger,
+  sink: DiagnosticSink,
+  parse: (d: Diagnostic) => Diagnostic | null,
+): void {
+  if (diagnostics.length === 0) {
+    return
+  }
+  let source: SourceText | null = null
+  const at = (d: Diagnostic): DiagnosticPosition | undefined => {
+    if (!d.range) {
+      return undefined
+    }
+    source ??= new SourceText(code)
+    const { line, column } = source.locate(d.range.start)
+    return { line: line + 1, column }
+  }
+  const reported: Array<Diagnostic> = []
+  for (const d of diagnostics) {
+    const r = d.by === 'parse' ? parse(d) : d
+    if (r) {
+      reported.push(r)
+    }
+  }
+  for (const d of reported) {
+    if (d.severity === 'error') {
+      sink.error(d, at(d))
+    }
+  }
+  for (const d of reported) {
+    if (d.severity !== 'error' && ledger.once(file, d)) {
+      sink.warn(d, at(d))
+    }
   }
 }
