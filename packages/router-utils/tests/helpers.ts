@@ -140,7 +140,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       }
       ctx.setRouteModule()
       ctx.markBenignEffect(found.unit.id)
-      const code = ctx.analysis.source.code
       const { options, unit } = found
       if (opts.extractExports) {
         for (const e of ctx.analysis.exports) {
@@ -429,10 +428,8 @@ export function toyEdgePolicyPlanner(
           importerId: e.importerId,
           output,
         }
-        const verdict = await ctx.memo(`${e.edgeKey}`, async () => {
-          calls.push(info)
-          return opts.onViolation ? await opts.onViolation(info) : true
-        })
+        calls.push(info)
+        const verdict = opts.onViolation ? await opts.onViolation(info) : true
         if (verdict === false) {
           continue
         }

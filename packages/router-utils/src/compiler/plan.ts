@@ -118,7 +118,6 @@ export interface EmitPlan {
   edges: Record<string, Array<EdgeRecord>>
   facts: PlanFacts
   dependencies: Array<DependencyFingerprint>
-  fingerprint: string
   diagnostics: Array<Diagnostic>
   sideEffects: Record<string, boolean>
 }
@@ -882,7 +881,6 @@ export class AnalysisPlan implements PlanContext {
         planners: this.facts,
       },
       dependencies: [],
-      fingerprint: '',
       diagnostics: this.diagnostics.map((d) => ({
         ...d,
         range: d.range ? { ...d.range } : undefined,

@@ -76,7 +76,6 @@ export interface CompileOutput {
   diagnostics: Array<Diagnostic>
   /** Paths to watch / addDependency. */
   dependencies: Array<string>
-  fingerprint: string
   /** The output the request mapped to. */
   output: OutputId
 }
@@ -144,8 +143,6 @@ export interface PolicyContext {
   ) => Promise<RawFacts['targetFacts']['marker']>
   /** Replaces the specifier literal of an edge in this output's recipe. */
   substitute: (edgeKey: string, specifier: string) => void
-  /** Per-request memo: a restart after a snapshot mismatch does not ask twice. */
-  memo: <T>(key: string, compute: () => Promise<T>) => Promise<T>
   diagnostic: (d: Diagnostic) => void
 }
 

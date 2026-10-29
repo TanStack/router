@@ -6,7 +6,6 @@
  */
 import {
   deriveId,
-  digestOf,
   edgeKeyOf,
   identify,
   isCommonJsPath,
@@ -105,7 +104,6 @@ export async function compileModule(
   const requested: OutputId = identity.derived
     ? `derived:${deriveId(identity.canonicalId, identity.derived)}`
     : 'env'
-  const verdictMemo = new Map<string, Promise<unknown>>()
   const keyString = `${key.env}\u0000${key.canonicalId}\u0000${key.configKey}`
   // the plan of the last overtaken attempt: served (unpublished) when every attempt was overtaken
   let overtaken: CacheEntry | null = null
@@ -163,7 +161,6 @@ export async function compileModule(
           host,
           caches,
           ledger,
-          verdictMemo,
           rev,
         )
         const record = { revision: rev, promise }
@@ -194,7 +191,6 @@ export async function compileModule(
             facts: { marker: null, publishedSummaryDigest: null, planners: {} },
             diagnostics: result.diagnostics,
             dependencies: [],
-            fingerprint: '',
             output: requested,
           }
         }
@@ -293,10 +289,6 @@ function emitFrom(
     get dependencies() {
       return dependencyPaths(plan, caches)
     },
-    // only the Rsbuild session reads it, once per compile: computed on demand
-    get fingerprint() {
-      return planFingerprint(entry)
-    },
     output: requested,
   }
 }
@@ -311,19 +303,6 @@ function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
     at = seg.end
   }
   return at === code.length
-}
-
-/** The plan's fingerprint (its text, configuration and dependencies), computed on first use. */
-function planFingerprint(entry: CacheEntry): string {
-  const plan = entry.plan
-  if (plan.fingerprint === '') {
-    plan.fingerprint = digestOf({
-      rev: entry.revision,
-      configKey: entry.key.configKey,
-      deps: plan.dependencies,
-    })
-  }
-  return plan.fingerprint
 }
 
 /** The files a plan read (a known package is recognised by its specifier, never read). */
@@ -360,7 +339,6 @@ async function runAttempt(
   host: HostServices,
   caches: CompilerCaches,
   ledger: DependencyLedger,
-  verdictMemo: Map<string, Promise<unknown>>,
   rev: string,
 ): Promise<AttemptResult> {
   const env = input.env
@@ -600,14 +578,6 @@ async function runAttempt(
             }
           }
         },
-        memo: <T>(k: string, compute: () => Promise<T>): Promise<T> => {
-          let p0 = verdictMemo.get(k) as Promise<T> | undefined
-          if (!p0) {
-            p0 = compute()
-            verdictMemo.set(k, p0)
-          }
-          return p0
-        },
         diagnostic: (d) => emitPlan.diagnostics.push(d),
       }
       await p.policy(emitPlan, output, emitPlan.edges[output] ?? [], ctx)
@@ -700,7 +670,6 @@ function tier0Plan(
     edges,
     facts: { marker: t0.markers, publishedSummaryDigest: null, planners: {} },
     dependencies: [],
-    fingerprint: '',
     diagnostics: [],
     sideEffects: { env: false },
   }

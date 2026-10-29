@@ -689,7 +689,7 @@ describe('slice gates: invalidation', () => {
     ).toHaveLength(1)
   })
 
-  it('(f) in-flight dependency-only edit restarts the compile; onViolation is asked once', async () => {
+  it('(f) in-flight dependency-only edit restarts the compile', async () => {
     const verdict = deferred<boolean>()
     const asked = deferred<void>()
     const host = new MemoryHost({
@@ -726,7 +726,6 @@ describe('slice gates: invalidation', () => {
     expect(out!.facts.planners['toy-summary']).toEqual({
       './factory-inner': { t: 'envOnlyResult', kind: 'client' },
     })
-    expect(edges.calls).toHaveLength(1)
     expect(out!.code).toMatch(/tsr-mock/)
     const key = {
       env: 'client',
