@@ -137,12 +137,10 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
 
   return {
     revision,
-    sourceLength: code.length,
     outputs,
     edges,
     facts: {
       marker: analysis.markers,
-      publishedSummaryDigest: null,
       planners: plan.facts,
     },
     dependencies: [],

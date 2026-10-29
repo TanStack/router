@@ -91,14 +91,12 @@ export interface OutputRecipe {
 
 export interface PlanFacts {
   marker: 'server-only' | 'client-only' | 'conflict' | null
-  publishedSummaryDigest: string | null
   /** Planner facts by planner name; plain data only. */
   planners: Record<string, unknown>
 }
 
 export interface EmitPlan {
   revision: string
-  sourceLength: number
   outputs: Record<string, OutputRecipe>
   edges: Record<string, Array<EdgeRecord>>
   facts: PlanFacts

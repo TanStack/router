@@ -1,6 +1,6 @@
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
-import { compileModule, invalidate } from '../src/compiler'
+import { compileModule, invalidate, revision } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -674,7 +674,7 @@ describe('slice gates: invalidation', () => {
     }
     const cache = host.caches.plans.get('client')!
     const published = cache.get(key)!
-    expect(published.plan.sourceLength).toBe(r2.length)
+    expect(published.plan.revision).toBe(revision(r2))
     gate.resolve()
     const stale = await slow
     expect(stale!.code).not.toContain('v2')
@@ -730,7 +730,7 @@ describe('slice gates: invalidation', () => {
       configKey: 'cfg',
     }
     const cache = host.caches.plans.get('client')!
-    expect(cache.get(key)!.plan.sourceLength).toBe(r2.length)
+    expect(cache.get(key)!.plan.revision).toBe(revision(r2))
     expect(
       host.resolveCalls.filter((c) => c.specifier === './factory-inner'),
     ).toHaveLength(1)

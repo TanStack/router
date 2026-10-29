@@ -189,7 +189,7 @@ export async function compileModule(
             map: null,
             sideEffectFree: false,
             edges: [],
-            facts: { marker: null, publishedSummaryDigest: null, planners: {} },
+            facts: { marker: null, planners: {} },
             diagnostics: result.diagnostics,
             dependencies: [],
             output: requested,
@@ -542,8 +542,7 @@ async function runAttempt(
   // summary publication under the domain rule (no extra read: only when the raw revision is known and equal)
   const known = host.rawFacts.peekRevision(identity.canonicalId)
   if (known && !known.stale && known.revision === rev) {
-    const published = host.rawFacts.publish(identity.canonicalId, rev, t0)
-    emitPlan.facts.publishedSummaryDigest = published?.summary?.digest ?? null
+    host.rawFacts.publish(identity.canonicalId, rev, t0)
   }
 
   // ---- C: per-output edge policy (async) ----------------------------------------
@@ -610,7 +609,6 @@ function tier0Plan(
   }
   return {
     revision: rev,
-    sourceLength: code.length,
     outputs: {
       env: {
         kind: 'env',
@@ -620,7 +618,7 @@ function tier0Plan(
       },
     },
     edges,
-    facts: { marker: t0.markers, publishedSummaryDigest: null, planners: {} },
+    facts: { marker: t0.markers, planners: {} },
     dependencies: [],
     diagnostics: [],
     sideEffects: { env: false },
