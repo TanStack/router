@@ -45,8 +45,6 @@ export interface Chain {
   /** The node the segment starts at in this module: a factory call or a reference to a stored value. */
   head: Node
   headIsFactoryCall: boolean
-  /** The value of the head (before the first link of this segment). */
-  headValue: AbstractValue
   links: Array<ChainLink>
   /** The outermost call/member node of the segment (wrappers excluded). */
   terminal: Node
@@ -178,7 +176,6 @@ export function startAnalysisOf(
     let value = startValue
     let head: Node = start
     let headIsFactoryCall = false
-    const headValue = startValue
     let outer: Node = node
     let p: Node | null = null
     for (;;) {
@@ -363,7 +360,6 @@ export function startAnalysisOf(
     result.chains.push({
       head,
       headIsFactoryCall,
-      headValue,
       links,
       terminal: node,
       terminalValue: value,

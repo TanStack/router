@@ -122,16 +122,16 @@ export class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
   private readonly byKey = new Map<string, Set<string>>()
 
-  add(path: string, key: PlanKey, inFlight: boolean): void {
+  /** An attempt's in-flight row (a published row of the key's previous plan stays published). */
+  add(path: string, key: PlanKey): void {
     let m = this.byPath.get(path)
     if (!m) {
       m = new Map()
       this.byPath.set(path, m)
     }
     const ks = planKeyString(key)
-    const prev = m.get(ks)
-    if (!prev || (prev.inFlight && !inFlight)) {
-      m.set(ks, { key, inFlight })
+    if (!m.has(ks)) {
+      m.set(ks, { key, inFlight: true })
     }
     let paths = this.byKey.get(ks)
     if (!paths) {
@@ -252,9 +252,9 @@ export class DependencyLedger {
     this.byId.set(id, fp)
     this.entries.push(fp)
     const indexKey = fingerprintIndexKey(fp)
-    if (indexKey !== null) {
+    if (indexKey !== null && !this.indexKeys.has(indexKey)) {
       this.indexKeys.add(indexKey)
-      this.index.add(indexKey, this.key, true)
+      this.index.add(indexKey, this.key)
     }
   }
 

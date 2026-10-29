@@ -38,7 +38,6 @@ import type {
 } from '@tanstack/router-utils/compiler'
 
 export const ROUTE_SPLIT = 'route-split'
-export const ROUTE_HMR = 'route-hmr'
 
 /** Host services the router planners read (`HostServices.services.routes`). */
 export interface RouteRegistryService {
