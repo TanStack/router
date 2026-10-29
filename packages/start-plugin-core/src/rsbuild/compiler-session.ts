@@ -2,7 +2,7 @@
  * Start's Rspack host of the compiler core on Rsbuild (see the core's
  * README.md, "Hosts"): one compile per (environment, layer, module)
  * running every planner — `start-env`, `hydrate`, `rsc-css` (the RSC
- * layer), `route-split`/`route-hmr` (client), `import-edges` — from one
+ * layer), `router` (every layer but the RSC one), `import-edges` — from one
  * `pre` loader per environment (`compiler-loader.ts`), the shared caches,
  * the server-fn registry rebuilt from the compilers' `buildInfo`, and the
  * one invalidation operation on `watchRun`. The Rspack hooks live in
@@ -27,10 +27,12 @@ import {
   registerCompilerStats,
   releaseEnvironment,
 } from '@tanstack/router-utils/compiler'
-import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
-  routerPlannerConfig,
-  routerPlanners,
+  ROUTER_PLANNER,
+  routeRefreshMarkers,
+  routerPlanner,
+  routerPlannerConfigDigest,
+  routerPlannerConfigFrom,
 } from '@tanstack/router-plugin/planners'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
 import { opaquePackageModule, startCompileScope } from '../compiler/scope'
@@ -279,27 +281,20 @@ export class StartRsbuildCompilerSession {
     this.missing.clear()
   }
 
-  /**
-   * The router planners' configuration of an environment type: the client
-   * splits with route HMR and without the server-only options; a server
-   * environment splits too (the same component nesting as the client, which
-   * Solid's hydration keys need; as the Vite path), without HMR.
-   */
+  /** The router planner's configuration of an environment type (Start's rules). */
   private routerPlannerConfig(type: 'client' | 'server'): RouterPlannerConfig {
     let cfg = this.routerCfg.get(type)
     if (!cfg) {
-      const cs = this.opts.routerConfig().codeSplittingOptions
-      cfg = {
-        framework: this.opts.framework,
-        split: true,
-        defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
-        splitBehavior: cs?.splitBehavior,
-        deleteNodes: type === 'client' ? ['ssr', 'server', 'headers'] : [],
-        hmr: {
-          enabled: type === 'client' && (cs?.addHmr ?? true),
-          style: 'webpack',
+      cfg = routerPlannerConfigFrom(
+        this.opts.routerConfig().codeSplittingOptions,
+        {
+          framework: this.opts.framework,
+          envType: type,
+          mode: this.opts.mode,
+          hmrStyle: 'webpack',
+          start: true,
         },
-      }
+      )
       this.routerCfg.set(type, cfg)
     }
     return cfg
@@ -316,7 +311,7 @@ export class StartRsbuildCompilerSession {
         // providers' twins of the SSR route modules) stay unsplit, so the
         // router's lazy wrapper (a React hook in development) never resolves
         // against the react-server build of React (as Vite's provider env)
-        router: rscLayer ? undefined : routerPlanners(),
+        router: rscLayer ? null : routerPlanner(),
         importEdges: this.ip?.planner ?? null,
       })
       this.plannersByKey.set(key, planners)
@@ -353,11 +348,7 @@ export class StartRsbuildCompilerSession {
     const router = this.routerPlannerConfig(env.type)
     const hydrate: HydratePlannerConfig = {
       root,
-      refreshMarkers:
-        opts.mode === 'dev' &&
-        env.type === 'client' &&
-        opts.framework === 'react' &&
-        router.hmr.enabled,
+      refreshMarkers: routeRefreshMarkers(router),
     }
     const rscCss: RscCssConfig | undefined =
       rscLayer && opts.rsc
@@ -374,20 +365,14 @@ export class StartRsbuildCompilerSession {
         rsc: opts.rsc ?? null,
         env: env.name,
         layer: layer ?? null,
-        router: {
-          split: router.split,
-          groupings: router.defaultGroupings,
-          splitBehavior: router.splitBehavior?.toString() ?? null,
-          deleteNodes: [...router.deleteNodes],
-          hmr: router.hmr,
-        },
+        router: routerPlannerConfigDigest(router),
         ip: ipKey,
       }),
       perPlanner: {
         [START_ENV]: startEnv,
         [HYDRATE_PLANNER]: hydrate,
         [RSC_CSS]: rscCss,
-        ...routerPlannerConfig(router),
+        [ROUTER_PLANNER]: router,
       } as Record<string, unknown>,
     }
   }

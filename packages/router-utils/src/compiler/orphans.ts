@@ -2,7 +2,7 @@
  * Declarations only erased code read, below the units placement decides
  * (SPEC G16 "destructuring", J4.12): function-local declarators and
  * destructuring leaves of kept declarations. A service for the planners
- * that erase code (start-env's removals, route-split's `deleteNodes`): each
+ * that erase code (start-env's removals, the router planner's `deleteNodes`): each
  * calls it after its erasures, on the liveness of the output it erased in.
  * Module-level declarations, imports and their provenance are placement's
  * (`reach.ts`).

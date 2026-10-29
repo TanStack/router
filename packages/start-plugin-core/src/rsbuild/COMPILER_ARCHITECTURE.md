@@ -27,8 +27,8 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 The loader runs for every JavaScript/TypeScript id of an environment, derived ids included (`?tsr-split=`,
 `?tss-hydrate=`, `?tss-serverfn-split`, `?tss-serverfn-handler`): each id compiles from the text Rspack hands it, derived ids hit the plan of
 their file at the same revision. The planners run in the core's fixed order: `start-env` (server functions,
-environment separation), `hydrate`, `rsc-css` (modules of the RSC layer), `route-split` (every layer but the RSC one),
-`route-hmr` (the development client), `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
+environment separation), `hydrate`, `rsc-css` (modules of the RSC layer), `router` (every layer but the RSC one; route
+HMR in the development client), `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
 as the map source, `addDependency`s every file the plan depended on, writes the module's server-function facts and
 import-protection records into `module.buildInfo`, and fails the module on an error diagnostic.
 

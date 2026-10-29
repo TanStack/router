@@ -1,6 +1,6 @@
 /**
- * The route registry as the router planners read it (`HostServices.routes`:
- * `lookup` for the planners, `digestFor` for plan validation): the
+ * The route registry as the router planner reads it (`HostServices.routes`:
+ * `lookup` for the planner, `digestFor` for plan validation): the
  * generator's `routesByFile` by normalized path, with a lookup by the real
  * path of a symlinked route file (bundlers resolve modules to their real
  * path, the generator scans the link). Shared by the

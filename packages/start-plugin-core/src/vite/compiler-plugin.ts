@@ -3,7 +3,7 @@
  * "Hosts"): one `enforce: 'pre'` plugin per Start env compiling every id it is
  * handed text for through ONE `compileModule` (env and derived ids alike)
  * with the planners in the core's fixed order — `start-env`, `hydrate`,
- * `rsc-css`, `route-split`, `route-hmr`, `import-edges` — the one
+ * `rsc-css`, `router`, `import-edges` — the one
  * invalidation operation on `hotUpdate`, the server-fn registry shared by
  * the envs, the dev lookup and production resolver modules, the custom-id
  * patching at `renderChunk`, and import protection's host side (edge
@@ -37,16 +37,18 @@ import {
   revision,
   rollupEntryModuleIds,
 } from '@tanstack/router-utils/compiler'
-import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import { liveModules } from '@tanstack/router-plugin/vite'
 import {
   changedRoutePaths,
   onRoutesChanged,
 } from '@tanstack/router-plugin/context'
 import {
+  ROUTER_PLANNER,
   RouteRegistryView,
-  routerPlannerConfig,
-  routerPlanners,
+  routeRefreshMarkers,
+  routerPlanner,
+  routerPlannerConfigDigest,
+  routerPlannerConfigFrom,
 } from '@tanstack/router-plugin/planners'
 import {
   DEV_CLIENT_ENTRY,
@@ -309,33 +311,26 @@ export function startCompilerPlugin(
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)
 
-  /** The router planners' configuration of an env (Start's wiring: splitting in every env, HMR and the client `deleteNodes` on the client, the server `deleteNodes` on servers). */
+  /**
+   * The router planner's configuration of an env (Start's rules), null where
+   * it does not run: a separate server-fn provider env (RSC).
+   */
   const routerConfigFor = (
     env: StartCompilerEnvironment,
-  ): RouterPlannerConfig => {
-    const cs = opts.getConfig().startConfig.router.codeSplittingOptions
-    return {
-      framework: opts.framework,
-      // Every router env splits (as main did): the server must render the tree
-      // the client hydrates. Solid's hydration keys follow the component tree
-      // (the lazy wrapper's components), and React wraps a match in Suspense
-      // when its error component is lazy (`errorComponent.preload`), so an
-      // unsplit server mismatches every split route with an
-      // errorComponent and no pendingComponent.
-      split: true,
-      defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
-      splitBehavior: cs?.splitBehavior,
-      deleteNodes:
-        env.type === 'client'
-          ? ['ssr', 'server', 'headers']
-          : (cs?.deleteNodes ?? []),
-      hmr: { enabled: env.type === 'client', style: 'vite' },
-    }
-  }
-
-  /** Whether the router planners run in an env: every Start env but a separate server-fn provider (RSC). */
-  const routerAppliesTo = (env: StartCompilerEnvironment): boolean =>
+    mode: 'dev' | 'build',
+  ): RouterPlannerConfig | null =>
     ssrIsProvider || env.name !== opts.providerEnvName
+      ? routerPlannerConfigFrom(
+          opts.getConfig().startConfig.router.codeSplittingOptions,
+          {
+            framework: opts.framework,
+            envType: env.type,
+            mode,
+            hmrStyle: 'vite',
+            start: true,
+          },
+        )
+      : null
 
   const createSession = (config: {
     root: string
@@ -394,14 +389,14 @@ export function startCompilerPlugin(
     )
     for (const env of opts.environments) {
       ip?.env(env.name, env.type)
-      const routerCfg = routerAppliesTo(env) ? routerConfigFor(env) : null
+      const routerCfg = routerConfigFor(env, mode)
       const rscCss = opts.rsc !== undefined && env.name === opts.providerEnvName
       s.planners.set(
         env.name,
         startPlanners({
           hydrate: createHydratePlanner(),
           rscCss,
-          router: routerCfg ? routerPlanners() : undefined,
+          router: routerCfg ? routerPlanner() : null,
           importEdges: ip?.planner ?? null,
         }),
       )
@@ -417,11 +412,7 @@ export function startCompilerPlugin(
       }
       const hydrate: HydratePlannerConfig = {
         root: config.root,
-        refreshMarkers:
-          mode === 'dev' &&
-          env.type === 'client' &&
-          opts.framework === 'react' &&
-          (routerCfg?.hmr.enabled ?? false),
+        refreshMarkers: routeRefreshMarkers(routerCfg),
       }
       const rscCssConfig: RscCssConfig | undefined = opts.rsc
         ? { loadCssExpression: opts.rsc.loadCssExpression }
@@ -435,20 +426,14 @@ export function startCompilerPlugin(
           idMode,
           rsc: opts.rsc ?? null,
           env: env.name,
-          router: routerCfg && {
-            split: routerCfg.split,
-            groupings: routerCfg.defaultGroupings,
-            splitBehavior: routerCfg.splitBehavior?.toString() ?? null,
-            deleteNodes: [...routerCfg.deleteNodes],
-            hmr: routerCfg.hmr,
-          },
+          router: routerCfg && routerPlannerConfigDigest(routerCfg),
           ip: ip?.config.configKey ?? null,
         }),
         perPlanner: {
           [START_ENV]: startEnv,
           [HYDRATE_PLANNER]: hydrate,
           'rsc-css': rscCssConfig,
-          ...(routerCfg && routerPlannerConfig(routerCfg)),
+          [ROUTER_PLANNER]: routerCfg,
         } as Record<string, unknown>,
       })
     }

@@ -1,11 +1,12 @@
 /**
  * Split decisions of a route module for one planning round: which options
- * move to which chunk, which stay with a reason (J2.8 warnings), computed
- * once and shared by the `route-split` planner (which applies them) and the
- * `route-hmr` planner (which hoists only what stays).
+ * move to which chunk, which stay with a reason (J2.8 warnings), and which
+ * `deleteNodes` erases. The router planner computes them once per round: its
+ * split part applies them, its HMR part hoists only what stays.
  */
 import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { splitGroupingsSchema } from '../core/config'
+import { ROUTER_PLANNER } from './config'
 import {
   declaratorOf,
   identifierSymbol,
@@ -14,7 +15,6 @@ import {
   isFallbackLiteral,
   liveInEnv,
   propertyKeyName,
-  recognizeRoute,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
@@ -94,22 +94,6 @@ export const COMPONENT_KEYS: ReadonlyArray<string> = [
   'errorComponent',
   'notFoundComponent',
 ]
-
-const planMemo = new WeakMap<object, SplitPlan | null>()
-
-/** The split plan of this planning round, or null when the module has no recognised route. */
-export function splitPlanOf(
-  ctx: PlanContext,
-  cfg: RouterPlannerConfig,
-): SplitPlan | null {
-  if (planMemo.has(ctx.rewrites)) {
-    return planMemo.get(ctx.rewrites)!
-  }
-  const r = recognizeRoute(ctx)
-  const plan = r.route ? computeSplitPlan(ctx, cfg, r.route) : null
-  planMemo.set(ctx.rewrites, plan)
-  return plan
-}
 
 function groupKeyOf(group: ReadonlyArray<string>): string {
   return [...new Set(group)].sort().join('~')
@@ -332,7 +316,8 @@ function hidesNoDeletedOption(
   })
 }
 
-function computeSplitPlan(
+/** The split plan of a recognised route in this planning round. */
+export function splitPlanOf(
   ctx: PlanContext,
   cfg: RouterPlannerConfig,
   route: RouteModuleInfo,
@@ -371,7 +356,7 @@ function computeSplitPlan(
       warnings.push({
         severity: deleteNodes.size > 0 ? 'error' : 'warning',
         code: 'options-opaque',
-        by: 'route-split',
+        by: ROUTER_PLANNER,
         message: `[tanstack-router] The route options of "${file}" are ${how}, so ${consequences.join(' and ')}.${deleteNodes.size > 0 ? ' Write the route options as an object literal in the route file.' : ''}`,
         range: {
           start: route.optionsCall.start,
@@ -394,7 +379,7 @@ function computeSplitPlan(
         warnings.push({
           severity: 'error',
           code: 'delete-nodes-dynamic',
-          by: 'route-split',
+          by: ROUTER_PLANNER,
           message: `[tanstack-router] "${file}" spreads or computes route options, so the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build. Write them as literal properties of the route options.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
@@ -511,7 +496,7 @@ function computeSplitPlan(
     warnings.push({
       severity: 'warning',
       code: `not-split:${n.reason}`,
-      by: 'route-split',
+      by: ROUTER_PLANNER,
       message: `[tanstack-router] The \`${n.key}\` option of "${file}" is not code-split: ${describeReason(n.reason)}`,
       range: n.range,
     })

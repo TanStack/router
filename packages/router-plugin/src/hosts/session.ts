@@ -18,12 +18,14 @@ import {
   registerCompilerStats,
 } from '@tanstack/router-utils/compiler'
 import {
-  routerPlannerConfig,
-  routerPlanners,
+  ROUTER_PLANNER,
+  routerPlanner,
+  routerPlannerApplies,
+  routerPlannerConfigDigest,
+  routerPlannerConfigFrom,
   routerPureCalls,
 } from '../planners'
 import { RouteRegistryView, normalizePath } from '../planners/registry'
-import { defaultCodeSplitGroupings } from '../core/constants'
 import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
@@ -74,47 +76,52 @@ export function resourceId(resource: string): string {
   return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
 }
 
-/** The derived outputs the router planners declare (`?tsr-split=`). */
+/** The derived outputs the router planner declares (`?tsr-split=`). */
 const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])
+
+/** The router planner's configuration of an environment type, and the compile config holding it. */
+interface EnvConfig {
+  planner: RouterPlannerConfig
+  compile: { configKey: string; perPlanner: Record<string, unknown> }
+}
 
 export class RouterCompiler {
   readonly caches: CompilerCaches
   readonly host: HostServices
-  readonly planners: Array<Planner>
-  readonly plannerConfig: RouterPlannerConfig
-  readonly configKey: string
+  readonly planners: Array<Planner> = [routerPlanner()]
   readonly warnings: WarningLedger
   readonly mode: 'dev' | 'build'
-  private readonly perPlanner: Record<string, unknown>
+  private readonly configs: Record<'client' | 'server', EnvConfig>
   private readonly registry: RouteRegistryView
 
   constructor(opts: RouterCompilerOptions) {
     this.mode = opts.mode
-    const cs = opts.config.codeSplittingOptions
-    this.plannerConfig = {
-      framework: opts.config.target,
-      split: opts.config.autoCodeSplitting === true,
-      defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
-      splitBehavior: cs?.splitBehavior,
-      deleteNodes: cs?.deleteNodes ?? [],
-      hmr: {
-        enabled: cs?.addHmr ?? true,
-        // the bundler's hot API: Vite's, or webpack's (Rspack too)
-        style: opts.bundler === 'vite' ? 'vite' : 'webpack',
-      },
+    const configFor = (envType: 'client' | 'server'): EnvConfig => {
+      const planner = routerPlannerConfigFrom(
+        opts.config.codeSplittingOptions,
+        {
+          framework: opts.config.target,
+          envType,
+          mode: opts.mode,
+          // the bundler's hot API: Vite's, or webpack's (Rspack too)
+          hmrStyle: opts.bundler === 'vite' ? 'vite' : 'webpack',
+          start: false,
+          autoCodeSplitting: opts.config.autoCodeSplitting,
+        },
+      )
+      return {
+        planner,
+        compile: {
+          configKey: digestOf({
+            bundler: opts.bundler,
+            mode: opts.mode,
+            router: routerPlannerConfigDigest(planner),
+          }),
+          perPlanner: { [ROUTER_PLANNER]: planner },
+        },
+      }
     }
-    this.perPlanner = routerPlannerConfig(this.plannerConfig)
-    this.configKey = digestOf({
-      bundler: opts.bundler,
-      mode: opts.mode,
-      framework: this.plannerConfig.framework,
-      split: this.plannerConfig.split,
-      groupings: this.plannerConfig.defaultGroupings,
-      splitBehavior: this.plannerConfig.splitBehavior?.toString() ?? null,
-      deleteNodes: [...this.plannerConfig.deleteNodes],
-      hmr: this.plannerConfig.hmr,
-    })
-    this.planners = routerPlanners()
+    this.configs = { client: configFor('client'), server: configFor('server') }
     const internals = contextInternals(opts.context)
     this.warnings = internals.warnings
     const rawFacts = new RawFactsCache({
@@ -132,7 +139,7 @@ export class RouterCompiler {
       collectionSizes({ warnings: o.warnings, registry: o.registry }, 3),
     )
     this.host = {
-      // the router planners resolve nothing: route options are read from the module itself
+      // the router planner resolves nothing: route options are read from the module itself
       resolve: () => Promise.resolve(null),
       rawFacts,
       routes: this.registry,
@@ -155,14 +162,9 @@ export class RouterCompiler {
     return derived === null || ROUTER_DERIVED_KINDS.has(derived.kind)
   }
 
-  /** Whether any planner can apply in an env of this type (else the host skips the parse). */
+  /** Whether the router planner can apply in an env of this type (else the host skips the parse). */
   appliesTo(envType: 'client' | 'server'): boolean {
-    const c = this.plannerConfig
-    return (
-      c.split ||
-      c.deleteNodes.length > 0 ||
-      (c.hmr.enabled && this.mode === 'dev' && envType === 'client')
-    )
+    return routerPlannerApplies(this.configs[envType].planner)
   }
 
   envInfo(env: CompileRequest['env']): EnvInfo {
@@ -180,7 +182,7 @@ export class RouterCompiler {
         code: req.code,
         env: this.envInfo(req.env),
         planners: this.planners,
-        config: { configKey: this.configKey, perPlanner: this.perPlanner },
+        config: this.configs[req.env.type].compile,
         wantMap: req.wantMap,
       },
       this.host,

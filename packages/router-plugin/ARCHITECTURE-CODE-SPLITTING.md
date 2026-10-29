@@ -1,6 +1,7 @@
 # Automatic code splitting and route HMR: architecture
 
-Internal notes for maintainers. Code splitting and route HMR are two planners on the shared compiler core; read the
+Internal notes for maintainers. Code splitting and route HMR are the two parts of one planner on the shared compiler
+core; read the
 [core README](../router-utils/src/compiler/README.md) first (units, rewrite tree, reachability, emit, caches).
 
 ## Files
@@ -11,10 +12,12 @@ Internal notes for maintainers. Code splitting and route HMR are two planners on
   `autoCodeSplitting`.
 - `src/planners/`: `route.ts` recognises the route (`export const Route = createFileRoute(…)({…})` and the other
   constructors, by import binding) and reads its options; `decisions.ts` turns `codeSplittingOptions` and the route's
-  options into split groups, `deleteNodes` and not-split reasons; `split.ts` is the `route-split` planner; `hmr.ts` is
-  the `route-hmr` planner; `registry.ts` maps route files to generator ids (by real path, so symlinks work);
-  `round.ts` holds what both planners share in one planning round. `index.ts` is the `@tanstack/router-plugin/planners`
-  entry that Start's hosts compose with their own planners.
+  options into split groups, `deleteNodes` and not-split reasons; `router.ts` is the `router` planner: per planning
+  round one recognition and one decision table (`RouterRound`), read by its split part (`split.ts`) and its route HMR
+  part (`hmr.ts`: hoists before the split, the dev block and the refresh markers after it); `config.ts` builds its
+  configuration per environment from `codeSplittingOptions` (`routerPlannerConfigFrom`, the router plugin's rules or
+  Start's); `registry.ts` maps route files to generator ids (by real path, so symlinks work). `index.ts` is the
+  `@tanstack/router-plugin/planners` entry that Start's hosts compose with their own planners.
 - Runtime (dev only): `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts`, published as `/hmr`
   subpaths. `lazyRouteComponent` keeps its wrapper identity across updates.
 

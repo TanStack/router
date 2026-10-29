@@ -1,11 +1,11 @@
 /**
  * The Start planners in the core's fixed order:
- * `start-env` → `hydrate` → `rsc-css` → `route-hmr.prepare` → `route-split`
- * → `route-hmr.plan` → `import-edges`. Hosts compose one array per env.
+ * `start-env` → `hydrate` → `rsc-css` → `router` → `import-edges`. Hosts
+ * compose one array per env.
  *
- * The planners built elsewhere: `hydrate` (J5), the router
- * planners (`route-split`, `route-hmr`, J2/J3) and `import-edges` (J6) are
- * taken as given planner instances and slotted at their position.
+ * The planners built elsewhere: `hydrate` (J5), the router planner (J2/J3)
+ * and `import-edges` (J6) are taken as given planner instances and slotted
+ * at their position.
  */
 import { rscCssPlanner } from './rsc-css'
 import { startEnvPlanner } from './start-env'
@@ -20,8 +20,8 @@ interface StartPlannerSlots {
   hydrate?: Planner | null
   /** Whether the env runs the RSC render (the `rsc-css` planner applies). */
   rscCss?: boolean
-  /** The router planners (`route-split`, `route-hmr`) for this env, in order. */
-  router?: ReadonlyArray<Planner>
+  /** The router planner (J2/J3), when it runs in this env. */
+  router?: Planner | null
   /** The import-protection edge planner (J6). */
   importEdges?: Planner | null
 }
@@ -35,8 +35,8 @@ export function startPlanners(slots: StartPlannerSlots = {}): Array<Planner> {
   if (slots.rscCss) {
     planners.push(rscCssPlanner())
   }
-  for (const p of slots.router ?? []) {
-    planners.push(p)
+  if (slots.router) {
+    planners.push(slots.router)
   }
   if (slots.importEdges) {
     planners.push(slots.importEdges)

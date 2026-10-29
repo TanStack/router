@@ -1,13 +1,12 @@
 /**
- * Route recognition and option resolution shared by the `route-split` and
- * `route-hmr` planners: the
+ * Route recognition and option resolution of the router planner: the
  * binding exported as `Route`, its factory call (recognised by the callee's
  * import binding, never by spelling: G15), the options object (inline, in a
  * module-level constant, through TypeScript wrappers) and every property of
- * it with its kind and source ranges. Computed once per planning round and
- * shared by both planners through a memo keyed by the round's rewrite set.
+ * it with its kind and source ranges. Computed once per planning round.
  */
 import { unwrapExpression } from '@tanstack/router-utils/compiler'
+import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
   Diagnostic,
@@ -127,12 +126,10 @@ export type RouteRecognition =
   | { route: RouteModuleInfo; warnings: Array<Diagnostic> }
   | { route: null; warnings: Array<Diagnostic> }
 
-/** Phase A result of both router planners: the route registry entry. */
+/** The router planner's phase A result: the route registry entry. */
 export interface RouteEntryFacts {
   routeId: string
 }
-
-const infoMemo = new WeakMap<object, RouteRecognition>()
 
 export function propertyKeyName(prop: Node): string | null {
   if (prop.type !== 'Property') {
@@ -268,19 +265,12 @@ function readGroupings(
 /**
  * Recognises the route of a module: the call bound to the binding exported
  * as `Route` whose callee is an import of a route factory from a router
- * package. Memoised per planning round.
+ * package. `entry` is the file's route registry entry (its route id).
  */
-export function recognizeRoute(ctx: PlanContext): RouteRecognition {
-  const hit = infoMemo.get(ctx.rewrites)
-  if (hit) {
-    return hit
-  }
-  const r = recognize(ctx)
-  infoMemo.set(ctx.rewrites, r)
-  return r
-}
-
-function recognize(ctx: PlanContext): RouteRecognition {
+export function recognizeRoute(
+  ctx: PlanContext,
+  entry: RouteEntryFacts | null,
+): RouteRecognition {
   const { analysis, t1, symbols, identity } = ctx
   const file = analysis.file
   const warnings: Array<Diagnostic> = []
@@ -295,7 +285,13 @@ function recognize(ctx: PlanContext): RouteRecognition {
   const routeUnit =
     unitIds && unitIds.length === 1 ? t1.units[unitIds[0]!] : undefined
   const warn = (message: string, range?: Range, code?: string) => {
-    warnings.push({ severity: 'warning', message, range, by: 'route', code })
+    warnings.push({
+      severity: 'warning',
+      message,
+      range,
+      by: ROUTER_PLANNER,
+      code,
+    })
   }
   const fileName = identity.path
   if (
@@ -405,9 +401,6 @@ function recognize(ctx: PlanContext): RouteRecognition {
       )
     })
   }
-  const prefetched =
-    (ctx.prefetched.get('route-split') as RouteEntryFacts | undefined) ??
-    (ctx.prefetched.get('route-hmr') as RouteEntryFacts | undefined)
   return {
     route: {
       kind,
@@ -420,7 +413,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
       props,
       fileGroupings,
       warnings,
-      routeId: prefetched?.routeId ?? null,
+      routeId: entry?.routeId ?? null,
     },
     warnings,
   }
