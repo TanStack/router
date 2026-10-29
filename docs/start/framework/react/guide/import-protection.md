@@ -58,6 +58,14 @@ Mixed imports still count when they include at least one runtime value. Split th
 import { type User, getUsers } from './db.server'
 ```
 
+A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never reported. Write `import type` when only the type should cross the boundary.
+
+```ts
+// Reported only if the bundler keeps the import (verbatimModuleSyntax).
+import { User } from './db.server'
+export type Props = { user: User }
+```
+
 ## File Markers
 
 You can explicitly mark a module as server-only or client-only by adding a side-effect import at the top of the file:
@@ -509,7 +517,7 @@ importProtection: {
 }
 ```
 
-In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled.
+In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import.
 
 ## Disabling Import Protection
 
