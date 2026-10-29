@@ -11,7 +11,10 @@
  * plugin is created) is the control, which differs in the development
  * features only. The production bundle renders the route in a real browser
  * and is the control's output, chunk for chunk: whatever it ships beyond
- * the control serves development.
+ * the control serves development. Development code of the framework
+ * packages themselves would be in the control too: the bundle carries none
+ * of their dev runtime's markers (the lazy route component's hot slot
+ * `__tsrHot`, the route HMR entry `__tsrRouteHmr`).
  */
 import { expect } from 'vitest'
 import {
@@ -137,6 +140,9 @@ export async function expectProductionClientBundle(
     expect(run.html).toContain('MARK_PAGE')
   }
   expect(output(app)).toEqual(output(control))
+  for (const [file, code] of Object.entries(output(app))) {
+    expect(code, file).not.toMatch(/__tsrHot|__tsrRouteHmr/)
+  }
 }
 
 /**

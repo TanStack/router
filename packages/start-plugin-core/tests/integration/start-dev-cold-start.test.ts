@@ -11,6 +11,7 @@
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import react from '@vitejs/plugin-react'
+import solid from 'vite-plugin-solid'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
@@ -31,7 +32,7 @@ const timeout = 90_000
  * (`settlePage`).
  */
 const apps: Record<
-  'react' | 'vue',
+  'react' | 'solid' | 'vue',
   Pick<StartDevServerOptions, 'framework' | 'plugins' | 'files'>
 > = {
   react: {
@@ -69,6 +70,48 @@ function Root() {
 }
 `,
       'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>MARK_PAGE</p> })
+`,
+    },
+  },
+  solid: {
+    framework: 'solid',
+    plugins: [solid({ ssr: true })],
+    files: {
+      'harness/client-entry.ts': `import { createComponent, hydrate } from 'solid-js/web'
+import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
+hydrateStart().then((router) => {
+  hydrate(() => createComponent(StartClient, { router }), document)
+})
+`,
+      'harness/server-entry.ts': `export { default } from '@tanstack/solid-start/server-entry'\n`,
+      'src/router.ts': `import { createRouter } from '@tanstack/solid-router'
+import { routeTree } from './routeTree.gen'
+import './hmr-sync'
+export const getRouter = () => createRouter({ routeTree })
+`,
+      'src/hmr-sync.ts': hmrSyncModule,
+      'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  const hydrated = useHydrated()
+  return (
+    <html>
+      <head>
+        <HydrationScript />
+        <HeadContent />
+      </head>
+      <body>
+        <div id="app"><Outlet /></div>
+        <span data-testid="hydrated">{hydrated() ? 'hydrated' : 'hydrating'}</span>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/')({ component: () => <p>MARK_PAGE</p> })
 `,
     },
@@ -125,8 +168,10 @@ export const Route = createFileRoute('/')({ component: Page })
 
 describe('Vite dev: the first page load on a cold dependency cache', () => {
   // Source: Vue Start cold starts stalled (the page never hydrated) or
-  // reloaded once on every cold start; React is the control.
-  test.each(['react', 'vue'] as const)(
+  // reloaded once on every cold start; React is the control. Every
+  // framework's router entry imports the dev-only route HMR runtime
+  // (`@tanstack/router-core/hmr`), which the page discovers as it loads.
+  test.each(['react', 'solid', 'vue'] as const)(
     '%s: the page hydrates in the document it first loaded',
     async (framework) => {
       const server = await startDevServer({
