@@ -158,10 +158,16 @@ export interface OutputBuilderOptions {
   map?: boolean
 }
 
+/**
+ * No `sourcesContent`: the map of one output would then hold the whole file,
+ * and the webpack family hashes a module's map with its code, so an edit
+ * anywhere in the file would hot-update every output of it (its route
+ * module refreshing the route) where only the edited output changed. The
+ * source is the file `sources` names (Vite's dev server reads it from there).
+ */
 export interface RawSourceMap {
   version: 3
   sources: [string]
-  sourcesContent: [string]
   names: []
   mappings: string
 }
@@ -283,7 +289,6 @@ export class OutputBuilder {
       map: {
         version: 3,
         sources: [this.mapSource],
-        sourcesContent: [this.src.code],
         names: [],
         mappings: decoder.decode(this.buf.subarray(0, this.len)),
       },

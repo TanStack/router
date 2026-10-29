@@ -148,7 +148,6 @@ describe('OutputBuilder', () => {
     ])
     expect(out).toBe(expected)
     expect(map!.sources).toEqual(['/app/route.tsx'])
-    expect(map!.sourcesContent).toEqual([code])
     const n = checkAllTokens(code, out, runs, map!)
     expect(n).toBeGreaterThan(60)
   })
