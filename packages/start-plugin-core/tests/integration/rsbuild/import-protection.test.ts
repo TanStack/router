@@ -366,6 +366,85 @@ console.log(secret(), other)
     timeout,
   )
 
+  // An import SWC keeps (a value import used only as a type, kept by
+  // `verbatimModuleSyntax`) is witnessed by Rspack building its edge module.
+  // A rebuild for an edit of an unrelated module bundles the importer and
+  // the edge module without building either; one for an edit of the importer
+  // that keeps the import builds the importer but not the edge module. With
+  // `log: 'always'`, each asks `onViolation` and reports the violation again,
+  // like an import the compiler keeps.
+  // Source: R80 known gap (Rsbuild dev `log: 'always'`).
+  test.each([
+    { log: 'once' as const, again: false },
+    { log: 'always' as const, again: true },
+  ])(
+    "log '$log': a rebuild reports an import SWC keeps again: $again",
+    async ({ log, again }) => {
+      const page = `import { secret } from './secret.server'
+export const typePosition = (value: typeof secret) => value
+`
+      const recorder = violationRecorder({ log })
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        config: {
+          tools: {
+            swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
+          },
+        },
+        importProtection: recorder.importProtection,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/other.ts': `export const other = 1\n`,
+          'src/page.ts': page,
+          'src/entry.ts': `import { typePosition } from './page'
+import { other } from './other'
+console.log(typePosition, other)
+`,
+        },
+      })
+      const pageViolation: ExpectedViolation = {
+        environment: 'client',
+        use: 'src/page.ts:1',
+      }
+      /** The warnings printed for the page since `since`. */
+      const printed = (since: number) =>
+        findDiagnostics(server.diagnostics.slice(since), {
+          severity: 'warning',
+          file: 'src/page.ts',
+          root: server.root,
+        })
+      expect(server.errors).toEqual([])
+      expect(
+        relevantViolations({ root: server.root, ...recorder }, [pageViolation]),
+      ).toEqual([violationLabel(pageViolation)])
+      expect(recorder.violations).toHaveLength(1)
+      expect(printed(0)).toHaveLength(1)
+      for (const [file, code] of [
+        ['src/other.ts', `export const other = 2\n`],
+        ['src/page.ts', `${page}export const edited = 1\n`],
+      ] as const) {
+        const asked = recorder.violations.length
+        const since = server.diagnostics.length
+        await server.edit({ [file]: code })
+        // (the edge module is not built again)
+        expect(server.rebuilt).toContain(file)
+        expect(server.rebuilt.filter((built) => /edge\./.test(built))).toEqual(
+          [],
+        )
+        // Each compile since the edit asks once and prints once (a dev server
+        // may compile more than once for one edit)
+        const askedAgain = recorder.violations.slice(asked)
+        expect(
+          relevantViolations({ root: server.root, violations: askedAgain }, [
+            pageViolation,
+          ]),
+        ).toEqual(again ? [violationLabel(pageViolation)] : [])
+        expect(printed(since)).toHaveLength(askedAgain.length)
+      }
+    },
+    timeout,
+  )
+
   // The compile ends (import protection does not hang on a module that is
   // gone) with an error (SPEC G5; the module-not-found error names the
   // importer's directory and the specifier, no file and position SPEC §5.7
@@ -490,14 +569,15 @@ export const read = () => secret()
 // An import whose survival SWC decides (a value import used only as a
 // type, kept by `verbatimModuleSyntax`) is witnessed by Rspack building its
 // edge module. A restart on the persistent cache restores that module
-// without building it: the violation is reported again all the same.
-test(
-  'Rsbuild dev restarted on its persistent cache: an import SWC keeps is reported again',
-  async () => {
+// without building it: the violation is reported again all the same, once
+// (with `log: 'always'` too: the first compile asks and prints once).
+test.each(['once', 'always'] as const)(
+  "Rsbuild dev restarted on its persistent cache: an import SWC keeps is reported again (log '%s')",
+  async (log) => {
     const page = `import { secret } from './secret.server'
 export const typePosition = (value: typeof secret) => value
 `
-    const recorder = violationRecorder({ behavior: 'mock' })
+    const recorder = violationRecorder({ behavior: 'mock', log })
     const first = await startRsbuildDevServer({
       compileTimeout,
       config: {
@@ -533,6 +613,14 @@ export const typePosition = (value: typeof secret) => value
         [violation],
       ),
     ).toEqual([violationLabel(violation)])
+    expect(recorder.violations.slice(since)).toHaveLength(1)
+    expect(
+      findDiagnostics(server.diagnostics, {
+        severity: 'warning',
+        file: 'src/page.ts',
+        root: server.root,
+      }),
+    ).toHaveLength(1)
   },
   timeout,
 )

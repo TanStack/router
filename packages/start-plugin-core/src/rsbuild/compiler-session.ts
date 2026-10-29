@@ -647,6 +647,7 @@ export class StartRsbuildCompilerSession {
       // dev: the bundler requested this edge module from the importer's
       // post-SWC code; a veto serves the real module
       const ipEnv = this.ip?.env(env.name, env.type)
+      env.compiled.add(ctx.resource)
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
         throw error

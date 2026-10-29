@@ -285,19 +285,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               async (modules) => {
                 ipEnv.graph = guardedGraphView(compilation)
                 if (session.ip!.config.log === 'always') {
-                  // modules this compilation kept without compiling them report again
+                  // modules this compilation kept without compiling them report again: an
+                  // importer its violations, an edge module the pending ones it witnesses
                   for (const m of modules) {
                     const module = m as unknown as ModuleLike
+                    if (!module.resource || env.compiled.has(module.resource)) {
+                      continue
+                    }
                     const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-                    if (
-                      record &&
-                      module.resource &&
-                      !env.compiled.has(module.resource)
-                    ) {
+                    if (record) {
                       await ipEnv.reportAgain(
                         canonicalResource(module.resource),
                         record,
                       )
+                    } else {
+                      await ipEnv.confirm(module.resource)
                     }
                   }
                 }
