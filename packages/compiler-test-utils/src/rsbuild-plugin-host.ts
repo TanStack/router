@@ -94,8 +94,6 @@ export class RsbuildHostBuildError extends Error {
 export interface RsbuildPluginHost {
   root: string
   file: (relative: string) => string
-  /** The dev server (`serve` hosts). */
-  dev: RsbuildDevServer
   /** Everything the dev server reported since it started, on every channel. */
   diagnostics: Array<ChannelDiagnostic>
   /**
@@ -171,9 +169,6 @@ export async function createRsbuildPluginHost(
   const host: RsbuildPluginHost = {
     root,
     file: (relative) => path.join(root, relative),
-    get dev() {
-      return devServer()
-    },
     get diagnostics() {
       return devServer().diagnostics
     },

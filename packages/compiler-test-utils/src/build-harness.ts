@@ -113,8 +113,6 @@ export interface AppOptions {
 
 export interface AppInfo {
   root: string
-  env: BuildEnv
-  mode: BuildMode
 }
 
 export interface BundleTarget {
@@ -185,7 +183,6 @@ export interface RunResult {
 }
 
 export interface BuildResult {
-  bundler: Bundler
   env: BuildEnv
   /** App root on disk. */
   root: string
@@ -439,7 +436,7 @@ async function bundle(
       target.minify ??
       (mode === 'production' && !(bundler === 'vite' && env === 'ssr')),
     sourcemap: target.sourcemap ?? false,
-    plugin: plugin && (() => plugin({ root, env, mode })),
+    plugin: plugin && (() => plugin({ root })),
     sourceRules: target.sourceRules,
     conditions: target.conditions ?? [],
     rebuildAfter: target.rebuildAfter,
@@ -1168,7 +1165,6 @@ export async function describeBuild(
   }
 
   return {
-    bundler,
     env: input.env,
     root: input.root,
     outDir: input.outDir,
@@ -1562,11 +1558,9 @@ export function parsedModules(): ParsedModules {
 
 /** A position in an original source file, according to a source map. */
 export interface OriginalPosition {
-  /** The source as the source map names it. */
-  source: string
   /**
    * The source file relative to the app root, without the query of a
-   * virtual module id (`source` keeps it).
+   * virtual module id.
    */
   file: string
   /** 1-based. */
@@ -1631,7 +1625,6 @@ export function originalFrameOf(
       ? path.resolve(build.root, webpackSource[1]!)
       : path.resolve(path.dirname(file), source)
     return {
-      source: origin.fileName,
       file: path.relative(build.root, absolute),
       line: origin.lineNumber,
       column: origin.columnNumber,

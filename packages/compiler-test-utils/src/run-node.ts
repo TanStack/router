@@ -21,7 +21,6 @@ export interface RunNodeOptions {
 
 export interface RunNodeResult {
   stdout: string
-  stderr: string
 }
 
 /** The error a failed run rejects with. */
@@ -74,7 +73,7 @@ export function runNodeProgram(
       },
       (error, stdout, stderr) => {
         if (!error) {
-          resolve({ stdout, stderr })
+          resolve({ stdout })
           return
         }
         const timedOut = error.killed && error.signal === 'SIGKILL'
