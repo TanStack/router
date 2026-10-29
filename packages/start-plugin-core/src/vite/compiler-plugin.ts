@@ -10,7 +10,7 @@
  * modules, dev reports, build witness + fixed-point veto rebuild, the late
  * pass for non-JS importers).
  */
-import { promises as fs } from 'node:fs'
+import { promises as fs, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
@@ -203,14 +203,23 @@ function unoptimizedDependency(environment: Environment, id: string): string {
 
 /**
  * The map of a transform's input, or null when the input is the original
- * source: Vite answers an empty sourcemap chain with an identity map over
- * the input (its positions are the source's own, and such a map counts
- * lines by LF only, unlike ECMAScript).
+ * source: its positions are the source's own. Vite answers an empty
+ * sourcemap chain with an identity map it builds over the whole input
+ * (and such a map counts lines by LF only, unlike ECMAScript), so the
+ * file as written is compared first.
  */
 function inputMapOf(
   ctx: { getCombinedSourcemap: () => unknown },
   code: string,
+  file: string,
 ): InputSourceMap | null {
+  try {
+    if (readFileSync(file, 'utf8') === code) {
+      return null
+    }
+  } catch {
+    // a virtual module: Vite's map
+  }
   const map = ctx.getCombinedSourcemap() as InputSourceMap & {
     sourcesContent?: Array<string | null>
   }
@@ -1054,7 +1063,7 @@ export function startCompilerPlugin(
               env: envInfo,
               planners: s.planners.get(env.name)!,
               config: s.configs.get(env.name)!,
-              inputMap: () => inputMapOf(this, code),
+              inputMap: () => inputMapOf(this, code, identity.path),
               // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
               wantMap: true,
             },
@@ -1337,7 +1346,7 @@ export function startCompilerPlugin(
               configKey: `late:${ip.config.configKey}`,
               perPlanner: {},
             },
-            inputMap: () => inputMapOf(this, code),
+            inputMap: () => inputMapOf(this, code, identify(id).path),
             wantMap: true,
           },
           hostFor(s, this.environment, (source, imp, options) =>

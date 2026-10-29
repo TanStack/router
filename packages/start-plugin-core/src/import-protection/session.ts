@@ -242,14 +242,15 @@ export class ImportProtection {
     }
   }
 
-  /** @internal */
-  emit(ref: EdgeModuleRef, load: EdgeModuleLoad): void {
+  /** Hands a module's code to the listeners; computed only when one listens (Vite loads it on request). @internal */
+  emit(ref: EdgeModuleRef, load: () => EdgeModuleLoad): void {
     if (this.listeners.size === 0) {
       return
     }
     const specifier = this.ids.specifier(ref)
+    const code = load()
     for (const l of this.listeners) {
-      l(specifier, load, ref)
+      l(specifier, code, ref)
     }
   }
 
@@ -390,7 +391,7 @@ export class ImportProtectionEnv {
         if (m.content.edgeKey === edgeKey) {
           this.ip.emit(
             { env: this.name, kind: 'edge', key },
-            this.edgeLoad(key)!,
+            () => this.edgeLoad(key)!,
           )
         }
       }
@@ -703,7 +704,10 @@ export class ImportProtectionEnv {
       m = { content, violations: new Map() }
       this.modules.set(key, m)
       this.defineRuntime()
-      this.ip.emit({ env: this.name, kind: 'edge', key }, this.edgeLoad(key)!)
+      this.ip.emit(
+        { env: this.name, kind: 'edge', key },
+        () => this.edgeLoad(key)!,
+      )
     }
     return m
   }
@@ -712,7 +716,9 @@ export class ImportProtectionEnv {
   defineRuntime(): void {
     if (!this.runtimeEmitted) {
       this.runtimeEmitted = true
-      this.ip.emit({ env: this.name, kind: 'runtime' }, this.ip.runtimeLoad())
+      this.ip.emit({ env: this.name, kind: 'runtime' }, () =>
+        this.ip.runtimeLoad(),
+      )
     }
   }
 
