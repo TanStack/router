@@ -487,6 +487,56 @@ export const read = () => secret()
   timeout,
 )
 
+// An import whose survival SWC decides (a value import used only as a
+// type, kept by `verbatimModuleSyntax`) is witnessed by Rspack building its
+// edge module. A restart on the persistent cache restores that module
+// without building it: the violation is reported again all the same.
+test(
+  'Rsbuild dev restarted on its persistent cache: an import SWC keeps is reported again',
+  async () => {
+    const page = `import { secret } from './secret.server'
+export const typePosition = (value: typeof secret) => value
+`
+    const recorder = violationRecorder({ behavior: 'mock' })
+    const first = await startRsbuildDevServer({
+      compileTimeout,
+      config: {
+        performance: { buildCache: true },
+        tools: {
+          swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
+        },
+      },
+      importProtection: recorder.importProtection,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/page.ts': page,
+        'src/entry.ts': `import { typePosition } from './page'\nconsole.log(typePosition)\n`,
+      },
+    })
+    const violation: ExpectedViolation = {
+      environment: 'client',
+      use: 'src/page.ts:1',
+    }
+    expect(first.errors).toEqual([])
+    expect(
+      relevantViolations({ root: first.root, ...recorder }, [violation]),
+    ).toEqual([violationLabel(violation)])
+    const since = recorder.violations.length
+    const server = await first.restart()
+    expect(server.errors).toEqual([])
+    expect(Object.values(await server.outputs()).join('\n')).not.toContain(
+      'MARK_SECRET',
+    )
+    expect(
+      relevantViolations(
+        { root: server.root, violations: recorder.violations.slice(since) },
+        [violation],
+      ),
+    ).toEqual([violationLabel(violation)])
+  },
+  timeout,
+)
+
 // Dev edits reclassify (SPEC J6.13): an edit that makes a module the
 // client already bundles a violation is reported and mocked, without an
 // edit of the importer when the violation comes from the target.

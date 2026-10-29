@@ -408,8 +408,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       // the replay of this compilation's modules (built now or restored from the persistent
       // cache): the environment's server-fn snapshot and the import-protection records. In dev,
-      // a module restored with violations was judged by another session (its `onViolation`
-      // verdicts decided its output; its reports were printed there): compiled again first
+      // a module restored with violations, or an edge module restored with pending ones, was
+      // judged by another session (its `onViolation` verdicts decided its output; its reports
+      // were printed there): built again first
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
         async (compilation) => {
@@ -433,6 +434,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
             if (unjudged.size > 0) {
               await rebuildModules(compilation, unjudged, (r) => r)
+            }
+            // an edge module restored without a build: the pending violations it witnesses
+            // are decided when this session builds it (the edge-module loader)
+            const unconfirmed = new Set<string>()
+            for (const m of compilation.modules) {
+              const resource = (m as unknown as ModuleLike).resource
+              if (resource && ipEnv.unconfirmed(resource)) {
+                unconfirmed.add(resource)
+              }
+            }
+            if (unconfirmed.size > 0) {
+              await rebuildModules(compilation, unconfirmed, (r) => r)
             }
           }
           const snapshot = new Map<string, ServerFnBuildInfo>()

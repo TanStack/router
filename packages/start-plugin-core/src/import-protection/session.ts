@@ -531,6 +531,28 @@ export class ImportProtectionEnv {
     )
   }
 
+  /**
+   * Dev: whether an edge module has pending violations this session never
+   * confirmed (Rspack restored it from the persistent cache without
+   * building it: another session decided them).
+   */
+  unconfirmed(resource: string): boolean {
+    const ref = this.ip.ids.parse(resource)
+    const m =
+      ref?.kind === 'edge' && ref.env === this.name
+        ? this.modules.get(ref.key)
+        : undefined
+    if (!m || this.ip.config.mode !== 'dev') {
+      return false
+    }
+    for (const [key, v] of m.violations) {
+      if (v.pending && !this.confirmed.has(key)) {
+        return true
+      }
+    }
+    return false
+  }
+
   /** What the Rspack loader stores in `buildInfo[RSPACK_BUILD_INFO_KEY]` for a compiled output (null: nothing). */
   buildInfo(
     importerId: string,
