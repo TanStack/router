@@ -7,6 +7,7 @@ import {
   findRouteOptions,
   propertyOf,
   toyEnvPlanner,
+  toyHydratePlanner,
   toySplitPlanner,
 } from './helpers'
 import type { EnvInfo, Planner, SymbolId } from '../src/compiler'
@@ -2861,6 +2862,30 @@ describe('declarations only split code needs that stay in the route module', () 
     ]) {
       expect(message).toContain(part)
     }
+    // the route planner names the module: tagged like its own warnings
+    expect(message).toMatch(
+      /^\[tanstack-router\] `confetti` in "\/app\/route\.tsx" stays in the route module because /,
+    )
+  })
+
+  // the planners word what the core reports: a Hydrate chunk is named as
+  // its boundary, and a module no planner describes is just "the module"
+  it('names the split outputs and the module with the words their planners give', async () => {
+    const code = dedent(`
+      import { Hydrate } from 'toy-start'
+      import JSConfetti from 'js-confetti'
+      const confetti = new JSConfetti()
+      log()
+      export function Page() { return <Hydrate><p>{confetti.x}</p></Hydrate> }
+    `)
+    const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
+    const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
+      env: envInfo({ mode: 'build' }),
+    })
+    expect(out!.diagnostics).toMatchObject([{ code: 'eager-split:order' }])
+    expect(out!.diagnostics[0]!.message).toMatch(
+      /^`confetti` in "\/app\/mod\.tsx" stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
+    )
   })
 
   it('reports nothing when the declaration moves, or when the split code needs nothing pinned', async () => {

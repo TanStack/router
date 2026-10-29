@@ -139,6 +139,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         return
       }
       ctx.setRouteModule()
+      ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
       ctx.markBenignEffect(found.unit.id)
       const { options, unit } = found
       if (opts.extractExports) {
@@ -671,6 +672,7 @@ export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
           kind: 'hydrate',
           key: `h${n}`,
           derived: { kind: 'hydrate', value: `h${n}` },
+          describe: '`<Hydrate>` boundary',
         })
         const comp = ctx.names.alloc(`TsrHydrate${n}`, { jsxTag: true })
         const captures = new Set<SymbolId>(t1.capturesOf(b.children))

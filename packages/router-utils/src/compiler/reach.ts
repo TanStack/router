@@ -61,6 +61,8 @@ export interface OutputDecl {
    * declaration opts the output in. Default false.
    */
   sideEffectFree?: boolean
+  /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
+  describe?: string
 }
 
 export type Home = OutputId | 'duplicate' | 'removed'

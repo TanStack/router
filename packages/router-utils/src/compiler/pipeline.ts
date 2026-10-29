@@ -714,6 +714,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     extract: (sym, output) => plan.extract(sym, output),
     keep: (sym) => plan.keep(sym),
     setRouteModule: () => plan.setRouteModule(),
+    describeModule: (words) => plan.describeModule(words),
     liveness: (output) => plan.liveness(output),
     nameOf: (sym) => plan.nameOf(sym),
     renameRefs: (sym, to, scope, by, except) =>
