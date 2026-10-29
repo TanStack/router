@@ -16,8 +16,6 @@ export type EdgeState = 'mock' | 'allowed'
 export interface DecideResult {
   /** The environment must be built again (a new veto). */
   needPass: boolean
-  /** The surviving violations to report (final pass only; one per logical edge, in edge-key order). */
-  reports: Array<EdgeViolation>
 }
 
 /**
@@ -107,7 +105,7 @@ export class BuildVerdicts {
       : keys
           .filter((k) => this.verdicts.get(k) !== false)
           .map((k) => byKey.get(k)!)
-    return { needPass: this._needPass, reports: this._reports }
+    return { needPass: this._needPass }
   }
 
   /**

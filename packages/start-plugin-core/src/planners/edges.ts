@@ -76,8 +76,6 @@ const MAX_EFFECT_WALK = 256
 interface Judged {
   edge: EdgeRecord
   raw: string
-  /** The canonical id the edge is resolved from (the user's importer for forwarded glue). */
-  from: string
   importerPath: string
   resolved: string | null
   rule: RuleRef | null
@@ -211,7 +209,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             (l): l is { range: { start: number; end: number } } => 'range' in l,
           )?.range.start
         }
-        return { edge: e, raw, from, importerPath, resolved, rule, offset }
+        return { edge: e, raw, importerPath, resolved, rule, offset }
       }
 
       const judged = (await Promise.all(edges.map(judge))).filter(

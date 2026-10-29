@@ -75,9 +75,7 @@ function deniedPackage(name: string, names: Array<string>) {
       exports: './index.js',
     }),
     [`node_modules/${name}/index.js`]: `${names
-      .map(
-        (exported, index) => `const v${index} = () => 'MARK_SECRET_${index}'`,
-      )
+      .map((_, index) => `const v${index} = () => 'MARK_SECRET_${index}'`)
       .join('\n')}
 export { ${names.map((exported, index) => `v${index} as ${JSON.stringify(exported)}`).join(', ')} }
 export default { getSecret: () => 'MARK_SECRET_DEFAULT', 'foo-bar': 'MARK_SECRET_KEBAB' }

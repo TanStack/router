@@ -276,7 +276,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     currentCompilation?.warnings.push(new WebpackError(message))
                   },
                 },
-                undefined,
                 { setTimer: () => null, clearTimer: () => {} },
               )
             }

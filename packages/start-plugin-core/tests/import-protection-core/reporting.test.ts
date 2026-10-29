@@ -353,14 +353,15 @@ describe('build verdicts', () => {
     const a2 = violation({ edgeKey: 'a', importerId: '/app/src/r.tsx?split' })
     const veto = violation({ edgeKey: 'veto' })
     const first = await state.decide([a, a2, veto], ask)
-    expect(first).toEqual({ needPass: true, reports: [] })
+    expect(first).toEqual({ needPass: true })
+    expect(state.reports).toEqual([])
     expect(state.stateOf('veto')).toBe('allowed')
     expect(changes).toEqual(['veto:allowed'])
     // pass 2: the vetoed module is real; a new edge it exposed survives
     const inner = violation({ edgeKey: 'inner' })
     const second = await state.decide([a, inner], ask)
     expect(second.needPass).toBe(false)
-    expect(second.reports.map((v) => v.edgeKey)).toEqual(['a', 'inner'])
+    expect(state.reports.map((v) => v.edgeKey)).toEqual(['a', 'inner'])
     expect(asked).toEqual(['a', 'veto', 'inner'])
     expect(state.passes).toBe(2)
     // a new logical build asks again and resets the states

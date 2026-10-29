@@ -13,7 +13,6 @@ import type { ImportProtectionConfig, MarkerKind } from './config'
 import type { ImportProtectionEnvRules } from './adapterUtils'
 
 export type EnvType = 'client' | 'server'
-export type ViolationType = 'specifier' | 'file' | 'marker'
 
 /** Which rule matched: the list and index of the pattern (so `pattern` is the user's own value). */
 export type RuleRef =

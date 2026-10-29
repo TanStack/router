@@ -4,7 +4,7 @@
  * once the bundler's graph knows how the importer is reached, so its trace
  * is a real chain from an entry. No microtask polling: one yielding timer
  * for the whole queue (0, 10, 50, 100, 250, 500, 1000 ms…), a report whose
- * importer the graph still does not know after `maxWait` is printed with
+ * importer the graph still does not know after 2 s is printed with
  * the trace the graph has. Hosts with a completion event (Rspack
  * `finishModules`) call `flush(true)` instead.
  */
@@ -29,14 +29,14 @@ export interface DevReporterOptions {
   sink: ReportSink
   /** Whether the graph knows how `importerId` is reached (it has importers or is an entry). */
   reachable: (importerId: string) => boolean
-  /** Longest wait for the graph, from enqueue (ms). */
-  maxWait?: number
   now?: () => number
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (timer: unknown) => void
 }
 
 const DELAYS = [0, 10, 50, 100, 250, 500, 1000]
+/** Longest wait for the graph, from enqueue (ms). */
+const MAX_WAIT = 2000
 
 export class DevReporter {
   private queue: Array<DevReport & { at: number }> = []
@@ -44,13 +44,11 @@ export class DevReporter {
   private timer: unknown = null
   private attempt = 0
   private closed = false
-  private readonly maxWait: number
   private readonly now: () => number
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (timer: unknown) => void
 
   constructor(private readonly opts: DevReporterOptions) {
-    this.maxWait = opts.maxWait ?? 2000
     this.now = opts.now ?? Date.now
     this.setTimer =
       opts.setTimer ??
@@ -96,7 +94,7 @@ export class DevReporter {
       if (
         force ||
         this.opts.reachable(r.violation.importerId) ||
-        now - r.at >= this.maxWait
+        now - r.at >= MAX_WAIT
       ) {
         r.info.freezeTrace()
         this.opts.sink.warn(formatViolation(r.info, this.opts.config.root), r)

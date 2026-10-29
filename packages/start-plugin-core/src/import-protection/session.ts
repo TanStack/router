@@ -157,7 +157,6 @@ export class ImportProtection {
     this.envs.delete(name)
   }
 
-  /** Whether an importer path is checked (cached per path). */
   /**
    * A file was deleted (dev): forget what was recorded of it as an importer,
    * so the session's records stay bounded by the live files.
@@ -185,6 +184,7 @@ export class ImportProtection {
     }
   }
 
+  /** Whether an importer path is checked (cached per path). */
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
   }
@@ -401,14 +401,13 @@ export class ImportProtectionEnv {
   /** Dev: print reports through `sink` once the graph knows the importer (`reachable`). */
   useDevReporter(
     sink: ReportSink,
-    reachable?: (importerId: string) => boolean,
-    options?: Pick<DevReporterOptions, 'setTimer' | 'clearTimer' | 'maxWait'>,
+    options?: Pick<DevReporterOptions, 'setTimer' | 'clearTimer'>,
   ): DevReporter {
     this.reporter?.close()
     this.reporter = new DevReporter({
       config: this.ip.config,
       sink,
-      reachable: reachable ?? ((id) => this.reachable(id)),
+      reachable: (id) => this.reachable(id),
       ...options,
     })
     return this.reporter
@@ -853,16 +852,14 @@ export class ImportProtectionEnv {
 
   /**
    * The settled build's reports, formatted (`error` behaviour: the build
-   * fails with them; `mock`: warnings). Empty while a pass is pending.
+   * fails with them; `mock`: warnings). Hosts ask once `decide` needs no
+   * further pass.
    */
   buildReports(): Array<{
     severity: 'error' | 'warning'
     message: string
     info: ViolationInfo
   }> {
-    if (this.build.needPass) {
-      return []
-    }
     const seen = new Set<string>()
     const out: Array<{
       severity: 'error' | 'warning'
