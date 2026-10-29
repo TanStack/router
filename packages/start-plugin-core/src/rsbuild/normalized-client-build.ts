@@ -5,604 +5,283 @@ import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   GetConfigFn,
-  NormalizedClientBuild,
-  NormalizedClientChunk,
+  NormalizedClientAssets,
+  NormalizedClientGroupBuild,
 } from '../types'
 
 type ProcessAssetsContext = Parameters<
   Parameters<RsbuildPluginAPI['processAssets']>[1]
 >[0]
-type RspackCompilation = Rspack.Compilation
-type RspackCompilationChunk = Rspack.Chunk
-type RspackChunkGroup = Rspack.ChunkGroup
-type RspackModule = Rspack.Module
-type ChunkGroupAvailability = Map<
-  RspackChunkGroup,
-  ReadonlySet<RspackCompilationChunk>
->
+type ChunkGroup = Rspack.ChunkGroup
 
-const backslashRegex = /\\/g
-
-/**
- * Convert an OS native path to the POSIX form used by the generated route tree.
- */
-function toPosixPath(filePath: string): string {
-  return filePath.replace(backslashRegex, '/')
-}
-
-/**
- * Extract route file paths from rspack module identifiers.
- *
- * In rspack, module identifiers contain query params similar to Vite's moduleIds.
- * We look for the `tsr-split` query to identify route-split chunks.
- */
-function getRouteFilePathsFromModules(
-  modules: Array<RspackModule>,
-): Array<string> {
-  let routeFilePaths: Array<string> | undefined
-  let seen: Set<string> | undefined
-
-  for (const mod of modules) {
-    const identifier = mod.identifier()
-
-    // rspack module identifiers include loader prefixes separated by '!'.
-    // The actual file path (with query string) is after the last '!'.
-    // Example: "builtin:swc-loader??ruleSet[...]!.../transform.js??...!.../rsc-basic.tsx?tsr-split=component"
-    const lastBangIndex = identifier.lastIndexOf('!')
-    const resourcePart =
-      lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
-
-    const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
-
-    const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tsrSplit)) continue
-    if (!new URLSearchParams(query).has(tsrSplit)) continue
-
-    const nameForCondition = mod.nameForCondition()
-
-    // rspack reports module paths using the OS separator, while the generated route
-    // tree records every route `filePath` with POSIX separators. Normalize before the
-    // path becomes a manifest key, otherwise no route matches its chunk on Windows and
-    // every route loses its stylesheets and preloads.
-    const routeFilePath = toPosixPath(
-      nameForCondition ?? resourcePart.slice(0, queryIndex),
-    )
-
-    if (seen?.has(routeFilePath)) continue
-
-    if (!routeFilePaths || !seen) {
-      routeFilePaths = []
-      seen = new Set()
-    }
-
-    routeFilePaths.push(routeFilePath)
-    seen.add(routeFilePath)
-  }
-
-  return routeFilePaths ?? []
-}
-
-function getHydrationIdsFromModules(
-  modules: Array<RspackModule>,
-): Array<string> {
-  let hydrationIds: Array<string> | undefined
-  let seen: Set<string> | undefined
-
-  for (const mod of modules) {
-    const identifier = mod.identifier()
-    const lastBangIndex = identifier.lastIndexOf('!')
-    const resourcePart =
-      lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
-
-    const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
-
-    const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tssHydrate)) continue
-
-    const hydrationId = new URLSearchParams(query).get(tssHydrate)
-    if (!hydrationId || seen?.has(hydrationId)) continue
-
-    if (!hydrationIds || !seen) {
-      hydrationIds = []
-      seen = new Set()
-    }
-
-    hydrationIds.push(hydrationId)
-    seen.add(hydrationId)
-  }
-
-  return hydrationIds ?? []
-}
-
-/**
- * Returns true for Rspack/webpack HMR runtime chunks that should never be
- * surfaced to the Start manifest. These files are emitted on every rebuild
- * (e.g. `index.<hash>.hot-update.mjs`) and must not be treated as the entry
- * chunk, route preloads, or sibling imports.
- */
-function isHotUpdateAsset(file: string): boolean {
-  return file.includes('.hot-update.')
-}
-
-/**
- * True for any JS/MJS asset that should be included in the manifest.
- * Excludes HMR runtime patches.
- */
 function isManifestJsAsset(file: string): boolean {
-  if (!file.endsWith('.js') && !file.endsWith('.mjs')) return false
-  return !isHotUpdateAsset(file)
+  return (
+    (file.endsWith('.js') || file.endsWith('.mjs')) &&
+    !file.includes('.hot-update.')
+  )
 }
 
-/**
- * Get all JS file names from a chunk.
- */
-function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
-  const jsFiles: Array<string> = []
-  for (const file of chunk.files) {
-    if (isManifestJsAsset(file)) {
-      jsFiles.push(file)
-    }
-  }
-  return jsFiles
+function getRequestQuery(request: string): URLSearchParams {
+  const resource = request.slice(request.lastIndexOf('!') + 1)
+  const queryIndex = resource.indexOf('?')
+  return new URLSearchParams(
+    queryIndex < 0 ? '' : resource.slice(queryIndex + 1).split('#')[0],
+  )
 }
 
-/**
- * Get unique CSS file names from both primary and auxiliary chunk assets.
- */
-function getChunkCssFiles(chunk: RspackCompilationChunk): Array<string> {
-  const cssFiles: Array<string> = []
-  const seen = new Set<string>()
-
-  for (const file of [...chunk.auxiliaryFiles, ...chunk.files]) {
-    if (file.endsWith('.css') && !seen.has(file)) {
-      seen.add(file)
-      cssFiles.push(file)
-    }
-  }
-
-  return cssFiles
-}
-
-/**
- * Include inner modules so concatenation does not hide route metadata or
- * static dependency edges.
- */
-function getModulesIncludingConcatenated(
-  modules: Array<RspackModule>,
-): Array<RspackModule> {
-  const allModules = new Set(modules)
-  for (const module of allModules) {
-    const concatenatedModules = (
-      module as RspackModule & { modules?: Array<RspackModule> }
-    ).modules
-    if (concatenatedModules) {
-      for (const concatenatedModule of concatenatedModules) {
-        allModules.add(concatenatedModule)
+/** Resolve tagged imports once per importer, including aliases and relative paths. */
+function getTaggedImportPaths(
+  compilation: Rspack.Compilation,
+  module: Rspack.Module,
+): Map<string, string> {
+  const paths = new Map<string, string>()
+  const blocks = [...module.blocks]
+  for (const block of blocks) {
+    blocks.push(...block.blocks)
+    for (const dependency of block.dependencies) {
+      const request = dependency.request
+      if (!request || !getRequestQuery(request).has(tsrSplit)) {
+        continue
+      }
+      const target = compilation.moduleGraph.getModule(dependency)
+      const filePath = target?.nameForCondition()
+      if (filePath) {
+        paths.set(request, filePath.replace(/\\/g, '/'))
       }
     }
   }
-
-  return Array.from(allModules)
+  return paths
 }
 
-/**
- * Compute dynamicImports for a chunk by traversing its chunk groups'
- * childrenIterable (async/dynamic import edges).
- *
- * In rspack, a chunk belongs to one or more ChunkGroups. Each ChunkGroup
- * has childrenIterable — child ChunkGroups representing dynamic import()
- * points. The JS files from those child groups' chunks are the
- * dynamicImports (analogous to Rollup's OutputChunk.dynamicImports).
- */
-function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
-  const dynamicImportFiles: Array<string> = []
-  const seen = new Set<string>()
-
-  for (const group of chunk.groupsIterable) {
-    for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
-        for (const file of childChunk.files) {
-          if (isManifestJsAsset(file) && !seen.has(file)) {
-            seen.add(file)
-            dynamicImportFiles.push(file)
-          }
-        }
-      }
-    }
-  }
-
-  return dynamicImportFiles
-}
-
-function intersect<T>(
-  left: ReadonlySet<T>,
-  right: ReadonlySet<T>,
-): ReadonlySet<T> {
-  const result = new Set<T>()
-  for (const value of left) {
-    if (right.has(value)) {
-      result.add(value)
-    }
-  }
-  return result
-}
-
-/**
- * Chunks loaded whenever a group loads: its own plus the intersection of its
- * parents', the rule Rspack's code splitter applies to modules.
- */
-function computeChunkGroupAvailability(
-  compilation: RspackCompilation,
-): ChunkGroupAvailability {
-  const groups = compilation.chunkGroups.map((group) => ({
+/** A parent contributes only chunks present on every path into the group. */
+function getAvailableChunks(groups: ReadonlyArray<ChunkGroup>) {
+  const available = new Map<ChunkGroup, Set<Rspack.Chunk>>()
+  const records = groups.map((group) => ({
     group,
     chunks: group.chunks,
     parents: group.isInitial() ? [] : group.getParents(),
   }))
-
-  // Unknown parents constrain nothing and known sets only shrink, so cycles
-  // converge to the same result in any visiting order.
-  const availability: ChunkGroupAvailability = new Map()
   let changed = true
   while (changed) {
     changed = false
-    for (const { group, chunks, parents } of groups) {
-      let inherited: ReadonlySet<RspackCompilationChunk> | undefined
+    for (const { group, chunks, parents } of records) {
+      let inherited: Set<Rspack.Chunk> | undefined
       for (const parent of parents) {
-        const parentAvailable = availability.get(parent)
-        if (parentAvailable) {
-          inherited = inherited
-            ? intersect(inherited, parentAvailable)
-            : parentAvailable
+        const parentChunks = available.get(parent)
+        if (!parentChunks) {
+          continue
         }
+        inherited = inherited
+          ? new Set([...inherited].filter((chunk) => parentChunks.has(chunk)))
+          : new Set(parentChunks)
       }
       if (parents.length > 0 && !inherited) {
         continue
       }
-
-      const available = new Set(inherited)
+      const next = inherited ?? new Set<Rspack.Chunk>()
       for (const chunk of chunks) {
-        available.add(chunk)
+        next.add(chunk)
       }
-      if (availability.get(group)?.size !== available.size) {
-        availability.set(group, available)
+      // Starting at the entry groups, known sets shrink as parent paths
+      // resolve. Revisit until cyclic async graphs converge in either order.
+      if (available.get(group)?.size !== next.size) {
+        available.set(group, next)
         changed = true
       }
     }
   }
-
-  return availability
+  return available
 }
 
-/**
- * Emitted chunks holding the modules a chunk statically imports, in import
- * order. Dependencies nested in async blocks are deliberately excluded: those
- * are represented by chunk-group children in `dynamicImports` instead.
- */
-function computeStaticDependencyCandidates(
-  compilation: RspackCompilation,
-  chunk: RspackCompilationChunk,
-): Array<RspackCompilationChunk> {
-  const candidates: Array<RspackCompilationChunk> = []
-  const seen = new Set<RspackCompilationChunk>([chunk])
-  const modules = getModulesIncludingConcatenated(
-    compilation.chunkGraph.getChunkModules(chunk),
-  )
-  const localModules = new Set(modules)
-  const runtime = Array.from(chunk.runtime)
-
-  for (const module of modules) {
-    for (const dependency of module.dependencies) {
-      const connection = compilation.moduleGraph.getConnection(dependency)
-      const importedModule = connection?.module
-      if (!connection || !importedModule || localModules.has(importedModule)) {
-        continue
-      }
-      if (connection.getActiveState(runtime) === false) {
-        continue
-      }
-
-      for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
-        importedModule,
-      )) {
-        if (!seen.has(importedChunk)) {
-          seen.add(importedChunk)
-          candidates.push(importedChunk)
-        }
+function appendAssets(
+  target: NormalizedClientAssets,
+  source: NormalizedClientAssets,
+) {
+  for (const key of ['preloads', 'css'] as const) {
+    const seen = new Set(target[key])
+    for (const file of source[key]) {
+      if (!seen.has(file)) {
+        target[key].push(file)
+        seen.add(file)
       }
     }
   }
-
-  return candidates
 }
 
-type GetStaticDependencyChunks = (
-  chunk: RspackCompilationChunk,
-) => Array<RspackCompilationChunk>
-
-type StaticDependencyChunkResolver = {
-  getAvailableChunks: (
-    chunk: RspackCompilationChunk,
-  ) => ReadonlySet<RspackCompilationChunk>
-  getCandidates: GetStaticDependencyChunks
-  getStaticDependencyChunks: GetStaticDependencyChunks
-}
-
-/**
- * Memoize dependency discovery per chunk. A chunk's static dependency chunks
- * are the candidates loaded in every one of its groups.
- */
-function createStaticDependencyChunkResolver(
-  compilation: RspackCompilation,
-): StaticDependencyChunkResolver {
-  const groupAvailability = computeChunkGroupAvailability(compilation)
-  const candidatesByChunk = new Map<
-    RspackCompilationChunk,
-    Array<RspackCompilationChunk>
-  >()
-  const availableByChunk = new Map<
-    RspackCompilationChunk,
-    ReadonlySet<RspackCompilationChunk>
-  >()
-  const dependenciesByChunk = new Map<
-    RspackCompilationChunk,
-    Array<RspackCompilationChunk>
-  >()
-
-  const getCandidates = (chunk: RspackCompilationChunk) => {
-    let candidates = candidatesByChunk.get(chunk)
-    if (!candidates) {
-      candidates = computeStaticDependencyCandidates(compilation, chunk)
-      candidatesByChunk.set(chunk, candidates)
-    }
-    return candidates
-  }
-
-  // Rspack may copy a module into each loading context, so require every group.
-  const getAvailableChunks = (chunk: RspackCompilationChunk) => {
-    let available = availableByChunk.get(chunk)
-    if (!available) {
-      for (const group of chunk.groupsIterable) {
-        const groupAvailable =
-          groupAvailability.get(group) ?? new Set<RspackCompilationChunk>()
-        available = available
-          ? intersect(available, groupAvailable)
-          : groupAvailable
-      }
-      available ??= new Set<RspackCompilationChunk>()
-      availableByChunk.set(chunk, available)
-    }
-    return available
-  }
-
-  const getStaticDependencyChunks = (chunk: RspackCompilationChunk) => {
-    let dependencies = dependenciesByChunk.get(chunk)
-    if (!dependencies) {
-      const available = getAvailableChunks(chunk)
-      dependencies = getCandidates(chunk).filter((candidate) =>
-        available.has(candidate),
-      )
-      dependenciesByChunk.set(chunk, dependencies)
-    }
-    return dependencies
-  }
-
-  return { getAvailableChunks, getCandidates, getStaticDependencyChunks }
-}
-
-/**
- * A dependency's own `imports` hold only what all its contexts load. When this
- * chunk's context supplies more, list its whole closure dependencies first.
- */
-function computeImportedChunks(
-  resolver: StaticDependencyChunkResolver,
-  chunk: RspackCompilationChunk,
-): Array<RspackCompilationChunk> {
-  const reached = new Set<RspackCompilationChunk>([chunk])
-  const reach = (current: RspackCompilationChunk) => {
-    for (const dependency of resolver.getStaticDependencyChunks(current)) {
-      if (!reached.has(dependency)) {
-        reached.add(dependency)
-        reach(dependency)
-      }
-    }
-  }
-  reach(chunk)
-
-  const available = resolver.getAvailableChunks(chunk)
-  const visited = new Set<RspackCompilationChunk>([chunk])
-  const dependenciesFirst: Array<RspackCompilationChunk> = []
-  const visit = (current: RspackCompilationChunk) => {
-    for (const candidate of resolver.getCandidates(current)) {
-      if (available.has(candidate) && !visited.has(candidate)) {
-        visited.add(candidate)
-        visit(candidate)
-        dependenciesFirst.push(candidate)
-      }
-    }
-  }
-  visit(chunk)
-
-  return dependenciesFirst.some((dependency) => !reached.has(dependency))
-    ? dependenciesFirst
-    : resolver.getStaticDependencyChunks(chunk)
-}
-
-/**
- * Collect CSS from dependency chunks that have no JavaScript asset of their
- * own, preserving dependency-before-importer order across nested CSS chunks.
- */
-function computeCssOnlyDependencyFiles(
-  getStaticDependencyChunks: GetStaticDependencyChunks,
-  chunks: Array<RspackCompilationChunk>,
-): Array<string> {
-  const cssFiles: Array<string> = []
-  const seenChunks = new Set<RspackCompilationChunk>()
-  const seenFiles = new Set<string>()
-
-  const visit = (chunk: RspackCompilationChunk) => {
-    if (seenChunks.has(chunk) || getChunkJsFiles(chunk).length > 0) {
-      return
-    }
-    seenChunks.add(chunk)
-
-    for (const importedChunk of getStaticDependencyChunks(chunk)) {
-      visit(importedChunk)
-    }
-
-    for (const cssFile of getChunkCssFiles(chunk)) {
-      if (!seenFiles.has(cssFile)) {
-        seenFiles.add(cssFile)
-        cssFiles.push(cssFile)
-      }
-    }
-  }
-
-  for (const chunk of chunks) {
-    visit(chunk)
-  }
-
-  return cssFiles
-}
-
-/**
- * Normalize an rspack compilation into a NormalizedClientBuild.
- *
- * Iterates ALL chunks in the compilation (initial + async), not just
- * entrypoint chunks, to ensure route-split async chunks are included.
- */
+/** Capture route loading contexts without manufacturing chunk import edges. */
 export function normalizeRspackClientBuild(
-  compilation: RspackCompilation,
+  compilation: Rspack.Compilation,
   inlineCssEnabled = false,
-): NormalizedClientBuild {
-  const chunksByFileName = new Map<string, NormalizedClientChunk>()
-  let cssContentByFileName: Map<string, string> | undefined
-  let entryChunkFileName: string | undefined
-
-  // Collect all initial JS file names from the main entry for computing
-  // the entry chunk's `imports` (vendor/shared sibling chunks).
+): NormalizedClientGroupBuild {
   const entrypoint = compilation.entrypoints.get('index')
-  const initialJsFileNames: Array<string> = []
-  const entryChunkSet = new Set<RspackCompilationChunk>()
-  if (entrypoint) {
-    for (const chunk of entrypoint.chunks) {
-      entryChunkSet.add(chunk)
-      for (const file of chunk.files) {
-        if (isManifestJsAsset(file)) {
-          initialJsFileNames.push(file)
-        }
-      }
-    }
-  }
-
-  const resolver = createStaticDependencyChunkResolver(compilation)
-
-  // Iterate ALL chunks (initial + async) to capture route-split chunks
-  for (const chunk of compilation.chunks) {
-    const modules = getModulesIncludingConcatenated(
-      compilation.chunkGraph.getChunkModules(chunk),
-    )
-    const routeFilePaths = getRouteFilePathsFromModules(modules)
-    const hydrationIds = getHydrationIdsFromModules(modules)
-    const cssFiles = getChunkCssFiles(chunk)
-
-    // The entry chunk is the one named 'index' in the 'index' entrypoint
-    const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
-
-    const jsFiles = getChunkJsFiles(chunk)
-    if (jsFiles.length === 0) continue
-
-    // Compute dynamicImports from chunk group children
-    const dynamicImports = computeDynamicImports(chunk)
-    const staticDependencyChunks = computeImportedChunks(resolver, chunk)
-    const dependencyCssFiles = computeCssOnlyDependencyFiles(
-      resolver.getStaticDependencyChunks,
-      staticDependencyChunks,
-    ).filter((cssFile) => !cssFiles.includes(cssFile))
-    if (dependencyCssFiles.length > 0) {
-      cssFiles.unshift(...dependencyCssFiles)
-    }
-
-    for (const file of jsFiles) {
-      // For the entry chunk, `imports` contains all sibling initial chunks
-      // (vendor/shared). For other chunks, it contains the emitted chunks
-      // reached through active static module dependencies.
-      const imports = isEntryChunk
-        ? initialJsFileNames.filter((f) => f !== file)
-        : staticDependencyChunks.flatMap(getChunkJsFiles)
-
-      const normalizedChunk: NormalizedClientChunk = {
-        fileName: file,
-        isEntry: isEntryChunk,
-        imports,
-        dynamicImports,
-        css: [],
-        routeFilePaths,
-        hydrationIds,
-      }
-
-      chunksByFileName.set(file, normalizedChunk)
-
-      if (isEntryChunk && !entryChunkFileName) {
-        entryChunkFileName = file
-      }
-    }
-
-    for (const cssFile of cssFiles) {
-      for (const file of jsFiles) {
-        const existing = chunksByFileName.get(file)
-        if (existing && !existing.css.includes(cssFile)) {
-          existing.css.push(cssFile)
-        }
-      }
-    }
-  }
-
-  if (!entryChunkFileName) {
+  const entryChunk = entrypoint?.getEntrypointChunk()
+  const entryChunkFileName =
+    entryChunk && [...entryChunk.files].find(isManifestJsAsset)
+  if (!entrypoint || !entryChunkFileName) {
     throw new Error('No entry file found in rspack client build')
   }
 
+  const importsByModule = new Map<Rspack.Module, Map<string, string>>()
+  const groupsByRoute = new Map<string, Set<ChunkGroup>>()
+  const hydrationGroups = new Set<ChunkGroup>()
+  for (const group of compilation.chunkGroups) {
+    for (const origin of group.origins) {
+      if (!origin.request) {
+        continue
+      }
+      const query = getRequestQuery(origin.request)
+      if (query.get(tssHydrate)) {
+        hydrationGroups.add(group)
+      }
+      if (!query.has(tsrSplit) || !origin.module) {
+        continue
+      }
+      let imports = importsByModule.get(origin.module)
+      if (!imports) {
+        imports = getTaggedImportPaths(compilation, origin.module)
+        importsByModule.set(origin.module, imports)
+      }
+      const filePath = imports.get(origin.request)
+      if (!filePath) {
+        continue
+      }
+      let groups = groupsByRoute.get(filePath)
+      if (!groups) {
+        groups = new Set()
+        groupsByRoute.set(filePath, groups)
+      }
+      groups.add(group)
+    }
+  }
+
+  const available = getAvailableChunks(compilation.chunkGroups)
+  const filesByChunk = new Map<Rspack.Chunk, NormalizedClientAssets>()
+  const cssModulesByChunk = new Map<Rspack.Chunk, Array<Rspack.Module>>()
+  const readChunk = (chunk: Rspack.Chunk) => {
+    let assets = filesByChunk.get(chunk)
+    if (!assets) {
+      assets = { preloads: [], css: [] }
+      const files = new Set([...chunk.files, ...chunk.auxiliaryFiles])
+      for (const file of files) {
+        if (file.endsWith('.css') && !file.includes('.hot-update.')) {
+          assets.css.push(file)
+        }
+      }
+      for (const file of chunk.files) {
+        if (isManifestJsAsset(file)) {
+          assets.preloads.push(file)
+        }
+      }
+      filesByChunk.set(chunk, assets)
+    }
+    return assets
+  }
+  const initialChunks = new Set(entrypoint.chunks)
+  const readGroup = (group: ChunkGroup): NormalizedClientAssets => {
+    const ownChunks = group.chunks
+    // Initial resources are merged into the root separately. Keep shared
+    // chunks that also belong to this group, but do not prepend entry CSS.
+    const chunks = [...(available.get(group) ?? ownChunks)].filter(
+      (chunk) => !initialChunks.has(chunk) || ownChunks.includes(chunk),
+    )
+    const preloads = new Set<string>()
+    // Initial chunks must retain their execution order for IIFE scripts.
+    // Async groups put the route chunk last, so list it first for preloading.
+    const preloadChunks = group.isInitial()
+      ? ownChunks
+      : [...ownChunks].reverse()
+    for (const chunk of preloadChunks.concat(chunks)) {
+      for (const file of readChunk(chunk).preloads) {
+        preloads.add(file)
+      }
+    }
+    const cssChunks = chunks.filter((chunk) => readChunk(chunk).css.length > 0)
+    const ordered = cssChunks
+      .map((chunk) => {
+        let modules = cssModulesByChunk.get(chunk)
+        if (!modules) {
+          modules = [
+            ...compilation.chunkGraph.getChunkModulesIterableBySourceType(
+              chunk,
+              'css',
+            ),
+            ...compilation.chunkGraph.getChunkModulesIterableBySourceType(
+              chunk,
+              'css/mini-extract',
+            ),
+          ]
+          cssModulesByChunk.set(chunk, modules)
+        }
+        const indices = modules.flatMap((module) => {
+          const index = group.getModulePostOrderIndex(module)
+          return index == null ? [] : [index]
+        })
+        return { chunk, index: indices.length > 0 ? Math.min(...indices) : -1 }
+      })
+      .sort((a, b) => a.index - b.index)
+    return {
+      preloads: [...preloads],
+      css: [...new Set(ordered.flatMap(({ chunk }) => readChunk(chunk).css))],
+    }
+  }
+
+  const addHydrationCss = (
+    group: ChunkGroup,
+    target: NormalizedClientAssets,
+    visited: Set<ChunkGroup>,
+  ) => {
+    if (visited.has(group)) {
+      return
+    }
+    visited.add(group)
+    for (const child of group.childrenIterable) {
+      if (hydrationGroups.has(child)) {
+        appendAssets(target, { preloads: [], css: readGroup(child).css })
+        addHydrationCss(child, target, visited)
+      }
+    }
+  }
+
+  const routeAssetsByFilePath = new Map<string, NormalizedClientAssets>()
+  for (const [filePath, groups] of groupsByRoute) {
+    const assets: NormalizedClientAssets = { preloads: [], css: [] }
+    const visited = new Set<ChunkGroup>()
+    for (const group of groups) {
+      appendAssets(assets, readGroup(group))
+      addHydrationCss(group, assets, visited)
+    }
+    routeAssetsByFilePath.set(filePath, assets)
+  }
+
+  const entryAssets = readGroup(entrypoint)
+  addHydrationCss(entrypoint, entryAssets, new Set())
+  // RSC server-component styles belong to a separate client entry, but must
+  // still be present in the root route's server-rendered document.
+  const rscEntrypoint = compilation.entrypoints.get('rsc')
+  if (rscEntrypoint) {
+    appendAssets(entryAssets, {
+      preloads: [],
+      css: readGroup(rscEntrypoint).css,
+    })
+  }
+
+  let cssContentByFileName: Map<string, string> | undefined
   if (inlineCssEnabled) {
     cssContentByFileName = new Map()
     for (const asset of compilation.getAssets()) {
       if (!asset.name.endsWith('.css')) {
         continue
       }
-
       const css = getCssAssetSource(asset.source.source())
       if (css !== undefined) {
         cssContentByFileName.set(asset.name, css)
       }
     }
   }
-
-  // In RSC mode, CSS from server components is associated with the 'rsc'
-  // client entry chunk (not the main 'index' entry). The manifest builder
-  // merges the entry chunk's CSS into __root__, so by appending RSC CSS
-  // to the entry chunk, those stylesheets get loaded on all pages.
-  // CSS may appear in either `files` or `auxiliaryFiles` depending on
-  // rspack's CSS extraction strategy.
-  const rscEntrypoint = compilation.entrypoints.get('rsc')
-
-  if (rscEntrypoint && entryChunkFileName) {
-    const mainEntryChunk = chunksByFileName.get(entryChunkFileName)
-    if (mainEntryChunk) {
-      for (const rscChunk of rscEntrypoint.chunks) {
-        const allFiles = [...rscChunk.files, ...rscChunk.auxiliaryFiles]
-        for (const file of allFiles) {
-          if (file.endsWith('.css') && !mainEntryChunk.css.includes(file)) {
-            mainEntryChunk.css.push(file)
-          }
-        }
-      }
-    }
-  }
-
   return {
     entryChunkFileName,
-    chunksByFileName,
+    entryAssets,
+    routeAssetsByFilePath,
     cssContentByFileName,
   }
 }
@@ -615,9 +294,9 @@ export function registerClientBuildCapture(
   api: RsbuildPluginAPI,
   getConfig: GetConfigFn,
 ): {
-  getClientBuild: () => NormalizedClientBuild | undefined
+  getClientBuild: () => NormalizedClientGroupBuild | undefined
 } {
-  let clientBuild: NormalizedClientBuild | undefined
+  let clientBuild: NormalizedClientGroupBuild | undefined
 
   api.processAssets(
     {
