@@ -18,6 +18,7 @@ import {
   identify,
   isFinalBuild,
   normalizePath,
+  pathsOf,
   releaseEnvironment,
   resolveDerivedSibling,
   rollupEntryModuleIds,
@@ -35,6 +36,7 @@ import type {
   CompilerCaches,
   Diagnostic,
   DiagnosticPosition,
+  InvalidateChange,
   PlanKey,
 } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
@@ -87,11 +89,12 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 
 export type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
-interface ModuleGraphLike {
-  getModulesByFile: (file: string) => Set<unknown> | undefined
+/** What the invalidation reads of a Vite environment's module graph. */
+interface ModuleGraphLike<TNode> {
+  getModulesByFile: (file: string) => Set<TNode> | undefined
   invalidateModule: (
-    mod: unknown,
-    seen: Set<unknown>,
+    mod: TNode,
+    seen: Set<TNode>,
     timestamp: number,
     isHmr: boolean,
     softInvalidate: boolean,
@@ -126,52 +129,28 @@ export function createRouterCompilerVitePlugin(
   const resolveUserConfig = () =>
     typeof options === 'function' ? options() : getConfig(options, ROOT)
 
-  /**
-   * Hard-invalidates the modules of the evicted and dependent plans (`keys`,
-   * in their environment) and of `paths` (in every environment): Vite
-   * re-transforms them on their next request.
-   */
-  const hardInvalidate = (keys: Array<PlanKey>, paths: Array<string> = []) => {
-    if (!server || (keys.length === 0 && paths.length === 0)) {
-      return
-    }
-    const seen = new Set<unknown>()
-    const now = Date.now()
-    const environments = (
-      server as unknown as {
-        environments: Record<string, { moduleGraph: ModuleGraphLike }>
-      }
-    ).environments
-    const invalidateIn = (graph: ModuleGraphLike, file: string) => {
-      for (const mod of graph.getModulesByFile(file) ?? []) {
-        graph.invalidateModule(mod, seen, now, true, false)
-      }
-    }
-    for (const key of keys) {
-      const graph = environments[key.env]?.moduleGraph
-      if (graph) {
-        invalidateIn(graph, identify(key.canonicalId).path)
-      }
-    }
-    for (const file of paths) {
-      for (const env of Object.values(environments)) {
-        invalidateIn(env.moduleGraph, file)
-      }
-    }
-  }
-
   const invalidatePath = async (
     file: string,
     kind: 'change' | 'add' | 'unlink' | 'registry',
   ) => {
-    const path = normalizePath(file)
-    const res = await compiler.invalidate(path, kind)
-    // a registry change: the file's own modules too (a file that was no
-    // route before has no plan to evict, and is one now)
-    hardInvalidate(
-      [...res.evicted, ...res.dependents],
-      kind === 'registry' ? [path] : [],
-    )
+    const change = { path: normalizePath(file), kind }
+    const res = await compiler.invalidate(change.path, kind)
+    if (!server) {
+      return
+    }
+    const now = Date.now()
+    for (const environment of Object.values(
+      (
+        server as unknown as {
+          environments: Record<
+            string,
+            { name: string; moduleGraph: ModuleGraphLike<unknown> }
+          >
+        }
+      ).environments,
+    )) {
+      applyViteInvalidation(environment, change, res, now)
+    }
   }
 
   const plugin: Plugin = {
@@ -311,27 +290,8 @@ export function createRouterCompilerVitePlugin(
 
     load: {
       filter: { id: OWNED_QUERY_RE },
-      async handler(id) {
-        // a derived id of a file of the project (`route.tsx?tsr-split=…`) is
-        // the file's own text, read here: Vite's load fallback cleans the id
-        // of its query and fragment, and a `#` of a project path (`C#`,
-        // `project #2`) would end the path there. A derived id with a foreign
-        // query (`.vue?vue&…`) or of a virtual module is its owner's to load.
-        const identity = identify(id)
-        if (
-          identity.derived === null ||
-          identity.foreignQuery !== '' ||
-          identity.path.startsWith('\0') ||
-          !compiler.wants(id)
-        ) {
-          return null
-        }
-        const code = await readFile(identity.path, 'utf8').catch(() => null)
-        if (code === null) {
-          return null
-        }
-        this.addWatchFile(identity.path)
-        return code
+      handler(id) {
+        return compiler.wants(id) ? loadDerivedSource(this, id) : null
       },
     },
 
@@ -397,6 +357,95 @@ export function createRouterCompilerVitePlugin(
     },
   }
   return plugin
+}
+
+/**
+ * The `load` of a derived id of a file of the project (`route.tsx?tsr-split=…`,
+ * Start's `?tss-hydrate=…`, `?tss-serverfn-split`): the file's own text,
+ * read here and watched. Vite's load fallback cleans the id of its query and
+ * fragment, and a `#` of a project path (`C#`, `project #2`) would end the
+ * path there. A derived id with a foreign query (`.vue?vue&…`) or of a
+ * virtual module is its owner's to load (null).
+ */
+export async function loadDerivedSource(
+  ctx: { addWatchFile: (id: string) => void },
+  id: string,
+): Promise<string | null> {
+  const identity = identify(id)
+  if (
+    identity.derived === null ||
+    identity.foreignQuery !== '' ||
+    identity.path.startsWith('\0')
+  ) {
+    return null
+  }
+  const code = await readFile(identity.path, 'utf8').catch(() => null)
+  if (code === null) {
+    return null
+  }
+  ctx.addWatchFile(identity.path)
+  return code
+}
+
+/**
+ * Applies an `invalidate()` result to a Vite environment's module graph,
+ * the host side of the one operation: the modules of the files of its
+ * evicted and dependent plans in the environment are hard-invalidated (Vite
+ * transforms them again on their next request) and returned. A registry
+ * change invalidates the changed file's own modules too (a file that was no
+ * route before has no plan to evict, and is one now). Start's hosts, whose
+ * plans depend on other modules, opt in to two refinements:
+ * - `ownUpdate`: the changed file's own modules are Vite's own hot update,
+ *   left out of the returned dependents;
+ * - `awaitingAdd`: on `unlink`, the dependents wait for a file to appear
+ *   (`add`) before they are invalidated. Vite propagates the deleted
+ *   module's own update to its importers at once, and a dependent
+ *   transformed while the file is missing fails at `vite:import-analysis`,
+ *   which marks it not self-accepting, so its later updates go through its
+ *   importers (a route module, whose split component is never re-imported:
+ *   the page keeps the old module). Such dependents keep their
+ *   soft-invalidated output until then; a plan of theirs the core evicted at
+ *   `unlink` is compiled then.
+ */
+export function applyViteInvalidation<TNode>(
+  environment: { name: string; moduleGraph: ModuleGraphLike<TNode> },
+  change: InvalidateChange,
+  res: { evicted: Array<PlanKey>; dependents: Array<PlanKey> },
+  timestamp: number,
+  opts: { ownUpdate?: boolean; awaitingAdd?: Set<string> } = {},
+): Array<TNode> {
+  const files = new Set(
+    pathsOf([...res.evicted, ...res.dependents], environment.name),
+  )
+  if (opts.ownUpdate) {
+    files.delete(change.path)
+  }
+  const waiting = opts.awaitingAdd
+  if (waiting && change.kind === 'unlink') {
+    for (const file of files) {
+      waiting.add(file)
+    }
+    return []
+  }
+  if (waiting && change.kind === 'add') {
+    for (const file of waiting) {
+      files.add(file)
+    }
+    waiting.clear()
+  }
+  if (change.kind === 'registry') {
+    files.add(change.path)
+  }
+  const graph = environment.moduleGraph
+  const seen = new Set<TNode>()
+  const nodes: Array<TNode> = []
+  for (const file of files) {
+    for (const node of graph.getModulesByFile(file) ?? []) {
+      graph.invalidateModule(node, seen, timestamp, true, false)
+      nodes.push(node)
+    }
+  }
+  return nodes
 }
 
 /**

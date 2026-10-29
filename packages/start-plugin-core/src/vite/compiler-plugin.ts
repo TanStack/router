@@ -30,7 +30,11 @@ import {
   rollupEntryModuleIds,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
-import { liveModules } from '@tanstack/router-plugin/vite'
+import {
+  applyViteInvalidation,
+  liveModules,
+  loadDerivedSource,
+} from '@tanstack/router-plugin/vite'
 import {
   changedRoutePaths,
   onRoutesChanged,
@@ -225,9 +229,13 @@ export function startCompilerPlugin(
   let session: Session | null = null
   let server: ViteDevServer | null = null
   let unsubscribeRoutes: (() => void) | null = null
-  /** One compiler invalidation per watcher event, applied by every env's `hotUpdate`. */
-  const invalidations = new Map<
-    string,
+  /**
+   * One compiler invalidation per file event, applied by every env's
+   * `hotUpdate`: Vite hands each environment's hook its own context over the
+   * event's one `read` function, so the memo lives as long as the event.
+   */
+  const invalidations = new WeakMap<
+    () => unknown,
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
   /**
@@ -235,9 +243,6 @@ export function startCompilerPlugin(
    * re-transform when a file appears (see `applyInvalidation`).
    */
   const awaitingAdd = new Map<string, Set<string>>()
-  registerCompilerStats('start:vite:invalidations', invalidations, (m) => ({
-    size: m.size,
-  }))
   registerCompilerStats('start:vite:awaitingAdd', awaitingAdd, (m) =>
     collectionSizes({ awaitingAdd: m }),
   )
@@ -378,65 +383,29 @@ export function startCompilerPlugin(
   }
 
   /**
-   * Applies one invalidation to an env's module graph: the nodes of the
-   * evicted and dependent plans are hard-invalidated and returned (the host
-   * side of the one operation; Vite re-transforms them and propagates their
-   * updates). Except on `unlink`: Vite propagates the deleted module's own
-   * update to its importers at once, and a dependent transformed while the
-   * file is missing fails at `vite:import-analysis`, which marks it not
-   * self-accepting, so its later updates go through its importers (a route
-   * module, whose split component is never re-imported: the page keeps the
-   * old module). Such dependents keep their soft-invalidated output until a
-   * file appears (`add`), then re-transform; a plan of theirs the core
-   * evicted at `unlink` is compiled then.
+   * Applies one invalidation to an env's module graph and returns the
+   * dependents (`applyViteInvalidation`; Vite transforms them again and
+   * propagates their updates): the changed file's own modules are Vite's own
+   * update, and an `unlink`'s dependents wait for the next `add`.
    */
   const applyInvalidation = (
     environment: Environment,
     change: InvalidateChange,
     res: Awaited<ReturnType<typeof invalidate>>,
     timestamp: number,
-  ): Array<{ node: EnvironmentModuleNode }> => {
-    const paths = new Set<string>()
-    for (const k of [...res.evicted, ...res.dependents]) {
-      if (k.env !== environment.name) {
-        continue
-      }
-      const p = identify(k.canonicalId).path
-      if (p !== change.path) {
-        paths.add(p)
-      }
-    }
+  ): Array<EnvironmentModuleNode> => {
     let waiting = awaitingAdd.get(environment.name)
     if (!waiting) {
       waiting = new Set()
       awaitingAdd.set(environment.name, waiting)
     }
-    if (change.kind === 'unlink') {
-      for (const p of paths) {
-        waiting.add(p)
-      }
-      return []
-    }
-    if (change.kind === 'add') {
-      for (const p of waiting) {
-        paths.add(p)
-      }
-      waiting.clear()
-    }
-    if (change.kind === 'registry') {
-      // the changed file's own plans are evicted too: re-transform them
-      paths.add(change.path)
-    }
-    const graph = (environment as DevEnvironment).moduleGraph
-    const seen = new Set<EnvironmentModuleNode>()
-    const nodes: Array<{ node: EnvironmentModuleNode }> = []
-    for (const p of paths) {
-      for (const m of graph.getModulesByFile(p) ?? []) {
-        graph.invalidateModule(m, seen, timestamp, true, false)
-        nodes.push({ node: m })
-      }
-    }
-    return nodes
+    return applyViteInvalidation(
+      environment as DevEnvironment,
+      change,
+      res,
+      timestamp,
+      { ownUpdate: true, awaitingAdd: waiting },
+    )
   }
 
   /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
@@ -454,10 +423,10 @@ export function startCompilerPlugin(
    */
   const changedDependents = async (
     environment: DevEnvironment,
-    dependents: Array<{ node: EnvironmentModuleNode }>,
+    dependents: Array<EnvironmentModuleNode>,
   ): Promise<Array<EnvironmentModuleNode>> => {
     const changed: Array<EnvironmentModuleNode> = []
-    for (const { node } of dependents) {
+    for (const node of dependents) {
       if (node.id !== null) {
         // Vite's own propagation of the file change may have cleared the
         // node's transform result already; the compiler's last output is
@@ -774,28 +743,7 @@ export function startCompilerPlugin(
               ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
               : null
           }
-          // a derived id of a file of the project (`route.tsx?tsr-split=…`,
-          // `?tss-hydrate=…`, `?tss-serverfn-split`) is the file's own text,
-          // read here: Vite's load fallback cleans the id of its query and
-          // fragment, and a `#` of a project path (`C#`, `project #2`) would
-          // end the path there. A derived id with a foreign query
-          // (`.vue?vue&…`) or of a virtual module is its owner's to load.
-          const identity = identify(id)
-          if (
-            identity.derived === null ||
-            identity.foreignQuery !== '' ||
-            identity.path.startsWith('\0')
-          ) {
-            return null
-          }
-          const code = await fs
-            .readFile(identity.path, 'utf8')
-            .catch(() => null)
-          if (code === null) {
-            return null
-          }
-          this.addWatchFile(identity.path)
-          return code
+          return loadDerivedSource(this, id)
         },
       },
       transform: {
@@ -854,16 +802,14 @@ export function startCompilerPlugin(
           path: ctx.file,
           kind: changeKindOf(ctx.type),
         }
-        const key = `${ctx.file}\u0000${ctx.timestamp}`
-        let pending = invalidations.get(key)
+        let pending = invalidations.get(ctx.read)
         if (!pending) {
           pending = invalidate(
             s.start.caches,
             change,
             invalidationHosts(s, server, this.environment),
           )
-          invalidations.set(key, pending)
-          setTimeout(() => invalidations.delete(key), 10_000).unref()
+          invalidations.set(ctx.read, pending)
         }
         const res = await pending
         if (ctx.type === 'delete') {
