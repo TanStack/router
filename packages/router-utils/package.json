@@ -75,7 +75,7 @@
   "dependencies": {
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
-    "yuku": "0.23.0"
+    "yuku": "0.26.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

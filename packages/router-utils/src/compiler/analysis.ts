@@ -10,6 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
+import { patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
@@ -1248,29 +1249,6 @@ function declaredNames(
       return decl.id ? [decl.id] : []
     case 'TSModuleDeclaration':
       return decl.id.type === 'Identifier' ? [decl.id] : []
-    default:
-      return []
-  }
-}
-
-function patternIdentifiers(
-  p: Node,
-): Array<Extract<Node, { type: 'Identifier' }>> {
-  switch (p.type) {
-    case 'Identifier':
-      return [p]
-    case 'ArrayPattern':
-      return p.elements.flatMap((e) => (e ? patternIdentifiers(e) : []))
-    case 'ObjectPattern':
-      return p.properties.flatMap((prop) =>
-        prop.type === 'RestElement'
-          ? patternIdentifiers(prop.argument)
-          : patternIdentifiers(prop.value),
-      )
-    case 'AssignmentPattern':
-      return patternIdentifiers(p.left)
-    case 'RestElement':
-      return patternIdentifiers(p.argument)
     default:
       return []
   }

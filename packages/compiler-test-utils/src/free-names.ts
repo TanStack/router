@@ -34,7 +34,7 @@ export function readNames(
 ): ModuleNames {
   const file = parse(code, {
     path,
-    semantic: true,
+    analyze: true,
     semanticErrors: true,
     preserveParens: false,
   })

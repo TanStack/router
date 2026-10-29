@@ -1,5 +1,9 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  # needed until yuku 0.26.0 (and its per-platform addons) is older than the release-age window
+  - 'yuku'
+  - '@yuku-toolchain/*'
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true

@@ -88,7 +88,7 @@ async function runCorpus(
     const t0 = performance.now()
     const file = parse(code, {
       lang: id.lang ?? 'ts',
-      semantic: true,
+      analyze: true,
       preserveParens: true,
     })
     void file.program.body.length

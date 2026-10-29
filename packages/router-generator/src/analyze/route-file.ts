@@ -1,4 +1,5 @@
-import { parse, unwrap } from 'yuku'
+import { parse } from 'yuku'
+import { unwrap } from 'yuku/utils'
 import { lit } from '../print/style'
 import type { CodeStyle } from '../print/style'
 import type { RouteProps } from '../types'
@@ -274,7 +275,7 @@ export function analyzeRouteFile(
   const file = parse(source, {
     lang: langOf(filePath),
     sourceType: 'module',
-    semantic: true,
+    analyze: true,
   })
   const errors = file.diagnostics.filter((d) => d.severity === 'error')
   if (errors.length) {

@@ -6,10 +6,10 @@
  * inside it; every unit is a region and planners register sub-regions (option
  * values, Hydrate children, nested chains).
  */
-import { BindingFlags, bindingIdentifiers } from 'yuku'
+import { BindingFlags } from 'yuku'
 import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
-import { unwrapExpression } from './source'
+import { patternIdentifiers, unwrapExpression } from './source'
 import {
   isPrimitiveLiteral,
   isPureClass,
@@ -691,7 +691,7 @@ export function buildUnits(
         const single = decl.declarations.length === 1
         for (const d of decl.declarations) {
           const u = base(d, 'declaration', { start: d.start, end: d.end })
-          const ids = bindingIdentifiers(d.id)
+          const ids = patternIdentifiers(d.id)
           for (const id of ids) {
             const s = symOf(id)
             if (s !== null) {

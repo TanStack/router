@@ -7,9 +7,10 @@
  * Module-level declarations, imports and their provenance are placement's
  * (`reach.ts`).
  */
-import { bindingIdentifiers, walk } from 'yuku'
+import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureClass, isPureExpression } from './purity'
+import { patternIdentifiers } from './source'
 import type { Node } from 'yuku'
 import type { Range } from './header'
 import type { PlanContext } from './plan'
@@ -265,7 +266,7 @@ function orphanedPatternDeclarator(
   if (!node || node.type !== 'VariableDeclarator') {
     return null
   }
-  for (const id of bindingIdentifiers(node.id)) {
+  for (const id of patternIdentifiers(node.id)) {
     const b = file.bindingOf(id)
     if (!b) {
       return null

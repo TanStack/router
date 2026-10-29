@@ -35,7 +35,7 @@ export function parseModule(
     lang: opts.lang,
     sourceType: opts.sourceType,
     path: opts.path,
-    semantic: opts.semantic !== false,
+    analyze: opts.semantic !== false,
     preserveParens: true,
   })
   const errors = file.diagnostics.filter((d) => d.severity === 'error')
@@ -92,5 +92,29 @@ export function unwrapExpression(node: Node): Node {
       default:
         return n
     }
+  }
+}
+
+/** The identifiers a binding pattern declares, in source order. */
+export function patternIdentifiers(
+  p: Node,
+): Array<Extract<Node, { type: 'Identifier' }>> {
+  switch (p.type) {
+    case 'Identifier':
+      return [p]
+    case 'ArrayPattern':
+      return p.elements.flatMap((e) => (e ? patternIdentifiers(e) : []))
+    case 'ObjectPattern':
+      return p.properties.flatMap((prop) =>
+        prop.type === 'RestElement'
+          ? patternIdentifiers(prop.argument)
+          : patternIdentifiers(prop.value),
+      )
+    case 'AssignmentPattern':
+      return patternIdentifiers(p.left)
+    case 'RestElement':
+      return patternIdentifiers(p.argument)
+    default:
+      return []
   }
 }

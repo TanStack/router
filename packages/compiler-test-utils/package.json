@@ -69,6 +69,6 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "yuku": "0.23.0"
+    "yuku": "0.26.0"
   }
 }
