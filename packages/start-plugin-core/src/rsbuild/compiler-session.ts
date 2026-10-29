@@ -3,7 +3,7 @@
  * README.md, "Hosts"): the loader implementation compiling every id (env and
  * derived) of a module of an environment and layer through the shared Start
  * session (`compiler/session.ts`), from one `pre` loader per environment
- * (`compiler-loader.ts`); the server-fn registry rebuilt from the compilers'
+ * (`compiler-loader.ts`); the server-fn facts persisted in the modules'
  * `buildInfo`; and the one invalidation operation on `watchRun`. The Rspack
  * hooks live in `host-plugin.ts`; this module is bundler-API free except for
  * the loader context shape.
@@ -47,7 +47,6 @@ export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
 export interface ServerFnBuildInfo {
   version: 2
   canonicalId: string
-  envType: 'client' | 'server'
   facts: Array<ServerFnFact>
 }
 
@@ -105,8 +104,6 @@ export interface LoaderOptions {
 interface EnvState {
   name: string
   type: 'client' | 'server'
-  /** The server-fn facts of this environment's modules, by module resource (the compiler's snapshot). */
-  serverFns: Map<string, ServerFnBuildInfo>
   transformImport: Array<TransformImportRule>
   /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
   compiled: Set<string>
@@ -135,7 +132,6 @@ export class StartRsbuildCompilerSession {
       this.envs.set(env.name, {
         name: env.name,
         type: env.type,
-        serverFns: new Map(),
         transformImport: [],
         compiled: new Set(),
         recordMapText: null,
@@ -278,7 +274,7 @@ export class StartRsbuildCompilerSession {
   /**
    * After an environment's dev compilation: forget what the session holds of
    * files the compilation no longer depends on (plans, raw facts, import
-   * protection's importer records and server-fn records). Rspack reports a deleted file only while a module depends on it,
+   * protection's importer records). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
    * `unlink`; without this its state stayed for the session (every cache
    * must stay bounded by the live modules).
@@ -304,14 +300,6 @@ export class StartRsbuildCompilerSession {
         }
       }
     }
-    const env = this.envs.get(envName)
-    if (env) {
-      for (const resource of [...env.serverFns.keys()]) {
-        if (!keepEnv(identify(canonicalResource(resource)).path)) {
-          env.serverFns.delete(resource)
-        }
-      }
-    }
     this.start.ip?.retain(keepEnv, envName)
     if (this.liveFiles.size === this.envs.size) {
       // shared state: kept while any environment depends on the file
@@ -325,10 +313,8 @@ export class StartRsbuildCompilerSession {
 
   /**
    * After the last pass of an environment's production build: releases
-   * its plans and its import protection.
-   * Its server-fn snapshot stays (the registry is rebuilt from every
-   * environment's snapshot), and so does what the environments share (raw
-   * facts, registry, id allocator, warnings).
+   * its plans and its import protection. What the environments share
+   * (raw facts, registry, id allocator, warnings) stays.
    */
   release(envName: string): void {
     this.start.release(envName)
@@ -382,7 +368,7 @@ export class StartRsbuildCompilerSession {
       }
       this.lastEvent.set(file, 'unlink')
       await this.invalidate(file, 'unlink')
-      this.start.ip?.forget(normalizePath(file))
+      this.start.forget(normalizePath(file))
     }
   }
 
@@ -420,7 +406,8 @@ export class StartRsbuildCompilerSession {
    * JS/TS module of an environment from the text Rspack hands it (never
    * from a path-only "latest plan", so upstream loaders and maps compose),
    * composes maps with the input map, records dependencies, server-fn
-   * facts and import-protection records, and reports diagnostics.
+   * facts (`buildInfo`, for the replay) and import-protection records, and
+   * reports diagnostics.
    */
   async compile(
     ctx: LoaderContextLike,
@@ -494,17 +481,12 @@ export class StartRsbuildCompilerSession {
     }
     const buildInfo = ctx._module?.buildInfo
     const serverFns = serverFnFactsOf(out)
-    if (serverFns) {
-      const record: ServerFnBuildInfo = {
+    if (serverFns && buildInfo) {
+      buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
         version: 2,
         canonicalId: identity.canonicalId,
-        envType: env.type,
         facts: serverFns,
-      }
-      env.serverFns.set(ctx.resource, record)
-      if (buildInfo) {
-        buildInfo[SERVER_FN_BUILD_INFO_FIELD] = record
-      }
+      } satisfies ServerFnBuildInfo
     }
     const ipEnv = ip?.env(env.name, env.type)
     if (ipEnv && buildInfo) {
@@ -552,17 +534,6 @@ export class StartRsbuildCompilerSession {
       const error = new Error(errors.join('\n'))
       error.name = 'TanStackStartCompilerError'
       throw error
-    }
-  }
-
-  /** Rebuilds the registry from every environment's snapshot (the `finishMake` replay, persistent cache included). */
-  rebuildRegistry(): void {
-    const { registry } = this.start
-    registry.clear()
-    for (const env of this.envs.values()) {
-      for (const record of env.serverFns.values()) {
-        registry.record(record.canonicalId, record.facts, record.envType)
-      }
     }
   }
 

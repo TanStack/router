@@ -46,7 +46,7 @@ import {
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
 import { NODE_MODULES_RE } from '../compiler/scope'
-import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
+import { StartCompilerSession } from '../compiler/session'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
 import {
@@ -519,7 +519,8 @@ export function startCompilerPlugin(
         const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
         // the cheap text gate of a module that may define a server function
         if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
-          const out = await s.start.compile(
+          // (the compile registers the module's functions)
+          await s.start.compile(
             {
               id: identity.canonicalId,
               code,
@@ -529,10 +530,6 @@ export function startCompilerPlugin(
             },
             host,
           )
-          const serverFns = out && serverFnFactsOf(out)
-          if (serverFns) {
-            registry.record(identity.canonicalId, serverFns, env.type)
-          }
         }
       }
       for (const spec of [
@@ -812,8 +809,7 @@ export function startCompilerPlugin(
         }
         const res = await pending
         if (ctx.type === 'delete') {
-          s.start.registry.forget(ctx.file)
-          s.start.ip?.forget(normalizePath(ctx.file))
+          s.start.forget(normalizePath(ctx.file))
         }
         const extra = applyInvalidation(
           this.environment,
@@ -848,7 +844,7 @@ export function startCompilerPlugin(
           }
           const kind = changeKindOf(change.event)
           if (kind === 'unlink') {
-            s.start.ip?.forget(normalizePath(id))
+            s.start.forget(normalizePath(id))
           }
           const res = await invalidate(
             s.start.caches,

@@ -186,6 +186,45 @@ export const greet = createServerFn().handler(() => 'after')
     timeout,
   )
 
+  // A server fn an edit removes leaves the registry with the edit: its id
+  // is no longer one the server knows (the request fails as for any
+  // unknown id), whether its file still defines other server fns or none.
+  // Source: review of the Yuku rewrite (the Vite registry kept the ids a
+  // compile no longer reported); Rsbuild: server-functions e2e "rsbuild
+  // watch updates and removes server function metadata".
+  test.each([
+    {
+      remains: 'another server fn',
+      edited: `import { createServerFn } from '@tanstack/react-start'
+export const kept = createServerFn().handler(() => 'MARK_KEPT')
+`,
+    },
+    { remains: 'no server fn', edited: `export const kept = 'MARK_KEPT'\n` },
+  ])(
+    'SSR: a server fn an edit removes is an unknown id (the file defines $remains)',
+    async ({ edited }) => {
+      const server = await startDevServer({
+        start: {},
+        files: {
+          ...startRequestFiles,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const kept = createServerFn().handler(() => 'MARK_KEPT')
+export const removed = createServerFn().handler(() => 'MARK_REMOVED')
+`,
+        },
+      })
+      const { kept, removed } = await server.import('/src/fns.ts')
+      expect(await callServerFn(server, kept)).toBe('MARK_KEPT')
+
+      await server.edit({ 'src/fns.ts': edited })
+
+      await expect(callServerFn(server, removed)).rejects.toThrow(
+        /Invalid server function ID/,
+      )
+    },
+    timeout,
+  )
+
   // An edit of a module only handlers read must not reload the server (or
   // the page): the handler runs the new code. Which server state survives
   // is Vite's business.

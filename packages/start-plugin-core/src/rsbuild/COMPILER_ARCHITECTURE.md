@@ -12,7 +12,7 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 - `compiler-session.ts` is the state every environment compiler shares around the bundler-free Start session
   (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
   and id allocator, the planners and configuration per environment and layer, the reporting policy): the loader
-  implementation, the server-fn snapshots, the invalidation operation, the resolver module content.
+  implementation, the invalidation operation, the resolver module content.
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
   (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
@@ -47,10 +47,11 @@ two plans (the layer is part of the plan configuration).
 
 ## Server functions
 
-A compile reports the server functions of its module in plan facts; the loader stores them in
-`buildInfo['tanstack.start.serverFns']`, which Rspack persists with the module. At `finishMake` (stage −20) the host
-plugin rebuilds the environment's snapshot from every module of the compilation (built now or restored from the
-persistent cache), the session rebuilds the registry from all snapshots, and the resolver virtual module is rewritten;
+A compile reports the server functions of its module in plan facts: the Start session's registry replaces the module's
+snapshot in its environment with them, and the loader stores them in `buildInfo['tanstack.start.serverFns']`, which
+Rspack persists with the module. At `finishMake` (stage −20) the host plugin replaces the environment's snapshots in
+the registry with those of every module of the compilation (built now or restored from the persistent cache), and the
+resolver virtual module is rewritten;
 at stage −10 the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, a module defining server functions keeps

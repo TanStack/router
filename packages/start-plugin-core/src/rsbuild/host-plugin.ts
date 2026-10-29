@@ -34,6 +34,7 @@ import type {
   StartRsbuildEnvironment,
 } from './compiler-session'
 import type { RsbuildRouteGenerator } from './router-generator'
+import type { ServerFnFact } from '../server-fns/registry'
 import type { ImportGraphView } from '../import-protection/graph-trace'
 import type { Rspack, rspack as rspackNamespaceType } from '@rsbuild/core'
 
@@ -444,7 +445,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               await rebuildModules(compilation, unconfirmed, (r) => r)
             }
           }
-          const snapshot = new Map<string, ServerFnBuildInfo>()
+          const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
           for (const m of compilation.modules) {
             const module = m as unknown as ModuleLike
             const info = module.buildInfo
@@ -455,15 +456,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               | ServerFnBuildInfo
               | undefined
             if (fns?.version === 2) {
-              snapshot.set(module.resource ?? module.identifier(), fns)
+              snapshot.set(fns.canonicalId, fns.facts)
             }
             const ip = info[RSPACK_BUILD_INFO_KEY]
             if (ipEnv && ip && module.resource) {
               ipEnv.replay(canonicalResource(module.resource), ip)
             }
           }
-          env.serverFns = snapshot
-          session.rebuildRegistry()
+          session.start.registry.replace(env, snapshot)
           opts.onServerFnsReplayed()
         },
       )

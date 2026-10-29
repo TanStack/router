@@ -314,15 +314,19 @@ export class StartCompilerSession {
     }
   }
 
-  /** Compiles one id (env or derived) of a module of an environment. */
-  compile(
+  /**
+   * Compiles one id (env or derived) of a module of an environment; the
+   * server functions the compile reports (none included) replace the
+   * module's in the registry (a late pass reports none of its own).
+   */
+  async compile(
     input: StartCompileInput,
     host: HostServices,
   ): Promise<CompileOutput | null> {
     const { env, layer, late } = input
     const rsc = this.rendersServerComponents(env.name, layer)
     const config = this.configFor(env, rsc, layer)
-    return compileModule(
+    const out = await compileModule(
       {
         id: input.id,
         code: input.code,
@@ -338,25 +342,34 @@ export class StartCompilerSession {
       host,
       this.caches,
     )
+    if (!late) {
+      this.registry.set(
+        env,
+        identify(input.id).canonicalId,
+        out && serverFnFactsOf(out),
+      )
+    }
+    return out
   }
 
   /**
-   * After every compile of an id (fresh or cached): the server functions it
-   * defines go to the registry, and import protection registers its edges
-   * and, in dev, reports its violations: an `error`-behaviour one fails the
-   * module (the host serves no output). A promise only when violations are
-   * decided now (`log: 'always'`).
+   * After every compile of an id (fresh or cached): import protection
+   * registers its edges and, in dev, reports its violations: an
+   * `error`-behaviour one fails the module (the host serves no output). A
+   * promise only when violations are decided now (`log: 'always'`).
    */
   afterCompile(
     env: StartCompilerEnvironment,
     id: string,
     out: CompileOutput,
   ): DevCompileOutcome | Promise<DevCompileOutcome> {
-    const serverFns = serverFnFactsOf(out)
-    if (serverFns) {
-      this.registry.record(identify(id).canonicalId, serverFns, env.type)
-    }
     return this.ip?.env(env.name, env.type).afterCompile(id, out) ?? NO_OUTCOME
+  }
+
+  /** Forgets what the session holds of a deleted file (by path): its server functions and import protection's records. */
+  forget(path: string): void {
+    this.registry.forget(path)
+    this.ip?.forget(path)
   }
 
   /**
