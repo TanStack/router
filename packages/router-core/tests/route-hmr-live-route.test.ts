@@ -6,10 +6,11 @@ import type { RouteHmrAdapter } from '../src/hmr'
 /**
  * `applyRouteHmr` on a page whose route tree was rebuilt between two edits
  * of a route module: a route added or renamed regenerates the route tree,
- * whose module re-evaluates with the route module's current export (the
- * last evaluation, not the first one the runtime recorded), so the router
- * holds that later route as the live one. Every later edit must still
- * update the live route.
+ * whose module re-evaluates with the route module's current export, so the
+ * router holds a later evaluation as the live route. That every later edit
+ * updates it: start-plugin-core `route-edits-after-tree-rebuild*.test.ts`
+ * (real pages, Vite and Rsbuild). Here: a live route the module never
+ * evaluated to is left alone.
  */
 describe('applyRouteHmr after a route tree rebuild', () => {
   afterEach(() => {
@@ -51,37 +52,6 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     return { router, tree }
   }
 
-  it('updates the route a rebuilt tree holds (a later evaluation than the first)', () => {
-    const first = evaluate('v0')
-    const { router, tree } = routerOf(first)
-    applyRouteHmr('/page', first, {}, adapter)
-
-    // first edit: the first route is live and gets the new loader
-    const second = evaluate('v1')
-    applyRouteHmr('/page', second, {}, adapter)
-    expect(router.routesById['/page']).toBe(first)
-    expect(first.options.loader()).toBe('v1')
-    expect(router._refreshRoute).toHaveBeenCalledTimes(1)
-
-    // the route tree module re-executes (a route added): it imports the
-    // route module's current export, `second`; the router has not read it
-    root.addChildren([second])
-    second.parentRoute = root
-    tree.page = second
-
-    // second edit: the tree's route must get the new loader and be the live one
-    const third = evaluate('v2')
-    applyRouteHmr('/page', third, {}, adapter)
-    expect(router.routesById['/page']).toBe(second)
-    expect(second.options.loader()).toBe('v2')
-    expect(router._refreshRoute).toHaveBeenCalledTimes(2)
-
-    // a third edit without a tree rebuild updates that same route
-    applyRouteHmr('/page', evaluate('v3'), {}, adapter)
-    expect(router.routesById['/page']).toBe(second)
-    expect(second.options.loader()).toBe('v3')
-  })
-
   it('leaves a route of another evaluation lineage alone', () => {
     const first = evaluate('v0')
     const { router, tree } = routerOf(first)
@@ -94,25 +64,5 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     applyRouteHmr('/page', evaluate('v1'), {}, adapter)
     expect(foreign.options.loader()).toBe('other')
     expect(router._refreshRoute).not.toHaveBeenCalled()
-  })
-
-  it('updates an edited root route, which has no parent', () => {
-    const evaluateRoot = (token: string) =>
-      new BaseRootRoute({ loader: () => token }) as any
-    const first = evaluateRoot('v0')
-    const router = {
-      routesById: { __root__: first } as Record<string, any>,
-      buildRouteTree: () => ({ routesById: { __root__: first } }),
-      setRoutes(caches: { routesById: Record<string, any> }) {
-        this.routesById = caches.routesById
-      },
-      _refreshRoute: vi.fn(() => Promise.resolve()),
-    }
-    ;(window as any).__TSR_ROUTER__ = router
-    applyRouteHmr('__root__', first, {}, adapter)
-    applyRouteHmr('__root__', evaluateRoot('v1'), {}, adapter)
-    expect(router.routesById.__root__).toBe(first)
-    expect(first.options.loader()).toBe('v1')
-    expect(router._refreshRoute).toHaveBeenCalledTimes(1)
   })
 })

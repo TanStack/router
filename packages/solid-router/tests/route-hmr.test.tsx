@@ -1,3 +1,10 @@
+/**
+ * The Solid route HMR runtime's cases no real page reaches. What an edit of a
+ * route file shows on a page (loaders, kept and swapped components, lazy
+ * wrapper identity): router-plugin `integration/route-hmr-browser*.test.ts`
+ * and `known-bugs-route-hmr*.test.ts`; which hot import of a lazy wrapper
+ * wins: router-core `lazy-route-component-hot.test.ts`.
+ */
 import { createSignal } from 'solid-js'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
@@ -60,50 +67,6 @@ function setup(
 }
 
 describe('route HMR (Solid)', () => {
-  test('a hot update replaces the loader and shows the new data', async () => {
-    const { route, router, evaluate, path } = setup(() => ({
-      loader: () => 'data v1',
-      component: () => <p>{route.useLoaderData()()}</p>,
-    }))
-    render(() => <RouterProvider router={router} />)
-    expect(await screen.findByText('data v1')).toBeInTheDocument()
-
-    const next = evaluate({
-      loader: () => 'data v2',
-      component: route.options.component,
-    })
-    expect(await screen.findByText('data v2')).toBeInTheDocument()
-    expect((router.routesById as Record<string, AnyRoute>)[path]).toBe(route)
-    expect(next.options).toBe(route.options)
-  })
-
-  test('the live lazy wrapper is kept and swaps to the re-imported component', async () => {
-    const { router, evaluate, path } = setup(() => ({
-      component: lazyRouteComponent(
-        (): Promise<Module> =>
-          Promise.resolve({ component: makeComponent('v1') }),
-        'component',
-      ),
-    }))
-    const wrapper = (router.routesById as Record<string, AnyRoute>)[path]!
-      .options.component
-    render(() => <RouterProvider router={router} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
-
-    const importer = vi.fn(
-      (): Promise<Module> =>
-        Promise.resolve({ component: makeComponent('v2') }),
-    )
-    evaluate({ component: lazyRouteComponent(importer, 'component') })
-    expect(
-      (router.routesById as Record<string, AnyRoute>)[path]!.options.component,
-    ).toBe(wrapper)
-    expect(
-      await screen.findByRole('button', { name: 'v2 0' }),
-    ).toBeInTheDocument()
-    expect(importer).toHaveBeenCalledOnce()
-  })
-
   test('the held component is kept when the re-imported export is the same', async () => {
     const Page = makeComponent('v1')
     const { router, evaluate } = setup(() => ({
@@ -122,33 +85,6 @@ describe('route HMR (Solid)', () => {
     await importer.mock.results[0]!.value
     await Promise.resolve()
     expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
-  })
-
-  test('only the newest import decides what a hot-updated wrapper renders', async () => {
-    const { router, evaluate } = setup(() => ({
-      component: lazyRouteComponent(
-        (): Promise<Module> =>
-          Promise.resolve({ component: makeComponent('v1') }),
-        'component',
-      ),
-    }))
-    render(() => <RouterProvider router={router} />)
-    await screen.findByRole('button', { name: 'v1 0' })
-
-    const second = createControlledPromise<Module>()
-    const third = createControlledPromise<Module>()
-    evaluate({ component: lazyRouteComponent(() => second, 'component') })
-    evaluate({ component: lazyRouteComponent(() => third, 'component') })
-
-    third.resolve({ component: makeComponent('v3') })
-    expect(
-      await screen.findByRole('button', { name: 'v3 0' }),
-    ).toBeInTheDocument()
-    second.resolve({ component: makeComponent('v2') })
-    await second
-    await Promise.resolve()
-    expect(screen.getByRole('button', { name: 'v3 0' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /v2/ })).not.toBeInTheDocument()
   })
 
   test('a first load that a hot update replaced settles with the newer component', async () => {

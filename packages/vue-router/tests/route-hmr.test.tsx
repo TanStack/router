@@ -1,3 +1,10 @@
+/**
+ * The Vue route HMR runtime's cases no real page reaches. What an edit of a
+ * route file shows on a page (loaders, kept and swapped components, lazy
+ * wrapper identity): router-plugin `integration/route-hmr-browser*.test.ts`
+ * and `known-bugs-route-hmr*.test.ts`; which hot import of a lazy wrapper
+ * wins: router-core `lazy-route-component-hot.test.ts`.
+ */
 import * as Vue from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
@@ -66,55 +73,6 @@ function setup(
 }
 
 describe('route HMR (Vue)', () => {
-  test('a hot update replaces the loader and shows the new data', async () => {
-    const { route, router, evaluate, path } = setup(() => ({
-      loader: () => 'data v1',
-      component: Vue.defineComponent({
-        setup() {
-          const data = route.useLoaderData()
-          return () => <p>{data.value}</p>
-        },
-      }),
-    }))
-    render(<RouterProvider router={router} />)
-    expect(await screen.findByText('data v1')).toBeInTheDocument()
-
-    const next = evaluate({
-      loader: () => 'data v2',
-      component: route.options.component,
-    })
-    expect(await screen.findByText('data v2')).toBeInTheDocument()
-    expect((router.routesById as Record<string, AnyRoute>)[path]).toBe(route)
-    expect(next.options).toBe(route.options)
-  })
-
-  test('the live lazy wrapper is kept and swaps to the re-imported component', async () => {
-    const { router, evaluate, path } = setup(() => ({
-      component: lazyRouteComponent(
-        (): Promise<Module> =>
-          Promise.resolve({ component: makeComponent('v1') }),
-        'component',
-      ),
-    }))
-    const wrapper = (router.routesById as Record<string, AnyRoute>)[path]!
-      .options.component
-    render(<RouterProvider router={router} />)
-    await fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
-
-    const importer = vi.fn(
-      (): Promise<Module> =>
-        Promise.resolve({ component: makeComponent('v2') }),
-    )
-    evaluate({ component: lazyRouteComponent(importer, 'component') })
-    expect(
-      (router.routesById as Record<string, AnyRoute>)[path]!.options.component,
-    ).toBe(wrapper)
-    expect(
-      await screen.findByRole('button', { name: 'v2 0' }),
-    ).toBeInTheDocument()
-    expect(importer).toHaveBeenCalledOnce()
-  })
-
   test('the held component is kept when the loaded export has the same __hmrId', async () => {
     const { router, evaluate } = setup(() => ({
       component: lazyRouteComponent(
@@ -139,53 +97,6 @@ describe('route HMR (Vue)', () => {
     await Vue.nextTick()
     // Kept: plugin-vue-jsx (absent here) reloads the held definition in place.
     expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
-  })
-
-  test('a function component is always swapped', async () => {
-    const fn = (label: string) => () => <span>{label}</span>
-    const { router, evaluate } = setup(() => ({
-      component: lazyRouteComponent(
-        (): Promise<Module> => Promise.resolve({ component: fn('fn v1') }),
-        'component',
-      ),
-    }))
-    render(<RouterProvider router={router} />)
-    await screen.findByText('fn v1')
-
-    evaluate({
-      component: lazyRouteComponent(
-        (): Promise<Module> => Promise.resolve({ component: fn('fn v2') }),
-        'component',
-      ),
-    })
-    expect(await screen.findByText('fn v2')).toBeInTheDocument()
-  })
-
-  test('only the newest import decides what a hot-updated wrapper renders', async () => {
-    const { router, evaluate } = setup(() => ({
-      component: lazyRouteComponent(
-        (): Promise<Module> =>
-          Promise.resolve({ component: makeComponent('v1') }),
-        'component',
-      ),
-    }))
-    render(<RouterProvider router={router} />)
-    await screen.findByRole('button', { name: 'v1 0' })
-
-    const second = createControlledPromise<Module>()
-    const third = createControlledPromise<Module>()
-    evaluate({ component: lazyRouteComponent(() => second, 'component') })
-    evaluate({ component: lazyRouteComponent(() => third, 'component') })
-
-    third.resolve({ component: makeComponent('v3') })
-    expect(
-      await screen.findByRole('button', { name: 'v3 0' }),
-    ).toBeInTheDocument()
-    second.resolve({ component: makeComponent('v2') })
-    await second
-    await Vue.nextTick()
-    expect(screen.getByRole('button', { name: 'v3 0' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /v2/ })).not.toBeInTheDocument()
   })
 
   test('a first load that a hot update replaced settles with the newer component', async () => {
