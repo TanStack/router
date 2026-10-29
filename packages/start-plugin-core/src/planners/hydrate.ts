@@ -23,7 +23,6 @@
 import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
-  cleanOrphanedDeclarations,
   siblingSpecifier,
   unwrapExpression,
   valueBinding,
@@ -402,9 +401,8 @@ function plan(ctx: PlanContext): void {
   const shared = new SharedNames(ctx)
 
   if (!client) {
-    const erased: Array<Range> = []
     for (const b of boundaries) {
-      erased.push(...stripFallback(ctx, b))
+      stripFallback(ctx, b)
       if (b.split && b.children) {
         prefix(ctx, b, null)
         // every compile that would extract the boundary fails alike (J5.5)
@@ -412,11 +410,6 @@ function plan(ctx: PlanContext): void {
           validate(ctx, b, nestedRegions(boundaries, b))
         }
       }
-    }
-    if (erased.length > 0) {
-      // function-scope orphans of the stripped fallbacks: the core's cleanup
-      // (pure initialisers go, impure ones stay as statements with what they read)
-      cleanOrphanedDeclarations(ctx, 'all-outputs', HYDRATE_PLANNER)
     }
     return
   }
@@ -1263,9 +1256,8 @@ function addLazyConst(
 // fallback (server envs)
 // ---------------------------------------------------------------------------
 
-/** Erases a statically visible `fallback`; returns the erased ranges. */
-function stripFallback(ctx: PlanContext, b: Boundary): Array<Range> {
-  const erased: Array<Range> = []
+/** Erases a statically visible `fallback` (what only it read goes with it: the core's orphan cleanup). */
+function stripFallback(ctx: PlanContext, b: Boundary): void {
   const erase = (range: Range) => {
     ctx.rewrites.add({
       range,
@@ -1273,7 +1265,6 @@ function stripFallback(ctx: PlanContext, b: Boundary): Array<Range> {
       scope: 'all-outputs',
       by: HYDRATE_PLANNER,
     })
-    erased.push(range)
   }
   let prevEnd = b.opening.typeArguments?.end ?? b.opening.name.end
   for (const a of b.opening.attributes) {
@@ -1295,7 +1286,6 @@ function stripFallback(ctx: PlanContext, b: Boundary): Array<Range> {
       }
     }
   }
-  return erased
 }
 
 /** The object literal a spread passes: inline, or a single-use unexported `const`. */

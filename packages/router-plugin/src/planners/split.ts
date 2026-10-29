@@ -10,7 +10,6 @@
  * properties in the env output only.
  */
 import {
-  cleanOrphanedDeclarations,
   siblingSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
@@ -85,8 +84,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       })
       i = j + 1
     }
-    // destructured bindings only the deleted options read (G16)
-    cleanOrphanedDeclarations(ctx, ['env'], ROUTER_PLANNER)
   }
 
   if (plan.decisions.length === 0) {

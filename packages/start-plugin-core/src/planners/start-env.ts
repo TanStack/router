@@ -9,12 +9,10 @@
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
- * the core's provenance-based placement; function-local declarators and
- * destructured bindings only removed code read, by the core's
- * `cleanOrphanedDeclarations`.
+ * the core: provenance-based placement at the module level, its orphan
+ * cleanup for function-local declarators and destructured bindings.
  */
 import {
-  cleanOrphanedDeclarations,
   identifierBase,
   isPureExpression,
   revision,
@@ -372,7 +370,6 @@ function planStartEnv(
   const analysis = startAnalysisOf(ctx, table)
   const { analysis: ma, t1, names, rewrites } = ctx
   const file = ma.file
-  const editsBefore = rewrites.edits.length + rewrites.claims.size
   const role = roleOf(ctx, config)
   const isServer = role !== 'client'
   const by = START_ENV
@@ -927,11 +924,6 @@ function planStartEnv(
         rangeOf(u.node),
       )
     }
-  }
-
-  // ---- 7. function-local declarators only removed code read (none without an edit of ours)
-  if (rewrites.edits.length + rewrites.claims.size > editsBefore) {
-    cleanOrphanedDeclarations(ctx, envScope, by)
   }
 
   ctx.setFacts(START_ENV, facts)
