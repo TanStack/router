@@ -160,7 +160,7 @@ describe('glue and renames (lane router)', () => {
       name: 'toy-rename',
       tier: 1,
       gate: () => true,
-      prepare(ctx) {
+      plan(ctx) {
         const sym = ctx.analysis.exports.length
           ? ctx.t1.units.find(
               (u) =>
@@ -173,9 +173,8 @@ describe('glue and renames (lane router)', () => {
           ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
         }
       },
-      plan() {},
     }
-    const planners = [toySplitPlanner(), rename]
+    const planners = [rename, toySplitPlanner()]
     const main = await host.compile('/app/route.tsx', planners)
     const chunk = await host.compile(
       '/app/route.tsx?tsr-split=component',
@@ -207,7 +206,7 @@ describe('glue and renames (lane router)', () => {
       name: 'toy-rename',
       tier: 1,
       gate: () => true,
-      prepare(ctx) {
+      plan(ctx) {
         const unit = ctx.t1.units.find(
           (u) =>
             u.kind === 'declaration' &&
@@ -221,9 +220,8 @@ describe('glue and renames (lane router)', () => {
           'toy-rename',
         )
       },
-      plan() {},
     }
-    const planners = [toySplitPlanner(), rename]
+    const planners = [rename, toySplitPlanner()]
     const main = await host.compile('/app/route.tsx', planners)
     expect(main?.code).toContain('const a = 1, TsrPendingComponent = ')
     expect(main?.code).not.toMatch(/export const a\b/)
@@ -250,7 +248,7 @@ describe('glue and renames (lane router)', () => {
       name: 'toy-rename',
       tier: 1,
       gate: () => true,
-      prepare(ctx) {
+      plan(ctx) {
         const unit = ctx.t1.units.find(
           (u) =>
             u.kind === 'declaration' &&
@@ -264,11 +262,10 @@ describe('glue and renames (lane router)', () => {
           'toy-rename',
         )
       },
-      plan() {},
     }
     const main = await host.compile('/app/route.tsx', [
-      toySplitPlanner(),
       rename,
+      toySplitPlanner(),
     ])
     expect(main?.code).toContain('function TsrPendingComponent(): string')
     expect(main?.code).toContain(
@@ -292,7 +289,7 @@ describe('glue and renames (lane router)', () => {
       name: 'toy-rename',
       tier: 1,
       gate: () => true,
-      prepare(ctx) {
+      plan(ctx) {
         const unit = ctx.t1.units.find(
           (u) =>
             u.kind === 'declaration' &&
@@ -302,9 +299,8 @@ describe('glue and renames (lane router)', () => {
         const next = ctx.names.alloc('TsrPendingComponent')
         ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
       },
-      plan() {},
     }
-    const planners = [toySplitPlanner(), rename]
+    const planners = [rename, toySplitPlanner()]
     const main = await host.compile('/app/route.tsx', planners)
     const chunk = await host.compile(
       '/app/route.tsx?tsr-split=component',

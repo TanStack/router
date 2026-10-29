@@ -148,7 +148,7 @@ directives, never license comments.
 | phase | what                                                                                                                                                                                                                                                             |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A     | identify (canonical id = host id minus compiler-owned query keys), validated plan-cache lookup, parse, Tier 0 analysis (imports/exports/edges/effects), each planner's `gate`, async `prefetch` (resolutions, summaries, target facts; may withdraw the planner) |
-| B     | synchronous `prepare`/`plan` of every planner on an `AnalysisPlan`, `resolve()` (claims, clusters, roots, homes, glue, per-output edges), `freeze()` into a plain-data `EmitPlan`                                                                                |
+| B     | synchronous `plan` of every planner in order on an `AnalysisPlan`, `resolve()` (claims, clusters, roots, homes, glue, per-output edges), `freeze()` into a plain-data `EmitPlan`                                                                                 |
 | C     | per-output edge `policy` (import protection substitutes specifiers), snapshot validation of every dependency, publication to the cache                                                                                                                           |
 | D     | emission of the requested output, on demand                                                                                                                                                                                                                      |
 
@@ -186,7 +186,7 @@ returned but not published.
 | Router, Vite             | `router-plugin/src/hosts/vite.ts` (+ `session.ts`): native plugin, hook filters, `load` for derived ids, `hotUpdate` invalidation                                                                                    |
 | Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader (composes input maps, `addDependency`)                                                                                                    |
 | Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                           |
-| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`): Start and router planners in one compile per module and env                                                                     |
+| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`): Start planners and the router planner in one compile per module and env                                                         |
 | Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache |
 
 Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
@@ -196,21 +196,20 @@ line feed). Start's hosts compile a `node_modules` module only as `start-plugin-
 
 ## Planners
 
-Fixed order per env (an array the host passes): `start-env` → `hydrate` → `rsc-css` → `route-split` → `route-hmr` →
-`import-edges`. A planning round runs every planner's `prepare` (only `route-hmr` has one) before any planner's `plan`.
-The router plugin alone runs only the two router planners.
+Fixed order per env (an array the host passes): `start-env` → `hydrate` → `rsc-css` → `router` → `import-edges`. A
+planning round runs each planner's `plan` in that order; a planner sees the regions, edits and generated names of the
+planners before it. The router plugin alone runs only the `router` planner.
 
-| planner        | job                                                                   | file                                                                                                                |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `route-split`  | route option splitting, `deleteNodes`                                 | `router-plugin/src/planners/split.ts` (recognition `route.ts`, decisions `decisions.ts`, registry `registry.ts`)    |
-| `route-hmr`    | route HMR block, React Refresh registration names                     | `router-plugin/src/planners/hmr.ts`; runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts`  |
-| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/` |
-| `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                         |
-| `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                         |
-| `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                        |
+| planner        | job                                                                   | file                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`       | route option splitting, `deleteNodes`, route HMR                      | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
+| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
+| `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
+| `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
+| `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
 
-Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; router planners are exported from
-`@tanstack/router-plugin/planners`.
+Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
+builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.
 
 ### Adding a planner
 

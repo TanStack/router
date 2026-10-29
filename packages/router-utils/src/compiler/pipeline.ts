@@ -675,7 +675,7 @@ function tier0Plan(
   }
 }
 
-/** One planning round: every planner's `prepare` and `plan` on a fresh plan, then placement. */
+/** One planning round: every planner's `plan` on a fresh plan, in order, then placement. */
 function planRound(
   t0: ModuleAnalysis,
   identity: SourceIdentity,
@@ -686,11 +686,6 @@ function planRound(
   input: CompileInput,
 ): AnalysisPlan {
   const plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
-  for (const p of planners) {
-    if (p.prepare) {
-      p.prepare(withConfig(plan, input.config.perPlanner[p.name]))
-    }
-  }
   for (const p of planners) {
     p.plan(withConfig(plan, input.config.perPlanner[p.name]))
   }

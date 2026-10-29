@@ -80,7 +80,7 @@ export interface CompileOutput {
   output: OutputId
 }
 
-/** The route registry: the router planners read a file's entry, plans record its digest. */
+/** The route registry: the router planner reads a file's entry, plans record its digest. */
 export interface RouteRegistry {
   lookup: (path: string) => { routeId: string } | null
   digestFor: (path: string) => string | null
@@ -159,7 +159,6 @@ export interface Planner {
     t0: ModuleAnalysis,
     ctx: PrefetchContext,
   ) => Promise<void | boolean>
-  prepare?: (ctx: PlanContext) => void
   plan: (ctx: PlanContext) => void
   policy?: (
     plan: EmitPlan,
