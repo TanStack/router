@@ -64,8 +64,6 @@ export interface StartEnvConfig {
   idMode: 'dev' | 'default' | 'placeholder'
   /** The directive a derived provider module carries (RSC), if any. */
   providerDirective?: string
-  /** Whether resolved ids are opaque packages (never read for summaries). */
-  isOpaque?: (resolvedCanonicalId: string) => boolean
 }
 
 export interface StartEnvFacts {
@@ -349,11 +347,7 @@ export function startEnvPlanner(): Planner {
     tier: 1,
     gate: (t0) => t0.hasImportOrExport,
     async prefetch(t0, ctx) {
-      const config = ctx.config as StartEnvConfig
-      const result = await prefetchStartValues(t0, ctx, {
-        table,
-        isOpaque: config.isOpaque ?? (() => false),
-      })
+      const result = await prefetchStartValues(t0, ctx, { table })
       ctx.set(result)
       return result.relevant
     },

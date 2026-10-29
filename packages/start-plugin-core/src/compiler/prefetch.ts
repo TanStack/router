@@ -58,8 +58,6 @@ export function isStartValue(
 
 interface PrefetchOptions {
   table: RecognizerTable
-  /** Whether a resolved id is opaque (an undiscovered package): its summary is never read. */
-  isOpaque: (resolvedCanonicalId: string) => boolean
 }
 
 /**
@@ -97,9 +95,6 @@ export async function prefetchStartValues(
         try {
           if (isKnownSpecifier(table, canonicalId)) {
             return recognizeImport(table, canonicalId, name)
-          }
-          if (opts.isOpaque(canonicalId)) {
-            return UNKNOWN
           }
           const outcome = await ctx.resolver.resolve(canonicalId, name)
           if (outcome.k !== 'found') {

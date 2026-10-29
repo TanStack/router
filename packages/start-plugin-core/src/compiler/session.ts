@@ -101,8 +101,11 @@ export interface StartCompilerSessionOptions {
   readFile: (file: string) => Promise<string | null>
   /** Reads a genuinely virtual module (a Vite plugin's `load`). */
   loadVirtual: (id: string) => Promise<string | null>
-  /** Vite: resolved ids the summaries never read (pre-bundled dependencies). */
-  isOpaque?: (canonicalId: string) => boolean
+  /**
+   * Vite: modules the summaries never read, whatever their text
+   * (pre-bundled dependencies), besides Start's rule (`opaquePackageModule`).
+   */
+  opaque?: (path: string) => boolean
   /** The caches' label (`TSR_COMPILER_STATS`). */
   label: string
 }
@@ -161,13 +164,15 @@ export class StartCompilerSession {
       this.ip?.env(env.name, env.type)
     }
     this.compiles = startCompileScope(this.ip)
+    const packageModule = opaquePackageModule(this.ip)
     this.rawFacts = new RawFactsCache({
       readFile: opts.readFile,
       loadVirtual: opts.loadVirtual,
       recognizer: startRecognizer(),
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
-      opaque: opaquePackageModule(this.ip),
+      opaque: (path, text) =>
+        (opts.opaque?.(path) ?? false) || packageModule(path, text),
     })
     this.caches = createCompilerCaches(this.rawFacts, opts.label)
     registerCompilerStats(`${opts.label}:session`, this, (o) =>
@@ -263,7 +268,6 @@ export class StartCompilerSession {
         providerSeparate: opts.rsc !== undefined,
         idMode,
         providerDirective: opts.rsc?.providerDirective,
-        isOpaque: opts.isOpaque,
       }
       const router = rsc ? null : this.routerConfig(env.type)
       const hydrate: HydratePlannerConfig = {

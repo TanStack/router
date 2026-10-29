@@ -256,10 +256,6 @@ export function startCompilerPlugin(
     return session
   }
 
-  /** Pre-bundled dependencies are opaque (a Start library declaring the framework as a peer is never pre-bundled); everything else resolved is read. */
-  const isOpaque = (canonicalId: string): boolean =>
-    normalizePath(identify(canonicalId).path).includes('/node_modules/.vite/')
-
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)
 
@@ -294,7 +290,10 @@ export function startCompilerPlugin(
           }
           return null
         },
-        isOpaque,
+        // pre-bundled dependencies (a Start library declaring the framework
+        // as a peer is never pre-bundled): what the optimizer metadata maps
+        // back to a source entry is read there (`unoptimizedDependency`)
+        opaque: (p) => normalizePath(p).includes('/node_modules/.vite/'),
         label: 'start:vite',
       }),
       bundledDev: config.bundledDev,
