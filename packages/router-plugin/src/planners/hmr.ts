@@ -33,6 +33,7 @@ import type {
   Frag,
   PlanContext,
   Planner,
+  SymbolId,
 } from '@tanstack/router-utils/compiler'
 
 export const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
@@ -242,8 +243,8 @@ export function routeHmrPlanner(): Planner {
       }
       if (reactVite && anchor) {
         // every export name plugin-react may see: the module's own, the
-        // anchor, and (over-approximated) every module binding the core may
-        // export as glue for the chunks
+        // anchor, and (over-approximated) every module-level binding the
+        // core may export as glue for the chunks
         const exportNames = new Set<string>()
         for (const e of ctx.analysis.exports) {
           if (e.kind === 'star') {
@@ -253,8 +254,11 @@ export function routeHmrPlanner(): Planner {
             exportNames.add(e.name)
           }
         }
-        for (const s of ctx.t1.symbols.names()) {
-          exportNames.add(s)
+        const { symbols } = ctx.t1
+        for (let i = 0; i < symbols.size; i++) {
+          if (symbols.isModuleLevel(i as SymbolId)) {
+            exportNames.add(symbols.name(i as SymbolId))
+          }
         }
         exportNames.add(anchor.name)
         metaParts.push(
