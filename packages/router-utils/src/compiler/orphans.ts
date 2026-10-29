@@ -100,6 +100,11 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
       if (symbols.kind(sym) !== 'source') {
         continue
       }
+      // orphaned: read, and only by erased code (most bindings fail here)
+      const refs = t1.refs.refsOf(sym)
+      if (refs.length === 0 || !refs.every((r) => !live.live(r))) {
+        continue
+      }
       const decl = b.declarations[0]
       const declParent = decl ? file.parentOf(decl) : null
       // a `var` hoisted out of a nested block is declared by the effect unit
@@ -121,10 +126,6 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
       }
       const parent = file.parentOf(decl)
       if (!parent) {
-        continue
-      }
-      const refs = t1.refs.refsOf(sym)
-      if (refs.length === 0 || !refs.every((r) => !live.live(r))) {
         continue
       }
       if (live.isErased(rangeOf(decl))) {
