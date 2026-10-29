@@ -374,6 +374,7 @@ function planStartEnv(
   const analysis = startAnalysisOf(ctx, table)
   const { analysis: ma, t1, names, rewrites } = ctx
   const file = ma.file
+  const editsBefore = rewrites.edits.length + rewrites.claims.size
   const role = roleOf(ctx, config)
   const isServer = role !== 'client'
   const by = START_ENV
@@ -949,8 +950,10 @@ function planStartEnv(
     }
   }
 
-  // ---- 7. function-local declarators only removed code read
-  cleanOrphanedDeclarations(ctx, envScope, by)
+  // ---- 7. function-local declarators only removed code read (none without an edit of ours)
+  if (rewrites.edits.length + rewrites.claims.size > editsBefore) {
+    cleanOrphanedDeclarations(ctx, envScope, by)
+  }
 
   ctx.setFacts(START_ENV, facts)
 }
