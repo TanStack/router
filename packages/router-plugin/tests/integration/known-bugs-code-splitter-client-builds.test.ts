@@ -1,8 +1,9 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/known-bugs-code-splitter.test.ts.
 /**
- * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
- * main and is marked .fails; remove .fails when the bug is fixed.
+ * Known code-splitter bugs. Each test asserts the correct behaviour for a bug
+ * main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  */
 
 import { describe, expect, test } from 'vitest'

@@ -1,12 +1,11 @@
 /**
- * Known import-protection bugs, continued from known-bugs.test.ts (two
- * files, to keep each within the per-file time budget): Vite dev with
- * `behavior: 'error'`, Rsbuild dev, and the app-level twins of the mock
- * pins. Each test asserts correct behaviour for a bug on main and is marked
- * .fails where it still fails (the Rsbuild path is on the previous
- * compiler); remove .fails when the bug is fixed. A mock is told by what it
- * does (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a violation
- * by what `onViolation` receives.
+ * Known import-protection bugs, continued from known-bugs.test.ts (two files,
+ * to keep each within the per-file time budget): Vite dev with `behavior:
+ * 'error'`, Rsbuild dev, and the app-level twins of the mock pins. Each test
+ * asserts the correct behaviour for a bug main had; the ones today's compiler
+ * still fails are marked .fails (oracle/KNOWN-BUGS.md, "Remaining pins"). A
+ * mock is told by what it does (`mock-helpers.ts`, `describeValue`: `a safe
+ * mock`), and a violation by what `onViolation` receives.
  */
 import { createRequire } from 'node:module'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -170,9 +169,9 @@ describe('Rsbuild dev', () => {
     timeout,
   )
 
-  // Bug: Rsbuild import protection checks importers by file extension
-  // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
-  // JS/TS extensions), and its loader rule only rewrites those files, so an
+  // Bug: Rsbuild import protection checks importers by file extension (the
+  // Start loader rule's `JS_FILE_RE`, src/rsbuild/start-compiler.ts: only
+  // JS/TS extensions), and that rule only compiles those files, so an
   // importer of another module type that compiles to JS (a custom type
   // here, `.mdx` through its real loader below) is never checked: a denied
   // file is mocked (the file rule) but not reported, and a denied specifier

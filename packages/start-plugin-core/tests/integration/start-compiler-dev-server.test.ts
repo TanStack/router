@@ -647,13 +647,10 @@ export const fn = base.handler(async () => db.x())
 
   // Bug: in full-bundle dev, an edit of a module that turns what another
   // module imports into a server fn builder does not recompile the
-  // importer: the dev engine re-bundles the edited module only, and the
-  // Start compiler's bundledDev `watchChange` forgets the edited module
-  // alone, so the importer keeps the output compiled against the old
-  // `base`, handler and server-only imports included.
-  // Source: packages/start-plugin-core/src/vite/start-compiler-plugin/plugin.ts:412-424
-  // (client: `invalidateModule(id)` of the edited module only; the
-  // unbundled path invalidates the importers, :318-358).
+  // importer: the dev engine re-bundles the edited module only, so the
+  // importer keeps the output compiled against the old `base`, handler and
+  // server-only imports included (the unbundled path invalidates the
+  // importers: `applyInvalidation`, src/vite/compiler-plugin.ts).
   // Impact: with `experimental.bundledDev`, the page keeps loading the
   // handler and the modules only it reads (server-only code) in the client
   // until the dev server restarts. Found with the real watchers

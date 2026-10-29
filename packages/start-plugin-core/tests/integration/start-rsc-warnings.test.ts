@@ -89,7 +89,7 @@ const hosts = {
 }
 
 describe.each(Object.keys(hosts) as Array<keyof typeof hosts>)('%s', (host) => {
-  // Bug: the transform (react-start-rsc src/plugin/rscCssTransform.ts,
+  // Bug on main: the transform (react-start-rsc src/plugin/rscCssTransform.ts,
   // `renderToReadableStream` branch) skips an argument that is not
   // top-level JSX (`isTopLevelJsx`) with `continue`, and reports nothing;
   // on Rsbuild, Start's compiler host would drop a warning of a transform

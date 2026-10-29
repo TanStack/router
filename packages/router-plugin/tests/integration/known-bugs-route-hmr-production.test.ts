@@ -2,9 +2,9 @@
 // known-bugs-route-hmr.test.ts, the in-process pins in
 // ../known-bugs-route-hmr.test.ts (fast tier).
 /**
- * Known route HMR bugs in production builds. Each test asserts correct
- * behaviour for a bug on main and is marked .fails; remove .fails when the
- * bug is fixed.
+ * Known route HMR bugs in production builds. Each test asserts the correct
+ * behaviour for a bug main had, which today's compiler fixes (a regression
+ * test, oracle/KNOWN-BUGS.md).
  */
 import { describe, expect, test } from 'vitest'
 import { build, head, routeApp } from '../build-harness'

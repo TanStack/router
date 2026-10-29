@@ -226,7 +226,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
       },
     )
 
-    // Bug: on Rsbuild, the RSC CSS transform only rewrites server function
+    // Bug on main: on Rsbuild, the RSC CSS transform only rewrote server function
     // provider modules (`serverFnProviderOnly: true`, react-start
     // src/plugin/rsbuild.ts; react-start-rsc src/plugin/rscCssTransform.ts), so
     // a render call in a helper module that a server function calls gets no CSS.

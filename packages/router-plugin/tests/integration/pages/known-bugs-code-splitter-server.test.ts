@@ -1,9 +1,9 @@
 /**
- * Known code-splitter bugs (part 4 of known-bugs-code-splitter.test.ts):
- * code that reads a split binding, class components, side-effect imports,
+ * Known code-splitter bugs (part 4 of known-bugs-code-splitter.test.ts): code
+ * that reads a split binding, class components, side-effect imports,
  * server-only route options on the client and look-alike route factories.
- * Each test asserts correct behaviour for a bug on main and is marked
- * .fails; remove .fails when the bug is fixed.
+ * Each test asserts the correct behaviour for a bug main had, which today's
+ * compiler fixes (a regression test, oracle/KNOWN-BUGS.md).
  *
  * Every route is loaded through the public router plugin in a real Vite dev
  * server and run in a real browser page (`./route-app`); what the user is

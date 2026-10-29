@@ -1,24 +1,58 @@
-# Known bugs of today's compilers
+# Known bugs
 
-Each bug is pinned by `.fails` tests that assert the correct outcome and accept any correct fix. When your compiler
-fixes a bug, its pins fail with "Expect test to fail": remove the `.fails` and keep the test.
+Two parts, one entry per root cause: the bug, the SPEC clause, its tests (`file` and test names; paths under
+`packages/`; `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment
+(`Bug:`, `Impact:`) has the details.
 
-One entry per root cause: the bug, the SPEC clause, the pins (`file` and test names; paths under `packages/`; `$name`,
-`%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`, `Impact:`) has the
-details. "Cause" files name the implementation the pin was written against (the Babel-based compilers); a rewrite may
-have no such file.
+- **Remaining pins**: bugs today's compiler still has. Each is pinned by `.fails` tests that assert the correct
+  outcome and accept any correct fix. When a compiler fixes one, its pins fail with "Expect test to fail": remove the
+  `.fails`, keep the test, and move the entry to the second part.
+- **Fixed, kept as regression tests**: bugs main's compilers (the Babel-based ones) had, which the compilers on the
+  shared core fix. Their tests run as ordinary tests, mostly in the `known-bugs-*` files. "Cause" files name main's
+  implementation.
 
-Totals: 381 pin sites in 106 test files (a table test counts once; Vitest counts each row).
+## Remaining pins
 
-Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
-adaptive pins next to them, which read the names a compiler actually generates, are the real check.
+- **webpack and Rspack keep an exported component another module imports through the route file in the entry
+  chunk** unless the package is side-effect free (`"sideEffects": false`); Vite redirects the import to the extracted
+  module. SPEC J2.5. `router-plugin/tests/integration/known-bugs-code-splitter-page-code.test.ts`: "$name loads with
+  its chunk" (the row "an exported component another route's split component renders", webpack and Rspack without
+  `"sideEffects": false`). Fix: the component loads with its chunk on every bundler.
+- **Root routes are never split.** SPEC J2.7 (goal; kept unsplit on purpose, as on main: their components render on
+  every page, or on error and not-found responses). `router-plugin/tests/integration/known-bugs-code-splitter-page-
+code.test.ts`: "a root route's %s loads lazily".
+- **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
+  which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
+  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
+  `known-bugs-route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
+  applies only once the route matches" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
+  matches.
+- **Rsbuild: a route module's first server fn breaks the hot update of its loaded component chunk** when Rspack's
+  `splitChunks` puts the modules the chunk gained into a new async chunk: the re-executed module requires them before
+  anything loads that chunk. Upstream, Rspack's HMR runtime (see "Upstream issues"); a plain Rsbuild app fails the
+  same way. SPEC J3.3, G10. `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`: "an edit
+  that adds a server fn to the component shows its result on the open page".
+- **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
+  the importer**, whose client output keeps the handler. SPEC J4.5, G10.
+  `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
+  builder: the client bundle drops the handler".
+- **Rsbuild ships the chunk of an unused exported component's boundary**: Rspack drops the unused declaration but
+  still emits the async chunk of the `import()` inside it (webpack behaves the same). SPEC J5.6.
+  `start-plugin-core/tests/integration/hydrate-build-cases.ts`: "an unused exported component with a boundary is not
+  in the client" (Rsbuild).
+- **Rsbuild checks importers by file extension** (JS/TS only): custom module types and `.mdx` are never checked. SPEC
+  J6.1, §2.1. `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom
+  type importing $name is reported, and its real code does not run"; "an .mdx page importing $name is reported in its
+  source, and its real code does not run".
 
-## Shared causes (several jobs)
+## Fixed, kept as regression tests
+
+### Shared causes (several jobs)
 
 **S1. JSX pragmas are not kept effective.** Code the compilers insert lands above a file's leading pragma (Oxc reads
 leading pragmas only); a non-leading pragma becomes leading in a chunk; dead-code elimination does not count a
 classic pragma as a use of its factory, so the factory import is dropped. SPEC J2.16, G12. Fix: every emitted module
-compiles its JSX under the runtime the untouched file has, and keeps the factory it needs. 13 pins:
+compiles its JSX under the runtime the untouched file has, and keeps the factory it needs.:
 
 - `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
   ineffective as in the untouched file (leading-pragma project)"; "keeps the pragma in effect in every module that
@@ -43,7 +77,7 @@ Babel-based compilers' babel-dead-code-elimination counted `typeof x` type queri
 members, overload and constructor parameters) and a local of a function's own name as reads, and never removed classes,
 enums, namespaces, overloaded functions or redeclared `var`s. Server-only imports then stay on the client (and
 client-only imports on the server). SPEC J4.12, J4.11, J2.5, G16. Fix: code only server code (or only types) reads is
-gone from the client, with its imports, and code only client-only code reads is gone from the server. 10 pins:
+gone from the client, with its imports, and code only client-only code reads is gone from the server.:
 
 - `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client: $name does not load its server-only import";
   "client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax"; "client: a
@@ -59,7 +93,7 @@ gone from the client, with its imports, and code only client-only code reads is 
   "callers drop a handler-only function that declares a local of its own name".
 
 **S3. The printer drops required parentheses** (`@babel/generator` in the Babel-based compilers): `count as number++`,
-`a as any ? -x : y`, `<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same. 5 pins:
+`a as any ? -x : y`, `<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same.:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "an asserted update operand keeps
   its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component";
@@ -69,7 +103,7 @@ gone from the client, with its imports, and code only client-only code reads is 
 
 **S4. Source maps are lost on webpack and Rspack.** unplugin's webpack and Rspack transform loaders (the former
 integration layer) drop the map a plugin returns when no earlier loader passed one in. SPEC G6. Fix: a throw in a
-split chunk maps to the route file's line (and column). 4 pins:
+split chunk maps to the route file's line (and column).:
 
 - `router-plugin/tests/integration/build-source-maps.test.ts`: "a throw in a split component maps to its line in the
   route file ($name)"; "a throw in $name maps to its line and column in the route file".
@@ -80,7 +114,7 @@ split chunk maps to the route file's line (and column). 4 pins:
 
 **S5. A type-only import re-exported as `export { Settings }` loses its import** (valid TypeScript without
 `verbatimModuleSyntax`), so the TypeScript transform can no longer erase the export. SPEC G1, §2.1. Fix: the module
-still compiles and the type export is erased. 2 pins:
+still compiles and the type export is erased.:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "a type-only import re-exported
   as `export { Settings }` is erased (%s)".
@@ -88,7 +122,7 @@ still compiles and the type export is erased. 2 pins:
   `export { Settings }` is erased (%s)".
 
 **S6. Generated names collide with user bindings.** SPEC G15, §5.1. Fix: no generated name shadows or redeclares a
-user binding. 8 pins:
+user binding.:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-shapes.test.ts`: "a route file binding named $name
   keeps its value"; "route file bindings named like what the compiled modules introduce keep their values"
@@ -116,7 +150,7 @@ removal:
 - `router-plugin/tests/integration/pages/code-splitter-dead-code-shapes.test.ts`: the same name (a split component and
   a `deleteNodes` server handler: the route module throws when it loads).
 
-## J1 Route file upkeep (30 pins)
+### J1 Route file upkeep
 
 - **A `(group).tsx` route file is reported relative to the routes directory** (neither absolute nor project-relative).
   SPEC §2.2, §5.7. `router-generator/tests/deny-route-group-config.test.ts`: "a (group).tsx route file is reported by
@@ -187,7 +221,7 @@ removal:
   J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
   generator cannot parse is reported, and fixing it adds the route".
 
-## J2 Route code splitting (108 pins: 90 below, 18 in S1, S3–S7)
+### J2 Route code splitting
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
@@ -215,14 +249,13 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   re-export or declare the re-exports and default class of the route file". Fix: a chunk carries only what its group
   needs.
 - **The split chunk copies a pure exported binding** (two instances: the route module's or its extracted module's,
-  which importers of the route file get, and the chunk's own copy). By rule since R77 (2026-10-28; `router-plugin/
-ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module of a pure export the route module
+  which importers of the route file get, and the chunk's own copy). By rule (`router-plugin/ARCHITECTURE-CODE-
+SPLITTING.md`): a chunk never imports the extracted module of a pure export the route module
   re-exports, so the export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks`
   group), at the price of a second instance of a stateless function, class or component; state, effects and augmented
   bindings are never copied (one instance, imported). SPEC J2.4 (amended). No pins: the identity rows were deleted with
   the decision (a by-rule outcome is not a bug); the rendering rows next to them remain
-  (`react-refresh-route-components.test.ts`, `known-bugs-dev-server.test.ts` "keep a $name component exported as the
-  route option value"; `pages/known-bugs-code-splitter-bindings.test.ts` "an exported errorComponent written as `%s`
+  (`react-refresh-route-components.test.ts` "keep a $name component exported as the route option value"; `pages/known-bugs-code-splitter-bindings.test.ts` "an exported errorComponent written as `%s`
   renders, split or reported"). Fix: none planned; a bundler-independent way to share one instance lazily would reopen
   the decision.
 - **Bindings that read `Route` are never shared**, so chunks copy them. SPEC J2.4.
@@ -231,8 +264,6 @@ ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module of 
 - **A split component reading `Route` declared with `const` and exported later (`export { Route }`) recreates the
   route.** SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component reads the route the route
   module exports through export { Route }".
-- **Root routes are never split.** SPEC J2.7 (goal). `integration/known-bugs-code-splitter-page-code.test.ts`: "a root
-  route's %s loads lazily".
 - **A component declared by a destructuring is not split, or the build throws.** SPEC J2.8, J2.9.
   `integration/known-bugs-code-splitter-page-code.test.ts`: "${destructured.name} load with their chunk or are
   reported"; `integration/known-bugs-code-splitter-client-builds.test.ts`: "a component declared by an array
@@ -346,12 +377,6 @@ ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module of 
   decorator that the split component uses compiles into parseable modules".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
-- **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
-  which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
-  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
-  `known-bugs-route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
-  applies only once the route matches" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
-  matches.
 - **Rsbuild: a route's manifest entry lists the chunks and CSS of a sibling route** when the routes share a module in
   a chunk of its own: Start's Rsbuild manifest counts a chunk as available when any one of the importing chunk's groups
   has it, not every one, so the shared chunk depends on each route's copy of the module it imports (#8780). SPEC J2.22.
@@ -368,7 +393,7 @@ ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module of 
   split loader share keeps working"; `known-bugs-dev-server.test.ts`: "keep exported overloads and their aliases that
   unsplit and split options call".
 
-## J2.14/J2.15 Start's router wiring (12 pins)
+### J2.14/J2.15 Start's router wiring
 
 Paths under `start-plugin-core/tests/integration/`.
 
@@ -390,7 +415,7 @@ Paths under `start-plugin-core/tests/integration/`.
   `start-compose-project-path.test.ts`: "the client route tree leaves out the server-only route"; "the client gets the
   file, not the client route tree".
 
-## J3 Route HMR (29 pins: 23 below, 2 in S6, 4 in J2)
+### J3 Route HMR
 
 Paths under `router-plugin/tests/` unless given.
 
@@ -424,25 +449,22 @@ Paths under `router-plugin/tests/` unless given.
   `integration/known-bugs-route-hmr.test.ts`: "$bundler: an edit of a split $target route shows in place, keeping the
   split component".
 - **Vite: the accept call is on an alias (`const hot = import.meta.hot`)**, so the module is no HMR boundary and the
-  page reloads. SPEC J3.1, G10. `integration/known-bugs-route-hmr.test.ts`: "vite: an edit of an unsplit Vue route shows
-  in place"; "vite: an edit of a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)";
+  page reloads. SPEC J3.1, G10. `integration/route-hmr-browser-frameworks.test.ts`: "shows the new code of an edited
+  route file in place (autoCodeSplitting: %s)" (Vue); `integration/known-bugs-route-hmr.test.ts`: "vite: an edit of a
+  React .ts route module shows its new loader data in place (autoCodeSplitting: %s)";
   "vite: an edit of a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)".
 - **Rsbuild: an unsplit Solid route keeps rendering the old component**, the root route too (always unsplit). SPEC
-  J3.3, J3.5. `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of an unsplit Solid route shows its new
-  component in place"; "rsbuild: an edit of a Solid root route shows its new component in place (autoCodeSplitting:
+  J3.3, J3.5. `integration/route-hmr-browser-frameworks.test.ts`: "shows the new code of an edited route file in place
+  (autoCodeSplitting: %s)" (Rsbuild, Solid); `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of a Solid
+  root route shows its new component in place (autoCodeSplitting:
   %s)".
 - **Rsbuild: an edit of a split loader only never reaches the page** (the route module did not change). SPEC J3.3.
   `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of a split loader (codeSplitGroupings: %s) shows its
   data in place".
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
-- **Rsbuild: a route module's first server fn breaks the hot update of its loaded component chunk** when Rspack's
-  `splitChunks` puts the modules the chunk gained into a new async chunk: the re-executed module requires them before
-  anything loads that chunk. Upstream, Rspack's HMR runtime (see "Upstream issues"); a plain Rsbuild app fails the
-  same way. SPEC J3.3, G10. `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`: "an edit
-  that adds a server fn to the component shows its result on the open page".
 
-## J4 Start environment separation (86 pins: 66 below, 20 in S1–S7)
+### J4 Start environment separation
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -507,8 +529,7 @@ Paths under `start-plugin-core/tests/` unless noted.
   re-export ($name) loads no server code"; "SSR: a module importing an edited factory module through a re-export
   ($name) gets a server fn"; `known-bugs-start-compiler.test.ts`: "a dev edit of a module a re-export chain ends in
   recompiles its importers"; `start-compiler-factories.test.ts`: "dev: editing a factory module recompiles its
-  importers against the new code"; `integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a
-  server fn builder: the client bundle drops the handler".
+  importers against the new code".
 - **Dev lookups go through a derived id** (`?server-fn-module-lookup`) a virtual-module plugin or a fresh server does
   not know. SPEC J4.4, G11. `createServerFn/createServerFn.test.ts`: "a server fn whose factory a virtual module serves by
   its exact id compiles in dev"; `integration/known-bugs-start-compiler-dev.test.ts`: "calls a server fn id on a fresh
@@ -531,10 +552,6 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Library discovery reads the `package.json` of `process.cwd()`, not Vite's root.** SPEC J4.16.
   `integration/known-bugs-start-compiler.test.ts`: "a build run from another directory: a library's server fn runs in
   the SSR build".
-- **Vite dev: discovered Start libraries are left out of pre-bundling** (`optimizeDeps.exclude`), so their CommonJS
-  dependencies reach the browser untransformed. SPEC J4.16, G13. `integration/known-bugs-start-compiler-dev.test.ts`:
-  "a Start library's import of a CommonJS dependency works in a client route". Fix: such a library works in dev as in
-  a build.
 - **Rsbuild SSR: an isomorphic fn makes the compiler resolve the module's `createMiddleware` import.** SPEC J4.8.
   `integration/known-bugs-start-compiler.test.ts`: "a module with a middleware and an isomorphic fn builds, and its
   middleware runs on the server".
@@ -564,15 +581,13 @@ Paths under `start-plugin-core/tests/` unless noted.
   `react-start-rsc/tests/integration/rsc-start-build.test.ts`: "a server fn only a 'use client' component of a server
   component imports runs when clicked". Fix: every server fn the client references is callable by id.
 
-## J5 Deferred hydration `<Hydrate>` (40 pins: 37 below, 3 in S1, S6)
+### J5 Deferred hydration `<Hydrate>`
 
 Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
 
 - **A split component with a boundary that another option reads goes to the shared module without its lazy
   component.** SPEC J2.20. `hydrate-build-cases.ts`: "boundaries in split route options that another option reads
   hydrate in the boundaries the server renders".
-- **The lazy component of a boundary is created by an unmarked module-level call**, so an unused component's children
-  still ship. SPEC J5.6. `hydrate-build-cases.ts`: "an unused exported component with a boundary is not in the client".
 - **An export only the children use, initialised by a call, must run once.** SPEC J5.6, G3. `hydrate-build-cases.ts`:
   "an export only the children use, initialized by a call, is initialized once and hydrates".
 - **The parent of a boundary keeps a declaration only the children use when another removed declaration reads it
@@ -631,7 +646,7 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
 - **A text-only boundary's chunk has an empty source map.** SPEC G6. `pages/known-bugs-hydrate.test.ts`: "client: the
   split text of a text-only boundary maps to its line and column".
 
-## J6 Import protection (68 pins)
+### J6 Import protection
 
 Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/importProtection/`.
 
@@ -710,9 +725,6 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   its source line"; `ip/reported-location-trace.test.ts`: "$build: after $name".
 - **`maxTraceDepth` is applied from the entry side** and loses the importer. SPEC J6.5. `ip/dev.test.ts`: "with
   maxTraceDepth, a deeper trace is cut, keeping the importer".
-- **Rsbuild checks importers by file extension** (JS/TS only): custom module types and `.mdx` are never checked. SPEC
-  J6.1, §2.1. `ip/known-bugs-dev.test.ts`: "a module of a custom type importing $name is reported, and its real code does
-  not run"; "an .mdx page importing $name is reported in its source, and its real code does not run".
 - **A specifier mock exports only statically read names, and an Rsbuild mock build inlines enum values.** SPEC J6.8.
   `ip/known-bugs-dev.test.ts`: "vite dev: ${name}."
 - **Rsbuild: a dynamic `import()` of a denied specifier is neither reported nor mocked.** SPEC J6.1.
@@ -735,7 +747,7 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   J6.5. `rsbuild/import-protection.test.ts`: "the file rule denies the module it resolves to: the importer is reported at
   the import or the use"; "denied as written, the build fails on it, reporting the importer at the import or the use".
 
-## J7 RSC CSS injection (8 pins, plus one in J4)
+### J7 RSC CSS injection
 
 Paths under `react-start-rsc/tests/integration/`.
 
@@ -776,7 +788,7 @@ None is filed upstream yet. "Remove when" says when a harness change can go.
 | Node 24/26 `fs.rmSync`                                          | returns without an error and leaves files behind when another process removes part of the tree meanwhile                                                                                      | only the run's teardown removes the run's temp directory (`compiler-test-utils/src/run-directory.ts`).                                                                                                                                                                                              |
 | Rspack 2.2, webpack 5                                           | unminified production output keeps reads of dropped bindings in dead code of modules no compiler touched                                                                                      | the dangling-name check covers only modules the compilers produced or changed (SPEC G8; `checkDanglingNames` in `compiler-test-utils/src/build-harness.ts`).                                                                                                                                        |
 | Chromium (Playwright, `--disable-dev-shm-usage`)                | shared memory lives in files in `TMPDIR`; a full router-plugin `test:integration` holds up to about 2.2 GB; with little room, module requests fail (`net::ERR_INSUFFICIENT_RESOURCES`)        | the browser helpers bound open pages (`runPageLimit`, `openPageLimit` in `compiler-test-utils/src/browser.ts`). Use a `TMPDIR` with room, or re-run the file alone.                                                                                                                                 |
-| unplugin 3.3                                                    | webpack and Rspack loaders drop the plugin's source map                                                                                                                                       | pinned (S4): unplugin was the former integration layer.                                                                                                                                                                                                                                             |
-| `@babel/generator` 7.29                                         | drops required parentheses                                                                                                                                                                    | pinned (S3): Babel was the former printer.                                                                                                                                                                                                                                                          |
-| babel-dead-code-elimination 1.0.12                              | counts `typeof` type queries as references (pcattori/babel-dead-code-elimination#50)                                                                                                          | pinned (S2): the former dead-code elimination.                                                                                                                                                                                                                                                      |
-| babel-dead-code-elimination 1.0.12                              | removes the const of a class and const cycle and keeps the class, whose static field then reads a deleted name (no class visitor)                                                             | pinned (S7): the former dead-code elimination.                                                                                                                                                                                                                                                      |
+| unplugin 3.3                                                    | webpack and Rspack loaders drop the plugin's source map                                                                                                                                       | fixed (S4): unplugin was the former integration layer.                                                                                                                                                                                                                                              |
+| `@babel/generator` 7.29                                         | drops required parentheses                                                                                                                                                                    | fixed (S3): Babel was the former printer.                                                                                                                                                                                                                                                           |
+| babel-dead-code-elimination 1.0.12                              | counts `typeof` type queries as references (pcattori/babel-dead-code-elimination#50)                                                                                                          | fixed (S2): the former dead-code elimination.                                                                                                                                                                                                                                                       |
+| babel-dead-code-elimination 1.0.12                              | removes the const of a class and const cycle and keeps the class, whose static field then reads a deleted name (no class visitor)                                                             | fixed (S7): the former dead-code elimination.                                                                                                                                                                                                                                                       |

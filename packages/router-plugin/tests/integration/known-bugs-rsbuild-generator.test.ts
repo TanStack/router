@@ -1,18 +1,19 @@
 /**
- * Pins of the route generator on a running Rsbuild dev server (scenarios:
- * `generator-dev-scenarios.ts`). Each pin's controls pass on Vite (the same
- * scenario in dev-server-generator.test.ts and dev-server-new-routes.test.ts).
+ * Regression tests of the route generator on a running Rsbuild dev server
+ * (scenarios: `generator-dev-scenarios.ts`); their controls run on Vite (the
+ * same scenario in dev-server-generator.test.ts and
+ * dev-server-new-routes.test.ts).
  *
- * The Rspack (and webpack) generator plugin watches the routes directory
- * itself only for created files; the other route file events reach it
- * through the bundler's watcher, which only watches the modules of the
- * bundle. A route file outside both never runs the generator, so nothing
- * happens at all: each pin waits for the outcome of a correct generator for
- * a bounded time (`settleTimeout`, generous next to the second a correct one
- * takes), then fails.
+ * On main, the Rspack (and webpack) generator plugin watched the routes
+ * directory itself only for created files; the other route file events
+ * reached it through the bundler's watcher, which only watches the modules
+ * of the bundle. A route file outside both never ran the generator, so
+ * nothing happened at all: each test waits for the outcome of a correct
+ * generator for a bounded time (`settleTimeout`, generous next to the second
+ * a correct one takes).
  *
- * The `physical()` mount pin is in known-bugs-rsbuild-generator-physical
- * .test.ts: each pin waits its full `settleTimeout`, so one pin per file
+ * The `physical()` mount test is in known-bugs-rsbuild-generator-physical
+ * .test.ts: a failing test waits its full `settleTimeout`, so one per file
  * keeps each file within its time budget.
  */
 import { test } from 'vitest'

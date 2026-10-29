@@ -3,9 +3,10 @@
 // time budget): edits that remove options, aliased route exports, and
 // error boundaries.
 /**
- * Known route HMR and React Refresh bugs. Each test asserts correct behaviour
- * for a bug on main and is marked .fails; remove .fails when the bug is fixed.
- * See known-bugs-route-hmr.test.ts for how the pins observe the page.
+ * Known route HMR and React Refresh bugs. Each test asserts the correct
+ * behaviour for a bug main had, which today's compiler fixes (a regression
+ * test, oracle/KNOWN-BUGS.md). See known-bugs-route-hmr.test.ts for how the
+ * pins observe the page.
  */
 import { describe, test } from 'vitest'
 import { isAppError, openRouteHmrPage } from '../route-hmr-page'

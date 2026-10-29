@@ -1,8 +1,8 @@
 /**
- * Known bugs in how Start reads route options from route files. Each pin
- * asserts correct behaviour for a bug on main and is marked .fails; remove
- * .fails when the bug is fixed. Each pin has a control test that runs the
- * same harness on a case that works.
+ * Known bugs in how Start reads route options from route files. Each test
+ * asserts the correct behaviour for a bug main had, which today's compiler
+ * fixes (a regression test, oracle/KNOWN-BUGS.md). Each has a control test
+ * that runs the same harness on a case that works.
  *
  * Start decides from the route generator's view of a route file which routes
  * are server-only (pruned from the client route tree), and strips the server

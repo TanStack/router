@@ -2,8 +2,9 @@
 // in-process tests are in ../known-bugs-start-compiler.test.ts (fast tier),
 // its Vite dev server tests in known-bugs-start-compiler-dev.test.ts.
 /**
- * Known Start compiler bugs. Each test asserts correct behaviour for a bug on
- * main and is marked .fails; remove .fails when the bug is fixed.
+ * Known Start compiler bugs. Each test asserts the correct behaviour for a
+ * bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  */
 import { describe, expect, test } from 'vitest'
 import {

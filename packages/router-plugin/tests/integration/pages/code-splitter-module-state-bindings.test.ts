@@ -24,10 +24,9 @@ type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 // module or the loader (SPEC J2.5: the user's own code, told by a string marker in
 // its body or initializer, whatever the compiler names or prints). A route
 // whose readers do not include the component gets one reading no binding,
-// so that what loading it loads can be checked, except next to a class (a
-// split chunk next to a class with a static initializer is the known bug of
-// `isKnownBug`, pinned by its own row). (Where a const or class only the
-// component reads is initialised, and so when, is free.)
+// so that what loading it loads can be checked, except next to a class.
+// (Where a const or class only the component reads is initialised, and so
+// when, is free.)
 describe('module-level bindings read by route options', () => {
   type Kind = 'const' | 'function' | 'class'
   type Reader = 'loader' | 'component' | 'beforeLoad'
@@ -144,35 +143,6 @@ const a = { b, c }`,
       same: [['a.b.d', 'a.c.d']],
     },
   ]
-
-  /**
-   * Known bug, remove from here when fixed: a class whose static initializer
-   * calls a function is kept in a module that does not read it (dead-code
-   * elimination keeps a class with a side-effectful static initializer), so
-   * the class is created twice:
-   * - read by the options of one split chunk only, it is declared in that
-   *   chunk and also kept in the route module;
-   * - read by the unsplit loader only, it is kept in the route module and
-   *   also declared in the chunk of a split component that does not read it
-   *   (three times when the loader is split too; the const and function rows
-   *   next to such a component are the controls).
-   * Impact: what the static initializer does (registrations, counters) runs
-   * again when the chunk loads, and a module holds a second class.
-   */
-  const isKnownBug = (row: Case, codeSplitGroupings: CodeSplitGroupings) => {
-    const readers = Object.keys(row.readers) as Array<Reader>
-    const oneChunk = codeSplitGroupings.some((group) =>
-      readers.every((reader) => group.includes(reader as never)),
-    )
-    const chunkWithoutReader =
-      row.nextToComponent === true &&
-      codeSplitGroupings.some(
-        (group) =>
-          group.includes('component') &&
-          !readers.some((reader) => group.includes(reader as never)),
-      )
-    return row.name.startsWith('a class') && (oneChunk || chunkWithoutReader)
-  }
 
   const stateModule = `export let initCalls = 0
 export const entries: Array<{ reader: string; values: Record<string, unknown> }> = []
@@ -330,15 +300,7 @@ return {
         }
       }
 
-      it.each(cases.filter((row) => !isKnownBug(row, codeSplitGroupings)))(
-        '$name',
-        assertReads,
-      )
-      // See `isKnownBug`.
-      it.each(cases.filter((row) => isKnownBug(row, codeSplitGroupings)))(
-        '$name',
-        assertReads,
-      )
+      it.each(cases)('$name', assertReads)
     },
   )
 })

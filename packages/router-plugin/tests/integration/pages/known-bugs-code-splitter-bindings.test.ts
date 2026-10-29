@@ -2,8 +2,9 @@
  * Known code-splitter bugs (part 3 of known-bugs-code-splitter.test.ts):
  * groupings, route options written as methods, bindings that read `Route`,
  * options read from the environment, classic JSX pragmas, exported bindings
- * and TypeScript-only syntax. Each test asserts correct behaviour for a bug
- * on main and is marked .fails; remove .fails when the bug is fixed.
+ * and TypeScript-only syntax. Each test asserts the correct behaviour for a
+ * bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  *
  * Every route is loaded through the public router plugin in a real Vite dev
  * server and run in a real browser page (`./route-app`); what the user is

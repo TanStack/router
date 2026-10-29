@@ -22,8 +22,8 @@ Clause ids: `G1`–`G16` are cross-cutting rules, `J<job>.<n>` job clauses, `§5
 
 ## What is the oracle
 
-`test:unit` and `test:integration` of `@tanstack/router-generator`, `@tanstack/router-plugin`,
-`@tanstack/start-plugin-core` and `@tanstack/react-start-rsc`.
+`test:unit` and `test:integration` of `@tanstack/router-generator`, `@tanstack/router-plugin` and
+`@tanstack/start-plugin-core`, and `test:integration` of `@tanstack/react-start-rsc`.
 
 Not the oracle: the tests of `@tanstack/compiler-test-utils` (the shared harness). They are controls of the harness.
 
@@ -55,6 +55,8 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 ## Reading results
 
 - A failing test names a SPEC clause in its comment or title. That clause says what is required.
+- `Source:` in a test comment names where the case comes from: an issue, or a test or file of main's compilers (the
+  Babel-based ones), which may no longer exist.
 - A `.fails` test is a pin: it asserts the correct outcome for a bug today's compiler has. KNOWN-BUGS lists them by
   root cause. When your compiler fixes the bug, the pin fails with "Expect test to fail": remove the `.fails` and keep
   the test. A new compiler flips many pins at once.
@@ -62,10 +64,6 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   fine; the adaptive pins next to them are the real check.
 - `COMPILER_TESTS_PINS=run` runs every pin as an ordinary test (add `--skip-nx-cache`). The pins your compiler
   fails are failures; the report after the run lists the pins it passes.
-- A few known bugs are marked by a small table of today's behaviour instead of `.fails`: `isKnownBug` in
-  `router-plugin/tests/integration/pages/code-splitter-module-state-bindings.test.ts`, `failsOn` in
-  `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`, and `hotToday`/`brokenToday` in
-  `router-plugin/tests/integration/route-hmr-browser-frameworks.test.ts`. The switch covers them: every cell must pass.
 
 ## Free, and only a goal
 

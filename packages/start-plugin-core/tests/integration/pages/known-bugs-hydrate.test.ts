@@ -1,8 +1,7 @@
 /**
- * Known `<Hydrate>` split bugs. Each test asserts correct behaviour for a bug
- * on main and is marked .fails while it still fails (the Yuku Hydrate planner
- * fixed most of them: those are kept as regression tests); remove .fails when
- * the bug is fixed.
+ * Known `<Hydrate>` split bugs. Each test asserts the correct behaviour for a
+ * bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  *
  * The modules are compiled by the public Start plugin on a dev server and
  * rendered through it (`render.ts`): the server render (React's server

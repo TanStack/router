@@ -1,10 +1,10 @@
 /**
  * Known Start bugs that only show on a running dev server, after edits. Each
- * pin asserts correct behaviour for a bug on main and is marked .fails;
- * remove .fails when the bug is fixed. Each pin has a control test that runs
- * the same harness on a case that works. The dev servers run Start's whole
- * public Vite plugin; client code runs in a real browser page of the dev
- * server (`runViteClient`).
+ * test asserts the correct behaviour for a bug main had, which today's
+ * compiler fixes (a regression test, oracle/KNOWN-BUGS.md). Each has a
+ * control test that runs the same harness on a case that works. The dev
+ * servers run Start's whole public Vite plugin; client code runs in a real
+ * browser page of the dev server (`runViteClient`).
  */
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'

@@ -436,7 +436,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     },
   )
 
-  // Bug: the alternate JSX branch has no CSS, just like the consequent
+  // Bug on main: the alternate JSX branch had no CSS, just like the consequent
   // (SPEC J7.3).
   // Source: react-start-rsc src/plugin/rscCssTransform.ts:93: a conditional
   // argument is not top-level JSX (`isTopLevelJsx`, 116-119, unwraps only

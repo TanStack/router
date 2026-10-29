@@ -15,7 +15,6 @@ import {
   appTsconfig,
   expectExportedRouteOptions,
   expectSharedOverloads,
-  exportedComponentsLostWhenSplit,
   exportsImporter,
 } from './dev-server'
 import { expectValidModules, head, loadRoute } from './route-app'
@@ -196,7 +195,20 @@ describe.each([true, false])(
         options: 'component',
         exported: { default: ['component'] },
       },
-      ...(autoCodeSplitting ? [] : exportedComponentsLostWhenSplit),
+      {
+        name: 'class',
+        declaration: `import { Component } from 'react'
+export class component extends Component { render() { see(component); return <p>class</p> } }`,
+        options: 'component',
+        exported: { component: ['component'] },
+      },
+      {
+        name: 'aliased',
+        declaration:
+          'function component() { see(component); return <p>aliased</p> }; export { component as View }',
+        options: 'component',
+        exported: { View: ['component'] },
+      },
     ]
 
     // With code splitting the chunk renders its own copy of a pure exported
@@ -232,10 +244,8 @@ export const Route = createFileRoute('/page')({ ${options} })`,
       )
     }
 
-    if (!autoCodeSplitting) {
-      it('keep exported overloads and their aliases that unsplit and split options call', async () => {
-        await expectSharedOverloads(autoCodeSplitting)
-      }, 30_000)
-    }
+    it('keep exported overloads and their aliases that unsplit and split options call', async () => {
+      await expectSharedOverloads(autoCodeSplitting)
+    }, 30_000)
   },
 )

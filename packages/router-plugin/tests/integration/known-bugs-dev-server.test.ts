@@ -1,9 +1,10 @@
 /**
  * Known router plugin bugs that only show on a running dev server, after
- * edits, in a real browser page. Each pin asserts correct behaviour for a
- * bug on main and is marked .fails; remove .fails when the bug is fixed.
- * Each pin has a control test that runs the same harness on a case that
- * works. The in-process ones: ../known-bugs-dev-server.test.ts.
+ * edits, in a real browser page. Each test asserts the correct behaviour for
+ * a bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md). Each has a control test that runs the same harness
+ * on a case that works. The in-process ones:
+ * ../known-bugs-dev-server.test.ts.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'

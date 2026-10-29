@@ -1,8 +1,8 @@
 /**
  * Known code-splitter bugs (route options and factories written in other
  * shapes, what split chunks hold, names the code splitter generates). Each
- * test asserts correct behaviour for a bug on main and is marked .fails;
- * remove .fails when the bug is fixed. Same harness as
+ * test asserts the correct behaviour for a bug main had, which today's
+ * compiler fixes (a regression test, oracle/KNOWN-BUGS.md). Same harness as
  * `known-bugs-code-splitter.test.ts`: every route is loaded the way an app
  * loads it (`./route-app`), each check runs in a real browser page.
  */

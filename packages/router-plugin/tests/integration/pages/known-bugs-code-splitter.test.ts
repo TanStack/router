@@ -1,6 +1,7 @@
 /**
- * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
- * main and is marked .fails; remove .fails when the bug is fixed.
+ * Known code-splitter bugs. Each test asserts the correct behaviour for a bug
+ * main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  *
  * Every route is loaded the way an app loads it (`./route-app`): the public
  * router plugin in a real Vite dev server, and each check run in a real

@@ -2,8 +2,9 @@
 // in-process tests are in ../known-bugs-route-hmr.test.ts (fast tier); the
 // production-build pins are in known-bugs-route-hmr-production.test.ts.
 /**
- * Known route HMR and React Refresh bugs. Each test asserts correct behaviour
- * for a bug on main and is marked .fails; remove .fails when the bug is fixed.
+ * Known route HMR and React Refresh bugs. Each test asserts the correct
+ * behaviour for a bug main had, which today's compiler fixes (a regression
+ * test, oracle/KNOWN-BUGS.md).
  *
  * Route HMR keeps the previous `component` (and the other component options)
  * so that React Refresh can patch it in place; a component React Refresh does
@@ -107,81 +108,15 @@ function Page() {
     },
   )
 
-  // Bug: the Vite route HMR code calls `accept` on a local alias
-  // (`const hot = import.meta.hot`), and Vite only marks a module
-  // self-accepting when its code contains a literal `import.meta.hot.accept(`.
-  // A route module is then never an HMR boundary of its own: the update
-  // propagates to the route tree and the app entry, and the page reloads.
-  // React apps are not affected because React Refresh makes route modules
-  // boundaries (route-hmr-browser.test.ts); Solid Refresh only does for
-  // modules that declare components (route-hmr-browser-frameworks.test.ts:
-  // an unsplit Solid route applies in place), and Vue JSX only for
-  // `defineComponent` components.
-  // Impact: every edit of a Vue route file reloads the page in Vite dev (and
-  // of a split Solid route: the pin above).
-  // Any boundary (the route module or an importer that accepts it) passes.
-  test('vite: an edit of an unsplit Vue route shows in place', async ({
-    expect,
-    onTestFinished,
-  }: TestContext) => {
-    expect(
-      await editRoute(
-        {
-          target: 'vue',
-          pluginOptions: { autoCodeSplitting: false },
-          file: 'routes/index.tsx',
-          route: frameworkRoute('vue'),
-          shows: (version) => `page ${version} data ${version}`,
-        },
-        onTestFinished,
-      ),
-    ).toEqual(inPlace)
-  })
-
-  // Bug: on Rsbuild, an edit of an unsplit Solid route file (the route HMR
-  // plugin alone) shows its new loader data but keeps rendering the old
-  // component. The webpack-style route HMR code runs before Solid Refresh's
-  // `$$refresh(…, module.hot, registry)` in the route module and assigns
-  // `hot.data ??= {}` on the first run; Solid Refresh takes a truthy
-  // `hot.data` for the data of a previous run, so its dispose handler saves
-  // that object's (missing) registry instead of its own, and the next update
-  // has no registry to patch the live component with. Split Solid routes on
-  // Rsbuild (no route HMR code in the component's module), a plain Solid
-  // component module on Rsbuild, and unsplit Solid routes in Vite apply in
-  // place (route-hmr-browser-frameworks.test.ts).
-  // Impact: edits of a Solid route's component do not show until a reload
-  // in an Rsbuild app without automatic code splitting.
-  // Source: router-plugin src/core/hmr/webpack-adapter.ts:71 (`const hotData
-  // = hot.data ??= {}`); solid-refresh 0.6.3 `$$refreshStandard` (reads
-  // `hot.data` as the previous run). Found in review; cause located by a
-  // probe (reading `hot.data` without assigning it passes this pin;
-  // reverted).
-  test('rsbuild: an edit of an unsplit Solid route shows its new component in place', async ({
-    expect,
-    onTestFinished,
-  }: TestContext) => {
-    expect(
-      await editRoute(
-        {
-          bundler: 'rsbuild',
-          target: 'solid',
-          pluginOptions: { autoCodeSplitting: false },
-          file: 'routes/index.tsx',
-          route: frameworkRoute('solid'),
-          shows: (version) => `page ${version} data ${version}`,
-        },
-        onTestFinished,
-      ),
-    ).toEqual(inPlace)
-  })
-
-  // Bug: the same on an edit of a Solid root route, whose module always
-  // holds its component and the route HMR code (root routes are never
-  // split): the page keeps showing the old root component, with or without
-  // automatic code splitting. Vite applies the same edit in place
-  // (route-hmr-browser-frameworks.test.ts). SPEC J3.5.
-  // Impact: edits of a Solid app's root component (its layout) do not show
-  // until a reload on Rsbuild.
+  // Bug on main: on Rsbuild, an edit of a Solid root route (its module
+  // always holds its component and the route HMR code: root routes are never
+  // split) kept showing the old root component, with or without automatic
+  // code splitting. The webpack-style route HMR code assigned
+  // `hot.data ??= {}` before Solid Refresh's `$$refresh(…, module.hot,
+  // registry)`, which takes a truthy `hot.data` for the data of a previous
+  // run, so the next update had no registry to patch the live component
+  // with. An unsplit Solid route, and Vite: route-hmr-browser-frameworks.test.ts.
+  // SPEC J3.5.
   test.for([true, false])(
     'rsbuild: an edit of a Solid root route shows its new component in place (autoCodeSplitting: %s)',
     async (autoCodeSplitting, { expect, onTestFinished }: TestContext) => {

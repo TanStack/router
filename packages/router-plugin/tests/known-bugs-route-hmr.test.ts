@@ -1,7 +1,7 @@
 /**
  * Known route HMR bugs of the modules the compiler emits for development.
- * Each test asserts correct behaviour for a bug on main and is marked
- * .fails; remove .fails when the bug is fixed.
+ * Each test asserts the correct behaviour for a bug main had, which today's
+ * compiler fixes (a regression test, oracle/KNOWN-BUGS.md).
  *
  * The route file, the modules the test gives and a module importing the
  * route module run in a real page served by a Vite dev server with the

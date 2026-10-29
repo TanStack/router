@@ -194,29 +194,6 @@ export type ExportedRouteOptionsCase = {
 }
 
 /**
- * Exported route components that a route module loses when the component is
- * split (pinned in known-bugs-dev-server.test.ts), for
- * `expectExportedRouteOptions`.
- */
-export const exportedComponentsLostWhenSplit: Array<ExportedRouteOptionsCase> =
-  [
-    {
-      name: 'class',
-      declaration: `import { Component } from 'react'
-export class component extends Component { render() { see(component); return <p>class</p> } }`,
-      options: 'component',
-      exported: { component: ['component'] },
-    },
-    {
-      name: 'aliased',
-      declaration:
-        'function component() { see(component); return <p>aliased</p> }; export { component as View }',
-      options: 'component',
-      exported: { View: ['component'] },
-    },
-  ]
-
-/**
  * Loads a route whose `beforeLoad` and split `loader` call an exported,
  * overloaded and aliased function, next to a module importing the route
  * module's exports, in a real page (`route-app.ts`), and asserts that the

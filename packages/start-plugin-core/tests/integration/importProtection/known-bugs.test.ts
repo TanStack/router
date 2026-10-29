@@ -1,8 +1,9 @@
 /**
- * Known import-protection bugs. Each test asserts correct behaviour for a bug
- * on main and is marked .fails; remove .fails when the bug is fixed. A mock
- * is told by what it does (`mock-helpers.ts`, `describeValue`: `a safe
- * mock`), and a violation by what `onViolation` receives.
+ * Known import-protection bugs. Each test asserts the correct behaviour for a
+ * bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md). A mock is told by what it does (`mock-helpers.ts`,
+ * `describeValue`: `a safe mock`), and a violation by what `onViolation`
+ * receives.
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'

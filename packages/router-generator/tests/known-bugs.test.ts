@@ -1,6 +1,7 @@
 /**
- * Known route generator bugs. Each test asserts correct behaviour for a bug on
- * main and is marked .fails; remove .fails when the bug is fixed.
+ * Known route generator bugs. Each test asserts the correct behaviour for a
+ * bug main had, which today's compiler fixes (a regression test,
+ * oracle/KNOWN-BUGS.md).
  */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
