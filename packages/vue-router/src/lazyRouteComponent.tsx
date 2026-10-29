@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
@@ -189,55 +190,37 @@ export function lazyRouteComponent<
   ) {
     // One ref per wrapper, shared by all of its instances.
     const version = Vue.shallowRef(0)
-    const rerender = () => {
-      version.value++
-    }
-    const hot: VueLazyRouteComponentHot = {
+    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
       importer,
-      exportName: exportName as string | undefined,
-      version,
-      // A failed hot import renders as a component that throws it.
-      read: () =>
-        error
-          ? Vue.markRaw(() => {
-              throw error
-            })
-          : comp && Vue.markRaw(comp),
-      update: (nextImporter, nextExportName, keep) => {
-        importer = nextImporter as () => Promise<T>
-        exportName = nextExportName as TKey | undefined
-        if (comp === null && loadPromise === undefined && !error) {
-          // Never loaded: the next render loads through the new importer.
-          return
-        }
-        const promise: Promise<any> = nextImporter().then(
-          (res) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            const next = res[nextExportName ?? 'default']
-            if (comp === null || !keep(next, comp)) {
-              comp = next
-              error = undefined
-              rerender()
-            }
-            return comp
-          },
-          (err) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            error = err
-            rerender()
-            return null
-          },
-        )
-        loadPromise = promise
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== null || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          version.value++
+        },
       },
-    }
-    ;(lazyComp as any).__tsrHot = hot
+      {
+        version,
+        // A failed hot import renders as a component that throws it.
+        read: () =>
+          error
+            ? Vue.markRaw(() => {
+                throw error
+              })
+            : comp && Vue.markRaw(comp),
+      },
+    )
   }
 
   return lazyComp as any

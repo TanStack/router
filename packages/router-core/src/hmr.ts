@@ -27,23 +27,90 @@ export interface RouteHmrAdapter {
 
 /**
  * Dev-only hot slot of a lazy route component (`lazyRouteComponent(...).__tsrHot`),
- * present on the client only. Not a public API.
+ * present on the client only (`lazyRouteComponentHot`). Not a public API.
  */
 export interface LazyRouteComponentHot {
   /** The importer and export name the wrapper was created with. */
   readonly importer: () => Promise<any>
   readonly exportName: string | undefined
-  /**
-   * Re-imports through `importer` when the wrapper has loaded (or is loading),
-   * then keeps the held component if `keep(loaded, held)` says so, or swaps to
-   * the loaded one and re-renders. The newest import is the only one whose
-   * completion counts.
-   */
+  /** Points the wrapper at a new importer (see `lazyRouteComponentHot`). */
   update: (
     importer: () => Promise<any>,
     exportName: string | undefined,
     keep: RouteHmrAdapter['keep'],
   ) => void
+}
+
+/**
+ * What the hot slot of a lazy route component reads and changes in its
+ * framework's wrapper (built in the wrapper's dev-only block).
+ */
+export interface LazyRouteComponentPort {
+  /** Points the wrapper's later loads at `importer`; whether the wrapper has loaded, is loading or failed. */
+  retarget: (
+    importer: () => Promise<any>,
+    exportName: string | undefined,
+  ) => boolean
+  /** The wrapper's load in flight (what its `preload()` returns), if any. */
+  pending: () => Promise<any> | undefined
+  setPending: (promise: Promise<any> | undefined) => void
+  /** The component the wrapper holds (`undefined` or `null`: none). */
+  held: () => any
+  /** Holds `component` and `error` (none: `undefined`), and re-renders the wrapper. */
+  settle: (component: any, error: unknown) => void
+}
+
+/**
+ * The hot slot of a lazy route component, with the framework's own fields
+ * (`extra`). `update` re-imports through the new importer when the wrapper
+ * has loaded (or is loading), then keeps the held component if
+ * `keep(loaded, held)` says so (the framework's refresh runtime patches it
+ * in place) or swaps to the loaded one. The newest import is the only one
+ * whose completion counts: an older one settles with it. A wrapper that never
+ * loaded only takes the new importer for its first load.
+ *
+ * Dev-only, called by the framework packages' `lazyRouteComponent` on the
+ * client; not a public API.
+ */
+export function lazyRouteComponentHot<TExtra extends object>(
+  importer: () => Promise<any>,
+  exportName: string | undefined,
+  port: LazyRouteComponentPort,
+  extra: TExtra,
+): LazyRouteComponentHot & TExtra {
+  return {
+    ...extra,
+    importer,
+    exportName,
+    update: (nextImporter, nextExportName, keep) => {
+      if (!port.retarget(nextImporter, nextExportName)) {
+        return
+      }
+      const promise: Promise<any> = nextImporter().then(
+        (res) => {
+          if (port.pending() !== promise) {
+            return port.pending()
+          }
+          port.setPending(undefined)
+          const next = res[nextExportName ?? 'default']
+          const held = port.held()
+          if (held == null || !keep(next, held)) {
+            port.settle(next, undefined)
+          }
+          return port.held()
+        },
+        (err) => {
+          if (port.pending() !== promise) {
+            return port.pending()
+          }
+          port.setPending(undefined)
+          port.settle(port.held(), err)
+          return undefined
+        },
+      )
+      port.setPending(promise)
+    },
+  }
 }
 
 type HotRoute = AnyRoute & {

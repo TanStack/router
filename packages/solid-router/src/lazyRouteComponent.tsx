@@ -2,6 +2,7 @@ import { Dynamic } from 'solid-js/web'
 import { createSignal, lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
@@ -132,52 +133,36 @@ export function lazyRouteComponent<
     !(isServer ?? typeof window === 'undefined')
   ) {
     const [version, setVersion] = createSignal(0)
-    const rerender = () => setVersion((v) => v + 1)
-    const hot: SolidLazyRouteComponentHot = {
+    ;(Lazy as any).__tsrHot = lazyRouteComponentHot(
       importer,
-      exportName: exportName as string | undefined,
-      read: () => {
-        version()
-        if (error) {
-          throw error
-        }
-        return comp
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== undefined || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          setVersion((v) => v + 1)
+        },
       },
-      update: (nextImporter, nextExportName, keep) => {
-        importer = nextImporter as () => Promise<T>
-        exportName = nextExportName as TKey | undefined
-        if (comp === undefined && loadPromise === undefined && !error) {
-          // Never loaded: the next render loads through the new importer.
-          return
-        }
-        const promise: Promise<any> = nextImporter().then(
-          (res) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            const next = res[nextExportName ?? 'default']
-            if (comp === undefined || !keep(next, comp)) {
-              comp = next
-              error = undefined
-              rerender()
-            }
-            return comp
-          },
-          (err) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            error = err
-            rerender()
-            return undefined
-          },
-        )
-        loadPromise = promise
+      {
+        read: () => {
+          version()
+          if (error) {
+            throw error
+          }
+          return comp
+        },
       },
-    }
-    ;(Lazy as any).__tsrHot = hot
+    )
   }
 
   return Lazy as any

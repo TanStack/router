@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { reactUse } from './utils'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
@@ -123,54 +124,35 @@ export function lazyRouteComponent<
   ) {
     let version = 0
     const listeners = new Set<() => void>()
-    const rerender = () => {
-      version++
-      listeners.forEach((listener) => listener())
-    }
-    const hot: ReactLazyRouteComponentHot = {
+    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
       importer,
-      exportName: exportName as string | undefined,
-      subscribe: (listener) => {
-        listeners.add(listener)
-        return () => listeners.delete(listener)
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== undefined || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          version++
+          listeners.forEach((listener) => listener())
+        },
       },
-      getVersion: () => version,
-      update: (nextImporter, nextExportName, keep) => {
-        importer = nextImporter as () => Promise<T>
-        exportName = nextExportName as TKey | undefined
-        if (comp === undefined && loadPromise === undefined && !error) {
-          // Never loaded: the next render loads through the new importer.
-          return
-        }
-        const promise: Promise<any> = nextImporter().then(
-          (res) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            const next = res[nextExportName ?? 'default']
-            // Keep: the refresh runtime patches the held component in place.
-            if (comp === undefined || !keep(next, comp)) {
-              comp = next
-              error = undefined
-              rerender()
-            }
-            return undefined
-          },
-          (err) => {
-            if (loadPromise !== promise) {
-              return loadPromise
-            }
-            loadPromise = undefined
-            error = err
-            rerender()
-            return undefined
-          },
-        )
-        loadPromise = promise
+      {
+        subscribe: (listener: () => void) => {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        },
+        getVersion: () => version,
       },
-    }
-    ;(lazyComp as any).__tsrHot = hot
+    )
   }
 
   return lazyComp as any
