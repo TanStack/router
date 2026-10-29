@@ -52,16 +52,11 @@ export function createRouterPluginContext(): RouterPluginContext {
   return context
 }
 
+/** The internals of a context `createRouterPluginContext` made. */
 export function contextInternals(
   context: RouterPluginContext,
 ): ContextInternals {
-  let state = internals.get(context)
-  if (!state) {
-    // a context object created by hand: give it internals
-    state = { warnings: new WarningLedger(() => {}), listeners: new Set() }
-    internals.set(context, state)
-  }
-  return state
+  return internals.get(context)!
 }
 
 /** Subscribes to registry changes; returns the unsubscribe function. */

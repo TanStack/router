@@ -14,7 +14,6 @@ import {
   isFallbackLiteral,
   liveInEnv,
   propertyKeyName,
-  propertyRangeWithComma,
   recognizeRoute,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
@@ -33,8 +32,6 @@ export type SplitShape = 'init' | 'method' | 'shorthand'
 export interface SplitDecision {
   /** The route option (`component`, `loader`, …). */
   key: string
-  /** The group this option loads with. */
-  group: ReadonlyArray<string>
   /** `component`, `component~loader`: the chunk's owned query value. */
   groupKey: string
   shape: SplitShape
@@ -78,7 +75,6 @@ export interface NotSplit {
 export interface SplitPlan {
   route: RouteModuleInfo
   decisions: Array<SplitDecision>
-  notSplit: Array<NotSplit>
   warnings: Array<Diagnostic>
   /** Options the splitter deletes in the env output (`deleteNodes`). */
   deleted: Array<RouteOption>
@@ -178,7 +174,6 @@ function handlerPropertyOf(object: Node): Node | null {
 /** The `handler` property of an object-form loader as the option to split. */
 function handlerOption(
   ctx: PlanContext,
-  object: Node,
   handler: Node & { type: 'Property' },
 ): RouteOption {
   const code = ctx.analysis.source.code
@@ -187,7 +182,6 @@ function handlerOption(
     kind: handler.method ? 'method' : handler.shorthand ? 'shorthand' : 'init',
     prop: handler,
     value: handler.value,
-    propertyRange: propertyRangeWithComma(object, handler, code),
     keyText: code.slice(handler.key.start, handler.key.end),
   }
 }
@@ -206,8 +200,6 @@ function splitTarget(
       wholeProperty: boolean
       methodPrefix: string
       exportName: string
-      container: Node | null
-      prop: RouteOption
       member: string | null
     }
   | { refused: NotSplitReason }
@@ -216,7 +208,6 @@ function splitTarget(
     return null
   }
   let prop = option
-  let container: Node | null = null
   let member: string | null = null
   if (
     option.key === 'loader' &&
@@ -237,8 +228,7 @@ function splitTarget(
         // the object holds other options (`staleReloadMode`) the router
         // reads from the route module: the handler is split inside the
         // object, which stays as the route's loader
-        container = init
-        prop = handlerOption(ctx, init, handler)
+        prop = handlerOption(ctx, handler)
       } else {
         return { refused: 'loader-object' }
       }
@@ -251,8 +241,7 @@ function splitTarget(
       if (!handler || handler.type !== 'Property') {
         return null
       }
-      container = v
-      prop = handlerOption(ctx, v, handler)
+      prop = handlerOption(ctx, handler)
     }
   }
   const value = prop.value!
@@ -270,8 +259,6 @@ function splitTarget(
         wholeProperty: false,
         methodPrefix: '',
         exportName: option.key!,
-        container,
-        prop,
         member,
       }
     }
@@ -285,8 +272,6 @@ function splitTarget(
         wholeProperty: true,
         methodPrefix: methodPrefixOf(value),
         exportName: option.key!,
-        container,
-        prop,
         member: null,
       }
     case 'shorthand':
@@ -299,8 +284,6 @@ function splitTarget(
         wholeProperty: true,
         methodPrefix: '',
         exportName: option.key!,
-        container,
-        prop,
         member,
       }
     default:
@@ -395,13 +378,7 @@ function computeSplitPlan(
         },
       })
     }
-    return {
-      route,
-      decisions,
-      notSplit,
-      warnings,
-      deleted,
-    }
+    return { route, decisions, warnings, deleted }
   }
 
   for (const option of route.props) {
@@ -418,7 +395,7 @@ function computeSplitPlan(
           code: 'delete-nodes-dynamic',
           by: 'route-split',
           message: `[tanstack-router] "${file}" spreads or computes route options, so the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build. Write them as literal properties of the route options.`,
-          range: option.propertyRange,
+          range: { start: option.prop.start, end: option.prop.end },
         })
       }
       continue
@@ -429,13 +406,7 @@ function computeSplitPlan(
   }
 
   if (!splitting) {
-    return {
-      route,
-      decisions,
-      notSplit,
-      warnings,
-      deleted,
-    }
+    return { route, decisions, warnings, deleted }
   }
 
   for (const group of groupings) {
@@ -518,7 +489,6 @@ function computeSplitPlan(
       }
       const decision: SplitDecision = {
         key,
-        group,
         groupKey,
         shape: target.shape,
         region: target.region,
@@ -548,7 +518,6 @@ function computeSplitPlan(
   return {
     route,
     decisions,
-    notSplit,
     warnings,
     deleted,
   }

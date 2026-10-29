@@ -20,8 +20,6 @@ export interface LoaderContextLike {
   addDependency: (file: string) => void
   emitWarning: (error: Error) => void
   emitError: (error: Error) => void
-  _compiler?: unknown
-  getOptions: () => { instance?: string }
 }
 
 export interface LoaderResult {
@@ -70,9 +68,6 @@ export function createLoaderImpl(
       return identity.derived
         ? { code: 'export {}\n', map: undefined }
         : { code: source, map: inputMap }
-    }
-    if (!compiler.appliesTo(env.type)) {
-      return { code: source, map: inputMap }
     }
     const out = await compiler.compile({
       id,

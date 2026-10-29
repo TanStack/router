@@ -35,7 +35,6 @@ export type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 /** The parts of a webpack / Rspack compiler the host uses. */
 export interface CompilerLike extends WatchingCompilerLike {
   name?: string
-  context?: string
   options: {
     mode?: 'development' | 'production' | 'none'
     target?: unknown

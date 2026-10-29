@@ -80,15 +80,6 @@ function configOf(ctx: { config: unknown }): RouterPlannerConfig {
   return ctx.config as RouterPlannerConfig
 }
 
-export interface SplitFacts {
-  routeId: string | null
-  groups: Record<string, Array<string>>
-  notSplit: Array<{ key: string; reason: string }>
-  deleted: Array<string>
-  /** Export name of each split option in its chunk, by option key. */
-  chunkExports: Record<string, string>
-}
-
 export function routeSplitPlanner(): Planner {
   return {
     name: ROUTE_SPLIT,
@@ -169,15 +160,7 @@ export function routeSplitPlanner(): Planner {
         cleanOrphanedDeclarations(ctx, ['env'], ROUTE_SPLIT)
       }
 
-      const facts: SplitFacts = {
-        routeId: route.routeId,
-        groups: {},
-        notSplit: plan.notSplit.map((n) => ({ key: n.key, reason: n.reason })),
-        deleted: plan.deleted.map((d) => d.key ?? '...'),
-        chunkExports: {},
-      }
       if (plan.decisions.length === 0) {
-        ctx.setFacts(ROUTE_SPLIT, facts)
         return
       }
 
@@ -278,7 +261,6 @@ export function routeSplitPlanner(): Planner {
         })
         g = { output, derivedId, importer: importer.sym }
         groups.set(d.groupKey, g)
-        facts.groups[d.groupKey] = [...d.group]
         return g
       }
 
@@ -294,7 +276,6 @@ export function routeSplitPlanner(): Planner {
             ? `TsrSplit${pascal(d.key)}`
             : `tsrSplit${pascal(d.key)}`,
         )
-        facts.chunkExports[d.key] = d.exportName
 
         // the chunk's unit: declares the export from the option's value. An
         // identifier value is read as a symbol (the binding travels by
@@ -449,8 +430,6 @@ export function routeSplitPlanner(): Planner {
           imports: helperImports,
         })
       }
-
-      ctx.setFacts(ROUTE_SPLIT, facts)
     },
   }
 }

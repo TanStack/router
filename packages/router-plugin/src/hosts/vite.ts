@@ -98,14 +98,6 @@ interface ModuleGraphLike {
   ) => void
 }
 
-interface TransformEnvironment {
-  name: string
-  config: {
-    consumer: 'client' | 'server'
-    build?: { sourcemap?: unknown; write?: boolean; watch?: unknown }
-  }
-}
-
 interface DiagnosticLog {
   message: string
   id?: string
@@ -156,30 +148,23 @@ export function createRouterCompilerVitePlugin(
     const now = Date.now()
     const environments = (
       server as unknown as {
-        environments?: Record<string, { moduleGraph: ModuleGraphLike }>
+        environments: Record<string, { moduleGraph: ModuleGraphLike }>
       }
     ).environments
-    const fallback = (server as unknown as { moduleGraph?: ModuleGraphLike })
-      .moduleGraph
-    const graphs = environments
-      ? Object.values(environments).map((e) => e.moduleGraph)
-      : fallback
-        ? [fallback]
-        : []
     const invalidateIn = (graph: ModuleGraphLike, file: string) => {
       for (const mod of graph.getModulesByFile(file) ?? []) {
         graph.invalidateModule(mod, seen, now, true, false)
       }
     }
     for (const key of keys) {
-      const graph = environments?.[key.env]?.moduleGraph ?? fallback
+      const graph = environments[key.env]?.moduleGraph
       if (graph) {
         invalidateIn(graph, identify(key.canonicalId).path)
       }
     }
     for (const file of paths) {
-      for (const graph of graphs) {
-        invalidateIn(graph, file)
+      for (const env of Object.values(environments)) {
+        invalidateIn(env.moduleGraph, file)
       }
     }
   }
@@ -292,12 +277,9 @@ export function createRouterCompilerVitePlugin(
       // one warning per file per run (J2.19): a build of several environments
       // (Vite's builder) starts each in turn; the first configured
       // environment starts the run
-      const environment = (
-        this as unknown as { environment?: { name: string } }
-      ).environment
       if (
         compiler.mode === 'build' &&
-        (environment === undefined || environment.name === firstEnvironment)
+        this.environment.name === firstEnvironment
       ) {
         compiler.warnings.reset()
       }
@@ -311,19 +293,14 @@ export function createRouterCompilerVitePlugin(
       unsubscribe = null
       // the environment's build is finished: its plans go before the next
       // environment builds
-      const environment = (
-        this as unknown as { environment?: TransformEnvironment }
-      ).environment
-      if (environment && isFinalBuild(environment.config.build)) {
+      const environment = this.environment
+      if (isFinalBuild(environment.config.build)) {
         releaseEnvironment(compiler.caches, environment.name)
       }
     },
 
     generateBundle(_options, bundle) {
-      const environment = (
-        this as unknown as { environment?: TransformEnvironment }
-      ).environment
-      if (environment && environment.config.consumer !== 'client') {
+      if (this.environment.config.consumer !== 'client') {
         return
       }
       // an extracted-export output an entry chunk (or a chunk it imports
@@ -368,7 +345,7 @@ export function createRouterCompilerVitePlugin(
 
     transform: {
       filter: { id: { include: JS_ID_RE, exclude: ASSET_QUERY_RE } },
-      async handler(code, id, opts) {
+      async handler(code, id) {
         if (!compiler.wants(id)) {
           return null
         }
@@ -384,22 +361,12 @@ export function createRouterCompilerVitePlugin(
             ? { code: 'export {}\n', map: { mappings: '' } }
             : null
         }
-        const environment = (
-          this as unknown as { environment?: TransformEnvironment }
-        ).environment
-        const ssr = opts?.ssr === true
-        const envName = environment?.name ?? (ssr ? 'ssr' : 'client')
-        const envType: 'client' | 'server' = environment
-          ? environment.config.consumer === 'server'
-            ? 'server'
-            : 'client'
-          : ssr
-            ? 'server'
-            : 'client'
+        const environment = this.environment
+        const envType = environment.config.consumer
         if (!compiler.appliesTo(envType)) {
           return null
         }
-        const envSourcemap = environment?.config.build?.sourcemap
+        const envSourcemap = environment.config.build?.sourcemap
         const wantMap =
           compiler.mode === 'dev'
             ? true
@@ -409,7 +376,7 @@ export function createRouterCompilerVitePlugin(
         const out = await compiler.compile({
           id,
           code,
-          env: { name: envName, type: envType },
+          env: { name: environment.name, type: envType },
           wantMap,
         })
         if (!out) {

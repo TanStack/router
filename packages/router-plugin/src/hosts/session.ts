@@ -27,7 +27,8 @@ import { defaultCodeSplitGroupings } from '../core/constants'
 import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type { HmrStyle, RouterPlannerConfig } from '../planners'
+import type { RouterPlannerConfig } from '../planners'
+import type { HmrStyle } from '../planners/config'
 import type { RouteEntryFacts } from '../planners/route'
 import type {
   CompileOutput,

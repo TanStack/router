@@ -79,18 +79,18 @@ export function routeHmrPlanner(): Planner {
         return
       }
       const route = r.route
-      const plan = splitPlanOf(ctx, cfg)
-      const split = new Set(plan?.decisions.map((d) => d.key) ?? [])
+      // (a recognised route has a split plan)
+      const plan = splitPlanOf(ctx, cfg)!
+      const split = new Set(plan.decisions.map((d) => d.key))
       // the split option values that name a binding: the splitter's own
       // edit replaces those occurrences (a ref edit there would collide)
-      const splitRegions =
-        plan?.decisions
-          .filter(
-            (d) =>
-              d.shape === 'shorthand' ||
-              identifierSymbol(ctx, d.valueNode) !== null,
-          )
-          .map((d) => d.region) ?? []
+      const splitRegions = plan.decisions
+        .filter(
+          (d) =>
+            d.shape === 'shorthand' ||
+            identifierSymbol(ctx, d.valueNode) !== null,
+        )
+        .map((d) => d.region)
       const round = roundOf(ctx)
       const { names, symbols } = ctx
       for (const option of route.props) {
@@ -309,11 +309,6 @@ export function routeHmrPlanner(): Planner {
       if (!vite) {
         chunkHmr(ctx, cfg, route.routeId, route.routerPackage)
       }
-      ctx.setFacts('route-hmr', {
-        routeId: routerRouteId(route.routeId),
-        unsplit: round.unsplit,
-        style: cfg.hmr.style,
-      })
     },
   }
 }
@@ -334,10 +329,7 @@ function chunkHmr(
   routeId: string,
   routerPackage: string,
 ): void {
-  const plan = splitPlanOf(ctx, cfg)
-  if (!plan) {
-    return
-  }
+  const plan = splitPlanOf(ctx, cfg)!
   const groups = new Map<string, boolean>()
   for (const d of plan.decisions) {
     groups.set(

@@ -9,14 +9,14 @@ import { routeHmrPlanner } from './hmr'
 import type { RouterPlannerConfig } from './config'
 import type { Planner } from '@tanstack/router-utils/compiler'
 
-export type { RouterPlannerConfig, HmrStyle } from './config'
+export type { RouterPlannerConfig } from './config'
 export { RouteRegistryView } from './registry'
-export { routeEntryDigest, routerPureCalls } from './route'
+export { routerPureCalls } from './route'
 
 /**
  * The router planners in their fixed order. Pass the same
  * `RouterPlannerConfig` object as `perPlanner['route-split']` and
- * `perPlanner['route-hmr']`, and a `services.routes` registry on the host.
+ * `perPlanner['route-hmr']`, and a `routes` registry on the host.
  */
 export function routerPlanners(): Array<Planner> {
   return [routeSplitPlanner(), routeHmrPlanner()]

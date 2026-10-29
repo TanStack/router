@@ -91,8 +91,6 @@ export interface RouteOption {
   prop: Node
   /** The value node (the function of a method, the identifier of a shorthand). */
   value: Node | null
-  /** The property including its separating comma (for deletion). */
-  propertyRange: Range
   /** The source text of the key as written (`component`, `'component'`). */
   keyText: string
 }
@@ -105,7 +103,6 @@ export type OptionsResolution =
 
 export interface RouteModuleInfo {
   kind: RouteKind
-  factory: RouteFactory
   /** The router package the factory was imported from. */
   routerPackage: string
   /** The local binding exported as `Route`. */
@@ -128,11 +125,7 @@ export interface RouteModuleInfo {
 
 export type RouteRecognition =
   | { route: RouteModuleInfo; warnings: Array<Diagnostic> }
-  | {
-      route: null
-      reason: 'no-route-export' | 'unrecognized'
-      warnings: Array<Diagnostic>
-    }
+  | { route: null; warnings: Array<Diagnostic> }
 
 /** Phase A result of both router planners: the route registry entry. */
 export interface RouteEntryFacts {
@@ -163,40 +156,6 @@ export function propertyKeyName(prop: Node): string | null {
   return null
 }
 
-/** The range of a property including its separating comma, so deleting it leaves a well-formed object. */
-export function propertyRangeWithComma(
-  options: Node,
-  prop: Node,
-  code?: string,
-): Range {
-  if (options.type !== 'ObjectExpression') {
-    return { start: prop.start, end: prop.end }
-  }
-  const props = options.properties as Array<Node>
-  const idx = props.indexOf(prop)
-  const next = props[idx + 1]
-  if (next) {
-    return { start: prop.start, end: next.start }
-  }
-  const prev = props[idx - 1]
-  if (prev) {
-    return { start: prev.end, end: prop.end }
-  }
-  // the only property: its trailing comma goes with it (`{ server: {…}, }`
-  // erased to `{ , }` is a syntax error)
-  let end = prop.end
-  if (code !== undefined) {
-    let i = end
-    while (i < options.end && /\s/.test(code[i]!)) {
-      i++
-    }
-    if (code[i] === ',') {
-      end = i + 1
-    }
-  }
-  return { start: prop.start, end }
-}
-
 function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
   const code = ctx.analysis.source.code
   const out: Array<RouteOption> = []
@@ -204,14 +163,12 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
     return out
   }
   for (const prop of options.properties as Array<Node>) {
-    const propertyRange = propertyRangeWithComma(options, prop, code)
     if (prop.type === 'SpreadElement') {
       out.push({
         key: null,
         kind: 'spread',
         prop,
         value: prop.argument,
-        propertyRange,
         keyText: '',
       })
       continue
@@ -233,7 +190,7 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
     } else {
       kind = 'init'
     }
-    out.push({ key, kind, prop, value: prop.value, propertyRange, keyText })
+    out.push({ key, kind, prop, value: prop.value, keyText })
   }
   return out
 }
@@ -331,7 +288,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
     (e) => e.kind === 'local' && e.name === 'Route' && !e.typeOnly,
   )
   if (!exp || exp.kind !== 'local' || exp.local === null) {
-    return { route: null, reason: 'no-route-export', warnings }
+    return { route: null, warnings }
   }
   const routeSym = exp.local
   const unitIds = t1.declaringUnits.get(routeSym)
@@ -347,7 +304,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
     routeUnit.node.type !== 'VariableDeclarator' ||
     routeUnit.node.init === null
   ) {
-    return { route: null, reason: 'unrecognized', warnings }
+    return { route: null, warnings }
   }
   const outer = unwrapExpression(routeUnit.node.init)
   if (outer.type !== 'CallExpression') {
@@ -358,7 +315,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
         'route-unrecognized',
       )
     }
-    return { route: null, reason: 'unrecognized', warnings }
+    return { route: null, warnings }
   }
   const callee = unwrapExpression(outer.callee)
   let factoryNode: Node
@@ -379,14 +336,14 @@ function recognize(ctx: PlanContext): RouteRecognition {
         'route-unrecognized',
       )
     }
-    return { route: null, reason: 'unrecognized', warnings }
+    return { route: null, warnings }
   }
   const needsCurry =
     factory.name === 'createFileRoute' ||
     factory.name === 'createRootRouteWithContext' ||
     factory.name === 'createLazyFileRoute'
   if (needsCurry !== curried) {
-    return { route: null, reason: 'unrecognized', warnings }
+    return { route: null, warnings }
   }
   const kind: RouteKind =
     factory.name === 'createLazyFileRoute'
@@ -454,7 +411,6 @@ function recognize(ctx: PlanContext): RouteRecognition {
   return {
     route: {
       kind,
-      factory: factory.name,
       routerPackage: factory.specifier,
       routeSym,
       routeUnit,
