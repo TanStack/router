@@ -252,7 +252,7 @@ function getRequiredBuilderEnvironment(
 }
 
 /** A Rolldown warning as `build.rolldownOptions.onwarn` receives it (structural). */
-export interface RolldownWarningLike {
+interface RolldownWarningLike {
   code?: string
   message: string
 }

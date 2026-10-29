@@ -241,7 +241,7 @@ export interface InvalidateChange {
  * resolutions are re-validated with its own resolver: per-environment
  * aliases and conditions resolve a specifier differently).
  */
-export type InvalidationHosts = HostServices | ((env: string) => HostServices)
+type InvalidationHosts = HostServices | ((env: string) => HostServices)
 
 /**
  * The ONE invalidation operation. Evicts the plans of the changed file

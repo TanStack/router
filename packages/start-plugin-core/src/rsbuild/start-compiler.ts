@@ -30,7 +30,7 @@ const JS_FILE_RE = /\.[cm]?[jt]sx?$/
 /** Module types whose JavaScript output other loaders produce (the late import-protection pass). */
 const LATE_PASS_RE = /\.(?:vue|svelte|mdx?|astro|marko)$/i
 
-export interface RegisterStartCompilerOptions {
+interface RegisterStartCompilerOptions {
   getConfig: GetConfigFn
   corePluginOpts: TanStackStartRsbuildPluginCoreOptions
   startPluginOpts: TanStackStartRsbuildInputConfig
@@ -43,7 +43,7 @@ export interface RegisterStartCompilerOptions {
   isEntry: (path: string) => boolean
 }
 
-export interface RegisteredStartCompiler {
+interface RegisteredStartCompiler {
   /** The session, once the first environment's Rspack config is built. */
   session: () => StartRsbuildCompilerSession | null
   resolverModule: () => string

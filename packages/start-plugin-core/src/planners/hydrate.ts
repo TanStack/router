@@ -48,7 +48,7 @@ type JSXElement = NodeOf<'JSXElement'>
 type JSXOpeningElement = NodeOf<'JSXOpeningElement'>
 type ObjectExpression = NodeOf<'ObjectExpression'>
 
-export type HydrateFramework = 'react' | 'solid'
+type HydrateFramework = 'react' | 'solid'
 
 export interface HydratePlannerConfig {
   /** Project root: boundary ids hash the path relative to it. */

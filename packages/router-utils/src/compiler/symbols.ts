@@ -46,7 +46,7 @@ export function valueBinding(scope: Scope, name: string): Binding | null {
   return b !== null && hasRuntimeValue(b) ? b : null
 }
 
-export type SymbolKind = 'source' | 'generated' | 'ambient' | 'synthetic'
+type SymbolKind = 'source' | 'generated' | 'ambient' | 'synthetic'
 
 interface SymbolInfo {
   name: string

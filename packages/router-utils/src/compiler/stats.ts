@@ -12,7 +12,7 @@
  */
 import v8 from 'node:v8'
 
-export type CacheKnob = 'plans' | 'facts' | 'targets'
+type CacheKnob = 'plans' | 'facts' | 'targets'
 
 /** Whether `TSR_COMPILER_NO_CACHE` disables a cache (read at cache creation). */
 export function cacheDisabled(knob: CacheKnob): boolean {
@@ -25,7 +25,7 @@ export function cacheDisabled(knob: CacheKnob): boolean {
 }
 
 /** Entry counts (and approximate bytes, `*Bytes`) of one cache owner. */
-export type CacheCounts = Record<string, number>
+type CacheCounts = Record<string, number>
 
 interface StatsSource {
   label: string

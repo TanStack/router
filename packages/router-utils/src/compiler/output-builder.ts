@@ -60,7 +60,7 @@ const SEMI = 59
 const COMMA = 44
 const decoder = new TextDecoder()
 
-export interface SourceTextOptions {
+interface SourceTextOptions {
   lines?: 'ecma' | 'lf'
 }
 

@@ -20,7 +20,7 @@ export const START_KINDS = {
   rscStream: 'rsc:stream',
 } as const
 
-export type StartKind = (typeof START_KINDS)[keyof typeof START_KINDS]
+type StartKind = (typeof START_KINDS)[keyof typeof START_KINDS]
 
 const FRAMEWORKS: Array<CompileStartFrameworkOptions> = [
   'react',

@@ -42,7 +42,7 @@ export function devLookupModule(
   return `export { ${entry.exportName} as action } from ${JSON.stringify(specifier)}\n`
 }
 
-export interface ManifestResolverOptions {
+interface ManifestResolverOptions {
   entries: ReadonlyArray<ServerFnEntry>
   /** The provider module id of an entry (the original module or its derived provider id). */
   providerModuleId: (entry: ServerFnEntry) => string

@@ -29,7 +29,7 @@ export interface StartPrefetch {
   relevant: boolean
 }
 
-export function importKey(specifier: string, name: string): string {
+function importKey(specifier: string, name: string): string {
   return `${specifier}\u0000${name}`
 }
 
@@ -56,7 +56,7 @@ export function isStartValue(
   }
 }
 
-export interface PrefetchOptions {
+interface PrefetchOptions {
   table: RecognizerTable
   /** Whether a resolved id is opaque (an undiscovered package): its summary is never read. */
   isOpaque: (resolvedCanonicalId: string) => boolean

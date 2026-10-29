@@ -69,7 +69,7 @@ export type Frag =
       exportShorthand?: boolean
     }
 
-export interface Edit {
+interface Edit {
   range: Range
   body: ReadonlyArray<Frag>
   scope: EditScope
@@ -104,7 +104,7 @@ export interface GlueImport {
   spec: Extract<Frag, { k: 'spec' }>
 }
 
-export interface RegionClaim {
+interface RegionClaim {
   region: RegionId
   owner: GenUnitId
   placeholder: ReadonlyArray<Frag>

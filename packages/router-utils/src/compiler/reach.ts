@@ -57,9 +57,9 @@ export interface OutputDecl {
   sideEffectFree?: boolean
 }
 
-export type ClusterId = number
+type ClusterId = number
 
-export interface Cluster {
+interface Cluster {
   id: ClusterId
   regions: Array<RegionId>
   gens: Array<GenUnitId>
@@ -95,7 +95,7 @@ export interface Cluster {
   envPinned: boolean
 }
 
-export type Home = OutputId | 'duplicate' | 'removed'
+type Home = OutputId | 'duplicate' | 'removed'
 
 export interface Fallback {
   region: RegionId
@@ -109,7 +109,7 @@ export interface Fallback {
     | 'exhausted'
 }
 
-export interface PlacementInput {
+interface PlacementInput {
   t1: Tier1
   rewrites: RewriteSet
   outputs: Map<OutputId, OutputDecl>
@@ -139,7 +139,7 @@ export interface PlacementInput {
  * (it reads, at its evaluation, `read`, which something writes), `reads`
  * (it reads `read`, an effectful or `let` binding the env module keeps).
  */
-export type KeptReason =
+type KeptReason =
   | 'effects'
   | 'reassigned'
   | 'live'
@@ -176,7 +176,7 @@ interface Pin {
   read?: SymbolId
 }
 
-export interface ExtractedExport {
+interface ExtractedExport {
   output: OutputId
   /** The exported symbols of the cluster (the env module re-exports them from `output`). */
   syms: Array<SymbolId>
@@ -248,7 +248,7 @@ const READ_KINDS = new Set([
  */
 const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
-export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
+function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
   const out: Array<SymbolId> = []
   for (const f of frags) {
     if (f.k === 'text') {

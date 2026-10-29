@@ -8,7 +8,7 @@ import { ValueAnalysis, stripSites } from './values'
 import type { AbstractValue, RecognizerTable } from './values'
 import type { ModuleAnalysis } from './analysis'
 
-export type ExportFact =
+type ExportFact =
   | { kind: 'local'; value: AbstractValue; noSideEffects?: true }
   | { kind: 'reExport'; specifier: string; fromName: string }
   | { kind: 'namespace'; specifier: string }

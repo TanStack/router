@@ -96,7 +96,7 @@ export interface TransformImportRule {
   ignoreEsComponent?: Array<string>
 }
 
-export interface StartRsbuildSessionOptions {
+interface StartRsbuildSessionOptions {
   framework: CompileStartFrameworkOptions
   /** From the Rsbuild action (never `process.env.NODE_ENV`). */
   mode: 'dev' | 'build'
@@ -117,7 +117,7 @@ export interface StartRsbuildSessionOptions {
 }
 
 /** What the loader implementation uses of Rspack's loader context. */
-export interface LoaderContextLike {
+interface LoaderContextLike {
   resource: string
   resourcePath: string
   sourceMap?: boolean
@@ -129,7 +129,7 @@ export interface LoaderContextLike {
   _module?: { buildInfo?: Record<string, unknown>; layer?: string | null }
 }
 
-export interface LoaderResult {
+interface LoaderResult {
   code: string
   map: unknown
 }
@@ -141,7 +141,7 @@ export interface LoaderOptions {
   pass?: 'late' | 'edge'
 }
 
-export interface EnvState {
+interface EnvState {
   name: string
   type: 'client' | 'server'
   /** The server-fn facts of this environment's modules, by module resource (the compiler's snapshot). */
@@ -918,10 +918,7 @@ const camelToDash = (name: string): string =>
     .toLowerCase()
 
 /** The specifier Rsbuild's `source.transformImport` turns a member import into (its documented defaults). */
-export function rewrittenSpecifier(
-  rule: TransformImportRule,
-  member: string,
-): string {
+function rewrittenSpecifier(rule: TransformImportRule, member: string): string {
   if (typeof rule.customName === 'function') {
     return rule.customName(member) ?? rule.libraryName
   }

@@ -24,11 +24,11 @@ import type {
   SymbolId,
 } from '@tanstack/router-utils/compiler'
 
-export type CallNode = Extract<Node, { type: 'CallExpression' }>
-export type MemberNode = Extract<Node, { type: 'MemberExpression' }>
-export type JsxElementNode = Extract<Node, { type: 'JSXElement' }>
+type CallNode = Extract<Node, { type: 'CallExpression' }>
+type MemberNode = Extract<Node, { type: 'MemberExpression' }>
+type JsxElementNode = Extract<Node, { type: 'JSXElement' }>
 
-export interface ChainLink {
+interface ChainLink {
   method: string
   call: CallNode
   member: MemberNode
@@ -55,18 +55,18 @@ export interface Chain {
   unsupported: boolean
 }
 
-export interface EnvOnlyCall {
+interface EnvOnlyCall {
   call: CallNode
   kind: 'server' | 'client'
   arg: Node | null
 }
 
-export interface RscCall {
+interface RscCall {
   call: CallNode
   kind: 'rsc:render' | 'rsc:composite' | 'rsc:stream'
 }
 
-export interface UnsupportedUse {
+interface UnsupportedUse {
   node: Node
 }
 

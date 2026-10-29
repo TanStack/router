@@ -26,7 +26,7 @@ function isServerOnly(route: ModelRoute) {
  * have only server-only descendants (SPEC J2.15). Every other route stays,
  * with the ancestors a surviving route needs.
  */
-export function pruneServerOnlyRoutes(model: TreeModel): TreeModel {
+function pruneServerOnlyRoutes(model: TreeModel): TreeModel {
   const kept = new Map<ModelRoute, ModelRoute>()
   const prune = (route: ModelRoute): ModelRoute | null => {
     const children = route.children

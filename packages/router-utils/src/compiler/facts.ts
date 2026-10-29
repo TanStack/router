@@ -47,7 +47,7 @@ export interface RawFacts {
   opaque?: true
 }
 
-export interface RawFactsOptions {
+interface RawFactsOptions {
   readFile: (path: string) => Promise<string | null>
   loadVirtual: (id: string) => Promise<string | null>
   recognizer?: RecognizerTable

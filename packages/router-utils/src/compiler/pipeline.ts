@@ -43,7 +43,7 @@ import type {
   PrefetchContext,
 } from './host'
 
-export const MAX_ATTEMPTS = 3
+const MAX_ATTEMPTS = 3
 
 /** The caches of one compiler session; `label` names them in `compilerStats()`. */
 export function createCompilerCaches(

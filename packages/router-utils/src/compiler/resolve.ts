@@ -7,7 +7,7 @@
 import type { ModuleSummary } from './summary'
 import type { AbstractValue } from './values'
 
-export type ResolveOutcome =
+type ResolveOutcome =
   | {
       k: 'found'
       origin: { canonicalId: string; local: string }
@@ -17,7 +17,7 @@ export type ResolveOutcome =
   | { k: 'ambiguous' }
   | { k: 'cycleUnknown' }
 
-export interface ResolverDeps {
+interface ResolverDeps {
   /** The raw-domain summary of a canonical id (null when the module cannot be read). Records the dependency. */
   summaryOf: (canonicalId: string) => Promise<ModuleSummary | null>
   /** Resolves a specifier from an importer to a canonical id (null when unresolvable/external). */

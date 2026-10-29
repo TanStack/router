@@ -15,7 +15,7 @@
 import type { ClassifiedRef, RefIndex } from './analysis'
 import type { SymbolId } from './symbols'
 
-export type WriteKind = 'assign' | 'member'
+type WriteKind = 'assign' | 'member'
 
 /**
  * Whether a reference writes: `assign`, the binding itself gets a value

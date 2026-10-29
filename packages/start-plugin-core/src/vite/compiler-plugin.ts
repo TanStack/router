@@ -117,13 +117,13 @@ import type {
   ViteDevServer,
 } from 'vite'
 
-export interface StartCompilerEnvironment {
+interface StartCompilerEnvironment {
   name: string
   type: 'client' | 'server'
   getServerFnById?: string
 }
 
-export interface StartCompilerPluginOptions {
+interface StartCompilerPluginOptions {
   framework: CompileStartFrameworkOptions
   environments: Array<StartCompilerEnvironment>
   generateFunctionId?: GenerateFunctionId
@@ -163,7 +163,7 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
 ]
 
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
-export function toDevSpecifier(id: string, root: string): string {
+function toDevSpecifier(id: string, root: string): string {
   const normalizedRoot = root.replace(/\\/g, '/').replace(/\/$/, '')
   const normalized = id.replace(/\\/g, '/')
   if (normalized.startsWith(`${normalizedRoot}/`)) {

@@ -9,7 +9,7 @@
  */
 import { hash } from 'node:crypto'
 
-export type DerivedKind =
+type DerivedKind =
   | 'split'
   | 'shared'
   | 'export'

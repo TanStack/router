@@ -9,9 +9,9 @@ export interface Range {
   end: number
 }
 
-export type PragmaKind = 'jsx' | 'jsxFrag' | 'jsxRuntime' | 'jsxImportSource'
+type PragmaKind = 'jsx' | 'jsxFrag' | 'jsxRuntime' | 'jsxImportSource'
 
-export interface Pragma {
+interface Pragma {
   kind: PragmaKind
   value: string
   range: Range
@@ -56,11 +56,7 @@ export function isLineTerminator(c: number): boolean {
 }
 
 /** Counts the line terminators (CRLF = 1) in `code[start, end)`. */
-export function countLineBreaks(
-  code: string,
-  start: number,
-  end: number,
-): number {
+function countLineBreaks(code: string, start: number, end: number): number {
   let n = 0
   for (let i = start; i < end; i++) {
     const c = code.charCodeAt(i)

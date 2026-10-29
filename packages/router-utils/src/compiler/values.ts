@@ -15,15 +15,15 @@ import { unwrapExpression } from './source'
 import type { Node, SourceFile } from 'yuku'
 import type { Range } from './header'
 
-export type Kind = string
+type Kind = string
 
-export interface LinkSite {
+interface LinkSite {
   range: Range
   /** The module owning the link's edit (null = the analysed module). */
   canonicalId: string | null
 }
 
-export type LinkMethod =
+type LinkMethod =
   | 'middleware'
   | 'validator'
   | 'inputValidator'
@@ -32,7 +32,7 @@ export type LinkMethod =
   | 'client'
   | 'call'
 
-export interface Link {
+interface Link {
   method: LinkMethod
   site: LinkSite
 }
@@ -110,11 +110,11 @@ export function isKnownSpecifier(
   return Object.prototype.hasOwnProperty.call(table.factories, specifier)
 }
 
-export function isSymbolicValue(v: AbstractValue): boolean {
+function isSymbolicValue(v: AbstractValue): boolean {
   return v.t === 'importRef' || v.t === 'member' || v.t === 'call'
 }
 
-export type ImportResolver = (specifier: string, name: string) => AbstractValue
+type ImportResolver = (specifier: string, name: string) => AbstractValue
 
 /**
  * The transfer function of a member access `object.name` on a known value.
@@ -288,7 +288,7 @@ export function stampSites(
   }
 }
 
-export interface ValueAnalysisOptions {
+interface ValueAnalysisOptions {
   table: RecognizerTable
   /** Cross-module lookups (phase A results); default keeps imports symbolic. */
   resolveImport?: ImportResolver

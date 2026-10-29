@@ -44,10 +44,10 @@ export function decodeDevFunctionId(id: string): ServerFnKey | null {
 
 const PLACEHOLDER_PREFIX = '__TSS_FN_ID_'
 const PLACEHOLDER_SUFFIX = '__'
-export const PLACEHOLDER_RE = /__TSS_FN_ID_([A-Za-z0-9_-]+)__/g
+const PLACEHOLDER_RE = /__TSS_FN_ID_([A-Za-z0-9_-]+)__/g
 
 /** The placeholder token of a server fn whose final id a custom generator decides at `renderChunk`. */
-export function placeholderToken(key: ServerFnKey): string {
+function placeholderToken(key: ServerFnKey): string {
   return Buffer.from(`${key.rootRel}#${key.stableKey}`, 'utf8').toString(
     'base64url',
   )

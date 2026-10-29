@@ -15,7 +15,7 @@ export { START_ENV, startEnvPlanner } from './start-env'
 export type { StartEnvConfig, StartEnvFacts } from './start-env'
 export type { RscCssConfig } from './rsc-css'
 
-export interface StartPlannerSlots {
+interface StartPlannerSlots {
   /** The Hydrate planner (J5), when the env extracts boundaries. */
   hydrate?: Planner | null
   /** Whether the env runs the RSC render (the `rsc-css` planner applies). */

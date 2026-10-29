@@ -8,7 +8,7 @@ import { specifierLiteral } from './strings'
 import type { RawSourceMap, SourceText } from './output-builder'
 import type { EdgeRecord, OutputRecipe, Segment } from './plan'
 
-export interface Emitted {
+interface Emitted {
   code: string
   map: RawSourceMap | null
 }

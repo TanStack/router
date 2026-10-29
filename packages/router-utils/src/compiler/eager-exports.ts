@@ -12,7 +12,7 @@
  */
 import { identify } from './identity'
 
-export interface EagerExtractedExport {
+interface EagerExtractedExport {
   /** The route file's path, with forward slashes. */
   file: string
   /** The export's name. */
@@ -49,7 +49,7 @@ export function eagerExtractedExports(
 }
 
 /** The parts of a Rollup/Rolldown output chunk the entry walk reads. */
-export interface OutputChunkLike {
+interface OutputChunkLike {
   type: string
   fileName: string
   isEntry: boolean
@@ -93,7 +93,7 @@ export interface InitialChunksLike {
   chunkGraph: { getChunkModules: (chunk: unknown) => Array<ModuleLike> }
 }
 
-export interface ModuleLike {
+interface ModuleLike {
   resource?: string
   /** Inner modules of a concatenated module. */
   modules?: Array<ModuleLike>

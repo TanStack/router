@@ -14,7 +14,7 @@ import { identify } from './identity'
 import type { PlanKey } from './identity'
 
 /** A compilation of the webpack family (`TModule`: its module type). */
-export interface RebuildCompilationLike<TModule = unknown> {
+interface RebuildCompilationLike<TModule = unknown> {
   modules: Iterable<TModule>
   rebuildModule: (
     module: TModule,

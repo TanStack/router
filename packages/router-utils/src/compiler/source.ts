@@ -12,11 +12,11 @@ import type { Diagnostic } from './diagnostics'
 export { SourceText } from './output-builder'
 export { langFromId } from './identity'
 
-export type ParsedModule =
+type ParsedModule =
   | { ok: true; file: SourceFile; source: SourceText }
   | { ok: false; source: SourceText; diagnostics: Array<Diagnostic> }
 
-export interface ParseModuleOptions {
+interface ParseModuleOptions {
   lang: Lang
   /** Defaults from the path extension (`.cjs`/`.cts` → commonjs). */
   sourceType?: 'module' | 'script' | 'commonjs'

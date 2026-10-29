@@ -1,4 +1,4 @@
-export type DiagnosticSeverity = 'error' | 'warning' | 'info'
+type DiagnosticSeverity = 'error' | 'warning' | 'info'
 
 export interface Diagnostic {
   severity: DiagnosticSeverity

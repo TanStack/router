@@ -26,7 +26,7 @@ import type { Frag } from './rewrite'
 export type UnitId = number
 export type RegionId = number
 
-export type UnitKind =
+type UnitKind =
   | 'import-specifier'
   | 'import-effect'
   | 'declaration'
@@ -36,7 +36,7 @@ export type UnitKind =
   | 'export-default'
   | 'effect'
 
-export type ItemShape = 'single' | 'declarators' | 'import' | 'export-list'
+type ItemShape = 'single' | 'declarators' | 'import' | 'export-list'
 
 export interface TopLevelItem {
   index: number
@@ -254,7 +254,7 @@ function isObjectMutator(callee: Node): boolean {
  * members nothing writes may be read by code that moves) and the top-level
  * augmentation units (`X.p = …` clusters with `X`).
  */
-export function writeTargets(node: Node): ReadonlyArray<Node> {
+function writeTargets(node: Node): ReadonlyArray<Node> {
   switch (node.type) {
     case 'AssignmentExpression':
     case 'AssignmentPattern':
@@ -343,7 +343,7 @@ const WRAPPERS = new Set([
 ])
 
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
-export function rootIdentifier(node: Node): Node | null {
+function rootIdentifier(node: Node): Node | null {
   let n = unwrapExpression(node)
   for (;;) {
     if (n.type === 'MemberExpression') {
@@ -426,7 +426,7 @@ export function buildItems(
   return { items, tail: { start: prevEnd, end: code.length } }
 }
 
-export interface UnitBuildResult {
+interface UnitBuildResult {
   units: Array<Unit>
   regions: RegionTable
   /** Symbol → units declaring it. */
@@ -898,7 +898,7 @@ function itemAt(
   return null
 }
 
-export type StatementRecipe = 'keep' | 'drop' | Array<Frag>
+type StatementRecipe = 'keep' | 'drop' | Array<Frag>
 
 /**
  * One edit per statement from the final retained set (not per-unit comma

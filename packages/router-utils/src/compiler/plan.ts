@@ -68,15 +68,9 @@ export interface EnvInfo {
   layer?: string
 }
 
-export type EdgeForm =
-  | 'static'
-  | 'bare'
-  | 'reexport'
-  | 'star'
-  | 'dynamic'
-  | 'require'
+type EdgeForm = 'static' | 'bare' | 'reexport' | 'star' | 'dynamic' | 'require'
 
-export type EdgeLocation = { range: Range } | { segment: number }
+type EdgeLocation = { range: Range } | { segment: number }
 
 export interface EdgeRecord {
   output: OutputId
@@ -128,7 +122,7 @@ export interface FallbackRecord {
   reason: Fallback['reason']
 }
 
-export interface OutputSpec {
+interface OutputSpec {
   kind: Exclude<OutputKind, 'env' | 'shared'>
   key: string
   /** The owned query; the output id is `deriveId(canonicalId, derived)`. */

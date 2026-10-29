@@ -36,7 +36,7 @@ const PURE_RE = /[@#]__PURE__/
 const NSE_RE = /[@#]__NO_SIDE_EFFECTS__/
 
 /** The comment ending right before `offset` (only whitespace between), if any. */
-export function commentBefore(
+function commentBefore(
   comments: ReadonlyArray<Comment>,
   code: string,
   offset: number,
@@ -119,15 +119,12 @@ export function seedNoSideEffectDeclarations(
   }
 }
 
-export function hasPureAnnotation(ctx: PurityContext, node: Node): boolean {
+function hasPureAnnotation(ctx: PurityContext, node: Node): boolean {
   const c = commentBefore(ctx.comments, ctx.file.source, node.start)
   return c !== null && PURE_RE.test(c.value)
 }
 
-export function hasNoSideEffectsAnnotation(
-  ctx: PurityContext,
-  node: Node,
-): boolean {
+function hasNoSideEffectsAnnotation(ctx: PurityContext, node: Node): boolean {
   const c = commentBefore(ctx.comments, ctx.file.source, node.start)
   return c !== null && NSE_RE.test(c.value)
 }

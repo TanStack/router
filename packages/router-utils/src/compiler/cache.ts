@@ -27,7 +27,7 @@ export type DependencyFingerprint =
       resolved: string | null
     }
 
-export function fingerprintId(fp: DependencyFingerprint): string {
+function fingerprintId(fp: DependencyFingerprint): string {
   switch (fp.kind) {
     case 'summary':
       return `summary:${fp.canonicalId}`
@@ -64,7 +64,7 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
 export const UNRESOLVED_DEPENDENCY = '\u0000unresolved'
 
 /** The dependents-index key of a fingerprint: its path, or the unresolved bucket. */
-export function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
+function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
   if (fp.kind === 'resolution' && fp.resolved === null) {
     return UNRESOLVED_DEPENDENCY
   }
@@ -110,7 +110,7 @@ interface DependentEntry {
  * so publishing, discarding and evicting a plan touch its rows only. Empty
  * buckets are removed: the index holds rows of live plans and attempts only.
  */
-export class DependentsIndex {
+class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
   private readonly byKey = new Map<string, Set<string>>()
 
@@ -298,7 +298,7 @@ export class DependencyLedger {
 }
 
 /** One importer's resolutions: specifier → canonical id, or the resolver's pending answer. */
-export type ResolutionMemo = Map<string, string | Promise<string | null>>
+type ResolutionMemo = Map<string, string | Promise<string | null>>
 
 export interface CacheEntry {
   key: PlanKey
@@ -309,7 +309,7 @@ export interface CacheEntry {
   resolvedAt: number
 }
 
-export interface InFlight {
+interface InFlight {
   revision: string
   promise: Promise<unknown>
 }

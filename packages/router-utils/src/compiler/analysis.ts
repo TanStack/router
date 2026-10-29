@@ -25,7 +25,7 @@ import type { RecognizerTable } from './values'
 
 export type { Range } from './header'
 
-export interface ImportSpecifierEntry {
+interface ImportSpecifierEntry {
   local: SymbolId
   /** 'default', '*' or the imported name. */
   imported: string
@@ -33,7 +33,7 @@ export interface ImportSpecifierEntry {
   localName: string
 }
 
-export interface ImportEntry {
+interface ImportEntry {
   index: number
   specifier: string
   /** The specifier literal (quotes included). */
@@ -47,7 +47,7 @@ export interface ImportEntry {
   specifiers: Array<ImportSpecifierEntry>
 }
 
-export type ExportEntry =
+type ExportEntry =
   | {
       kind: 'local'
       name: string
@@ -73,7 +73,7 @@ export type ExportEntry =
     }
   | { kind: 'star'; specifier: string; typeOnly: boolean; range: Range }
 
-export interface ReexportEntry {
+interface ReexportEntry {
   specifier: string
   specifierRange: Range
   statementRange: Range
@@ -82,7 +82,7 @@ export interface ReexportEntry {
   typeOnly: boolean
 }
 
-export interface DynamicEdge {
+interface DynamicEdge {
   specifier: string
   specifierRange: Range
   form: 'dynamic' | 'require'
@@ -95,9 +95,9 @@ export interface DynamicEdge {
   names: Array<string>
 }
 
-export type Marker = 'server-only' | 'client-only' | 'conflict' | null
+type Marker = 'server-only' | 'client-only' | 'conflict' | null
 
-export type RefKind =
+type RefKind =
   | 'value'
   | 'write'
   | 'jsxTag'
@@ -132,7 +132,7 @@ export interface ClassifiedRef {
   memberWrite: boolean
 }
 
-export interface FreeRef {
+interface FreeRef {
   name: string
   range: Range
 }
@@ -209,7 +209,7 @@ export class RefIndex {
   }
 }
 
-export interface JsxInfo {
+interface JsxInfo {
   runtime: 'automatic' | 'classic' | 'unknown'
   factory: SymbolId | null
   fragment: SymbolId | null
@@ -248,7 +248,7 @@ export interface Tier1 {
   capturesOf: (range: Range) => Array<SymbolId>
 }
 
-export interface ModuleAnalysisOptions {
+interface ModuleAnalysisOptions {
   path: string
   /** Bare import specifiers that mark a module (default: 'server-only' / 'client-only'). */
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
@@ -1193,7 +1193,7 @@ function loadsModule(stmt: Node): boolean {
   )
 }
 
-export interface ImportUses {
+interface ImportUses {
   live: boolean
   /** Statically read member names (namespace bindings). */
   members: Array<string>

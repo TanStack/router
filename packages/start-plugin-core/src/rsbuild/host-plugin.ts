@@ -39,7 +39,7 @@ import type { Rspack, rspack as rspackNamespaceType } from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
 
-export interface StartHostPluginOptions {
+interface StartHostPluginOptions {
   session: StartRsbuildCompilerSession
   environment: StartRsbuildEnvironment
   rspack: RspackNamespace
