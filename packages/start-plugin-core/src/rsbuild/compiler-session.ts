@@ -1,77 +1,44 @@
 /**
  * Start's Rspack host of the compiler core on Rsbuild (see the core's
- * README.md, "Hosts"): one compile per (environment, layer, module)
- * running every planner — `start-env`, `hydrate`, `rsc-css` (the RSC
- * layer), `router` (every layer but the RSC one), `import-edges` — from one
- * `pre` loader per environment (`compiler-loader.ts`), the shared caches,
- * the server-fn registry rebuilt from the compilers' `buildInfo`, and the
- * one invalidation operation on `watchRun`. The Rspack hooks live in
- * `host-plugin.ts`; this module is bundler-API free except for the loader
- * context shape.
+ * README.md, "Hosts"): the loader implementation compiling every id (env and
+ * derived) of a module of an environment and layer through the shared Start
+ * session (`compiler/session.ts`), from one `pre` loader per environment
+ * (`compiler-loader.ts`); the server-fn registry rebuilt from the compilers'
+ * `buildInfo`; and the one invalidation operation on `watchRun`. The Rspack
+ * hooks live in `host-plugin.ts`; this module is bundler-API free except for
+ * the loader context shape.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  RawFactsCache,
-  WarningLedger,
   collectionSizes,
-  compileModule,
   composeLoaderMap,
-  createCompilerCaches,
-  deriveId,
-  digestOf,
   identify,
   invalidate,
   normalizePath,
   pathsOf,
   registerCompilerStats,
-  releaseEnvironment,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
-import {
-  ROUTER_PLANNER,
-  routeRefreshMarkers,
-  routerPlanner,
-  routerPlannerConfigDigest,
-  routerPlannerConfigFrom,
-} from '@tanstack/router-plugin/planners'
-import { startRecognizer } from '../compiler/recognizer'
-import { reportStartDiagnostics } from '../compiler/report'
-import { opaquePackageModule, startCompileScope } from '../compiler/scope'
-import { START_ENV, startPlanners } from '../planners'
-import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
-import { RSC_CSS } from '../planners/rsc-css'
-import { FunctionIdAllocator } from '../server-fns/ids'
-import { ServerFnRegistry } from '../server-fns/registry'
+import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
+import { providerModuleId } from '../server-fns/registry'
 import {
   CLIENT_REFERENCED_IDS_PLACEHOLDER,
   manifestResolverModule,
 } from '../server-fns/resolver'
-import { createImportProtection } from '../import-protection/session'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
-import type { ImportProtection } from '../import-protection/session'
+import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { ImportRewrite } from '../planners/edges'
-import type { HydratePlannerConfig } from '../planners/hydrate'
-import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
-import type { ServerFnEntry, ServerFnFact } from '../server-fns/registry'
-import type { GenerateFunctionId } from '../server-fns/ids'
-import type { ImportProtectionOptions } from '../schema'
-import type { CompileStartFrameworkOptions, StartRscOptions } from '../types'
-import type { Config as RouterConfig } from '@tanstack/router-plugin'
-import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
+import type { ServerFnFact } from '../server-fns/registry'
 import type {
   CompileOutput,
-  CompilerCaches,
   DiagnosticPosition,
-  EnvInfo,
   HostServices,
   InputSourceMap,
   InvalidateChange,
   PlanKey,
-  Planner,
   RecordMapText,
-  RouteRegistry,
 } from '@tanstack/router-utils/compiler'
 
 /** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
@@ -99,25 +66,16 @@ export interface TransformImportRule {
   ignoreEsComponent?: Array<string>
 }
 
-interface StartRsbuildSessionOptions {
-  framework: CompileStartFrameworkOptions
-  /** From the Rsbuild action (never `process.env.NODE_ENV`). */
-  mode: 'dev' | 'build'
-  root: () => string
-  srcDirectory: () => string
-  environments: Array<StartRsbuildEnvironment>
-  /** RSC on: the RSC layer of the server environment provides the server fns (else SSR does). */
-  rsc: StartRscOptions | undefined
-  /** The Rspack layer running the RSC render (RSC on). */
-  rscLayer: string | undefined
-  generateFunctionId?: GenerateFunctionId | undefined
-  routerConfig: () => RouterConfig
-  importProtection: () => ImportProtectionOptions | undefined
-  /** The route registry (the generator's `routesByFile`). */
-  routes: RouteRegistry
-  /** Whether a path is an app entry (a marked entry is its own import-protection violation). */
-  isEntry: (path: string) => boolean
-}
+/** The Start session's options an Rsbuild plugin gives (the rest is the Rsbuild host's). */
+type StartRsbuildSessionOptions = Omit<
+  StartCompilerSessionOptions,
+  | 'providerEnv'
+  | 'hmrStyle'
+  | 'edgeModuleIds'
+  | 'readFile'
+  | 'loadVirtual'
+  | 'label'
+>
 
 /** What the loader implementation uses of Rspack's loader context. */
 interface LoaderContextLike {
@@ -158,11 +116,8 @@ interface EnvState {
 
 /** The session every compiler of one Rsbuild plugin shares. */
 export class StartRsbuildCompilerSession {
-  readonly caches: CompilerCaches
-  readonly rawFacts: RawFactsCache
-  readonly registry = new ServerFnRegistry()
-  readonly warnings = new WarningLedger()
-  readonly allocator: FunctionIdAllocator | null
+  /** The bundler-free Start session (caches, import protection, registry, warnings, compiles). */
+  readonly start: StartCompilerSession
   readonly envs = new Map<string, EnvState>()
   /** Readers of files through the compilers' input file systems (virtual modules included), by environment. */
   readonly inputFileSystems = new Map<
@@ -174,20 +129,8 @@ export class StartRsbuildCompilerSession {
     string,
     (importerDir: string, specifier: string) => Promise<string | null>
   >()
-  /** Import protection of the session (null: `enabled: false`). */
-  readonly ip: ImportProtection | null
-  /** Whether a module is compiled (`startCompileScope`). */
-  readonly compiles: (path: string, code: string) => boolean
-  private readonly plannersByKey = new Map<string, Array<Planner>>()
-  private readonly routerCfg = new Map<
-    'client' | 'server',
-    RouterPlannerConfig
-  >()
 
-  constructor(readonly opts: StartRsbuildSessionOptions) {
-    this.allocator = opts.generateFunctionId
-      ? new FunctionIdAllocator(opts.generateFunctionId)
-      : null
+  constructor(opts: StartRsbuildSessionOptions) {
     for (const env of opts.environments) {
       this.envs.set(env.name, {
         name: env.name,
@@ -198,42 +141,22 @@ export class StartRsbuildCompilerSession {
         recordMapText: null,
       })
     }
-    const root = opts.root()
-    this.ip = createImportProtection({
-      options: opts.importProtection(),
-      root,
-      srcDirectory: opts.srcDirectory(),
-      mode: opts.mode,
-      ids: rspackEdgeModuleIds(
-        `${normalizePath(root)}/node_modules/.virtual/tanstack-start/import-protection`,
+    this.start = new StartCompilerSession({
+      ...opts,
+      // the server environment provides the server functions (under RSC,
+      // its RSC layer: `rscLayer`)
+      providerEnv: RSBUILD_ENVIRONMENT_NAMES.server,
+      hmrStyle: 'webpack',
+      edgeModuleIds: rspackEdgeModuleIds(
+        `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       readFile: (file) => this.readFile(file),
-      isEntry: opts.isEntry,
-    })
-    for (const env of opts.environments) {
-      this.ip?.env(env.name, env.type)
-    }
-    this.compiles = startCompileScope(this.ip)
-    this.rawFacts = new RawFactsCache({
-      readFile: (file) => this.readFile(file),
+      // our virtual modules are files of the compilers' input file systems
       loadVirtual: () => Promise.resolve(null),
-      recognizer: startRecognizer(),
-      // every analysis of the session agrees on the marker specifiers
-      markerSpecifiers: this.ip?.markerSpecifiers,
-      opaque: opaquePackageModule(this.ip),
+      label: 'start:rsbuild',
     })
-    this.caches = createCompilerCaches(this.rawFacts, 'start:rsbuild')
-    registerCompilerStats('start:rsbuild:session', this, (o) =>
-      collectionSizes(
-        {
-          envs: o.envs,
-          registry: o.registry,
-          warnings: o.warnings,
-          ip: o.ip,
-          missing: o.missing,
-        },
-        4,
-      ),
+    registerCompilerStats('start:rsbuild:host', this, (o) =>
+      collectionSizes({ envs: o.envs, missing: o.missing }, 4),
     )
   }
 
@@ -278,107 +201,11 @@ export class StartRsbuildCompilerSession {
    * may have changed without an event: `fileSetVersion`).
    */
   forgetMisses(): void {
-    this.caches.fileSetVersion++
+    this.start.caches.fileSetVersion++
     for (const file of this.missing) {
-      this.rawFacts.markStale(file)
+      this.start.rawFacts.markStale(file)
     }
     this.missing.clear()
-  }
-
-  /** The router planner's configuration of an environment type (Start's rules). */
-  private routerPlannerConfig(type: 'client' | 'server'): RouterPlannerConfig {
-    let cfg = this.routerCfg.get(type)
-    if (!cfg) {
-      cfg = routerPlannerConfigFrom(
-        this.opts.routerConfig().codeSplittingOptions,
-        {
-          framework: this.opts.framework,
-          envType: type,
-          mode: this.opts.mode,
-          hmrStyle: 'webpack',
-          start: true,
-        },
-      )
-      this.routerCfg.set(type, cfg)
-    }
-    return cfg
-  }
-
-  private plannersFor(env: EnvState, rscLayer: boolean): Array<Planner> {
-    const key = `${env.name}\u0000${rscLayer ? 'rsc' : ''}`
-    let planners = this.plannersByKey.get(key)
-    if (!planners) {
-      planners = startPlanners({
-        hydrate: createHydratePlanner(),
-        rscCss: rscLayer,
-        // the RSC layer renders server components: its route modules (the
-        // providers' twins of the SSR route modules) stay unsplit, so the
-        // router's lazy wrapper (a React hook in development) never resolves
-        // against the react-server build of React (as Vite's provider env)
-        router: rscLayer ? null : routerPlanner(),
-        importEdges: this.ip?.planner ?? null,
-      })
-      this.plannersByKey.set(key, planners)
-    }
-    return planners
-  }
-
-  envInfo(env: EnvState, layer: string | undefined): EnvInfo {
-    return {
-      name: env.name,
-      type: env.type,
-      isProvider: env.name === RSBUILD_ENVIRONMENT_NAMES.server,
-      mode: this.opts.mode,
-      ...(layer ? { layer } : {}),
-    }
-  }
-
-  private configFor(
-    env: EnvState,
-    rscLayer: boolean,
-    layer: string | undefined,
-  ) {
-    const { opts } = this
-    const root = opts.root()
-    const idMode: StartEnvConfig['idMode'] =
-      opts.mode === 'dev' ? 'dev' : this.allocator ? 'placeholder' : 'default'
-    const startEnv: StartEnvConfig = {
-      framework: opts.framework,
-      root,
-      providerSeparate: opts.rsc !== undefined,
-      idMode,
-      providerDirective: opts.rsc?.providerDirective,
-    }
-    const router = this.routerPlannerConfig(env.type)
-    const hydrate: HydratePlannerConfig = {
-      root,
-      refreshMarkers: routeRefreshMarkers(router),
-    }
-    const rscCss: RscCssConfig | undefined =
-      rscLayer && opts.rsc
-        ? { loadCssExpression: opts.rsc.loadCssExpression }
-        : undefined
-    const ipKey = this.ip?.config.configKey ?? null
-    return {
-      configKey: digestOf({
-        bundler: 'rspack',
-        mode: opts.mode,
-        framework: opts.framework,
-        root,
-        idMode,
-        rsc: opts.rsc ?? null,
-        env: env.name,
-        layer: layer ?? null,
-        router: routerPlannerConfigDigest(router),
-        ip: ipKey,
-      }),
-      perPlanner: {
-        [START_ENV]: startEnv,
-        [HYDRATE_PLANNER]: hydrate,
-        [RSC_CSS]: rscCss,
-        [ROUTER_PLANNER]: router,
-      } as Record<string, unknown>,
-    }
   }
 
   /** The import rewrite of an environment (`source.transformImport`), when it has one. */
@@ -411,8 +238,8 @@ export class StartRsbuildCompilerSession {
   /** Host services of one compile, bound to a loader context's resolver. */
   private hostFor(ctx: LoaderContextLike, env: EnvState): HostServices {
     const resolver = ctx.getResolve()
-    return {
-      resolve: async (specifier, importer) => {
+    return this.start.host(
+      async (specifier, importer) => {
         try {
           const dir = path.dirname(identify(importer).path)
           const r = await resolver(dir, specifier)
@@ -421,10 +248,8 @@ export class StartRsbuildCompilerSession {
           return null
         }
       },
-      rawFacts: this.rawFacts,
-      routes: this.opts.routes,
-      services: { importRewrite: this.importRewrite(env) },
-    }
+      { importRewrite: this.importRewrite(env) },
+    )
   }
 
   /**
@@ -435,20 +260,16 @@ export class StartRsbuildCompilerSession {
   private invalidationHost(env?: string): HostServices {
     const own = env === undefined ? undefined : this.resolvers.get(env)
     const resolvers = own ? [own] : [...this.resolvers.values()]
-    return {
-      resolve: async (specifier, importer) => {
-        const dir = path.dirname(identify(importer).path)
-        for (const resolve of resolvers) {
-          const id = await resolve(dir, specifier)
-          if (id !== null) {
-            return { id }
-          }
+    return this.start.host(async (specifier, importer) => {
+      const dir = path.dirname(identify(importer).path)
+      for (const resolve of resolvers) {
+        const id = await resolve(dir, specifier)
+        if (id !== null) {
+          return { id }
         }
-        return null
-      },
-      rawFacts: this.rawFacts,
-      routes: this.opts.routes,
-    }
+      }
+      return null
+    })
   }
 
   /** Per environment: the files its last compilation depended on (dev; see `retain`). */
@@ -475,7 +296,7 @@ export class StartRsbuildCompilerSession {
       (path: string): boolean =>
         !isFile(path) || path.includes('/node_modules/.virtual/') || set(path)
     const keepEnv = keepIn((p) => live.has(p))
-    const plans = this.caches.plans.get(envName)
+    const plans = this.start.caches.plans.get(envName)
     if (plans) {
       for (const entry of [...plans.values()]) {
         if (!keepEnv(identify(entry.key.canonicalId).path)) {
@@ -491,14 +312,14 @@ export class StartRsbuildCompilerSession {
         }
       }
     }
-    this.ip?.retain(keepEnv, envName)
+    this.start.ip?.retain(keepEnv, envName)
     if (this.liveFiles.size === this.envs.size) {
       // shared state: kept while any environment depends on the file
       const anyEnv = keepIn((p) =>
         [...this.liveFiles.values()].some((set) => set.has(p)),
       )
-      this.rawFacts.retain((id) => anyEnv(identify(id).path))
-      this.ip?.retain(anyEnv)
+      this.start.rawFacts.retain((id) => anyEnv(identify(id).path))
+      this.start.ip?.retain(anyEnv)
     }
   }
 
@@ -510,8 +331,7 @@ export class StartRsbuildCompilerSession {
    * facts, registry, id allocator, warnings).
    */
   release(envName: string): void {
-    releaseEnvironment(this.caches, envName)
-    this.ip?.release(envName)
+    this.start.release(envName)
     const env = this.envs.get(envName)
     if (env) {
       env.compiled = new Set()
@@ -523,8 +343,10 @@ export class StartRsbuildCompilerSession {
     file: string,
     kind: InvalidateChange['kind'],
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    return invalidate(this.caches, { path: normalizePath(file), kind }, (env) =>
-      this.invalidationHost(env),
+    return invalidate(
+      this.start.caches,
+      { path: normalizePath(file), kind },
+      (env) => this.invalidationHost(env),
     )
   }
 
@@ -560,7 +382,7 @@ export class StartRsbuildCompilerSession {
       }
       this.lastEvent.set(file, 'unlink')
       await this.invalidate(file, 'unlink')
-      this.ip?.forget(normalizePath(file))
+      this.start.ip?.forget(normalizePath(file))
     }
   }
 
@@ -608,33 +430,28 @@ export class StartRsbuildCompilerSession {
   ): Promise<LoaderResult> {
     const env = this.env(options.environment)
     const passthrough: LoaderResult = { code: source, map: inputMap }
+    const { ip } = this.start
     if (options.pass === 'edge') {
       // dev: the bundler requested this edge module from the importer's
       // post-SWC code; a veto serves the real module
-      const ipEnv = this.ip?.env(env.name, env.type)
+      const ipEnv = ip?.env(env.name, env.type)
       env.compiled.add(ctx.resource)
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
         throw error
       }
-      return { code: this.ip?.load(ctx.resource)?.code ?? source, map: null }
+      return { code: ip?.load(ctx.resource)?.code ?? source, map: null }
     }
     const id = canonicalResource(ctx.resource)
     const identity = identify(id)
+    // (the late pass is registered only with import protection on)
     const late = options.pass === 'late'
     if (late ? identity.lang !== null : identity.lang === null) {
       return passthrough
     }
-    // (the late pass is registered only with import protection on)
-    const ip = this.ip
-    if (!late && !this.compiles(identity.path, source)) {
+    if (!late && !this.start.compiles(identity.path, source)) {
       return passthrough
     }
-    const layer = ctx._module?.layer ?? undefined
-    const rscLayer =
-      this.opts.rscLayer !== undefined && layer === this.opts.rscLayer
-    const envInfo = this.envInfo(env, layer)
-    const config = this.configFor(env, rscLayer, layer)
     let parsedInputMap: InputSourceMap | null | undefined
     const readInputMap = (): InputSourceMap | null => {
       if (parsedInputMap === undefined) {
@@ -645,21 +462,17 @@ export class StartRsbuildCompilerSession {
       }
       return parsedInputMap
     }
-    const out = await compileModule(
+    const out = await this.start.compile(
       {
         id,
         code: source,
-        env: envInfo,
-        planners: late ? [ip!.planner] : this.plannersFor(env, rscLayer),
-        config: late
-          ? { configKey: `late\u0000${config.configKey}`, perPlanner: {} }
-          : config,
-        wantMap: ctx.sourceMap !== false,
+        env,
+        layer: ctx._module?.layer ?? undefined,
         inputMap: readInputMap,
-        ...(late ? { lang: 'jsx' as const } : {}),
+        wantMap: ctx.sourceMap !== false,
+        late,
       },
       this.hostFor(ctx, env),
-      this.caches,
     )
     if (!out) {
       return passthrough
@@ -670,34 +483,30 @@ export class StartRsbuildCompilerSession {
       }
     }
     this.reportDiagnostics(ctx, out, identity.path, source, env.type)
-    const ipEnv = ip?.env(env.name, env.type)
     env.compiled.add(ctx.resource)
-    if (ipEnv) {
-      // registers the edges and, in development, reports the violations of
-      // this compile (with `log: 'always'`, decided at every compile)
-      const outcome = ipEnv.afterCompile(id, out)
-      const { error } = outcome instanceof Promise ? await outcome : outcome
-      if (error) {
-        throw error
-      }
+    // the registry, and import protection's edges and, in development, the
+    // violations of this compile (with `log: 'always'`, decided at every
+    // compile)
+    const outcome = this.start.afterCompile(env, id, out)
+    const { error } = outcome instanceof Promise ? await outcome : outcome
+    if (error) {
+      throw error
     }
     const buildInfo = ctx._module?.buildInfo
-    if (!late) {
-      const facts = out.facts.planners[START_ENV] as StartEnvFacts | undefined
-      if (facts && facts.serverFns.length > 0) {
-        const record: ServerFnBuildInfo = {
-          version: 2,
-          canonicalId: identity.canonicalId,
-          envType: env.type,
-          facts: facts.serverFns,
-        }
-        env.serverFns.set(ctx.resource, record)
-        this.registry.record(identity.canonicalId, facts.serverFns, env.type)
-        if (buildInfo) {
-          buildInfo[SERVER_FN_BUILD_INFO_FIELD] = record
-        }
+    const serverFns = serverFnFactsOf(out)
+    if (serverFns) {
+      const record: ServerFnBuildInfo = {
+        version: 2,
+        canonicalId: identity.canonicalId,
+        envType: env.type,
+        facts: serverFns,
+      }
+      env.serverFns.set(ctx.resource, record)
+      if (buildInfo) {
+        buildInfo[SERVER_FN_BUILD_INFO_FIELD] = record
       }
     }
+    const ipEnv = ip?.env(env.name, env.type)
     if (ipEnv && buildInfo) {
       const info = ipEnv.buildInfo(id, out)
       if (info) {
@@ -731,7 +540,7 @@ export class StartRsbuildCompilerSession {
     const where = (at: DiagnosticPosition | undefined) =>
       at ? ` (${file}:${at.line}:${at.column + 1})` : ''
     const errors: Array<string> = []
-    reportStartDiagnostics(out, file, code, envType, this.warnings, {
+    this.start.report(out, file, code, envType, {
       error: (d, at) => errors.push(`${d.message}${where(at)}`),
       warn: (d, at) => {
         const warning = new Error(`${d.message}${where(at)}`)
@@ -748,19 +557,13 @@ export class StartRsbuildCompilerSession {
 
   /** Rebuilds the registry from every environment's snapshot (the `finishMake` replay, persistent cache included). */
   rebuildRegistry(): void {
-    this.registry.clear()
+    const { registry } = this.start
+    registry.clear()
     for (const env of this.envs.values()) {
       for (const record of env.serverFns.values()) {
-        this.registry.record(record.canonicalId, record.facts, record.envType)
+        registry.record(record.canonicalId, record.facts, record.envType)
       }
     }
-  }
-
-  /** The module an entry's `createServerRpc` wrapper is exported from. */
-  providerModuleId(entry: ServerFnEntry): string {
-    return entry.providerDerived
-      ? deriveId(entry.definingCanonicalId, { kind: 'provider', value: '' })
-      : entry.definingCanonicalId
   }
 
   /**
@@ -773,10 +576,10 @@ export class StartRsbuildCompilerSession {
    * functions (the RSC build order).
    */
   resolverModule(): string {
-    const { opts } = this
+    const { opts } = this.start
     return manifestResolverModule({
-      entries: this.registry.entries(),
-      providerModuleId: (e) => this.providerModuleId(e),
+      entries: this.start.registry.entries(),
+      providerModuleId,
       clientReferencedOnly: opts.mode === 'build' && opts.rsc === undefined,
       warnUnreferenced: opts.mode === 'dev' && opts.rsc === undefined,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
@@ -796,24 +599,12 @@ export class StartRsbuildCompilerSession {
   /** The JSON array of client-referenced function ids (the gate's set, J4.2). */
   clientReferencedIdsLiteral(): string {
     return JSON.stringify(
-      this.registry
+      this.start.registry
         .entries()
         .filter((e) => e.clientReferenced)
         .map((e) => e.id)
         .sort(),
     )
-  }
-
-  /** The entries of a rank for the custom-id allocation (with a custom generator): client-referenced first, the rest after. */
-  allocateIds(envType: 'client' | 'server'): FunctionIdAllocator {
-    const allocator = this.allocator!
-    const entries = this.registry.entries()
-    allocator.allocate(
-      envType === 'client'
-        ? entries.filter((e) => e.clientReferenced)
-        : entries,
-    )
-    return allocator
   }
 }
 

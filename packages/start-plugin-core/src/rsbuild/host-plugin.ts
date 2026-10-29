@@ -92,7 +92,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
    * build is finished.
    */
   const ipEnvOf = () =>
-    session.ip?.env(environment.name, environment.type) ?? null
+    session.start.ip?.env(environment.name, environment.type) ?? null
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
@@ -155,8 +155,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // they are defined (the importer's compile) or change state (a build veto); an importer
       // restored from the persistent cache in a new process requests a module nothing
       // defined: the request carries its content, which defines it before it resolves
-      if (session.ip) {
-        const ip = session.ip
+      if (session.start.ip) {
+        const ip = session.start.ip
         ip.onEdgeModule((file, load, ref) => {
           if (ref.env === environment.name) {
             opts.writeVirtualModule(file, load.code)
@@ -171,8 +171,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       env.recordMapText = emittedMapTexts(
         compiler,
-        session.opts.mode,
-        session.compiles,
+        session.start.opts.mode,
+        session.start.compiles,
       )
 
       /** The files of the last compilation (a modified file outside them is a created one: an `add`, which re-resolves
@@ -186,7 +186,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // one warning per file per run (J2.19): the session's ledger is
         // shared by every environment's compiler; the client's run starts it
         if (environment.type === 'client') {
-          session.warnings.reset()
+          session.start.warnings.reset()
         }
         ipEnvOf()?.beginLogicalBuild()
         await opts.generator.beforeRun()
@@ -228,7 +228,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.compiledOnce = true
         const deps = stats.compilation.fileDependencies
         knownFiles = new Set<string>(deps as Iterable<string>)
-        if (session.opts.mode === 'dev') {
+        if (session.start.opts.mode === 'dev') {
           session.retain(environment.name, knownFiles)
         } else if (
           !compiler.watchMode &&
@@ -244,7 +244,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
-        if (session.opts.mode === 'build' && environment.type === 'client') {
+        if (
+          session.start.opts.mode === 'build' &&
+          environment.type === 'client'
+        ) {
           // an extracted-export output an initial chunk holds is eager
           // whatever the splitter did: say so once per file and export (J2.8)
           compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
@@ -253,7 +256,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 canonicalResource,
               ),
               'webpack',
-              session.warnings,
+              session.start.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
             )
           })
@@ -264,7 +267,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // trace would abort the process): no graph until `finishModules`, when the
           // compilation's complete graph replaces it (traces built before use the edge index)
           ipEnv.graph = null
-          if (session.opts.mode === 'dev') {
+          if (session.start.opts.mode === 'dev') {
             if (!reporterInstalled) {
               reporterInstalled = true
               // no timers: `finishModules` is the completion event
@@ -281,7 +284,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               PLUGIN_NAME,
               async (modules) => {
                 ipEnv.graph = guardedGraphView(compilation)
-                if (session.ip!.config.log === 'always') {
+                if (session.start.ip!.config.log === 'always') {
                   // modules this compilation kept without compiling them report again: an
                   // importer its violations, an edge module the pending ones it witnesses
                   for (const m of modules) {
@@ -337,7 +340,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             )
           }
         }
-        if (session.allocator && session.opts.mode === 'build') {
+        if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
             {
               name: PLUGIN_NAME,
@@ -350,7 +353,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
-        const allocator = session.allocateIds(environment.type)
+        const allocator = session.start.allocateIds(environment.type)
         for (const asset of compilation.getAssets()) {
           if (!/\.[cm]?js$/.test(asset.name)) {
             continue
@@ -411,7 +414,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             return
           }
           const ipEnv = ipEnvOf()
-          if (ipEnv && session.opts.mode === 'dev') {
+          if (ipEnv && session.start.opts.mode === 'dev') {
             const unjudged = new Set<string>()
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike

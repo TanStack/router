@@ -9,9 +9,10 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   environment, the late `post` pass for other module types, the rule of import-protection edge modules (in
   development, the loader's `edge` pass), the `sideEffects` rules, the host plugin of each environment compiler, the
   client route tree transform.
-- `compiler-session.ts` is the session every environment compiler shares: compiler caches, raw facts, import
-  protection, the server-function registry, the planners and configuration per environment and layer, the loader
-  implementation, the invalidation operation, the resolver module content, custom server-function ids.
+- `compiler-session.ts` is the state every environment compiler shares around the bundler-free Start session
+  (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
+  and id allocator, the planners and configuration per environment and layer, the reporting policy): the loader
+  implementation, the server-fn snapshots, the invalidation operation, the resolver module content.
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
   (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still

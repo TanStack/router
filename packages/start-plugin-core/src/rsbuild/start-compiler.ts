@@ -67,17 +67,18 @@ export function registerStartCompiler(
     if (session) {
       return session
     }
+    const { startConfig, resolvedStartConfig } = opts.getConfig()
     session = new StartRsbuildCompilerSession({
       framework: opts.corePluginOpts.framework,
       mode: dev ? 'dev' : 'build',
-      root: () => opts.getConfig().resolvedStartConfig.root,
-      srcDirectory: () => opts.getConfig().resolvedStartConfig.srcDirectory,
+      root: resolvedStartConfig.root,
+      srcDirectory: resolvedStartConfig.srcDirectory,
       environments: opts.environments,
       rsc: opts.corePluginOpts.rsc,
       rscLayer: rscEnabled ? RSBUILD_RSC_LAYERS.rsc : undefined,
       generateFunctionId: opts.startPluginOpts.serverFns?.generateFunctionId,
-      routerConfig: () => opts.getConfig().startConfig.router,
-      importProtection: () => opts.getConfig().startConfig.importProtection,
+      codeSplittingOptions: startConfig.router.codeSplittingOptions,
+      importProtection: startConfig.importProtection,
       routes: generator.routes,
       isEntry: opts.isEntry,
     })
@@ -123,7 +124,7 @@ export function registerStartCompiler(
         sideEffects: false,
       },
     ]
-    if (s.ip) {
+    if (s.start.ip) {
       loaderRules.push(
         {
           test: LATE_PASS_RE,

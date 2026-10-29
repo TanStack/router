@@ -17,21 +17,14 @@ import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   OutputBuilder,
-  RawFactsCache,
   SourceText,
-  WarningLedger,
   collectionSizes,
-  compileModule,
-  createCompilerCaches,
-  deriveId,
-  digestOf,
   identify,
   invalidate,
   isAnalyzableSpecifier,
   isFinalBuild,
   normalizePath,
   registerCompilerStats,
-  releaseEnvironment,
   resolveDerivedSibling,
   revision,
   rollupEntryModuleIds,
@@ -42,30 +35,16 @@ import {
   changedRoutePaths,
   onRoutesChanged,
 } from '@tanstack/router-plugin/context'
-import {
-  ROUTER_PLANNER,
-  RouteRegistryView,
-  routeRefreshMarkers,
-  routerPlanner,
-  routerPlannerConfigDigest,
-  routerPlannerConfigFrom,
-} from '@tanstack/router-plugin/planners'
+import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import {
   DEV_CLIENT_ENTRY,
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
-import { startRecognizer } from '../compiler/recognizer'
-import { reportStartDiagnostics } from '../compiler/report'
-import {
-  NODE_MODULES_RE,
-  opaquePackageModule,
-  startCompileScope,
-} from '../compiler/scope'
-import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
-import { START_ENV, startPlanners } from '../planners'
-import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
-import { ServerFnRegistry } from '../server-fns/registry'
+import { NODE_MODULES_RE } from '../compiler/scope'
+import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
+import { decodeDevFunctionId } from '../server-fns/ids'
+import { providerModuleId } from '../server-fns/registry'
 import {
   SERVER_FN_LOOKUP_VIRTUAL_ID,
   callerGateModule,
@@ -74,7 +53,6 @@ import {
   productionResolverModule,
   unreferencedWarning,
 } from '../server-fns/resolver'
-import { createImportProtection } from '../import-protection/session'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
 import {
@@ -84,32 +62,21 @@ import {
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import type {
-  DevCompileOutcome,
-  ImportProtection,
-} from '../import-protection/session'
-import type { HydratePlannerConfig } from '../planners/hydrate'
+import type { DevCompileOutcome } from '../import-protection/session'
 import type { GenerateFunctionId } from '../server-fns/ids'
-import type { ServerFnEntry } from '../server-fns/registry'
-import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
 import type {
   CompileStartFrameworkOptions,
   GetConfigFn,
   StartRscOptions,
 } from '../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
-import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
-  CompileConfig,
   CompileOutput,
-  CompilerCaches,
   Diagnostic,
   DiagnosticPosition,
-  EnvInfo,
   HostServices,
   InputSourceMap,
   InvalidateChange,
-  Planner,
 } from '@tanstack/router-utils/compiler'
 import type {
   BuildEnvironment,
@@ -234,18 +201,8 @@ function inputMapOf(
 
 /** What one dev server or build shares across the Start environments (created at `configResolved`). */
 interface Session {
-  root: string
-  mode: 'dev' | 'build'
+  start: StartCompilerSession
   bundledDev: boolean
-  ip: ImportProtection | null
-  /** Whether a module is compiled (`startCompileScope`). */
-  compiles: (path: string, code: string) => boolean
-  rawFacts: RawFactsCache
-  caches: CompilerCaches
-  registry: RouteRegistryView
-  warnings: WarningLedger
-  planners: Map<string, Array<Planner>>
-  configs: Map<string, CompileConfig>
   /** The app's entry module ids (dev traces start there). */
   entries: Set<string>
 }
@@ -253,7 +210,6 @@ interface Session {
 export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
-  const recognizer = startRecognizer()
   const ssrIsProvider = opts.providerEnvName === VITE_ENVIRONMENT_NAMES.server
   const envNames = new Set(opts.environments.map((e) => e.name))
   const resolverEnvironments = new Set(
@@ -261,11 +217,6 @@ export function startCompilerPlugin(
       ? [opts.providerEnvName]
       : [VITE_ENVIRONMENT_NAMES.server, opts.providerEnvName],
   )
-  const registry = new ServerFnRegistry()
-  const allocator = opts.generateFunctionId
-    ? new FunctionIdAllocator(opts.generateFunctionId)
-    : null
-
   /** Per-env loaders of genuinely virtual ids (the dev plugin container, or `this.load` in a build). */
   const virtualLoaders = new Map<
     string,
@@ -284,9 +235,6 @@ export function startCompilerPlugin(
    * re-transform when a file appears (see `applyInvalidation`).
    */
   const awaitingAdd = new Map<string, Set<string>>()
-  registerCompilerStats('start:vite:plugin', registry, (r) =>
-    collectionSizes(r),
-  )
   registerCompilerStats('start:vite:invalidations', invalidations, (m) => ({
     size: m.size,
   }))
@@ -310,132 +258,46 @@ export function startCompilerPlugin(
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)
 
-  /**
-   * The router planner's configuration of an env (Start's rules), null where
-   * it does not run: a separate server-fn provider env (RSC).
-   */
-  const routerConfigFor = (
-    env: StartCompilerEnvironment,
-    mode: 'dev' | 'build',
-  ): RouterPlannerConfig | null =>
-    ssrIsProvider || env.name !== opts.providerEnvName
-      ? routerPlannerConfigFrom(
-          opts.getConfig().startConfig.router.codeSplittingOptions,
-          {
-            framework: opts.framework,
-            envType: env.type,
-            mode,
-            hmrStyle: 'vite',
-            start: true,
-          },
-        )
-      : null
-
   const createSession = (config: {
     root: string
     command: 'serve' | 'build'
     bundledDev: boolean
   }): Session => {
     const { startConfig, resolvedStartConfig } = opts.getConfig()
-    const mode = config.command === 'build' ? 'build' : 'dev'
-    const ip = createImportProtection({
-      options: startConfig.importProtection,
-      root: config.root,
-      srcDirectory: resolvedStartConfig.srcDirectory,
-      mode,
-      isEntry: (p) =>
-        session !== null && entriesOf(session).has(normalizePath(p)),
-    })
-    const rawFacts = new RawFactsCache({
-      readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-      loadVirtual: async (id) => {
-        for (const load of virtualLoaders.values()) {
-          const code = await load(id).catch(() => null)
-          if (code !== null) {
-            return code
-          }
-        }
-        return null
-      },
-      recognizer,
-      ...(ip && { markerSpecifiers: ip.markerSpecifiers }),
-      opaque: opaquePackageModule(ip),
-    })
     const s: Session = {
-      root: config.root,
-      mode,
+      start: new StartCompilerSession({
+        framework: opts.framework,
+        mode: config.command === 'build' ? 'build' : 'dev',
+        root: config.root,
+        srcDirectory: resolvedStartConfig.srcDirectory,
+        environments: opts.environments,
+        providerEnv: opts.providerEnvName,
+        rsc: opts.rsc,
+        generateFunctionId: opts.generateFunctionId,
+        codeSplittingOptions: startConfig.router.codeSplittingOptions,
+        hmrStyle: 'vite',
+        importProtection: startConfig.importProtection,
+        isEntry: (p) => entriesOf(s).has(normalizePath(p)),
+        routes: new RouteRegistryView(opts.routerPluginContext),
+        readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
+        loadVirtual: async (id) => {
+          for (const load of virtualLoaders.values()) {
+            const code = await load(id).catch(() => null)
+            if (code !== null) {
+              return code
+            }
+          }
+          return null
+        },
+        isOpaque,
+        label: 'start:vite',
+      }),
       bundledDev: config.bundledDev,
-      ip,
-      compiles: startCompileScope(ip),
-      rawFacts,
-      caches: createCompilerCaches(rawFacts, 'start:vite'),
-      registry: new RouteRegistryView(opts.routerPluginContext),
-      warnings: new WarningLedger(),
-      planners: new Map(),
-      configs: new Map(),
       entries: new Set(),
     }
-    registerCompilerStats('start:vite:session', s, (o) =>
-      collectionSizes(
-        {
-          ip: o.ip,
-          warnings: o.warnings,
-          routes: o.registry,
-          entries: o.entries,
-        },
-        4,
-      ),
-    )
-    for (const env of opts.environments) {
-      ip?.env(env.name, env.type)
-      const routerCfg = routerConfigFor(env, mode)
-      const rscCss = opts.rsc !== undefined && env.name === opts.providerEnvName
-      s.planners.set(
-        env.name,
-        startPlanners({
-          hydrate: createHydratePlanner(),
-          rscCss,
-          router: routerCfg ? routerPlanner() : null,
-          importEdges: ip?.planner ?? null,
-        }),
-      )
-      const idMode: StartEnvConfig['idMode'] =
-        mode === 'dev' ? 'dev' : allocator ? 'placeholder' : 'default'
-      const startEnv: StartEnvConfig = {
-        framework: opts.framework,
-        root: config.root,
-        providerSeparate: !ssrIsProvider,
-        idMode,
-        providerDirective: opts.rsc?.providerDirective,
-        isOpaque,
-      }
-      const hydrate: HydratePlannerConfig = {
-        root: config.root,
-        refreshMarkers: routeRefreshMarkers(routerCfg),
-      }
-      const rscCssConfig: RscCssConfig | undefined = opts.rsc
-        ? { loadCssExpression: opts.rsc.loadCssExpression }
-        : undefined
-      s.configs.set(env.name, {
-        configKey: digestOf({
-          framework: opts.framework,
-          root: config.root,
-          provider: opts.providerEnvName,
-          ssrIsProvider,
-          idMode,
-          rsc: opts.rsc ?? null,
-          env: env.name,
-          router: routerCfg && routerPlannerConfigDigest(routerCfg),
-          ip: ip?.config.configKey ?? null,
-        }),
-        perPlanner: {
-          [START_ENV]: startEnv,
-          [HYDRATE_PLANNER]: hydrate,
-          'rsc-css': rscCssConfig,
-          [ROUTER_PLANNER]: routerCfg,
-        } as Record<string, unknown>,
-      })
-    }
+    registerCompilerStats('start:vite:entries', s.entries, (e) => ({
+      size: e.size,
+    }))
     return s
   }
 
@@ -462,16 +324,6 @@ export function startCompilerPlugin(
     return s.entries
   }
 
-  const envInfoOf = (
-    environment: Environment,
-    env: StartCompilerEnvironment,
-  ): EnvInfo => ({
-    name: env.name,
-    type: env.type,
-    isProvider: env.name === opts.providerEnvName,
-    mode: environment.mode === 'build' ? 'build' : 'dev',
-  })
-
   /** Host services bound to one hook context. */
   const hostFor = (
     s: Session,
@@ -481,8 +333,8 @@ export function startCompilerPlugin(
       importer?: string,
       options?: { skipSelf?: boolean },
     ) => Promise<{ id: string; external?: boolean | string } | null>,
-  ): HostServices => ({
-    resolve: async (specifier, importer) => {
+  ): HostServices =>
+    s.start.host(async (specifier, importer) => {
       const r = await resolve(specifier, importer, { skipSelf: true })
       if (!r) {
         return null
@@ -491,10 +343,7 @@ export function startCompilerPlugin(
         id: unoptimizedDependency(environment, r.id),
         external: r.external === true || typeof r.external === 'string',
       }
-    },
-    rawFacts: s.rawFacts,
-    routes: s.registry,
-  })
+    })
 
   /** The host of the invalidation operation (a dev environment's own resolver). */
   const invalidationHost = (
@@ -643,7 +492,7 @@ export function startCompilerPlugin(
       kind: 'registry',
     }
     const res = await invalidate(
-      s.caches,
+      s.start.caches,
       change,
       invalidationHosts(s, server, first),
     )
@@ -679,9 +528,9 @@ export function startCompilerPlugin(
   const compileHandlerReach = async (
     s: Session,
     env: StartCompilerEnvironment,
-    environment: Environment,
     host: HostServices,
   ): Promise<void> => {
+    const { registry, rawFacts } = s.start
     const seen = new Set<string>()
     const queue = registry.entries().map((e) => e.definingCanonicalId)
     while (queue.length > 0) {
@@ -694,7 +543,7 @@ export function startCompilerPlugin(
       if (NODE_MODULES_RE.test(identity.path)) {
         continue
       }
-      const facts = await s.rawFacts.get(identity.canonicalId)
+      const facts = await rawFacts.get(identity.canonicalId)
       if (!facts.targetFacts.exists) {
         continue
       }
@@ -702,28 +551,19 @@ export function startCompilerPlugin(
         const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
         // the cheap text gate of a module that may define a server function
         if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
-          const out = await compileModule(
+          const out = await s.start.compile(
             {
               id: identity.canonicalId,
               code,
-              env: envInfoOf(environment, env),
-              planners: s.planners.get(env.name)!,
-              config: s.configs.get(env.name)!,
+              env,
               inputMap: () => null,
               wantMap: false,
             },
             host,
-            s.caches,
           )
-          const startFacts = out?.facts.planners[START_ENV] as
-            | StartEnvFacts
-            | undefined
-          if (startFacts && startFacts.serverFns.length > 0) {
-            registry.record(
-              identity.canonicalId,
-              startFacts.serverFns,
-              env.type,
-            )
+          const serverFns = out && serverFnFactsOf(out)
+          if (serverFns) {
+            registry.record(identity.canonicalId, serverFns, env.type)
           }
         }
       }
@@ -731,7 +571,7 @@ export function startCompilerPlugin(
         ...facts.targetFacts.imports,
         ...facts.targetFacts.lazyImports,
       ]) {
-        if (s.rawFacts.isKnownSpecifier(spec) || !isAnalyzableSpecifier(spec)) {
+        if (rawFacts.isKnownSpecifier(spec) || !isAnalyzableSpecifier(spec)) {
           continue
         }
         const r = await host.resolve(spec, identity.canonicalId)
@@ -741,11 +581,6 @@ export function startCompilerPlugin(
       }
     }
   }
-
-  const providerModuleIdOf = (e: ServerFnEntry): string =>
-    e.providerDerived
-      ? deriveId(e.definingCanonicalId, { kind: 'provider', value: '' })
-      : e.definingCanonicalId
 
   /** Reports a compile's diagnostics through a hook context (`ctx.error` throws). */
   const reportDiagnostics = (
@@ -773,37 +608,33 @@ export function startCompilerPlugin(
         : d.message,
       loc: at && { file: filePath, ...at },
     })
-    reportStartDiagnostics(out, filePath, code, envType, s.warnings, {
+    s.start.report(out, filePath, code, envType, {
       error: (d, at) => ctx.error({ ...log(d, at), id }),
       warn: (d, at) => ctx.warn(log(d, at)),
     })
   }
 
   /**
-   * Import protection's outcome of a compile: edge modules registered, dev reports queued; an
-   * `error`-behaviour violation fails the module. A promise only when violations are decided
-   * now (`log: 'always'`).
+   * What follows a compile (`StartCompilerSession.afterCompile`): an
+   * `error`-behaviour violation fails the module; otherwise the import
+   * protection reports whose importers the graph (or the judged edges) can
+   * reach now are printed, before the module is served (a host completion
+   * event, no microtask polling).
    */
   const afterCompile = (
     s: Session,
     env: StartCompilerEnvironment,
     id: string,
-    out: { output: string; facts: { planners: Record<string, unknown> } },
+    out: CompileOutput,
     fail: (error: Error) => never,
   ): Promise<void> | undefined => {
-    if (!s.ip) {
-      return undefined
-    }
-    const ipEnv = s.ip.env(env.name, env.type)
     const finish = ({ error }: DevCompileOutcome): void => {
       if (error) {
         fail(error)
       }
-      // a host completion event (no microtask polling): print the reports whose importers the
-      // graph (or the judged edges) can reach now, before the module is served
-      ipEnv.reporter?.flush()
+      s.start.ip?.env(env.name, env.type).reporter?.flush()
     }
-    const outcome = ipEnv.afterCompile(id, out)
+    const outcome = s.start.afterCompile(env, id, out)
     if (outcome instanceof Promise) {
       return outcome.then(finish)
     }
@@ -849,8 +680,8 @@ export function startCompilerPlugin(
         server = viteServer
         const s = requireSession()
         const environment = viteServer.environments[env.name]
-        if (s.ip && environment) {
-          const ipEnv = s.ip.env(env.name, env.type)
+        if (s.start.ip && environment) {
+          const ipEnv = s.start.ip.env(env.name, env.type)
           const entries = entriesOf(s)
           ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
             entries.has(id),
@@ -871,9 +702,9 @@ export function startCompilerPlugin(
           // a new build: the registry of the previous one is gone (the client
           // builds first; under RSC the rsc provider built before it and
           // allocated its entries first: deterministic, not client-first)
-          registry.clear()
+          s.start.registry.clear()
           // one warning per file per run
-          s.warnings.reset()
+          s.start.warnings.reset()
         }
         if (
           this.environment.mode === 'build' &&
@@ -883,7 +714,6 @@ export function startCompilerPlugin(
           await compileHandlerReach(
             s,
             env,
-            this.environment,
             hostFor(s, this.environment, (source, imp, options) =>
               this.resolve(source, imp, options),
             ),
@@ -918,8 +748,8 @@ export function startCompilerPlugin(
             // survived the TypeScript transform, so a pending violation is
             // decided now; `error` fails the importer's import analysis
             const confirmation =
-              importer !== undefined && session?.ip
-                ? session.ip.env(env.name, env.type).confirm(edge)
+              importer !== undefined && session?.start.ip
+                ? session.start.ip.env(env.name, env.type).confirm(edge)
                 : null
             if (confirmation === null) {
               return edge
@@ -939,7 +769,7 @@ export function startCompilerPlugin(
         async handler(id) {
           const s = requireSession()
           if (IP_SPECIFIER_RE.test(id)) {
-            const load = s.ip?.load(id)
+            const load = s.start.ip?.load(id)
             return load
               ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
               : null
@@ -975,18 +805,18 @@ export function startCompilerPlugin(
         async handler(code, id) {
           const identity = identify(id)
           const s = requireSession()
-          if (identity.lang === null || !s.compiles(identity.path, code)) {
+          if (
+            identity.lang === null ||
+            !s.start.compiles(identity.path, code)
+          ) {
             return null
           }
           const environment = this.environment
-          const envInfo = envInfoOf(environment, env)
-          const out = await compileModule(
+          const out = await s.start.compile(
             {
               id,
               code,
-              env: envInfo,
-              planners: s.planners.get(env.name)!,
-              config: s.configs.get(env.name)!,
+              env,
               inputMap: () => inputMapOf(this, code, identity.path),
               // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
               wantMap: true,
@@ -994,25 +824,18 @@ export function startCompilerPlugin(
             hostFor(s, this.environment, (source, imp, options) =>
               this.resolve(source, imp, options),
             ),
-            s.caches,
           )
           if (!out) {
             return null
           }
           reportDiagnostics(s, this, out, identity.path, id, code, env.type)
-          const facts = out.facts.planners[START_ENV] as
-            | StartEnvFacts
-            | undefined
-          if (facts && facts.serverFns.length > 0) {
-            registry.record(identity.canonicalId, facts.serverFns, env.type)
-          }
           const decided = afterCompile(s, env, id, out, (error) =>
             this.error(error),
           )
           if (decided) {
             await decided
           }
-          if (s.mode === 'dev') {
+          if (s.start.opts.mode === 'dev') {
             outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
           }
           if (identity.derived === null && out.code === code) {
@@ -1035,7 +858,7 @@ export function startCompilerPlugin(
         let pending = invalidations.get(key)
         if (!pending) {
           pending = invalidate(
-            s.caches,
+            s.start.caches,
             change,
             invalidationHosts(s, server, this.environment),
           )
@@ -1044,8 +867,8 @@ export function startCompilerPlugin(
         }
         const res = await pending
         if (ctx.type === 'delete') {
-          registry.forget(ctx.file)
-          s.ip?.forget(normalizePath(ctx.file))
+          s.start.registry.forget(ctx.file)
+          s.start.ip?.forget(normalizePath(ctx.file))
         }
         const extra = applyInvalidation(
           this.environment,
@@ -1061,7 +884,7 @@ export function startCompilerPlugin(
         const live =
           (await liveModules(
             this.environment as DevEnvironment,
-            s.caches,
+            s.start.caches,
             ctx.file,
             ctx.modules,
           )) ?? ctx.modules
@@ -1080,10 +903,10 @@ export function startCompilerPlugin(
           }
           const kind = changeKindOf(change.event)
           if (kind === 'unlink') {
-            s.ip?.forget(normalizePath(id))
+            s.start.ip?.forget(normalizePath(id))
           }
           const res = await invalidate(
-            s.caches,
+            s.start.caches,
             { path: id, kind },
             invalidationHosts(s, server, this.environment),
           )
@@ -1099,16 +922,11 @@ export function startCompilerPlugin(
         },
       }),
       renderChunk(code, chunk) {
-        if (!allocator || !code.includes('__TSS_FN_ID_')) {
+        const s = requireSession()
+        if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
           return null
         }
-        const entries = registry.entries()
-        allocator.allocate(
-          env.type === 'client'
-            ? entries.filter((e) => e.clientReferenced)
-            : entries,
-        )
-        const patched = allocator.patch(code)
+        const patched = s.start.allocateIds(env.type).patch(code)
         if (patched.missing.length > 0) {
           this.error({
             message: `Server function ids could not be resolved in ${chunk.fileName}: ${patched.missing.join(', ')}`,
@@ -1150,14 +968,14 @@ export function startCompilerPlugin(
           warnEagerExports(
             rollupEntryModuleIds(bundle as never),
             'rollup',
-            s.warnings,
+            s.start.warnings,
             (m) => this.warn(m),
           )
         }
-        if (!s.ip) {
+        if (!s.start.ip) {
           return
         }
-        const ipEnv = s.ip.env(env.name, env.type)
+        const ipEnv = s.start.ip.env(env.name, env.type)
         const live = readRolldownWitness(bundle as never, ipEnv.witness())
         const result = await ipEnv.decide(
           live,
@@ -1203,8 +1021,8 @@ export function startCompilerPlugin(
             return original(environment)
           }
           let output: Awaited<ReturnType<typeof original>> | undefined
-          if (s.ip) {
-            const ipEnv = s.ip.env(env.name, env.type)
+          if (s.start.ip) {
+            const ipEnv = s.start.ip.env(env.name, env.type)
             ipEnv.beginLogicalBuild()
             await ipEnv.build.runToFixedPoint(async () => {
               output = await original(environment)
@@ -1213,8 +1031,7 @@ export function startCompilerPlugin(
             output = await original(environment)
           }
           if (isFinalBuild(environment.config.build)) {
-            releaseEnvironment(s.caches, env.name)
-            s.ip?.release(env.name)
+            s.start.release(env.name)
           }
           return output!
         }
@@ -1244,28 +1061,21 @@ export function startCompilerPlugin(
       async handler(code, id) {
         const s = requireSession()
         const env = envOf(this.environment.name)
-        if (!s.ip || !env || identify(id).lang !== null) {
+        if (!s.start.ip || !env || identify(id).lang !== null) {
           return null
         }
-        const ip = s.ip
-        const out = await compileModule(
+        const out = await s.start.compile(
           {
             id,
             code,
-            lang: 'jsx',
-            env: envInfoOf(this.environment, env),
-            planners: [ip.planner],
-            config: {
-              configKey: `late:${ip.config.configKey}`,
-              perPlanner: {},
-            },
+            env,
             inputMap: () => inputMapOf(this, code, identify(id).path),
             wantMap: true,
+            late: true,
           },
           hostFor(s, this.environment, (source, imp, options) =>
             this.resolve(source, imp, options),
           ),
-          s.caches,
         )
         if (!out || out.diagnostics.some((d) => d.by === 'parse')) {
           // not JavaScript after all: nothing to judge
@@ -1314,7 +1124,7 @@ export function startCompilerPlugin(
       if (!id.startsWith(lookupPrefix)) {
         return undefined
       }
-      const root = requireSession().root
+      const { registry, opts: startOpts } = requireSession().start
       const params = new URLSearchParams(id.slice(lookupPrefix.length))
       const fnId = params.get('id') ?? ''
       let entry = registry.get(fnId)
@@ -1322,7 +1132,7 @@ export function startCompilerPlugin(
         // a fresh server: compile the defining module through the normal transform
         const key = decodeDevFunctionId(fnId)
         if (key && this.environment.mode === 'dev') {
-          const abs = path.resolve(root, key.rootRel)
+          const abs = path.resolve(startOpts.root, key.rootRel)
           await this.environment.transformRequest(abs).catch(() => null)
           entry = registry.get(fnId)
         }
@@ -1338,7 +1148,7 @@ export function startCompilerPlugin(
         devWarned.add(fnId)
         this.warn(unreferencedWarning(entry))
       }
-      const specifier = toDevSpecifier(providerModuleIdOf(entry), root)
+      const specifier = toDevSpecifier(providerModuleId(entry), startOpts.root)
       return devLookupModule(entry, specifier)
     },
   }
@@ -1371,8 +1181,8 @@ export function startCompilerPlugin(
             // gates client-origin calls on the client build's references
             return callerGateModule(
               SERVER_FN_FORWARD_VIRTUAL_ID,
-              registry
-                .entries()
+              requireSession()
+                .start.registry.entries()
                 .filter((e) => e.clientReferenced)
                 .map((e) => e.id),
             )
@@ -1387,8 +1197,8 @@ export function startCompilerPlugin(
         return devResolverModule()
       }
       return productionResolverModule({
-        entries: registry.entries(),
-        providerModuleId: providerModuleIdOf,
+        entries: requireSession().start.registry.entries(),
+        providerModuleId,
         clientReferencedOnly: ssrIsProvider,
       })
     },

@@ -3,6 +3,7 @@
  * compile reported, shared by every env of a build or dev session.
  * `clientReferenced` is set only by client-env compiles.
  */
+import { deriveId } from '@tanstack/router-utils/compiler'
 import type { ServerFnKey } from './ids'
 
 export interface ServerFnEntry extends ServerFnKey {
@@ -84,4 +85,11 @@ export class ServerFnRegistry {
       }
     }
   }
+}
+
+/** The module an entry's `createServerRpc` wrapper is exported from. */
+export function providerModuleId(entry: ServerFnEntry): string {
+  return entry.providerDerived
+    ? deriveId(entry.definingCanonicalId, { kind: 'provider', value: '' })
+    : entry.definingCanonicalId
 }
