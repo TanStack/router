@@ -20,6 +20,7 @@ The following options are available for configuring the file-based routing:
 - [`semicolons`](#semicolons)
 - [`autoCodeSplitting`](#autocodesplitting)
 - [`disableTypes`](#disabletypes)
+- [`isolatedDeclarations`](#isolateddeclarations)
 - [`addExtensions`](#addextensions)
 - [`disableLogging`](#disablelogging)
 - [`routeTreeFileHeader`](#routetreefileheader)
@@ -204,6 +205,20 @@ This option is used to disable generating types for the route tree.
 If set to `true`, the generated route tree will not include any types and will be written as a `.js` file instead of a `.ts` file.
 
 By default, this value is set to `false`.
+
+### `isolatedDeclarations`
+
+- Type: `boolean`
+- Default: `false`
+
+When enabled, the generator adds explicit type annotations so the generated route tree passes TypeScript's `isolatedDeclarations` check without changing its types.
+
+This option reports an error for routes without a route file and for deprecated `.loader` files:
+
+- For a route without a route file, add a file that exports `export const Route = createFileRoute('/your-route')()` for that route's path.
+- For a `.loader` file, move the loader into the route file.
+
+This option has no effect when `disableTypes` is `true`.
 
 ### `addExtensions`
 

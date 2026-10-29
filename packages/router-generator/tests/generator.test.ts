@@ -75,6 +75,22 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
       config.routeTreeFileFooter = ['// append1', '// append2']
       break
+    case 'isolated-declarations-flat':
+    case 'isolated-declarations-nested':
+    case 'isolated-declarations-pathless-layout':
+    case 'isolated-declarations-lazy':
+      config.isolatedDeclarations = true
+      break
+    case 'isolated-declarations-unformatted':
+      config.isolatedDeclarations = true
+      config.enableRouteTreeFormatting = false
+      break
+    case 'isolated-declarations-types-disabled':
+      config.isolatedDeclarations = true
+      config.disableTypes = true
+      config.generatedRouteTree =
+        makeFolderDir(folderName) + '/routeTree.gen.js'
+      break
     case 'no-formatted-route-tree':
       config.enableRouteTreeFormatting = false
       break
