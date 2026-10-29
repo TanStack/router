@@ -91,7 +91,6 @@ export class MemoryApp {
       srcDirectory: opts.srcDirectory ?? `${ROOT}/src`,
       mode: opts.mode ?? 'dev',
       ids: opts.ids,
-      verbatimModuleSyntax: opts.verbatimModuleSyntax,
       // package.json lookups join native paths (backslashes on Windows)
       readFile: (file) =>
         Promise.resolve(this.files[file.replace(/\\/g, '/')] ?? null),

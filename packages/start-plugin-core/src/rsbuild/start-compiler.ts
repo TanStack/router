@@ -9,7 +9,6 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readVerbatimModuleSyntax } from '../tsconfig'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
@@ -82,7 +81,6 @@ export function registerStartCompiler(
       routerConfig: () => opts.getConfig().startConfig.router,
       importProtection: () => opts.getConfig().startConfig.importProtection,
       routes: { lookup: (file) => generator.lookup(file) },
-      verbatimModuleSyntax: readVerbatimModuleSyntax(resolvedStartConfig.root),
       isEntry: opts.isEntry,
     })
     return session
@@ -149,6 +147,16 @@ export function registerStartCompiler(
         {
           test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
           type: 'javascript/esm',
+          // dev: Rspack builds an edge module only for an import its importer
+          // kept after SWC, which confirms a pending violation
+          use: dev
+            ? [
+                {
+                  loader: loaderPath,
+                  options: { environment: environment.name, pass: 'edge' },
+                },
+              ]
+            : [],
         },
       )
     }

@@ -310,27 +310,56 @@ export const x = (t: T, u: U, w: W) => v
     ).toEqual([2, 5])
   })
 
-  test('TypeScript erases an unused or type-used import (no edge); JavaScript and verbatimModuleSyntax keep it (an evaluation edge)', async () => {
+  test('an unused or type-used import of a TypeScript module is substituted but pending: decided when the bundler requests its edge module; JavaScript decides at compile time', async () => {
     const files = {
       'src/secret.server.ts': `globalThis.loaded = 1\nexport class Secret {}\n`,
       'src/a.ts': `import { Secret } from './secret.server'\nexport const f = (s: Secret) => s\n`,
       'src/b.js': `import { Secret } from './secret.server'\nexport const g = 1\n`,
     }
-    const ts = recorder()
-    const a = app(files, { onViolation: ts.onViolation })
-    await a.compile('src/a.ts', 'client')
+    const rec = recorder()
+    const a = app(files, { onViolation: rec.onViolation })
+    const { out } = await a.compile('src/a.ts', 'client')
     await a.compile('src/b.js', 'client')
-    expect(ts.calls.map((c) => c.importer.slice(ROOT.length + 1))).toEqual([
+    expect(rec.calls.map((c) => c.importer.slice(ROOT.length + 1))).toEqual([
       'src/b.js',
     ])
-    const verbatim = recorder()
-    const v = new MemoryApp({
-      files,
-      options: { onViolation: verbatim.onViolation },
-      verbatimModuleSyntax: true,
-    })
-    await v.compile('src/a.ts', 'client')
-    expect(verbatim.calls).toHaveLength(1)
+    // the TypeScript importer's edge is substituted (the probe is the mock)
+    const [edge] = edgeImports(out!.code)
+    expect(edge).toBeDefined()
+    // an edge module nobody requests (TypeScript erased the import): nothing
+    expect(
+      a.ip.env('client').confirm('tanstack-start-ip:client/edge.nope.0'),
+    ).toBeNull()
+    // the bundler requests it from the transformed importer: decided now, once
+    await a.ip.env('client').confirm(edge!)
+    expect(rec.calls.map((c) => c.importer.slice(ROOT.length + 1))).toEqual([
+      'src/b.js',
+      'src/a.ts',
+    ])
+    expect(a.ip.env('client').confirm(edge!)).toBeNull()
+  })
+
+  test('a pending edge vetoed at confirmation serves the real module; error behaviour fails at confirmation', async () => {
+    const files = {
+      'src/secret.server.ts': `globalThis.loaded = 1\nexport class Secret {}\n`,
+      'src/a.ts': `import { Secret } from './secret.server'\nexport const f = (s: Secret) => s\n`,
+    }
+    const veto = app(files, { onViolation: () => false })
+    const { out } = await veto.compile('src/a.ts', 'client')
+    const [edge] = edgeImports(out!.code)
+    expect(veto.ip.load(edge!)!.code).toContain('__mk')
+    expect(await veto.ip.env('client').confirm(edge!)).toBeNull()
+    expect(veto.ip.load(edge!)!.code).toContain(
+      'export * from "/app/src/secret.server.ts"',
+    )
+
+    const strict = app(files, { behavior: 'error' })
+    const strictOut = await strict.compile('src/a.ts', 'client')
+    // substituted in error behaviour too (the probe), the module is served
+    expect(strictOut.outcome.error).toBeNull()
+    const [strictEdge] = edgeImports(strictOut.out!.code)
+    const error = await strict.ip.env('client').confirm(strictEdge!)
+    expect(error?.message).toMatch(/secret\.server/)
   })
 
   test('bare imports, re-exports, export * and dynamic import() are edges', async () => {

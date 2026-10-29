@@ -52,8 +52,6 @@ export interface CreateImportProtectionOptions {
   mode: ImportProtectionMode
   /** How the host names edge modules (default: Vite ids). */
   ids?: EdgeModuleIds
-  /** tsconfig `verbatimModuleSyntax` (TypeScript keeps unused imports). */
-  verbatimModuleSyntax?: boolean
   /** Reads a file (a package's `package.json` for `sideEffects`); default `node:fs`. */
   readFile?: (file: string) => Promise<string | null>
   /** Reads a source file's raw text, synchronously (trace positions, `EdgeIndex`); default `node:fs`. */
@@ -87,7 +85,6 @@ export function createImportProtection(
     root: opts.root,
     srcDirectory: opts.srcDirectory,
     mode: opts.mode,
-    verbatimModuleSyntax: opts.verbatimModuleSyntax,
   })
   return config
     ? new ImportProtection(
@@ -375,6 +372,10 @@ export class ImportProtectionEnv {
   private readonly modules = new Map<string, RegisteredModule>()
   private readonly byImporter = new Map<string, Set<string>>()
   private readonly onceVerdicts = new Map<string, Promise<boolean | void>>()
+  /** Dev: logical edges `onViolation` vetoed at confirmation (their edge modules serve the real module). */
+  private readonly allowed = new Set<string>()
+  /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
+  private readonly confirmed = new Set<string>()
   private buildInfos = new Map<string, ViolationInfo>()
   private runtimeEmitted = false
 
@@ -433,7 +434,7 @@ export class ImportProtectionEnv {
       return
     }
     for (const v of record.violations) {
-      if (v.env !== this.name || v.behavior !== 'mock') {
+      if (v.env !== this.name || v.behavior !== 'mock' || v.pending) {
         continue
       }
       const vi = violationInfo(v, this.ip.config, () => this.trace(importerId))
@@ -585,20 +586,29 @@ export class ImportProtectionEnv {
     }
     const errors: Array<ViolationInfo> = []
     for (const v of violations) {
-      if (v.env !== this.name) {
+      if (v.env !== this.name || v.pending) {
         continue
       }
-      const info = violationInfo(v, this.ip.config, () =>
-        this.trace(v.importerId),
-      )
-      if (v.behavior === 'error') {
-        errors.push(info)
-      } else {
-        this.reporter?.enqueue({ violation: v, info })
-      }
+      errors.push(...this.report(v))
     }
+    return { error: this.errorOf(errors) }
+  }
+
+  /** Dev: queues a mock report; returns the info of an `error` violation (the importer must fail). */
+  private report(v: EdgeViolation): Array<ViolationInfo> {
+    const info = violationInfo(v, this.ip.config, () =>
+      this.trace(v.importerId),
+    )
+    if (v.behavior === 'error') {
+      return [info]
+    }
+    this.reporter?.enqueue({ violation: v, info })
+    return []
+  }
+
+  private errorOf(errors: Array<ViolationInfo>): Error | null {
     if (errors.length === 0) {
-      return { error: null }
+      return null
     }
     for (const info of errors) {
       ;(info as ViolationInfo & { freezeTrace: () => unknown }).freezeTrace()
@@ -609,7 +619,59 @@ export class ImportProtectionEnv {
         .map((info) => formatViolation(info, this.ip.config.root))
         .join('\n')
     }
-    return { error }
+    return error
+  }
+
+  /**
+   * Dev: the bundler requested an edge module from the transformed
+   * importer, so the import survived its TypeScript transform: the pending
+   * violations of that module are decided now (`onViolation`, memoised per
+   * logical edge with `log: 'once'`; `false` makes the edge module serve the
+   * real module), reported, or returned as the error the importer fails
+   * with (`behavior: 'error'`). Null, synchronously, when nothing is
+   * pending for `id` (the common case: a confirmed or an immediate edge).
+   */
+  confirm(id: string): Promise<Error | null> | null {
+    const ref = this.ip.ids.parse(id)
+    const m = ref?.kind === 'edge' ? this.modules.get(ref.key) : undefined
+    if (!m || this.ip.config.mode !== 'dev') {
+      return null
+    }
+    const pending: Array<[string, EdgeViolation]> = []
+    for (const [key, v] of m.violations) {
+      // an `error` violation fails every request (its importer is not cached)
+      if (
+        v.pending &&
+        (v.behavior === 'error' ||
+          this.ip.config.log === 'always' ||
+          !this.confirmed.has(key))
+      ) {
+        pending.push([key, v])
+      }
+    }
+    if (pending.length === 0) {
+      return null
+    }
+    return (async () => {
+      const errors: Array<ViolationInfo> = []
+      for (const [key, v] of pending) {
+        this.confirmed.add(key)
+        const ask = async () =>
+          this.ip.config.onViolation?.(
+            violationInfo(v, this.ip.config, () => this.trace(v.importerId)),
+          )
+        const verdict =
+          this.ip.config.log === 'once'
+            ? await this.onceVerdict(dedupeKey(v), ask)
+            : await ask()
+        if (verdict === false) {
+          this.allowed.add(v.edgeKey)
+          continue
+        }
+        errors.push(...this.report(v))
+      }
+      return this.errorOf(errors)
+    })()
   }
 
   /** An edge module of this environment: registered (and emitted, the runtime first) unless it is known. @internal */
@@ -687,8 +749,9 @@ export class ImportProtectionEnv {
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
     if (
-      this.ip.config.mode === 'build' &&
-      this.build.stateOf(c.edgeKey) === 'allowed'
+      this.ip.config.mode === 'build'
+        ? this.build.stateOf(c.edgeKey) === 'allowed'
+        : this.allowed.has(c.edgeKey)
     ) {
       return {
         code: allowedModuleCode(c, c.resolved ?? c.specifier),

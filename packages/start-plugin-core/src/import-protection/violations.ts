@@ -34,6 +34,12 @@ export interface EdgeViolation {
   behavior: 'error' | 'mock'
   /** The edge module the specifier was substituted with (null: not substituted, dev `error`). */
   module: { key: string; content: EdgeModuleContent } | null
+  /**
+   * Dev: the bundler's TypeScript transform may erase the import; nothing is
+   * decided or reported until the bundler requests the edge module
+   * (`ImportProtectionEnv.confirm`).
+   */
+  pending?: true
 }
 
 /** What the planner stores in `plan.facts.planners['import-edges']`. */

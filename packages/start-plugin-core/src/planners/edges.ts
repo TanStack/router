@@ -8,9 +8,16 @@
  *
  * - dev: `onViolation` decides now (memoised per request, or per session
  *   with `log: 'once'`); `false` leaves the edge alone; `mock` substitutes
- *   the mock, `error` leaves it and the host fails the module;
+ *   the mock, `error` leaves it and the host fails the module. An edge the
+ *   bundler's TypeScript transform may erase (a static import of a
+ *   `.ts`/`.tsx` module with no binding used as a value) is substituted in
+ *   both behaviours and recorded *pending*: the host confirms it when the
+ *   bundler requests its edge module from the transformed importer
+ *   (`ImportProtectionEnv.confirm`), which never happens for an erased
+ *   import;
  * - build: every violation gets its edge module (mock first in both
- *   behaviours); `onViolation` runs after tree-shaking (`verdict.ts`).
+ *   behaviours); `onViolation` runs after tree-shaking (`verdict.ts`): an
+ *   erased edge module is absent from the bundle.
  *
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
@@ -121,9 +128,8 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       const recipe = plan.outputs[output]
       const importerId = recipe?.derivedId ?? ctx.identity.canonicalId
       const locator = new Locator(ctx.code, ctx.identity.path, ctx.inputMap)
-      const tsElides =
-        !config.verbatimModuleSyntax &&
-        (ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx')
+      const typescript =
+        ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx'
 
       const rewriter = (
         ctx.host.services as
@@ -149,10 +155,6 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
 
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
         if (e.provenance.origin === 'runtime' || e.typeOnly) {
-          return null
-        }
-        // TypeScript erases an import whose bindings are unused or only used as types
-        if (tsElides && e.form === 'static' && e.kind === 'evaluation') {
           return null
         }
         const forwarded =
@@ -236,7 +238,16 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         const loc: OriginalLocation | null =
           j.offset === undefined ? null : locator.at(j.offset)
         const behavior = config.behavior
-        const substitute = config.mode === 'build' || behavior === 'mock'
+        // TypeScript may erase a static import whose bindings are unused or
+        // only used as types (per the bundler's transform options): the host
+        // decides when the bundler asks for the edge module
+        const pending =
+          config.mode === 'dev' &&
+          typescript &&
+          j.edge.form === 'static' &&
+          j.edge.kind === 'evaluation'
+        const substitute =
+          config.mode === 'build' || behavior === 'mock' || pending
         const base: EdgeViolation = {
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
@@ -250,8 +261,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           snippet: loc && locator.frame(loc),
           behavior,
           module: null,
+          ...(pending && { pending: true }),
         }
-        if (config.mode === 'dev') {
+        if (config.mode === 'dev' && !pending) {
           const ask = async () =>
             config.onViolation?.(
               violationInfo(base, config, () => env.trace(importerId)),

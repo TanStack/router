@@ -114,8 +114,6 @@ export interface StartRsbuildSessionOptions {
   importProtection: () => ImportProtectionOptions | undefined
   /** The route registry (the generator's `routesByFile`). */
   routes: { lookup: (path: string) => { routeId: string } | null }
-  /** tsconfig `verbatimModuleSyntax` (TypeScript keeps unused imports). */
-  verbatimModuleSyntax?: boolean
   /** Whether a path is an app entry (a marked entry is its own import-protection violation). */
   isEntry: (path: string) => boolean
 }
@@ -142,7 +140,7 @@ export interface LoaderOptions {
   environment: string
   /** `late`: the J6-only pass over the JS output of a non-JS module
    * (`.vue`, `.mdx`: Tier 0 only, with a host-supplied language). */
-  pass?: 'late'
+  pass?: 'late' | 'edge'
 }
 
 export interface EnvState {
@@ -208,7 +206,6 @@ export class StartRsbuildCompilerSession {
       ids: rspackEdgeModuleIds(
         `${normalizePath(root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
-      verbatimModuleSyntax: opts.verbatimModuleSyntax,
       readFile: (file) => this.readFile(file),
       isEntry: opts.isEntry,
     })
@@ -646,6 +643,16 @@ export class StartRsbuildCompilerSession {
   ): Promise<LoaderResult> {
     const env = this.env(options.environment)
     const passthrough: LoaderResult = { code: source, map: inputMap }
+    if (options.pass === 'edge') {
+      // dev: the bundler requested this edge module from the importer's
+      // post-SWC code; a veto serves the real module
+      const ipEnv = this.ip?.env(env.name, env.type)
+      const error = await ipEnv?.confirm(ctx.resource)
+      if (error) {
+        throw error
+      }
+      return { code: this.ip?.load(ctx.resource)?.code ?? source, map: null }
+    }
     const id = canonicalResource(ctx.resource)
     const identity = identify(id)
     const late = options.pass === 'late'

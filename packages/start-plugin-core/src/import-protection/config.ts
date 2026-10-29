@@ -42,13 +42,6 @@ export interface ImportProtectionConfig {
   /** Marker specifier → kind (every framework's markers count in every app). */
   markerSpecifiers: Record<string, MarkerKind>
   onViolation: OnViolation | undefined
-  /**
-   * Whether TypeScript keeps imports whose bindings are unused or only used
-   * as types (`verbatimModuleSyntax`). When false (TypeScript's default),
-   * such imports of a `.ts`/`.tsx` importer are no edges: TypeScript erases
-   * them before bundling.
-   */
-  verbatimModuleSyntax: boolean
   /** Part of the compile `configKey`: changes with anything that changes a plan. */
   configKey: string
 }
@@ -57,7 +50,6 @@ export interface ResolveImportProtectionContext {
   root: string
   srcDirectory: string
   mode: ImportProtectionMode
-  verbatimModuleSyntax?: boolean
 }
 
 /**
@@ -120,7 +112,6 @@ export function resolveImportProtectionConfig(
   const mockAccess = options?.mockAccess ?? 'error'
   const log = options?.log ?? 'once'
   const maxTraceDepth = options?.maxTraceDepth ?? 20
-  const verbatimModuleSyntax = ctx.verbatimModuleSyntax ?? false
   const root = normalizeFilePath(ctx.root)
   const srcDirectory = normalizeFilePath(ctx.srcDirectory)
   const patternKey = (list: Array<string | RegExp>) =>
@@ -150,7 +141,6 @@ export function resolveImportProtectionConfig(
     ignoreImporters: compileMatchers(ignoreImporters),
     markerSpecifiers,
     onViolation: options?.onViolation as OnViolation | undefined,
-    verbatimModuleSyntax,
     configKey: digestOf({
       ip: 1,
       root,
@@ -158,7 +148,6 @@ export function resolveImportProtectionConfig(
       mode: ctx.mode,
       behavior,
       mockAccess,
-      verbatimModuleSyntax,
       rules: {
         client: {
           specifiers: patternKey(rulePatterns.client.specifiers),

@@ -80,7 +80,6 @@ import {
   rolldownGraphView,
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
-import { readVerbatimModuleSyntax } from '../tsconfig'
 import { createVirtualModule } from './createVirtualModule'
 import type { ImportProtection } from '../import-protection/session'
 import type { HydratePlannerConfig } from '../planners/hydrate'
@@ -335,7 +334,6 @@ export function startCompilerPlugin(
       root: config.root,
       srcDirectory: resolvedStartConfig.srcDirectory,
       mode,
-      verbatimModuleSyntax: readVerbatimModuleSyntax(config.root),
       isEntry: (p) =>
         session !== null && entriesOf(session).has(normalizePath(p)),
     })
@@ -982,7 +980,23 @@ export function startCompilerPlugin(
         handler(source, importer) {
           const edge = resolveViteEdgeModuleId(source)
           if (edge !== null) {
-            return edge
+            // an importer's request for an edge module comes from its
+            // transformed code (import analysis, or Rolldown): the import
+            // survived the TypeScript transform, so a pending violation is
+            // decided now; `error` fails the importer's import analysis
+            const confirmation =
+              importer !== undefined && session?.ip
+                ? session.ip.env(env.name, env.type).confirm(edge)
+                : null
+            if (confirmation === null) {
+              return edge
+            }
+            return confirmation.then((error) => {
+              if (error) {
+                throw error
+              }
+              return edge
+            })
           }
           return resolveDerivedSibling(source, importer)
         },
