@@ -110,15 +110,7 @@ function session(
   return { ip, rawFacts, caches, env, label }
 }
 
-const envInfo = (bundler: EnvInfo['bundler']): EnvInfo => ({
-  name: 'client',
-  type: 'client',
-  mode: 'build',
-  bundler,
-  framework: null,
-  conditions: ['browser'],
-  routerSplit: false,
-})
+const envInfo: EnvInfo = { name: 'client', type: 'client', mode: 'build' }
 
 /** Compiles one module the way a host transform/loader does; null: untouched. */
 async function compile(
@@ -127,13 +119,12 @@ async function compile(
   host: HostServices,
   id: string,
   code: string,
-  bundler: EnvInfo['bundler'],
 ): Promise<{ code: string; diagnostics: Array<string> } | null> {
   const out = await compileModule(
     {
       id,
       code,
-      env: envInfo(bundler),
+      env: envInfo,
       planners: [ip.planner],
       config: { configKey: ip.config.configKey, perPlanner: {} },
       wantMap: false,
@@ -200,11 +191,9 @@ export async function buildWithVite(
           const r = await this.resolve(specifier, importer, { skipSelf: true })
           return r ? { id: r.id, external: r.external === true } : null
         },
-        readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
-        loadVirtual: () => Promise.resolve(null),
         rawFacts,
       }
-      const out = await compile(ip, caches, host, id, code, 'vite')
+      const out = await compile(ip, caches, host, id, code)
       if (out?.diagnostics.length) {
         this.error(out.diagnostics[0]!)
       }
@@ -326,11 +315,9 @@ export async function buildWithRsbuild(
           return null
         }
       },
-      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
-      loadVirtual: () => Promise.resolve(null),
       rawFacts,
     }
-    const out = await compile(ip, caches, host, loader.resource, code, 'rspack')
+    const out = await compile(ip, caches, host, loader.resource, code)
     if (out?.diagnostics.length) {
       throw new Error(out.diagnostics[0])
     }

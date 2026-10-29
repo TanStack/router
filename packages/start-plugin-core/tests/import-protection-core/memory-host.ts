@@ -38,10 +38,6 @@ export function envInfo(
     name,
     type,
     mode,
-    bundler: 'test',
-    framework: 'react',
-    conditions: type === 'client' ? ['browser'] : ['node'],
-    routerSplit: false,
     ...partial,
   }
 }
@@ -110,8 +106,6 @@ export class MemoryApp {
     this.host = {
       resolve: (specifier, importer) =>
         Promise.resolve(this.resolveSync(specifier, importer)),
-      readFile: (p) => Promise.resolve(this.files[p] ?? null),
-      loadVirtual: () => Promise.resolve(null),
       rawFacts: this.rawFacts,
     }
   }
