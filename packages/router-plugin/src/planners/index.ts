@@ -13,6 +13,6 @@ export {
   routerPlannerConfigDigest,
   routerPlannerConfigFrom,
 } from './config'
-export type { HmrStyle, RouterPlannerConfig, RouterPlannerEnv } from './config'
+export type { RouterPlannerConfig } from './config'
 export { RouteRegistryView } from './registry'
 export { routerPureCalls } from './route'
