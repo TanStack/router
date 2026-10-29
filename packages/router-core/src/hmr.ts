@@ -76,6 +76,10 @@ const hotRoutes = new Map<
   { routes: WeakSet<AnyRoute>; meta: RouteHmrMeta }
 >()
 
+// Per route id, the split chunks that evaluated since its route module last
+// did (`applyRouteChunkHmr`). Bounded by the number of split chunks.
+const hotChunks = new Map<string, Set<string>>()
+
 /**
  * Applies one evaluation of a route module to the live route of
  * `window.__TSR_ROUTER__`. The first evaluation only records the route.
@@ -95,6 +99,9 @@ export function applyRouteHmr(
     if (isServer ?? typeof window === 'undefined') {
       return
     }
+    // this evaluation owns the refresh: the route's chunks the refresh
+    // re-imports evaluate as new (`applyRouteChunkHmr`)
+    hotChunks.delete(routeId)
     const known = hotRoutes.get(routeId)
     if (!known) {
       hotRoutes.set(routeId, { routes: new WeakSet([route]), meta })
@@ -214,15 +221,15 @@ export function applyRouteHmr(
   }
 }
 
-// The split chunks of route modules that evaluated so far (`routeId\0chunk`).
-// Bounded by the number of split chunks.
-const hotChunks = new Set<string>()
-
 /**
  * Applies one evaluation of a split chunk of a route module (webpack-style
- * hosts): the first evaluation only records the chunk; a later one is a hot
- * update of the chunk (its own `accept()`), and the route's non-component
- * options reload through their lazy wrappers once the live route refreshes.
+ * hosts). The chunk accepts nothing itself: its update bubbles to its
+ * importer. When that is the route module, the route module's evaluation
+ * refreshes the route (`applyRouteHmr`), and the chunk evaluating again (the
+ * refreshed loader re-imports it) is only recorded. When it is not (Rspack's
+ * lazy-compilation proxy re-resolves the chunk alone), the chunk evaluates
+ * again before its route module does: then it refreshes the live route, and
+ * the route's non-component options reload through their lazy wrappers.
  *
  * Not a public API: called by the framework packages' `__tsrRouteChunkHmr`.
  */
@@ -231,9 +238,13 @@ export function applyRouteChunkHmr(routeId: string, chunk: string): void {
     if (isServer ?? typeof window === 'undefined') {
       return
     }
-    const key = `${routeId}\0${chunk}`
-    if (!hotChunks.has(key)) {
-      hotChunks.add(key)
+    let chunks = hotChunks.get(routeId)
+    if (!chunks) {
+      chunks = new Set()
+      hotChunks.set(routeId, chunks)
+    }
+    if (!chunks.has(chunk)) {
+      chunks.add(chunk)
       return
     }
     const router = window.__TSR_ROUTER__

@@ -39,7 +39,7 @@ export function __tsrRouteHmr(
 /**
  * Dev-only entry point called by the router plugin's output at the top level
  * of every evaluation of a split chunk of a route module on webpack-style
- * hosts (the chunk accepts its own hot updates).
+ * hosts (`applyRouteChunkHmr`).
  *
  * Called only by compiler output; not a public API.
  */

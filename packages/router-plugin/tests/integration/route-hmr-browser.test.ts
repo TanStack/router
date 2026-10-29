@@ -643,3 +643,45 @@ export const Route = createFileRoute('/')({
     },
   )
 })
+
+// An edit of a split loader runs the edited loader once: the update of the
+// route module refreshes the route, and the chunk evaluating again (its
+// re-import by the refreshed loader) does not refresh it a second time.
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: an edit of a split loader',
+  (bundler) => {
+    const route = (version: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => {
+    const w = window as any
+    w.__loaderRuns = (w.__loaderRuns ?? 0) + 1
+    return 'data ${version}'
+  },
+  component: Page,
+  codeSplitGroupings: [['loader'], ['component']],
+})
+function Page() {
+  return <p>page {Route.useLoaderData()}</p>
+}
+`
+    it(
+      'runs the edited loader once',
+      { timeout },
+      async ({ expect, onTestFinished }) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting: true },
+          files: { 'routes/index.tsx': route('v1') },
+          ready: 'page data v1',
+        })
+        const runs = await app.evaluate<number>('window.__loaderRuns')
+        expect(
+          await app.edit({ 'routes/index.tsx': route('v2') }, 'page data v2'),
+        ).toEqual(inPlace)
+        expect(await app.evaluate<number>('window.__loaderRuns')).toBe(runs + 1)
+      },
+    )
+  },
+)

@@ -317,14 +317,14 @@ export function routeHmrPlanner(): Planner {
 }
 
 /**
- * Webpack-style hosts: a split chunk holding a non-component option
- * (`loader`, `beforeLoad`, …) asks the live route to refresh when it is
- * evaluated again, so an edit of that option alone reaches the page. The
- * chunk accepts nothing itself: its update bubbles to its importer (the
- * route module, self-accepting, or Rspack's lazy-compilation proxy, which
- * re-resolves the module), and the importer's re-import evaluates the chunk
- * again. Vite re-runs the dynamic importer itself. Component-only chunks are
- * the framework refresh runtime's.
+ * Webpack-style hosts: a split chunk holding a non-component option (the
+ * `loader`) reports each evaluation to the route HMR runtime, so an edit of
+ * that option alone reaches the page. The chunk accepts nothing itself: its
+ * update bubbles to its importer. The route module (self-accepting)
+ * refreshes the route when it evaluates again; Rspack's lazy-compilation
+ * proxy re-resolves the chunk alone, whose evaluation then refreshes the
+ * route (`applyRouteChunkHmr`). Vite re-runs the dynamic importer itself.
+ * Component-only chunks are the framework refresh runtime's.
  */
 function chunkHmr(
   ctx: PlanContext,
