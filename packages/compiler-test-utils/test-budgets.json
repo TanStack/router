@@ -17,7 +17,6 @@
       "integration": [8, 12]
     },
     "@tanstack/react-start-rsc": {
-      "unit": [1, 2],
       "integration": [13, 20]
     },
     "@tanstack/compiler-test-utils": {

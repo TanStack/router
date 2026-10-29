@@ -1,6 +1,6 @@
 import path from 'node:path'
 import os from 'node:os'
-import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
+import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
 import { copyFilesPlugin } from '@tanstack/router-utils'
@@ -45,22 +45,6 @@ const config = defineConfig({
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: ['@tanstack/compiler-test-utils/pins-setup'],
     projects: [
-      {
-        // Fast compiler acceptance tier; real apps run in integration.
-        // Runtime coverage is selected by test:noncompiler below.
-        extends: true,
-        test: {
-          name: 'unit',
-          include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
-          exclude: [
-            ...configDefaults.exclude,
-            'tests/integration/**',
-            ...noncompilerTests.map((file) => `tests/${file}`),
-          ],
-          environment: 'jsdom',
-          setupFiles: ['./tests/setup.ts'],
-        },
-      },
       {
         extends: true,
         test: {
