@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url'
-import { basename, extname, join } from 'pathe'
+import { basename, extname, join, resolve } from 'pathe'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
@@ -36,7 +36,10 @@ export function previewServerPlugin(): Plugin {
 
                 // Get basename without extension and add .js
                 const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
-                const serverOutputDir = getServerOutputDirectory(server.config)
+                const serverOutputDir = resolve(
+                  server.config.root,
+                  getServerOutputDirectory(server.config),
+                )
                 const serverEntryPath = join(serverOutputDir, outputFilename)
                 const imported = await import(
                   pathToFileURL(serverEntryPath).toString()
