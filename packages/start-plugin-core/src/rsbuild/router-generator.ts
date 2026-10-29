@@ -8,20 +8,14 @@
  * tree without its server-only routes.
  */
 import path from 'node:path'
-import {
-  Generator,
-  createGeneratorSession,
-  getConfig as getGeneratorConfig,
-} from '@tanstack/router-generator'
+import { Generator, createGeneratorSession } from '@tanstack/router-generator'
 import {
   changedRoutePaths,
   createRouterPluginContext,
   onRoutesChanged,
 } from '@tanstack/router-plugin/context'
 import { RouteRegistryView } from '@tanstack/router-plugin/planners'
-import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
-import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
-import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { startGeneratorConfig } from '../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
@@ -73,30 +67,15 @@ export function createRsbuildRouteGenerator(opts: {
     if (generator) {
       return generator
     }
-    const { startConfig, resolvedStartConfig } = opts.getConfig()
-    const root = resolvedStartConfig.root
-    const config = getGeneratorConfig(
-      {
-        ...startConfig.router,
-        routeTreeFileFooter: () =>
-          buildRouteTreeFileFooterFromConfig({
-            generatedRouteTreePath: treePath(),
-            getConfig: opts.getConfig,
-            corePluginOpts: opts.corePluginOpts,
-          }),
-        plugins: [
-          clientRouteTree.plugin,
-          routesManifestPlugin(),
-          ...(opts.startPluginOpts.prerender?.enabled === true
-            ? [prerenderRoutesPlugin()]
-            : []),
-          // (the app's own generator plugins run too, #7768)
-          ...(startConfig.router.plugins ?? []),
-        ],
-      },
-      root,
-    )
-    generator = new Generator({ config, root })
+    generator = new Generator({
+      config: startGeneratorConfig({
+        getConfig: opts.getConfig,
+        corePluginOpts: opts.corePluginOpts,
+        prerender: opts.startPluginOpts.prerender?.enabled === true,
+        clientRouteTree: clientRouteTree.plugin,
+      }),
+      root: opts.getConfig().resolvedStartConfig.root,
+    })
     return generator
   }
 

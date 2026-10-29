@@ -47,7 +47,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 
 - Dev compiler state stays bounded by the live modules (Vite and Rsbuild): deleted, renamed or no longer imported files leave no plans, raw facts or import-protection records behind.
 - Editing the imports of a route module no longer fully reloads the page.
-- Generator plugins given as `router.plugins` run next to Start's (#7768); Start's route tree footer follows `quoteStyle` and `semicolons`.
+- Generator plugins given as `router.plugins` run next to Start's (#7768); Start's route tree footer follows `quoteStyle` and `semicolons`, and a function-form `router.routeTreeFileFooter` gives its lines at every print of the route tree on Vite too (Vite kept its first result for the whole dev server).
 - Solid Start server environments split route components like the client, so hydration keys agree.
 - Require `exsolve` `^1.1.3`, so memory no longer grows across builds in one process. Entry lookups bypass its process-wide cache, so an entry file created after a dev server restart is found.
 - The plugins load the router-core helpers they need from the new `@tanstack/router-core/tooling` entry instead of the router runtime.

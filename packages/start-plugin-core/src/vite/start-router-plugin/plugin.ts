@@ -2,19 +2,14 @@ import { tanstackRouterGenerator } from '@tanstack/router-plugin/vite'
 import path from 'pathe'
 import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { routesManifestPlugin } from '../../start-router-plugin/generator-plugins/routes-manifest-plugin'
-import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
-import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
+import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../../start-router-plugin/client-route-tree'
+import { escapeRegExp } from '../../utils'
 import type { GetConfigFn } from '../../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from '../../schema'
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 /**
  * The route generator (and the client's route tree); route splitting and
@@ -53,22 +48,6 @@ export function tanStackStartRouter(
   const clientRouteTree = createClientRouteTree({
     onClientRoutesChange: invalidate,
   })
-
-  let routeTreeFileFooter: Array<string> | null = null
-
-  function getRouteTreeFileFooter() {
-    if (routeTreeFileFooter) {
-      return routeTreeFileFooter
-    }
-    routeTreeFileFooter = [
-      ...buildRouteTreeFileFooterFromConfig({
-        generatedRouteTreePath: getGeneratedRouteTreePath(),
-        getConfig,
-        corePluginOpts,
-      }),
-    ]
-    return routeTreeFileFooter
-  }
 
   let resolvedGeneratedRouteTreePath: string | null = null
   const clientTreePlugin: Plugin = {
@@ -113,20 +92,15 @@ export function tanStackStartRouter(
   }
   return [
     clientTreePlugin,
-    tanstackRouterGenerator(() => {
-      const routerConfig = getConfig().startConfig.router
-      const plugins = [clientRouteTree.plugin, routesManifestPlugin()]
-      if (startPluginOpts.prerender?.enabled === true) {
-        plugins.push(prerenderRoutesPlugin())
-      }
-      // (the app's own generator plugins run too, #7768)
-      plugins.push(...(routerConfig.plugins ?? []))
-      return {
-        ...routerConfig,
-        target: corePluginOpts.framework,
-        routeTreeFileFooter: getRouteTreeFileFooter,
-        plugins,
-      }
-    }, routerPluginContext),
+    tanstackRouterGenerator(
+      () =>
+        startGeneratorConfig({
+          getConfig,
+          corePluginOpts,
+          prerender: startPluginOpts.prerender?.enabled === true,
+          clientRouteTree: clientRouteTree.plugin,
+        }),
+      routerPluginContext,
+    ),
   ]
 }
