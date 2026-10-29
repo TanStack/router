@@ -473,6 +473,35 @@ import { db } from './db.server'
       }
     }
   })
+
+  // the nested chain goes with the handler stubbed on the client, whichever
+  // import binding of the factory each chain is written with (the nested
+  // chain's binding is declared first: its site is enumerated first)
+  it('registers a server fn nested in a handler on the server envs only', async () => {
+    const code = `import { createServerFn as innerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const outer = createServerFn().handler(async () => {
+  const nested = innerFn().handler(() => db.q(1))
+  return nested()
+})
+`
+    for (const [envName, env, config] of envs) {
+      const r = await compile(code, { env, config, files })
+      const facts = r.out.facts.planners[START_ENV] as {
+        serverFns: Array<{ name: string }>
+      }
+      expectValid(r.code)
+      expect(r.out.diagnostics, envName).toEqual([])
+      expect(
+        facts.serverFns.map((f) => f.name),
+        envName,
+      ).toEqual(env.type === 'client' ? ['outer'] : ['outer', 'nested'])
+      if (env.type === 'client') {
+        expect(r.code).not.toContain('db.q(1)')
+      }
+    }
+  })
 })
 
 // In-place provider (SSR = provider): handlers move to one lazy handler
