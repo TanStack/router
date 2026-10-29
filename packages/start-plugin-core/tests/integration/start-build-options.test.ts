@@ -268,6 +268,46 @@ return {
     timeout,
   )
 
+  // `codeSplittingOptions.deleteNodes` erases its options from the route
+  // modules of the server build. The client build erases Start's own
+  // server-only options (`ssr`, `server`, `headers`) instead and keeps the
+  // user's (as main did on both bundlers; Start on Rsbuild ignored the
+  // option on the server).
+  test(
+    'router.codeSplittingOptions.deleteNodes: the server build erases the options, the client build erases ssr instead',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...routeFiles,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  ssr: true,
+  staticData: { marker: 'MARK_STATIC' },
+  component: () => 'MARK_COMPONENT',
+})
+`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          router: { codeSplittingOptions: { deleteNodes: ['staticData'] } },
+        },
+      })
+      const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ?? null }`
+      expect({
+        client: (await client.run(script)).result,
+        ssr: (await ssr.run(script)).result,
+      }).toEqual({
+        client: { staticData: { marker: 'MARK_STATIC' }, ssr: null },
+        ssr: { staticData: null, ssr: true },
+      })
+    },
+    timeout,
+  )
+
   // Source: mutation testing (the footer Start adds to the
   // route tree was never type-checked).
   // The footer augments the Start package of the app's framework.

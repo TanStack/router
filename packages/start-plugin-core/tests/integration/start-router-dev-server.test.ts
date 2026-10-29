@@ -220,11 +220,18 @@ describe('Vite dev: route HMR in a real page', () => {
   // The page is the app's `index.html`, rendered on the client: Start's dev
   // server middleware, which would answer the page request with the app's
   // server entry, is off. Start's SSR with HMR in a real app:
-  // e2e/react-start/hmr.
+  // e2e/react-start/hmr. `addHmr: false` changes nothing: Start's client
+  // always has route HMR (as main did on both bundlers).
   // Source: mutation testing.
-  test(
-    'an edited page route shows its new loader and component without a full reload, and its split component keeps its state',
-    async () => {
+  test.each([
+    { name: 'by default', router: {} },
+    {
+      name: 'with addHmr: false',
+      router: { codeSplittingOptions: { addHmr: false } },
+    },
+  ])(
+    'an edited page route shows its new loader and component without a full reload, and its split component keeps its state ($name)',
+    async ({ router }) => {
       const page = (loader: string, text: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -236,7 +243,7 @@ function Page() {
 export const Route = createFileRoute('/')({ loader: () => '${loader}', component: Page })
 `
       const server = await startDevServer({
-        start: { vite: { installDevServerMiddleware: false } },
+        start: { vite: { installDevServerMiddleware: false }, router },
         browser: true,
         // Pre-bundled up front, as Vite does for an app that installed them
         // (the router is a linked workspace package here)
