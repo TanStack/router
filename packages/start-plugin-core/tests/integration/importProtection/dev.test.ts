@@ -559,7 +559,8 @@ export const other = 1
   // next request compiles it again, from its cached plan. With `'always'`
   // that compile asks `onViolation` again (main asks at every request); with
   // `'once'` never again. Both fail the request again.
-  // Source: R80 follow-up (a cached compile threw before asking).
+  // Source: the bundler-witnessed edges (a cached compile threw before
+  // asking).
   test.each([
     { log: 'once' as const, again: 0 },
     { log: 'always' as const, again: 1 },

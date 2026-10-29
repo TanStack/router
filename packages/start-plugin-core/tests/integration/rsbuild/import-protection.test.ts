@@ -373,7 +373,8 @@ console.log(secret(), other)
   // that keeps the import builds the importer but not the edge module. With
   // `log: 'always'`, each asks `onViolation` and reports the violation again,
   // like an import the compiler keeps.
-  // Source: R80 known gap (Rsbuild dev `log: 'always'`).
+  // Source: a gap of the bundler-witnessed edges (Rsbuild dev
+  // `log: 'always'`).
   test.each([
     { log: 'once' as const, again: false },
     { log: 'always' as const, again: true },
@@ -451,8 +452,8 @@ console.log(typePosition, other)
   // facts are unchanged (`mock`). With `log: 'always'` that compile asks
   // `onViolation` again and reports again, like every compile (main asks at
   // every compilation); with `'once'` it never asks again.
-  // Source: R80 follow-up (a cached compile of a failed importer threw
-  // before asking).
+  // Source: the bundler-witnessed edges (a cached compile of a failed
+  // importer threw before asking).
   test.each([
     { behavior: 'error' as const, log: 'once' as const, again: false },
     { behavior: 'error' as const, log: 'always' as const, again: true },
