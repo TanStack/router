@@ -586,6 +586,7 @@ describe('slice gates: invalidation', () => {
 
   it('(d) overlapping save: a slow r1 compile never publishes over r2', async () => {
     const gate = deferred<void>()
+    const suspended = deferred<void>()
     const host = new MemoryHost({
       files: {
         '/app/consumer.ts': CONSUMER,
@@ -603,6 +604,7 @@ describe('slice gates: invalidation', () => {
       gate: () => true,
       async prefetch(t0) {
         if (t0.source.code === r1) {
+          suspended.resolve()
           await gate.promise
         }
       },
@@ -610,7 +612,7 @@ describe('slice gates: invalidation', () => {
     }
     const planners = [toySummaryPlanner(), slowPlanner]
     const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
-    await new Promise((r) => setTimeout(r, 5))
+    await suspended.promise
     // the file is saved and the host invalidates + transforms r2 while r1 is suspended on the summary read
     host.write('/app/consumer.ts', r2)
     await invalidate(
@@ -639,6 +641,7 @@ describe('slice gates: invalidation', () => {
 
   it('(d) overlapping save: r2 shares the resolution r1 waits for, and r1 never publishes over r2', async () => {
     const gate = deferred<void>()
+    const asked = deferred<void>()
     let suspended = false
     const host = new MemoryHost({
       files: {
@@ -650,6 +653,7 @@ describe('slice gates: invalidation', () => {
       onResolve: async (specifier) => {
         if (specifier === './factory-inner' && !suspended) {
           suspended = true
+          asked.resolve()
           await gate.promise
         }
       },
@@ -658,7 +662,7 @@ describe('slice gates: invalidation', () => {
     const r2 = `${CONSUMER}export const v2 = 2\n`
     const planners = [toySummaryPlanner()]
     const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
-    await new Promise((r) => setTimeout(r, 5))
+    await asked.promise
     host.write('/app/consumer.ts', r2)
     await invalidate(
       host.caches,
@@ -689,6 +693,7 @@ describe('slice gates: invalidation', () => {
 
   it('(f) in-flight dependency-only edit restarts the compile; onViolation is asked once', async () => {
     const verdict = deferred<boolean>()
+    const asked = deferred<void>()
     const host = new MemoryHost({
       files: {
         '/app/consumer.ts': dedent(`
@@ -700,10 +705,15 @@ describe('slice gates: invalidation', () => {
       },
       recognizer: RECOGNIZER,
     })
-    const edges = toyEdgePolicyPlanner({ onViolation: () => verdict.promise })
+    const edges = toyEdgePolicyPlanner({
+      onViolation: () => {
+        asked.resolve()
+        return verdict.promise
+      },
+    })
     const planners = [toySummaryPlanner(), edges]
     const pending = host.compile('/app/consumer.ts', planners)
-    await new Promise((r) => setTimeout(r, 5))
+    await asked.promise
     expect(edges.calls).toHaveLength(1)
     // the dependency flips while the consumer waits in phase C
     host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
