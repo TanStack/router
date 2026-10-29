@@ -6,6 +6,7 @@
  * is one boolean per compile. A violation throws: the compile fails loudly
  * instead of emitting a module that breaks at run time.
  */
+import { isDeepStrictEqual } from 'node:util'
 import { ModuleAnalysis } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
@@ -184,6 +185,12 @@ export function verifyPlan(
         `the effect at ${start} is emitted ${n} times (expected ${expected})`,
       )
     }
+  }
+  // (f) planner facts are JSON data: a cached plan retains them as they are
+  // (no Yuku node, no class instance, no `undefined` member)
+  const facts = emitPlan.facts.planners
+  if (!isDeepStrictEqual(facts, JSON.parse(JSON.stringify(facts)))) {
+    problems.push('the planner facts are not JSON data')
   }
   if (problems.length > 0) {
     throw new Error(

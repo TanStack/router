@@ -813,6 +813,24 @@ describe('attempts that are overtaken or throw', () => {
     expect(cache.dependents.stats()).toMatchObject({ entries: 0, keys: 0 })
     expect(cache.inFlight.size).toBe(0)
   })
+
+  it('(p) fails a compile whose planner facts are not JSON data (verify)', async () => {
+    const host = new MemoryHost({
+      files: { '/app/consumer.ts': CONSUMER },
+      recognizer: RECOGNIZER,
+    })
+    const leaky: Planner = {
+      name: 'toy-leaky',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        ctx.setFacts('toy-leaky', { names: new Set(['a']) })
+      },
+    }
+    await expect(host.compile('/app/consumer.ts', [leaky])).rejects.toThrow(
+      'the planner facts are not JSON data',
+    )
+  })
 })
 
 describe('slice gates: claims and maps', () => {

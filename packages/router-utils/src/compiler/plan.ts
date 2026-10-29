@@ -894,10 +894,7 @@ export class AnalysisPlan implements PlanContext {
       facts: {
         marker: analysis.markers,
         publishedSummaryDigest: null,
-        planners: JSON.parse(JSON.stringify(this.facts)) as Record<
-          string,
-          unknown
-        >,
+        planners: this.facts,
       },
       dependencies: [],
       fingerprint: '',
