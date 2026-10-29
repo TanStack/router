@@ -235,7 +235,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       })
 
-      /** The entry modules' resources of a compilation. */
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()

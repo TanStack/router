@@ -2,11 +2,13 @@
  * `route-hmr` planner (SPEC J3; the runtime side is `hmr.ts` of router-core
  * and the framework routers).
  *
- * `prepare` (React only, before `route-split`): every component option that
- * stays in the route module becomes a registrable binding — inline values
- * are hoisted into `const Tsr<Key> = …` before the statement holding the
- * options (a claim, so the original body is relocated, not reprinted),
- * lowercase module-level components are renamed module-wide. `plan`
+ * `prepare` (every planner's `prepare` runs before any `plan`): records the
+ * compile-time name of each component option that stays in the route module
+ * (`unsplit`, every framework); for React, every such option becomes a
+ * registrable binding — inline values are hoisted into `const Tsr<Key> = …`
+ * before the statement holding the options (a claim, so the original body is
+ * relocated, not reprinted), lowercase module-level components are renamed
+ * module-wide. `plan`
  * (after `route-split`) appends the dev block: the literal
  * `import.meta.hot.accept(` (Vite) / `import.meta.webpackHot.accept()`, the
  * `__tsrRouteHmr(routeId, Route, meta)` call that runs on every evaluation,

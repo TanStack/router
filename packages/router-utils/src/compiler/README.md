@@ -196,8 +196,9 @@ line feed). Start's hosts compile a `node_modules` module only as `start-plugin-
 
 ## Planners
 
-Fixed order per env (an array the host passes): `start-env` → `hydrate` → `rsc-css` → `route-hmr` (prepare) →
-`route-split` → `route-hmr` (plan) → `import-edges`. The router plugin alone runs only the two router planners.
+Fixed order per env (an array the host passes): `start-env` → `hydrate` → `rsc-css` → `route-split` → `route-hmr` →
+`import-edges`. A planning round runs every planner's `prepare` (only `route-hmr` has one) before any planner's `plan`.
+The router plugin alone runs only the two router planners.
 
 | planner        | job                                                                   | file                                                                                                                |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |

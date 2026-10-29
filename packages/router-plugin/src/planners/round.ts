@@ -1,8 +1,7 @@
 /**
- * Per-planning-round state the two router planners share: the compile-time
- * names of the unsplit component options (the HMR planner records them in
- * `prepare`, the splitter reads them in `plan`). Keyed by the round's rewrite
- * set.
+ * Per-planning-round state of the HMR planner: the compile-time names of the
+ * unsplit component options (recorded in `prepare`, read in `plan`). Keyed by
+ * the round's rewrite set.
  */
 import type { PlanContext } from '@tanstack/router-utils/compiler'
 

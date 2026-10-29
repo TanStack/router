@@ -42,8 +42,9 @@ copied. In dev nothing is bundled: the binding stays in the route module and the
 ## Splitting rules
 
 - Split keys: `component`, `errorComponent`, `pendingComponent`, `notFoundComponent`, `loader` (an object-form
-  loader splits its `handler`). Default groups: `[['component'], ['errorComponent'], ['notFoundComponent']]`. The root
-  route's `component` stays eager.
+  loader splits its `handler`). Default groups: `[['component'], ['errorComponent'], ['notFoundComponent']]`. No
+  option of a root route is split: its components render on every page, or on error and not-found responses, where a
+  lazy chunk only adds a round trip.
 - Any value form splits: identifiers, inline functions, method shorthands, casts, `satisfies`, calls (`memo(Page)`),
   options held in a module-level constant.
 - Not split, with one warning per file: routes whose options object cannot be read statically (imported from another
@@ -66,13 +67,15 @@ copied. In dev nothing is bundled: the binding stays in the route module and the
   calls the framework's `__tsrRouteHmr` from `/hmr` with the new `Route`. The runtime updates the live route in place
   (only the route this module exported), re-imports split chunks on every update, and decides once the import
   completes whether the framework's refresh runtime keeps the held component or the lazy wrapper swaps.
-- Split chunks of non-component options (`loader`, …) on Rspack/webpack call `__tsrRouteChunkHmr` and do not accept
-  themselves, so the update bubbles to the route module. Non-component split exports are lowercase so React Refresh
+- Split chunks of non-component options (the `loader`) on Rspack/webpack call `__tsrRouteChunkHmr` and do not accept
+  themselves, so the update bubbles to their importer: the route module, whose evaluation refreshes the route (the
+  chunk the refreshed loader re-imports is only recorded), or Rspack's lazy-compilation proxy, which re-resolves the
+  chunk alone, whose evaluation then refreshes the route. Non-component split exports are lowercase so React Refresh
   does not treat the chunk as a boundary.
 - React Refresh names: components the planner hoists or renames (inline, lowercase, `memo(...)`, `forwardRef(...)`,
   method shorthands) get stable registration names inside the plan, not in a post-pass.
-- Vite bundled dev: when re-importing a chunk throws Rolldown's `MissingFactoryError` (rolldown#11300), the lazy
-  wrapper loads it through its original importer.
+- Vite bundled dev: when re-importing a chunk throws Rolldown's `MissingFactoryError` (rolldown#11300), the route HMR
+  runtime (router-core `hmr.ts`) loads it through the held lazy wrapper's original importer.
 
 ## Testing
 

@@ -389,7 +389,7 @@ export function registerVirtualModules(
       content[paths.manifest] = 'export default {}'
     }
 
-    // Server fn resolver — SSR and provider environments
+    // Server fn resolver (the server environment provides the server fns)
     if (isServerEnv) {
       content[paths.serverFnResolver] = opts.resolverModule()
     } else {

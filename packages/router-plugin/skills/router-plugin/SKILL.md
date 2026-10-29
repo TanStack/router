@@ -17,7 +17,7 @@ sources:
 
 # Router Plugin (`@tanstack/router-plugin`)
 
-Bundler plugin that powers TanStack Router's file-based routing and automatic code splitting. Works with Vite, Webpack, Rspack, and esbuild via unplugin.
+Bundler plugin that powers TanStack Router's file-based routing and automatic code splitting. Works with Vite, Webpack and Rspack; esbuild generates routes only.
 
 > **CRITICAL**: The router plugin MUST come before the framework plugin (React, Solid, Vue) in the Vite config. Wrong order causes route generation and code splitting to fail silently.
 
@@ -165,11 +165,10 @@ tanstackRouter({
 
 ## How It Works
 
-The composed plugin assembles up to 3 sub-plugins:
+The composed plugin has two parts:
 
 1. **Route Generator** (always) — Watches route files and generates `routeTree.gen.ts`
-2. **Code Splitter** (when `autoCodeSplitting: true`) — Splits route files into lazy-loaded chunks using virtual modules
-3. **HMR** (dev mode, when code splitter is off) — Hot-reloads route changes without full refresh
+2. **Route compiler** — Compiles each route file once per environment: with `autoCodeSplitting: true` it splits route options into lazy-loaded chunks (modules of the route file under a `?tsr-split=` query), and in development it adds route HMR, which hot-updates route changes without a full refresh (`codeSplittingOptions.addHmr: false` turns it off)
 
 ## Route Refactor Workflow
 
@@ -191,7 +190,7 @@ For advanced use, each sub-plugin is exported separately from the Vite entry:
 import {
   tanstackRouter, // Composed (default)
   tanstackRouterGenerator, // Generator only
-  tanStackRouterCodeSplitter, // Code splitter only
+  tanStackRouterCodeSplitter, // Route compiler only (code splitting and route HMR)
 } from '@tanstack/router-plugin/vite'
 ```
 
