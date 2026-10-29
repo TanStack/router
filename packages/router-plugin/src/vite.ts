@@ -3,12 +3,7 @@ import { createVitePlugin } from 'unplugin'
 import { configSchema, getConfig, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
-import {
-  applyViteInvalidation,
-  createRouterCompilerVitePlugin,
-  liveModules,
-  loadDerivedSource,
-} from './hosts/vite'
+import { createRouterCompilerVitePlugin } from './hosts/vite'
 import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
@@ -90,11 +85,8 @@ const TanStackRouterVite = tanstackRouter
 
 export default tanstackRouter
 export {
-  applyViteInvalidation,
   configSchema,
   getConfig,
-  liveModules,
-  loadDerivedSource,
   tanStackRouterCodeSplitter,
   tanstackRouterGenerator,
   TanStackRouterVite,

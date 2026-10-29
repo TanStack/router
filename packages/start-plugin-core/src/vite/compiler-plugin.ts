@@ -18,11 +18,14 @@ import {
   OWNED_QUERY_RE,
   OutputBuilder,
   SourceText,
+  applyViteInvalidation,
   collectionSizes,
   identify,
   invalidate,
   isAnalyzableSpecifier,
   isFinalBuild,
+  liveModules,
+  loadDerivedSource,
   normalizePath,
   registerCompilerStats,
   resolveDerivedSibling,
@@ -30,11 +33,6 @@ import {
   rollupEntryModuleIds,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
-import {
-  applyViteInvalidation,
-  liveModules,
-  loadDerivedSource,
-} from '@tanstack/router-plugin/vite'
 import {
   changedRoutePaths,
   onRoutesChanged,

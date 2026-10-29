@@ -200,7 +200,8 @@ returned but not published.
 | Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env |
 | Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache          |
 
-The bundler-shaped helpers the hosts share (a Vite build's last pass, a webpack-family loader's map and module id,
+The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
+invalidation and live modules of a hot update, a webpack-family loader's map and module id,
 rebuilds and invalidated files, eager extracted exports, emitted maps' text) live in `hosts/`, exported apart from the
 core model, which uses none of them.
 
