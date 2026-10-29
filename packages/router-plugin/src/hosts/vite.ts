@@ -129,7 +129,6 @@ export function createRouterCompilerVitePlugin(
   let compiler: RouterCompiler
   let server: ViteDevServer | null = null
   let unsubscribe: (() => void) | null = null
-  let buildSourcemap = true
   let firstEnvironment: string | undefined
 
   const resolveUserConfig = () =>
@@ -204,7 +203,6 @@ export function createRouterCompilerVitePlugin(
       firstEnvironment = Object.keys(config.environments)[0]
       ROOT = config.root
       userConfig = resolveUserConfig()
-      buildSourcemap = config.build.sourcemap !== false
       compiler = new RouterCompiler({
         context: routerPluginContext,
         config: userConfig,
@@ -365,13 +363,9 @@ export function createRouterCompilerVitePlugin(
         if (!compiler.appliesTo(envType)) {
           return null
         }
-        const envSourcemap = environment.config.build?.sourcemap
         const wantMap =
-          compiler.mode === 'dev'
-            ? true
-            : envSourcemap !== undefined
-              ? envSourcemap !== false
-              : buildSourcemap
+          compiler.mode === 'dev' ||
+          environment.config.build.sourcemap !== false
         const out = await compiler.compile({
           id,
           code,

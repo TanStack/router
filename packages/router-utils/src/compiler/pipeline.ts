@@ -325,7 +325,7 @@ function dependencyPaths(
       addModule(fp.canonicalId)
     } else if (fp.kind === 'route-registry') {
       out.add(fp.path)
-    } else if (fp.kind === 'resolution' && fp.resolved !== null) {
+    } else if (fp.resolved !== null) {
       addModule(fp.resolved)
     }
   }

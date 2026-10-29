@@ -471,9 +471,9 @@ export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
       configKey: 'cfg',
       perPlanner: { hydrate: { root: ROOT } },
     }
-    const first = await fresh.compile(b!.chunk!, [hydrate], { config })
+    const first = await fresh.compile(b!.chunk, [hydrate], { config })
     expect(first!.code).toBe(client.chunks[b!.id])
-    const again = await fresh.compile(b!.chunk!, [hydrate], {
+    const again = await fresh.compile(b!.chunk, [hydrate], {
       config,
       code: `${code}`,
     })
