@@ -166,7 +166,6 @@ describe('rewrite tree', () => {
       body: [],
       scope: ['env'],
       by: 'split',
-      reason: 'deleteNodes',
     })
     expect(e.render('env').code).toBe('export const Route = { component: 1 }\n')
     // exported clusters stay in the env module; the chunk imports them

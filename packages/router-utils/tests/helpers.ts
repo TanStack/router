@@ -169,7 +169,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             body: [],
             scope: ['env'],
             by: 'toy-split',
-            reason: 'deleteNodes',
           })
         }
       }
@@ -298,7 +297,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             body: placeholder,
             scope: ['env'],
             by: 'toy-split',
-            reason: 'split',
           })
           continue
         }

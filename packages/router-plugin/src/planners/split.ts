@@ -162,7 +162,6 @@ export function routeSplitPlanner(): Planner {
             body: [],
             scope: ['env'],
             by: ROUTE_SPLIT,
-            reason: 'deleteNodes',
           })
           i = j + 1
         }
@@ -406,7 +405,6 @@ export function routeSplitPlanner(): Planner {
             body: placeholder,
             scope: ['env'],
             by: ROUTE_SPLIT,
-            reason: 'split',
           })
         } else {
           const region = ctx.region(d.region, 'option-value')

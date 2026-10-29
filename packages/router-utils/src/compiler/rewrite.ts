@@ -74,7 +74,6 @@ export interface Edit {
   body: ReadonlyArray<Frag>
   scope: EditScope
   by: string
-  reason?: string
 }
 
 export type GenUnitId = number

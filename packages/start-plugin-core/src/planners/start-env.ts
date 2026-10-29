@@ -546,7 +546,6 @@ function planStartEnv(
           body: [],
           scope: 'all-outputs',
           by,
-          reason: `strip .${link.method}()`,
         })
       }
     }
@@ -634,8 +633,8 @@ function planStartEnv(
     }
   }
   /** An environment rewrite: it applies in every output, inside a moved handler too. */
-  const envEdit = (range: Range, body: Array<Frag>, reason: string) => {
-    rewrites.add({ range, body, scope: 'all-outputs', by, reason })
+  const envEdit = (range: Range, body: Array<Frag>) => {
+    rewrites.add({ range, body, scope: 'all-outputs', by })
   }
 
   // ---- 3. isomorphic fns
@@ -669,26 +668,17 @@ function planStartEnv(
         parens
           ? [text('('), slice(rangeOf(link.arg)), text(')')]
           : [slice(rangeOf(link.arg))],
-        `isomorphic ${wantLink} implementation`,
       )
       continue
     }
     if (chain.headIsFactoryCall) {
       const parens = needsParens('arrow', chain.wrapped, chain.parent)
-      envEdit(
-        rangeOf(X),
-        [text(parens ? '(() => {})' : '() => {}')],
-        'isomorphic fn without an implementation for this environment',
-      )
+      envEdit(rangeOf(X), [text(parens ? '(() => {})' : '() => {}')])
       continue
     }
     if (chain.links.length > 0) {
       // the implementation lives on the stored receiver (this module or another): strip this segment's links
-      envEdit(
-        rangeOf(X),
-        [slice(rangeOf(chain.head))],
-        'isomorphic links of the other environment',
-      )
+      envEdit(rangeOf(X), [slice(rangeOf(chain.head))])
     }
   }
 
@@ -714,17 +704,12 @@ function planStartEnv(
         parens
           ? [text('('), slice(rangeOf(c.arg)), text(')')]
           : [slice(rangeOf(c.arg))],
-        `${c.kind}-only implementation`,
       )
     } else {
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens('arrow', wrapped, parent)
       const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
-      envEdit(
-        rangeOf(c.call),
-        [text(parens ? `(${stub})` : stub)],
-        `${c.kind}-only stub`,
-      )
+      envEdit(rangeOf(c.call), [text(parens ? `(${stub})` : stub)])
     }
   }
 
@@ -739,7 +724,6 @@ function planStartEnv(
         body: [text('/>')],
         scope: 'all-outputs',
         by,
-        reason: 'ClientOnly children',
       })
     }
   }
@@ -795,7 +779,6 @@ function planStartEnv(
         body: [text({ sym: rpc, ctx: 'callee' }, args)],
         scope: 'all-outputs',
         by,
-        reason: 'client rpc stub',
       })
       facts.serverFns.push(
         serverFnFact(site, id, name, exportName, providerDerived, rootRel),
@@ -809,7 +792,6 @@ function planStartEnv(
         body: [text({ sym: rpc, ctx: 'callee' }, `(${stringLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
-        reason: 'ssr rpc stub',
       })
       if (providerOut && site.nested) {
         // the hoist claims the chain for the provider output; the env module
@@ -835,7 +817,6 @@ function planStartEnv(
           ],
           scope: ['env'],
           by,
-          reason: 'nested server fn chain stays in place with its ssr rpc stub',
         })
       }
       if (role === 'ssr-caller') {
@@ -902,7 +883,6 @@ function planStartEnv(
         body: [text({ sym: rpcLocal.sym }, ', ')],
         scope: providerScope,
         by,
-        reason: 'server rpc wrapper argument',
       })
     }
     const gen = rewrites.addGenerated({

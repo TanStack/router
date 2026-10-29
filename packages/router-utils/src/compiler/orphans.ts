@@ -147,7 +147,6 @@ export function cleanOrphanedDeclarations(
           body: [],
           scope,
           by,
-          reason: 'orphaned local declaration',
         })
       }
     }
@@ -207,14 +206,12 @@ function removeDeclarator(
             body: [],
             scope,
             by,
-            reason: 'orphaned local declaration',
           }
         : {
             range: { start: statement.start, end: statement.end },
             body: expressionStatement(code, declarator.init!),
             scope,
             by,
-            reason: 'orphaned local declarator: effects kept',
           },
     )
     return true
@@ -333,7 +330,6 @@ function removeDeclarators(
         body: [],
         scope,
         by,
-        reason: 'orphaned local declaration',
       })
       return
     }
@@ -346,7 +342,6 @@ function removeDeclarators(
   removeListItems(ctx, decls, isGone, pruned, null, {
     scope,
     by,
-    reason: 'orphaned local declarator',
   })
 }
 
@@ -377,7 +372,6 @@ function removePatternProperties(
   removeListItems(ctx, props, gone, pruned, closing, {
     scope,
     by,
-    reason: 'orphaned pattern property',
   })
 }
 
@@ -398,7 +392,7 @@ function removeListItems(
   gone: (item: Node) => boolean,
   pruned: ReadonlySet<Node>,
   closing: number | null,
-  edit: { scope: EditScope; by: string; reason: string },
+  edit: { scope: EditScope; by: string },
 ): void {
   const prunedNow = (from: number, to: number) =>
     items.slice(from, to + 1).some((item) => pruned.has(item))
@@ -552,7 +546,6 @@ function prunePatternElement(
       body: commaFollows(ctx.analysis.source.code, node.end) ? [] : [text(',')],
       scope,
       by,
-      reason: 'orphaned pattern element',
     })
     return true
   }

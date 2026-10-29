@@ -80,7 +80,6 @@ function planRscCss(
         body: [text(`, { ${RSC_CSS_OPTIONS_KEY}: ${loadCss} }`)],
         scope: 'all-outputs',
         by,
-        reason: 'rsc css options',
       })
       continue
     }
@@ -118,14 +117,12 @@ function wrapJsxLeaves(
         body: [text(bare ? `<>{${loadCss}}` : `<>{${loadCss}}{`)],
         scope: 'all-outputs',
         by,
-        reason: 'rsc css fragment',
       })
       ctx.rewrites.add({
         range: { start: expr.end, end: expr.end },
         body: [text(bare ? '</>' : '}</>')],
         scope: 'all-outputs',
         by,
-        reason: 'rsc css fragment',
       })
       return true
     }

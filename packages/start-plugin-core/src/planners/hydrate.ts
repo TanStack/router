@@ -599,7 +599,6 @@ function prefix(ctx: PlanContext, b: Boundary, lazy: SymbolId | null): void {
     body: [{ k: 'text', parts }],
     scope: 'all-outputs',
     by: HYDRATE_PLANNER,
-    reason: 'hydrate-prefix',
   })
 }
 
@@ -1109,7 +1108,6 @@ function extract(
       body: [{ k: 'text', parts: [{ sym: shared.args }], mapTo: r.start }],
       scope: scopeChunk,
       by: HYDRATE_PLANNER,
-      reason: 'hydrate-arguments',
     })
   }
   for (const s of setterProps) {
@@ -1120,7 +1118,6 @@ function extract(
       body: [{ k: 'text', parts: [{ sym: setter }], mapTo: s.range.start }],
       scope: scopeChunk,
       by: HYDRATE_PLANNER,
-      reason: 'hydrate-ref-setter',
     })
   }
 
@@ -1310,7 +1307,6 @@ function stripFallback(ctx: PlanContext, b: Boundary): Array<Range> {
       body: [],
       scope: 'all-outputs',
       by: HYDRATE_PLANNER,
-      reason: 'hydrate-fallback',
     })
     erased.push(range)
   }
