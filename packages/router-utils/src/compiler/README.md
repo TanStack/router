@@ -131,7 +131,10 @@ Each output is a flat recipe of original slices and generated text, rendered by 
 v3 source map. User code is never re-printed: comments, escapes and directives survive, and segments start at every
 word and punctuator of copied text, so positions in every output (derived modules included) map to the user's
 line:column. Lines follow every ECMAScript line terminator. Hosts compose the map with the bundler's input map. The
-header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
+map names the file without its text (`sourcesContent`): Vite reads it, Rollup and Rolldown take the module's code, and
+the webpack-family hosts put it in the module map in production and in the emitted map files in development
+(`emitted-maps.ts`: the bundler hashes a module with its map, and the whole file in every output's map would hot-update
+every output of an edited file). The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
 directives, never license comments.
 
 ### Values and summaries (`values.ts`, `summary.ts`, `resolve.ts`, `facts.ts`)

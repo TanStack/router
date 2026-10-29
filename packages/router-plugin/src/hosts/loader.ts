@@ -3,14 +3,15 @@
  * for every id of a route module (env and derived `NormalModule`s hit the
  * same plan), composes its map with the input map (an earlier
  * loader's map is not lost) and names the
- * absolute path as the map source. The static loader file
+ * absolute path as the map source, whose text is in the map or, with a
+ * recorder, in the emitted maps (`emittedMapTexts`). The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
 import remapping from '@jridgewell/remapping'
 import { SourceText, identify } from '@tanstack/router-utils/compiler'
 import { normalizePath, resourceId } from './session'
 import type { RouterCompiler } from './session'
-import type { Diagnostic } from '@tanstack/router-utils/compiler'
+import type { Diagnostic, RecordMapText } from '@tanstack/router-utils/compiler'
 
 /** What the loader uses of the webpack / Rspack loader context. */
 export interface LoaderContextLike {
@@ -56,6 +57,7 @@ function diagnosticError(
 export function createLoaderImpl(
   compiler: RouterCompiler,
   env: { name: string; type: 'client' | 'server' },
+  recordMapText: RecordMapText | null,
 ): LoaderImpl {
   return async (ctx, source, inputMap) => {
     const id = resourceId(ctx.resource)
@@ -110,7 +112,17 @@ export function createLoaderImpl(
       const composed = remapping([ours, input] as never, () => null)
       map = JSON.parse(composed.toString())
     } else if (out.map) {
-      map = { ...out.map, sources: [ctx.resourcePath] }
+      // the file's text: in the map, or in the emitted maps
+      if (recordMapText) {
+        recordMapText(ctx.resourcePath, source)
+        map = { ...out.map, sources: [ctx.resourcePath] }
+      } else {
+        map = {
+          ...out.map,
+          sources: [ctx.resourcePath],
+          sourcesContent: [source],
+        }
+      }
     }
     return { code: out.code, map }
   }

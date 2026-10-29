@@ -12,6 +12,7 @@
 import {
   eagerExportWarning,
   eagerExtractedExports,
+  emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
   rebuildModules,
@@ -168,6 +169,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           })
         })
       }
+
+      env.recordMapText = emittedMapTexts(
+        compiler,
+        session.opts.mode,
+        session.compiles,
+      )
 
       /** The files of the last compilation (a modified file outside them is a created one: an `add`, which re-resolves
        * imports that failed to resolve before). */

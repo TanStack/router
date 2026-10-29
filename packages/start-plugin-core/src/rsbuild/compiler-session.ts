@@ -70,6 +70,7 @@ import type {
   PlanKey,
   Planner,
   RawSourceMap,
+  RecordMapText,
   RouteRegistry,
 } from '@tanstack/router-utils/compiler'
 
@@ -151,6 +152,8 @@ interface EnvState {
   transformImport: Array<TransformImportRule>
   /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
   compiled: Set<string>
+  /** Where the file's text goes when the module map names it without it (host: `emittedMapTexts`). */
+  recordMapText: RecordMapText | null
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
@@ -174,7 +177,7 @@ export class StartRsbuildCompilerSession {
   /** Import protection of the session (null: `enabled: false`). */
   readonly ip: ImportProtection | null
   /** Whether a module is compiled (`startCompileScope`). */
-  private readonly compiles: (path: string, code: string) => boolean
+  readonly compiles: (path: string, code: string) => boolean
   private readonly plannersByKey = new Map<string, Array<Planner>>()
   private readonly routerCfg = new Map<
     'client' | 'server',
@@ -192,6 +195,7 @@ export class StartRsbuildCompilerSession {
         serverFns: new Map(),
         transformImport: [],
         compiled: new Set(),
+        recordMapText: null,
       })
     }
     const root = opts.root()
@@ -703,20 +707,30 @@ export class StartRsbuildCompilerSession {
     if (identity.derived === null && out.code === source) {
       return passthrough
     }
-    return { code: out.code, map: this.composeMap(ctx, out.map, inputMap) }
+    return {
+      code: out.code,
+      map: this.composeMap(ctx, out.map, source, inputMap, env.recordMapText),
+    }
   }
 
   private composeMap(
     ctx: LoaderContextLike,
     map: RawSourceMap | null,
+    source: string,
     inputMap: unknown,
+    recordMapText: RecordMapText | null,
   ): unknown {
     if (!map) {
       return undefined
     }
     const ours = { ...map, sources: [ctx.resourcePath] }
     if (!inputMap) {
-      return ours
+      // the file's text: in the map, or in the emitted maps
+      if (recordMapText) {
+        recordMapText(ctx.resourcePath, source)
+        return ours
+      }
+      return { ...ours, sourcesContent: [source] }
     }
     const input =
       typeof inputMap === 'string'

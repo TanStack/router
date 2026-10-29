@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import {
   eagerExportWarning,
   eagerExtractedExports,
+  emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
   pathsOf,
@@ -26,6 +27,7 @@ import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type {
+  EmittedMapsCompilerLike,
   InitialChunksLike,
   WatchingCompilerLike,
 } from '@tanstack/router-utils/compiler'
@@ -168,13 +170,21 @@ export function createRouterCompilerWebpackPlugin(
       const registry = ((compiler as unknown as Record<string, unknown>)[
         LOADER_REGISTRY
       ] ??= new Map<string, LoaderImpl>()) as Map<string, LoaderImpl>
-      registry.set(
-        instance,
-        createLoaderImpl(session, { name: envName, type: envType }),
-      )
       const isRouteFile = (resource: string) =>
         JS_FILE_RE.test(resource) &&
         session.routeEntry(normalizePath(resource)) !== null
+      registry.set(
+        instance,
+        createLoaderImpl(
+          session,
+          { name: envName, type: envType },
+          emittedMapTexts(
+            compiler as unknown as EmittedMapsCompilerLike,
+            mode,
+            isRouteFile,
+          ),
+        ),
+      )
       compiler.options.module.rules.unshift(
         {
           test: isRouteFile,
