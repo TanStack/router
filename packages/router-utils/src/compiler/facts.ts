@@ -582,31 +582,24 @@ export class RawFactsCache {
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
     const isMarker = (spec: string) => markers[spec] !== undefined
-    const imports: Array<string> = []
-    const evaluates = (spec: string) => {
-      if (!imports.includes(spec) && !isMarker(spec)) {
-        imports.push(spec)
-      }
-    }
+    const evaluated = new Set<string>()
     for (const i of analysis.imports) {
       if (!i.typeOnly && (i.bare || i.specifiers.some((s) => !s.typeOnly))) {
-        evaluates(i.specifier)
+        evaluated.add(i.specifier)
       }
     }
     for (const r of analysis.reexports) {
       if (!r.typeOnly) {
-        evaluates(r.specifier)
+        evaluated.add(r.specifier)
       }
     }
+    const imports = [...evaluated].filter((spec) => !isMarker(spec))
     const bareImportEffect = analysis.imports.some(
       (i) => i.bare && !i.typeOnly && !isMarker(i.specifier),
     )
-    const lazyImports: Array<string> = []
-    for (const edge of analysis.dynamicEdges) {
-      if (!lazyImports.includes(edge.specifier) && !isMarker(edge.specifier)) {
-        lazyImports.push(edge.specifier)
-      }
-    }
+    const lazyImports = [
+      ...new Set(analysis.dynamicEdges.map((e) => e.specifier)),
+    ].filter((spec) => !isMarker(spec))
     const tf: Omit<TargetFacts, 'digest'> = {
       exists: true,
       marker: analysis.markers,
