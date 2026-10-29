@@ -11,7 +11,7 @@ import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
-import type { ModuleSummary, SummaryExtraHook } from './summary'
+import type { ModuleSummary } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
 export interface TargetFacts {
@@ -31,12 +31,10 @@ export interface TargetFacts {
   effectful: boolean
   /** Its own statements have effects, module loading (`imports`) aside. */
   codeEffects: boolean
-  effectProvenance: 'own' | 'import' | 'package' | null
   digest: string
 }
 
 export interface RawFacts {
-  canonicalId: string
   /** null when the module could not be read. */
   rawRevision: string | null
   summary: ModuleSummary | null
@@ -52,13 +50,7 @@ export interface RawFacts {
 export interface RawFactsOptions {
   readFile: (path: string) => Promise<string | null>
   loadVirtual: (id: string) => Promise<string | null>
-  /** Whether a bare package specifier is side-effect free (`sideEffects: false`); unknown → effectful. */
-  packageSideEffectFree?: (
-    specifier: string,
-    importerCanonicalId: string,
-  ) => Promise<boolean | null>
   recognizer?: RecognizerTable
-  summaryExtras?: SummaryExtraHook
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /**
    * Whether a module is opaque to the summaries, by its path and text (an
@@ -84,7 +76,6 @@ const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   esm: false,
   effectful: true,
   codeEffects: true,
-  effectProvenance: null,
 }
 
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
@@ -97,7 +88,6 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   esm: false,
   effectful: true,
   codeEffects: true,
-  effectProvenance: null,
 }
 
 interface FactsEntry {
@@ -151,10 +141,6 @@ export class RawFactsCache {
       return { revision: e.markerless, stale: false }
     }
     return e.facts ? { revision: e.facts.rawRevision, stale: true } : null
-  }
-
-  has(canonicalId: string): boolean {
-    return this.entries.has(canonicalId)
   }
 
   markStale(path: string): void {
@@ -297,7 +283,7 @@ export class RawFactsCache {
     ) {
       return e.facts
     }
-    const facts = this.fromAnalysis(canonicalId, rawRevision, analysis)
+    const facts = this.fromAnalysis(rawRevision, analysis)
     if (!this.noFacts) {
       this.setEntry(canonicalId, this.entryOf(facts))
     }
@@ -465,18 +451,13 @@ export class RawFactsCache {
       esm: true,
       effectful: false,
       codeEffects: false,
-      effectProvenance: null,
     }
     return {
-      canonicalId: specifier,
       rawRevision: digest,
       summary: {
-        canonicalId: specifier,
         rawRevision: digest,
         exports: exportFacts,
         stars: [],
-        isoImplExports: {},
-        marker: null,
         hasImportOrExport: true,
         digest,
       },
@@ -506,7 +487,6 @@ export class RawFactsCache {
   ): RawFacts {
     if (text === null) {
       return {
-        canonicalId,
         rawRevision: null,
         summary: null,
         targetFacts: { ...MISSING_TARGET, digest: digestOf(MISSING_TARGET) },
@@ -520,7 +500,6 @@ export class RawFactsCache {
       !this.mayHaveMarker(text)
     ) {
       return {
-        canonicalId,
         rawRevision: rev,
         summary: null,
         targetFacts: { ...OPAQUE_TARGET, digest: digestOf(OPAQUE_TARGET) },
@@ -547,10 +526,8 @@ export class RawFactsCache {
         esm: false,
         effectful: true,
         codeEffects: true,
-        effectProvenance: 'own' as const,
       }
       return {
-        canonicalId,
         rawRevision: rev,
         summary: null,
         targetFacts: { ...tf, digest: digestOf(tf) },
@@ -561,20 +538,17 @@ export class RawFactsCache {
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
     })
-    return this.fromAnalysis(canonicalId, rev, analysis)
+    return this.fromAnalysis(rev, analysis)
   }
 
   private fromAnalysis(
-    canonicalId: string,
     rawRevision: string,
     analysis: ModuleAnalysis,
   ): RawFacts {
     const summary = buildSummary(
       analysis,
-      canonicalId,
       rawRevision,
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
-      this.opts.summaryExtras,
     )
     const exportNames = Object.keys(summary.exports).sort()
     const own = analysis.ownEffects
@@ -610,10 +584,8 @@ export class RawFactsCache {
       esm: analysis.sourceType === 'module',
       effectful: own || bareImportEffect,
       codeEffects: analysis.codeEffects,
-      effectProvenance: own ? 'own' : bareImportEffect ? 'import' : null,
     }
     return {
-      canonicalId,
       rawRevision,
       summary,
       targetFacts: { ...tf, digest: digestOf(tf) },

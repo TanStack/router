@@ -26,10 +26,11 @@ import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { RouteFileWatcher } from '@tanstack/router-generator'
+import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 
 export interface RsbuildRouteGenerator {
-  /** The registry entry of a route file (its scanned or real path). */
-  lookup: (file: string) => { routeId: string } | null
+  /** The route registry (a route file's entry by its scanned or real path). */
+  routes: RouteRegistry
   /** A build's generation (every compiler awaits it). */
   beforeRun: () => Promise<void>
   /** A watch compilation: the compiler's file events, and the generator's own watcher from the first one. */
@@ -116,7 +117,7 @@ export function createRsbuildRouteGenerator(opts: {
   }
 
   return {
-    lookup: (file) => registry.lookup(file),
+    routes: registry,
     beforeRun: () => settle(instance().run()),
     async watchRun(modified, removed) {
       const gen = instance()

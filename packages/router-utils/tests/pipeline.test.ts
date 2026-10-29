@@ -50,7 +50,7 @@ describe('slice gates: loading', () => {
       '/app/route.tsx?tsr-split=component',
       planners(),
     )
-    expect(cache.size).toBe(1)
+    expect(cache.stats(false).plans).toBe(1)
     expect(
       cache.get({
         env: 'client',
@@ -98,7 +98,7 @@ describe('slice gates: loading', () => {
     expect(envB!.code).toBe(envA!.code)
     expect(JSON.stringify(chunkB!.map)).toBe(JSON.stringify(chunkA!.map))
     expect(JSON.stringify(envB!.map)).toBe(JSON.stringify(envA!.map))
-    expect(b.caches.plans.get('client')!.size).toBe(1)
+    expect(b.caches.plans.get('client')!.stats(false).plans).toBe(1)
   })
 
   it('(g) identity-preserving derived request with a foreign query', async () => {
@@ -125,7 +125,7 @@ describe('slice gates: loading', () => {
     const planners: Array<Planner> = [toySplitPlanner(), toySummaryPlanner()]
     const b = await host.compile('/app/page.tsx?flavour=b', planners)
     const a = await host.compile('/app/page.tsx?flavour=a', planners)
-    expect(host.caches.plans.get('client')!.size).toBe(2)
+    expect(host.caches.plans.get('client')!.stats(false).plans).toBe(2)
     expect(host.resolveCalls).toContainEqual({
       specifier: './service',
       importer: '/app/page.tsx?flavour=b',
@@ -140,7 +140,7 @@ describe('slice gates: loading', () => {
       '/app/page.tsx?flavour=b&tsr-split=component',
       planners,
     )
-    expect(host.caches.plans.get('client')!.size).toBe(2)
+    expect(host.caches.plans.get('client')!.stats(false).plans).toBe(2)
     expect(b!.code).toContain(
       "import('./page.tsx?flavour=b&tsr-split=component')",
     )
@@ -154,7 +154,7 @@ describe('slice gates: loading', () => {
       planners,
     )
     expect(chunk2!.code).toBe(chunk!.code)
-    expect(host.caches.plans.get('client')!.size).toBe(2)
+    expect(host.caches.plans.get('client')!.stats(false).plans).toBe(2)
   })
 })
 
@@ -515,13 +515,11 @@ describe('slice gates: invalidation', () => {
         const r = resolverOf('server')(spec)
         return Promise.resolve(r ? { id: r } : null)
       },
-      readFile: (p) => client.readFile(p),
-      loadVirtual: () => Promise.resolve(null),
       rawFacts: client.rawFacts,
     }
     const hosts = (env: string) => (env === 'ssr' ? server : client)
     const planners = [toySummaryPlanner()]
-    const ssr = envInfo({ name: 'ssr', type: 'server', routerSplit: false })
+    const ssr = envInfo({ name: 'ssr', type: 'server' })
     await client.compile('/app/a.ts', planners)
     await compileModule(
       {
@@ -565,8 +563,8 @@ describe('slice gates: invalidation', () => {
       hosts,
     )
     expect(r.dependents.map((k) => k.env).sort()).toEqual(['client'])
-    expect(client.caches.plans.get('ssr')!.size).toBe(1)
-    expect(client.caches.plans.get('client')!.size).toBe(0)
+    expect(client.caches.plans.get('ssr')!.stats(false).plans).toBe(1)
+    expect(client.caches.plans.get('client')!.stats(false).plans).toBe(0)
   })
 
   it('watches only files: a known package an export resolves to is no dependency path', async () => {

@@ -30,10 +30,6 @@ export function envInfo(partial: Partial<EnvInfo> = {}): EnvInfo {
     name: 'client',
     type: 'client',
     mode: 'dev',
-    bundler: 'test',
-    framework: 'react',
-    conditions: ['browser'],
-    routerSplit: true,
     ...partial,
   }
 }
@@ -89,12 +85,8 @@ export function propertyOf(
   return null
 }
 
-/** The range of a property including its separating comma (R17 statement-level hygiene for options). */
-export function propertyRangeWithComma(
-  code: string,
-  options: Node,
-  prop: Node,
-): Range {
+/** The range of a property including its separating comma (removing it leaves a valid object). */
+export function propertyRangeWithComma(options: Node, prop: Node): Range {
   if (options.type !== 'ObjectExpression') {
     throw new Error('not an object')
   }
@@ -173,7 +165,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         const p = propertyOf(options, key)
         if (p) {
           ctx.rewrites.add({
-            range: propertyRangeWithComma(code, options, p.prop),
+            range: propertyRangeWithComma(options, p.prop),
             body: [],
             scope: ['env'],
             by: 'toy-split',

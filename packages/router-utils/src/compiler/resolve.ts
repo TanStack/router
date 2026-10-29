@@ -2,7 +2,7 @@
  * Cross-module export resolution over summaries: DFS
  * with an active stack; explicit exports beat stars; two stars resolving to
  * different origins are ambiguous; results computed across a cut cycle edge
- * are tainted and not memoised; untainted results are memoised per batch.
+ * are tainted and not memoised; untainted results are memoised per resolver.
  */
 import type { ModuleSummary } from './summary'
 import type { AbstractValue } from './values'
@@ -27,39 +27,24 @@ export interface ResolverDeps {
   ) => Promise<string | null>
 }
 
-export class ResolutionBatch {
-  readonly memo = new Map<string, ResolveOutcome>()
-}
-
 export class ExportResolver {
-  constructor(
-    private readonly deps: ResolverDeps,
-    readonly batch: ResolutionBatch = new ResolutionBatch(),
-  ) {}
+  private readonly memo = new Map<string, ResolveOutcome>()
 
-  async resolve(
-    canonicalId: string,
-    name: string,
-    conditions: ReadonlyArray<string> = [],
-  ): Promise<ResolveOutcome> {
+  constructor(private readonly deps: ResolverDeps) {}
+
+  async resolve(canonicalId: string, name: string): Promise<ResolveOutcome> {
     // one active stack per top-level resolution: concurrent resolutions never see each other's path as a cycle
-    const { outcome } = await this.walk(
-      canonicalId,
-      name,
-      conditions.join(','),
-      [],
-    )
+    const { outcome } = await this.walk(canonicalId, name, [])
     return outcome
   }
 
   private async walk(
     canonicalId: string,
     name: string,
-    cond: string,
     active: Array<string>,
   ): Promise<{ outcome: ResolveOutcome; tainted: boolean }> {
-    const key = `${canonicalId}\u0000${name}\u0000${cond}`
-    const hit = this.batch.memo.get(key)
+    const key = `${canonicalId}\u0000${name}`
+    const hit = this.memo.get(key)
     if (hit) {
       return { outcome: hit, tainted: false }
     }
@@ -81,7 +66,7 @@ export class ExportResolver {
             origin: { canonicalId, local: name },
             value: fact.value,
           }
-          this.batch.memo.set(key, outcome)
+          this.memo.set(key, outcome)
           return { outcome, tainted: false }
         }
         if (fact.kind === 'namespace') {
@@ -90,7 +75,7 @@ export class ExportResolver {
             origin: { canonicalId, local: name },
             value: { t: 'namespace', specifier: fact.specifier },
           }
-          this.batch.memo.set(key, outcome)
+          this.memo.set(key, outcome)
           return { outcome, tainted: false }
         }
         const target = await this.deps.resolveSpecifier(
@@ -107,12 +92,12 @@ export class ExportResolver {
               name: fact.fromName,
             },
           }
-          this.batch.memo.set(key, outcome)
+          this.memo.set(key, outcome)
           return { outcome, tainted: false }
         }
-        const r = await this.walk(target, fact.fromName, cond, active)
+        const r = await this.walk(target, fact.fromName, active)
         if (!r.tainted) {
-          this.batch.memo.set(key, r.outcome)
+          this.memo.set(key, r.outcome)
         }
         return r
       }
@@ -126,7 +111,7 @@ export class ExportResolver {
         if (target === null) {
           continue
         }
-        const r = await this.walk(target, name, cond, active)
+        const r = await this.walk(target, name, active)
         tainted ||= r.tainted
         if (r.outcome.k === 'found') {
           if (
@@ -146,7 +131,7 @@ export class ExportResolver {
         ? { k: 'ambiguous' }
         : (found ?? (tainted ? { k: 'cycleUnknown' } : { k: 'absent' }))
       if (!tainted) {
-        this.batch.memo.set(key, outcome)
+        this.memo.set(key, outcome)
       }
       return { outcome, tainted }
     } finally {

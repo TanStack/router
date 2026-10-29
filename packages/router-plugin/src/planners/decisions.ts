@@ -362,7 +362,7 @@ function computeSplitPlan(
   // root routes are never split: their components render on every page or on
   // error and not-found responses, where a lazy chunk only adds a round trip
   // (and the manifest preloads it on every page anyway)
-  const splitting = cfg.split && ctx.env.routerSplit && route.kind === 'file'
+  const splitting = cfg.split && route.kind === 'file'
   const groupings = splitting ? effectiveGroupings(ctx, cfg, route) : []
 
   if (route.options.kind === 'opaque') {

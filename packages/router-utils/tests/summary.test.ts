@@ -21,26 +21,10 @@ function summarise(code: string, revision = 'r') {
   const a = new ModuleAnalysis(parsed.file, parsed.source, {
     path: '/app/m.ts',
   })
-  return buildSummary(a, '/app/m.ts', revision, TABLE)
+  return buildSummary(a, revision, TABLE)
 }
 
 describe('export facts', () => {
-  it('records the keys of an exported object literal, string keys included', () => {
-    const s = summarise(`
-      export const options = { component: () => null, 'not-found': 1, loader }
-      export const opaque = { ...base }
-      export const computed = { [key]: 1 }
-    `)
-    expect(s.objectKeys).toEqual({
-      options: ['component', 'not-found', 'loader'],
-    })
-    expect(s.exports.opaque).toEqual({ kind: 'local', value: { t: 'unknown' } })
-  })
-
-  it('leaves objectKeys out when no export is an object literal', () => {
-    expect(summarise('export const a = 1\n').objectKeys).toBeUndefined()
-  })
-
   it('summarises a default export expression, re-exports, namespaces and stars', () => {
     const s = summarise(`
       import { createServerFn } from 'toy-start'
@@ -83,11 +67,6 @@ describe('export facts', () => {
     expect(moved.digest).toBe(base.digest)
     expect(moved.rawRevision).toBe('other-revision')
 
-    const keys = summarise(`
-      export const options = { a: 1, b: 2 }
-      export const fn = () => 1
-    `)
-    expect(keys.digest).not.toBe(base.digest)
     const star = summarise(`
       export const options = { a: 1 }
       export const fn = () => 1

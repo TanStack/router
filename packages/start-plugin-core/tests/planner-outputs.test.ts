@@ -59,10 +59,6 @@ function envInfo(env: Env): EnvInfo {
     type: env === 'client' ? 'client' : 'server',
     isProvider: env === 'ssr' || env === 'rsc',
     mode: 'build',
-    bundler: 'test',
-    framework: 'react',
-    conditions: [],
-    routerSplit: env === 'client',
   }
 }
 

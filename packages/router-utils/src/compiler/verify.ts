@@ -135,7 +135,7 @@ export function verifyPlan(
     }
     // (c) an output holds nothing its own rewrite tree erases (a handler
     // body erased in every output of the client never reaches a chunk)
-    const erased = plan.rewrites.tree(id).erasedParts(0, t1.tail.end)
+    const erased = plan.rewrites.tree(id).erasedParts()
     for (const seg of recipe.segments) {
       if (seg.k !== 'slice') {
         continue

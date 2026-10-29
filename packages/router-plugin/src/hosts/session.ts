@@ -49,8 +49,6 @@ export interface RouterCompilerOptions {
   bundler: Bundler
   mode: 'dev' | 'build'
   hmrStyle: HmrStyle
-  /** Resolves a specifier from an importer (the bundler's resolver). */
-  resolve?: HostServices['resolve']
 }
 
 export interface CompileRequest {
@@ -87,18 +85,12 @@ export class RouterCompiler {
   readonly plannerConfig: RouterPlannerConfig
   readonly configKey: string
   readonly warnings: WarningLedger
-  readonly context: RouterPluginContext
-  readonly config: Config
   readonly mode: 'dev' | 'build'
-  readonly bundler: Bundler
   private readonly perPlanner: Record<string, unknown>
   private readonly registry: RouteRegistryView
 
   constructor(opts: RouterCompilerOptions) {
-    this.context = opts.context
-    this.config = opts.config
     this.mode = opts.mode
-    this.bundler = opts.bundler
     const cs = opts.config.codeSplittingOptions
     this.plannerConfig = {
       framework: opts.config.target,
@@ -122,13 +114,10 @@ export class RouterCompiler {
     this.planners = routerPlanners()
     const internals = contextInternals(opts.context)
     this.warnings = internals.warnings
-    const readFile = (p: string) =>
-      fs.promises.readFile(p, 'utf8').catch(() => null)
-    const loadVirtual = () => Promise.resolve(null)
     const rawFacts = new RawFactsCache({
-      readFile,
-      loadVirtual,
-      // the router's pure APIs (R79)
+      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
+      loadVirtual: () => Promise.resolve(null),
+      // the router's own pure APIs
       recognizer: { ...EMPTY_RECOGNIZER, pureCalls: routerPureCalls() },
     })
     this.caches = createCompilerCaches(
@@ -140,12 +129,10 @@ export class RouterCompiler {
       collectionSizes({ warnings: o.warnings, registry: o.registry }, 3),
     )
     this.host = {
-      resolve: opts.resolve ?? (() => Promise.resolve(null)),
-      readFile,
-      loadVirtual,
+      // the router planners resolve nothing: route options are read from the module itself
+      resolve: () => Promise.resolve(null),
       rawFacts,
       routes: this.registry,
-      services: { routes: this.registry },
     }
   }
 
@@ -180,10 +167,6 @@ export class RouterCompiler {
       name: env.name,
       type: env.type,
       mode: this.mode,
-      bundler: this.bundler,
-      framework: this.plannerConfig.framework,
-      conditions: [],
-      routerSplit: true,
     }
   }
 
@@ -249,10 +232,5 @@ export class RouterCompiler {
     kind: InvalidateChange['kind'],
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
     return invalidate(this.caches, { path, kind }, this.host)
-  }
-
-  /** The path of a module id (query stripped, slashes normalized). */
-  static pathOf(id: string): string {
-    return normalizePath(identify(id).path)
   }
 }

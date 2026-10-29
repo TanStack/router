@@ -155,7 +155,7 @@ describe('retained heap', () => {
         files: files.length,
         compiled,
         untouched,
-        plans: plans.size,
+        plans: plans.stats(false).plans,
         heapDeltaMB: +(heapDelta / 1048576).toFixed(2),
         arrayBuffersDelta: abDelta,
         parseOnlyUsPerFile: +((parseOnly * 1000) / files.length).toFixed(1),

@@ -26,7 +26,6 @@ import type { RecognizerTable } from './values'
 export type { Range } from './header'
 
 export interface ImportSpecifierEntry {
-  range: Range
   local: SymbolId
   /** 'default', '*' or the imported name. */
   imported: string
@@ -45,7 +44,6 @@ export interface ImportEntry {
   bare: boolean
   /** `import type …` (the whole declaration). */
   typeOnly: boolean
-  phase: 'source' | 'defer' | null
   specifiers: Array<ImportSpecifierEntry>
 }
 
@@ -87,7 +85,6 @@ export interface ReexportEntry {
 export interface DynamicEdge {
   specifier: string
   specifierRange: Range
-  callRange: Range
   form: 'dynamic' | 'require'
   /**
    * The names a `require()` edge reads of its result (J6 edge names): the
@@ -367,10 +364,8 @@ export class ModuleAnalysis {
                 : null,
             bare: stmt.specifiers.length === 0,
             typeOnly: stmt.importKind === 'type',
-            phase: stmt.phase,
             specifiers: stmt.specifiers.map((spec) => {
               return {
-                range: { start: spec.start, end: spec.end },
                 local: importLocals.get(spec.start) ?? (-1 as SymbolId),
                 imported:
                   spec.type === 'ImportDefaultSpecifier'
@@ -581,7 +576,6 @@ export class ModuleAnalysis {
       dynamicEdges.push({
         specifier: imp.specifier,
         specifierRange: { start: specNode.start, end: specNode.end },
-        callRange: { start: node.start, end: node.end },
         form: imp.kind === 'dynamic' ? 'dynamic' : 'require',
         names: imp.kind === 'require' ? this.requireNames(node) : [],
       })

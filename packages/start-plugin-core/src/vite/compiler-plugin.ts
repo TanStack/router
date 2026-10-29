@@ -319,6 +319,12 @@ export function startCompilerPlugin(
     const cs = opts.getConfig().startConfig.router.codeSplittingOptions
     return {
       framework: opts.framework,
+      // Every router env splits (as main did): the server must render the tree
+      // the client hydrates. Solid's hydration keys follow the component tree
+      // (the lazy wrapper's components), and React wraps a match in Suspense
+      // when its error component is lazy (`errorComponent.preload`), so an
+      // unsplit server mismatches every split route with an
+      // errorComponent and no pendingComponent.
       split: true,
       defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
       splitBehavior: cs?.splitBehavior,
@@ -486,16 +492,6 @@ export function startCompilerPlugin(
     type: env.type,
     isProvider: env.name === opts.providerEnvName,
     mode: environment.mode === 'build' ? 'build' : 'dev',
-    bundler: 'vite',
-    framework: opts.framework,
-    conditions: environment.config.resolve.conditions,
-    // Every router env splits (as main did): the server must render the tree
-    // the client hydrates. Solid's hydration keys follow the component tree
-    // (the lazy wrapper's components), and React wraps a match in Suspense
-    // when its error component is lazy (`errorComponent.preload`), so an
-    // unsplit server mismatches every split route with an
-    // errorComponent and no pendingComponent.
-    routerSplit: true,
   })
 
   /** Host services bound to one hook context. */
@@ -518,13 +514,8 @@ export function startCompilerPlugin(
         external: r.external === true || typeof r.external === 'string',
       }
     },
-    readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-    loadVirtual: (id) =>
-      virtualLoaders.get(environment.name)?.(id) ?? Promise.resolve(null),
     rawFacts: s.rawFacts,
-    warnings: s.warnings,
     routes: s.registry,
-    services: { routes: s.registry },
   })
 
   /** The host of the invalidation operation (a dev environment's own resolver). */

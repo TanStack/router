@@ -204,8 +204,6 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
     name: 'rsc',
     type: 'server',
     isProvider: true,
-    conditions: ['react-server'],
-    routerSplit: false,
   })
   const config: Partial<StartEnvConfig> = {
     providerSeparate: true,
@@ -364,8 +362,6 @@ describe('a server fn nested in a function (J4.6): hoisted when it captures noth
     name: 'rsc',
     type: 'server',
     isProvider: true,
-    conditions: ['react-server'],
-    routerSplit: false,
   })
   const rscConfig: Partial<StartEnvConfig> = {
     providerSeparate: true,

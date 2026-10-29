@@ -30,14 +30,6 @@ const HASH = createHash('sha1')
   .slice(0, 10)
 
 const hydrate = createHydratePlanner()
-const solidClient = envInfo({ framework: 'solid' })
-const solidServer = envInfo({
-  name: 'ssr',
-  type: 'server',
-  framework: 'solid',
-  conditions: ['node'],
-  routerSplit: false,
-})
 
 const REACT = `import { Hydrate } from '@tanstack/react-start'\n`
 const SOLID = `import { Hydrate } from '@tanstack/solid-start'\n`
@@ -127,14 +119,11 @@ async function compile(
   }
 }
 
-/** Both envs of one framework. */
-async function both(
-  code: string,
-  opts: Parameters<typeof compile>[1] & { solid?: boolean } = {},
-) {
+/** Both envs. */
+async function both(code: string, opts: Parameters<typeof compile>[1] = {}) {
   const [client, server] = await Promise.all([
-    compile(code, { ...opts, env: opts.solid ? solidClient : clientEnv }),
-    compile(code, { ...opts, env: opts.solid ? solidServer : ssrEnv }),
+    compile(code, { ...opts, env: clientEnv }),
+    compile(code, { ...opts, env: ssrEnv }),
   ])
   return { client, server }
 }
@@ -249,21 +238,10 @@ export const Deeper = () => <Start.X.Hydrate><p>local</p></Start.X.Hydrate>
 
   it('Solid boundaries load the chunk through the Solid router', async () => {
     const code = `${SOLID}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     expect(client.code).toContain(
       "import { lazyRouteComponent as tsrLazy } from '@tanstack/solid-router'",
     )
-  })
-
-  it('is disabled for Vue', async () => {
-    const code = `${REACT}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
-    const host = new MemoryHost({ [FILE]: code })
-    expect(
-      await host.compile(FILE, [hydrate], {
-        env: envInfo({ framework: 'vue' }),
-        config: { configKey: 'c', perPlanner: { hydrate: { root: ROOT } } },
-      }),
-    ).toBeNull()
   })
 })
 
@@ -489,9 +467,8 @@ export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
 })
 
 describe('captures (J5.2)', () => {
-  const capturesOf = async (body: string, env: EnvInfo = clientEnv) => {
-    const head = env.framework === 'solid' ? SOLID : REACT
-    const client = await compile(`${head}${body}`, { env })
+  const capturesOf = async (body: string) => {
+    const client = await compile(`${REACT}${body}`, { env: clientEnv })
     const [b] = client.facts.boundaries
     return { code: client.code, chunk: client.chunks[b!.id]!, client }
   }
@@ -650,7 +627,7 @@ describe('Solid (J5.2)', () => {
   return <Hydrate><section>{read()}{ { value }.value }<Local></Local><Hydrate><b>{label}{props.count}</b></Hydrate></section></Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     const [outer, inner] = client.facts.boundaries
     expect(client.code).toContain(
       '<TsrHydrate0 read={read} value={value} Local={Local} label={label} props={props}/>',
@@ -670,7 +647,7 @@ describe('Solid (J5.2)', () => {
   return <Hydrate><input ref={input} /><div ref={setOther} /></Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     const [b] = client.facts.boundaries
     expect(client.code).toContain(
       "<TsrHydrate0 setOther={setOther} tsrRef$input={(el) => typeof input === 'function' ? input(el) : (input = el)}/>",
@@ -686,7 +663,7 @@ describe('Solid (J5.2)', () => {
   return <Hydrate><section><Hydrate><input ref={input} /></Hydrate></section></Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     expect(client.errors).toEqual([
       { code: 'hydrate-nested-ref', start: code.indexOf('<Hydrate') },
     ])
@@ -699,7 +676,7 @@ export function Page() {
   return <Hydrate><p use:tip={1} use:local /></Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     const [b] = client.facts.boundaries
     expect(client.code).not.toContain('./tip')
     expect(client.code).toContain('<TsrHydrate0 local={local}/>')
@@ -717,7 +694,7 @@ export { TsrHydrate0 as H0 }
   return <Hydrate><p>{ref}{arguments.length}</p></Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     const [b] = client.facts.boundaries
     expect(client.code).toContain(
       '<TsrHydrate0 tsrCap$ref={ref} tsrArguments={arguments}/>',
@@ -1016,7 +993,7 @@ export class Page extends Base {
   it('rejects children assigning a captured local (React and Solid)', async () => {
     for (const [head, env] of [
       [REACT, clientEnv],
-      [SOLID, solidClient],
+      [SOLID, clientEnv],
     ] as const) {
       const code = `${head}export function Page() {
   let count = 0
@@ -1704,7 +1681,7 @@ function Tree({ n }) {
     const plain = await compile(code)
     expect(plain.chunks[b!.id]).not.toContain('$$tsrRefreshId')
     const solid = await compile(code.replace(REACT, SOLID), {
-      env: solidClient,
+      env: clientEnv,
       config: { refreshMarkers: true },
     })
     expect(solid.chunks[b!.id]).not.toContain('$$tsrRefreshId')
@@ -1723,7 +1700,7 @@ function Tree({ n }) {
   return <Hydrate><input ref={el} onClick={() => el?.focus()} />{count}{label}</Hydrate>
 }
 `
-    const client = await compile(code, { env: solidClient })
+    const client = await compile(code, { env: clientEnv })
     const [b] = client.facts.boundaries
     expect(client.code).toContain(
       "<TsrHydrate0 el={(() => el)()} count={(() => count)()} label={label} tsrRef$el={(el$1) => typeof el === 'function' ? el(el$1) : (el = el$1)}/>",

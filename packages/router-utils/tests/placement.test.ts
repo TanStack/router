@@ -28,9 +28,7 @@ async function split(
     toySplitPlanner({ keys: opts.keys, identifierEdits: opts.identifierEdits }),
   ]
   const env = envInfo(
-    opts.env === 'server'
-      ? { name: 'ssr', type: 'server', routerSplit: false }
-      : {},
+    opts.env === 'server' ? { name: 'ssr', type: 'server' } : {},
   )
   const main = await host.compile('/app/route.tsx', planners, { env })
   const chunks: Record<string, string> = {}
@@ -612,7 +610,6 @@ describe('extracted-export outputs', () => {
       env: envInfo({
         name: 'ssr',
         type: 'server',
-        routerSplit: true,
         mode: 'build',
       }),
     })
@@ -2316,7 +2313,7 @@ describe('provider outputs (J4.14)', () => {
         })
       },
     }
-    const env = envInfo({ name: 'ssr', type: 'server', routerSplit: false })
+    const env = envInfo({ name: 'ssr', type: 'server' })
     const main = await host.compile(
       '/app/fns.ts',
       [toyEnvPlanner(), provider],
@@ -2534,7 +2531,7 @@ describe('overridden placeholders', () => {
         })
       },
     }
-    const env = envInfo({ name: 'rsc', type: 'server', routerSplit: false })
+    const env = envInfo({ name: 'rsc', type: 'server' })
     const main = await host.compile('/app/fns.ts', [provider], { env })
     expect(main?.code).toContain(
       "const fn = wrapServer(opt(METHOD), tsrStub('id'))",

@@ -114,12 +114,7 @@ export async function compileModule(
     cache.noteRevision(key, rev)
     const hit = cache.lookup(key, rev)
     if (hit) {
-      const src = fingerprintSourceFor(
-        caches,
-        host,
-        env.name,
-        input.config.configKey,
-      )
+      const src = fingerprintSourceFor(caches, host, env.name)
       // resolutions validated at the current file-set version stand (not re-asked)
       const fileSetVersion = caches.fileSetVersion
       const resolutionsCurrent = hit.resolvedAt === fileSetVersion
@@ -171,7 +166,7 @@ export async function compileModule(
           verdictMemo,
           rev,
         )
-        const record = { key, revision: rev, generation, promise, ledger }
+        const record = { revision: rev, promise }
         cache.inFlight.set(keyString, record)
         let result: AttemptResult
         try {
@@ -205,12 +200,7 @@ export async function compileModule(
         }
         const plan = result.plan
         plan.dependencies = [...ledger.entries]
-        const src = fingerprintSourceFor(
-          caches,
-          host,
-          env.name,
-          input.config.configKey,
-        )
+        const src = fingerprintSourceFor(caches, host, env.name)
         const snapshotOk = await ledger.validateSnapshot(
           src,
           caches.fileSetVersion === fileSetVersion,
@@ -374,7 +364,6 @@ async function runAttempt(
   rev: string,
 ): Promise<AttemptResult> {
   const env = input.env
-  const key = ledger.key
   const parsed = parseModule(input.code, {
     lang: identity.lang!,
     path: identity.path,
@@ -401,7 +390,6 @@ async function runAttempt(
   if (planners.length === 0) {
     return { kind: 'untouched' }
   }
-  ledger.record({ kind: 'config', configKey: input.config.configKey })
 
   // ---- A: prefetch -----------------------------------------------------------
   const prefetched = new Map<string, unknown>()
@@ -479,9 +467,7 @@ async function runAttempt(
         resolver,
         resolve: (spec) => resolveFrom(spec, identity.canonicalId),
         resolveFrom,
-        summary: summaryOf,
         targetFacts: targetFactsOf,
-        targetMarker: targetMarkerOf,
         set: (data) => prefetched.set(p.name, data),
       }
       if ((await p.prefetch(t0, ctx)) === false) {
@@ -499,7 +485,7 @@ async function runAttempt(
   const tier1Needed = planners.some((p) => p.tier === 1)
   let emitPlan: EmitPlan
   if (!tier1Needed) {
-    emitPlan = tier0Plan(t0, identity, env, key, rev)
+    emitPlan = tier0Plan(t0, identity, env, rev)
   } else {
     // Planning rounds: the core reports the regions a split would break
     // (a chunk writing a binding the route module reads, a relocated read
@@ -566,7 +552,7 @@ async function runAttempt(
       }
       fallbacks = [...fallbacks, ...fresh]
     }
-    emitPlan = plan.freeze(key, rev)
+    emitPlan = plan.freeze(rev)
     if (VERIFY_OUTPUTS) {
       verifyPlan(plan, emitPlan, input.code, identity)
     }
@@ -599,11 +585,9 @@ async function runAttempt(
       const ctx: PolicyContext = {
         identity,
         env,
-        config: input.config.perPlanner[p.name],
         host,
         code: input.code,
         inputMap: readInputMap,
-        ledger,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,
         targetMarker: targetMarkerOf,
@@ -637,7 +621,6 @@ function tier0Plan(
   t0: ModuleAnalysis,
   identity: SourceIdentity,
   env: EnvInfo,
-  key: PlanKey,
   rev: string,
 ): EmitPlan {
   const code = t0.source.code
@@ -704,12 +687,10 @@ function tier0Plan(
     })
   }
   return {
-    key,
     revision: rev,
     sourceLength: code.length,
     outputs: {
       env: {
-        id: 'env',
         kind: 'env',
         derivedId: null,
         mapSource: identity.path,
@@ -722,7 +703,6 @@ function tier0Plan(
     fingerprint: '',
     diagnostics: [],
     sideEffects: { env: false },
-    fallbacks: [],
   }
 }
 
@@ -765,7 +745,6 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
     region: (range, kind) => plan.region(range, kind),
     declareOutput: (spec) => plan.declareOutput(spec),
-    outputIdFor: (derived) => plan.outputIdFor(derived),
     addRoot: (output, root) => plan.addRoot(output, root),
     markBenignEffect: (unit) => plan.markBenignEffect(unit),
     extract: (sym, output) => plan.extract(sym, output),

@@ -107,7 +107,6 @@ export interface Fallback {
     | 'env-declared'
     /** The planning rounds did not settle: every sub-region is kept in place (reported by the pipeline). */
     | 'exhausted'
-  cluster: ClusterId
 }
 
 export interface PlacementInput {
@@ -179,7 +178,6 @@ interface Pin {
 }
 
 export interface ExtractedExport {
-  cluster: ClusterId
   output: OutputId
   /** The exported symbols of the cluster (the env module re-exports them from `output`). */
   syms: Array<SymbolId>
@@ -807,11 +805,7 @@ export function computePlacement(input: PlacementInput): Placement {
     clusterOfSym.set(s, clusterOfMember(m))
   }
   for (const r of orderedEffectRegions) {
-    fallbacks.push({
-      region: r,
-      reason: 'ordered-effect',
-      cluster: clusterOfRegion.get(r)!,
-    })
+    fallbacks.push({ region: r, reason: 'ordered-effect' })
   }
 
   // ---- reads per (cluster, output) -----------------------------------------
@@ -1165,7 +1159,7 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- provenance: clusters reachable in G0 from erased reads -------------
-  const erasedParts = envTree.erasedParts(0, t1.tail.end)
+  const erasedParts = envTree.erasedParts()
   const erasedSeeds = new Set<ClusterId>()
   for (const part of erasedParts) {
     for (const ref of refs.refsIn(part)) {
@@ -1643,7 +1637,7 @@ export function computePlacement(input: PlacementInput): Placement {
         }
       }
     }
-    extracted.push({ cluster: c, output: e.output, syms: [...syms] })
+    extracted.push({ output: e.output, syms: [...syms] })
   }
   /** Whether an extracted-export output (evaluated before the env module's body) reaches `c`. */
   function neededByStaticOutput(c: ClusterId): boolean {
@@ -2088,7 +2082,7 @@ export function computePlacement(input: PlacementInput): Placement {
       if (!writerHomes.has(o)) {
         writerHomes.set(o, w)
       } else {
-        fallbacks.push({ region: w, reason: 'multi-writer', cluster: c })
+        fallbacks.push({ region: w, reason: 'multi-writer' })
       }
     }
     const derivedHomes = [...writerHomes].filter(([o]) => o !== 'env')
@@ -2097,7 +2091,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     if (derivedHomes.length > 1) {
       for (const [, w] of derivedHomes.slice(1)) {
-        fallbacks.push({ region: w, reason: 'multi-writer', cluster: c })
+        fallbacks.push({ region: w, reason: 'multi-writer' })
       }
     }
     const [[g, w]] = derivedHomes as [[OutputId, RegionId]]
@@ -2106,7 +2100,6 @@ export function computePlacement(input: PlacementInput): Placement {
       fallbacks.push({
         region: w,
         reason: kind === 'hydrate' ? 'hydrate-writer' : 'shared-writer',
-        cluster: c,
       })
     } else {
       home.set(c, g)
@@ -2149,7 +2142,6 @@ export function computePlacement(input: PlacementInput): Placement {
       fallbacks.push({
         region: units[declaring[0]!]!.region,
         reason: 'env-declared',
-        cluster: d,
       })
     }
   }

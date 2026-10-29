@@ -133,8 +133,8 @@ describe('RawFactsCache', () => {
     expect(cache.peekRevision('/app/a.ts?flavour=b')?.stale).toBe(true)
     expect(cache.peekRevision('/app/b.ts')?.stale).toBe(false)
     cache.forget('/app/a.ts')
-    expect(cache.has('/app/a.ts')).toBe(false)
-    expect(cache.has('/app/a.ts?flavour=b')).toBe(false)
+    expect(cache.peekRevision('/app/a.ts')).toBeNull()
+    expect(cache.peekRevision('/app/a.ts?flavour=b')).toBeNull()
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
     // a missing file's facts are not kept either
     await cache.get('/app/missing.ts')
@@ -195,12 +195,10 @@ describe('target facts of a marked module', () => {
     expect(marked.targetFacts.marker).toBe('server-only')
     expect(marked.targetFacts.imports).toEqual([])
     expect(marked.targetFacts.effectful).toBe(false)
-    expect(marked.targetFacts.effectProvenance).toBe(null)
     // a bare import of anything else still is
     const effects = await cache.get('/app/effects.ts')
     expect(effects.targetFacts.imports).toEqual(['./side-effect'])
     expect(effects.targetFacts.effectful).toBe(true)
-    expect(effects.targetFacts.effectProvenance).toBe('own')
   })
 })
 
@@ -254,7 +252,6 @@ describe('target facts: own effects', () => {
     expect((await cache.get('/app/plain.ts')).targetFacts).toMatchObject({
       effectful: true,
       codeEffects: true,
-      effectProvenance: 'own',
     })
   })
 })

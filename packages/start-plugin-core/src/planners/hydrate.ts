@@ -133,9 +133,6 @@ export function createHydratePlanner(): Planner {
 }
 
 function gate(t0: ModuleAnalysis, ctx: GateContext): boolean {
-  if (ctx.env.framework === 'vue') {
-    return false
-  }
   const packages =
     (ctx.config as Partial<HydratePlannerConfig> | undefined)?.packages ??
     DEFAULT_PACKAGES

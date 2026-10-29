@@ -101,11 +101,7 @@ export async function prefetchStartValues(
           if (opts.isOpaque(canonicalId)) {
             return UNKNOWN
           }
-          const outcome = await ctx.resolver.resolve(
-            canonicalId,
-            name,
-            ctx.env.conditions,
-          )
+          const outcome = await ctx.resolver.resolve(canonicalId, name)
           if (outcome.k !== 'found') {
             return UNKNOWN
           }

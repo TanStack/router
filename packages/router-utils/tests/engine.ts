@@ -52,10 +52,7 @@ export function engine(
   let frozen: EmitPlan | null = null
   const freeze = () => {
     if (!frozen) {
-      frozen = plan.freeze(
-        { env: env.name, canonicalId: identity.canonicalId, configKey: 'cfg' },
-        revision(code),
-      )
+      frozen = plan.freeze(revision(code))
     }
     return frozen
   }

@@ -201,11 +201,6 @@ export class OutputBuilder {
     this.withMap = opts.map !== false
   }
 
-  /** Length of the generated code so far. */
-  get length(): number {
-    return this.code.length
-  }
-
   /** Appends original `[start, end)` with `edits` (sorted, non-overlapping) applied. */
   copy(start: number, end: number, edits?: ReadonlyArray<BuilderEdit>): void {
     let pos = start

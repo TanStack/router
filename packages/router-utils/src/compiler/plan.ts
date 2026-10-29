@@ -32,7 +32,7 @@ import type {
 } from './analysis'
 import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
-import type { DerivedQuery, PlanKey, SourceIdentity } from './identity'
+import type { DerivedQuery, SourceIdentity } from './identity'
 import type { SymbolId, SymbolTable } from './symbols'
 import type { RegionId, RegionKind, TopLevelItem, Unit, UnitId } from './units'
 import type {
@@ -65,10 +65,6 @@ export interface EnvInfo {
   type: 'client' | 'server'
   isProvider?: boolean
   mode: 'dev' | 'build'
-  bundler: 'vite' | 'rspack' | 'webpack' | 'esbuild' | 'test'
-  framework: 'react' | 'solid' | 'vue' | null
-  conditions: ReadonlyArray<string>
-  routerSplit: boolean
   layer?: string
 }
 
@@ -101,7 +97,6 @@ export type Segment =
   | { k: 'text'; text: string; mapTo?: number; edgeKey?: string }
 
 export interface OutputRecipe {
-  id: OutputId
   kind: OutputKind
   /** The derived canonical id (null for env). */
   derivedId: string | null
@@ -117,7 +112,6 @@ export interface PlanFacts {
 }
 
 export interface EmitPlan {
-  key: PlanKey
   revision: string
   sourceLength: number
   outputs: Record<string, OutputRecipe>
@@ -127,8 +121,6 @@ export interface EmitPlan {
   fingerprint: string
   diagnostics: Array<Diagnostic>
   sideEffects: Record<string, boolean>
-  /** Range-keyed fallbacks of the last planning round, for diagnostics. */
-  fallbacks: Array<FallbackRecord>
 }
 
 export interface FallbackRecord {
@@ -165,7 +157,6 @@ export interface PlanContext {
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
   declareOutput: (spec: OutputSpec) => OutputId
-  outputIdFor: (derived: DerivedQuery) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
    * Names a recognised framework call known not to touch user state (the
@@ -274,10 +265,6 @@ export class AnalysisPlan implements PlanContext {
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
     return this.t1.regions.register(range, kind)
-  }
-
-  outputIdFor(derived: DerivedQuery): OutputId {
-    return `derived:${deriveId(this.identity.canonicalId, derived)}`
   }
 
   declareOutput(spec: OutputSpec): OutputId {
@@ -779,7 +766,7 @@ export class AnalysisPlan implements PlanContext {
   // freeze
   // ---------------------------------------------------------------------------
 
-  freeze(key: PlanKey, revision: string): EmitPlan {
+  freeze(revision: string): EmitPlan {
     const placement = this.placement ?? this.resolve()
     const { analysis } = this
     const code = analysis.source.code
@@ -870,7 +857,6 @@ export class AnalysisPlan implements PlanContext {
         recipeEdges,
       )
       outputs[id] = {
-        id,
         kind: decl.kind,
         derivedId: decl.derivedId,
         mapSource: this.identity.path,
@@ -885,9 +871,7 @@ export class AnalysisPlan implements PlanContext {
         ![...included].some((c) => placement.clusters[c]!.sideEffects)
     }
 
-    const fallbacks = this.fallbackRecords()
     const plan: EmitPlan = {
-      key,
       revision,
       sourceLength: code.length,
       outputs,
@@ -904,7 +888,6 @@ export class AnalysisPlan implements PlanContext {
         range: d.range ? { ...d.range } : undefined,
       })),
       sideEffects,
-      fallbacks,
     }
     return plan
   }
@@ -1007,7 +990,6 @@ export class AnalysisPlan implements PlanContext {
           by: 'core:dce',
           seq: seq++,
           claim: null,
-          internal: true,
         })
       }
       previous = { item, intact: recipe === 'keep' }
@@ -1020,7 +1002,6 @@ export class AnalysisPlan implements PlanContext {
         by: 'core:dce',
         seq: seq++,
         claim: null,
-        internal: true,
       })
     }
     // generated units homed here, at their anchors
@@ -1032,7 +1013,6 @@ export class AnalysisPlan implements PlanContext {
         by: gen.by,
         seq: seq++,
         claim: null,
-        internal: true,
         gen: gen.id,
       } as TreeEdit)
     }
@@ -1050,7 +1030,6 @@ export class AnalysisPlan implements PlanContext {
         by: 'core:glue',
         seq: 1.5e9,
         claim: null,
-        internal: true,
       })
     }
     // export glue at the end (re-exports of extracted exports first)
@@ -1071,7 +1050,6 @@ export class AnalysisPlan implements PlanContext {
         by: 'core:glue',
         seq: seq++,
         claim: null,
-        internal: true,
       })
     }
     // text appended at the end starts on its own line

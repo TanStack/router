@@ -217,7 +217,7 @@ describe('plan cache bookkeeping', () => {
 })
 
 describe('releasing an environment', () => {
-  const server = envInfo({ name: 'ssr', type: 'server', conditions: [] })
+  const server = envInfo({ name: 'ssr', type: 'server' })
   const files = {
     '/app/a.ts': `import { make } from './t'\nexport const a = make\n`,
     '/app/t.ts': `export const make = 1\n`,

@@ -44,7 +44,7 @@ describe('symbolic value terms', () => {
       export const authed = csf().middleware([])
       export const other = F.make().handler(() => 1)
     `)
-    const summary = buildSummary(a, '/app/m.ts', 'r', TABLE)
+    const summary = buildSummary(a, 'r', TABLE)
     const authed = summary.exports.authed!
     expect(authed.kind).toBe('local')
     if (authed.kind !== 'local') {
@@ -72,7 +72,7 @@ describe('symbolic value terms', () => {
       import { csf } from './factory'
       export const authed = csf().middleware([])
     `)
-    const summary = buildSummary(a, '/app/m.ts', 'r', TABLE)
+    const summary = buildSummary(a, 'r', TABLE)
     const term = (summary.exports.authed as { value: AbstractValue }).value
     const reduce = (v: AbstractValue): AbstractValue => {
       switch (v.t) {

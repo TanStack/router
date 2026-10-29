@@ -26,7 +26,6 @@ export type DependencyFingerprint =
       specifier: string
       resolved: string | null
     }
-  | { kind: 'config'; configKey: string }
 
 export function fingerprintId(fp: DependencyFingerprint): string {
   switch (fp.kind) {
@@ -40,8 +39,6 @@ export function fingerprintId(fp: DependencyFingerprint): string {
       return `route:${fp.path}`
     case 'resolution':
       return `resolve:${fp.env}:${fp.importer}:${fp.specifier}`
-    case 'config':
-      return 'config'
   }
 }
 
@@ -56,8 +53,6 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
       return fp.path
     case 'resolution':
       return fp.resolved === null ? null : identify(fp.resolved).path
-    case 'config':
-      return null
   }
 }
 
@@ -84,7 +79,6 @@ export interface FingerprintSource {
   routeRegistryDigest: (path: string) => string | null
   /** Resolves through the environment's own resolver (the source is per environment: aliases and conditions differ). */
   resolution: (importer: string, specifier: string) => Promise<string | null>
-  configKey: string
 }
 
 export async function fingerprintCurrent(
@@ -102,8 +96,6 @@ export async function fingerprintCurrent(
       return src.routeRegistryDigest(fp.path) === fp.digest
     case 'resolution':
       return (await src.resolution(fp.importer, fp.specifier)) === fp.resolved
-    case 'config':
-      return src.configKey === fp.configKey
   }
 }
 
@@ -318,11 +310,8 @@ export interface CacheEntry {
 }
 
 export interface InFlight {
-  key: PlanKey
   revision: string
-  generation: number
   promise: Promise<unknown>
-  ledger: DependencyLedger
 }
 
 /**
@@ -495,10 +484,6 @@ export class PlanCache {
   /** Live keys (published, or with an attempt active) whose canonical id lives at `path`. */
   keysAt(path: string): Array<PlanKey> {
     return [...(this.byPath.get(path)?.values() ?? [])]
-  }
-
-  get size(): number {
-    return this.entries.size
   }
 
   values(): IterableIterator<CacheEntry> {

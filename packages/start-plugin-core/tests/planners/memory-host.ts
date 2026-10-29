@@ -24,21 +24,12 @@ export function envInfo(partial: Partial<EnvInfo> = {}): EnvInfo {
     name: 'client',
     type: 'client',
     mode: 'dev',
-    bundler: 'test',
-    framework: 'react',
-    conditions: ['browser'],
-    routerSplit: true,
     ...partial,
   }
 }
 
 export const clientEnv = envInfo()
-export const ssrEnv = envInfo({
-  name: 'ssr',
-  type: 'server',
-  conditions: ['node'],
-  routerSplit: false,
-})
+export const ssrEnv = envInfo({ name: 'ssr', type: 'server' })
 
 export class MemoryHost implements HostServices {
   readonly files: Record<string, string>

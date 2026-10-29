@@ -18,9 +18,6 @@ export interface Pragma {
 }
 
 export interface Header {
-  hashbang: Range | null
-  /** Every comment of the header block (pragmas and license included), in order. */
-  comments: Array<Range>
   pragmas: Array<Pragma>
   /** License comments: stay in the env module, never copied into derived outputs (G12). */
   license: Array<Range>
@@ -157,7 +154,6 @@ export function analyzeHeader(file: SourceFile): Header {
     (c) => c.end <= firstStart && (!hashbang || c.start >= hashbang.end),
   )
 
-  const comments: Array<Range> = []
   const pragmas: Array<Pragma> = []
   const license: Array<Range> = []
 
@@ -183,7 +179,6 @@ export function analyzeHeader(file: SourceFile): Header {
     if (i >= attachedFrom && p.length === 0 && !lic) {
       continue
     }
-    comments.push({ start: c.start, end: c.end })
     pragmas.push(...p)
     if (lic) {
       license.push({ start: c.start, end: c.end })
@@ -204,8 +199,6 @@ export function analyzeHeader(file: SourceFile): Header {
     end = firstItem.start
   }
   return {
-    hashbang,
-    comments,
     pragmas,
     license,
     directives,

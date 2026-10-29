@@ -29,7 +29,6 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
-  routeEntryDigest,
   routerPlannerConfig,
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
@@ -69,6 +68,7 @@ import type {
   PlanKey,
   Planner,
   RawSourceMap,
+  RouteRegistry,
 } from '@tanstack/router-utils/compiler'
 
 /** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
@@ -112,7 +112,7 @@ export interface StartRsbuildSessionOptions {
   routerConfig: () => RouterConfig
   importProtection: () => ImportProtectionOptions | undefined
   /** The route registry (the generator's `routesByFile`). */
-  routes: { lookup: (path: string) => { routeId: string } | null }
+  routes: RouteRegistry
   /** Whether a path is an app entry (a marked entry is its own import-protection violation). */
   isEntry: (path: string) => boolean
 }
@@ -313,7 +313,11 @@ export class StartRsbuildCompilerSession {
       planners = startPlanners({
         hydrate: createHydratePlanner(),
         rscCss: rscLayer,
-        router: routerPlanners(),
+        // the RSC layer renders server components: its route modules (the
+        // providers' twins of the SSR route modules) stay unsplit, so the
+        // router's lazy wrapper (a React hook in development) never resolves
+        // against the react-server build of React (as Vite's provider env)
+        router: rscLayer ? undefined : routerPlanners(),
         importEdges: this.ip?.planner ?? null,
       })
       this.plannersByKey.set(key, planners)
@@ -327,10 +331,6 @@ export class StartRsbuildCompilerSession {
       type: env.type,
       isProvider: env.name === RSBUILD_ENVIRONMENT_NAMES.server,
       mode: this.opts.mode,
-      bundler: 'rspack',
-      framework: this.opts.framework,
-      conditions: [],
-      routerSplit: true,
       ...(layer ? { layer } : {}),
     }
   }
@@ -435,17 +435,9 @@ export class StartRsbuildCompilerSession {
           return null
         }
       },
-      readFile: (file) => this.readFile(file),
-      loadVirtual: () => Promise.resolve(null),
       rawFacts: this.rawFacts,
-      warnings: this.warnings,
-      routes: {
-        digestFor: (p) => routeEntryDigest(this.opts.routes.lookup(p)),
-      },
-      services: {
-        routes: { lookup: (p: string) => this.opts.routes.lookup(p) },
-        importRewrite: this.importRewrite(env),
-      },
+      routes: this.opts.routes,
+      services: { importRewrite: this.importRewrite(env) },
     }
   }
 
@@ -468,13 +460,8 @@ export class StartRsbuildCompilerSession {
         }
         return null
       },
-      readFile: (file) => this.readFile(file),
-      loadVirtual: () => Promise.resolve(null),
       rawFacts: this.rawFacts,
-      warnings: this.warnings,
-      routes: {
-        digestFor: (p) => routeEntryDigest(this.opts.routes.lookup(p)),
-      },
+      routes: this.opts.routes,
     }
   }
 
@@ -662,11 +649,7 @@ export class StartRsbuildCompilerSession {
     const layer = ctx._module?.layer ?? undefined
     const rscLayer =
       this.opts.rscLayer !== undefined && layer === this.opts.rscLayer
-    // the RSC layer renders server components: its route modules (the providers' twins of
-    // the SSR route modules) stay unsplit, so the router's lazy wrapper (a React hook in
-    // development) never resolves against the react-server build of React
-    const routerSplit = !rscLayer
-    const envInfo = { ...this.envInfo(env, layer), routerSplit }
+    const envInfo = this.envInfo(env, layer)
     const config = this.configFor(env, rscLayer, layer)
     let parsedInputMap: InputSourceMap | null | undefined
     const readInputMap = (): InputSourceMap | null => {

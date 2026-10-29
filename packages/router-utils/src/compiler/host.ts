@@ -17,7 +17,7 @@ import type {
   FingerprintSource,
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
-import type { Diagnostic, WarningLedger } from './diagnostics'
+import type { Diagnostic } from './diagnostics'
 import type { Lang, PlanKey, SourceIdentity } from './identity'
 import type {
   EdgeRecord,
@@ -29,7 +29,6 @@ import type {
 import type { OutputId } from './rewrite'
 import type { RawFacts, RawFactsCache } from './facts'
 import type { ExportResolver } from './resolve'
-import type { ModuleSummary } from './summary'
 import type { RawSourceMap } from './output-builder'
 
 export interface CompileConfig {
@@ -82,7 +81,9 @@ export interface CompileOutput {
   output: OutputId
 }
 
+/** The route registry: the router planners read a file's entry, plans record its digest. */
 export interface RouteRegistry {
+  lookup: (path: string) => { routeId: string } | null
   digestFor: (path: string) => string | null
 }
 
@@ -92,11 +93,8 @@ export interface HostServices {
     specifier: string,
     importerCanonicalId: string,
   ) => Promise<{ id: string; external?: boolean } | null>
-  readFile: (path: string) => Promise<string | null>
-  loadVirtual: (id: string) => Promise<string | null>
   rawFacts: RawFactsCache
   routes?: RouteRegistry
-  warnings?: WarningLedger
   /** Planner-specific services (onViolation, ipBuild, serverFns, refreshRuntime, …). */
   services?: Record<string, unknown>
 }
@@ -121,14 +119,8 @@ export interface PrefetchContext {
     specifier: string,
     importerCanonicalId: string,
   ) => Promise<string | null>
-  /** The raw-domain summary of a canonical id (records a summary fingerprint). */
-  summary: (canonicalId: string) => Promise<ModuleSummary | null>
   /** Target facts (records a target-facts fingerprint). */
   targetFacts: (canonicalId: string) => Promise<RawFacts['targetFacts']>
-  /** The target's environment marker only (records a marker fingerprint: no other target fact invalidates the plan). */
-  targetMarker: (
-    canonicalId: string,
-  ) => Promise<RawFacts['targetFacts']['marker']>
   /** Stores this planner's phase A result for `PlanContext.prefetched`. */
   set: (data: unknown) => void
 }
@@ -136,13 +128,11 @@ export interface PrefetchContext {
 export interface PolicyContext {
   identity: SourceIdentity
   env: EnvInfo
-  config: unknown
   host: HostServices
   /** The input text of this compile (the plan's offsets index it). */
   code: string
   /** The input text's map to the original source (read lazily; null when none). */
   inputMap: () => InputSourceMap | null
-  ledger: DependencyLedger
   resolve: (
     specifier: string,
     importerCanonicalId?: string,
@@ -297,7 +287,7 @@ export async function invalidate(
     relevant: (fp: DependencyFingerprint) => boolean,
   ): Promise<void> => {
     const seen = new Set<string>()
-    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env, '')
+    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env)
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
@@ -315,12 +305,7 @@ export async function invalidate(
       const fps = published.plan.dependencies.filter(relevant)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
-        if (
-          !(await fingerprintCurrent(fp, {
-            ...src,
-            configKey: entry.key.configKey,
-          }))
-        ) {
+        if (!(await fingerprintCurrent(fp, src))) {
           stale = true
           break
         }
@@ -385,7 +370,6 @@ export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,
   env: string,
-  configKey: string,
 ): FingerprintSource {
   return {
     summaryDigest: (id) => caches.rawFacts.digestOf(id),
@@ -394,7 +378,6 @@ export function fingerprintSourceFor(
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (importer, specifier) =>
       resolveForAnalysis(caches, host, env, importer, specifier),
-    configKey,
   }
 }
 

@@ -80,7 +80,7 @@ export function registerStartCompiler(
       generateFunctionId: opts.startPluginOpts.serverFns?.generateFunctionId,
       routerConfig: () => opts.getConfig().startConfig.router,
       importProtection: () => opts.getConfig().startConfig.importProtection,
-      routes: { lookup: (file) => generator.lookup(file) },
+      routes: generator.routes,
       isEntry: opts.isEntry,
     })
     return session

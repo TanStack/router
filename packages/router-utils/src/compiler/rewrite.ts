@@ -122,8 +122,6 @@ export interface TreeEdit {
   seq: number
   /** The claimed region when this edit is a claim placeholder. */
   claim: RegionId | null
-  /** Frozen core edits (DCE / export keyword) are internal. */
-  internal: boolean
 }
 
 export class RewriteSet {
@@ -239,7 +237,6 @@ export class RewriteSet {
           by: e.by,
           seq,
           claim: null,
-          internal: false,
         })
       }
     }
@@ -266,7 +263,6 @@ export class RewriteSet {
         by: claim.by,
         seq: claimSeq(claim.region),
         claim: claim.region,
-        internal: false,
       })
     }
     const tree = new RenderTree(edits, this.regions)
@@ -589,8 +585,8 @@ export class RenderTree {
     return true
   }
 
-  /** The erased parts of this tree inside `[start, end)` (for provenance). */
-  erasedParts(start: number, end: number): Array<Range> {
+  /** The erased parts of this tree (for provenance). */
+  erasedParts(): Array<Range> {
     const out: Array<Range> = []
     // `excluded`: the edits on exactly the visited range already looked
     // through (a claim, its override, an edit whose slice keeps its whole
@@ -637,7 +633,7 @@ export class RenderTree {
         }
       }
     }
-    visit(start, end, NO_EDITS)
+    visit(0, Infinity, NO_EDITS)
     return out
   }
 }

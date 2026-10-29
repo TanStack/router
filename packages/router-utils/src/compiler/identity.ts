@@ -24,9 +24,7 @@ export interface DerivedQuery {
 }
 
 export interface SourceIdentity {
-  /** Exactly what the bundler passed (path?query, \0virtual, …). */
-  hostId: string
-  /** hostId minus ONLY the compiler-owned query keys. */
+  /** The id the bundler passed (path?query, \0virtual, …) minus ONLY the compiler-owned query keys. */
   canonicalId: string
   /** canonicalId without any query — fs watching, path-based rules, map `sources` only. */
   path: string
@@ -143,7 +141,6 @@ export function identify(hostId: string): SourceIdentity {
   const canonicalId =
     base + (foreignQuery.length > 0 ? `?${foreignQuery}` : '') + hash
   return {
-    hostId,
     canonicalId,
     path: base,
     foreignQuery,
