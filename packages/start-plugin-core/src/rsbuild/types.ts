@@ -12,6 +12,5 @@ export interface RsbuildCoreOptions {
 }
 
 export type TanStackStartRsbuildPluginCoreOptions = TanStackStartCoreOptions & {
-  ssrIsProvider: boolean
   rsbuild?: RsbuildCoreOptions | undefined
 }

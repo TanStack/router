@@ -93,7 +93,6 @@ export interface TransformImportRule {
   libraryDirectory?: string
   customName?: string | ((member: string) => string | undefined)
   camelToDashComponentName?: boolean
-  transformToDefaultImport?: boolean
   ignoreEsComponent?: Array<string>
 }
 
@@ -104,7 +103,7 @@ export interface StartRsbuildSessionOptions {
   root: () => string
   srcDirectory: () => string
   environments: Array<StartRsbuildEnvironment>
-  ssrIsProvider: boolean
+  /** RSC on: the RSC layer of the server environment provides the server fns (else SSR does). */
   rsc: StartRscOptions | undefined
   /** The Rspack layer running the RSC render (RSC on). */
   rscLayer: string | undefined
@@ -347,10 +346,9 @@ export class StartRsbuildCompilerSession {
     const startEnv: StartEnvConfig = {
       framework: opts.framework,
       root,
-      providerSeparate: !opts.ssrIsProvider,
+      providerSeparate: opts.rsc !== undefined,
       idMode,
       providerDirective: opts.rsc?.providerDirective,
-      alwaysDeriveProvider: opts.rsc !== undefined,
     }
     const router = this.routerPlannerConfig(env.type)
     const hydrate: HydratePlannerConfig = {
@@ -372,7 +370,6 @@ export class StartRsbuildCompilerSession {
         mode: opts.mode,
         framework: opts.framework,
         root,
-        ssrIsProvider: opts.ssrIsProvider,
         idMode,
         rsc: opts.rsc ?? null,
         env: env.name,
@@ -639,10 +636,8 @@ export class StartRsbuildCompilerSession {
     if (late ? identity.lang !== null : identity.lang === null) {
       return passthrough
     }
+    // (the late pass is registered only with import protection on)
     const ip = this.ip
-    if (late && !ip) {
-      return passthrough
-    }
     if (!late && !this.compiles(identity.path, source)) {
       return passthrough
     }
@@ -844,8 +839,8 @@ export class StartRsbuildCompilerSession {
     return manifestResolverModule({
       entries: this.registry.entries(),
       providerModuleId: (e) => this.providerModuleId(e),
-      clientReferencedOnly: opts.mode === 'build' && opts.ssrIsProvider,
-      warnUnreferenced: opts.mode === 'dev' && opts.ssrIsProvider,
+      clientReferencedOnly: opts.mode === 'build' && opts.rsc === undefined,
+      warnUnreferenced: opts.mode === 'dev' && opts.rsc === undefined,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
       // RSC build (J4.2): the RSC coordinator interleaves the server and client
@@ -854,7 +849,7 @@ export class StartRsbuildCompilerSession {
       // reach the provider through it) and gates client-origin calls on a
       // set the server asset pipeline fills in once the client build exists
       clientOriginGate:
-        opts.mode === 'build' && !opts.ssrIsProvider
+        opts.mode === 'build' && opts.rsc !== undefined
           ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
           : undefined,
     })
@@ -871,12 +866,9 @@ export class StartRsbuildCompilerSession {
     )
   }
 
-  /** The entries of a rank for the custom-id allocation: client-referenced first, the rest after. */
-  allocateIds(envType: 'client' | 'server'): FunctionIdAllocator | null {
-    const allocator = this.allocator
-    if (!allocator) {
-      return null
-    }
+  /** The entries of a rank for the custom-id allocation (with a custom generator): client-referenced first, the rest after. */
+  allocateIds(envType: 'client' | 'server'): FunctionIdAllocator {
+    const allocator = this.allocator!
     const entries = this.registry.entries()
     allocator.allocate(
       envType === 'client'

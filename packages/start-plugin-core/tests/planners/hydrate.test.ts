@@ -4,6 +4,7 @@
  * and for its `?tss-hydrate=<id>` chunks.
  */
 import { createHash } from 'node:crypto'
+import { posix } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   expectMapsTo,
@@ -12,7 +13,6 @@ import {
 } from '@tanstack/compiler-test-utils/source-maps'
 import { createHydratePlanner } from '../../src/planners/hydrate'
 import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
-import type { HydratePlanFacts } from '../../src/planners/hydrate'
 import type {
   CompileOutput,
   EnvInfo,
@@ -52,10 +52,11 @@ function idAt(code: string, needle = '<Hydrate', nth = 0): string {
 interface Compiled {
   out: CompileOutput
   code: string
+  /** The boundaries the output extracts (the chunks it imports, nested ones included), in source order. */
+  extracted: Array<{ id: string; chunk: string }>
   /** Chunk code by boundary id. */
   chunks: Record<string, string>
   chunkOutputs: Record<string, CompileOutput>
-  facts: HydratePlanFacts
   errors: Array<{ code: string | undefined; start: number | undefined }>
   host: MemoryHost
 }
@@ -88,30 +89,44 @@ async function compile(
   if (!out) {
     throw new Error('the module was not compiled')
   }
-  const facts = (out.facts.planners.hydrate as
-    | HydratePlanFacts
-    | undefined) ?? {
-    boundaries: [],
-  }
+  // the chunks the output imports, directly or through the module's other
+  // outputs (a boundary in a component an extracted-export module holds)
+  const extracted: Compiled['extracted'] = []
   const chunks: Record<string, string> = {}
   const chunkOutputs: Record<string, CompileOutput> = {}
-  for (const b of facts.boundaries) {
-    if (b.chunk) {
-      const c = await host.compile(b.chunk, planners, {
+  const seen = new Set<string>()
+  const ownOutput = `./${posix.basename(path)}?`
+  const visit = async (output: CompileOutput): Promise<void> => {
+    for (const e of output.edges) {
+      if (!e.specifier.startsWith(ownOutput) || seen.has(e.specifier)) {
+        continue
+      }
+      seen.add(e.specifier)
+      const derived = posix.join(posix.dirname(path), e.specifier)
+      const c = (await host.compile(derived, planners, {
         env,
         config,
         wantMap: opts.wantMap,
-      })
-      chunks[b.id] = c!.code
-      chunkOutputs[b.id] = c!
+      }))!
+      const id = /[?&]tss-hydrate=([^&]+)/.exec(e.specifier)?.[1]
+      if (id !== undefined) {
+        extracted.push({ id, chunk: derived })
+        chunks[id] = c.code
+        chunkOutputs[id] = c
+      }
+      await visit(c)
     }
   }
+  await visit(out)
+  // (an id's ordinal counts the boundaries before it: `idAt`)
+  const ordinal = (id: string) => parseInt(id.split('_')[0]!, 36)
+  extracted.sort((a, b) => ordinal(a.id) - ordinal(b.id))
   return {
     out,
     code: out.code,
+    extracted,
     chunks,
     chunkOutputs,
-    facts,
     errors: out.diagnostics
       .filter((d) => d.severity === 'error')
       .map((d) => ({ code: d.code, start: d.range?.start })),
@@ -151,7 +166,7 @@ describe('recognition (J5.1)', () => {
     const code = `${head}import { Chart } from './chart'\nexport const Page = ({ w }) => ${open}<Chart />${close}\n`
     const { client, server } = await both(code)
     const id = idAt(code, open)
-    expect(client.facts.boundaries).toEqual([
+    expect(client.extracted).toEqual([
       { id, chunk: `${FILE}?tss-hydrate=${id}` },
     ])
     expect(client.code).toContain(
@@ -222,10 +237,10 @@ export const Deeper = () => <Start.X.Hydrate><p>local</p></Start.X.Hydrate>
     ],
   ])('%s is a look-alike (G15)', async (_, code) => {
     const { client, server } = await both(code)
-    expect(client.facts.boundaries).toHaveLength(1)
+    expect(client.extracted).toHaveLength(1)
     expect(client.code).toContain('<p>local</p>')
     expect(server.code).toContain('<p>local</p>')
-    expect(prefixes(server.code)).toEqual([client.facts.boundaries[0]!.id])
+    expect(prefixes(server.code)).toEqual([client.extracted[0]!.id])
   })
 
   it('splits the split shorthand and a dynamic split', async () => {
@@ -292,7 +307,7 @@ export { TsrHydrate0 as H0 }
 }
 `
     const client = await compile(code)
-    const ids = client.facts.boundaries.map((b) => b.id)
+    const ids = client.extracted.map((b) => b.id)
     expect(client.chunks[ids[0]!]).toBe(
       'function TsrHydrate0() { return <> <p>x</p> </> }\nexport { TsrHydrate0 as H0 }\n',
     )
@@ -314,7 +329,7 @@ export { TsrHydrate0 as H0 }
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       `<Hydrate h="${b!.id}">{<TsrHydrate0 label={label}/>}</Hydrate>`,
     )
@@ -358,7 +373,7 @@ export function Page() {
     async (_, jsx) => {
       const code = `${REACT}export const Page = (props) => ${jsx}\n`
       const { client, server } = await both(code)
-      expect(client.facts.boundaries).toEqual([{ id: idAt(code), chunk: null }])
+      expect(client.extracted).toEqual([])
       expect(prefixes(client.code)).toEqual([])
       expect(prefixes(server.code)).toEqual([])
       expect(client.code).not.toContain('lazyRouteComponent')
@@ -398,7 +413,7 @@ export function Page({ props }) {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       "import { lazyRouteComponent as tsrLazy$1 } from '@tanstack/react-router'",
     )
@@ -418,7 +433,7 @@ export { TsrHydrate0$1 as H0 }
   it('keeps a foreign query on the chunk id and its specifier', async () => {
     const code = `${REACT}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
     const client = await compile(code, { id: `${FILE}?flavour=b` })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(b!.chunk).toBe(`${FILE}?flavour=b&tss-hydrate=${b!.id}`)
     expect(client.code).toContain(
       `import('./page.tsx?flavour=b&tss-hydrate=${b!.id}')`,
@@ -431,7 +446,7 @@ export { TsrHydrate0$1 as H0 }
 export const Page = () => <Hydrate><Chart /></Hydrate>
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     const env = client.out.edges.map((e) => [e.specifier, e.provenance.origin])
     expect(env).toContainEqual(['@tanstack/react-router', 'runtime'])
     expect(env).toContainEqual([`./page.tsx?tss-hydrate=${b!.id}`, 'runtime'])
@@ -450,7 +465,7 @@ export const Page = () => <Hydrate><Chart /></Hydrate>
 export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     const fresh = new MemoryHost({ [FILE]: code })
     const config = {
       configKey: 'cfg',
@@ -469,7 +484,7 @@ export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
 describe('captures (J5.2)', () => {
   const capturesOf = async (body: string) => {
     const client = await compile(`${REACT}${body}`, { env: clientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     return { code: client.code, chunk: client.chunks[b!.id]!, client }
   }
 
@@ -502,7 +517,7 @@ export function Page() {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain('<TsrHydrate0 label={label} value={value}/>')
     expect(client.code).not.toContain('./labels')
     expect(client.chunks[b!.id]).toBe(
@@ -579,7 +594,7 @@ export function Page({ v }: { v: unknown }) {
     const { code, chunk, client } = await capturesOf(`export function Page() {
   return <Hydrate><p>{arguments[0].title}{(() => arguments.length)()}</p><Hydrate>{arguments.length}</Hydrate></Hydrate>
 }`)
-    const [, inner] = client.facts.boundaries
+    const [, inner] = client.extracted
     expect(code).toContain('<TsrHydrate0 tsrArguments={arguments}/>')
     expect(chunk).toContain(
       'function TsrHydrate0({ tsrArguments }) { return <><p>{tsrArguments[0].title}{(() => tsrArguments.length)()}</p>',
@@ -599,7 +614,7 @@ export function Page({ v }: { v: unknown }) {
 }
 `
     const client = await compile(code)
-    const [outer, inner] = client.facts.boundaries
+    const [outer, inner] = client.extracted
     expect(client.code).toContain(
       '<TsrHydrate0 label={label} isOpen={isOpen} fee={fee}/>',
     )
@@ -628,7 +643,7 @@ describe('Solid (J5.2)', () => {
 }
 `
     const client = await compile(code, { env: clientEnv })
-    const [outer, inner] = client.facts.boundaries
+    const [outer, inner] = client.extracted
     expect(client.code).toContain(
       '<TsrHydrate0 read={read} value={value} Local={Local} label={label} props={props}/>',
     )
@@ -648,7 +663,7 @@ describe('Solid (J5.2)', () => {
 }
 `
     const client = await compile(code, { env: clientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       "<TsrHydrate0 setOther={setOther} tsrRef$input={(el) => typeof input === 'function' ? input(el) : (input = el)}/>",
     )
@@ -677,7 +692,7 @@ export function Page() {
 }
 `
     const client = await compile(code, { env: clientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).not.toContain('./tip')
     expect(client.code).toContain('<TsrHydrate0 local={local}/>')
     expect(client.chunks[b!.id]).toBe(
@@ -695,7 +710,7 @@ export { TsrHydrate0 as H0 }
 }
 `
     const client = await compile(code, { env: clientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       '<TsrHydrate0 tsrCap$ref={ref} tsrArguments={arguments}/>',
     )
@@ -725,7 +740,7 @@ function Page() {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.errors).toEqual([])
     expect(client.chunks[b!.id]).toBe(
       `import { Route, store, helper } from './page.tsx'
@@ -749,7 +764,7 @@ export { TsrHydrate0 as H0 }
 export const Page = () => <Hydrate><p>{(() => { renders = 1 })()}</p></Hydrate>
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.errors).toEqual([])
     expect(client.chunks[b!.id]).toContain('let renders = 0')
     expect(client.code).not.toContain('renders')
@@ -776,7 +791,7 @@ export function bump() { clicks++ }
 export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.chunks[b!.id]).toContain(
       "import { clicks } from './page.tsx'",
     )
@@ -799,7 +814,7 @@ export const setTheme = (t: string) => { theme = t }
 export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
 `
     const client = await compile(code, { env: buildClientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.chunks[b!.id]).toContain(
       "import { theme } from './page.tsx?tsr-split=export~setTheme'",
     )
@@ -820,7 +835,7 @@ export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
 export const Page = () => <Hydrate><Card /></Hydrate>
 `
     const built = await compile(code, { env: buildClientEnv })
-    const [b] = built.facts.boundaries
+    const [b] = built.extracted
     expect(built.chunks[b!.id]).toContain(
       'function Card() { return <b>card</b> }',
     )
@@ -846,7 +861,7 @@ export const Page = () => <Hydrate><Card /></Hydrate>
 }
 `
     const built = await compile(code, { env: buildClientEnv })
-    const [b] = built.facts.boundaries
+    const [b] = built.extracted
     expect(built.chunks[b!.id]).toContain(
       "import { Tree } from './page.tsx?tsr-split=export~Tree'",
     )
@@ -866,7 +881,7 @@ import { h } from './h'
 ${REACT}export const Page = () => <div><Hydrate>text only</Hydrate></div>
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.chunks[b!.id]).toBe(
       `/** @jsxRuntime classic */
 /** @jsx h */
@@ -1016,13 +1031,6 @@ export class Page extends Base {
       expect(client.code).toBe(code)
       expect(server.code).toBe(code)
     }
-  })
-
-  it('reports nothing on the server with rejectEverywhere: false', async () => {
-    const { server } = await both(page('<p>{useThing()}</p>'), {
-      config: { rejectEverywhere: false },
-    })
-    expect(server.errors).toEqual([])
   })
 
   it('validates a nested boundary on its own (the outer one renders its placeholder)', async () => {
@@ -1191,7 +1199,7 @@ export function Page({ a, b }) {
   it('serves no chunk on the server', async () => {
     const code = `${REACT}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
     const server = await compile(code, { env: ssrEnv })
-    expect(server.facts.boundaries).toEqual([{ id: idAt(code), chunk: null }])
+    expect(server.extracted).toEqual([])
     const chunk = await server.host.compile(
       `${FILE}?tss-hydrate=${idAt(code)}`,
       [hydrate],
@@ -1212,12 +1220,12 @@ describe('hydration ids (J5.4)', () => {
     ).join('')}</>\n`
     const { client, server } = await both(code)
     const ids = Array.from({ length: 11 }, (_, i) => idAt(code, '<Hydrate', i))
-    expect(client.facts.boundaries.map((b) => b.id)).toEqual(ids)
+    expect(client.extracted.map((b) => b.id)).toEqual(ids)
     expect(prefixes(client.code)).toEqual(ids)
     expect(prefixes(server.code)).toEqual(ids)
     expect(new Set(ids).size).toBe(11)
     const other = await compile(code, { id: '/app/src/other.tsx' })
-    expect(other.facts.boundaries[0]!.id).not.toBe(ids[0])
+    expect(other.extracted[0]!.id).not.toBe(ids[0])
   })
 
   it('keeps ids past a nested split={false} boundary and a boundary inside a fallback', async () => {
@@ -1312,8 +1320,7 @@ export const Page = () => <div><Hydrate><p>b</p></Hydrate></div>
     const removed = idAt(code)
     const later = idAt(code, '<Hydrate', 1)
     expect(client.errors).toEqual([])
-    expect(client.facts.boundaries).toEqual([
-      { id: removed, chunk: null },
+    expect(client.extracted).toEqual([
       { id: later, chunk: `${FILE}?tss-hydrate=${later}` },
     ])
     expect(client.code).not.toContain(removed)
@@ -1499,26 +1506,32 @@ export const Route = createFileRoute('/')({
 `
     const planners = [hydrate, toySplitPlanner()]
     const client = await compile(code, { planners })
-    const [b] = client.facts.boundaries
+    const id = idAt(code)
     expect(client.code).not.toContain('H0')
     expect(client.code).not.toContain('./chart')
+    const options = {
+      env: clientEnv,
+      config: { configKey: 'cfg', perPlanner: { hydrate: { root: ROOT } } },
+    }
     const component = await client.host.compile(
       `${FILE}?tsr-split=component`,
       planners,
-      {
-        env: clientEnv,
-        config: { configKey: 'cfg', perPlanner: { hydrate: { root: ROOT } } },
-      },
+      options,
     )
     expect(component!.code).toBe(
       `import { lazyRouteComponent as tsrLazy } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
-const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'H0')
-const TsrSplitComponent = () => <div><Hydrate h="${b!.id}"><TsrHydrate0/></Hydrate></div>
+const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${id}'), 'H0')
+const TsrSplitComponent = () => <div><Hydrate h="${id}"><TsrHydrate0/></Hydrate></div>
 export { TsrSplitComponent as component }
 `,
     )
-    expect(client.chunks[b!.id]).toBe(
+    const chunk = await client.host.compile(
+      `${FILE}?tss-hydrate=${id}`,
+      planners,
+      options,
+    )
+    expect(chunk!.code).toBe(
       `import { Route } from './page.tsx'
 import { Chart } from './chart'
 function TsrHydrate0() { return <><Chart />{Route.id}</> }
@@ -1545,7 +1558,7 @@ describe('source maps (G6)', () => {
 }
 `
     const client = await compile(code, { wantMap: true })
-    const [first, second] = client.facts.boundaries
+    const [first, second] = client.extracted
     const expectMapped = (
       output: CompileOutput,
       query: { string: string },
@@ -1590,8 +1603,15 @@ function Tree({ n }) {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
-    const chunk = client.chunks[b!.id]!
+    // (no module output renders the boundary: the chunk is compiled on its own)
+    const chunk = (await client.host.compile(
+      `${FILE}?tss-hydrate=${idAt(code)}`,
+      [hydrate],
+      {
+        env: clientEnv,
+        config: { configKey: 'cfg', perPlanner: { hydrate: { root: ROOT } } },
+      },
+    ))!.code
     expect(client.code).not.toContain('function Tree')
     expect(chunk).toContain(
       'function Tree({ n }) {\n  return n > 0 ? <Hydrate h="',
@@ -1614,8 +1634,15 @@ function Tree({ n }) {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
-    const chunk = client.chunks[b!.id]!
+    // (no module output renders the boundary: the chunk is compiled on its own)
+    const chunk = (await client.host.compile(
+      `${FILE}?tss-hydrate=${idAt(code)}`,
+      [hydrate],
+      {
+        env: clientEnv,
+        config: { configKey: 'cfg', perPlanner: { hydrate: { root: ROOT } } },
+      },
+    ))!.code
     expect(chunk).toContain('function Tree({ n })')
     expect(chunk).toContain('function Branch({ n })')
     expect(chunk).toContain('const TsrHydrate0$1 = ')
@@ -1644,7 +1671,7 @@ function Tree({ n }) {
 }
 `
     const { client, server } = await both(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       `<Hydrate h="${b!.id}" // deferred\n    >\n      <TsrHydrate0/>`,
     )
@@ -1661,7 +1688,7 @@ function Tree({ n }) {
 }
 `
     const client = await compile(code)
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       `<Hydrate when={w} h="${b!.id}" /* soon */>\n      <TsrHydrate0/>`,
     )
@@ -1674,7 +1701,7 @@ function Tree({ n }) {
     const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }
 `
     const marked = await compile(code, { config: { refreshMarkers: true } })
-    const [b] = marked.facts.boundaries
+    const [b] = marked.extracted
     expect(marked.chunks[b!.id]).toBe(
       `function TsrHydrate0() { return (<p>x</p>) }\nTsrHydrate0.$$tsrRefreshId = ${JSON.stringify(`${b!.chunk} TsrHydrate0`)}\nexport { TsrHydrate0 as H0 }\n`,
     )
@@ -1701,7 +1728,7 @@ function Tree({ n }) {
 }
 `
     const client = await compile(code, { env: clientEnv })
-    const [b] = client.facts.boundaries
+    const [b] = client.extracted
     expect(client.code).toContain(
       "<TsrHydrate0 el={(() => el)()} count={(() => count)()} label={label} tsrRef$el={(el$1) => typeof el === 'function' ? el(el$1) : (el = el$1)}/>",
     )

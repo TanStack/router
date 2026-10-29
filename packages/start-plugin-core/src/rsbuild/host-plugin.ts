@@ -354,9 +354,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
         const allocator = session.allocateIds(environment.type)
-        if (!allocator) {
-          return
-        }
         for (const asset of compilation.getAssets()) {
           if (!/\.[cm]?js$/.test(asset.name)) {
             continue

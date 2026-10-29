@@ -34,8 +34,6 @@ export interface ChainLink {
   member: MemberNode
   /** The receiver's value before this link. */
   receiver: AbstractValue
-  /** The value after this link. */
-  result: AbstractValue
   /** The first argument (null when absent). */
   arg: Node | null
   argIsSpread: boolean
@@ -70,12 +68,9 @@ export interface RscCall {
 
 export interface UnsupportedUse {
   node: Node
-  value: AbstractValue
 }
 
 export interface StartAnalysis {
-  values: ValueAnalysis
-  table: RecognizerTable
   chains: Array<Chain>
   envOnlyCalls: Array<EnvOnlyCall>
   clientOnlyElements: Array<JsxElementNode>
@@ -115,13 +110,13 @@ function isLeakProne(table: RecognizerTable, v: AbstractValue): boolean {
 export function startAnalysisOf(
   ctx: Pick<PlanContext, 'analysis' | 'symbols' | 'prefetched'>,
   table: RecognizerTable,
-  prefetchName = 'start-env',
 ): StartAnalysis {
   const hit = cache.get(ctx.analysis)
   if (hit) {
     return hit
   }
-  const prefetch = ctx.prefetched.get(prefetchName) as StartPrefetch | undefined
+  // (rsc-css reads start-env's prefetch: both planners run where the Start compiler does)
+  const prefetch = ctx.prefetched.get('start-env') as StartPrefetch | undefined
   const file = ctx.analysis.file
   const values = new ValueAnalysis(file, {
     table,
@@ -131,8 +126,6 @@ export function startAnalysisOf(
     declarations: ctx.analysis.declarations,
   })
   const result: StartAnalysis = {
-    values,
-    table,
     chains: [],
     envOnlyCalls: [],
     clientOnlyElements: [],
@@ -242,7 +235,7 @@ export function startAnalysisOf(
             unsupported = true
             if (!seenUnsupported.has(member)) {
               seenUnsupported.add(member)
-              result.unsupported.push({ node: member, value })
+              result.unsupported.push({ node: member })
             }
           }
           break
@@ -267,8 +260,7 @@ export function startAnalysisOf(
               call,
               member,
               receiver: value,
-              result: v2,
-              arg: arg && arg.type === 'SpreadElement' ? arg : arg,
+              arg,
               argIsSpread: arg?.type === 'SpreadElement',
             })
             if (v2.t === 'unknown') {

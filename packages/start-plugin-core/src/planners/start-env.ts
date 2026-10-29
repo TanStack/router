@@ -31,10 +31,9 @@ import {
   devFunctionId,
   placeholderId,
 } from '../server-fns/ids'
-import type { Chain, StartAnalysis } from '../compiler/start-analysis'
+import type { Chain } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
-  Diagnostic,
   EditScope,
   Frag,
   GenUnitId,
@@ -54,18 +53,18 @@ export interface StartEnvConfig {
   framework: CompileStartFrameworkOptions
   /** The project root ids and `serverFnMeta.filename` are relative to. */
   root: string
-  /** Whether the server-fn provider is a different env than the SSR caller (Vite RSC). */
+  /**
+   * Whether the server-fn provider is a different env than the SSR caller
+   * (RSC: the `rsc` environment or layer). Every module defining server fns
+   * then gets a derived provider module (`?tss-serverfn-split`): the provider
+   * env evaluates only what the server fns need (a route module's client-only
+   * module-level code, e.g. `createContext`, fails under `react-server`).
+   */
   providerSeparate: boolean
   /** `dev`: opaque dev ids; `default`: hashed ids; `placeholder`: a custom generator decides at renderChunk. */
   idMode: 'dev' | 'default' | 'placeholder'
   /** The directive a derived provider module carries (RSC), if any. */
   providerDirective?: string
-  /**
-   * Every module defining server fns gets a derived provider module, not
-   * only `'use client'` ones (RSC on Vite and Rsbuild: the provider is the
-   * `rsc` environment or layer, selected by the `?tss-serverfn-split` query).
-   */
-  alwaysDeriveProvider?: boolean
   /** Whether resolved ids are opaque packages (never read for summaries). */
   isOpaque?: (resolvedCanonicalId: string) => boolean
 }
@@ -192,8 +191,6 @@ function enclosingFunctionNames(
 
 interface ServerFnSite {
   chain: Chain
-  /** The terminal `.handler(h)` call node. */
-  call: Extract<Node, { type: 'CallExpression' }>
   handler: Node
   base: string
   stableKey: string
@@ -394,25 +391,18 @@ function planStartEnv(
       by,
     })
   const specs = runtimeSpecifiers(config.framework)
-  const useClient = ma.header.directives.some((d) => d.value === 'use client')
   const rootRel = relativeRoot(config.root, ctx.identity.path)
   const facts: StartEnvFacts = { serverFns: [] }
 
-  const diag = (
-    message: string,
-    range: Range,
-    severity: Diagnostic['severity'] = 'error',
-    code?: string,
-  ) => ctx.diagnostic({ severity, message, range, by, code })
+  const diag = (message: string, range: Range) =>
+    ctx.diagnostic({ severity: 'error', message, range, by })
 
-  // ---- derived provider output (RSC: a 'use client' module compiled by the separate provider env)
+  // ---- derived provider output (RSC: the module as the separate provider env compiles it)
   let providerOut: OutputId | null = null
   const serverFnChains = analysis.chains.filter(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
-  const derivesProvider =
-    config.providerSeparate &&
-    (useClient || config.alwaysDeriveProvider === true)
+  const derivesProvider = config.providerSeparate
   if (role === 'provider' && derivesProvider && serverFnChains.length > 0) {
     providerOut = ctx.declareOutput({
       kind: 'provider',
@@ -593,7 +583,6 @@ function planStartEnv(
     keyCount.set(baseKey, n + 1)
     sites.push({
       chain,
-      call: handlerLink.call,
       handler: handlerLink.arg,
       base: described.base || 'fn',
       stableKey: n === 0 ? baseKey : `${baseKey}#${n}`,
@@ -736,7 +725,7 @@ function planStartEnv(
     // at the capture, or every env supports it); the hoist itself happens on the provider
     let hoisted: ReturnType<typeof hoist> = null
     if (site.nested) {
-      hoisted = hoist(ctx, analysis, site, providerOut ?? 'auto', by)
+      hoisted = hoist(ctx, site, providerOut ?? 'auto', by)
       if (!hoisted) {
         continue
       }
@@ -1034,7 +1023,6 @@ function relativeRoot(root: string, path: string): string {
  */
 function hoist(
   ctx: PlanContext,
-  analysis: StartAnalysis,
   site: ServerFnSite,
   home: 'auto' | OutputId,
   by: string,

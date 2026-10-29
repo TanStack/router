@@ -31,7 +31,6 @@ import {
 import type {
   ClassifiedRef,
   Diagnostic,
-  GateContext,
   ModuleAnalysis,
   OutputId,
   PlanContext,
@@ -54,15 +53,6 @@ export type HydrateFramework = 'react' | 'solid'
 export interface HydratePlannerConfig {
   /** Project root: boundary ids hash the path relative to it. */
   root: string
-  /** Packages whose `Hydrate` export is a boundary, with their framework. */
-  packages?: Readonly<Record<string, HydrateFramework>>
-  /** The package `lazyRouteComponent` is imported from, per framework. */
-  routerPackages?: Readonly<Partial<Record<HydrateFramework, string>>>
-  /**
-   * Server compiles report the rejections the client reports (J5.5: every
-   * compile that would extract the boundary fails alike). Default true.
-   */
-  rejectEverywhere?: boolean
   /**
    * React development: the chunk component carries the route-HMR identity
    * marker (`$$tsrRefreshId`: chunk id + name, compared by the route-HMR runtime
@@ -72,21 +62,12 @@ export interface HydratePlannerConfig {
   refreshMarkers?: boolean
 }
 
-/** Facts a plan records for its boundaries (plain data). */
-export interface HydratePlanFacts {
-  boundaries: Array<{
-    /** The hydration id prefix both envs render (`h`). */
-    id: string
-    /** The chunk's derived canonical id when this env extracts the boundary. */
-    chunk: string | null
-  }>
-}
-
 export const HYDRATE_PLANNER = 'hydrate'
 /** The boundary component the planner recognises (imported from a Start package). */
 export const HYDRATE_COMPONENT = 'Hydrate'
 
-const DEFAULT_PACKAGES: Readonly<Record<string, HydrateFramework>> = {
+/** Packages whose `Hydrate` export is a boundary, with their framework. */
+const PACKAGES: Readonly<Record<string, HydrateFramework>> = {
   '@tanstack/react-start': 'react',
   '@tanstack/solid-start': 'solid',
 }
@@ -97,9 +78,6 @@ const RESERVED_PROPS = new Set(['key', 'ref', 'children'])
 
 interface ResolvedConfig {
   root: string
-  packages: Readonly<Record<string, HydrateFramework>>
-  routerPackage: (fw: HydrateFramework) => string
-  rejectEverywhere: boolean
   refreshMarkers: boolean
 }
 
@@ -110,13 +88,7 @@ function resolveConfig(config: unknown): ResolvedConfig {
       `the ${HYDRATE_PLANNER} planner needs \`root\` in its config (config.perPlanner.${HYDRATE_PLANNER})`,
     )
   }
-  return {
-    root: c.root,
-    packages: c.packages ?? DEFAULT_PACKAGES,
-    routerPackage: (fw) => c.routerPackages?.[fw] ?? `@tanstack/${fw}-router`,
-    rejectEverywhere: c.rejectEverywhere ?? true,
-    refreshMarkers: c.refreshMarkers ?? false,
-  }
+  return { root: c.root, refreshMarkers: c.refreshMarkers ?? false }
 }
 
 /**
@@ -127,20 +99,17 @@ export function createHydratePlanner(): Planner {
   return {
     name: HYDRATE_PLANNER,
     tier: 1,
-    gate: (t0, ctx) => gate(t0, ctx),
+    gate: (t0) => gate(t0),
     plan: (ctx) => plan(ctx),
   }
 }
 
-function gate(t0: ModuleAnalysis, ctx: GateContext): boolean {
-  const packages =
-    (ctx.config as Partial<HydratePlannerConfig> | undefined)?.packages ??
-    DEFAULT_PACKAGES
+function gate(t0: ModuleAnalysis): boolean {
   return (
     t0.imports.some(
       (imp) =>
         !imp.typeOnly &&
-        packages[imp.specifier] !== undefined &&
+        PACKAGES[imp.specifier] !== undefined &&
         imp.specifiers.some(
           (s) =>
             !s.typeOnly &&
@@ -213,7 +182,7 @@ function findBoundaries(
       : null
   }
   for (const imp of analysis.imports) {
-    const fw = cfg.packages[imp.specifier]
+    const fw = PACKAGES[imp.specifier]
     if (fw === undefined || imp.typeOnly) {
       continue
     }
@@ -430,7 +399,6 @@ function plan(ctx: PlanContext): void {
   const liveEnv = ctx.liveness('env')
   const live = (b: Boundary) =>
     !liveEnv.isErased({ start: b.element.start, end: b.element.start + 1 })
-  const facts: HydratePlanFacts = { boundaries: [] }
   const shared = new SharedNames(ctx)
 
   if (!client) {
@@ -439,18 +407,17 @@ function plan(ctx: PlanContext): void {
       erased.push(...stripFallback(ctx, b))
       if (b.split && b.children) {
         prefix(ctx, b, null)
-        if (cfg.rejectEverywhere && live(b)) {
+        // every compile that would extract the boundary fails alike (J5.5)
+        if (live(b)) {
           validate(ctx, b, nestedRegions(boundaries, b))
         }
       }
-      facts.boundaries.push({ id: b.id, chunk: null })
     }
     if (erased.length > 0) {
       // function-scope orphans of the stripped fallbacks: the core's cleanup
       // (pure initialisers go, impure ones stay as statements with what they read)
       cleanOrphanedDeclarations(ctx, 'all-outputs', HYDRATE_PLANNER)
     }
-    ctx.setFacts(HYDRATE_PLANNER, facts)
     return
   }
 
@@ -490,7 +457,7 @@ function plan(ctx: PlanContext): void {
   for (const b of boundaries) {
     const p = planned.get(b)
     if (p) {
-      addLazyConst(ctx, b, names.get(b)!, p.sym, p.chunk, cfg)
+      addLazyConst(ctx, b, names.get(b)!, p.sym, p.chunk)
     }
     if (names.has(b)) {
       prefix(
@@ -499,12 +466,10 @@ function plan(ctx: PlanContext): void {
         p && mayHaveProp(ctx, b.opening, 'prefetch') ? p.sym : null,
       )
     }
-    facts.boundaries.push({ id: b.id, chunk: p?.chunk ?? null })
   }
   if (planned.size > 0) {
     extractExports(ctx)
   }
-  ctx.setFacts(HYDRATE_PLANNER, facts)
 }
 
 /**
@@ -1250,10 +1215,9 @@ function addLazyConst(
   { lazyImport }: BoundaryNames,
   lazy: SymbolId,
   chunkId: string,
-  cfg: ResolvedConfig,
 ): void {
   const spec = siblingSpecifier(chunkId)
-  const router = cfg.routerPackage(b.framework)
+  const router = `@tanstack/${b.framework}-router`
   ctx.rewrites.addGenerated({
     body: [
       {

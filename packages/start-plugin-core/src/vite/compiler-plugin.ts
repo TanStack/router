@@ -89,7 +89,11 @@ import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ServerFnEntry } from '../server-fns/registry'
 import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
-import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
+import type {
+  CompileStartFrameworkOptions,
+  GetConfigFn,
+  StartRscOptions,
+} from '../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
 import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
@@ -113,13 +117,6 @@ import type {
   ViteDevServer,
 } from 'vite'
 
-export interface StartRscCompilerOptions {
-  /** The RSC host's CSS loader expression (`import.meta.viteRsc.loadCss()`). */
-  loadCssExpression: string
-  /** The directive derived provider modules carry, if any. */
-  providerDirective?: string
-}
-
 export interface StartCompilerEnvironment {
   name: string
   type: 'client' | 'server'
@@ -132,7 +129,7 @@ export interface StartCompilerPluginOptions {
   generateFunctionId?: GenerateFunctionId
   /** The Vite environment name of the server function provider. */
   providerEnvName: string
-  rsc?: StartRscCompilerOptions | undefined
+  rsc?: StartRscOptions | undefined
   getConfig: GetConfigFn
   /** The generator's registry (route modules by file), shared with the generator plugin. */
   routerPluginContext: RouterPluginContext
@@ -416,9 +413,6 @@ export function startCompilerPlugin(
         providerSeparate: !ssrIsProvider,
         idMode,
         providerDirective: opts.rsc?.providerDirective,
-        // the rsc env evaluates only what the server fns need (a route module's client-only
-        // module-level code, e.g. `createContext`, fails under `react-server`)
-        alwaysDeriveProvider: opts.rsc !== undefined,
         isOpaque,
       }
       const hydrate: HydratePlannerConfig = {

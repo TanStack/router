@@ -46,13 +46,8 @@ export function rscCssPlanner(): Planner {
       /\b(renderServerComponent|createCompositeComponent|renderToReadableStream)\b/.test(
         t0.source.code,
       ),
-    plan(ctx) {
-      const config = ctx.config as RscCssConfig | undefined
-      if (!config) {
-        return
-      }
-      planRscCss(ctx, config, table)
-    },
+    // (registered with its config: the hosts' `rsc` option)
+    plan: (ctx) => planRscCss(ctx, ctx.config as RscCssConfig, table),
   }
 }
 

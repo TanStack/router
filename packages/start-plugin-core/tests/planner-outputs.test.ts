@@ -557,7 +557,7 @@ export const d = () => renderToReadableStream(/* c */ <X />).then((v) => v)
 })
 
 describe('derived providers of every server fn module (Rsbuild RSC)', () => {
-  // `alwaysDeriveProvider`: the provider module is the rsc layer's own
+  // a separate provider: the provider module is the rsc layer's own
   // instance of the file (`?tss-serverfn-split`), so it owns the server fn
   // declaration with its handler in place and what the handler reads; the
   // environment's own output keeps the SSR-caller stub
@@ -573,10 +573,7 @@ export function Page() {
 `,
       '/app/render.ts': `export const render = () => 'MARK'\n`,
     }
-    const opts = {
-      alwaysDeriveProvider: true,
-      providerDirective: 'use server-entry',
-    }
+    const opts = { providerDirective: 'use server-entry' }
     const env = (await compile(files, 'rsc', '/app/module.tsx', opts))!
     const provider = (await compile(
       files,

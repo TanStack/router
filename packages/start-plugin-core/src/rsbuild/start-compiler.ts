@@ -67,14 +67,12 @@ export function registerStartCompiler(
     if (session) {
       return session
     }
-    const { resolvedStartConfig } = opts.getConfig()
     session = new StartRsbuildCompilerSession({
       framework: opts.corePluginOpts.framework,
       mode: dev ? 'dev' : 'build',
       root: () => opts.getConfig().resolvedStartConfig.root,
       srcDirectory: () => opts.getConfig().resolvedStartConfig.srcDirectory,
       environments: opts.environments,
-      ssrIsProvider: opts.corePluginOpts.ssrIsProvider,
       rsc: opts.corePluginOpts.rsc,
       rscLayer: rscEnabled ? RSBUILD_RSC_LAYERS.rsc : undefined,
       generateFunctionId: opts.startPluginOpts.serverFns?.generateFunctionId,

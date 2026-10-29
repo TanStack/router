@@ -207,7 +207,6 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
   })
   const config: Partial<StartEnvConfig> = {
     providerSeparate: true,
-    alwaysDeriveProvider: true,
   }
   const files = {
     '/app/src/db.server.ts': 'export const db = { q: () => 1 }\n',
@@ -365,7 +364,6 @@ describe('a server fn nested in a function (J4.6): hoisted when it captures noth
   })
   const rscConfig: Partial<StartEnvConfig> = {
     providerSeparate: true,
-    alwaysDeriveProvider: true,
   }
   const files = {
     '/app/src/db.server.ts': 'export const db = { q: (x) => x }\n',
