@@ -221,6 +221,30 @@ async function viteDev(
   }
 }
 
+/**
+ * Vite's full-bundle dev (`experimental.bundledDev`): Rolldown bundles the
+ * client from the router entry. `typesLoaded` is the denied file's marker
+ * when the client bundle holds the file's code (the client would load it).
+ */
+async function viteBundledDev(
+  files: Record<string, string>,
+  config?: InlineConfig,
+  importProtection?: Parameters<typeof violationRecorder>[0],
+) {
+  const server = await startProtectedDevServer(files, importProtection, {
+    router: 'src/router.ts',
+    bundledDev: { entry: 'src/router.ts' },
+    config,
+  })
+  const bundle = Object.values(await server.clientBundle()).join('\n')
+  return {
+    typesLoaded: bundle.includes('MARK_TYPES_LOADED')
+      ? 'MARK_TYPES_LOADED'
+      : null,
+    reported: importersIn(server, 'client'),
+  }
+}
+
 async function rsbuildDev(
   files: Record<string, string>,
   config?: RsbuildConfig,
@@ -262,6 +286,15 @@ describe.each(layouts)('tsconfig layout: $name', (layout) => {
     timeout,
   )
   test(
+    'vite bundledDev: reported iff oxc keeps the import',
+    async () => {
+      expect(await viteBundledDev(files)).toEqual(
+        expected(layout, layout.oxcKeeps),
+      )
+    },
+    timeout,
+  )
+  test(
     'rsbuild build: SWC never reads tsconfig, the import is erased',
     async () => {
       expect(await rsbuildBuild(files)).toEqual(expected(layout, false))
@@ -299,6 +332,15 @@ describe('the transformer option wins over tsconfig', () => {
     'vite dev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
     async () => {
       expect(await viteDev(appOf(solution), oxcErases)).toEqual(
+        expected(solution, false),
+      )
+    },
+    timeout,
+  )
+  test(
+    'vite bundledDev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
+    async () => {
+      expect(await viteBundledDev(appOf(solution), oxcErases)).toEqual(
         expected(solution, false),
       )
     },
@@ -355,6 +397,15 @@ describe('onViolation returning false in dev', () => {
     async () => {
       expect(
         (await viteDev(appOf(solution), undefined, allow)).typesLoaded,
+      ).toBe('MARK_TYPES_LOADED')
+    },
+    timeout,
+  )
+  test(
+    'vite bundledDev: the import oxc keeps gets the real module',
+    async () => {
+      expect(
+        (await viteBundledDev(appOf(solution), undefined, allow)).typesLoaded,
       ).toBe('MARK_TYPES_LOADED')
     },
     timeout,
