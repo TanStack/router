@@ -13,7 +13,12 @@ import { ROUTER_PLANNER, routerPlannerApplies } from './config'
 import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
 import type { RouterPlannerConfig } from './config'
-import type { Planner } from '@tanstack/router-utils/compiler'
+import type {
+  OutputId,
+  Planner,
+  SymRef,
+  SymbolId,
+} from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
 export interface RouterRound {
@@ -22,6 +27,18 @@ export interface RouterRound {
   plan: SplitPlan
   /** Compile-time binding names of the component options left in the route module (route HMR). */
   unsplit: Record<string, string>
+  /** The components the split chunks export (the split part records them; route HMR marks them). */
+  splitComponents: Array<SplitComponent>
+}
+
+export interface SplitComponent {
+  output: OutputId
+  /** The binding the chunk exports: the user's component, or the chunk's own declaration. */
+  exported: SymRef
+  /** The module binding the option's value names, if any. */
+  valueSym: SymbolId | null
+  /** The chunk's own declaration's name. */
+  name: string
 }
 
 export function routerPlanner(): Planner {
@@ -59,6 +76,7 @@ export function routerPlanner(): Planner {
         route,
         plan: splitPlanOf(ctx, cfg, route),
         unsplit: {},
+        splitComponents: [],
       }
       for (const w of round.plan.warnings) {
         ctx.diagnostic(w)

@@ -26,7 +26,7 @@ import {
   routerRouteId,
 } from './route'
 import { methodPrefixOf } from './decisions'
-import { ROUTER_PLANNER } from './config'
+import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
 import type {
@@ -277,8 +277,57 @@ export function planHmrBlock(
       },
     ],
   })
+  if (routeRefreshMarkers(cfg)) {
+    markSplitComponents(ctx, round)
+  }
   if (!vite) {
     chunkHmr(ctx, round, route.routeId)
+  }
+}
+
+/**
+ * React: each component a split chunk exports carries the route-HMR identity
+ * marker (`$$tsrRefreshId`), compared by the runtime when the re-imported
+ * chunk arrives: the same identity is kept for React Refresh to patch in
+ * place, another one is swapped in.
+ */
+function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
+  for (const c of round.splitComponents) {
+    if (c.valueSym !== null && ctx.symbols.isImport(c.valueSym)) {
+      // a foreign module's export (an imported binding or a member of one)
+      // is not this module's to mark: React Refresh registers it where it
+      // is declared, and the object may be frozen
+      continue
+    }
+    // identity = the module React Refresh registers the binding in (where
+    // placement puts the user's component: this chunk or the route module,
+    // nothing is extracted in dev; a move is a new family) + the binding:
+    // the user's component when the value names one (a rename is a new
+    // family), else the chunk's own declaration
+    ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts:
+            c.valueSym !== null
+              ? [
+                  c.exported,
+                  '.$$tsrRefreshId = ',
+                  { sym: c.valueSym, ctx: 'homeId' },
+                  ` + ${stringLiteral(` ${ctx.nameOf(c.valueSym)}`, '"')}\n`,
+                ]
+              : [
+                  c.exported,
+                  `.$$tsrRefreshId = ${stringLiteral(`${c.output.slice('derived:'.length)} ${c.name}`, '"')}\n`,
+                ],
+        },
+      ],
+      declares: [],
+      effectful: true,
+      anchor: { k: 'end' },
+      home: c.output,
+      by: ROUTER_PLANNER,
+    })
   }
 }
 

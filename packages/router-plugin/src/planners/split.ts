@@ -16,7 +16,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { identifierSymbol, pascal } from './route'
 import { COMPONENT_KEYS } from './decisions'
-import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
+import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
 import type { RouterRound } from './router'
 import type {
@@ -32,7 +32,7 @@ import type {
 
 /** Applies the round's split plan: `deleteNodes`, split options, extracted exports. */
 export function planSplit(ctx: PlanContext, round: RouterRound): void {
-  const { cfg, plan } = round
+  const { plan } = round
   const { route } = plan
   ctx.setRouteModule()
   ctx.markBenignEffect(route.routeUnit.id)
@@ -93,7 +93,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   }
 
   const { names, symbols } = ctx
-  const refreshMarkers = routeRefreshMarkers(cfg)
 
   // helper imports, declared once per file (one name allocator per file)
   let lazyComponent: SymbolId | null = null
@@ -219,7 +218,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     // binding, often the entry, which then carries the export glue.)
     const direct =
       valueSym !== null && d.member === null && !symbols.isImport(valueSym)
-    const exported: SymRef | string = direct ? { sym: valueSym } : split.name
+    const exported: SymRef = { sym: direct ? valueSym : split.sym }
     if (valueSym !== null) {
       // the original symbol: placement follows its declaring unit; a
       // rename renders at emit time. The core reports it when its
@@ -243,35 +242,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       body.push({ k: 'slice', range: d.valueRange })
       body.push({ k: 'text', parts: ['\n'] })
     }
-    if (
-      refreshMarkers &&
-      isComponent &&
-      // a foreign module's export (an imported binding or a member of
-      // one) is not this module's to mark: React Refresh registers it
-      // where it is declared, and the object may be frozen
-      !(valueSym !== null && symbols.isImport(valueSym))
-    ) {
-      // identity = the module React Refresh registers the binding in
-      // (where placement puts the user's component: this chunk or the
-      // route module, nothing is extracted in dev); a move is a
-      // new family) + the binding: the user's component when the value names
-      // one (a rename is a new family), else the chunk's own declaration
-      body.push({
-        k: 'text',
-        parts:
-          valueSym !== null
-            ? [
-                exported,
-                '.$$tsrRefreshId = ',
-                { sym: valueSym, ctx: 'homeId' },
-                ` + ${stringLiteral(` ${ctx.nameOf(valueSym)}`, '"')}\n`,
-              ]
-            : [
-                exported,
-                `.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${split.name}`, '"')}\n`,
-              ],
-      })
-    }
     body.push({
       k: 'text',
       parts: ['export { ', exported, ` as ${d.exportName} }\n`],
@@ -284,6 +254,14 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       home: g.output,
       by: ROUTER_PLANNER,
     })
+    if (isComponent) {
+      round.splitComponents.push({
+        output: g.output,
+        exported,
+        valueSym,
+        name: split.name,
+      })
+    }
 
     // the route module's placeholder (pure for the client's tree shaking;
     // a server bundle keeps every route and the comment would only cost bytes)
