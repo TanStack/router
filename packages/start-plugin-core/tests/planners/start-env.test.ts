@@ -595,6 +595,26 @@ export function makeFns() {
     expect(h).toContain('db.get(3)')
   })
 
+  // the declaration and its effect leave the defining module's evaluation
+  // for the handler module's, once (a lazy initialisation, as in a split chunk)
+  it('moves module state and its effect only a hoisted handler reads', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+let label: unknown = 'initial'
+label = db.get(label)
+export function makeFn() {
+  return createServerFn().handler(async () => label)
+}
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('db.get(label)')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h.match(/label = db\.get\(label\)/g)).toHaveLength(1)
+  })
+
   it('derives the handler module of an SFC block before its language key', async () => {
     const id = `${FILE}?vue&type=script&lang.ts`
     const r = await compile(

@@ -21,7 +21,7 @@ import type { OutputKind } from './reach'
 export const VERIFY_OUTPUTS = process.env.TSR_COMPILER_VERIFY === '1'
 
 /** An output that copies what it reaches (another layer's instance of the module), not one importing from the env module. */
-const copies = (kind: OutputKind) => kind === 'provider' || kind === 'custom'
+const copies = (kind: OutputKind) => kind === 'provider'
 
 const tailOf = (id: string) => id.slice(id.lastIndexOf('/') + 1)
 
