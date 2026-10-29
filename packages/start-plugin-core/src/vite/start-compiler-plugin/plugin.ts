@@ -409,6 +409,16 @@ export function startCompilerPlugin(
           compilers.delete(this.environment.name)
         }
       },
+      closeBundle() {
+        if (this.environment.mode === 'build') {
+          // `vite build` bundles each environment once, in one process, so the
+          // reset in buildStart never runs again for this environment. Drop the
+          // compiler now: its load/resolve closures hold this hook context and,
+          // through it, the finished module graph, which would otherwise stay
+          // alive while the remaining environments build.
+          compilers.delete(this.environment.name)
+        }
+      },
       async watchChange(id) {
         if (bundledDev && this.environment.mode === 'dev') {
           if (environment.type === 'server') {
