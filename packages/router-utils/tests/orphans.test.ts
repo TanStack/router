@@ -1,20 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { cleanOrphanedDeclarations } from '../src/compiler'
 import { MemoryHost, dedent, toyEnvPlanner } from './helpers'
-import type { Planner } from '../src/compiler'
 
-/** The toy env planner (client: `wrapServer(arg)` → `tsrStub()`), cleaning up after its erasures. */
-function erasingPlanner(): Planner {
-  const env = toyEnvPlanner()
-  return {
-    ...env,
-    plan(ctx) {
-      env.plan(ctx)
-      cleanOrphanedDeclarations(ctx, 'all-outputs', env.name)
-    },
-  }
-}
-
+// The core cleans up after every planner's erasures (the toy env planner:
+// client `wrapServer(arg)` → `tsrStub()`, in every output).
 async function client(code: string) {
   const host = new MemoryHost({
     files: {
@@ -22,7 +10,7 @@ async function client(code: string) {
       '/app/db.ts': `export const secret = () => 's'\n`,
     },
   })
-  return (await host.compile('/app/m.ts', [erasingPlanner()]))!.code
+  return (await host.compile('/app/m.ts', [toyEnvPlanner()]))!.code
 }
 
 describe('destructured bindings only erased code read', () => {

@@ -1,24 +1,55 @@
 /**
  * Declarations only erased code read, below the units placement decides
  * (SPEC G16 "destructuring", J4.12): function-local declarators and
- * destructuring leaves of kept declarations. A service for the planners
- * that erase code (start-env's removals, the router planner's `deleteNodes`): each
- * calls it after its erasures, on the liveness of the output it erased in.
- * Module-level declarations, imports and their provenance are placement's
- * (`reach.ts`).
+ * destructuring leaves of kept declarations. The core runs it once, after
+ * every planner erased what it erases (`AnalysisPlan.resolve`), on the env
+ * module's liveness. Module-level declarations, imports and their
+ * provenance are placement's (`reach.ts`).
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureClass, isPureExpression } from './purity'
 import { patternIdentifiers } from './source'
 import type { Node } from 'yuku'
+import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
 import type { PlanContext } from './plan'
-import type { EditScope, Frag, LivenessView } from './rewrite'
+import type { EditScope, Frag, LivenessView, OutputId } from './rewrite'
 
 const text = (part: string): Frag => ({ k: 'text', parts: [part] })
 const slice = (range: Range): Frag => ({ k: 'slice', range })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
+
+const BY = 'core:orphans'
+/** An output no planner addresses: its tree holds the edits addressed to every output. */
+const EVERY_OUTPUT: OutputId = 'derived:\0every-output'
+
+/** A removal's scope (`scopeOf`) from what orphans it and what it encloses that went before. */
+type ScopeOf = (
+  refs: ReadonlyArray<ClassifiedRef>,
+  gone?: ReadonlyArray<Range>,
+) => EditScope
+
+/** The items of one list pruned in a round, with the references of the bindings they declare. */
+interface Pruned {
+  items: Set<Node>
+  refs: Array<ClassifiedRef>
+}
+
+const prune = (
+  map: Map<Node, Pruned>,
+  list: Node,
+  item: Node,
+  refs: ReadonlyArray<ClassifiedRef>,
+) => {
+  let p = map.get(list)
+  if (!p) {
+    p = { items: new Set(), refs: [] }
+    map.set(list, p)
+  }
+  p.items.add(item)
+  p.refs.push(...refs)
+}
 
 /**
  * Function-local declarators (and `var`/block declarators of the module
@@ -28,11 +59,7 @@ const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
  * expression statement (its hook calls keep running); module level drops it
  * with the declaration (J4.12, documented removal). Iterates to a fixpoint.
  */
-export function cleanOrphanedDeclarations(
-  ctx: PlanContext,
-  scope: EditScope,
-  by: string,
-): void {
+export function cleanOrphanedDeclarations(ctx: PlanContext): void {
   const { t1, symbols, rewrites } = ctx
   const file = ctx.analysis.file
   const code = ctx.analysis.source.code
@@ -41,12 +68,28 @@ export function cleanOrphanedDeclarations(
   // each only the next one reads is cleaned however long it is
   for (;;) {
     const live = ctx.liveness('env')
+    let shared: LivenessView | null = null
+    /**
+     * Where a removal applies: in every output when edits addressed to every
+     * output alone erased what orphans it (the references of what it
+     * removes) and what it encloses that went before (`gone`), else in the
+     * env module, whose liveness decides every orphan (an erasure in the env
+     * module only leaves the code live where another output renders it: a
+     * server-function provider, a split chunk).
+     */
+    const scopeOf: ScopeOf = (refs, gone = []) => {
+      shared ??= ctx.liveness(EVERY_OUTPUT)
+      return refs.every((r) => !shared!.live(r)) &&
+        gone.every((r) => shared!.isErased(r))
+        ? 'all-outputs'
+        : ['env']
+    }
     let changed = false
     // object pattern properties pruned this round, removed together per pattern
-    const prunedProps = new Map<Node, Set<Node>>()
+    const prunedProps = new Map<Node, Pruned>()
     // declarators of multi-declarator statements pruned this round, removed
     // together per statement (one edit per statement from the final set)
-    const prunedDecls = new Map<Node, Set<Node>>()
+    const prunedDecls = new Map<Node, Pruned>()
     // declarators removed whole this round (every binding of a pattern)
     const removedDeclarators = new Set<Node>()
     for (const b of file.bindings) {
@@ -107,7 +150,7 @@ export function cleanOrphanedDeclarations(
           handled.add(b.id)
           continue
         }
-        if (removeDeclarator(ctx, declarator, scope, by, live, prunedDecls)) {
+        if (removeDeclarator(ctx, declarator, scopeOf, live, prunedDecls)) {
           removedDeclarators.add(declarator)
           handled.add(b.id)
           changed = true
@@ -115,7 +158,7 @@ export function cleanOrphanedDeclarations(
         }
       }
       if (inPattern) {
-        if (prunePatternElement(ctx, decl, scope, by, prunedProps, live)) {
+        if (prunePatternElement(ctx, decl, refs, scopeOf, prunedProps, live)) {
           handled.add(b.id)
           changed = true
         }
@@ -145,16 +188,16 @@ export function cleanOrphanedDeclarations(
             end: extendOverTrailingLine(code, parent.end),
           },
           body: [],
-          scope,
-          by,
+          scope: scopeOf(refs),
+          by: BY,
         })
       }
     }
     for (const [pattern, props] of prunedProps) {
-      removePatternProperties(ctx, pattern, props, live, scope, by)
+      removePatternProperties(ctx, pattern, props, live, scopeOf)
     }
     for (const [statement, decls] of prunedDecls) {
-      removeDeclarators(ctx, statement, decls, live, scope, by)
+      removeDeclarators(ctx, statement, decls, live, scopeOf)
     }
     if (!changed) {
       break
@@ -171,14 +214,18 @@ export function cleanOrphanedDeclarations(
 function removeDeclarator(
   ctx: PlanContext,
   declarator: Node,
-  scope: EditScope,
-  by: string,
+  scopeOf: ScopeOf,
   live: LivenessView,
-  prunedDecls: Map<Node, Set<Node>>,
+  prunedDecls: Map<Node, Pruned>,
 ): boolean {
   if (declarator.type !== 'VariableDeclarator') {
     return false
   }
+  // the references of every binding it declares
+  const refs = patternIdentifiers(declarator.id).flatMap((id) => {
+    const b = ctx.analysis.file.bindingOf(id)
+    return b ? ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b)) : []
+  })
   const file = ctx.analysis.file
   const code = ctx.analysis.source.code
   const statement = file.parentOf(declarator)
@@ -204,14 +251,14 @@ function removeDeclarator(
               end: extendOverTrailingLine(code, statement.end),
             },
             body: [],
-            scope,
-            by,
+            scope: scopeOf(refs),
+            by: BY,
           }
         : {
             range: { start: statement.start, end: statement.end },
             body: expressionStatement(code, declarator.init!),
-            scope,
-            by,
+            scope: scopeOf(refs),
+            by: BY,
           },
     )
     return true
@@ -219,12 +266,7 @@ function removeDeclarator(
   if (!effectsGo) {
     return false
   }
-  let set = prunedDecls.get(statement)
-  if (!set) {
-    set = new Set()
-    prunedDecls.set(statement, set)
-  }
-  set.add(declarator)
+  prune(prunedDecls, statement, declarator, refs)
   return true
 }
 
@@ -302,10 +344,9 @@ function expressionStatement(code: string, init: Node): Array<Frag> {
 function removeDeclarators(
   ctx: PlanContext,
   statement: Node,
-  pruned: ReadonlySet<Node>,
-  live: ReturnType<PlanContext['liveness']>,
-  scope: EditScope,
-  by: string,
+  { items: pruned, refs }: Pruned,
+  live: LivenessView,
+  scopeOf: ScopeOf,
 ): void {
   if (statement.type !== 'VariableDeclaration') {
     return
@@ -313,6 +354,7 @@ function removeDeclarators(
   const code = ctx.analysis.source.code
   const decls = statement.declarations as ReadonlyArray<Node>
   const gone = (d: Node) => pruned.has(d) || live.isErased(rangeOf(d))
+  const scope = scopeOf(refs, goneBefore(decls, pruned, live))
   if (decls.every(gone)) {
     const stmtParent = ctx.analysis.file.parentOf(statement)
     const asStatement =
@@ -329,7 +371,7 @@ function removeDeclarators(
         },
         body: [],
         scope,
-        by,
+        by: BY,
       })
       return
     }
@@ -339,10 +381,18 @@ function removeDeclarators(
   const last = decls[decls.length - 1]!
   const keepLast = decls.every(gone)
   const isGone = (d: Node) => gone(d) && !(keepLast && d === last)
-  removeListItems(ctx, decls, isGone, pruned, null, {
-    scope,
-    by,
-  })
+  removeListItems(ctx, decls, isGone, pruned, null, { scope, by: BY })
+}
+
+/** The ranges of the items of a list an earlier erasure removed (what a removal of their run encloses). */
+function goneBefore(
+  items: ReadonlyArray<Node>,
+  pruned: ReadonlySet<Node>,
+  live: LivenessView,
+): Array<Range> {
+  return items
+    .filter((item) => !pruned.has(item) && live.isErased(rangeOf(item)))
+    .map(rangeOf)
 }
 
 /**
@@ -352,10 +402,9 @@ function removeDeclarators(
 function removePatternProperties(
   ctx: PlanContext,
   pattern: Node,
-  pruned: ReadonlySet<Node>,
-  live: ReturnType<PlanContext['liveness']>,
-  scope: EditScope,
-  by: string,
+  { items: pruned, refs }: Pruned,
+  live: LivenessView,
+  scopeOf: ScopeOf,
 ): void {
   if (pattern.type !== 'ObjectPattern') {
     return
@@ -370,8 +419,8 @@ function removePatternProperties(
     closing = nextToken(code, closing + 1)
   }
   removeListItems(ctx, props, gone, pruned, closing, {
-    scope,
-    by,
+    scope: scopeOf(refs, goneBefore(props, pruned, live)),
+    by: BY,
   })
 }
 
@@ -504,9 +553,9 @@ function callsHook(init: Node): boolean {
 function prunePatternElement(
   ctx: PlanContext,
   decl: Node,
-  scope: EditScope,
-  by: string,
-  prunedProps: Map<Node, Set<Node>>,
+  refs: ReadonlyArray<ClassifiedRef>,
+  scopeOf: ScopeOf,
+  prunedProps: Map<Node, Pruned>,
   live: LivenessView,
 ): boolean {
   const file = ctx.analysis.file
@@ -532,20 +581,15 @@ function prunePatternElement(
     ) {
       return false
     }
-    let set = prunedProps.get(pattern)
-    if (!set) {
-      set = new Set()
-      prunedProps.set(pattern, set)
-    }
-    set.add(parent)
+    prune(prunedProps, pattern, parent, refs)
     return true
   }
   if (parent.type === 'ArrayPattern') {
     ctx.rewrites.add({
       range: { start: node.start, end: node.end },
       body: commaFollows(ctx.analysis.source.code, node.end) ? [] : [text(',')],
-      scope,
-      by,
+      scope: scopeOf(refs),
+      by: BY,
     })
     return true
   }

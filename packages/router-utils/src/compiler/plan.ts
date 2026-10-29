@@ -11,6 +11,7 @@ import { NameAllocator } from './names'
 import { computePlacement } from './reach'
 import { firstImpure, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
+import { cleanOrphanedDeclarations } from './orphans'
 import { RewriteSet } from './rewrite'
 import type {
   Fallback,
@@ -435,6 +436,11 @@ export class AnalysisPlan implements PlanContext {
 
   /** The core phase after all planners: placement over the live rewrite tree. */
   resolve(): Placement {
+    // function-scope declarations only erased code read go once every
+    // planner erased what it erases (placement decides the module level)
+    if (this.rewrites.tree('env').erasedParts().length > 0) {
+      cleanOrphanedDeclarations(this)
+    }
     const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({
       t1: this.t1,
