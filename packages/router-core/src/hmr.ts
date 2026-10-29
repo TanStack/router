@@ -1,5 +1,6 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRoute } from './route'
+import type { AnyRouter } from './router'
 
 /**
  * Static facts the compiler's dev-only route HMR block passes for one
@@ -23,6 +24,8 @@ export interface RouteHmrAdapter {
   keep: (next: any, held: any) => boolean
   /** Unsplit component: both values come from the same module in the same round. */
   keepUnsplit: (next: any, held: any, sameName: boolean) => boolean
+  /** Forgets what the framework records for a route id the router no longer holds. */
+  retire?: (routeId: string) => void
 }
 
 /**
@@ -141,8 +144,8 @@ const generatedOptionKeys = ['id', 'path', 'getParentRoute']
 // Every `Route` each route id evaluated to (a route tree rebuilt after an
 // edit imports the module's current export, so any evaluation can be the
 // router's live route) and the facts of the module that the live route
-// currently reflects. Bounded by the number of routes; the evaluations are
-// held weakly.
+// currently reflects. Bounded by the number of routes (`setRoutes` forgets
+// the ids a rebuilt tree drops); the evaluations are held weakly.
 const hotRoutes = new Map<
   string,
   { routes: WeakSet<AnyRoute>; meta: RouteHmrMeta }
@@ -151,6 +154,24 @@ const hotRoutes = new Map<
 // Per route id, the split chunks that evaluated since its route module last
 // did (`applyRouteChunkHmr`). Bounded by the number of split chunks.
 const hotChunks = new Map<string, Set<string>>()
+
+/**
+ * Has the router read its route tree again, then forgets the route ids it
+ * held before and no longer holds (a route removed or renamed). An id the
+ * router never held stays: a module evaluates before the route tree module
+ * that adds its route runs.
+ */
+function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
+  const before = router.routesById as Record<string, AnyRoute>
+  router.setRoutes(router.buildRouteTree())
+  for (const routeId in before) {
+    if (!(routeId in router.routesById)) {
+      hotRoutes.delete(routeId)
+      hotChunks.delete(routeId)
+      adapter.retire?.(routeId)
+    }
+  }
+}
 
 /**
  * Applies one evaluation of a route module to the live route of
@@ -206,7 +227,7 @@ export function applyRouteHmr(
     const siblings = (current.parentRoute as { children?: unknown } | undefined)
       ?.children
     if (siblings && !Object.values(siblings).includes(current)) {
-      router.setRoutes(router.buildRouteTree())
+      setRoutes(router, adapter)
     }
     const live = router.routesById[routeId] as HotRoute | undefined
     if (!live || !known.routes.has(live) || live === route) {
@@ -277,7 +298,7 @@ export function applyRouteHmr(
     live.options = nextOptions
     live.update(nextOptions)
     router._replaceRouteChunk?.(live, next.lazyFn)
-    router.setRoutes(router.buildRouteTree())
+    setRoutes(router, adapter)
 
     // routeTree.gen.ts mutates the original export with generated routing
     // state; mirror it so the fresh export keeps working when imported directly.

@@ -220,7 +220,7 @@ describe('route HMR (React)', () => {
     ).toBe(firstLoader)
   })
 
-  test('React + Vite: every export of the route module but the anchor is ignored by plugin-react', () => {
+  test('React + Vite: every export of the route module but the anchor is ignored by plugin-react while the router holds its route', () => {
     const previous = vi.fn(() => ['fromPrevious'])
     ;(window as any).__getReactRefreshIgnoredExports = previous
     const meta = {
@@ -230,7 +230,22 @@ describe('route HMR (React)', () => {
         exports: ['Route', 'helper', 'TsrFastRefreshAnchor'],
       },
     }
-    setup(() => ({}), meta)
+    const rootRoute = createRootRoute()
+    const evaluate = (path: string, token: string, routeMeta = {}) => {
+      const Route = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        loader: () => token,
+      })
+      __tsrRouteHmr(path, Route, routeMeta)
+      return Route
+    }
+    const ignoredRoute = evaluate('/ignored', 'v0', meta)
+    const otherRoute = evaluate('/ignored-other', 'v0')
+    createRouter({
+      routeTree: rootRoute.addChildren([ignoredRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/ignored-other'] }),
+    })
     const getIgnored = (window as any).__getReactRefreshIgnoredExports
     expect(getIgnored({ id: '/src/routes/ignored.tsx' })).toEqual([
       'fromPrevious',
@@ -238,5 +253,13 @@ describe('route HMR (React)', () => {
       'helper',
     ])
     expect(getIgnored({ id: '/src/other.tsx' })).toEqual(['fromPrevious'])
+
+    // The route tree module drops `/ignored` (its file was removed or
+    // renamed); the router reads the tree again on an edit of another route.
+    rootRoute.addChildren([otherRoute])
+    evaluate('/ignored-other', 'v1')
+    expect(getIgnored({ id: '/src/routes/ignored.tsx' })).toEqual([
+      'fromPrevious',
+    ])
   })
 })

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
-import { applyRouteHmr } from '../src/hmr'
+import { applyRouteChunkHmr, applyRouteHmr } from '../src/hmr'
 import type { RouteHmrAdapter } from '../src/hmr'
 
 /**
@@ -63,6 +63,32 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     tree.page = foreign
     applyRouteHmr('/page', evaluate('v1'), {}, adapter)
     expect(foreign.options.loader()).toBe('other')
+    expect(router._refreshRoute).not.toHaveBeenCalled()
+  })
+
+  // A route the rebuilt tree drops (removed or renamed) is forgotten: when a
+  // route of that id returns, its split chunk's next evaluation is a first
+  // one again (recorded, no refresh), as on a page that never had it.
+  it('forgets a route the rebuilt tree drops', () => {
+    const first = evaluate('v0')
+    const { router } = routerOf(first)
+    const tree: Record<string, any> = { '/page': first, '/gone': {} }
+    router.routesById = { ...tree }
+    router.buildRouteTree = () => ({ routesById: { ...tree } })
+    applyRouteHmr('/page', first, {}, adapter)
+    applyRouteChunkHmr('/gone', 'loader')
+
+    // the route tree module drops `/gone`; the router reads it on an edit
+    delete tree['/gone']
+    applyRouteHmr('/page', evaluate('v1'), {}, adapter)
+    expect(router.routesById['/gone']).toBeUndefined()
+    // a later tree has `/gone` again
+    tree['/gone'] = {}
+    applyRouteHmr('/page', evaluate('v2'), {}, adapter)
+    expect(router.routesById['/gone']).toBeDefined()
+
+    router._refreshRoute.mockClear()
+    applyRouteChunkHmr('/gone', 'loader')
     expect(router._refreshRoute).not.toHaveBeenCalled()
   })
 })

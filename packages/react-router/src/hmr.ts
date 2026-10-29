@@ -15,7 +15,10 @@ type RefreshWindow = Window & {
   __reactRefreshInjected?: boolean
 }
 
-let ignoredExportsById: Map<string, Array<string>> | undefined
+// Per module id: the route it defines and the exports plugin-react ignores.
+let ignoredExportsById:
+  | Map<string, { routeId: string; ignored: Array<string> }>
+  | undefined
 
 function refreshActive() {
   const w = window as RefreshWindow
@@ -43,6 +46,13 @@ const adapter: RouteHmrAdapter = {
     kept(),
   keepUnsplit: (_next, _held, sameName) =>
     sameName && refreshActive() && kept(),
+  retire: (routeId) => {
+    ignoredExportsById?.forEach((entry, id, byId) => {
+      if (entry.routeId === routeId) {
+        byId.delete(id)
+      }
+    })
+  },
 }
 
 /**
@@ -72,13 +82,15 @@ export function __tsrRouteHmr(
         w.__getReactRefreshIgnoredExports = (ctx) => {
           const ignored = previous?.(ctx) ?? []
           const own = ids.get(ctx.id)
-          return own ? [...ignored, ...own] : ignored
+          return own ? [...ignored, ...own.ignored] : ignored
         }
       }
-      byId.set(
-        refreshExports.id,
-        refreshExports.exports.filter((name) => name !== refreshExports.anchor),
-      )
+      byId.set(refreshExports.id, {
+        routeId,
+        ignored: refreshExports.exports.filter(
+          (name) => name !== refreshExports.anchor,
+        ),
+      })
     }
     applyRouteHmr(routeId, Route, meta, adapter)
   }
