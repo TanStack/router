@@ -14,7 +14,6 @@ const routeConstructors: ReadonlyArray<string> = [
 
 /** A problem in a route file, at a position of its source. */
 export interface FileDiagnostic {
-  severity: 'warning' | 'error'
   message: string
   /** 1-based line and column, when the problem has a position. */
   line?: number
@@ -89,11 +88,10 @@ function applySplices(source: string, splices: Array<Splice>) {
 function diagnosticAt(
   file: SourceFile,
   offset: number,
-  severity: FileDiagnostic['severity'],
   message: string,
 ): FileDiagnostic {
   const { line, column } = file.locate(offset)
-  return { severity, message, line, column: column + 1 }
+  return { message, line, column: column + 1 }
 }
 
 /** The option keys of a route's options argument (SPEC J1.9). */
@@ -235,15 +233,39 @@ function isTypeOnlyImport(file: SourceFile, callee: Node) {
 }
 
 /** The start of the first statement after the directive prologue. */
+/** A license or JSX pragma comment: it leads the file, above an added import. */
+const leadingCommentRe = /^\/\*!|@license|@preserve|@jsx/
+
+/**
+ * Where an added import goes: after the directive prologue and the
+ * comments leading the file, before the comments the first statement starts
+ * with (no blank line between them and it, license and pragmas aside).
+ */
 function headerInsertOffset(file: SourceFile) {
+  let prologueEnd = 0
   for (const statement of file.program.body) {
     if (
       statement.type === 'ExpressionStatement' &&
       typeof (statement as { directive?: unknown }).directive === 'string'
     ) {
+      prologueEnd = statement.end
       continue
     }
-    return statement.start
+    let at = statement.start
+    const leading = file.comments.filter(
+      (c) => c.start >= prologueEnd && c.end <= statement.start,
+    )
+    for (let i = leading.length - 1; i >= 0; i--) {
+      const c = leading[i]!
+      if (
+        /\n[^\S\n]*\r?\n/.test(file.source.slice(c.end, at)) ||
+        leadingCommentRe.test(file.source.slice(c.start, c.end))
+      ) {
+        break
+      }
+      at = c.start
+    }
+    return at
   }
   return file.source.length
 }
@@ -281,9 +303,7 @@ export function analyzeRouteFile(
   if (errors.length) {
     return {
       kind: 'error',
-      diagnostics: errors.map((d) =>
-        diagnosticAt(file, d.start, 'error', d.message),
-      ),
+      diagnostics: errors.map((d) => diagnosticAt(file, d.start, d.message)),
     }
   }
 
@@ -360,7 +380,6 @@ export function analyzeRouteFile(
         diagnosticAt(
           file,
           idArg.start,
-          'warning',
           `The Route of ${filePath} ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
         ),
       ])
@@ -423,7 +442,6 @@ export function analyzeRouteFile(
           diagnosticAt(
             file,
             idArg.start,
-            'warning',
             `The route id of ${filePath} is not a string literal, so it cannot be kept up: use ${lit(expected.routeId)}.`,
           ),
         ],
@@ -536,8 +554,7 @@ function bindConstructor(
   }
 
   // The new import copies the quotes and semicolons of the file's first
-  // import, and goes after the directive prologue and any header comments
-  // (license, pragmas).
+  // import (placement: `headerInsertOffset`).
   const firstImport = file.program.body.find(
     (statement) => statement.type === 'ImportDeclaration',
   ) as (Node & { source: Node }) | undefined

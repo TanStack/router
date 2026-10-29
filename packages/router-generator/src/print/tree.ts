@@ -39,7 +39,7 @@ export function importedFiles(model: TreeModel): Set<string> {
     }
   }
   for (const route of model.routes) {
-    if (!route.isAnchor && route.file) {
+    if (route.file) {
       files.add(route.file)
     }
     for (const file of Object.values(route.pieces)) {
@@ -91,9 +91,9 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
   }
   const dynamicImport = (file: string) => `import(${q(specifierFor(file))})`
 
+  // (as the chained `.update()` of a route, indented by two)
   const componentUpdate = (
     pieces: ModelRoute['pieces'],
-    indent: string,
   ): string | undefined => {
     const entries = componentPieces.flatMap((option) => {
       const file = pieces[option]
@@ -104,12 +104,10 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
       // A Vue single-file component's component is its default export
       const exportName = file.endsWith('.vue') ? 'default' : option
       return [
-        `${indent}  ${option}: lazyRouteComponent(() => ${dynamicImport(file)}, ${q(exportName)}),`,
+        `    ${option}: lazyRouteComponent(() => ${dynamicImport(file)}, ${q(exportName)}),`,
       ]
     })
-    return entries.length
-      ? `.update({\n${entries.join('\n')}\n${indent}})`
-      : undefined
+    return entries.length ? `.update({\n${entries.join('\n')}\n  })` : undefined
   }
 
   const routeImports: Array<string> = [
@@ -120,7 +118,7 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
 
   for (const route of model.routes) {
     const imported = `${route.variableName}RouteImport`
-    if (route.isAnchor || !route.file) {
+    if (!route.file) {
       runtime.add('createFileRoute')
       anchors.push(
         `const ${imported} = createFileRoute(${q(route.routePath)})()${semi}`,
@@ -145,7 +143,7 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
         `  .updateLoader({\n    loader: lazyFn(() => ${dynamicImport(route.pieces.loader)}, ${q('loader')}),\n  })`,
       )
     }
-    const components = componentUpdate(route.pieces, '  ')
+    const components = componentUpdate(route.pieces)
     if (components) {
       chain.push(`  ${components}`)
     }
@@ -195,7 +193,7 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
   }
   model.children.forEach(addChildren)
 
-  const rootComponents = componentUpdate(model.root.pieces, '  ')
+  const rootComponents = componentUpdate(model.root.pieces)
   const rootChildren = [
     `const rootRouteChildren${disableTypes ? '' : ': RootRouteChildren'} = {\n${model.children
       .map((child) => `  ${child.variableName}Route: ${resolvedName(child)},`)

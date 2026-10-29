@@ -91,12 +91,8 @@ export interface ModelRoute {
   readonly kind: FsRouteType
   /** Whether the route adds no path segment (pathless layouts, groups). */
   readonly isNonPath: boolean
-  /** A route the tree creates without a route file (lazy-only or piece-only routes). */
-  readonly isAnchor: boolean
-  /** The route file (absolute path); undefined for an anchor. */
+  /** The route file (absolute path); undefined for a route the tree creates without one (lazy-only or piece-only routes). */
   readonly file: string | undefined
-  /** The route file relative to the routes directory, as scanned. */
-  readonly filePath: string
   readonly parent: ModelRoute | undefined
   readonly children: ReadonlyArray<ModelRoute>
   /** Lazily loaded files of the route, by option (absolute paths). */
@@ -111,8 +107,6 @@ export interface ModelRoute {
 export interface TreeModel {
   readonly root: {
     readonly file: string
-    readonly filePath: string
-    readonly routePath: string
     readonly pieces: Readonly<Partial<Record<RoutePieceName, string>>>
   }
   /** Every route but the root, in a deterministic order (parents before children within a depth). */

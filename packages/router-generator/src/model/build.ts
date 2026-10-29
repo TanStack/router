@@ -453,9 +453,7 @@ export function buildTreeModel(input: TreeModelInput): TreeModel {
       variableName: variableNames.get(node) ?? node.variableName,
       kind: node._fsRouteType,
       isNonPath: !!node.isNonPath,
-      isAnchor: !!node.isVirtual,
       file: node.isVirtual ? undefined : node.fullPath,
-      filePath: node.filePath,
       parent,
       children: [],
       pieces: piecesOf(node.routePath),
@@ -481,8 +479,6 @@ export function buildTreeModel(input: TreeModelInput): TreeModel {
   return {
     root: {
       file: rootNode.fullPath,
-      filePath: rootNode.filePath,
-      routePath: rootNode.routePath ?? `/${rootPathId}`,
       pieces: piecesOf(`/${rootPathId}`),
     },
     routes,

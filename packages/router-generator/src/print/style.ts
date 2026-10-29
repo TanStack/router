@@ -17,11 +17,10 @@ export function styleOf(config: {
 const needsEscape = {
   "'": /['\\\n\r\u2028\u2029]/,
   '"': /["\\\n\r\u2028\u2029]/,
-  '`': /[`$\\\n\r\u2028\u2029]/,
 }
 
 /** A string literal of `value` in quote `quote`, escaped as needed. */
-export function lit(value: string, quote: "'" | '"' | '`' = "'"): string {
+export function lit(value: string, quote: "'" | '"' = "'"): string {
   if (!needsEscape[quote].test(value)) {
     return quote + value + quote
   }
@@ -44,7 +43,7 @@ export function lit(value: string, quote: "'" | '"' | '`' = "'"): string {
         out += '\\u2029'
         break
       default:
-        if (char === quote || (quote === '`' && char === '$')) {
+        if (char === quote) {
           out += `\\${char}`
         } else {
           out += char

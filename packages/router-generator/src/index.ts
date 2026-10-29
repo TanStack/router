@@ -28,10 +28,8 @@ export {
 
 export type {
   RouteNode,
-  RouteProps,
   ModelRoute,
   TreeModel,
-  RoutePieceName,
   GetRouteNodesResult,
   GetRoutesByFileMapResult,
   GetRoutesByFileMapResultValue,

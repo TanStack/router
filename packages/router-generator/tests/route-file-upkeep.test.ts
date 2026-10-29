@@ -488,6 +488,49 @@ export const Route = createFileRoute('/old')({})
     // (expectOnlyOwnedEdits: `LinkProps` is still imported as a type)
     await expectRouteFile(written, { id: '/new', source })
   })
+  // The added import goes after what must lead the file (a directive
+  // prologue, a license comment, a JSX pragma) and before the comment of
+  // the first statement, which stays with it.
+  test.each([
+    {
+      name: 'a directive',
+      source: `'use client'\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `'use client'\n`,
+    },
+    {
+      name: 'a license comment',
+      source: `/*! (c) the app */\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `/*! (c) the app */\n`,
+    },
+    {
+      name: 'a JSX pragma',
+      source: `/** @jsxImportSource preact */\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `/** @jsxImportSource preact */\n`,
+    },
+    {
+      name: 'a directive and the doc comment of the route',
+      source: `'use client'\n/** The page of the app. */\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `'use client'\n`,
+      attached: `/** The page of the app. */\nexport const Route`,
+    },
+    {
+      name: 'the doc comment of the route',
+      source: `/** The page of the app. */\nexport const Route = createFileRoute('/old')({})\n`,
+      head: '',
+      attached: `/** The page of the app. */\nexport const Route`,
+    },
+  ])(
+    'a route file starting with $name keeps it in place when it gets the constructor import',
+    async ({ source, head, attached }) => {
+      const { written } = await upkeep('new.tsx', source)
+
+      await expectRouteFile(written, { id: '/new', source })
+      expect(written.startsWith(`${head}import { createFileRoute }`)).toBe(true)
+      if (attached) {
+        expect(written).toContain(attached)
+      }
+    },
+  )
 })
 
 describe('stale imports of the other constructor', () => {

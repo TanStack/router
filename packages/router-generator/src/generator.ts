@@ -244,10 +244,11 @@ export class Generator {
    */
   public run(event?: GeneratorEvent): Promise<void> {
     if (event && event.type !== 'rerun') {
-      if (!this.isRelevant(event.path)) {
+      const file = normalize(event.path)
+      if (this.classify(file) === null) {
         return Promise.resolve()
       }
-      this.queue.push({ type: event.type, path: normalize(event.path) })
+      this.queue.push({ type: event.type, path: file })
     } else {
       this.queue.push({ type: 'rerun' })
     }
@@ -322,25 +323,31 @@ export class Generator {
     return Array.isArray(footer) ? footer : footer()
   }
 
-  private isRelevant(file: string) {
-    const normalized = normalize(file)
+  /**
+   * What a (normalized) file is to the generator: the route tree, a virtual
+   * route config, a route file of the last scan (`known`), a route file the
+   * scan may find (`new`), or nothing of its (null).
+   */
+  private classify(file: string): 'tree' | 'config' | 'known' | 'new' | null {
+    if (file === this.treeKey) {
+      return 'tree'
+    }
     if (
-      normalized === this.treeKey ||
-      normalized === this.virtualConfigFile ||
-      isVirtualConfigFile(path.basename(normalized)) ||
-      this.files.has(normalized)
+      file === this.virtualConfigFile ||
+      isVirtualConfigFile(path.basename(file))
     ) {
-      return true
+      return 'config'
     }
-    if (!routeFileExtension.test(normalized)) {
-      return false
+    if (this.files.has(file)) {
+      return 'known'
     }
-    return (
-      isUnder(normalized, this.routesDirectory) ||
-      (this.scan?.physicalDirectories ?? []).some((dir) =>
-        isUnder(normalized, dir),
-      )
-    )
+    if (!routeFileExtension.test(file)) {
+      return null
+    }
+    return isUnder(file, this.routesDirectory) ||
+      (this.scan?.physicalDirectories ?? []).some((dir) => isUnder(file, dir))
+      ? 'new'
+      : null
   }
 
   private drain() {
@@ -374,28 +381,22 @@ export class Generator {
 
   private async processBatch(batch: Array<GeneratorEvent>) {
     let structural = !this.scan || this.stale
-    let treeChanged = structural
     const changed = new Set<string>()
     /** The files the batch's events name: read whatever their stamps say. */
     const named = new Set<string>()
     for (const event of batch) {
       if (event.type === 'rerun') {
         structural = true
-        treeChanged = true
         continue
       }
       named.add(event.path)
-      if (event.path === this.treeKey) {
+      const kind = this.classify(event.path)
+      if (kind === 'tree') {
         // Mostly our own write coming back: the tree is printed again only
         // when the file on disk is no longer the one published (below)
         continue
       }
-      if (
-        event.type !== 'update' ||
-        event.path === this.virtualConfigFile ||
-        isVirtualConfigFile(path.basename(event.path)) ||
-        !this.files.has(event.path)
-      ) {
+      if (event.type !== 'update' || kind !== 'known') {
         // A file added or removed, a virtual route config edited, or a file
         // the last scan did not see: the routes are scanned again.
         structural = true
@@ -461,19 +462,15 @@ export class Generator {
       )
     }
 
-    if (!changes.routes && !treeChanged) {
-      // The tree's routes are as before (no tree rebuild, no print), unless
-      // the tree on disk is no longer the one published.
-      if (!(await this.treeOnDiskIsPublished())) {
-        treeChanged = true
-      } else {
-        if (changes.props) {
-          this.rebuildModel()
-          this.notifyPlugins()
-        }
-        await this.writePending()
-        return
+    // The tree's routes are as before (no tree rebuild, no print), unless
+    // the tree on disk is no longer the one published.
+    if (!changes.routes && (await this.treeOnDiskIsPublished())) {
+      if (changes.props) {
+        this.rebuildModel()
+        this.notifyPlugins()
       }
+      await this.writePending()
+      return
     }
 
     // (until published: a failure here rebuilds on the next batch)
