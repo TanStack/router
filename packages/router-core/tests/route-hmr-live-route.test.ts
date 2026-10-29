@@ -42,7 +42,9 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     const tree = { page }
     const router = {
       routesById: { '/page': page } as Record<string, any>,
-      buildRouteTree: () => ({ routesById: { '/page': tree.page } }),
+      buildRouteTree: (): { routesById: Record<string, any> } => ({
+        routesById: { '/page': tree.page },
+      }),
       setRoutes(caches: { routesById: Record<string, any> }) {
         this.routesById = caches.routesById
       },
