@@ -142,6 +142,32 @@ describe('edge names (J6)', () => {
     },
   )
 
+  // a report points at an import that reads the binding: not at one with
+  // type specifiers only, which TypeScript erases
+  it.each(Object.entries(tiers))(
+    '%s: a merged edge is located first at an import reading a binding',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import { type T } from './x'
+        import { v } from './x'
+        export const fn = wrapServer(() => 1)
+        export const read = (t: T) => v
+      `)
+      const host = new MemoryHost({ files: { '/app/m.ts': code } })
+      const rec = edgeRecorder()
+      await host.compile('/app/m.ts', planners(rec))
+      const [x] = rec.edges.env!.filter((e) => e.specifier === './x')
+      expect(x!.kind).toBe('binding')
+      expect(x!.locations[0]).toEqual({
+        range: {
+          start: code.lastIndexOf("'./x'"),
+          end: code.lastIndexOf("'./x'") + 5,
+        },
+      })
+    },
+  )
+
   // one record per logical edge: repeated statements add their locations
   // and names, and a substitution replaces every one of them
   it.each(Object.entries(tiers))(

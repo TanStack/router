@@ -124,7 +124,11 @@ export function sourceEdges(
   return into
 }
 
-/** One record per edge key: the locations and names of every record of the key, `binding` when any is. */
+/**
+ * One record per edge key: the locations and names of every record of the
+ * key, `binding` when any is, a binding record's locations first (a report
+ * points at an import that reads the binding, not at one TypeScript erases).
+ */
 export function dedupeEdges(edges: Array<EdgeRecord>): Array<EdgeRecord> {
   const byKey = new Map<string, EdgeRecord>()
   for (const e of edges) {
@@ -133,14 +137,16 @@ export function dedupeEdges(edges: Array<EdgeRecord>): Array<EdgeRecord> {
       byKey.set(e.edgeKey, e)
       continue
     }
-    prev.locations.push(...e.locations)
+    if (e.kind === 'binding' && prev.kind !== 'binding') {
+      prev.locations.unshift(...e.locations)
+      prev.kind = 'binding'
+    } else {
+      prev.locations.push(...e.locations)
+    }
     for (const n of e.names) {
       if (!prev.names.includes(n)) {
         prev.names.push(n)
       }
-    }
-    if (e.kind === 'binding') {
-      prev.kind = 'binding'
     }
   }
   return [...byKey.values()]
