@@ -13,7 +13,7 @@ import {
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type { HostServices, Planner } from '../src/compiler'
+import type { EnvInfo, HostServices, Planner } from '../src/compiler'
 
 const ROUTE = dedent(`
   import { createFileRoute } from 'toy-router'
@@ -177,6 +177,53 @@ describe('unchanged text', () => {
 })
 
 describe('resolution for analysis', () => {
+  // In dev a resolution answered from the memo gives the event loop a turn,
+  // as the resolver's I/O did: a dev server's pending request (a server-fn
+  // call during an edit) gets in between the resolutions of the module's own
+  // imports. Following another module's re-exports (a barrel) does not, and
+  // a build never yields.
+  it('gives pending macrotasks a turn per own import in dev, not per re-export it follows', async () => {
+    const files: Record<string, string> = {
+      '/app/page.ts': `import { make } from './barrel'\nimport { other } from './other'\nexport const x = [make, other]\n`,
+      '/app/barrel.ts': Array.from(
+        { length: 20 },
+        (_, i) => `export * from './m${i}'\n`,
+      ).join(''),
+      '/app/other.ts': 'export const other = 1\n',
+    }
+    for (let i = 0; i < 20; i++) {
+      files[`/app/m${i}.ts`] =
+        i === 19 ? 'export const make = () => 1\n' : `export const m${i} = 1\n`
+    }
+    const host = new MemoryHost({ files })
+    let plan = 0
+    /** The turns a macrotask loop gets while the module is planned afresh (its resolutions from the memo). */
+    const turns = async (mode: EnvInfo['mode']) => {
+      let n = 0
+      let on = true
+      const spin = () => {
+        if (on) {
+          n++
+          setImmediate(spin)
+        }
+      }
+      setImmediate(spin)
+      await host.compile('/app/page.ts', [toySummaryPlanner()], {
+        env: envInfo({ mode }),
+        config: { configKey: `plan-${plan++}`, perPlanner: {} },
+      })
+      on = false
+      return n
+    }
+    await turns('dev')
+    expect(host.resolveCalls.length).toBeGreaterThan(20)
+    const dev = await turns('dev')
+    expect(dev).toBeGreaterThanOrEqual(2)
+    expect(dev).toBeLessThan(20)
+    await turns('build')
+    expect(await turns('build')).toBe(0)
+  })
+
   it('never asks the host about a Node builtin or a URL-scheme specifier (G16)', async () => {
     const files = {
       '/app/page.tsx': dedent(`

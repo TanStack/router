@@ -388,11 +388,14 @@ async function runAttempt(
       importer,
       specifier,
     )
-    if (env.mode === 'dev') {
+    if (env.mode === 'dev' && importer === identity.canonicalId) {
       // a dev server's pending requests get in between the resolutions of
-      // one update, as they did while every resolution was resolver I/O: an
-      // analysis answered from the memo in microtasks alone makes a server
-      // function call during an edit wait for the whole update (+3 ms)
+      // the module's own imports, as they did while every resolution was
+      // resolver I/O: an analysis answered from the memo in microtasks
+      // alone makes a server function call during an edit wait for the
+      // whole update (+3 ms). Following another module's re-exports (a
+      // barrel) gives no turn: one per re-export only slowed a barrel-heavy
+      // dev compile by a fifth
       await new Promise((turn) => setImmediate(turn))
     }
     ledger.record({
