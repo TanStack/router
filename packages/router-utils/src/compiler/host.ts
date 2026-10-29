@@ -105,14 +105,11 @@ export interface HostServices {
 
 export interface GateContext {
   identity: SourceIdentity
-  env: EnvInfo
   config: unknown
 }
 
 export interface PrefetchContext {
   identity: SourceIdentity
-  env: EnvInfo
-  config: unknown
   host: HostServices
   ledger: DependencyLedger
   resolver: ExportResolver

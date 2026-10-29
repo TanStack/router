@@ -359,7 +359,6 @@ async function runAttempt(
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({
     identity,
-    env,
     config: input.config.perPlanner[p.name],
   })
   let planners = input.planners.filter((p) => p.gate(t0, gateCtx(p)))
@@ -442,8 +441,6 @@ async function runAttempt(
       }
       const ctx: PrefetchContext = {
         identity,
-        env,
-        config: input.config.perPlanner[p.name],
         host,
         ledger,
         resolver,
