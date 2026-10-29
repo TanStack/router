@@ -35,6 +35,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   const { plan } = round
   const { route } = plan
   ctx.setRouteModule()
+  ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
   ctx.markBenignEffect(route.routeUnit.id)
 
   // deleteNodes: the properties are erased in the env output only (J2.14);

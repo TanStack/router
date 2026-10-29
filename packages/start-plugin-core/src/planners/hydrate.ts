@@ -1023,6 +1023,7 @@ function extract(
     kind: 'hydrate',
     key: b.id,
     derived: { kind: 'hydrate', value: b.id },
+    describe: '`<Hydrate>` boundary',
   })
   const chunkId = out.slice('derived:'.length)
   // the parent's lazy const: same name as the chunk component, its own symbol
