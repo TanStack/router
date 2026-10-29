@@ -7,7 +7,7 @@
  */
 import * as React from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   RouterProvider,
@@ -74,12 +74,6 @@ function setup(
     history: createMemoryHistory({ initialEntries: [path] }),
   })
   return { path, route, router, evaluate }
-}
-
-async function click(text: RegExp) {
-  await act(async () => {
-    fireEvent.click(await screen.findByRole('button', { name: text }))
-  })
 }
 
 describe('route HMR (React)', () => {
