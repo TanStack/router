@@ -1,6 +1,6 @@
 /**
- * The route registry as the router planners read it (`RouteRegistryService`
- * on `HostServices.services.routes`, `HostServices.routes.digestFor`): the
+ * The route registry as the router planners read it (`HostServices.routes`:
+ * `lookup` for the planners, `digestFor` for plan validation): the
  * generator's `routesByFile` by normalized path, with a lookup by the real
  * path of a symlinked route file (bundlers resolve modules to their real
  * path, the generator scans the link). Shared by the
@@ -10,14 +10,13 @@ import fs from 'node:fs'
 import { routeEntryDigest } from './route'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { RouteEntryFacts } from './route'
-import type { RouteRegistryService } from './split'
 import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 
 export function normalizePath(p: string): string {
   return p.replace(/\\/g, '/')
 }
 
-export class RouteRegistryView implements RouteRegistryService, RouteRegistry {
+export class RouteRegistryView implements RouteRegistry {
   /** The registry's entries by the real path of their (symlinked) files, per registry. */
   private realPaths: {
     registry: RouterPluginContext['routesByFile']

@@ -21,7 +21,6 @@ import {
   routeEntryDigest,
 } from './route'
 import { COMPONENT_KEYS, splitPlanOf } from './decisions'
-import type { RouteEntryFacts } from './route'
 import type { SplitDecision } from './decisions'
 import type { RouterPlannerConfig } from './config'
 import type {
@@ -39,27 +38,12 @@ import type {
 
 export const ROUTE_SPLIT = 'route-split'
 
-/** Host services the router planners read (`HostServices.services.routes`). */
-export interface RouteRegistryService {
-  lookup: (path: string) => RouteEntryFacts | null
-}
-
-export function routeRegistryOf(
-  ctx: PrefetchContext,
-): RouteRegistryService | null {
-  const services = ctx.host.services as
-    | { routes?: RouteRegistryService }
-    | undefined
-  return services?.routes ?? null
-}
-
 /** Phase A of both router planners: the registry entry, recorded as a dependency. */
 export function prefetchRouteEntry(
   _t0: unknown,
   ctx: PrefetchContext,
 ): Promise<void> {
-  const registry = routeRegistryOf(ctx)
-  const entry = registry?.lookup(ctx.identity.path) ?? null
+  const entry = ctx.host.routes?.lookup(ctx.identity.path) ?? null
   ctx.ledger.record({
     kind: 'route-registry',
     path: ctx.identity.path,
