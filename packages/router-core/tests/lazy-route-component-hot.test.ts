@@ -75,7 +75,7 @@ describe('lazyRouteComponentHot', () => {
     expect(next).toHaveBeenCalledOnce()
   })
 
-  test('keep holds the component (its refresh runtime patches it) and does not re-render', async () => {
+  test('keep holds the component (its refresh runtime patches it)', async () => {
     const held = v('v1')
     const { state, hot } = wrapper(held)
     const keep = vi.fn(() => true)
@@ -85,8 +85,21 @@ describe('lazyRouteComponentHot', () => {
     expect(await state.pending).toBe(held)
     expect(keep).toHaveBeenCalledWith(loaded, held)
     expect(state.comp).toBe(held)
-    expect(state.renders).toBe(0)
     expect(state.pending).toBeUndefined()
+  })
+
+  test('a kept import after a failed one clears the failure and re-renders', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    hot.update(() => Promise.reject(new Error('boom')), 'component', swap)
+    await state.pending
+    hot.update(
+      () => Promise.resolve({ component: v('v2') }),
+      'component',
+      () => true,
+    )
+    await state.pending
+    expect(state).toMatchObject({ comp: held, error: undefined, renders: 2 })
   })
 
   test('a load in flight is replaced by the hot import, which settles it', async () => {

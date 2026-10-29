@@ -65,7 +65,8 @@ export interface LazyRouteComponentPort {
  * (`extra`). `update` re-imports through the new importer when the wrapper
  * has loaded (or is loading), then keeps the held component if
  * `keep(loaded, held)` says so (the framework's refresh runtime patches it
- * in place) or swaps to the loaded one. The newest import is the only one
+ * in place) or swaps to the loaded one, and re-renders the wrapper either
+ * way (a failure it held is over). The newest import is the only one
  * whose completion counts: an older one that completes while a newer one is
  * pending settles with the newer one. A wrapper that never loaded only takes
  * the new importer for its first load.
@@ -95,9 +96,12 @@ export function lazyRouteComponentHot<TExtra extends object>(
           port.setPending(undefined)
           const next = res[nextExportName ?? 'default']
           const held = port.held()
-          if (held == null || !keep(next, held)) {
-            port.settle(next, undefined)
-          }
+          // a kept component stays (its refresh runtime patches it); either
+          // way a failure the wrapper held is over
+          port.settle(
+            held == null || !keep(next, held) ? next : held,
+            undefined,
+          )
           return port.held()
         },
         (err) => {
