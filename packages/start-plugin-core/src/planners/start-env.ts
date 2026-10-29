@@ -17,6 +17,7 @@ import {
   cleanOrphanedDeclarations,
   identifierBase,
   isPureExpression,
+  revision,
   siblingSpecifier,
   stringLiteral,
   unwrapExpression,
@@ -744,6 +745,7 @@ function planStartEnv(
   }
 
   // ---- 2b. server fn rewrites
+  let devRevision: string | undefined
   for (const site of sites) {
     const key = { rootRel, stableKey: site.stableKey }
     // a nested server fn is checked for hoistability in every env (J4.6: every env refuses
@@ -780,9 +782,17 @@ function planStartEnv(
     const providerDerived = derivesProvider
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
+      // in dev the stub also names its file's revision (an argument the runtime ignores): the
+      // handler may have changed with any edit of the file, and a webpack-family host
+      // hot-updates a module only when its output changed, so the client module of an edited
+      // server fn changes and its route refreshes (Vite updates every module of the file)
+      const args =
+        config.idMode === 'dev'
+          ? `(${stringLiteral(id)}, ${stringLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
+          : `(${stringLiteral(id)})`
       rewrites.add({
         range: rangeOf(h),
-        body: [text({ sym: rpc, ctx: 'callee' }, `(${stringLiteral(id)})`)],
+        body: [text({ sym: rpc, ctx: 'callee' }, args)],
         scope: 'all-outputs',
         by,
         reason: 'client rpc stub',
