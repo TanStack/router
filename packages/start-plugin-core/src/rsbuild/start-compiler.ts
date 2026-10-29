@@ -13,10 +13,8 @@ import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
 import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
-import type {
-  StartRsbuildEnvironment,
-  TransformImportRule,
-} from './compiler-session'
+import type { TransformImportRule } from './compiler-session'
+import type { StartCompilerEnvironment } from '../compiler/session'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type { GetConfigFn } from '../types'
@@ -34,7 +32,7 @@ interface RegisterStartCompilerOptions {
   getConfig: GetConfigFn
   corePluginOpts: TanStackStartRsbuildPluginCoreOptions
   startPluginOpts: TanStackStartRsbuildInputConfig
-  environments: Array<StartRsbuildEnvironment>
+  environments: Array<StartCompilerEnvironment>
   /** Writes a virtual module file of an environment (import-protection edge modules). */
   writeVirtualModule: (envName: string, file: string, content: string) => void
   /** The resolver virtual module content changed (after a `finishMake` replay). */

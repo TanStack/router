@@ -50,11 +50,6 @@ export interface ServerFnBuildInfo {
   facts: Array<ServerFnFact>
 }
 
-export interface StartRsbuildEnvironment {
-  name: string
-  type: 'client' | 'server'
-}
-
 /** Rsbuild `source.transformImport` entries (the array form) the host predicts, so the file and
  * marker rules judge the rewritten import's target. */
 export interface TransformImportRule {

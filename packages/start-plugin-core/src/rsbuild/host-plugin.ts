@@ -31,8 +31,8 @@ import type { LoaderImpl } from './compiler-loader'
 import type {
   ServerFnBuildInfo,
   StartRsbuildCompilerSession,
-  StartRsbuildEnvironment,
 } from './compiler-session'
+import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { ImportGraphView } from '../import-protection/graph-trace'
@@ -42,7 +42,7 @@ type RspackNamespace = typeof rspackNamespaceType
 
 interface StartHostPluginOptions {
   session: StartRsbuildCompilerSession
-  environment: StartRsbuildEnvironment
+  environment: StartCompilerEnvironment
   rspack: RspackNamespace
   /** Writes a virtual module file of this environment (import-protection edge modules). */
   writeVirtualModule: (file: string, content: string) => void
