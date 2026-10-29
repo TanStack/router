@@ -255,12 +255,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       by: ROUTER_PLANNER,
     })
     if (isComponent) {
-      round.splitComponents.push({
-        output: g.output,
-        exported,
-        valueSym,
-        name: split.name,
-      })
+      round.splitComponents.push({ output: g.output, exported, valueSym })
     }
 
     // the route module's placeholder (pure for the client's tree shaking;

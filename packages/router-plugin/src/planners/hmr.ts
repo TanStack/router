@@ -318,7 +318,7 @@ function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
                 ]
               : [
                   c.exported,
-                  `.$$tsrRefreshId = ${stringLiteral(`${c.output.slice('derived:'.length)} ${c.name}`, '"')}\n`,
+                  `.$$tsrRefreshId = ${stringLiteral(`${c.output.slice('derived:'.length)} ${ctx.nameOf(c.exported.sym)}`, '"')}\n`,
                 ],
         },
       ],

@@ -27,18 +27,16 @@ export interface RouterRound {
   plan: SplitPlan
   /** Compile-time binding names of the component options left in the route module (route HMR). */
   unsplit: Record<string, string>
-  /** The components the split chunks export (the split part records them; route HMR marks them). */
-  splitComponents: Array<SplitComponent>
-}
-
-export interface SplitComponent {
-  output: OutputId
-  /** The binding the chunk exports: the user's component, or the chunk's own declaration. */
-  exported: SymRef
-  /** The module binding the option's value names, if any. */
-  valueSym: SymbolId | null
-  /** The chunk's own declaration's name. */
-  name: string
+  /**
+   * The components the split chunks export (route HMR marks them): the
+   * user's binding or the chunk's own declaration, and the module binding
+   * the option's value names, if any.
+   */
+  splitComponents: Array<{
+    output: OutputId
+    exported: SymRef
+    valueSym: SymbolId | null
+  }>
 }
 
 export function routerPlanner(): Planner {
