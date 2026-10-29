@@ -8,16 +8,25 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as PostsPostIdRouteImport } from './routes/posts/$postId'
+
+const AboutLazyRouteImport = createFileRoute('/about')()
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 })
+const AboutLazyRoute = AboutLazyRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+}).lazy(() => import('./routes/about.lazy').then((d) => d.Route))
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -38,5 +47,6 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 const rootRouteChildren = {
   IndexRoute: IndexRoute,
   PostsRoute: PostsRouteWithChildren,
+  AboutLazyRoute: AboutLazyRoute,
 }
 export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)

@@ -213,6 +213,8 @@ By default, this value is set to `false`.
 
 When enabled, the generator adds explicit type annotations so the generated route tree passes TypeScript's `isolatedDeclarations` check without changing its types.
 
+It covers only the generated route tree: your route files still need their own annotations to pass `isolatedDeclarations`.
+
 This option reports an error for routes without a route file. To fix it, add a route file for that path containing `export const Route = createFileRoute('/path')()`.
 
 This option has no effect when `disableTypes` is `true`.

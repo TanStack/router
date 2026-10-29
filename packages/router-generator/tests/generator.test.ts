@@ -367,7 +367,7 @@ async function postprocess(folderName: string) {
 
 function shouldThrow(folderName: string) {
   if (folderName === 'isolated-declarations-virtual') {
-    return 'isolatedDeclarations: "posts/$postId.lazy.tsx" has no route file'
+    return `isolatedDeclarations: "posts/$postId.lazy.tsx" has no route file, so the generator would create the "/posts/$postId" route with createFileRoute('/posts/$postId')(), whose type cannot be written as an annotation. Add a route file for "/posts/$postId" that exports: export const Route = createFileRoute('/posts/$postId')()`
   }
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`

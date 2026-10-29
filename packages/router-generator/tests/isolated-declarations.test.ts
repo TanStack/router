@@ -14,8 +14,12 @@ const typedFixtures: Record<string, Partial<Config>> = {
   'isolated-declarations-root-components': { target: 'vue' },
 }
 
+function tsPath(filePath: string) {
+  return filePath.split(path.sep).join('/')
+}
+
 function fixtureDirectory(fixture: string) {
-  return path.join(process.cwd(), 'tests', 'generator', fixture)
+  return tsPath(path.join(process.cwd(), 'tests', 'generator', fixture))
 }
 
 async function generateTree(
@@ -24,9 +28,11 @@ async function generateTree(
   options: Partial<Config> = {},
 ) {
   const root = fixtureDirectory(fixture)
-  const generatedRouteTree = path.join(
-    root,
-    `routeTree.${variant}.gen.${options.disableTypes ? 'js' : 'ts'}`,
+  const generatedRouteTree = tsPath(
+    path.join(
+      root,
+      `routeTree.${variant}.gen.${options.disableTypes ? 'js' : 'ts'}`,
+    ),
   )
   onTestFinished(() => rm(generatedRouteTree, { force: true }))
   const config = getConfig({
@@ -46,12 +52,13 @@ it.each(Object.keys(typedFixtures))(
   async (fixture) => {
     const isolatedFile = await generateTree(fixture, 'isolated')
     const inferredFile = await generateTree(fixture, 'inferred')
-    const checkFile = path.join(
-      fixtureDirectory(fixture),
-      'route-tree-types.check.ts',
+    const checkFile = tsPath(
+      path.join(fixtureDirectory(fixture), 'route-tree-types.check.ts'),
     )
     const isVue = typedFixtures[fixture]?.target === 'vue'
-    const vueShimFile = path.join(fixtureDirectory(fixture), 'vue-shim.d.ts')
+    const vueShimFile = tsPath(
+      path.join(fixtureDirectory(fixture), 'vue-shim.d.ts'),
+    )
     const vueShimSource = `
 declare module '*.vue' {
   const component: import('@tanstack/vue-router').SyncRouteComponent<Record<string, never>>
@@ -123,9 +130,7 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
       .filter(
         (diagnostic) =>
           !diagnostic.file ||
-          diagnostic.file.fileName.startsWith(
-            fixtureDirectory(fixture) + path.sep,
-          ),
+          diagnostic.file.fileName.startsWith(fixtureDirectory(fixture) + '/'),
       )
       .map((diagnostic) => {
         const file = diagnostic.file
