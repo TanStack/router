@@ -388,8 +388,15 @@ export class AnalysisPlan implements PlanContext {
     if ('sym' in to) {
       this.renames.set(sym, to.sym)
     }
+    const declared = (declaringUnits.get(sym) ?? []).flatMap(
+      (u) => units[u]!.declNameRanges,
+    )
     for (const ref of refs.refsOf(sym)) {
-      if (ref.kind === 'implicitJsxFactory') {
+      if (
+        ref.kind === 'implicitJsxFactory' ||
+        // renamed as a declaration below (a `var` declared again is a write too)
+        declared.some((r) => r.start === ref.range.start)
+      ) {
         continue
       }
       if (

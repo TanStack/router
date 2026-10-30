@@ -1,7 +1,84 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/code-splitter-module-state.test.ts.
 import { describe, expect, it } from 'vitest'
-import { buildAndRun, head, ssrRenderEntry } from '../build-harness'
+import {
+  build,
+  buildAndRun,
+  head,
+  rootRoute,
+  ssrRenderEntry,
+} from '../build-harness'
+
+const varsDeclaredAgain: ReadonlyArray<{
+  name: string
+  code: string
+  rolldownReadsFirst?: boolean
+}> = [
+  {
+    name: 'a for-of head',
+    code: `var x = 1\nfor (var x of [2]) {}`,
+    rolldownReadsFirst: true,
+  },
+  {
+    name: 'a for-in head',
+    code: `var x = 1\nfor (var x in { 2: 0 }) {}`,
+    rolldownReadsFirst: true,
+  },
+  { name: 'a for head', code: `var x = 1\nfor (var x = 2; false; ) {}` },
+  {
+    name: 'a nested statement',
+    code: `var x = 1\nif (globalThis.Object) {\n  var x = 2\n}`,
+  },
+  { name: 'a block', code: `var x = 1\n{\n  var x = 2\n}` },
+  {
+    name: 'a pattern in a nested statement',
+    code: `var x = 1\n{\n  var { x } = { x: 2 }\n}`,
+    rolldownReadsFirst: true,
+  },
+  {
+    name: 'a nested statement above a declaration without a value',
+    code: `{\n  var x = 2\n}\nvar x`,
+  },
+  { name: 'a second declaration', code: `var x = 1\nvar x = 2` },
+]
+
+type Bundler = 'vite' | 'rspack'
+
+/** One app: a route per row; each row's split component rendered. */
+async function varDeclaredAgain(
+  bundler: Bundler,
+  rows: ReadonlyArray<(typeof varsDeclaredAgain)[number]>,
+) {
+  const app = await build({
+    bundler,
+    env: 'ssr',
+    minify: false,
+    prefix: '.regression-build-',
+    files: {
+      'routes/__root.tsx': rootRoute,
+      ...Object.fromEntries(
+        rows.map(({ code }, i) => [
+          `routes/r${i}.tsx`,
+          `${head}${code}
+export const Route = createFileRoute('/')({ component: () => <p>{x}</p> })
+`,
+        ]),
+      ),
+      'entry.ts': `${ssrRenderEntry.replace(/^export \{ Route \}.*$/m, '')}
+${rows.map((_, i) => `import { Route as R${i} } from './routes/r${i}'`).join('\n')}
+export const routes = [${rows.map((_, i) => `R${i}`).join(', ')}]
+`,
+    },
+  })
+  try {
+    const { result } = await app.run(
+      `return Promise.all(entry.routes.map((r) => entry.render(r.options.component)))`,
+    )
+    return rows.map(({ name }, i) => [name, (result as Array<string>)[i]])
+  } finally {
+    await app.dispose()
+  }
+}
 
 describe('split chunks keep the module state the route relies on', () => {
   // Route files commonly export a store or helpers over private state next to
@@ -143,6 +220,52 @@ export const Route = createFileRoute('/')({
       { deleteNodes: ['server'] },
     )
     expect(result).toBe('<p>2</p>')
+  }, 30_000)
+
+  // A `var` declared again takes the new value there, like an assignment:
+  // the split component sees the binding's last value, whatever the
+  // statement giving it is.
+  it.each(['vite', 'rspack'] as const)(
+    'gives the split component the value a `var` declared again takes (%s)',
+    async (bundler) => {
+      const rows = varsDeclaredAgain.filter(
+        (row) => bundler !== 'vite' || !row.rolldownReadsFirst,
+      )
+      expect(await varDeclaredAgain(bundler, rows)).toEqual(
+        rows.map(({ name }) => [name, '<p>2</p>']),
+      )
+    },
+    60_000,
+  )
+
+  // Bug: Rolldown inlines the initial value of a `var` another module imports
+  // when its next declaration is a for-in/of head or a pattern, in valid
+  // output (KNOWN-BUGS, "Upstream issues").
+  // Impact: the split component reads the first value.
+  it.fails(
+    'gives the split component the value a `var` declared again takes in a head or a pattern (Rolldown)',
+    async () => {
+      const rows = varsDeclaredAgain.filter((row) => row.rolldownReadsFirst)
+      expect(await varDeclaredAgain('vite', rows)).toEqual(
+        rows.map(({ name }) => [name, '<p>2</p>']),
+      )
+    },
+    60_000,
+  )
+
+  it('gives a value read between two declarations of a `var` the first one', async () => {
+    const result = await buildAndRun(
+      `${head}var x = 1
+const before = x
+var x = 2
+export const Route = createFileRoute('/')({
+  loader: () => x,
+  component: () => <p>{before}</p>,
+})
+`,
+      `return [await entry.render(entry.Route.options.component), entry.Route.options.loader()]`,
+    )
+    expect(result).toEqual(['<p>1</p>', 2])
   }, 30_000)
 
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).

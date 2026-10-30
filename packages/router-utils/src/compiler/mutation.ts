@@ -19,7 +19,8 @@ type WriteKind = 'assign' | 'member'
 
 /**
  * Whether a reference writes: `assign`, the binding itself gets a value
- * (`x = …`, `x++`, a destructuring or for-in/of target); `member`, the
+ * (`x = …`, `x++`, a destructuring or for-in/of target, a `var` declared
+ * again with a value); `member`, the
  * object it names is mutated (`x.p = …`, `delete x.p`, `x.push(…)`,
  * `Object.assign(x, …)`); null, a read.
  */

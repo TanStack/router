@@ -19,7 +19,7 @@ import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { RegionId, RegionTable, TopLevelItem, Unit, UnitId } from './units'
-import type { Node, Reference, SourceFile } from 'yuku'
+import type { Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
 
@@ -951,6 +951,32 @@ export class ModuleAnalysis {
       })
     }
 
+    // a `var` declared again: what that declaration gives it is a write, like
+    // an assignment, except what its declaring unit starts it with (a nested
+    // declaration runs with its statement, whatever its position)
+    for (const b of file.rootScope.bindings) {
+      const declarations = b.declarations
+      if (declarations.length < 2) {
+        continue
+      }
+      const sym = symbols.ofBinding(b)
+      const own = units[declaringUnits.get(sym)?.[0] ?? -1]
+      declarations.forEach((id, i) => {
+        if (
+          (i > 0 || !own || id.start < own.range.start) &&
+          declarationAssigns(file, id)
+        ) {
+          refs.push({
+            sym,
+            range: { start: id.start, end: id.end },
+            ...classify(file, { node: id, isWrite: true }),
+            eager: !isLazyAt(id.start),
+            memberWrite: false,
+          })
+        }
+      })
+    }
+
     // classic (or unknown) runtime → implicit factory reads per element
     const jsx = this.jsx()
     const { factory, fragment } = jsx
@@ -1357,9 +1383,29 @@ function isTypeDeclaration(decl: Node): boolean {
   )
 }
 
+/** Whether the `var` name `id` declares takes a value there: an initialiser, or the head of a for-in/of. */
+function declarationAssigns(file: SourceFile, id: Node): boolean {
+  let node = file.parentOf(id)
+  while (node !== null && node.type !== 'VariableDeclarator') {
+    node = file.parentOf(node)
+  }
+  if (node === null) {
+    return false
+  }
+  if (node.init !== null) {
+    return true
+  }
+  const declaration = file.parentOf(node)
+  const loop = declaration && file.parentOf(declaration)
+  return (
+    (loop?.type === 'ForInStatement' || loop?.type === 'ForOfStatement') &&
+    loop.left === declaration
+  )
+}
+
 function classify(
   file: SourceFile,
-  ref: Reference,
+  ref: { node: Node; isWrite: boolean },
 ): { kind: RefKind; ctx: RefContext; exportShorthand?: boolean } {
   const node = ref.node
   const parent = file.parentOf(node)
