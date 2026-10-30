@@ -218,14 +218,26 @@ describe('Hydrate', () => {
     }
   })
 
-  it('omits never content when mounted after the app is already hydrated', async () => {
+  it('renders never content when mounted after the app is already hydrated', async () => {
+    const onHydrated = vi.fn()
+
     await renderAsync(
-      <Hydrate when={never()}>
+      <Hydrate
+        when={never()}
+        fallback={<div data-testid="fallback">fallback</div>}
+        onHydrated={onHydrated}
+      >
         <InteractiveChild />
       </Hydrate>,
     )
 
-    expect(screen.queryByTestId('child')).toBeNull()
+    const child = screen.getByTestId('child')
+    expect(child.getAttribute('data-hydrated')).toBe('true')
+    expect(screen.queryByTestId('fallback')).toBeNull()
+    expect(onHydrated).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(child)
+    expect(child.textContent).toBe('1')
   })
 
   it('shows fallback for a client-only mount while children suspend', async () => {
