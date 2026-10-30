@@ -124,3 +124,21 @@ export const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn
     await expectNoSilentLeak(shape)
   })
 })
+
+describe('a method called on a server fn where it is created', () => {
+  // Bug: the client analysis ends the chain at a method of the finished
+  // server fn (`.bind`) without keeping it, so the handler is neither
+  // replaced by its client call nor reported.
+  // Impact: the handler and its server-only imports ship to the client.
+  test.fails.each<Shape>([
+    {
+      name: 'a server fn bound where it is created',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.x()).bind(null)`,
+      body: 'db.x()',
+    },
+  ])('$name', async (shape) => {
+    await expectNoSilentLeak(shape)
+  })
+})
