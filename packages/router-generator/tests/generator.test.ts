@@ -86,7 +86,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'isolated-declarations-nested':
     case 'isolated-declarations-pathless-layout':
     case 'isolated-declarations-lazy':
-    case 'isolated-declarations-virtual':
       config.isolatedDeclarations = true
       break
     case 'isolated-declarations-unformatted':
@@ -366,9 +365,6 @@ async function postprocess(folderName: string) {
 }
 
 function shouldThrow(folderName: string) {
-  if (folderName === 'isolated-declarations-virtual') {
-    return `isolatedDeclarations: "posts/$postId.lazy.tsx" has no route file, so the generator would create the "/posts/$postId" route with createFileRoute('/posts/$postId')(), whose type cannot be written as an annotation. Add a route file for "/posts/$postId" that exports: export const Route = createFileRoute('/posts/$postId')()`
-  }
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
@@ -415,6 +411,23 @@ describe('generator works', async () => {
         )
       }
 
+      await postprocess(folderName)
+    },
+  )
+
+  it.each(['lazy-only-layout-and-index'])(
+    'should wire-up the routes for a "%s" tree with isolatedDeclarations',
+    async (folderName) => {
+      const config = setupConfig(folderName, { isolatedDeclarations: true })
+      rewriteConfigByFolderName(folderName, config)
+      await preprocess(folderName)
+      await new Generator({ config, root: makeFolderDir(folderName) }).run()
+      const snapshotPath = config.disableTypes
+        ? 'routeTree.snapshot.js'
+        : 'routeTree.isolated.snapshot.ts'
+      await expect(await getRouteTreeFileText(config)).toMatchFileSnapshot(
+        join('generator', folderName, snapshotPath),
+      )
       await postprocess(folderName)
     },
   )

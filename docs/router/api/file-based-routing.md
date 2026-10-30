@@ -211,11 +211,9 @@ By default, this value is set to `false`.
 - Type: `boolean`
 - Default: `false`
 
-When enabled, the generator adds explicit type annotations so the generated route tree passes TypeScript's `isolatedDeclarations` check without changing its types.
+When enabled, the generator adds explicit type annotations so the generated route tree passes TypeScript's `isolatedDeclarations` check. Each route keeps its type, except a route without a route file, such as a lazy file on its own, which is typed as `any`. To keep that route's type, add a route file for its path that contains `export const Route = createFileRoute('/path')()`.
 
 It covers only the generated route tree: your route files still need their own annotations to pass `isolatedDeclarations`.
-
-This option reports an error for routes without a route file. To fix it, add a route file for that path containing `export const Route = createFileRoute('/path')()`.
 
 This option has no effect when `disableTypes` is `true`.
 

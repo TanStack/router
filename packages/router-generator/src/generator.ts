@@ -629,13 +629,9 @@ export class Generator {
 
     for (const node of sortedRouteNodes) {
       if (node.isVirtual) {
-        if (isolatedDeclarations) {
-          throw new Error(
-            `isolatedDeclarations: "${node.filePath}" has no route file, so the generator would create the "${node.routePath}" route with createFileRoute('${node.routePath}')(), whose type cannot be written as an annotation. Add a route file for "${node.routePath}" that exports: export const Route = createFileRoute('${node.routePath}')()`,
-          )
-        }
+        const routeImportAnnotation = isolatedDeclarations ? ': any' : ''
         virtualRouteNodes.push(
-          `const ${node.variableName}RouteImport = createFileRoute('${node.routePath}')()`,
+          `const ${node.variableName}RouteImport${routeImportAnnotation} = createFileRoute('${node.routePath}')()`,
         )
       } else {
         routeImports.push(
