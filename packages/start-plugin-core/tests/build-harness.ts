@@ -308,8 +308,8 @@ export interface StartBuildOptions {
    * Builds in watch mode (`vite build --watch`, `rsbuild build --watch`),
    * applies these app file edits (`null` deletes a file) once the first
    * build is done, and describes the rebuild they cause (its errors
-   * reject, as the first build's do). Vite: the edits are files the
-   * builds' watchers report.
+   * reject; what the first build reported is `StartBuild.firstBuild`).
+   * Vite: the edits are files the builds' watchers report.
    */
   watchEdits?: Record<string, string | null>
   /**
@@ -330,6 +330,12 @@ export interface StartBuild {
   ssr: BuildResult
   /** App root on disk (paths in reports are relative to it or absolute). */
   root: string
+  /**
+   * A watch mode build (`watchEdits`): everything its first build
+   * reported, on every channel, its errors included (`diagnostics` is the
+   * rebuild's). Empty for other builds.
+   */
+  firstBuild: Array<ChannelDiagnostic>
   /**
    * Everything the build reported, on every channel, in order (SPEC §5.7):
    * the bundler's warnings of both environments, Vite's logger, `console.*`
@@ -544,6 +550,7 @@ async function buildAt(
   >
   const consoleMessages: Array<ChannelDiagnostic> = []
   let diagnostics: Array<ChannelDiagnostic> = []
+  let firstBuild: Array<ChannelDiagnostic> = []
   /** One build, recording what it reports on every channel. */
   const build = async () => {
     warnings.client.length = 0
@@ -590,6 +597,8 @@ async function buildAt(
       throw error
     } finally {
       diagnostics = described()
+      const from = channel && describedFrom.get(channel)
+      firstBuild = from ? channel!.since(0).slice(0, from) : []
     }
   }
   let outputs: Outputs | undefined
@@ -634,6 +643,7 @@ async function buildAt(
     },
     root: app.root,
     diagnostics,
+    firstBuild,
     violations: [...target.violations],
     rebuild: async (edits = {}) => {
       for (const [file, content] of Object.entries(edits)) {
@@ -867,7 +877,9 @@ async function buildWithVite(
     await builder.buildApp()
     if (watch && target.watchEdits) {
       try {
-        await watch.first(watchTimeout)
+        for (const error of await watch.first(watchTimeout)) {
+          channel.report(stripAnsi(error.message), 'error', 'bundler')
+        }
         errors.length = 0
         warnings.client.length = 0
         warnings.ssr.length = 0
@@ -904,7 +916,7 @@ async function buildWithVite(
 function trackViteWatch() {
   interface EnvironmentBuilds {
     /** The last build ended with this error (`ERROR`). */
-    error: unknown
+    error: Error | null
     /** Some build has ended. */
     ended: boolean
     /** The watcher reported an edited file after the running build began. */
@@ -940,14 +952,11 @@ function trackViteWatch() {
       }
       changed()
     })
-  /** The first error of the builds `of` describes (they ended). */
-  const failure = (of: (state: EnvironmentBuilds) => boolean) => {
-    for (const state of environments.values()) {
-      if (of(state) && state.error) {
-        throw state.error
-      }
-    }
-  }
+  /** The errors of the last builds of the environments `of` accepts (they ended). */
+  const failures = (of: (state: EnvironmentBuilds) => boolean) =>
+    [...environments.values()].flatMap((state) =>
+      of(state) && state.error ? [state.error] : [],
+    )
   const plugin: Plugin = {
     name: 'start-build-harness:watch',
     buildApp: {
@@ -989,8 +998,8 @@ function trackViteWatch() {
   }
   return {
     plugin,
-    /** The first build of every environment ended (rejects with an error of one). */
-    first: async (timeout: number) => {
+    /** The first build of every environment ended: their errors. */
+    first: async (timeout: number): Promise<Array<Error>> => {
       await until(
         () =>
           environments.size > 0 &&
@@ -998,7 +1007,7 @@ function trackViteWatch() {
         timeout,
         'first build',
       )
-      failure(() => true)
+      return failures(() => true)
     },
     /** Writes `edits` and waits for the builds that read them (rejects with an error of one). */
     edit: async (
@@ -1034,7 +1043,10 @@ function trackViteWatch() {
         timeout,
         `rebuild of ${Object.keys(edits).join(', ')}`,
       )
-      failure((state) => readers.has(state))
+      const [error] = failures((state) => readers.has(state))
+      if (error) {
+        throw error
+      }
     },
     close: async () => {
       await Promise.all(watchers.map((watcher) => watcher.close()))

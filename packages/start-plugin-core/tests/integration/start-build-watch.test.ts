@@ -34,7 +34,7 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
   test(
     'the first build succeeds and an edit rebuilds both environments',
     async () => {
-      const { client, ssr } = await buildStart({
+      const { client, ssr, firstBuild } = await buildStart({
         bundler,
         files,
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
@@ -43,6 +43,9 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
 `,
         },
       })
+      expect(firstBuild.filter(({ severity }) => severity === 'error')).toEqual(
+        [],
+      )
       expect((await client.run(`return entry.greeting`)).result).toBe(
         'MARK_AFTER',
       )
