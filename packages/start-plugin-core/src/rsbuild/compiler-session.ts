@@ -19,6 +19,7 @@ import {
   invalidate,
   normalizePath,
   pathsOf,
+  planDependencyFiles,
   planKeyString,
   registerCompilerStats,
   restorePlans,
@@ -409,6 +410,13 @@ export class StartRsbuildCompilerSession {
       }
       rebuild(paths)
     }
+  }
+
+  /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */
+  dependencyFiles(envName: string, paths: ReadonlySet<string>): Array<string> {
+    return [...planDependencyFiles(this.start.caches, envName, paths)].filter(
+      (file) => !paths.has(file) && path.isAbsolute(file),
+    )
   }
 
   /**

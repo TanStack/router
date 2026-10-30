@@ -291,6 +291,26 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
+        if (compiler.watchMode) {
+          // Rspack watches the files the plans of the compilation's modules read (no
+          // module depends on them: whether a change makes a module stale is the
+          // invalidation's to decide), a file no output imports any more included
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+            const paths = new Set<string>()
+            for (const m of modules) {
+              const resource = (m as unknown as ModuleLike).resource
+              if (resource) {
+                paths.add(identify(canonicalResource(resource)).path)
+              }
+            }
+            for (const file of session.dependencyFiles(
+              environment.name,
+              paths,
+            )) {
+              compilation.fileDependencies.add(path.normalize(file))
+            }
+          })
+        }
         if (
           session.start.opts.mode === 'build' &&
           environment.type === 'client'

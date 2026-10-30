@@ -20,7 +20,12 @@ import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
-import { fingerprintSourceFor, planCacheFor, resolveForAnalysis } from './host'
+import {
+  dependencyPaths,
+  fingerprintSourceFor,
+  planCacheFor,
+  resolveForAnalysis,
+} from './host'
 import { registerCompilerStats } from './stats'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
 import type { CacheEntry, Settled } from './cache'
@@ -297,7 +302,7 @@ function emitFrom(
     diagnostics: plan.diagnostics,
     // only the webpack-family hosts read them, once per compile: computed on demand
     get dependencies() {
-      return dependencyPaths(plan, caches)
+      return [...dependencyPaths(plan.dependencies, caches)]
     },
     persisted: { key: entry.key, dependencies: plan.dependencies },
     output: requested,
@@ -314,33 +319,6 @@ function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
     at = seg.end
   }
   return at === code.length
-}
-
-/** The files a plan read (a known package is recognised by its specifier, never read). */
-function dependencyPaths(
-  plan: EmitPlan,
-  caches: CompilerCaches,
-): Array<string> {
-  const out = new Set<string>()
-  const addModule = (canonicalId: string) => {
-    if (!caches.rawFacts.isKnownSpecifier(canonicalId)) {
-      out.add(identify(canonicalId).path)
-    }
-  }
-  for (const fp of plan.dependencies) {
-    if (
-      fp.kind === 'summary' ||
-      fp.kind === 'target-facts' ||
-      fp.kind === 'target-marker'
-    ) {
-      addModule(fp.canonicalId)
-    } else if (fp.kind === 'route-registry') {
-      out.add(fp.path)
-    } else if (fp.resolved !== null) {
-      addModule(fp.resolved)
-    }
-  }
-  return [...out]
 }
 
 async function runAttempt(

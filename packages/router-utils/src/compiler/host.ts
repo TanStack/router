@@ -354,6 +354,55 @@ export async function invalidate(
   return { evicted, dependents }
 }
 
+/** The files dependencies name (a known package is recognised by its specifier, never read). */
+export function dependencyPaths(
+  dependencies: ReadonlyArray<DependencyFingerprint>,
+  caches: CompilerCaches,
+  out = new Set<string>(),
+): Set<string> {
+  const addModule = (canonicalId: string) => {
+    if (!caches.rawFacts.isKnownSpecifier(canonicalId)) {
+      out.add(identify(canonicalId).path)
+    }
+  }
+  for (const fp of dependencies) {
+    if (
+      fp.kind === 'summary' ||
+      fp.kind === 'target-facts' ||
+      fp.kind === 'target-marker'
+    ) {
+      addModule(fp.canonicalId)
+    } else if (fp.kind === 'route-registry') {
+      out.add(fp.path)
+    } else if (fp.resolved !== null) {
+      addModule(fp.resolved)
+    }
+  }
+  return out
+}
+
+/**
+ * The files the plans of an environment's modules at `paths` read: what a
+ * host whose modules depend on their own file only has its bundler watch
+ * (the invalidation of a change decides which modules are stale).
+ */
+export function planDependencyFiles(
+  caches: CompilerCaches,
+  env: string,
+  paths: Iterable<string>,
+): Set<string> {
+  const out = new Set<string>()
+  const cache = caches.plans.get(env)
+  if (cache) {
+    for (const path of paths) {
+      for (const key of cache.keysAt(path)) {
+        dependencyPaths(cache.dependenciesOf(key) ?? [], caches, out)
+      }
+    }
+  }
+  return out
+}
+
 /**
  * Whether a file created at `added` can change a resolution that found
  * `resolved`: a file of the same name with another extension (`x.tsx`,
