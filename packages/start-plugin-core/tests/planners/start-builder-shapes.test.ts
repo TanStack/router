@@ -434,6 +434,14 @@ const supported: Array<Shape> = [
     code: `${P}const f = createIsomorphicFn().server(() => db.x()).client(() => 'client')\nexport const g = [f].map((h) => h)`,
   },
   {
+    name: 'an isomorphic fn with a server implementation only, cast',
+    code: `${P}export const f = createIsomorphicFn().server(() => db.x()) as unknown as () => string`,
+  },
+  {
+    name: 'an isomorphic fn whose client implementation has a block body, cast',
+    code: `${P}export const f = createIsomorphicFn().server(() => db.x()).client(() => { return 'client' }) as () => string`,
+  },
+  {
     name: 'createServerOnlyFn',
     code: `${P}export const f = createServerOnlyFn(() => db.x())`,
   },

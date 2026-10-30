@@ -675,10 +675,11 @@ function planStartEnv(
         )
         continue
       }
+      // (the edit replaces the terminal inside its wrappers: `x as T` keeps its `as`)
       const parens = needsParens(
         unwrapExpression(link.arg),
-        chain.wrapped,
-        chain.parent,
+        X,
+        file.parentOf(X),
       )
       envEdit(
         rangeOf(X),
@@ -689,7 +690,7 @@ function planStartEnv(
       continue
     }
     if (chain.headIsFactoryCall) {
-      const parens = needsParens('arrow', chain.wrapped, chain.parent)
+      const parens = needsParens('arrow', X, file.parentOf(X))
       envEdit(rangeOf(X), [text(parens ? '(() => {})' : '() => {}')])
       continue
     }
