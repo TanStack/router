@@ -224,28 +224,29 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       const isKnown = (file: string) => !knownFiles || knownFiles.has(file)
-      // the edits of files the last compilation read, invalidated before this compilation
-      // starts: the modules of their stale dependents are built with them (a file's facts
-      // need no resolver)
+      // edits and removals of files the last compilation read, invalidated before this
+      // compilation starts: the modules of their stale dependents are built with them (a
+      // file's facts need no resolver, and a resolution that found a removed file is stale)
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         ipEnvOf()?.beginLogicalBuild()
         starting = (c.modifiedFiles as Set<string> | undefined) ?? null
         try {
-          await session.invalidateFileEvents(
-            modified
+          await session.invalidateFileEvents([
+            ...modified
               .filter(isKnown)
               .map((file) => ({ file, kind: 'change' as const })),
-          )
+            ...removed.map((file) => ({ file, kind: 'unlink' as const })),
+          ])
         } finally {
           starting = null
         }
         await opts.generator.watchRun(modified, removed)
       })
-      // created and removed files, invalidated once Rspack's resolver forgot what it found
-      // in the last compilation (at `make`, before the modules build): the modules of their
-      // stale dependents are built by the next compilation
+      // created files, invalidated once Rspack's resolver forgot what it found in the last
+      // compilation (at `make`, before the modules build; a new file may take resolutions):
+      // the modules of their stale dependents are built by the next compilation
       compiler.hooks.make.tapPromise(PLUGIN_NAME, async (compilation) => {
         if (compilation.compiler !== compiler) {
           return
@@ -253,15 +254,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // Rspack reports no event for a file created while nothing depended on it (a
         // target deleted and recreated between edits): missing-file facts are read again
         session.forgetMisses()
-        await session.invalidateFileEvents([
-          ...[...(compiler.modifiedFiles ?? [])]
+        await session.invalidateFileEvents(
+          [...(compiler.modifiedFiles ?? [])]
             .filter((file) => !isKnown(file))
             .map((file) => ({ file, kind: 'add' as const })),
-          ...[...(compiler.removedFiles ?? [])].map((file) => ({
-            file,
-            kind: 'unlink' as const,
-          })),
-        ])
+        )
       })
       // a registry change (the generator published new route ids): Rspack sees
       // no file event for the files concerned, so it is told they changed and
