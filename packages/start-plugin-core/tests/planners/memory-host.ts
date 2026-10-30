@@ -93,6 +93,8 @@ export class MemoryHost implements HostServices {
         planners,
         config: extra.config ?? { configKey: 'cfg', perPlanner: {} },
         wantMap: extra.wantMap ?? false,
+        lang: extra.lang,
+        inPlace: extra.inPlace,
       },
       this,
       this.caches,

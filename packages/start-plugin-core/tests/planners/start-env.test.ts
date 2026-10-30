@@ -627,3 +627,52 @@ export const fn = createServerFn().handler(async () => db.get(<number>4))
     expect(h).toContain('db.get(<number>4)')
   })
 })
+
+describe('the JavaScript another plugin compiled from a file that is no JavaScript (late)', () => {
+  const PAGE = '/app/src/page.mdx'
+  const page = `import { createServerFn, createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.x())
+export const iso = createIsomorphicFn().server(() => db.x()).client(() => 'client')
+`
+  async function late(env: EnvInfo, partial: Partial<StartEnvConfig> = {}) {
+    const host = new MemoryHost(
+      {
+        [PAGE]: page,
+        '/app/src/db.server.ts': `export const db = { x: () => 'secret' }\n`,
+      },
+      { recognizer: startRecognizer() },
+    )
+    const out = await host.compile(PAGE, planners, {
+      env,
+      config: configOf({ late: true, ...partial }),
+      lang: 'jsx',
+      inPlace: true,
+    })
+    return {
+      code: out!.code,
+      errors: out!.diagnostics.filter((d) => d.severity === 'error'),
+    }
+  }
+
+  it('compiles in place: the client stubs, the provider keeps its handler in the module', async () => {
+    const client = await late(clientEnv)
+    expect(client.errors).toEqual([])
+    expect(client.code).not.toContain('db.x()')
+    expectValid(client.code)
+    const provider = await late(ssrEnv)
+    expect(provider.errors).toEqual([])
+    expect(provider.code).toContain('createServerRpc')
+    expect(provider.code).toContain('db.x()')
+    expect(provider.code).not.toContain('import(')
+  })
+
+  it('refuses a server fn where the provider is a module derived from the file (RSC)', async () => {
+    const { errors } = await late(clientEnv, {
+      providerSeparate: true,
+    })
+    expect(errors.map((e) => page.slice(e.range!.start, e.range!.end))).toEqual(
+      ['createServerFn()'],
+    )
+  })
+})

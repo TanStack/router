@@ -31,6 +31,7 @@ import {
   serverFnFactsOf,
 } from '../compiler/session'
 import { NODE_MODULES_RE } from '../compiler/scope'
+import { namesStartSpecifier } from '../compiler/recognizer'
 import { providerModuleId } from '../server-fns/registry'
 import {
   CLIENT_REFERENCED_IDS_PLACEHOLDER,
@@ -544,9 +545,12 @@ export class StartRsbuildCompilerSession {
       )
     }
     const identity = identify(id)
-    // (the late pass is registered only with import protection on)
     const late = options.pass === 'late'
     if (late ? identity.lang !== null : identity.lang === null) {
+      return passthrough
+    }
+    if (late && !ip && !namesStartSpecifier(source)) {
+      // (the late pass: import protection's, and Start's where the text names it)
       return passthrough
     }
     if (!late && !this.start.compiles(identity.path, source)) {

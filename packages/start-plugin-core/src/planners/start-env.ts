@@ -66,6 +66,12 @@ export interface StartEnvConfig {
   idMode: 'dev' | 'default' | 'placeholder'
   /** The directive a derived provider module carries (RSC), if any. */
   providerDirective?: string
+  /**
+   * The module is JavaScript another plugin compiled from a file that is no
+   * JavaScript (`.mdx`, `.vue`, …; the late pass): every rewrite stays in the
+   * module (a derived module would read the file).
+   */
+  late?: boolean
 }
 
 export interface StartEnvFacts {
@@ -401,7 +407,14 @@ function planStartEnv(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
   const derivesProvider = config.providerSeparate
-  if (role === 'provider' && derivesProvider && serverFnChains.length > 0) {
+  if (config.late && derivesProvider && serverFnChains.length > 0) {
+    // the provider module is derived from the file, which is no JavaScript
+    diag(LATE_MESSAGE, rangeOf(serverFnChains[0]!.head))
+  } else if (
+    role === 'provider' &&
+    derivesProvider &&
+    serverFnChains.length > 0
+  ) {
     providerOut = ctx.declareOutput({
       kind: 'provider',
       key: 'provider',
@@ -618,7 +631,9 @@ function planStartEnv(
     sites.length > 0 &&
     // a module that awaits at its top level could await one of its own server fns while it
     // evaluates: the handler module imports it back and would wait for it forever
-    !hasTopLevelAwait(ctx)
+    !hasTopLevelAwait(ctx) &&
+    // (the handler module would read the file, which is no JavaScript)
+    !config.late
   ) {
     for (const site of sites) {
       // a core fallback (the handler writes module state other code reads) keeps it in place
@@ -1045,6 +1060,9 @@ function parameterOf(
   }
   return null
 }
+
+const LATE_MESSAGE =
+  'Another plugin compiles this module from a file that is not JavaScript (`.mdx`, `.vue`, `.svelte`, …), so the TanStack Start compiler only sees its output and cannot keep the server code of a TanStack Start builder or factory used here out of the client. Define it in a `.ts`/`.tsx` module and import what it creates.'
 
 const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
   flow: 'A TanStack Start builder or factory is used where the compiler cannot follow it (passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…), so server code attached to it there would ship to the client. Keep builders in `const` bindings and call `.handler()` / `.server()` on them directly.',

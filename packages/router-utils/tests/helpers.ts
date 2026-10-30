@@ -601,6 +601,7 @@ export class MemoryHost implements HostServices {
         code,
         inputMap: extra.inputMap,
         lang: extra.lang,
+        inPlace: extra.inPlace,
         env: extra.env ?? envInfo(),
         planners,
         config: extra.config ?? { configKey: 'cfg', perPlanner: {} },

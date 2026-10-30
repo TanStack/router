@@ -45,6 +45,7 @@ import {
 } from '../constants'
 import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
 import { StartCompilerSession, leakFactsOf } from '../compiler/session'
+import { namesStartSpecifier } from '../compiler/recognizer'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
 import {
@@ -1194,11 +1195,12 @@ export function startCompilerPlugin(
   }
 
   /**
-   * The late import-protection pass: modules whose id is not
+   * The late pass: modules whose id is not
    * JS/TS but whose code reaches us as JS through other plugins (`.mdx`, a
    * compiled `.vue` module, custom types) are judged with the `import-edges`
-   * planner alone, after the framework plugins (`post`), their positions
-   * mapped through the combined source map.
+   * planner, and compiled by start-env when their text names a Start package
+   * (`StartEnvConfig.late`), after the framework plugins (`post`), their
+   * positions mapped through the combined source map.
    */
   const latePassPlugin: Plugin = {
     name: 'tanstack-start:import-protection-late',
@@ -1214,7 +1216,11 @@ export function startCompilerPlugin(
       async handler(code, id) {
         const s = requireSession()
         const env = envOf(this.environment.name)
-        if (!s.start.ip || !env || identify(id).lang !== null) {
+        if (
+          (!s.start.ip && !namesStartSpecifier(code)) ||
+          !env ||
+          identify(id).lang !== null
+        ) {
           return null
         }
         const out = await s.start.compile(

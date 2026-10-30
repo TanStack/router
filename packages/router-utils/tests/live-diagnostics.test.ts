@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MemoryHost, dedent, toyEnvPlanner } from './helpers'
+import { MemoryHost, dedent, toyEnvPlanner, toySplitPlanner } from './helpers'
 import type { Planner, Range } from '../src/compiler'
 
 /**
@@ -129,5 +129,32 @@ describe('diagnostics about code that ships', () => {
         { unlessLive: true },
       ),
     ).toEqual([])
+  })
+})
+
+describe('a module whose code is no JS/TS of its own (`.mdx`)', () => {
+  const code = `import { wrapServer } from 'toy-start'\nexport const fn = wrapServer(() => 1)\n`
+  const host = () => new MemoryHost({ files: { '/app/page.mdx': code } })
+
+  it('runs Tier 1 planners only in place', async () => {
+    const tier0 = await host().compile('/app/page.mdx', [toyEnvPlanner()], {
+      lang: 'jsx',
+    })
+    expect(tier0?.code ?? code).toBe(code)
+    const inPlace = await host().compile('/app/page.mdx', [toyEnvPlanner()], {
+      lang: 'jsx',
+      inPlace: true,
+    })
+    expect(inPlace!.code).toContain('tsrStub()')
+  })
+
+  it('throws when an in-place plan declares a derived output', async () => {
+    await expect(
+      host().compile('/app/page.mdx', [toySplitPlanner()], {
+        lang: 'jsx',
+        inPlace: true,
+        code: `import { createFileRoute } from 'toy-router'\nexport const Route = createFileRoute('/')({ component: () => null })\n`,
+      }),
+    ).rejects.toThrow(/derived output/)
   })
 })

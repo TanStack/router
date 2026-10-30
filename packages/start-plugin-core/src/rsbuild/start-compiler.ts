@@ -28,7 +28,7 @@ const assetLoaderPath = path.resolve(currentDir, 'asset-query-loader.js')
 
 /** JS/TS module paths (the query is not part of a rule's `test`). */
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
-/** Module types whose JavaScript output other loaders produce (the late import-protection pass). */
+/** Module types whose JavaScript output other loaders produce (the late pass). */
 const LATE_PASS_RE = /\.(?:vue|svelte|mdx?|astro|marko)$/i
 
 interface RegisterStartCompilerOptions {
@@ -124,18 +124,19 @@ export function registerStartCompiler(
         sideEffects: false,
       },
     ]
+    // the late pass (import protection; start-env where the text names Start)
+    loaderRules.push({
+      test: LATE_PASS_RE,
+      enforce: 'post',
+      use: [
+        {
+          loader: loaderPath,
+          options: { environment: environment.name, pass: 'late' },
+        },
+      ],
+    })
     if (s.start.ip) {
       loaderRules.push(
-        {
-          test: LATE_PASS_RE,
-          enforce: 'post',
-          use: [
-            {
-              loader: loaderPath,
-              options: { environment: environment.name, pass: 'late' },
-            },
-          ],
-        },
         // the import-protection runtime only; edge modules are analysed by the bundler
         {
           test: /[\\/]import-protection[\\/][^\\/]+[\\/]runtime\.mjs$/,

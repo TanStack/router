@@ -63,9 +63,16 @@ export interface CompileInput {
   /**
    * Language of `code` when the id itself is not JS/TS but the bundler hands
    * us JS (`.vue`, `.mdx`, custom module types). Such ids run Tier 0
-   * planners only. Must be a function of the id. Ignored for JS/TS ids.
+   * planners only, unless `inPlace`. Must be a function of the id. Ignored
+   * for JS/TS ids.
    */
   lang?: Lang
+  /**
+   * With `lang`: Tier 1 planners run too, in place. Their plan declares no
+   * derived output (its id would load the file, which is no JS/TS): a planner
+   * declaring one is a bug, and the compile throws.
+   */
+  inPlace?: boolean
   env: EnvInfo
   planners: ReadonlyArray<Planner>
   config: CompileConfig

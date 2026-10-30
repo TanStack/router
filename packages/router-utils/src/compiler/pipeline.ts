@@ -9,6 +9,7 @@ import {
   edgeKeyOf,
   identify,
   isCommonJsPath,
+  langFromId,
   planKeyString,
   revision,
 } from './identity'
@@ -92,9 +93,11 @@ export async function compileModule(
   caches: CompilerCaches,
 ): Promise<CompileOutput | null> {
   const own = identify(input.id)
-  // a non-JS id whose code reaches us as JS (`.vue`, `.mdx`) compiles with Tier 0 only
-  const tier0Only = own.lang === null
-  const identity = tier0Only && input.lang ? { ...own, lang: input.lang } : own
+  // a non-JS id whose code reaches us as JS (`.vue`, `.mdx`) compiles with
+  // Tier 0 only, or in place (`inPlace`)
+  const tier0Only = own.lang === null && input.inPlace !== true
+  const identity =
+    own.lang === null && input.lang ? { ...own, lang: input.lang } : own
   if (identity.lang === null) {
     return null
   }
@@ -520,6 +523,11 @@ async function runAttempt(
       fallbacks = [...fallbacks, ...fresh]
     }
     emitPlan = plan.freeze(rev)
+    if (langFromId(input.id) === null && plan.outputs.size > 1) {
+      throw new Error(
+        `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
+      )
+    }
     if (VERIFY_OUTPUTS) {
       verifyPlan(plan, emitPlan, input.code, identity)
     }
