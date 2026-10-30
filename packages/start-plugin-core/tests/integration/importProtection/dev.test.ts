@@ -791,10 +791,9 @@ export const read = () => secret() + leak()
   /**
    * The page, located at the import of the denied module (line 5) or at
    * its use (7:27), with a column; never at a position of MDX's compiled
-   * JavaScript. `located: false`: or without coordinates (pinned below).
+   * JavaScript.
    */
-  const inPage = ({ located = true } = {}) =>
-    originalLocation('src/page.mdx:7:27', 5, { unavailable: !located })
+  const inPage = () => originalLocation('src/page.mdx:7:27', 5)
   // Source: mutation testing (the module has no compiled imports import
   // protection could check its violations against; nor can it tell whether its imports survived compiling, so a module it
   // imports is reachable through it).
@@ -820,9 +819,8 @@ export const leak = () => secret()
       const importers = reportedViolations(server).map(
         ({ importer }) => importer,
       )
-      // (located if at all at the import or the use: no coordinates is the
-      // bug pinned below)
-      expect(importers).toContainEqual(inPage({ located: false }))
+      // (located at the import or the use)
+      expect(importers).toContainEqual(inPage())
       expect(importers).toContainEqual(
         originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
       )
@@ -900,7 +898,7 @@ export const request = () => getRequest()
 return probeMock(entry.request(), 'MARK_')`,
       )
       expect(result).toEqual(safeMock)
-      // (the page, located if at all at the import, line 2, or at the use
+      // (the page, located at the import, line 2, or at the use
       // `getRequest()`, 3:30, of the .mdx source)
       expect(
         reportedViolations(server).map(({ importer }) => importer),
@@ -911,7 +909,7 @@ return probeMock(entry.request(), 'MARK_')`,
 })
 
 describe('onViolation', () => {
-  // What the client then gets is pinned below.
+  // What the client then gets is tested below.
   // Source: mutation testing.
   test(
     'returning false silences the warning; it receives the importer',
