@@ -16,6 +16,7 @@ import {
   identifierBase,
   isPureExpression,
   normalizePath,
+  patternIdentifiers,
   revision,
   siblingSpecifier,
   stringLiteral,
@@ -23,14 +24,14 @@ import {
   walk,
 } from '@tanstack/router-utils/compiler'
 import { runtimeSpecifiers, startRecognizer } from '../compiler/recognizer'
-import { prefetchStartValues } from '../compiler/prefetch'
-import { startAnalysisOf } from '../compiler/start-analysis'
+import { isClientOnlyPartial, prefetchStartValues } from '../compiler/prefetch'
+import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import {
   defaultFunctionId,
   devFunctionId,
   placeholderId,
 } from '../server-fns/ids'
-import type { Chain } from '../compiler/start-analysis'
+import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
   EditScope,
@@ -497,6 +498,9 @@ function planStartEnv(
     return { out: handlerOut, load: handlerLoad }
   }
 
+  /** The arguments the client erases, with their call; `impl`: the server's implementation itself, not a validator. */
+  const serverCode: Array<{ arg: Node; call: Node; impl: boolean }> = []
+
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
   for (const chain of analysis.chains) {
     if (chain.unsupported) {
@@ -528,6 +532,11 @@ function planStartEnv(
           body: [],
           scope: 'all-outputs',
           by,
+        })
+        serverCode.push({
+          arg: link.arg,
+          call: link.call,
+          impl: link.method === 'server',
         })
       }
     }
@@ -630,6 +639,13 @@ function planStartEnv(
     if (stubbedHandlers.has(`${chain.wrapped.start}:${chain.wrapped.end}`)) {
       continue
     }
+    if (!isServer) {
+      for (const l of chain.links) {
+        if (l.method === 'server' && l.arg !== null) {
+          serverCode.push({ arg: l.arg, call: l.call, impl: true })
+        }
+      }
+    }
     const link = chain.links.find((l) => l.method === wantLink)
     if (link) {
       if (link.arg === null || link.argIsSpread) {
@@ -687,6 +703,9 @@ function planStartEnv(
           : [slice(rangeOf(c.arg))],
       )
     } else {
+      if (c.arg !== null) {
+        serverCode.push({ arg: c.arg, call: c.call, impl: true })
+      }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens('arrow', wrapped, parent)
       const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
@@ -916,17 +935,124 @@ function planStartEnv(
     ctx.addRoot('env', { t: 'gen', id: acceptHotUpdates('auto', '\n') })
   }
 
-  // ---- 6. unsupported uses (leak-prone on the client)
+  // ---- 6. uses the compiler cannot follow, where the client output keeps them
   if (role === 'client') {
-    for (const u of analysis.unsupported) {
-      diag(
-        'Unsupported use of a TanStack Start builder: a computed member access cannot be compiled. Call its methods directly (`.handler(...)`, `.server(...)`).',
-        rangeOf(u.node),
-      )
+    for (const e of analysis.escapes) {
+      ctx.liveDiagnostic({
+        severity: 'error',
+        message: escapeMessage(e),
+        range: rangeOf(e.node),
+        by,
+        code: `start-escape:${e.reason}`,
+      })
+    }
+    // a parameter that reaches server code: every call keeps its argument on the client
+    // (a handler's captures are refused by `hoist`)
+    const params = new Map<
+      SymbolId,
+      { name: Node; fn: Node; direct: Node | null }
+    >()
+    for (const { arg, call, impl } of serverCode) {
+      const code = impl ? unwrapExpression(arg) : null
+      for (const { kind, sym, range } of t1.refs.refsIn(rangeOf(arg))) {
+        const param =
+          kind === 'value' &&
+          !ctx.symbols.isModuleLevel(sym) &&
+          parameterOf(ctx, sym, call)
+        if (!param) {
+          continue
+        }
+        const direct =
+          code?.type === 'Identifier' && code.start === range.start
+            ? code
+            : null
+        if (!params.get(sym)?.direct) {
+          params.set(sym, { ...param, direct })
+        }
+      }
+    }
+    // (judged at the function: a pattern property only erased code read is pruned)
+    for (const [sym, { name, fn, direct }] of params) {
+      const param = ctx.symbols.name(sym)
+      if (direct) {
+        ctx.liveDiagnostic(
+          {
+            severity: 'error',
+            message: `\`${param}\` is passed as server code here, so what callers pass for it is server code, and every call keeps its argument on the client. Write the server code at each call instead of passing it through a function.`,
+            range: rangeOf(direct),
+            by,
+            code: 'start-escape:server-param',
+          },
+          { at: rangeOf(fn) },
+        )
+      } else {
+        ctx.liveDiagnostic(
+          {
+            severity: 'warning',
+            message: `The parameter \`${param}\` is read only by server-only code, but what callers pass for it still ships to the client: every call keeps its argument. Do not pass secrets or server code through it; read them inside the server code.`,
+            range: rangeOf(name),
+            by,
+            code: 'start-server-param',
+          },
+          {
+            at: rangeOf(fn),
+            unlessLive: t1.refs.valueRefsOf(sym).map((r) => r.range),
+          },
+        )
+      }
     }
   }
 
   ctx.setFacts(START_ENV, facts)
+}
+
+/**
+ * The name node of `sym` when it is a parameter (or a binding of a
+ * parameter's pattern) of a function enclosing `call`, with that function.
+ */
+function parameterOf(
+  ctx: PlanContext,
+  sym: SymbolId,
+  call: Node,
+): { name: Node; fn: Node } | null {
+  const name = ctx.symbols.binding(sym)?.declarations[0]
+  if (!name) {
+    return null
+  }
+  for (const fn of ctx.analysis.file.ancestors(name)) {
+    if (isFunctionNode(fn)) {
+      const isParam = fn.params.some((p) =>
+        patternIdentifiers(p).some((id) => id === name),
+      )
+      return isParam && fn.start <= call.start && call.end <= fn.end
+        ? { name, fn }
+        : null
+    }
+  }
+  return null
+}
+
+const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
+  flow: 'A TanStack Start builder or factory is used where the compiler cannot follow it (passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…), so server code attached to it there would ship to the client. Keep builders in `const` bindings and call `.handler()` / `.server()` on them directly.',
+  computed:
+    'Unsupported use of a TanStack Start builder: a computed member access cannot be compiled. Call its methods directly (`.handler(...)`, `.server(...)`).',
+  member:
+    'Call the methods of a TanStack Start builder directly (`.handler(…)`, `.server(…)`, `.middleware([…])`): a method read off the builder, `.call` / `.bind`, or another member cannot be compiled, so server code attached through it would ship to the client.',
+  return:
+    'A function that returns a TanStack Start builder must return it from its single top-level `return` (or an arrow body) and must not be async, a generator, a method or a getter: the compiler cannot follow it otherwise, so server code attached to the builder would ship to the client. Split it into one factory per builder.',
+  reassigned:
+    'A variable holding a TanStack Start builder or factory is reassigned, so the compiler cannot tell what it holds where it is used, and server code attached to it would ship to the client. Store builders in a `const`.',
+  pattern:
+    'A TanStack Start builder or factory is destructured in a form the compiler cannot follow (only `const { createServerFn } = Start` style names of a Start namespace or start instance can be), so server code attached to it would ship to the client. Call its methods directly.',
+  dynamic:
+    'A TanStack Start package is imported dynamically (`import()` / `require()`), so the compiler cannot see the builders created from it and their server code would ship to the client. Import its APIs statically.',
+}
+
+function escapeMessage(e: Escape): string {
+  const message = ESCAPE_MESSAGES[e.reason]
+  return isClientOnlyPartial(e.value) && e.reason !== 'computed'
+    ? `${message} For client-only code, use \`createClientOnlyFn(fn)\`, or give it a \`.server()\` implementation.`
+    : message
 }
 
 /**

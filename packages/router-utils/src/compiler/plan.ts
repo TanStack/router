@@ -187,6 +187,21 @@ export interface PlanContext {
   ) => void
   setFacts: (planner: string, data: unknown) => void
   diagnostic: (d: Diagnostic) => void
+  /**
+   * A diagnostic about the code at `d.range`, reported only if that code
+   * ships: once every planner erased what it erases and the core dropped what
+   * only erased code read, some output that holds the range still renders
+   * its position. An edit on exactly the range (the planner rewriting the
+   * value there) does not hide it; a use inside code no output keeps (a
+   * server-only option, a handler a stub replaced) is none. `at` judges
+   * another range instead of `d.range` (a use the planner itself erases, in a
+   * declaration that ships). With `unlessLive`, it is reported only if none of
+   * those ranges ships either (a parameter whose every read was erased).
+   */
+  liveDiagnostic: (
+    d: Diagnostic & { range: Range },
+    when?: { at?: Range; unlessLive?: ReadonlyArray<Range> },
+  ) => void
   /** One logical edge per user dependency; glue edges of another origin hash separately. */
   edgeKey: (
     rawSpecifier: string,
@@ -202,6 +217,12 @@ export class AnalysisPlan implements PlanContext {
   readonly symbols: SymbolTable
   readonly outputs = new Map<OutputId, OutputDecl>()
   readonly diagnostics: Array<Diagnostic> = []
+  /** `liveDiagnostic`s, decided in `resolve()`. */
+  private readonly liveDiagnostics: Array<{
+    d: Diagnostic & { range: Range }
+    at: Range
+    unlessLive: ReadonlyArray<Range>
+  }> = []
   readonly facts: Record<string, unknown> = {}
   readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
@@ -336,6 +357,17 @@ export class AnalysisPlan implements PlanContext {
 
   diagnostic(d: Diagnostic): void {
     this.diagnostics.push(d)
+  }
+
+  liveDiagnostic(
+    d: Diagnostic & { range: Range },
+    when: { at?: Range; unlessLive?: ReadonlyArray<Range> } = {},
+  ): void {
+    this.liveDiagnostics.push({
+      d,
+      at: when.at ?? d.range,
+      unlessLive: when.unlessLive ?? [],
+    })
   }
 
   edgeKey(
@@ -497,8 +529,32 @@ export class AnalysisPlan implements PlanContext {
     for (const k of placement.kept) {
       this.diagnostic(keptDiagnostic(this, k))
     }
+    for (const { d, at, unlessLive } of this.liveDiagnostics) {
+      if (
+        this.ships(placement, at) &&
+        !unlessLive.some((r) => this.ships(placement, r))
+      ) {
+        this.diagnostic(d)
+      }
+    }
     this.placement = placement
     return placement
+  }
+
+  /** Whether an output that holds the code at `range` renders its position (`liveDiagnostic`). */
+  private ships(placement: Placement, range: Range): boolean {
+    const region = this.t1.regions.innermostAt(range.start, range.end)
+    const cluster =
+      region === null ? undefined : placement.clusterOfRegion.get(region)
+    for (const [output, clusters] of placement.included) {
+      if (cluster !== undefined && !clusters.has(cluster)) {
+        continue
+      }
+      if (!this.rewrites.tree(output).isErasedAt(range.start, null, range)) {
+        return true
+      }
+    }
+    return false
   }
 
   fallbackAt(range: Range, kind?: RegionKind): FallbackRecord | undefined {

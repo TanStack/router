@@ -59,6 +59,58 @@ export function isStartValue(
   }
 }
 
+/**
+ * Whether server code can still be attached to a value (a `.handler()`,
+ * `.server()`, `.validator()` to come, a factory call): wherever such a
+ * value goes, the client compile must follow it, or the client keeps server
+ * code it never saw. A server fn, an env-only result, a middleware with its
+ * `.server()` and an isomorphic fn with its `.server()` take no more server
+ * code (their types end there); they may go anywhere.
+ */
+export function takesServerCode(
+  table: RecognizerTable,
+  v: AbstractValue,
+): boolean {
+  switch (v.t) {
+    case 'factory':
+      return (
+        table.builderKinds.has(v.kind) ||
+        table.envOnlyKinds[v.kind] === 'server' ||
+        v.kind === table.startKind
+      )
+    case 'startInstance':
+      return true
+    case 'builder':
+      return !(
+        table.terminal[v.kind] === 'middleware' &&
+        v.links.some((l) => l.method === 'server')
+      )
+    case 'isoFn':
+      return !v.links.some((l) => l.method === 'server')
+    case 'namespace': {
+      const exports = table.factories[v.specifier]
+      return exports !== undefined
+        ? Object.values(exports).some((kind) =>
+            takesServerCode(table, { t: 'factory', kind }),
+          )
+        : false
+    }
+    case 'function':
+      return v.returns.t !== 'param' && takesServerCode(table, v.returns)
+    default:
+      return false
+  }
+}
+
+/** An isomorphic fn or a middleware with a `.client()` and no `.server()` (`createClientOnlyFn` is the API for client-only code). */
+export function isClientOnlyPartial(v: AbstractValue): boolean {
+  return (
+    (v.t === 'isoFn' || v.t === 'builder') &&
+    v.links.some((l) => l.method === 'client') &&
+    !v.links.some((l) => l.method === 'server')
+  )
+}
+
 interface PrefetchOptions {
   table: RecognizerTable
 }
@@ -257,6 +309,12 @@ export async function prefetchStartValues(
       work.push(prefetchImport(imp.specifier, spec.imported))
     }
   }
+  // a Start package loaded at run time: the client compile reports it
+  relevant ||= t0.dynamicEdges.some(
+    (e) =>
+      isKnownSpecifier(table, e.specifier) &&
+      takesServerCode(table, { t: 'namespace', specifier: e.specifier }),
+  )
   await Promise.all(work)
   return { values, relevant }
 }

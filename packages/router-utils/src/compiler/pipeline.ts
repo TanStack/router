@@ -656,6 +656,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
       plan.renameRefs(sym, to, scope, by, except),
     setFacts: (planner, data) => plan.setFacts(planner, data),
     diagnostic: (d) => plan.diagnostic(d),
+    liveDiagnostic: (d, when) => plan.liveDiagnostic(d, when),
     edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),
   }
 }

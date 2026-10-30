@@ -4,16 +4,23 @@
  * candidates enumerated from every Start-valued binding by climbing its
  * references through call and member chains (`parentOf`, never a walk).
  *
+ * Every place a climb ends is classified: a position the analysis follows
+ * (a chain link, a binding, a join, a function's return, an export the
+ * summaries follow), a use as data, or an escape, where a value server code
+ * can still be attached to (`takesServerCode`) goes where the compiler
+ * cannot follow it. The client fails at an escape that ships.
+ *
  * One analysis per plan, shared by the `start-env` and `rsc-css` planners.
  */
 import {
+  UNKNOWN,
   ValueAnalysis,
   isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
 } from '@tanstack/router-utils/compiler'
 import { START_KINDS } from './recognizer'
-import { importResolverOf, isStartValue } from './prefetch'
+import { importResolverOf, isStartValue, takesServerCode } from './prefetch'
 import type { StartPrefetch } from './prefetch'
 import type {
   AbstractValue,
@@ -65,8 +72,29 @@ interface RscCall {
   kind: 'rsc:render' | 'rsc:composite' | 'rsc:stream'
 }
 
-interface UnsupportedUse {
+/**
+ * Why a value server code can still be attached to escapes: `flow` (passed
+ * to unknown code, stored in a container, a class field or an assignment,
+ * awaited, rendered…), `member` (a detached or unknown member of a builder,
+ * a method of a factory), `computed` (a computed member: the chain is left to
+ * the runtime), `return` (from a function the domain cannot summarise:
+ * control flow, async, a generator, a method), `reassigned` (a written
+ * binding), `pattern` (destructured, other than a namespace's or a start
+ * instance's factories), `dynamic` (a Start package imported dynamically).
+ */
+export type EscapeReason =
+  | 'flow'
+  | 'member'
+  | 'computed'
+  | 'return'
+  | 'reassigned'
+  | 'pattern'
+  | 'dynamic'
+
+export interface Escape {
   node: Node
+  reason: EscapeReason
+  value: AbstractValue
 }
 
 export interface StartAnalysis {
@@ -74,7 +102,7 @@ export interface StartAnalysis {
   envOnlyCalls: Array<EnvOnlyCall>
   clientOnlyElements: Array<JsxElementNode>
   rscCalls: Array<RscCall>
-  unsupported: Array<UnsupportedUse>
+  escapes: Array<Escape>
 }
 
 const cache = new WeakMap<ModuleAnalysis, StartAnalysis>()
@@ -87,18 +115,20 @@ function isRscKind(kind: string): kind is RscCall['kind'] {
   )
 }
 
-/** Whether an unsupported use of this value may leak code (computed member on a builder/factory). */
-function isLeakProne(table: RecognizerTable, v: AbstractValue): boolean {
-  switch (v.t) {
-    case 'factory':
-      return table.builderKinds.has(v.kind) || v.kind in table.envOnlyKinds
-    case 'builder':
-    case 'isoFn':
-    case 'startInstance':
-      return true
-    default:
-      return false
+export function isFunctionNode(n: Node): n is Extract<
+  Node,
+  {
+    type:
+      | 'ArrowFunctionExpression'
+      | 'FunctionExpression'
+      | 'FunctionDeclaration'
   }
+> {
+  return (
+    n.type === 'ArrowFunctionExpression' ||
+    n.type === 'FunctionExpression' ||
+    n.type === 'FunctionDeclaration'
+  )
 }
 
 /**
@@ -127,14 +157,13 @@ export function startAnalysisOf(
     envOnlyCalls: [],
     clientOnlyElements: [],
     rscCalls: [],
-    unsupported: [],
+    escapes: [],
   }
   const parentOf = (n: Node) => file.parentOf(n)
   const seenTerminal = new Set<Node>()
   const seenEnvOnly = new Set<Node>()
   const seenJsx = new Set<Node>()
   const seenRsc = new Set<Node>()
-  const seenUnsupported = new Set<Node>()
   const queued = new Set<number>()
   const queue: Array<number> = []
 
@@ -159,11 +188,206 @@ export function startAnalysisOf(
     }
   }
 
+  const escaped = new Set<Node>()
+  const escape = (node: Node, value: AbstractValue, reason: EscapeReason) => {
+    if (takesServerCode(table, value) && !escaped.has(node)) {
+      escaped.add(node)
+      result.escapes.push({ node, reason, value })
+    }
+  }
+
+  const enclosingFunction = (n: Node): Node | null => {
+    for (const a of file.ancestors(n)) {
+      if (isFunctionNode(a)) {
+        return a
+      }
+    }
+    return null
+  }
+
+  /** A function whose value is a method, a getter or a setter of an object or class. */
+  const isMethod = (fn: Node): boolean => {
+    const p = parentOf(fn)
+    return (
+      p !== null &&
+      (p.type === 'MethodDefinition' ||
+        (p.type === 'Property' &&
+          p.value === fn &&
+          (p.method || p.kind !== 'init')))
+    )
+  }
+
+  /** A call whose arguments Start's runtime consumes as data: a factory's, or a builder's or start instance's method. */
+  const isStartSink = (call: CallNode): boolean => {
+    const v = values.valueOf(call.callee)
+    return (
+      v.t === 'factory' ||
+      (v.t === 'member' &&
+        (v.object.t === 'builder' ||
+          v.object.t === 'isoFn' ||
+          v.object.t === 'startInstance'))
+    )
+  }
+
+  /**
+   * Whether a value inside array and object literals (and the function
+   * returning them) reaches a Start call's argument: `.middleware([mw])`,
+   * `createStart(() => ({ functionMiddleware: [mw] }))`.
+   */
+  const reachesStartSink = (from: Node): boolean => {
+    let n: Node = from
+    for (let p = parentOf(n); p; p = parentOf(n)) {
+      if (
+        isExpressionWrapper(p) ||
+        p.type === 'ArrayExpression' ||
+        p.type === 'ObjectExpression' ||
+        p.type === 'SpreadElement' ||
+        (p.type === 'Property' && p.value === n && p.kind === 'init') ||
+        (p.type === 'ArrowFunctionExpression' && p.body === n)
+      ) {
+        n = p
+      } else if (p.type === 'ReturnStatement') {
+        const fn = enclosingFunction(p)
+        if (!fn || fn.type === 'FunctionDeclaration') {
+          return false
+        }
+        n = fn
+      } else {
+        return p.type === 'CallExpression' && p.callee !== n && isStartSink(p)
+      }
+    }
+    return false
+  }
+
   const jsxCandidate = (opening: Node) => {
     const element = parentOf(opening)
     if (element && element.type === 'JSXElement' && !seenJsx.has(element)) {
       seenJsx.add(element)
       result.clientOnlyElements.push(element)
+    }
+  }
+
+  /** Where a value is consumed as data (`outer` in `p`): nothing attaches code to it there. */
+  const isDataUse = (p: Node, outer: Node): boolean => {
+    switch (p.type) {
+      case 'CallExpression':
+        // a callee is a use (a server fn called); an argument a Start call consumes is data
+        return p.callee === outer || isStartSink(p)
+      case 'ArrayExpression':
+      case 'SpreadElement':
+      case 'Property':
+        return reachesStartSink(outer)
+      case 'ExpressionStatement':
+      case 'UnaryExpression':
+      case 'BinaryExpression':
+      case 'TemplateLiteral':
+      case 'SwitchCase':
+        return true
+      case 'SwitchStatement':
+        return p.discriminant === outer
+      case 'IfStatement':
+      case 'WhileStatement':
+      case 'DoWhileStatement':
+      case 'ForStatement':
+        return p.test === outer
+      default:
+        return false
+    }
+  }
+
+  /**
+   * Classifies the position a segment's value `outer` ends in, `p` its
+   * parent: followed (a binding, a join or a function's return starts a new
+   * segment; an export, which summaries follow), a use as data, or an
+   * escape.
+   */
+  const settle = (p: Node, outer: Node, value: AbstractValue) => {
+    switch (p.type) {
+      case 'MemberExpression': // a member the climb judged
+      case 'ExportDefaultDeclaration':
+      case 'ExportSpecifier': // summaries follow exports
+        return
+      case 'ConditionalExpression':
+      case 'LogicalExpression': {
+        if (p.type === 'ConditionalExpression' && p.test === outer) {
+          return
+        }
+        // a join: each branch keeps its own links (and edits), the joined value starts a new segment
+        const joined = values.valueOf(p)
+        if (isStartValue(table, joined)) {
+          handoff(p, joined)
+        } else {
+          escape(outer, value, 'flow')
+        }
+        return
+      }
+      case 'ReturnStatement':
+      case 'ArrowFunctionExpression': {
+        const fn = p.type === 'ReturnStatement' ? enclosingFunction(p) : p
+        if (fn === null || isMethod(fn)) {
+          escape(outer, value, 'return')
+          return
+        }
+        const binding =
+          fn.type === 'FunctionDeclaration' && fn.id
+            ? file.bindingOf(fn.id)
+            : null
+        const fv =
+          fn.type === 'FunctionDeclaration'
+            ? binding
+              ? values.valueOfBinding(binding.id)
+              : UNKNOWN
+            : values.valueOf(fn)
+        if (
+          fv.t !== 'function' ||
+          fv.returns.t === 'param' ||
+          !isStartValue(table, fv.returns)
+        ) {
+          // the function's value does not carry what it returns
+          escape(outer, value, 'return')
+        } else if (binding) {
+          enqueueBinding(binding.id)
+        } else {
+          handoff(fn, fv)
+        }
+        return
+      }
+      case 'VariableDeclarator':
+        if (p.init !== outer) {
+          return
+        }
+        if (p.id.type === 'Identifier') {
+          const b = file.bindingOf(p.id)
+          if (b && isStartValue(table, value)) {
+            enqueueBinding(b.id)
+          }
+          return
+        }
+        if (
+          p.id.type === 'ObjectPattern' &&
+          (value.t === 'namespace' || value.t === 'startInstance')
+        ) {
+          // `const { createServerFn } = Start`: each destructured binding at any scope
+          for (const prop of p.id.properties) {
+            if (prop.type !== 'Property' || prop.value.type !== 'Identifier') {
+              // a rest element, a default, a nested pattern
+              escape(prop, value, 'pattern')
+              continue
+            }
+            const b = file.bindingOf(prop.value)
+            if (b && isStartValue(table, values.valueOfBinding(b.id))) {
+              enqueueBinding(b.id)
+            } else if (prop.computed) {
+              escape(prop, value, 'pattern')
+            }
+          }
+          return
+        }
+        escape(p.id, value, 'pattern')
+        return
+    }
+    if (takesServerCode(table, value) && !isDataUse(p, outer)) {
+      escape(outer, value, 'flow')
     }
   }
 
@@ -212,6 +436,7 @@ export function startAnalysisOf(
           }
           const v2 = values.valueOf(call)
           if (v2.t === 'unknown') {
+            escape(call, value, 'flow')
             return
           }
           if (links.length === 0) {
@@ -225,29 +450,26 @@ export function startAnalysisOf(
         if (value.t === 'builder' || value.t === 'function') {
           const v2 = values.valueOf(call)
           if (v2.t === 'unknown' || !isStartValue(table, v2)) {
+            escape(call, value, 'flow')
             return
           }
           node = call
           value = v2
           continue
         }
-        // calling a server fn, an isomorphic fn or an env-only result: the chain ends here
+        // calling a server fn, an isomorphic fn or an env-only result (a use as data): the chain ends here
         break
       }
       if (p.type === 'MemberExpression' && p.object === outer) {
         const member = p
         if (member.computed) {
-          if (isLeakProne(table, value)) {
-            unsupported = true
-            if (!seenUnsupported.has(member)) {
-              seenUnsupported.add(member)
-              result.unsupported.push({ node: member })
-            }
-          }
+          unsupported = takesServerCode(table, value)
+          escape(member, value, 'computed')
           break
         }
         const name = memberName(member)
         if (name === null) {
+          escape(member, value, 'member')
           return
         }
         let mOuter: Node = member
@@ -272,6 +494,7 @@ export function startAnalysisOf(
             if (v2.t === 'unknown') {
               // an unrecognised method on a builder (`.url()`?): the chain ends here
               links.pop()
+              escape(member, value, 'member')
               break
             }
             node = call
@@ -285,7 +508,11 @@ export function startAnalysisOf(
               value = mv
               continue
             }
+            // another export of the package, another member of the instance: a plain call
+            return
           }
+          // a method of a factory or of a function (`.call`, `.bind`)
+          escape(member, value, 'member')
           return
         }
         // a member read that is not called
@@ -294,6 +521,10 @@ export function startAnalysisOf(
           node = member
           value = mv
           continue
+        }
+        if (value.t !== 'namespace' && value.t !== 'startInstance') {
+          // a detached method (`.handler`), a property of a builder
+          escape(member, value, 'member')
         }
         break
       }
@@ -343,34 +574,9 @@ export function startAnalysisOf(
       }
       break
     }
-    // the segment ends; its value may go on as a new segment
-    if (
-      p &&
-      ((p.type === 'ConditionalExpression' && p.test !== outer) ||
-        p.type === 'LogicalExpression')
-    ) {
-      // a join: each branch keeps its own links (and edits), the joined value starts a new segment
-      const joined = values.valueOf(p)
-      if (isStartValue(table, joined)) {
-        handoff(p, joined)
-      }
-    } else if (p && p.type === 'VariableDeclarator' && p.init === outer) {
-      if (p.id.type === 'Identifier') {
-        const b = file.bindingOf(p.id)
-        if (b && isStartValue(table, value)) {
-          enqueueBinding(b.id)
-        }
-      } else if (p.id.type === 'ObjectPattern') {
-        // `const { createServerFn } = Start`: each destructured binding at any scope
-        for (const prop of p.id.properties) {
-          if (prop.type === 'Property' && prop.value.type === 'Identifier') {
-            const b = file.bindingOf(prop.value)
-            if (b && isStartValue(table, values.valueOfBinding(b.id))) {
-              enqueueBinding(b.id)
-            }
-          }
-        }
-      }
+    // the segment ends: where its value goes
+    if (p) {
+      settle(p, outer, value)
     }
     if (links.length === 0 && !headIsFactoryCall) {
       return
@@ -426,7 +632,12 @@ export function startAnalysisOf(
     }
     const v = values.valueOfBinding(id)
     for (const ref of b.references) {
-      if (ref.inTypePosition || ref.isWrite) {
+      if (ref.inTypePosition) {
+        continue
+      }
+      if (ref.isWrite) {
+        // the binding's value is its initialiser's only while nothing writes it
+        escape(ref.node, v, 'reassigned')
         continue
       }
       const n = ref.node
@@ -450,6 +661,15 @@ export function startAnalysisOf(
     while (handoffs.length > 0) {
       const [n, v] = handoffs.shift()!
       climb(n, v)
+    }
+  }
+  // a Start package's namespace loaded at run time is beyond any static view
+  for (const imp of file.imports) {
+    if (
+      (imp.kind === 'dynamic' || imp.kind === 'require') &&
+      isKnownSpecifier(table, imp.specifier)
+    ) {
+      escape(imp.node, { t: 'namespace', specifier: imp.specifier }, 'dynamic')
     }
   }
   cache.set(ctx.analysis, result)

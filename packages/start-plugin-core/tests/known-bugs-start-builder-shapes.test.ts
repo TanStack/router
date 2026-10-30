@@ -71,12 +71,6 @@ const base = Math.random() > 2 ? createServerFn({ method: 'POST' }) : createServ
 export const fn = base.handler(async () => db.x())`,
       body: 'db.x()',
     },
-  ])('$name', async (shape) => {
-    await expectNoSilentLeak(shape)
-  })
-
-  // .fails: none of these shapes is recognised, and the client keeps the server code without a report.
-  test.fails.each<Shape>([
     {
       name: 'a builder method read into a variable',
       code: `import { createServerFn } from '@tanstack/react-start'
@@ -106,6 +100,14 @@ const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn(fn)
 export const read = serverOnly(() => db.secret())`,
       body: 'db.secret()',
     },
+  ])('$name', async (shape) => {
+    await expectNoSilentLeak(shape)
+  })
+
+  // .fails: the client build fails where the wrapper passes its parameter, in `wrap.ts`;
+  // a dev server serves the module calling it, argument included, before
+  // the wrapper's module fails (the build is the guarantee).
+  test.fails.each<Shape>([
     {
       name: 'a wrapper of another module that passes its argument to createServerOnlyFn',
       code: `import { serverOnly } from './wrap'
