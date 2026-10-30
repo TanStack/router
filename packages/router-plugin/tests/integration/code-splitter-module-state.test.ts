@@ -42,6 +42,33 @@ return [await entry.render(component), await entry.render(component), entry.stor
     expect(result).toEqual(['<p>1/1/1</p>', '<p>2/2/2</p>', 2])
   }, 30_000)
 
+  // `export default count` holds the first value of `count`; the split
+  // component reads the binding itself, which `bump()` changes.
+  it('gives the split component the live value of a `let` the route file also exports by default', async () => {
+    const result = await buildAndRun(
+      `${head}let count = 0
+export function bump() {
+  count++
+}
+export default count
+export const Route = createFileRoute('/')({
+  loader: () => count,
+  component: () => <p>{count}</p>,
+})
+`,
+      `const component = entry.Route.options.component
+const before = await entry.render(component)
+entry.bump()
+return [before, await entry.render(component), entry.Route.options.loader(), entry.first]`,
+      {
+        files: {
+          'entry.ts': `${ssrRenderEntry}export { bump, default as first } from './routes/index'\n`,
+        },
+      },
+    )
+    expect(result).toEqual(['<p>0</p>', '<p>1</p>', 1, 0])
+  }, 30_000)
+
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {
     const html = await buildAndRun(

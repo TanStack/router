@@ -9,6 +9,7 @@
 import { NEED_KINDS, ownAugmentation } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
+import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { GenUnitId, OutputId } from '../rewrite'
@@ -87,6 +88,10 @@ export function seedRoots(
     }
     e.syms.add(sym)
   }
+  const reassignedAt = (id: Node): boolean =>
+    refs
+      .refsIn({ start: id.start, end: id.end })
+      .some((r) => t1.mutation.isReassigned(r.sym, liveInEnv))
   const extractRelated = new Set<ClusterId>()
   if (candidates.size > 0) {
     for (const cl of clusters) {
@@ -94,12 +99,15 @@ export function seedRoots(
         cl.kind !== 'export' ||
         !cl.units.every((u) => {
           const { kind, node } = units[u]!
-          // `export default () => <Page />` is no re-export of its target
+          // `export default () => <Page />` is no re-export of its target,
+          // nor `export default count` of a reassigned `count` (it holds
+          // the value `count` has then)
           return (
             kind === 'export-specifier' ||
             (kind === 'export-default' &&
               node.type === 'ExportDefaultDeclaration' &&
-              node.declaration.type === 'Identifier')
+              node.declaration.type === 'Identifier' &&
+              !reassignedAt(node.declaration))
           )
         })
       ) {

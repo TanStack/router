@@ -771,6 +771,40 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toMatch(/export \{ (Other, Page|Page, Other) \}/)
   })
 
+  // `export default count` holds the value `count` has when it runs: of a
+  // reassigned `count` it is no re-export of the binding, and no name a
+  // chunk can import the binding by.
+  it('keeps `export default x` of a reassigned `x` next to an extracted function writing it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let count = 0
+      export function bump() { count++; return count }
+      export default count
+      export const Route = createFileRoute('/')({ component: () => bump() })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('let count = 0')
+    expect(r.env).toContain('export default count')
+    expect(r.env).not.toContain('export~')
+  })
+
+  it('imports a reassigned binding the env module also exports by default under a name of its own', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let count = 0
+      export function bump() { count++ }
+      export default count
+      export const Route = createFileRoute('/')({
+        loader: () => count,
+        component: () => count,
+      })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export default count')
+    expect(r.env).toContain('export { count }')
+    expect(r.chunk).toContain("import { count } from './route.tsx'")
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

@@ -48,9 +48,19 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   const exportNameOf = new Map<OutputId, Map<SymbolId, string>>()
   /** Symbols whose export is glue (not an existing export of the module). */
   const glueExports = new Set<SymbolId>()
+  // an export of the binding itself (`export default x` of a reassigned
+  // `x` holds the value it had then)
   const existingExportName = (sym: SymbolId): string | null => {
     for (const e of analysis.exports) {
-      if (e.kind === 'local' && e.local === sym && !e.typeOnly) {
+      if (
+        e.kind === 'local' &&
+        e.local === sym &&
+        !e.typeOnly &&
+        !(
+          e.snapshot &&
+          plan.t1.mutation.isReassigned(sym, plan.liveness('env').live)
+        )
+      ) {
         return e.name
       }
     }

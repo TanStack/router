@@ -54,6 +54,11 @@ type ExportEntry =
       local: SymbolId | null
       typeOnly: boolean
       range: Range
+      /**
+       * `export default x`: the export holds the value `x` has when the
+       * statement runs, not the binding (a reassigned `x` does not change it).
+       */
+      snapshot?: true
     }
   | { kind: 'expression'; name: 'default'; range: Range }
   | {
@@ -510,6 +515,7 @@ export class ModuleAnalysis {
               local: exportLocals.get(stmt.start) ?? null,
               typeOnly: false,
               range: { start: stmt.start, end: stmt.end },
+              snapshot: true,
             })
           } else {
             exportEntries.push({
