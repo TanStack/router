@@ -248,14 +248,15 @@ function getErrorFile(lines: Array<string>): string | null {
 }
 
 // The error's line, from a `(line:column)` message suffix or a code frame
-// header `[file:line:column]`, after the block's `File:` line.
-// A position in the message: SWC's `(line:col)`, Rspack's `[file:line:col]`
-// or the TanStack compilers' `(file:line:col)`.
+// header `[line:column]`, after the block's `File:` line.
+// A position in the message: SWC's `(line:col)`, the TanStack compilers'
+// `(file:line:col)`, or the header of Rspack's SWC code frame: `[line:col]`
+// since Rspack 2.1.6, `[file:line:col]` before.
 function getErrorLine(lines: Array<string>): number | null {
   const match = lines
     .slice(1)
     .join('\n')
-    .match(/\((?:[^()\s]+:)?(\d+):\d+\)|\[[^\]\s]+:(\d+):\d+\]/)
+    .match(/\((?:[^()\s]+:)?(\d+):\d+\)|\[(?:[^\]\s]+:)?(\d+):\d+\]/)
   const line = match?.[1] ?? match?.[2]
 
   return line === undefined ? null : Number(line)
