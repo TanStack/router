@@ -301,7 +301,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 - Type: `(error: unknown) => void` in React and Vue; `(error: Error) => void` in Solid
 - Optional - Defaults to `routerOptions.defaultOnCatch`
-- The route's error boundary calls this function when it catches an error.
+- The route's error boundary calls this function when it catches an error. A not-found error skips this function and goes to the not-found boundary.
 - The route has an error boundary only when it has an `errorComponent` or the router has a `defaultErrorComponent`. Without either, `onCatch` is not called.
 
 ### `remountDeps` method
