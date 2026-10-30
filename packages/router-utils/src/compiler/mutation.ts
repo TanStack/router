@@ -4,13 +4,13 @@
  * write of a member of one, with where and when it happens. Every rule that
  * asks "does something write this?" reads it: the clustering of writers with
  * what they write, ordered evaluation, the movable test, the extraction
- * candidates, the split planner's identifier option values, the server-fn
- * hoist and the Hydrate setters. A view over the classified references
- * (nothing is built until a binding is asked about, and then once). The
- * model is pristine: erasure is the consumer's business, passed as the
- * `live` filter of the predicates (a write inside erased code imposes
- * nothing), and the region holding a write (planners register sub-regions
- * after the analysis) is read from the regions.
+ * candidates, the router planner's identifier option values (its split
+ * part), the server-fn hoist and the Hydrate setters. A view over the
+ * classified references (nothing is built until a binding is asked about,
+ * and then once). The model is pristine: erasure is the consumer's
+ * business, passed as the `live` filter of the predicates (a write inside
+ * erased code imposes nothing), and the region holding a write (planners
+ * register sub-regions after the analysis) is read from the regions.
  */
 import type { ClassifiedRef, RefIndex } from './analysis'
 import type { SymbolId } from './symbols'

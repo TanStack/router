@@ -4,7 +4,7 @@
  * a precondition of every environment compiler (`beforeRun`; `watchRun`,
  * whose first one starts the generator's own watcher for the files outside
  * the bundle: created route files, `physical()` mounts). It publishes the
- * route registry the route planners read and serves the client's route
+ * route registry the router planner reads and serves the client's route
  * tree without its server-only routes.
  */
 import path from 'node:path'

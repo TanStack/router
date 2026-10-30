@@ -261,7 +261,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   // every exported binding but the route may leave for an
   // extracted-export output; the core decides (a pure, unwritten
   // declaration only chunks need moves, the route module re-exports it,
-  // chunks copy it; in dev it stays in the route module: `reach.ts`)
+  // chunks copy it; in dev it stays in the route module: `placement/settle.ts`)
   for (const e of ctx.analysis.exports) {
     if (e.kind !== 'local' || e.local === null || e.typeOnly) {
       continue

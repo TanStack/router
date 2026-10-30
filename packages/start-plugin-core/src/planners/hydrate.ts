@@ -474,7 +474,7 @@ function plan(ctx: PlanContext): void {
  * free), which the parent re-exports; the core moves a pure, unwritten
  * declaration there only when the parent itself does not read it and a chunk
  * needs it (the chunk carries its own copy; in dev the declaration stays in
- * the parent: `reach.ts`), so a component a boundary renders and nothing
+ * the parent: `placement/settle.ts`), so a component a boundary renders and nothing
  * else imports is not in the eager code. The same outputs the route splitter
  * declares for a route module (one output per name: `declareOutput` is
  * idempotent).

@@ -56,7 +56,7 @@ export function tanStackStartVite(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
-  // the generator's registry, read by the compiler's route planners
+  // the generator's registry, read by the compiler's router planner
   const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider

@@ -2,7 +2,8 @@
  * The two-layer plan: the ephemeral `AnalysisPlan` holds
  * the analysis, the rewrite set, the declared outputs and the planners'
  * facts for one compile attempt; `resolve()` runs the core phase (claims,
- * clusters, movable effects, roots, homes, inclusion, glue needs; `reach.ts`)
+ * clusters, movable effects, roots, homes, inclusion, glue needs; `reach.ts`
+ * over `placement/`)
  * and `freeze()` renders everything into a plain `EmitPlan` from which no
  * Yuku object is reachable (`freeze.ts`).
  */

@@ -4,7 +4,7 @@
  * destructuring leaves of kept declarations. The core runs it once, after
  * every planner erased what it erases (`AnalysisPlan.resolve`), on the env
  * module's liveness. Module-level declarations, imports and their
- * provenance are placement's (`reach.ts`).
+ * provenance are placement's (`placement/`).
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'

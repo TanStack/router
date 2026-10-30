@@ -357,7 +357,7 @@ describe('claims, homes and substitution', () => {
       placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
       by: 'hmr',
     })
-    // the split planner claims nothing new: it re-roots the placeholder's symbol in the chunk
+    // the router planner's split part claims nothing new: it re-roots the placeholder's symbol in the chunk
     const chunk = ctx.declareOutput({
       kind: 'split',
       key: 'component',
