@@ -21,7 +21,7 @@ function mayContainImportOrExport(code: string): boolean {
 }
 
 export type ImportAnalysis = {
-  ast: ParseAstResult
+  ast?: ParseAstResult
   lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
@@ -333,8 +333,11 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   const lineIndex = result.lineIndex ?? buildLineIndex(result.code)
   result.lineIndex = lineIndex
 
-  const analysis = {
-    ast,
+  // Drop the parsed AST from the cached result to avoid retaining the AST
+  // for every analyzed module in dev memory.
+  delete result.parsedAst
+
+  const analysis: ImportAnalysis = {
     lineIndex,
     importSourcesInOrder,
     importSpecifierLocationIndex,
@@ -890,10 +893,15 @@ function findUsagePosInAnalysis(
     }
   }
 
-  visit(analysis.ast.program, {
-    parents: [],
-    scopeStack: [],
-  })
+  const ast = getOrParseAst(result)
+  try {
+    visit(ast.program, {
+      parents: [],
+      scopeStack: [],
+    })
+  } finally {
+    delete result.parsedAst
+  }
 
   const pos = preferred ?? anyUsage ?? null
   analysis.usageByKey.set(cacheKey, pos)
