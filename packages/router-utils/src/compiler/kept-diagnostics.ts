@@ -57,7 +57,8 @@ export function keptDiagnostic(
         : [],
     )
     const why: Partial<Record<KeptDeclaration['reason'], string>> = {
-      effects: 'its initialiser has side effects',
+      effects:
+        'its initialiser, or a statement setting a property of it, has side effects',
       reassigned: 'it is reassigned',
       live: `the ${module} itself reads it`,
       reads: 'it reads, when it loads, a binding the module keeps',

@@ -66,6 +66,8 @@ export interface Unit {
   effectful: boolean
   /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
   augments: Array<SymbolId>
+  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it. */
+  augmentEffects: boolean
   /** Single unexported unwritten `const` with a primitive initialiser: may be duplicated. */
   copyable: boolean
   /** Import entries (Tier 0 index) for import units. */
@@ -295,6 +297,37 @@ function writeTargets(node: Node): ReadonlyArray<Node> {
 const NO_TARGETS: ReadonlyArray<Node> = []
 
 /**
+ * Whether a top-level write does nothing but write its targets: a pure
+ * value, key or argument, written to a member chain of a binding
+ * (`Page.displayName = 'Page'`, `Object.assign(Page, { a: 1 })`).
+ */
+function writesOnly(purity: PurityContext, expr: Node): boolean {
+  const pureTarget = (target: Node): boolean => {
+    const t = unwrapExpression(target)
+    return (
+      t.type === 'Identifier' ||
+      (t.type === 'MemberExpression' &&
+        (!t.computed || isPureExpression(purity, t.property as Node)) &&
+        pureTarget(t.object))
+    )
+  }
+  const e = unwrapExpression(expr)
+  switch (e.type) {
+    case 'AssignmentExpression':
+      return pureTarget(e.left) && isPureExpression(purity, e.right)
+    case 'CallExpression':
+      return (
+        pureTarget(e.callee) &&
+        e.arguments.every(
+          (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
+        )
+      )
+    default:
+      return false
+  }
+}
+
+/**
  * Whether `node` (an identifier) is the root object of a member expression
  * some code writes (`writeTargets`), or the first argument of an
  * `Object.assign`-style call: the object it names is mutated.
@@ -483,6 +516,7 @@ export function buildUnits(
     exported: [],
     effectful: false,
     augments: [],
+    augmentEffects: false,
     copyable: false,
     importIndex: null,
     importedName: null,
@@ -649,6 +683,8 @@ export function buildUnits(
         const u = base(node, 'effect', itemRange)
         u.effectful = !isPureExpression(purity, node.expression)
         u.augments = augmentationsOf(node.expression)
+        u.augmentEffects =
+          u.augments.length > 0 && !writesOnly(purity, node.expression)
         add(item, u)
         break
       }

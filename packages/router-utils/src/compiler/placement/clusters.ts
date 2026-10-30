@@ -26,11 +26,12 @@ export interface Cluster {
   /**
    * An effect observable without the cluster's declarations: an effectful
    * initialiser, an effect statement other than an augmentation of its own
-   * declarations, an effectful generated unit. Such a cluster is never an
-   * extracted export (its module could never be dropped as unused) and
-   * clears an output's side-effect-free flag; a cluster whose effects only
-   * augment what it declares (`Page.displayName = …`) is unobservable while
-   * nothing imports it.
+   * declarations, an augmentation doing more than its writes
+   * (`Page.x = track()`), an effectful generated unit. Such a cluster is
+   * never an extracted export (its module could never be dropped as unused)
+   * and clears an output's side-effect-free flag; a cluster whose effects
+   * only write what it declares (`Page.displayName = …`) is unobservable
+   * while nothing imports it.
    */
   sideEffects: boolean
   exported: boolean
@@ -495,8 +496,10 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       cl.effectful &&
       (cl.kind !== 'declaration' ||
         cl.gens.some((g) => gens[g]!.effectful) ||
-        cl.units.some(
-          (u) => units[u]!.kind !== 'effect' && units[u]!.effectful,
+        cl.units.some((u) =>
+          units[u]!.kind === 'effect'
+            ? units[u]!.augmentEffects
+            : units[u]!.effectful,
         ))
   }
   const clusterOfSym = new Map<SymbolId, ClusterId>()

@@ -105,9 +105,10 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   observes no mutable state, its eager reads are imports (read lazily: the chunk loads after the route module),
   pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind (for
   an extracted export's module, which evaluates _before_ the route module's body, none before its last one; the
-  extracted modules evaluate in source order among themselves). An exported binding whose only effects augment
-  what it declares (`Page.displayName = …`, static props: unobservable while nothing imports it, so its module
-  stays droppable) leaves for its extracted module under the same rule: the augmentations travel with it, an
+  extracted modules evaluate in source order among themselves). An exported binding whose only effects write
+  what it declares with pure values (`Page.displayName = …`, static props: unobservable while nothing imports it, so
+  its module stays droppable; `Page.x = track()` is an effect of its own and keeps it in the route module) leaves for
+  its extracted module under the same rule: the augmentations travel with it, an
   earlier surviving effect pins it and a later one keeps its order (chunks import an augmented export: its
   augmentation runs once).
   A recognised framework call a planner names (the route factory chain) is no such effect only when its option

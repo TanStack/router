@@ -228,12 +228,10 @@ return { before, log: globalThis.log }`)
 
   // The augmentation calls an imported function: its module is not the
   // route module's, so nothing else ties the declaration to the route
-  // module's evaluation.
-  // Bug (main ran it in order): an effectful augmentation does not count as
-  // a side effect of the exported declaration, which is extracted into a
-  // side-effect-free module only the chunk imports, so `track('page')` runs
-  // when the chunk loads, after `track('after')`.
-  it.fails.each(['vite', 'rspack', 'webpack'] as const)(
+  // module's evaluation. The effect is observable on its own, so the
+  // declaration never leaves for a side-effect-free module only the chunk
+  // imports (where `track('page')` would run when the chunk loads).
+  it.each(['vite', 'rspack', 'webpack'] as const)(
     'runs an augmentation calling an imported function once, in source order, when no other module imports the component (%s)',
     async (bundler) => {
       const app = await buildRoute(

@@ -1256,6 +1256,50 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('Page.label = config.label')
     expect(r.env).not.toContain('export~')
   })
+
+  it.each([
+    ["Page.displayName = 'Page'", true],
+    ["Page.preload = () => import('./heavy')", true],
+    ['Page.count += 1', true],
+    ['Page.meta.title = `x`', true],
+    ["Object.assign(Page, { title: 'x' })", true],
+    ["Page['k'] = 1", true],
+    ["Page.x = track('page')", false],
+    ["Page.x ??= track('page')", false],
+    ["Object.assign(Page, { x: track('page') })", false],
+    ["Page[track('k')] = 1", false],
+    ['Page.count++', false],
+  ])(
+    'extracts an export augmented by `%s` only when the augmentation writes nothing but pure values (%s)',
+    async (augmentation, extracted) => {
+      const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './track'
+      export function Page() { return 'page' }
+      ${augmentation}
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+      const r = await extract(code)
+      expect(r.env.includes('export~Page')).toBe(extracted)
+    },
+  )
+
+  it('keeps an augmented export whose augmentation has an effect of its own (its module could never be dropped as unused)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './track'
+      export function Page() { return 'page' }
+      Page.x = track('page')
+      track('after')
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export function Page()')
+    expect(r.env).toContain("Page.x = track('page')")
+    expect(r.env).not.toContain('export~')
+    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
+  })
 })
 
 describe('a statement relying on the `;` that ends the one before it', () => {
