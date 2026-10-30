@@ -5,7 +5,16 @@
  * session that knew it (dev, watch), it keeps its route and is reported.
  */
 import { writeFileSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  utimes,
+  writeFile,
+} from 'node:fs/promises'
 import path from 'node:path'
 import { afterAll, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
@@ -389,6 +398,104 @@ export const Route = createFileRoute('/about')({})
   expect(await readFile(config.generatedRouteTree, 'utf8')).not.toContain(
     "'/about'",
   )
+})
+
+// Whatever else fails in a build's generation, a route file that does not
+// parse fails the build: a failure of another kind is only reported, and
+// would otherwise win by arriving first.
+test('a build fails on a route file known not to parse when the root route is gone too', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
+  await rm(path.join(root, 'src/routes/__root.tsx'))
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+})
+
+// (A symbolic link to itself: no read of it succeeds, for any user.)
+test.each(['a-unreadable.tsx', 'z-unreadable.tsx'])(
+  'a cold build fails on a route file that does not parse next to an unreadable one (%s)',
+  async (unreadable) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute,
+      'src/routes/posts.tsx': 'export const Route = (',
+    })
+    const link = path.join(root, 'src/routes', unreadable)
+    await symlink(link, link)
+    const generator = new Generator({ config: configOf(root), root })
+    await expect(
+      createGeneratorSession({
+        generator: () => generator,
+        report: () => {},
+      }).build(),
+    ).rejects.toThrow('posts.tsx')
+  },
+)
+
+test('a build fails on a route file known not to parse next to an unreadable one', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
+  const link = path.join(root, 'src/routes/about.tsx')
+  await symlink(link, link)
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+})
+
+test('a cold build names every route file that does not parse', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/about.tsx': 'export const Route = (',
+    'src/routes/posts.tsx': 'export const Route = (',
+  })
+  const generator = new Generator({ config: configOf(root), root })
+  const built = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  }).build()
+  await expect(built).rejects.toThrow('about.tsx')
+  await expect(built).rejects.toThrow('posts.tsx')
+})
+
+// A build reads what it builds: a file whose size and modification time did
+// not change (an overwrite within the file system's clock tick) is read too.
+test('a build fails on a route file an overwrite of the same size and time broke', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  const time = new Date(1_700_000_000_000)
+  await utimes(posts, time, time)
+  await session.run()
+  const before = await stat(posts)
+  await writeFile(posts, '('.repeat(before.size))
+  await utimes(posts, time, time)
+  expect((await stat(posts)).mtimeMs).toBe(before.mtimeMs)
+  await expect(session.build()).rejects.toThrow('posts.tsx')
 })
 
 // Text that names no `Route` and does not parse is no route file without a

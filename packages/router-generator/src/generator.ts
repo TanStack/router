@@ -167,6 +167,28 @@ export class UnparsableRouteFileError extends Error {
   override name = 'UnparsableRouteFileError'
 }
 
+/**
+ * Waits for every read of a batch: its outcome does not depend on which
+ * settled first. A route file that does not parse outranks another failure,
+ * and every such file is named.
+ */
+async function readFiles(reads: Array<Promise<void>>) {
+  const failures = (await Promise.allSettled(reads)).flatMap((read) =>
+    read.status === 'rejected' ? [read.reason as unknown] : [],
+  )
+  const unparsable = failures.filter(
+    (failure) => failure instanceof UnparsableRouteFileError,
+  )
+  if (unparsable.length > 0) {
+    throw new UnparsableRouteFileError(
+      unparsable.map((failure) => failure.message).join('\n'),
+    )
+  }
+  if (failures.length > 0) {
+    throw failures[0]
+  }
+}
+
 function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
   const position =
     diagnostic.line === undefined
@@ -382,14 +404,14 @@ export class Generator {
       let failure: { error: unknown } | undefined
       while (this.queue.length) {
         const batch = this.queue.splice(0)
+        const build = this.waiters.some((w) => w.build)
         try {
-          await this.processBatch(
-            batch,
-            this.waiters.some((w) => w.build),
-          )
+          await this.processBatch(batch, build)
           failure = undefined
         } catch (error) {
-          failure = { error }
+          // a failure of another kind, whichever came first, does not hide
+          // the file a build fails on
+          failure = { error: (build && this.unparsableFiles()) || error }
         }
       }
       const waiters = this.waiters.splice(0)
@@ -458,11 +480,12 @@ export class Generator {
           this.files.delete(key)
         }
       }
-      await Promise.all(
+      await readFiles(
         nodes.map((node) =>
           this.updateFile(node, {
             isRoot: node === scan.rootRouteNode,
-            force: named.has(node.fullPath),
+            // a build reads what it builds, whatever the stamps say
+            force: build || named.has(node.fullPath),
           }),
         ),
       )
@@ -471,7 +494,7 @@ export class Generator {
       const byKey = new Map(
         filesOf(this.scan!).map((node) => [node.fullPath, node]),
       )
-      await Promise.all(
+      await readFiles(
         [...changed].map(async (key) => {
           const node = byKey.get(key)
           if (!node) {
@@ -488,20 +511,11 @@ export class Generator {
     }
 
     // a build has no last good route: it fails before anything is written
-    if (build) {
-      const broken = [...this.files].filter(([, state]) => state.unparsable)
-      if (broken.length > 0) {
-        // what this batch read reaches the tree with the next one
-        this.stale = true
-        throw new UnparsableRouteFileError(
-          broken
-            .map(
-              ([file, state]) =>
-                `Cannot generate the route of ${file}:\n${state.unparsable}`,
-            )
-            .join('\n'),
-        )
-      }
+    const unparsable = build && this.unparsableFiles()
+    if (unparsable) {
+      // what this batch read reaches the tree with the next one
+      this.stale = true
+      throw unparsable
     }
 
     // The tree's routes are as before (no tree rebuild, no print), unless
@@ -523,6 +537,21 @@ export class Generator {
     this.routesByFile = this.computeRoutesByFile()
     this.stale = false
     this.notifyPlugins()
+  }
+
+  /** The failure of a build with route files that do not parse (each kept its last good route). */
+  private unparsableFiles(): UnparsableRouteFileError | undefined {
+    const broken = [...this.files].filter(([, state]) => state.unparsable)
+    return broken.length > 0
+      ? new UnparsableRouteFileError(
+          broken
+            .map(
+              ([file, state]) =>
+                `Cannot generate the route of ${file}:\n${state.unparsable}`,
+            )
+            .join('\n'),
+        )
+      : undefined
   }
 
   private rebuildModel() {
