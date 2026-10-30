@@ -412,3 +412,50 @@ export const sharedFn = createServerFn().handler(async () => db.x())
     }
   })
 })
+
+// Start's cross-module prefetch reads a second concurrent lookup of one
+// (module, export) as a cycle (review 1, claim #1).
+describe('builders derived from one imported builder', () => {
+  const dbFile = `export const db = { x: () => 'x', secret: () => 'secret' }\n`
+  const baseFile = `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()`
+
+  // Control: one derived builder alone is recognised.
+  test('one builder derived from an imported builder: its handler leaves the client', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { authed } from './builders'
+import { db } from './db.server'
+export const fn = authed.handler(async () => db.secret())`,
+      'builders.ts': `import { base } from './base'
+export const authed = base.middleware([])`,
+      'base.ts': baseFile,
+      'db.server.ts': dbFile,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await serverFnUrls(served)).toHaveLength(1)
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('secret')
+  })
+
+  // .fails: the second builder's lookup of `base` meets the first one's in flight and reads it as a cycle (UNKNOWN).
+  test.fails(
+    'two builders of one module derived from one imported builder: both handlers leave the client',
+    async () => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `import { authedGet, authedPost } from './builders'
+import { db } from './db.server'
+export const getFn = authedGet.handler(async () => db.x())
+export const postFn = authedPost.handler(async () => db.secret())`,
+        'builders.ts': `import { base } from './base'
+export const authedGet = base.middleware([])
+export const authedPost = base.middleware([])`,
+        'base.ts': baseFile,
+        'db.server.ts': dbFile,
+      })
+      expectNotLoaded(await served.loads(), ['./db.server'])
+      expect(await serverFnUrls(served)).toHaveLength(2)
+      expect(await callServerFnThroughCallers(served, 'module.postFn')).toBe(
+        'secret',
+      )
+    },
+  )
+})
