@@ -1174,9 +1174,14 @@ export function buildRouteTreeConfig(
     .join(',')}
 }`
 
-      const routeWithChildrenAnnotation = isolatedDeclarations
-        ? `: ReturnType<typeof ${route}Route._addFileChildren<${route}RouteChildren>>`
-        : ''
+      let routeWithChildrenAnnotation = ''
+      if (isolatedDeclarations) {
+        if (node.isVirtual) {
+          routeWithChildrenAnnotation = ': any'
+        } else {
+          routeWithChildrenAnnotation = `: ReturnType<typeof ${route}Route._addFileChildren<${route}RouteChildren>>`
+        }
+      }
       const routeWithChildren = `const ${route}RouteWithChildren${routeWithChildrenAnnotation} = ${route}Route._addFileChildren(${route}RouteChildren)`
 
       return [

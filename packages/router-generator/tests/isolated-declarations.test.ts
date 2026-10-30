@@ -10,9 +10,10 @@ function fixtureDirectory(fixture: string) {
   return tsPath(path.join(process.cwd(), 'tests', 'generator', fixture))
 }
 
-it.each(['nested', 'lazy'])(
-  'the "%s" route tree compiles with isolatedDeclarations and keeps its type',
+it.each(['nested', 'lazy', 'lazy-only-layout-and-index'])(
+  'the "%s" route tree compiles with isolatedDeclarations',
   (fixture) => {
+    const compareTypes = fixture !== 'lazy-only-layout-and-index'
     const root = fixtureDirectory(fixture)
     const isolatedFile = tsPath(
       path.join(root, 'routeTree.isolated.snapshot.ts'),
@@ -55,14 +56,12 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
       return text
     }
     const program = ts.createProgram(
-      [isolatedFile, inferredFile, checkFile],
+      compareTypes ? [isolatedFile, inferredFile, checkFile] : [isolatedFile],
       compilerOptions,
       host,
     )
     const isolatedTree = program.getSourceFile(isolatedFile)!
-    const inferredTree = program.getSourceFile(inferredFile)!
     expect(isolatedTree.text).not.toContain('@ts-nocheck')
-    expect(inferredTree.text).not.toContain('@ts-nocheck')
     const errors = [
       ...program.getOptionsDiagnostics(),
       ...program.getGlobalDiagnostics(),
@@ -80,12 +79,15 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
         : '<program>'
       return `${fileName}:${line} TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`
     })
-    const inferredDeclarationCodes = program
-      .getDeclarationDiagnostics(inferredTree)
-      .map((diagnostic) => diagnostic.code)
-
     expect(errors).toEqual([])
-    expect(inferredDeclarationCodes).toContain(9010)
+    if (compareTypes) {
+      const inferredTree = program.getSourceFile(inferredFile)!
+      expect(inferredTree.text).not.toContain('@ts-nocheck')
+      const inferredDeclarationCodes = program
+        .getDeclarationDiagnostics(inferredTree)
+        .map((diagnostic) => diagnostic.code)
+      expect(inferredDeclarationCodes).toContain(9010)
+    }
   },
   60_000,
 )

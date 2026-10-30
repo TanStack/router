@@ -78,9 +78,9 @@ const PathLazyRouteChildren: PathLazyRouteChildren = {
   PathIndexLazyRoute: PathIndexLazyRoute,
 }
 
-const PathLazyRouteWithChildren: ReturnType<
-  typeof PathLazyRoute._addFileChildren<PathLazyRouteChildren>
-> = PathLazyRoute._addFileChildren(PathLazyRouteChildren)
+const PathLazyRouteWithChildren: any = PathLazyRoute._addFileChildren(
+  PathLazyRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   PathLazyRoute: PathLazyRouteWithChildren,
