@@ -530,8 +530,9 @@ function destructuredLiteral(ctx: PlanContext, pattern: Node): Node | null {
 /**
  * Removes, from the object literal a pattern destructures, the properties
  * of the pattern properties `pruned` whose effects may go (`initGoes`): one
- * plain property per key, in a literal without accessors (a getter reads
- * the literal's other properties through `this`).
+ * plain property per key no pattern property that stays reads (a computed
+ * one may read any), in a literal without accessors (a getter reads the
+ * literal's other properties through `this`).
  */
 function removeLiteralProperties(
   ctx: PlanContext,
@@ -542,15 +543,28 @@ function removeLiteralProperties(
 ): void {
   const literal = destructuredLiteral(ctx, pattern)
   if (
+    pattern.type !== 'ObjectPattern' ||
     literal?.type !== 'ObjectExpression' ||
     literal.properties.some((p) => p.type === 'Property' && p.kind !== 'init')
   ) {
+    return
+  }
+  const read = new Set<string | null>()
+  for (const p of pattern.properties) {
+    if (p.type === 'Property' && !pruned.has(p) && !live.isErased(rangeOf(p))) {
+      read.add(propertyKeyName(p))
+    }
+  }
+  if (read.has(null)) {
     return
   }
   const props = literal.properties as ReadonlyArray<Node>
   const values = new Set<Node>()
   for (const prop of pruned) {
     const key = propertyKeyName(prop)
+    if (read.has(key)) {
+      continue
+    }
     const same = props.filter((p) => key !== null && propertyKeyName(p) === key)
     const value = same.length === 1 ? same[0]! : null
     if (

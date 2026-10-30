@@ -195,6 +195,14 @@ describe('literal values of destructured bindings only erased code read', () => 
       'const [kept, picked] = [...list, secret()]',
     ],
     [
+      'another binding reads the key',
+      'const { picked, picked: kept } = { picked: secret() }',
+    ],
+    [
+      'a computed key may read it',
+      'const { picked, [name]: kept } = { picked: secret() }',
+    ],
+    [
       'the literal is an inner one',
       'const { o: { picked, kept } } = { o: { picked: secret(), kept: 1 } }',
     ],
