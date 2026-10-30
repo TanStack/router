@@ -93,7 +93,8 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   after every planner, removing each in every output when edits addressed to every output orphaned it, else in the
   env module only. A module-level destructuring leaf stays while it is exported or another output takes it (one of
   its roots names it, or a claimed region reads it); a property a live rest element keeps (its key stays out of the
-  rest) loses only its default value. A read the core synthesises from a
+  rest) loses only its default value. A leaf's value in the object or array literal its declarator destructures
+  goes with it under the declarator's rule for effects (`{ a, b } = { a: 1, b: f() }`). A read the core synthesises from a
   name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
   Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
   `import type * as React` is never the factory;

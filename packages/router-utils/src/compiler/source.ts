@@ -95,6 +95,29 @@ export function unwrapExpression(node: Node): Node {
   }
 }
 
+/** A property's key when the source spells it (`a`, `'a'`, `['a']`, `1`), else null. */
+export function propertyKeyName(prop: Node): string | null {
+  if (prop.type !== 'Property') {
+    return null
+  }
+  const key = prop.key
+  if (prop.computed) {
+    if (key.type === 'Literal' && typeof key.value === 'string') {
+      return key.value
+    }
+    return null
+  }
+  if (key.type === 'Identifier') {
+    return key.name
+  }
+  if (key.type === 'Literal') {
+    return typeof key.value === 'string' || typeof key.value === 'number'
+      ? String(key.value)
+      : null
+  }
+  return null
+}
+
 /** The identifiers a binding pattern declares, in source order. */
 export function patternIdentifiers(
   p: Node,

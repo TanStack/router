@@ -180,6 +180,9 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('routeSsr', 'MARK_ROUTE_SSR'),
       ...dependency('destructuredDefault', 'MARK_DESTRUCTURED_DEFAULT'),
       ...dependency('restDefault', 'MARK_REST_DEFAULT'),
+      ...dependency('literalProperty', 'MARK_LITERAL_PROPERTY'),
+      ...dependency('restLiteralProperty', 'MARK_REST_LITERAL_PROPERTY'),
+      ...dependency('arrayElement', 'MARK_ARRAY_ELEMENT'),
       ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
       ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
       ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
@@ -335,6 +338,38 @@ export const Route = createFileRoute('/destructured-rest')({
   component: () => rest.title,
 })
 `,
+      // The handler reads a binding whose value is a property of the object
+      // literal the declaration destructures: the component's chunk takes
+      // the declaration without that property.
+      'src/routes/destructured-literal.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { literalProperty } from '../deps/literalProperty'
+const { title, secret } = { title: 'MARK_LITERAL_TITLE', secret: literalProperty() }
+export const Route = createFileRoute('/destructured-literal')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => title,
+})
+`,
+      // The same next to a rest element the component reads.
+      'src/routes/destructured-literal-rest.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { restLiteralProperty } from '../deps/restLiteralProperty'
+const { secret, ...rest } = {
+  title: 'MARK_REST_LITERAL_TITLE',
+  secret: restLiteralProperty(),
+}
+export const Route = createFileRoute('/destructured-literal-rest')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => rest.title,
+})
+`,
+      // The same with an array pattern and an array literal.
+      'src/routes/destructured-array.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { arrayElement } from '../deps/arrayElement'
+const [title, secret] = ['MARK_ARRAY_TITLE', arrayElement()]
+export const Route = createFileRoute('/destructured-array')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => title,
+})
+`,
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverRouteHandler } from '../deps/serverRouteHandler'
 export const Route = createFileRoute('/api')({
@@ -401,11 +436,17 @@ const get = async (path) =>
         component: build.client.where('MARK_ROUTE_COMPONENT'),
         destructured: build.client.where('MARK_DESTRUCTURED_TITLE'),
         rest: build.client.where('MARK_REST_TITLE'),
+        literal: build.client.where('MARK_LITERAL_TITLE'),
+        literalRest: build.client.where('MARK_REST_LITERAL_TITLE'),
+        array: build.client.where('MARK_ARRAY_TITLE'),
       }).toEqual({
         isomorphic: 'eager',
         component: 'lazy',
         destructured: 'lazy',
         rest: 'lazy',
+        literal: 'lazy',
+        literalRest: 'lazy',
+        array: 'lazy',
       })
     })
 
@@ -480,6 +521,27 @@ const get = async (path) =>
         marker: 'MARK_REST_DEFAULT',
         run: `return await get('/destructured-rest')`,
         expected: 'MARK_REST_DEFAULT',
+      },
+      {
+        construct:
+          'route server.handlers reading a property of the object literal a declaration the component reads destructures',
+        marker: 'MARK_LITERAL_PROPERTY',
+        run: `return await get('/destructured-literal')`,
+        expected: 'MARK_LITERAL_PROPERTY',
+      },
+      {
+        construct:
+          'route server.handlers reading a property of the object literal next to a rest element the component reads',
+        marker: 'MARK_REST_LITERAL_PROPERTY',
+        run: `return await get('/destructured-literal-rest')`,
+        expected: 'MARK_REST_LITERAL_PROPERTY',
+      },
+      {
+        construct:
+          'route server.handlers reading an element of the array literal a declaration the component reads destructures',
+        marker: 'MARK_ARRAY_ELEMENT',
+        run: `return await get('/destructured-array')`,
+        expected: 'MARK_ARRAY_ELEMENT',
       },
       {
         construct: 'a server fn of a route file the loader calls',

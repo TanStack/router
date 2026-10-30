@@ -119,6 +119,118 @@ describe('destructured bindings only erased code read', () => {
   })
 })
 
+// The literal a declarator destructures is a new value nothing else
+// holds: what only a removed leaf read of it goes too, under the
+// declarator's rule for effects (module level: they go).
+describe('literal values of destructured bindings only erased code read', () => {
+  it('drops the property of an object literal, with the import it read', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        const { picked, kept } = { picked: secret(), kept: 1 }
+        export const k = kept
+        export const fn = wrapServer(() => picked)
+      `),
+    ).toBe(
+      dedent(`
+        const { kept } = { kept: 1 }
+        export const k = kept
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
+  it('drops the property of a key kept out of a live rest element', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        const { picked, ...others } = { kept: 1, picked: secret() }
+        export const o = others
+        export const fn = wrapServer(() => picked)
+      `),
+    ).toBe(
+      dedent(`
+        const { picked, ...others } = { kept: 1 }
+        export const o = others
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
+  it('leaves a hole for the element of an array literal, also the last one', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        const [first, kept, last] = [secret(), 1, secret()]
+        export const k = kept
+        export const fn = wrapServer(() => [first, last])
+      `),
+    ).toBe(
+      dedent(`
+        const [, kept, ,] = [, 1, ,]
+        export const k = kept
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
+  it.each([
+    [
+      'a getter reads the literal',
+      'const { picked, kept } = { get kept() { return this.picked }, picked: secret() }',
+    ],
+    [
+      'the key is defined twice',
+      'const { picked, kept } = { picked: secret(), kept: 1, picked: secret() }',
+    ],
+    [
+      'a computed pattern key',
+      'const { [name]: picked, kept } = { picked: secret(), kept: 1 }',
+    ],
+    [
+      'a spread element shifts the array',
+      'const [kept, picked] = [...list, secret()]',
+    ],
+    [
+      'the literal is an inner one',
+      'const { o: { picked, kept } } = { o: { picked: secret(), kept: 1 } }',
+    ],
+  ])('keeps the value when %s', async (_, declaration) => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      import { secret } from './db'
+      ${declaration}
+      export const k = kept
+      export const fn = wrapServer(() => picked)
+    `)
+    expect(out).toContain('secret()')
+    expect(out).toContain("import { secret } from './db'")
+  })
+
+  it('keeps a function-level value that calls a hook, drops a server-only one', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        export function Comp() {
+          const { a, b, kept } = { a: useThing(), b: secret(), kept: 1 }
+          return [kept, wrapServer(() => [a, b])]
+        }
+      `),
+    ).toBe(
+      dedent(`
+        export function Comp() {
+          const { kept } = { a: useThing(), kept: 1 }
+          return [kept, tsrStub()]
+        }
+      `),
+    )
+  })
+})
+
 describe('parameter patterns only erased code read', () => {
   // Source: real app tanstack.com (`({ onNavigate, tabIndex, }: Props)` with
   // `<ClientOnly>` children on the server): a pattern losing every property
