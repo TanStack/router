@@ -268,6 +268,36 @@ test('a build after a watch run that kept the route of a broken file fails, nami
   await expect(session.build()).rejects.toThrow('posts.tsx')
 })
 
+// A build's outcome is its drain's last batch: an event that arrives while
+// it generates (no host sends one; here the generator's own `run`, one
+// microtask later, once the drain took the build's batch) is a build too,
+// so it fails on the broken file rather than keep its last good route.
+test('a build fails on a route file that does not parse when another event arrives while it generates', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root)
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config, root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  const tree = await readFile(config.generatedRouteTree, 'utf8')
+  await writeFile(posts, 'export const Route = (')
+  const built = session.build()
+  await Promise.resolve()
+  const later = generator.run({
+    type: 'update',
+    path: path.join(root, 'src/routes/__root.tsx'),
+  })
+  await expect(built).rejects.toThrow('posts.tsx')
+  await expect(later).rejects.toThrow('posts.tsx')
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
+})
+
 // Text that names no `Route` and does not parse is no route file without a
 // route: the run fails as for any route file that does not parse.
 test.each([['import { createFileRo'], ['export const = (']])(

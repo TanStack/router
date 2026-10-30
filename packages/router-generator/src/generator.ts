@@ -212,9 +212,11 @@ export class Generator {
   private routesByFile: GetRoutesByFileMapResult = new Map()
 
   private queue: Array<GeneratorEvent> = []
+  /** The runs waiting for the drain; a `build` one makes each batch until it settles a build. */
   private waiters: Array<{
     resolve: () => void
     reject: (error: unknown) => void
+    build: boolean
   }> = []
   private draining: Promise<void> | undefined
 
@@ -258,7 +260,9 @@ export class Generator {
   /**
    * Handles a file event (or, without one, regenerates everything) and
    * resolves once every queued event is handled; rejects when the last
-   * batch failed (no root route, conflicting routes, a failed write).
+   * batch failed (no root route, conflicting routes, a failed write). While
+   * a `build` run waits, every batch is a build (R86): a later event never
+   * hands it the route a broken file kept.
    */
   public run(event?: GeneratorEvent): Promise<void> {
     if (event && event.type !== 'rerun' && event.type !== 'build') {
@@ -271,7 +275,7 @@ export class Generator {
       this.queue.push(event ?? { type: 'rerun' })
     }
     const done = new Promise<void>((resolve, reject) => {
-      this.waiters.push({ resolve, reject })
+      this.waiters.push({ resolve, reject, build: event?.type === 'build' })
     })
     this.drain()
     return done
@@ -379,7 +383,10 @@ export class Generator {
       while (this.queue.length) {
         const batch = this.queue.splice(0)
         try {
-          await this.processBatch(batch)
+          await this.processBatch(
+            batch,
+            this.waiters.some((w) => w.build),
+          )
           failure = undefined
         } catch (error) {
           failure = { error }
@@ -397,16 +404,14 @@ export class Generator {
     })()
   }
 
-  private async processBatch(batch: Array<GeneratorEvent>) {
+  private async processBatch(batch: Array<GeneratorEvent>, build: boolean) {
     let structural = !this.scan || this.stale
-    let build = false
     const changed = new Set<string>()
     /** The files the batch's events name: read whatever their stamps say. */
     const named = new Set<string>()
     for (const event of batch) {
       if (event.type === 'rerun' || event.type === 'build') {
         structural = true
-        build ||= event.type === 'build'
         continue
       }
       named.add(event.path)
