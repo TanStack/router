@@ -59,6 +59,32 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
   )
 
   test(
+    'a server fn module an edit deletes leaves the rebuilt server',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          ...files,
+          'old.ts': `import { createServerFn } from '@tanstack/react-start'
+export const old = createServerFn().handler(async () => 'MARK_OLD')
+`,
+          'client-entry.ts': `export { greet } from './fns'
+export { old } from './old'
+`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: {
+          'old.ts': null,
+          'client-entry.ts': `export { greet } from './fns'
+`,
+        },
+      })
+      expect(ssr.where('MARK_OLD')).toBe('nowhere')
+    },
+    timeout,
+  )
+
+  test(
     'a module an edit marks server-only is a violation of its unchanged client importer',
     async () => {
       const error = await rejection(
