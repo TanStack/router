@@ -20,7 +20,14 @@ import {
 import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
-import { importerInScope, markerViolates, ownFileRule } from './rules'
+import {
+  importerInScope,
+  markerViolates,
+  matchFile,
+  relativeTargetPath,
+  rulesFor,
+  targetExcluded,
+} from './rules'
 import { normalizeFilePath, relativizePath } from './utils'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
 import {
@@ -46,7 +53,7 @@ import type {
 } from './edge-modules'
 import type { ImportGraphView, SourceReader } from './graph-trace'
 import type { DevReporterOptions, ReportSink } from './report'
-import type { EnvType } from './rules'
+import type { EnvType, RuleRef } from './rules'
 import type { DecideResult, RspackImportProtectionBuildInfo } from './verdict'
 import type { EdgeViolation } from './violations'
 import type { WitnessLookup } from './witness'
@@ -529,8 +536,11 @@ class ImportProtectionEnv {
    * An id with an asset query (`x.ts?raw`, `?url`, `?inline`, `?worker`) is
    * the file's text and never compiled, so the planner cannot make it its
    * own violation: the same verdict, as the output of a compile, for the host
-   * to hand to `afterCompile`. Null when the file is not denied here. The
-   * file's marker is read only for a file of a language (`marker`).
+   * to hand to `afterCompile`. Null when nothing can deny it here. On a
+   * server only the static edge is judged: the text or URL of a client-only
+   * file runs nothing of it there. The marker is read only for a file of a
+   * language (`marker`); a conflict is reported in a compile, which never
+   * comes, so it denies the text here.
    */
   async assetOutput(
     id: string,
@@ -538,30 +548,53 @@ class ImportProtectionEnv {
   ): Promise<CompiledOutputLike | null> {
     const { path } = identify(id)
     const { config } = this.ip
-    if (!this.ip.inScope(path) && !this.ip.exempt(path)) {
+    if (
+      this.type !== 'client' ||
+      (!this.ip.inScope(path) && !this.ip.exempt(path))
+    ) {
       return null
     }
-    const rule =
-      ownFileRule(config, this.type, path) ??
-      (markerViolates(this.type, await marker(path))
-        ? ({ type: 'marker' } as const)
-        : null)
-    if (rule === null) {
-      return null
-    }
-    const violation = selfViolationOf(config, this, id, rule, {
-      names: [],
-      hasDefault: true,
-      effectful: false,
-    })
+    const rule = await this.assetRule(path, marker)
     return {
       output: id,
       facts: {
         planners: {
-          [IMPORT_EDGES_PLANNER]: { violations: { [id]: [violation] } },
+          [IMPORT_EDGES_PLANNER]: {
+            violations: {
+              [id]: rule
+                ? [
+                    selfViolationOf(config, this, id, rule, {
+                      names: [],
+                      hasDefault: true,
+                      effectful: false,
+                    }),
+                  ]
+                : [],
+            },
+          },
         },
       },
     }
+  }
+
+  private async assetRule(
+    path: string,
+    marker: (path: string) => Promise<MarkerKind | 'conflict' | null>,
+  ): Promise<RuleRef | null> {
+    const { config } = this.ip
+    const rules = rulesFor(config, this.type)
+    const rel = relativeTargetPath(config, path)
+    if (targetExcluded(rules, rel)) {
+      return null
+    }
+    const fileRule = matchFile(rules, rel)
+    if (fileRule) {
+      return fileRule
+    }
+    const m = await marker(path)
+    return m === 'conflict' || markerViolates(this.type, m)
+      ? { type: 'marker' }
+      : null
   }
 
   /**

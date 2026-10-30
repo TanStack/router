@@ -158,6 +158,7 @@ export default mergeConfig(
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
       './src/rsbuild/compiler-loader.ts',
+      './src/rsbuild/asset-query-loader.ts',
     ],
     srcDir: './src',
     outDir: './dist',

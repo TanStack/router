@@ -3,7 +3,7 @@
  * facts, Rspack `buildInfo`) and as `onViolation` receives it
  * (`ViolationInfo`, J6.5).
  */
-import { identify } from '@tanstack/router-utils/compiler'
+import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from './edge-modules'
 import { patternOf, relativeTargetPath, rulesFor } from './rules'
 import type { EdgeModuleContent } from './edge-modules'
@@ -68,9 +68,10 @@ export function selfViolationOf(
 ): EdgeViolation {
   const file = relativeTargetPath(config, id)
   const edgeKey = selfEdgeKey(id)
-  // the id's query is how it was imported (`x.server.ts?raw`)
-  const query = id.indexOf('?')
-  const specifier = query === -1 ? file : `${file}${id.slice(query)}`
+  // an asset query tells how it was imported (`x.server.ts?raw`)
+  const specifier = ASSET_QUERY_RE.test(id)
+    ? `${file}${id.slice(id.indexOf('?'))}`
+    : file
   const content: EdgeModuleContent = {
     env: env.name,
     edgeKey,

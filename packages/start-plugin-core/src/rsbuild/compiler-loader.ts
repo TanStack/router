@@ -23,7 +23,7 @@ const tanstackStartCompilerLoader: Rspack.LoaderDefinition<LoaderOptions> =
     const impl = (this._compiler as unknown as Record<string, unknown>)[
       LOADER_REGISTRY
     ] as LoaderImpl | undefined
-    if (!impl || this.getOptions().pass === 'asset') {
+    if (!impl) {
       callback(null, source, inputMap)
       return
     }
@@ -32,25 +32,5 @@ const tanstackStartCompilerLoader: Rspack.LoaderDefinition<LoaderOptions> =
       (error: Error) => callback(error),
     )
   }
-
-/**
- * The asset-query rule (`pass: 'asset'`): judged before the file is read (it
- * may be binary). A denied file's mock replaces it; nothing leaves it to its
- * rules.
- */
-export function pitch(
-  this: Rspack.LoaderContext<LoaderOptions>,
-): Promise<string | undefined> | undefined {
-  const options = this.getOptions()
-  const impl = (this._compiler as unknown as Record<string, unknown>)[
-    LOADER_REGISTRY
-  ] as LoaderImpl | undefined
-  if (options.pass !== 'asset' || !impl) {
-    return undefined
-  }
-  return impl(this, '', undefined, options).then(
-    (result) => result.code || undefined,
-  )
-}
 
 export default tanstackStartCompilerLoader

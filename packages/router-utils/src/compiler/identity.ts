@@ -187,9 +187,10 @@ export const ASSET_QUERY_RE =
 
 /** Query-aware language of an id: `.vue?vue&type=script&lang.ts` → 'ts'; non-JS (or an asset query, `x.ts?raw`) → null. */
 export function langFromId(id: string): Lang | null {
-  const { base, query } = splitQuery(id)
+  const { base, query, hash } = splitQuery(id)
   if (query.length > 0) {
-    if (ASSET_QUERY_RE.test(`?${query}`)) {
+    // (a bundler honours no asset query followed by a hash in the id: code)
+    if (hash.length === 0 && ASSET_QUERY_RE.test(`?${query}`)) {
       return null
     }
     const m = /(?:^|&)lang\.(tsx|ts|jsx|js|mjs|cjs|mts|cts)(?:$|&|=)/.exec(

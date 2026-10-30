@@ -32,6 +32,7 @@ import {
   manifestResolverModule,
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
+import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { CompiledOutputLike } from '../import-protection/session'
@@ -619,6 +620,9 @@ export class StartRsbuildCompilerSession {
       const info = ipEnv.buildInfo(id, out)
       if (info) {
         buildInfo[info.key] = info.value
+      } else {
+        // a rebuild of a module that was its own violation
+        delete buildInfo[RSPACK_BUILD_INFO_KEY]
       }
     }
     if (!mock) {

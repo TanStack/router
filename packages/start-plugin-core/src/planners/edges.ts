@@ -35,7 +35,7 @@
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
-import { identify } from '@tanstack/router-utils/compiler'
+import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
@@ -102,6 +102,19 @@ interface TargetDescription {
   names: Array<string>
   hasDefault: boolean
   effectful: boolean
+}
+
+/**
+ * The module whose marker a target's is. An asset query of a file (`x.ts?raw`)
+ * has no language, so no marker of its own: on a client, the file's. A server
+ * gets the text or URL of a client-only file: that runs nothing of it there.
+ */
+function markerIdOf(envType: EnvType, target: string): string {
+  return envType === 'client' &&
+    ASSET_QUERY_RE.test(target) &&
+    !target.startsWith('\0')
+    ? identify(target).path
+    : target
 }
 
 export function importEdgesPlanner(ip: ImportProtection): Planner {
@@ -173,9 +186,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           return fileRule
         }
         // the marker only: an edit of the target's imports or exports does not re-plan its importers
-        // (an asset query of a file, `x.ts?raw`, has no language: the file's own marker)
-        const { lang, path } = identify(target)
-        const marker = await ctx.targetMarker(lang === null ? path : target)
+        const marker = await ctx.targetMarker(markerIdOf(envType, target))
         return markerViolates(envType, marker) ? { type: 'marker' } : null
       }
 
@@ -397,7 +408,8 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     ctx: PolicyContext,
   ): Promise<TargetDescription> {
     const p = identify(resolved).path
-    if (/\.json$/i.test(p)) {
+    // a text or URL: importing it evaluates nothing of the file
+    if (/\.json$/i.test(p) || ASSET_QUERY_RE.test(resolved)) {
       return { names: [], hasDefault: true, effectful: false }
     }
     const names = new Set<string>()

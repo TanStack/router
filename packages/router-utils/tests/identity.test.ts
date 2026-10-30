@@ -30,6 +30,7 @@ describe('identity', () => {
     // the worker's own code is code
     expect(langFromId('/app/worker.ts?worker_file&type=module')).toBe('ts')
     expect(langFromId('/app/page.tsx?rawish')).toBe('tsx')
+    expect(langFromId('/app/page.tsx?raw#a')).toBe('tsx')
   })
 
   it('never canonicalises virtual ids beyond owned keys', () => {

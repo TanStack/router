@@ -23,6 +23,7 @@ import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
+const assetLoaderPath = path.resolve(currentDir, 'asset-query-loader.js')
 
 /** JS/TS module paths (the query is not part of a rule's `test`). */
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
@@ -140,7 +141,7 @@ export function registerStartCompiler(
           enforce: 'pre',
           use: [
             {
-              loader: loaderPath,
+              loader: assetLoaderPath,
               options: { environment: environment.name, pass: 'asset' },
             },
           ],

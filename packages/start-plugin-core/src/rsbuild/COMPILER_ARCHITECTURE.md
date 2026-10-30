@@ -15,6 +15,8 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   implementation, the invalidation operation, the resolver module content.
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
   (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
+- `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
+  replaces it before it is read; any other file is left untouched, its bytes never decoded.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
   changes (each rebuild may register the functions of the provider modules it reaches; bounded).
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
