@@ -808,10 +808,8 @@ export const Route = createFileRoute('/')({ pendingComponent() { return <p>{read
     )
     await expectValidModules(route)
     expect(await route.run(`return 'pendingComponent' in options`)).toBe(false)
-    expect(
-      (await route.eagerModules()).some((code) =>
-        holdsMarker(code, 'readSecret'),
-      ),
-    ).toBe(false)
+    expect((await route.eagerModules()).flatMap(servedImports)).not.toContain(
+      '/secret.ts',
+    )
   })
 })
