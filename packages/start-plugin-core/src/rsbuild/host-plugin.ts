@@ -407,7 +407,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // cache): the environment's server-fn snapshot and the import-protection records. In dev,
       // a module restored with violations, or an edge module restored with pending ones, was
       // judged by another session (its `onViolation` verdicts decided its output; its reports
-      // were printed there): built again first
+      // were printed there): built again first. Only a compiler's first compilation restores
+      // modules (Rspack loads the cache's module graph in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
         async (compilation) => {
@@ -415,7 +416,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             return
           }
           const ipEnv = ipEnvOf()
-          if (ipEnv && session.start.opts.mode === 'dev') {
+          if (ipEnv && session.start.opts.mode === 'dev' && !knownFiles) {
             const unjudged = new Set<string>()
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike
