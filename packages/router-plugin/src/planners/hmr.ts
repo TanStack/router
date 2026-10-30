@@ -235,8 +235,10 @@ export function planHmrBlock(
     // reload, as on main)
     const exportNames = new Set<string>()
     const userExports = new Set<string>()
+    let star = false
     for (const e of ctx.analysis.exports) {
       if (e.kind === 'star') {
+        star ||= !e.typeOnly
         continue
       }
       if (e.kind === 'local' && e.local === route.routeSym) {
@@ -255,10 +257,13 @@ export function planHmrBlock(
       if (!userExports.has(name)) {
         exportNames.add(name)
       }
-      // a glue name other than its name is free of the module's exports
-      const glue = sym === route.routeSym ? name : ctx.glueExportName(sym)
-      if (glue !== name) {
-        exportNames.add(glue)
+      // a glue name is another name (free of the module's exports) only
+      // next to `export *` or when an export takes the binding's name
+      if (
+        sym !== route.routeSym &&
+        (star || !ctx.names.isExportNameFree(name))
+      ) {
+        exportNames.add(ctx.glueExportName(sym))
       }
     }
     exportNames.add(anchor.name)
