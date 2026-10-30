@@ -135,17 +135,6 @@ export function registerStartCompiler(
             },
           ],
         },
-        // an asset query of any file is never compiled: its verdict comes first
-        {
-          resourceQuery: ASSET_QUERY_RE,
-          enforce: 'pre',
-          use: [
-            {
-              loader: assetLoaderPath,
-              options: { environment: environment.name, pass: 'asset' },
-            },
-          ],
-        },
         // the import-protection runtime only; edge modules are analysed by the bundler
         {
           test: /[\\/]import-protection[\\/][^\\/]+[\\/]runtime\.mjs$/,
@@ -170,6 +159,20 @@ export function registerStartCompiler(
       )
     }
     rules.unshift(...loaderRules)
+    if (s.start.ip) {
+      // an asset query of any file is never compiled: its verdict comes first.
+      // Last in the list: a rule's index is part of every module id it matches
+      rules.push({
+        resourceQuery: ASSET_QUERY_RE,
+        enforce: 'pre',
+        use: [
+          {
+            loader: assetLoaderPath,
+            options: { environment: environment.name, pass: 'asset' },
+          },
+        ],
+      })
+    }
     config.plugins.push(
       createStartHostPlugin({
         session: s,
