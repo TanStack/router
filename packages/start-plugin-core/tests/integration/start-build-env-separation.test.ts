@@ -752,4 +752,38 @@ return results`)
     },
     timeout,
   )
+
+  // An unchanged module the cache restores is compiled again when what it
+  // imports changed meanwhile: `base` became a server fn builder, so the
+  // handler built on it leaves the client.
+  // Source: review of the Rsbuild host's dependencies (what restores the
+  // importer is the loader's dependency on the files whose facts it read).
+  test(
+    'a module whose import became a server fn builder meanwhile is compiled again',
+    async () => {
+      const cold = await buildStart({
+        bundler: 'rsbuild',
+        rsbuildConfig: { performance: { buildCache: true } },
+        files: {
+          'src/base.ts': `export const base = {
+  handler: (fn: () => Promise<string>) => fn,
+}
+`,
+          'src/fns.ts': `import { base } from './base'
+export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
+`,
+          'src/entry.ts': `export { fromBase } from './fns'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(cold.client.where('MARK_FROM_BASE')).not.toBe('nowhere')
+      const warm = await cold.rebuild({
+        'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+      })
+      expect(warm.client.where('MARK_FROM_BASE')).toBe('nowhere')
+    },
+    timeout,
+  )
 })
