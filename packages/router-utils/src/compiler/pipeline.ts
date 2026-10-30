@@ -250,6 +250,7 @@ function emitSettled(
       facts: { marker: null, planners: {} },
       diagnostics: settled.diagnostics,
       dependencies: [],
+      persisted: null,
       output: requested,
     }
   }
@@ -294,10 +295,11 @@ function emitFrom(
     edges: plan.edges[requested] ?? [],
     facts: plan.facts,
     diagnostics: plan.diagnostics,
-    // only the Rspack / webpack hosts read them (`addDependency`), once per compile: computed on demand
+    // only the webpack-family hosts read them, once per compile: computed on demand
     get dependencies() {
       return dependencyPaths(plan, caches)
     },
+    persisted: { key: entry.key, dependencies: plan.dependencies },
     output: requested,
   }
 }

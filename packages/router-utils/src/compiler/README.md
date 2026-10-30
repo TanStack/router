@@ -189,8 +189,15 @@ text compiles waits for it and emits its own output from the result.
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
-  environment's own resolver (add/unlink also retry failed resolutions) and returns `{ evicted, dependents }`, which
-  the host hard-invalidates in the bundler. A summary change invalidates importers only when its export-facts digest changed.
+  environment's own resolver (add/unlink also retry failed resolutions; an add also re-asks the resolutions it may
+  take: a file of the same name with another extension, or of a directory a resolution went into) and returns
+  `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates importers
+  only when its export-facts digest changed.
+- `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and
+  dependencies (`CompileOutput.persisted`) with its module; a later process checks them for the modules the cache
+  restores without compiling: a current plan joins its environment's plans as a _restored_ plan (never a hit; its
+  dependencies are in the dependents index, so `invalidate()` reports it like any plan; a compile replaces it), a stale
+  one is returned for the host to build again.
 - `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an
   environment's plans as soon as that environment's build is finished (several environments build one after the
   other in one process). Raw facts are shared by the environments and stay.

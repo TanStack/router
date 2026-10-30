@@ -20,6 +20,7 @@ import type {
   DependencyFingerprint,
   DependencyLedger,
   FingerprintSource,
+  PersistedPlan,
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic } from './diagnostics'
@@ -81,6 +82,12 @@ export interface CompileOutput {
   diagnostics: Array<Diagnostic>
   /** Paths to watch / addDependency. */
   dependencies: Array<string>
+  /**
+   * The key and dependencies of the plan the output came from, for a host
+   * that persists them with the module (`restorePlans`); null without a plan
+   * (a parse error).
+   */
+  persisted: PersistedPlan | null
   /** The output the request mapped to. */
   output: OutputId
 }
@@ -181,9 +188,8 @@ export interface CompilerCaches {
   plans: Map<string, PlanCache>
   rawFacts: RawFactsCache
   /**
-   * Bumped when a file appeared or disappeared (`invalidate` add/unlink; a
-   * host that gets no such events for files nothing imports bumps it per
-   * watch compilation). A plan's recorded resolutions and an environment's
+   * Bumped when a file appeared or disappeared (`invalidate` add/unlink).
+   * A plan's recorded resolutions and an environment's
    * resolution memo are current while the version they were validated or
    * filled at is the current one: nothing a resolver answers changes
    * without a file appearing or disappearing.
@@ -252,7 +258,9 @@ type InvalidationHosts = HostServices | ((env: string) => HostServices)
  * module graph, the webpack family by reporting the files as changed to the
  * watching compiler: `invalidateFiles`). File `add`/`unlink` events
  * also re-resolve every failed resolution of every env: a plan whose
- * unresolved specifier now resolves is a dependent. Each environment's
+ * unresolved specifier now resolves is a dependent; an `add` also
+ * re-resolves the resolutions the new file may take (`mayShadow`). Restored
+ * plans (`restorePlans`) are checked like published ones. Each environment's
  * fingerprints are checked with that environment's host (its own resolver).
  */
 export async function invalidate(
@@ -296,11 +304,10 @@ export async function invalidate(
         cache.bump(entry.key)
         continue
       }
-      const published = cache.get(entry.key)
-      if (!published) {
+      const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
+      if (!fps) {
         continue
       }
-      const fps = published.plan.dependencies.filter(relevant)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
         if (!(await fingerprintCurrent(fp, src))) {
@@ -334,8 +341,73 @@ export async function invalidate(
         (fp) => fp.kind === 'resolution' && fp.resolved === null,
       )
     }
+    if (change.kind === 'add') {
+      // a new file may take a resolution that found another file of its
+      // name (`./x` found `x/index.ts`, and `x.ts` appeared)
+      for (const path of [...cache.dependents.paths()]) {
+        if (path !== change.path && mayShadow(change.path, path)) {
+          await revalidate(cache, path, (fp) => fp.kind === 'resolution')
+        }
+      }
+    }
   }
   return { evicted, dependents }
+}
+
+/**
+ * Whether a file created at `added` can change a resolution that found
+ * `resolved`: a file of the same name with another extension (`x.tsx`,
+ * `x.web.ts` next to `x.ts`), a file or directory of the name of a
+ * directory a resolution went into (`x.ts` next to `x/index.ts`), or a
+ * `package.json` of such a directory (its `main`/`exports`). A resolver's
+ * other candidates (alias targets elsewhere, a nearer `node_modules`) are not
+ * looked at.
+ */
+function mayShadow(added: string, resolved: string): boolean {
+  const slash = added.lastIndexOf('/')
+  const dir = added.slice(0, slash + 1)
+  const base = added.slice(slash + 1)
+  if (base === 'package.json') {
+    return resolved.startsWith(dir)
+  }
+  const stem = dir + base.split('.')[0]!
+  return (
+    resolved.startsWith(`${stem}/`) ||
+    (resolved.startsWith(`${stem}.`) && !resolved.includes('/', stem.length))
+  )
+}
+
+/**
+ * Restores plans an earlier process published, which the host persisted
+ * with their modules (`CompileOutput.persisted`) and the bundler's
+ * persistent cache restored without compiling them: a plan whose
+ * dependencies are all current joins its environment's plans (the session's
+ * invalidation finds it stale like a plan compiled now); the keys of the
+ * others are returned, their modules are to be compiled again. Each
+ * environment's plans are checked with that environment's host.
+ */
+export async function restorePlans(
+  caches: CompilerCaches,
+  plans: Iterable<PersistedPlan>,
+  hosts: InvalidationHosts,
+): Promise<Array<PlanKey>> {
+  const hostOf = typeof hosts === 'function' ? hosts : () => hosts
+  const stale: Array<PlanKey> = []
+  await Promise.all(
+    [...plans].map(async (plan) => {
+      const env = plan.key.env
+      const src = fingerprintSourceFor(caches, hostOf(env), env)
+      const current = await Promise.all(
+        plan.dependencies.map((fp) => fingerprintCurrent(fp, src)),
+      )
+      if (current.every((ok) => ok)) {
+        planCacheFor(caches, env).restore(plan)
+      } else {
+        stale.push(plan.key)
+      }
+    }),
+  )
+  return stale
 }
 
 /**

@@ -72,6 +72,16 @@ function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
   return fingerprintPath(fp)
 }
 
+/**
+ * A plan's dependencies as a host persists them with the plan's module
+ * (plain data): a later process restores them (`restorePlans`) for a module
+ * the bundler's persistent cache restores without compiling it.
+ */
+export interface PersistedPlan {
+  key: PlanKey
+  dependencies: ReadonlyArray<DependencyFingerprint>
+}
+
 /** The current values fingerprints are validated against. */
 export interface FingerprintSource {
   summaryDigest: (canonicalId: string) => Promise<string | null>
@@ -143,6 +153,11 @@ class DependentsIndex {
 
   get(path: string): Array<DependentEntry> {
     return [...(this.byPath.get(path)?.values() ?? [])]
+  }
+
+  /** The dependency paths with rows (and the unresolved bucket, if it has any). */
+  paths(): IterableIterator<string> {
+    return this.byPath.keys()
   }
 
   /**
@@ -288,6 +303,20 @@ export class DependencyLedger {
   }
 }
 
+/** The dependents-index buckets of a plan's dependencies. */
+function indexKeysOf(
+  dependencies: ReadonlyArray<DependencyFingerprint>,
+): Set<string> {
+  const keys = new Set<string>()
+  for (const fp of dependencies) {
+    const key = fingerprintIndexKey(fp)
+    if (key !== null) {
+      keys.add(key)
+    }
+  }
+  return keys
+}
+
 /** One importer's resolutions: specifier → canonical id, or the resolver's pending answer. */
 type ResolutionMemo = Map<string, string | Promise<string | null>>
 
@@ -354,6 +383,13 @@ export class PlanCache {
    */
   private readonly resolutions = new Map<string, ResolutionMemo>()
   private resolvedAt = -1
+  /**
+   * Plans an earlier process published, known by their dependencies only
+   * (the bundler's persistent cache restored their modules without a
+   * compile): never a hit, found stale by `invalidate` like a published
+   * plan, replaced by the key's next publication.
+   */
+  private readonly restored = new Map<string, PersistedPlan>()
 
   constructor(readonly env: string) {}
 
@@ -444,7 +480,7 @@ export class PlanCache {
 
   /** Forgets a key's generation and latest revision when nothing holds them; true when retired. */
   private retire(ks: string): boolean {
-    if (this.entries.has(ks) || this.active.has(ks)) {
+    if (this.entries.has(ks) || this.active.has(ks) || this.restored.has(ks)) {
       return false
     }
     this.generations.delete(ks)
@@ -473,19 +509,53 @@ export class PlanCache {
       return false
     }
     this.entries.set(ks, entry)
+    this.restored.delete(ks)
     this.track(ks, entry.key)
     return true
   }
 
+  /** Evicts a key's published or restored plan; true when it had one. */
   delete(key: PlanKey): boolean {
     const ks = planKeyString(key)
-    const had = this.entries.delete(ks)
+    const had = this.entries.delete(ks) || this.restored.delete(ks)
     this.dependents.drop(key, false)
     this.retire(ks)
     return had
   }
 
-  /** Live keys (published, or with an attempt active) whose canonical id lives at `path`. */
+  /**
+   * Adds a plan an earlier process published (`restorePlans` validated its
+   * dependencies); a key this process compiled or compiles keeps its own.
+   */
+  restore(plan: PersistedPlan): void {
+    const ks = planKeyString(plan.key)
+    if (this.entries.has(ks) || this.active.has(ks)) {
+      return
+    }
+    this.restored.set(ks, plan)
+    this.track(ks, plan.key)
+    this.dependents.publish(plan.key, indexKeysOf(plan.dependencies))
+  }
+
+  /** The dependencies of a key's published or restored plan (null: none). */
+  dependenciesOf(key: PlanKey): ReadonlyArray<DependencyFingerprint> | null {
+    const ks = planKeyString(key)
+    return (
+      this.entries.get(ks)?.plan.dependencies ??
+      this.restored.get(ks)?.dependencies ??
+      null
+    )
+  }
+
+  /** The keys of the published and restored plans. */
+  keys(): Array<PlanKey> {
+    return [
+      ...[...this.entries.values()].map((e) => e.key),
+      ...[...this.restored.values()].map((p) => p.key),
+    ]
+  }
+
+  /** Live keys (published, restored, or with an attempt active) whose canonical id lives at `path`. */
   keysAt(path: string): Array<PlanKey> {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
@@ -511,6 +581,7 @@ export class PlanCache {
     }
     return {
       plans: this.entries.size,
+      restored: this.restored.size,
       resolutions,
       dependencies,
       generations: this.generations.size,

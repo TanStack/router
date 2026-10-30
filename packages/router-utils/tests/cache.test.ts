@@ -4,7 +4,7 @@
  * edits that change import targets, nor with unique files that come and go.
  */
 import { describe, expect, it } from 'vitest'
-import { invalidate, releaseEnvironment } from '../src/compiler'
+import { invalidate, releaseEnvironment, restorePlans } from '../src/compiler'
 import { PlanCache } from '../src/compiler/cache'
 import { planKeyString } from '../src/compiler/identity'
 import { MemoryHost, envInfo, toySummaryPlanner } from './helpers'
@@ -262,5 +262,54 @@ describe('releasing an environment', () => {
     await new Promise((r) => setImmediate(r))
     gc!()
     expect(released.deref()).toBeUndefined()
+  })
+})
+
+describe('plans restored from an earlier process', () => {
+  const files = {
+    '/app/page.ts': `import { make } from './helper'\nexport const page = make()\n`,
+    '/app/helper.ts': 'export const make = () => 1\n',
+  }
+  const edited = 'export const make = () => 1\nexport const more = 2\n'
+
+  /** The persisted plan of `/app/page.ts`, compiled by an earlier process (plain data). */
+  async function persisted() {
+    const out = await new MemoryHost({ files }).compile(
+      '/app/page.ts',
+      planners(),
+    )
+    return JSON.parse(JSON.stringify(out!.persisted))
+  }
+
+  it('a current plan joins the invalidation: an edit of what it read reports it', async () => {
+    const host = new MemoryHost({ files })
+    expect(await restorePlans(host.caches, [await persisted()], host)).toEqual(
+      [],
+    )
+    expect(stats(host)).toMatchObject({ plans: 0, restored: 1 })
+    host.write('/app/helper.ts', edited)
+    const res = await invalidate(
+      host.caches,
+      { path: '/app/helper.ts', kind: 'change' },
+      host,
+    )
+    expect(res.dependents.map((k) => k.canonicalId)).toEqual(['/app/page.ts'])
+    expect(stats(host)).toMatchObject({ restored: 0, dependentEntries: 0 })
+  })
+
+  it('a plan whose dependency changed meanwhile is returned, not restored', async () => {
+    const host = new MemoryHost({
+      files: { ...files, '/app/helper.ts': edited },
+    })
+    const stale = await restorePlans(host.caches, [await persisted()], host)
+    expect(stale.map((k) => k.canonicalId)).toEqual(['/app/page.ts'])
+    expect(stats(host)).toMatchObject({ restored: 0, dependentEntries: 0 })
+  })
+
+  it('a compile of the key replaces the restored plan', async () => {
+    const host = new MemoryHost({ files })
+    await restorePlans(host.caches, [await persisted()], host)
+    await host.compile('/app/page.ts', planners())
+    expect(stats(host)).toMatchObject({ plans: 1, restored: 0 })
   })
 })

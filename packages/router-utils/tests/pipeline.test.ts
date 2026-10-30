@@ -349,14 +349,25 @@ describe('resolution for analysis', () => {
       '/app/service/index.ts',
       '/app/helper.ts',
     ])
+    // a file of another name takes no resolution of the plan
+    host.write('/app/services.ts', 'export const make = () => "other"\n')
+    const other = await invalidate(
+      host.caches,
+      { path: '/app/services.ts', kind: 'add' },
+      host,
+    )
+    expect(other.dependents).toEqual([])
     // `./service` now resolves to the file that appeared before the
-    // directory: the plan's resolutions are asked again at the next request
+    // directory: the plan read the directory's module, it is stale
     host.write('/app/service.ts', 'export const make = () => "file"\n')
-    await invalidate(
+    const added = await invalidate(
       host.caches,
       { path: '/app/service.ts', kind: 'add' },
       host,
     )
+    expect(added.dependents.map((k) => k.canonicalId)).toEqual([
+      '/app/page.tsx',
+    ])
     const second = await host.compile('/app/page.tsx', planners)
     expect(second!.dependencies).toEqual(['/app/service.ts', '/app/helper.ts'])
     // the file disappears: back to the directory
