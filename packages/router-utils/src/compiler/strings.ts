@@ -101,12 +101,19 @@ const RESERVED = new Set([
   'eval',
 ])
 
+const IDENTIFIER_NAME = /^[\p{ID_Start}$_][\p{ID_Continue}$‌‍]*$/u
+
 /** Whether `name` can be a binding identifier in a module. */
 export function isValidIdentifier(name: string): boolean {
   if (name.length === 0 || RESERVED.has(name)) {
     return false
   }
-  return /^[\p{ID_Start}$_][\p{ID_Continue}$‌‍]*$/u.test(name)
+  return IDENTIFIER_NAME.test(name)
+}
+
+/** An export name as a specifier writes it: a string literal unless it is an identifier name (`export { a as 'a-b' }`). */
+export function specifierName(name: string): string {
+  return IDENTIFIER_NAME.test(name) ? name : stringLiteral(name)
 }
 
 /** Replaces every character that cannot be part of an identifier (for name bases built from paths/keys). */

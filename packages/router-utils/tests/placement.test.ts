@@ -732,6 +732,20 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  it('re-exports a string export name as a string literal', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      function Card() { return 'card' }
+      export { Card as 'card-view' }
+      function Page() { return Card() }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~Card'",
+    )
+  })
+
   it('moves an exported function with the module state it writes, when only the chunk reads it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1041,6 +1055,21 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('export { clicks }')
       expect(r.chunk).toContain("import { clicks } from './route.tsx'")
       expect(r.chunk).not.toContain('clicks++')
+    })
+
+    it('imports a binding the route module exports under a string name with a string literal', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let clicks = 0
+        export function bump() { clicks++ }
+        export { clicks as 'click-count' }
+        function Page() { return clicks }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code, ['component'], dev)
+      expect(r.chunk).toContain(
+        "import { 'click-count' as clicks } from './route.tsx'",
+      )
     })
 
     it('keeps what only an extracted export reads in the route module', async () => {

@@ -8,7 +8,7 @@
  */
 import { siblingSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
-import { specifierLiteral, stringLiteral } from './strings'
+import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { isLineTerminator, pragmasOf } from './header'
 import type { ClassifiedRef, RefContext } from './analysis'
@@ -392,7 +392,9 @@ function glueImportText(
         .map((s) => {
           const exported = exportNameOf.get(home)?.get(s) ?? plan.nameOf(s)
           const local = plan.nameOf(s)
-          return exported === local ? local : `${exported} as ${local}`
+          return exported === local
+            ? local
+            : `${specifierName(exported)} as ${local}`
         })
       frags.push({
         k: 'text',
@@ -442,7 +444,9 @@ function reexportGlue(
       for (const x of plan.analysis.exports) {
         if (x.kind === 'local' && x.local === s && !x.typeOnly) {
           parts.push(
-            exported === x.name ? exported : `${exported} as ${x.name}`,
+            exported === x.name
+              ? exported
+              : `${exported} as ${specifierName(x.name)}`,
           )
         }
       }

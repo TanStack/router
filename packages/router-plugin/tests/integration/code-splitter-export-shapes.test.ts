@@ -27,11 +27,9 @@ async function buildRoute(
 
 describe('an exported component the split component renders, exported under a string name', () => {
   // `export { Page as 'page-view' }` (ES2022 arbitrary module namespace
-  // names): the route module re-exports it under the same name.
-  // Bug: the re-export of the extracted module prints the name unquoted
-  // (`Page as page-view`), which does not parse; main failed too ("Export
-  // 'Page' is not defined").
-  it.fails(
+  // names): the route module re-exports it under the same name, quoted
+  // (main failed: "Export 'Page' is not defined").
+  it(
     'builds, renders, and gives importers the export',
     async () => {
       const app = await buildRoute(
