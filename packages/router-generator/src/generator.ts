@@ -155,6 +155,11 @@ function sameProps(a: RouteProps | undefined, b: RouteProps | undefined) {
   )
 }
 
+/** A route file no earlier read of the generator knows does not parse: it fails a build that does not watch (R86). */
+export class UnparsableRouteFileError extends Error {
+  override name = 'UnparsableRouteFileError'
+}
+
 function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
   const position =
     diagnostic.line === undefined
@@ -692,7 +697,7 @@ export class Generator {
         // server's first generation, a file created broken): the run fails
         // naming it and leaves the route tree on disk as it is, as on main
         // (a route never silently drops out of a build)
-        throw new Error(
+        throw new UnparsableRouteFileError(
           `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
         )
       }

@@ -88,7 +88,7 @@ export function createRsbuildRouteGenerator(opts: {
 
   return {
     routes: registry,
-    beforeRun: () => session.run(),
+    beforeRun: () => session.build(),
     watchRun: (modified, removed) => session.watchRun(modified, removed),
     close: () => session.close(),
     onRoutesChanged(listener) {

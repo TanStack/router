@@ -1,21 +1,21 @@
 /**
- * A route module the compiler cannot parse is reported, not silently left
- * as it is (SPEC J2.8, J2.19): a TypeScript grammar error the bundler's
- * transpiler lets through (`let label!: string = '…'`: a definite assignment
- * assertion with an initializer, which SWC accepts on a variable; since
- * Rspack 2.2.9 it rejects the class-field form) leaves the route unsplit
- * and the build warns once, naming the route file. Rspack (SWC) is the row
- * where the bundler alone would have said nothing; Vite's own transpiler, and
- * the harness's webpack loader (Oxc), reject the file themselves.
+ * A route module that does not parse never silently drops out of a build
+ * (R86, SPEC J2.8): the route generator cannot read it, so a build that
+ * does not watch fails, naming the file, also where the bundler's own
+ * transpiler lets it through. The grammar error here
+ * (`let label!: string = '…'`: a definite assignment assertion with an
+ * initializer) is one SWC accepts on a variable (since Rspack 2.2.9 it
+ * rejects the class-field form): Rspack is the row where the bundler alone
+ * would have said nothing.
  */
 import { expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, head, rootRoute, ssrRenderEntry } from '../build-harness'
 
-test.each(['rspack'] as const)(
-  'a route module the compiler cannot parse builds unsplit and is reported once, naming the file (%s)',
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'a route module that does not parse fails the build, naming the file (%s)',
   async (bundler) => {
-    const app = await build({
+    const failure = await build({
       bundler,
       env: 'ssr',
       minify: false,
@@ -29,17 +29,17 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
         'entry.ts': ssrRenderEntry,
       },
-    })
-    const run = await app.run(
-      `return await entry.render(entry.Route.options.component)`,
+    }).then(
+      () => undefined,
+      (error: unknown) => error,
     )
-    expect(run.result).toBe('<p>MARK_COMPONENT <!-- -->MARK_LABEL</p>')
-    expectDiagnostic([...app.warnings, ...app.consoleMessages], {
-      severity: 'warning',
-      file: 'routes/index.tsx',
-      root: app.root,
-      times: 1,
-    })
+    expect(failure, 'the build succeeded').toBeDefined()
+    expect(
+      diagnosticsOf(failure).some(({ text }) =>
+        text.includes('routes/index.tsx'),
+      ),
+      String(failure),
+    ).toBe(true)
   },
   120_000,
 )

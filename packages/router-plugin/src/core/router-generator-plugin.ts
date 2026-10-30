@@ -83,7 +83,9 @@ export function createRouterGeneratorPlugin(
     vite: {
       async configResolved(config) {
         initConfigAndGenerator({ root: config.root })
-        await session.run()
+        await (config.command === 'build' && !config.build.watch
+          ? session.build()
+          : session.run())
       },
       configureServer(server) {
         // Vite's watcher reports the files under its root (watchChange);
@@ -105,7 +107,7 @@ export function createRouterGeneratorPlugin(
     },
     rspack(compiler) {
       initConfigAndGenerator()
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.run())
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.build())
       // The compiler's watcher sees the files of the bundle only: route files
       // created, or outside the bundle (unparsable, `physical()` mounts), come
       // from the generator's own watcher.
@@ -116,7 +118,7 @@ export function createRouterGeneratorPlugin(
     },
     webpack(compiler) {
       initConfigAndGenerator()
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.run())
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.build())
       // See rspack above
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, watchRun)
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {

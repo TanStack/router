@@ -135,3 +135,47 @@ export const Route = createFileRoute('/posts')({})
   expect(reports.map(String)).toEqual([expect.stringContaining('posts.tsx')])
   expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(committed)
 })
+
+// A build that does not watch runs the generator through the same session:
+// there the failure fails the build.
+test('a build starting with a route file that does not parse fails, naming the file', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`,
+    'src/routes/posts.tsx': 'export const Route = (',
+  })
+  const generator = new Generator({ config: configOf(root), root })
+  await expect(
+    createGeneratorSession({ generator: () => generator }).build(),
+  ).rejects.toThrow('posts.tsx')
+})
+
+// Other failures of a build's generation (here two routes with one URL) are
+// reported and the build goes on with the tree on disk, as on main.
+test('a build whose generation fails for another reason reports it and goes on', async () => {
+  const route = (
+    id: string,
+  ) => `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('${id}')({})
+`
+  const root = await createApp({
+    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`,
+    'src/routes/index.tsx': route('/'),
+    'src/routes/_auth/index.tsx': route('/_auth/'),
+  })
+  const reports: Array<unknown> = []
+  const generator = new Generator({ config: configOf(root), root })
+  await createGeneratorSession({
+    generator: () => generator,
+    report: (error) => reports.push(error),
+  }).build()
+  expect(reports.map(String)).toEqual([
+    expect.stringContaining('_auth/index.tsx'),
+  ])
+})

@@ -1,11 +1,18 @@
+import { UnparsableRouteFileError } from '../generator'
 import { watchRouteFiles } from './chokidar'
 import type { RouteFileWatcher } from './chokidar'
 import type { Generator, GeneratorEvent } from '../generator'
 import type { GetRoutesByFileMapResult } from '../types'
 
 export interface GeneratorSession {
-  /** One run (a build, or a file event a host's own watcher reports), then the registry is handed over. */
+  /** One run (a dev server's start, or a file event a host's own watcher reports), then the registry is handed over. */
   run: (event?: GeneratorEvent) => Promise<void>
+  /**
+   * The run of a build that does not watch: the registry is handed over,
+   * then a route file that does not parse fails the build (it never
+   * silently drops out of it); another failure is reported, as by `run`.
+   */
+  build: () => Promise<void>
   /**
    * Watches the route files with the generator's own watcher (every route
    * file event, the bundle's or not: created files, `physical()` mounts,
@@ -56,6 +63,18 @@ export function createGeneratorSession(opts: {
 
   const session: GeneratorSession = {
     run: (event) => settle(opts.generator().run(event)),
+    async build() {
+      try {
+        await opts.generator().run()
+      } catch (error) {
+        if (error instanceof UnparsableRouteFileError) {
+          throw error
+        }
+        report(error)
+      } finally {
+        opts.publish?.(opts.generator().getRoutesByFileMap())
+      }
+    },
     watch() {
       watching ??= (async () => {
         watcher = watchRouteFiles(opts.generator(), (run) => void settle(run))
