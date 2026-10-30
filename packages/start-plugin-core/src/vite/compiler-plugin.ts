@@ -43,7 +43,7 @@ import {
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
-import { NODE_MODULES_RE } from '../compiler/scope'
+import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
 import { StartCompilerSession } from '../compiler/session'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
@@ -91,6 +91,12 @@ import type {
   ViteDevServer,
 } from 'vite'
 
+/** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
+type TransformHandler = Extract<
+  NonNullable<Plugin['transform']>,
+  { handler: unknown }
+>['handler']
+
 interface StartCompilerEnvironment {
   name: string
   type: 'client' | 'server'
@@ -123,6 +129,13 @@ const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
 
 /** A module naming no server-fn factory nor `.handler(` defines no server function (a text gate before any analysis). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
+
+/** A dependency module: `node_modules` in its path (not its query). */
+const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
+
+/** A dependency's script module (the `TRANSFORM_ID_REGEX` of `DEPENDENCY_ID_RE`). */
+const DEPENDENCY_SCRIPT_RE =
+  /^[^?]*[\\/]node_modules[\\/].*\.[cm]?[tj]sx?(?:$|\?)/
 
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
@@ -620,11 +633,64 @@ export function startCompilerPlugin(
   ): InvalidateChange['kind'] =>
     event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
 
+  /**
+   * The transform filter of dependency scripts. Its text test is set with
+   * the session (it depends on import protection's configuration); without
+   * one, every dependency script reaches the compiler, whose scope decides.
+   */
+  const dependencyFilter: {
+    id: { include: Array<RegExp>; exclude: Array<RegExp> }
+    code?: RegExp
+  } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
+
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   const watchingEnv = opts.environments[0]?.name
-  function perEnvPlugin(env: StartCompilerEnvironment): Plugin {
+  function perEnvPlugins(env: StartCompilerEnvironment): Array<Plugin> {
     const watches = env.name === watchingEnv
-    return {
+    const compileTransform: TransformHandler = async function (code, id) {
+      const identity = identify(id)
+      const s = requireSession()
+      if (identity.lang === null || !s.start.compiles(identity.path, code)) {
+        return null
+      }
+      const environment = this.environment
+      const out = await s.start.compile(
+        {
+          id,
+          code,
+          env,
+          inputMap: () => inputMapOf(this, code, identity.path),
+          wantMap:
+            s.start.opts.mode === 'dev' ||
+            environment.config.build.sourcemap !== false,
+        },
+        hostFor(s, this.environment, (source, imp, options) =>
+          this.resolve(source, imp, options),
+        ),
+      )
+      if (!out) {
+        return null
+      }
+      reportDiagnostics(s, this, out, identity.path, id, code, env.type)
+      const decided = afterCompile(s, env, id, out, (error) =>
+        this.error(error),
+      )
+      if (decided) {
+        await decided
+      }
+      if (s.start.opts.mode === 'dev') {
+        outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
+      }
+      if (identity.derived === null && out.code === code) {
+        return null
+      }
+      return {
+        code: out.code,
+        map: out.map as never,
+        moduleSideEffects: out.sideEffectFree ? false : undefined,
+      }
+    }
+    const plugin: Plugin = {
       name: `tanstack-start:compiler:${env.name}`,
       enforce: 'pre',
       perEnvironmentWatchChangeDuringDev: watches,
@@ -638,6 +704,10 @@ export function startCompilerPlugin(
             command: config.command,
             bundledDev: !!config.experimental.bundledDev,
           })
+          const text = dependencyTextFilter(session.start.ip)
+          if (text) {
+            dependencyFilter.code = text
+          }
           unsubscribeRoutes?.()
           unsubscribeRoutes = onRoutesChanged(
             opts.routerPluginContext,
@@ -782,54 +852,12 @@ export function startCompilerPlugin(
       },
       transform: {
         filter: {
-          id: { include: TRANSFORM_ID_REGEX, exclude: ASSET_QUERY_RE },
+          id: {
+            include: TRANSFORM_ID_REGEX,
+            exclude: [ASSET_QUERY_RE, DEPENDENCY_ID_RE],
+          },
         },
-        async handler(code, id) {
-          const identity = identify(id)
-          const s = requireSession()
-          if (
-            identity.lang === null ||
-            !s.start.compiles(identity.path, code)
-          ) {
-            return null
-          }
-          const environment = this.environment
-          const out = await s.start.compile(
-            {
-              id,
-              code,
-              env,
-              inputMap: () => inputMapOf(this, code, identity.path),
-              wantMap:
-                s.start.opts.mode === 'dev' ||
-                environment.config.build.sourcemap !== false,
-            },
-            hostFor(s, this.environment, (source, imp, options) =>
-              this.resolve(source, imp, options),
-            ),
-          )
-          if (!out) {
-            return null
-          }
-          reportDiagnostics(s, this, out, identity.path, id, code, env.type)
-          const decided = afterCompile(s, env, id, out, (error) =>
-            this.error(error),
-          )
-          if (decided) {
-            await decided
-          }
-          if (s.start.opts.mode === 'dev') {
-            outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
-          }
-          if (identity.derived === null && out.code === code) {
-            return null
-          }
-          return {
-            code: out.code,
-            map: out.map as never,
-            moduleSideEffects: out.sideEffectFree ? false : undefined,
-          }
-        },
+        handler: compileTransform,
       },
       async hotUpdate(ctx) {
         const s = requireSession()
@@ -998,6 +1026,20 @@ export function startCompilerPlugin(
         }
       },
     }
+    return [
+      plugin,
+      {
+        // dependency scripts: only those whose text names what the compiler
+        // recognises reach the compiler (most of a dependency graph never
+        // crosses into JavaScript)
+        name: `tanstack-start:compiler:${env.name}:dependencies`,
+        enforce: 'pre',
+        applyToEnvironment(e) {
+          return e.name === env.name
+        },
+        transform: { filter: dependencyFilter, handler: compileTransform },
+      },
+    ]
   }
 
   /**
@@ -1216,7 +1258,7 @@ export function startCompilerPlugin(
   })
 
   return [
-    ...opts.environments.map(perEnvPlugin),
+    ...opts.environments.flatMap(perEnvPlugins),
     buildLoopPlugin,
     latePassPlugin,
     devLookupPlugin,

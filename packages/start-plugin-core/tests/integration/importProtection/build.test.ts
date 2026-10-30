@@ -142,6 +142,40 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
+  // Import protection's `include` may reach a dependency: it is judged like
+  // a module of the app, though its text names no Start API.
+  test(
+    'a dependency import protection includes fails the build with the denied import it uses',
+    async () => {
+      const report = await failureReport(
+        buildStart({
+          bundler,
+          files: {
+            'node_modules/lib/package.json': JSON.stringify({
+              name: 'lib',
+              type: 'module',
+              exports: './index.js',
+            }),
+            'node_modules/lib/index.js': `import { secret } from './secret.js'\nexport const read = () => secret()\n`,
+            'node_modules/lib/secret.js': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
+            'src/entry.ts': `export { read } from 'lib'\n`,
+          },
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              behavior: 'error',
+              include: ['src/**', 'node_modules/lib/**'],
+              client: { files: ['**/lib/secret.js'], excludeFiles: [] },
+            },
+          },
+        }),
+      )
+      expect(report.environment).toBe('client')
+      expect(report.importer).toMatch(/^node_modules\/lib\/index\.js/)
+    },
+    timeout,
+  )
+
   test(
     'a file with both a server-only and a client-only marker fails the build, naming the file',
     async () => {

@@ -3,6 +3,7 @@
  * transform, the Rsbuild loader).
  */
 import { HYDRATE_COMPONENT } from '../planners/hydrate'
+import { isInsideDirectory } from '../import-protection/utils'
 import { startRecognizer } from './recognizer'
 import type { ImportProtection } from '../import-protection/session'
 
@@ -30,6 +31,29 @@ export function startCompileScope(
     !NODE_MODULES_RE.test(path) ||
     (ip?.inScope(path) ?? false) ||
     startText.test(code)
+}
+
+/**
+ * The text test a host may run on dependency modules before handing them to
+ * the compiler (a transform hook's code filter): the text side of
+ * `startCompileScope`. Null when import protection's scope may reach a
+ * dependency by its path (an `include`, or a source directory holding the
+ * root's `node_modules`), which no text test sees.
+ */
+export function dependencyTextFilter(
+  ip: ImportProtection | null,
+): RegExp | null {
+  if (
+    ip &&
+    (ip.config.include.length > 0 ||
+      isInsideDirectory(
+        `${ip.config.root}/node_modules/_`,
+        ip.config.srcDirectory,
+      ))
+  ) {
+    return null
+  }
+  return startTextTest(ip)
 }
 
 /** Whether a text names what the planners recognise (see `startCompileScope`). */
