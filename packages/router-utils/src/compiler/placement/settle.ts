@@ -32,6 +32,8 @@ export interface Roots {
   derivedReach: Map<OutputId, Set<ClusterId>>
   /** The candidates still extracted. */
   remaining: Map<ClusterId, Candidate>
+  /** Why each cancelled candidate stays in the env module (`live`, `reads`, `order`), taken when it was cancelled. */
+  cancelled: Map<ClusterId, Pin>
   /** The extracted candidates a chunk copies instead of importing their module. */
   copied: Set<ClusterId>
   /** The undecided clusters that move with their only needer. */
@@ -191,6 +193,12 @@ export function settleRoots(
     if (needers.length !== 1) {
       // a pure cluster is undecided only as a reader of mutable state
       return { reason: cl.effectful ? 'needers' : 'state' }
+    }
+    // an extracted export's module is side-effect free (every bundler may
+    // skip it while nothing imports what it exports): an effect observable
+    // on its own never moves there, it would run late or never
+    if (cl.sideEffects && outputs.get(needers[0]!)?.kind === 'export') {
+      return { reason: 'effects' }
     }
     // (b) no ordered-evaluation constraint: nothing outside the cluster
     // writes it eagerly (its own top-level augmentations, `X.p = …`, travel
@@ -483,6 +491,7 @@ export function settleRoots(
   // repeat until nothing changes, so every decision was taken over the
   // final env roots.
   const pinnedNeeded = new Map<ClusterId, Pin>()
+  const cancelled = new Map<ClusterId, Pin>()
   // derived reach changes only with the candidates still extracted, or when
   // a cluster a derived output reaches becomes an env root (it then reads
   // what it evaluates in the env module)
@@ -544,9 +553,9 @@ export function settleRoots(
     // env module, an env root, and the extracted module imports it
     // (`readsKeptEagerly`; a candidate itself is cancelled below, with its
     // companions). The "chunk loads after the route module" argument of the
-    // movable test holds for lazily imported outputs only; an effectful
-    // cluster moves to a static output only when no other surviving effect
-    // remains at all (`effectStays`).
+    // movable test holds for lazily imported outputs only; a cluster with
+    // observable effects never moves to a static output (`movableTo`), an
+    // augmented one only under the order rule (`effectStays`).
     for (const cl of remaining.size > 0 ? clusters : []) {
       if (
         cl.kind !== 'declaration' ||
@@ -570,6 +579,16 @@ export function settleRoots(
       if (extractable(c)) {
         continue
       }
+      // the cause, before it becomes an env root (and so live there); an
+      // effectful candidate that does not move was dropped by the order rule
+      cancelled.set(
+        c,
+        liveEnv.has(c)
+          ? { reason: 'live' }
+          : keepsEagerly(c)
+            ? { reason: 'reads' }
+            : (pins.get(c) ?? { reason: 'order' }),
+      )
       remaining.delete(c)
       envRoots.add(c)
       for (const k of e.companions) {
@@ -590,6 +609,7 @@ export function settleRoots(
     derivedRoots,
     derivedReach,
     remaining,
+    cancelled,
     copied: new Set([...remaining.keys()].filter(copies)),
     movable,
     pins,

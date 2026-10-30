@@ -1144,6 +1144,76 @@ describe('extracted-export outputs', () => {
     expect(e?.sideEffectFree).toBe(true)
   })
 
+  // An extracted module is side-effect free: a bundler may skip it while
+  // nothing imports what it exports (webpack and Rspack by the hosts' rule),
+  // so an effect observable on its own never moves there, even when only
+  // the extracted export needs its cluster and no effect would change order:
+  // it stays in the env module, which the extracted module imports it from.
+  it.each([
+    ["function Card() { return 'card' }\n      Card.x = track('card')", 'Card'],
+    ["const Card = track('card')", 'Card'],
+  ])(
+    'keeps an unexported cluster with an effect of its own that only an extracted export reads in the env module (`%s`)',
+    async (declaration, binding) => {
+      const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './track'
+      export function Page() { return ${binding} }
+      Page.displayName = 'Page'
+      ${declaration}
+      track('after')
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+      const r = await extract(code)
+      expect(r.env).toContain("track('card')")
+      expect(r.env).toContain(
+        "export { Page } from './route.tsx?tsr-split=export~Page'",
+      )
+      const e = await r.extracted('Page')
+      expect(e?.code).toContain(`import { ${binding} } from './route.tsx'`)
+      expect(e?.code).not.toContain('track')
+      expect(e?.sideEffectFree).toBe(true)
+      // the extracted module is no split code: nothing to report
+      expect(r.diagnostics).toEqual([])
+    },
+  )
+
+  it('keeps an export that reads, as it loads, an unexported cluster with an effect of its own', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const base = make()
+      export const options = { base }
+      export const Route = createFileRoute('/')({ component: () => options.base })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('const base = make()')
+    expect(r.env).toContain('export const options = { base }')
+    expect(r.env).not.toContain('export~')
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
+  })
+
+  // The same cluster before the augmented export: the augmentation would run
+  // before that effect, which stays (the order rule below).
+  it('keeps an augmented export after an unexported cluster with an effect of its own that it reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './track'
+      function Card() { return 'card' }
+      Card.x = track('card')
+      export function Page() { return Card }
+      Page.displayName = 'Page'
+      track('after')
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("Card.x = track('card')")
+    expect(r.env).toContain('export function Page()')
+    expect(r.env).not.toContain('export~')
+    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
+  })
+
   it('keeps an augmented export a surviving effect precedes (the augmentation would run before it)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1159,6 +1229,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("Page.displayName = 'PageDisplay'")
     expect(r.env).not.toContain('export~')
     expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
   })
 
   it('extracts an augmented export a surviving effect follows (the effect keeps its order)', async () => {

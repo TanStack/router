@@ -5,7 +5,7 @@
  * not extracted, and the unexported clusters the movable test kept
  * (evaluation order, writes, eager reads), reported once at the cause.
  */
-import { derivedNeeds, readsKeptEagerly } from './settle'
+import { derivedNeeds } from './settle'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
@@ -13,7 +13,7 @@ import type { Pin, Roots } from './settle'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { OutputId } from '../rewrite'
-import type { KeptDeclaration, KeptReason, PlacementInput } from '../reach'
+import type { KeptDeclaration, PlacementInput } from '../reach'
 
 export function keptDeclarations(
   input: PlacementInput,
@@ -26,7 +26,7 @@ export function keptDeclarations(
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
   const { units, regions, symbols } = t1
   const { clusters, clusterOfRegion, clusterOfSym } = graph
-  const { derivedReach, envRoots, liveEnv, movable, pins, remaining } = roots
+  const { cancelled, derivedReach, envRoots, movable, remaining } = roots
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
   const lazyNeeders = (c: ClusterId): Array<OutputId> => {
@@ -66,17 +66,14 @@ export function keptDeclarations(
     if (needers.length === 0) {
       continue
     }
-    const reason: KeptReason = cl.sideEffects
-      ? 'effects'
+    // no candidate (observable effects, assigned), or cancelled with its cause
+    const cause: Pin = cl.sideEffects
+      ? { reason: 'effects' }
       : t1.mutation.isReassigned(sym, liveInEnv) ||
           graph.regionWrittenSyms.has(sym)
-        ? 'reassigned'
-        : liveEnv.has(c)
-          ? 'live'
-          : readsKeptEagerly(input, graph, roots, c)
-            ? 'reads'
-            : 'order'
-    const effect = reason === 'order' ? pins.get(c)?.effect : undefined
+        ? { reason: 'reassigned' }
+        : (cancelled.get(c) ?? { reason: 'live' })
+    const { reason, effect } = cause
     kept.push({
       syms: [sym],
       exported: true,

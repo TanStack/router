@@ -267,3 +267,49 @@ return { before, log: globalThis.log }`)
     timeout,
   )
 })
+
+describe('an unexported helper with an effectful augmentation that only an exported component renders', () => {
+  // `Card.x = track('card')`: `Card` is only read by `Page`, an exported
+  // component the split component is. Its effect is observable on its own,
+  // so it runs once, as the route module loads and before its later
+  // top-level code, whether or not another module imports `Page`.
+  it.each(['vite', 'rspack', 'webpack'] as const)(
+    'runs the augmentation once, in source order, when no other module imports the component (%s)',
+    async (bundler) => {
+      const app = await buildRoute(
+        `${head}import { track } from '../tracker'
+function Card() {
+  return <p>MARK_CARD</p>
+}
+Card.x = track('card')
+export function Page() {
+  return <Card />
+}
+Page.displayName = 'Page'
+track('after')
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        clientMountEntry,
+        {
+          bundler,
+          files: {
+            'tracker.ts': `export function track(name: string) {
+  ;((globalThis as any).log ??= []).push(name)
+  return name
+}
+`,
+          },
+        },
+      )
+      const run = await app.run(`const before = [...(globalThis.log ?? [])]
+await entry.mount(entry.Route.options.component)
+return { before, log: globalThis.log }`)
+      expect({ html: run.html, ...(run.result as object) }).toEqual({
+        html: '<div id="root"><p>MARK_CARD</p></div>',
+        before: ['card', 'after'],
+        log: ['card', 'after'],
+      })
+    },
+    timeout,
+  )
+})

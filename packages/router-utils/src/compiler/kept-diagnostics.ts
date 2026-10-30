@@ -56,16 +56,18 @@ export function keptDiagnostic(
         ? [`\`${e.name}\``]
         : [],
     )
+    const effect = k.effect === undefined ? null : effectAt(plan, k.effect)
     const why: Partial<Record<KeptDeclaration['reason'], string>> = {
       effects:
         'its initialiser, or a statement setting a property of it, has side effects',
       reassigned: 'it is reassigned',
       live: `the ${module} itself reads it`,
       reads: 'it reads, when it loads, a binding the module keeps',
+      // its extracted module would evaluate before the module's body
       order:
-        k.effect === undefined
+        effect === null
           ? 'an effect of the module keeps it in place'
-          : `${describe(effectAt(plan, k.effect))} runs after it and ${k.effectStays ? 'stays' : 'does not move with it'}`,
+          : `${describe(effect)} (line ${analysis.source.locate(effect.node.start).line + 1}) runs before it and ${k.effectStays ? 'stays' : 'does not move with it'}`,
     }
     return {
       severity: 'warning',

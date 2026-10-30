@@ -103,8 +103,11 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   kept in place (`ordered-effect`). An effectful, unexported cluster moves with its only needer (lazy
   initialisation is allowed; within-module order is preserved) when nothing outside it writes it eagerly, it
   observes no mutable state, its eager reads are imports (read lazily: the chunk loads after the route module),
-  pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind (for
-  an extracted export's module, which evaluates _before_ the route module's body, none before its last one; the
+  pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind. It
+  never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
+  nothing imports what it exports; the webpack-family hosts mark each one so), so an effect observable on its own
+  stays in the route module, which the extracted module imports it from. What does move there (an export's
+  augmentations) evaluates _before_ the route module's body, so no surviving effect may precede its last one (the
   extracted modules evaluate in source order among themselves). An exported binding whose only effects write
   what it declares with pure values (`Page.displayName = …`, static props: unobservable while nothing imports it, so
   its module stays droppable; `Page.x = track()` is an effect of its own and keeps it in the route module) leaves for
