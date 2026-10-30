@@ -492,15 +492,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }> = []
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike
-              const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD] as
-                | PersistedPlan
-                | undefined
+              const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD]
               if (
-                plan &&
+                typeof plan === 'string' &&
                 module.resource &&
                 !env.compiled.has(module.resource)
               ) {
-                restored.push({ plan, layer: module.layer ?? undefined })
+                restored.push({
+                  plan: JSON.parse(plan) as PersistedPlan,
+                  layer: module.layer ?? undefined,
+                })
               }
             }
             const stale = await session.restorePlans(environment.name, restored)

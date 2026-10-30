@@ -50,7 +50,7 @@ import type {
 /** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
 export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
 
-/** The `buildInfo` field holding the key and dependencies of a module's plan (persisted by Rspack's cache; checked at a compiler's first `finishMake`). */
+/** The `buildInfo` field holding the key and dependencies of a module's plan, as JSON (persisted by Rspack's cache; checked at a compiler's first `finishMake`). */
 export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
 
 export interface ServerFnBuildInfo {
@@ -561,7 +561,8 @@ export class StartRsbuildCompilerSession {
     }
     const buildInfo = ctx._module?.buildInfo
     if (env.persistsModules && out.persisted && buildInfo) {
-      buildInfo[PLAN_BUILD_INFO_FIELD] = out.persisted
+      // one string: Rspack converts a structured field value by value
+      buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
     }
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {
