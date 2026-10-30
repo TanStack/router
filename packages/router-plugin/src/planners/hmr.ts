@@ -55,6 +55,9 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     return
   }
   const split = new Set(plan.decisions.map((d) => d.key))
+  // a deleted option is no component of the route (its removal may span the
+  // region a hoist would claim)
+  const deleted = new Set(plan.deleted.map((d) => d.key))
   // the split option values that name a binding: the splitter's own
   // edit replaces those occurrences (a ref edit there would collide)
   const splitRegions = plan.decisions
@@ -68,6 +71,7 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     if (
       option.key === null ||
       !HMR_COMPONENT_KEYS.includes(option.key) ||
+      deleted.has(option.key) ||
       option.value === null ||
       option.kind === 'spread' ||
       option.kind === 'computed' ||

@@ -788,3 +788,30 @@ return [before, consumer.read(), await render('component')]`),
     ).toEqual(['light', 'dark', '<p>dark</p>'])
   })
 })
+
+describe('deleteNodes, with route HMR', () => {
+  // The deleted option is the route's only option and a method: its removal
+  // spans what route HMR would hoist for React Refresh. It is removed with
+  // what only it reads.
+  it('removes a component option written as a method', async () => {
+    const route = await loadRoute(
+      `${head}import { readSecret } from './secret'
+export const Route = createFileRoute('/')({ pendingComponent() { return <p>{readSecret()}</p> } })
+`,
+      {
+        hmr: true,
+        deleteNodes: ['pendingComponent'],
+        files: {
+          'secret.ts': `export const readSecret = () => 'MARK_SECRET'\n`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.run(`return 'pendingComponent' in options`)).toBe(false)
+    expect(
+      (await route.eagerModules()).some((code) =>
+        holdsMarker(code, 'readSecret'),
+      ),
+    ).toBe(false)
+  })
+})
