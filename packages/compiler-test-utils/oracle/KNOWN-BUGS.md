@@ -74,6 +74,10 @@ bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' p
   template-literal `import()`, Rsbuild's `import.meta.webpackContext`; exempt by `exclude` or `ignoreImporters`). SPEC
   J6.7. "an importer exempted by %s reaching a denied file only through a pattern import gets the real module, and is
   not reported". Workaround: import the file statically.
+- **An importer outside the scope that reaches a denied file outside it only through a pattern import or (Rsbuild) a
+  `new URL` gets the mock**, with the same warning (the scope is about importers: a denied file is judged wherever it
+  lives). A plain import from there gets the real module. `known-bugs-rejections.test.ts`: "an importer outside the
+  source directory reaching a denied file outside it only through a pattern gets the real module".
 - **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
   SPEC J6.7, J6.1. "an importer outside srcDirectory gets the real module of an in-scope denied file it imports, and is
   not reported". Workaround: import the file from a module inside the scope.

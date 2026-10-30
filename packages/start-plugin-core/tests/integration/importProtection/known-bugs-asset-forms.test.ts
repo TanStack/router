@@ -1,7 +1,7 @@
 /**
  * Pins: forms that reach a denied file's text past import protection, in a
- * Vite client build, mock mode (KNOWN-BUGS "Remaining pins"). Each emits the
- * text without a report.
+ * client build, mock mode (KNOWN-BUGS "Remaining pins"). Each emits the text
+ * without a report, as on main.
  */
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -66,6 +66,29 @@ test.fails.each<[string, string, Record<string, string>]>([
       files: {
         ...files,
         'src/entry.ts': entry,
+        'src/router.ts': `import './entry'
+export const getRouter = () => undefined
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+    })
+    expect(await emitsCanary(result.client.outDir)).toBe(false)
+    expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+  },
+  timeout,
+)
+
+test.fails(
+  'rsbuild build: a denied JSON file, plain webpackContext, is mocked and reported',
+  async () => {
+    const result = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/a.server.json': `{"a":"${CANARY}"}`,
+        'src/entry.ts': `const c = (import.meta as any).webpackContext('./', { recursive: false, regExp: /server\\.json$/ });
+;(globalThis as any).m = c.keys().map((k: string) => c(k))
+`,
         'src/router.ts': `import './entry'
 export const getRouter = () => undefined
 `,

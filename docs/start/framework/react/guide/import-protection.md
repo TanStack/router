@@ -44,7 +44,7 @@ These defaults mean you can use the `.server.ts` / `.client.ts` naming conventio
 
 Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
 
-A file rule judges the denied file itself on the client, wherever it lives in your project and whichever file type it is: a pattern that reaches `../lib/*.server.ts` or `./*.server.json` gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. A package's own files in `node_modules` are not judged this way.
+On the client, a file rule judges the denied file itself, wherever it lives in your project: a pattern that reaches `../lib/*.server.ts`, or a file `exclude` matches, gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. On Vite this covers non-code files too (`./*.server.json`); on Rsbuild, `new URL` of a non-code file and asset queries. A package's own files in `node_modules` are not judged this way.
 
 Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
 
@@ -265,7 +265,7 @@ importProtection: {
 
 ## Limitations
 
-A denied file is judged when it is compiled, from the imports import protection has read so far. Two kinds of import are not visible there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
+A denied file is judged when it is compiled, from the imports import protection has read so far. Some imports are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
 
 An exempt importer that reaches a denied file only through a pattern import:
 
@@ -282,7 +282,13 @@ An importer outside the scope (`srcDirectory` or `include`) that imports a denie
 import { db } from '../src/lib/db.server'
 ```
 
+An importer outside the scope, or a package in `node_modules`, that reaches a denied file outside the scope only through a pattern import, or a `new URL` from an exempt or out-of-scope module on Rsbuild. A plain `import` from a module outside the scope keeps the real module of a denied file outside the scope.
+
 To get the real module, write the import statically (a plain `import`), in a module inside the scope that `exclude` or `ignoreImporters` exempts.
+
+A real module an unchecked importer keeps is one module: a pattern import from a checked importer that reaches the same file is reported, and under `behavior: 'mock'` may then get that real module too. Under `behavior: 'error'` the build fails either way.
+
+Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
 
 A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
 

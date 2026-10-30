@@ -20,14 +20,7 @@ import {
 import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
-import {
-  importerInScope,
-  markerViolates,
-  matchFile,
-  relativeTargetPath,
-  rulesFor,
-  targetExcluded,
-} from './rules'
+import { fileOrMarkerRule, importerInScope } from './rules'
 import { normalizeFilePath, relativizePath } from './utils'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
 import {
@@ -53,7 +46,7 @@ import type {
 } from './edge-modules'
 import type { ImportGraphView, SourceReader } from './graph-trace'
 import type { DevReporterOptions, ReportSink } from './report'
-import type { EnvType, RuleRef } from './rules'
+import type { EnvType } from './rules'
 import type { DecideResult, RspackImportProtectionBuildInfo } from './verdict'
 import type { EdgeViolation } from './violations'
 import type { WitnessLookup } from './witness'
@@ -551,11 +544,19 @@ class ImportProtectionEnv {
     if (
       this.type !== 'client' ||
       id.startsWith('\0') ||
-      path.includes('/node_modules/')
+      (path.includes('/node_modules/') &&
+        !this.ip.inScope(path) &&
+        !this.ip.exempt(path))
     ) {
       return null
     }
-    const rule = await this.assetRule(path, marker)
+    const rule = await fileOrMarkerRule(config, this.type, path, async () => {
+      if (identify(path).lang === null) {
+        return null
+      }
+      const m = await marker(path)
+      return m === 'conflict' ? 'server-only' : m
+    })
     return {
       output: id,
       facts: {
@@ -576,26 +577,6 @@ class ImportProtectionEnv {
         },
       },
     }
-  }
-
-  private async assetRule(
-    path: string,
-    marker: (path: string) => Promise<MarkerKind | 'conflict' | null>,
-  ): Promise<RuleRef | null> {
-    const { config } = this.ip
-    const rules = rulesFor(config, this.type)
-    const rel = relativeTargetPath(config, path)
-    if (targetExcluded(rules, rel)) {
-      return null
-    }
-    const fileRule = matchFile(rules, rel)
-    if (fileRule) {
-      return fileRule
-    }
-    const m = await marker(path)
-    return m === 'conflict' || markerViolates(this.type, m)
-      ? { type: 'marker' }
-      : null
   }
 
   /**

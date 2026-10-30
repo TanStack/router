@@ -94,6 +94,28 @@ export function ownFileRule(
   return targetExcluded(rules, rel) ? null : matchFile(rules, rel)
 }
 
+/** The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both). */
+export async function fileOrMarkerRule(
+  config: ImportProtectionConfig,
+  envType: EnvType,
+  file: string,
+  marker: () =>
+    | MarkerKind
+    | 'conflict'
+    | null
+    | Promise<MarkerKind | 'conflict' | null>,
+): Promise<RuleRef | null> {
+  const rules = rulesFor(config, envType)
+  const rel = relativeTargetPath(config, file)
+  if (targetExcluded(rules, rel)) {
+    return null
+  }
+  return (
+    matchFile(rules, rel) ??
+    (markerViolates(envType, await marker()) ? { type: 'marker' } : null)
+  )
+}
+
 /** Whether a target's marker denies it in an env of `envType` (a conflict is reported in the marked file itself). */
 export function markerViolates(
   envType: EnvType,

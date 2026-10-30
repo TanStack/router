@@ -380,10 +380,10 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
     timeout,
   )
 
-  // Accepted (safe direction): an importer outside the scope is not
-  // compiled by import protection, so its imports are never indexed and
-  // the in-scope denied file, judged at its own compile, is mocked (and
-  // reported in dev).
+  // Accepted (safe direction, R89): an importer outside the scope is not
+  // checked, and only gets the real module of a denied file outside the
+  // scope too: the in-scope denied file, judged at its own compile, is
+  // mocked (and reported in dev).
   // Impact: code outside `srcDirectory`/`include` gets mocks of the app's
   // server files; importing them from a module inside the scope gives the
   // real modules.
@@ -435,3 +435,26 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
     timeout,
   )
 })
+
+test.fails(
+  'an importer outside the source directory reaching a denied file outside it only through a pattern gets the real module',
+  async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'lib/s.server.ts': `export const s = 'MARK_REAL_MODULE'\n`,
+        'lib/a.ts': `export const modules = import.meta.glob('./*.server.ts', { eager: true })\n`,
+        'src/entry.ts': `import { modules } from '../lib/a'
+;(globalThis as any).modules = modules
+`,
+        'src/router.ts': `import './entry'
+export const getRouter = () => undefined
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+    })
+    expect(build.client.where('MARK_REAL_MODULE')).not.toBe('nowhere')
+  },
+  60_000,
+)

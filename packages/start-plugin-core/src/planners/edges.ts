@@ -39,13 +39,12 @@ import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
+  fileOrMarkerRule,
   markerViolates,
-  matchFile,
   matchSpecifier,
   ownFileRule,
   relativeTargetPath,
   rulesFor,
-  targetExcluded,
 } from '../import-protection/rules'
 import { relativizePath } from '../import-protection/utils'
 import {
@@ -124,11 +123,12 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
   /** The module's own violation, if its file rule or its marker denies it here. */
   const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
     const id = ctx.identity.canonicalId
-    const rule: RuleRef | null =
-      ownFileRule(config, ctx.env.type, ctx.identity.path) ??
-      (markerViolates(ctx.env.type, plan.facts.marker)
-        ? { type: 'marker' }
-        : null)
+    const rule = await fileOrMarkerRule(
+      config,
+      ctx.env.type,
+      ctx.identity.path,
+      () => plan.facts.marker,
+    )
     return (
       rule &&
       selfViolationOf(config, ctx.env, id, rule, await describeTarget(id, ctx))
@@ -176,15 +176,11 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       // an exempt importer's imports are only indexed: a denied module it
       // imports is allowed (`ImportProtectionEnv.allowsSelf`)
       const exempt = !ip.inScope(ctx.identity.path)
-      const isExempt = exempt && ip.exempt(ctx.identity.path)
       // the scope is about importers: on a client an app file outside it is
       // indexed like an exempt importer, and judged itself as a denied file
-      const outside =
-        exempt &&
-        !isExempt &&
-        ctx.env.type === 'client' &&
-        isAppFile(ctx.identity.path)
-      if (exempt && !isExempt && !outside) {
+      const judgedOwn =
+        exempt && ctx.env.type === 'client' && isAppFile(ctx.identity.path)
+      if (exempt && !judgedOwn && !ip.exempt(ctx.identity.path)) {
         return
       }
       const envType = ctx.env.type
@@ -200,23 +196,6 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           | { importRewrite?: ImportRewrite | undefined }
           | undefined
       )?.importRewrite
-      /** The file rule on the target's root-relative path, else its marker (`excludeFiles` skips both). */
-      const fileOrMarkerRule = async (
-        target: string,
-      ): Promise<RuleRef | null> => {
-        const rel = relativeTargetPath(config, target)
-        if (targetExcluded(rules, rel)) {
-          return null
-        }
-        const fileRule = matchFile(rules, rel)
-        if (fileRule !== null) {
-          return fileRule
-        }
-        // the marker only: an edit of the target's imports or exports does not re-plan its importers
-        const marker = await ctx.targetMarker(markerIdOf(envType, target))
-        return markerViolates(envType, marker) ? { type: 'marker' } : null
-      }
-
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
         if (e.provenance.origin === 'runtime' || e.typeOnly) {
           return null
@@ -254,7 +233,13 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             if (target === null) {
               continue
             }
-            const targetRule = await fileOrMarkerRule(target)
+            // the marker only: an edit of the target's imports or exports does not re-plan its importers
+            const targetRule = await fileOrMarkerRule(
+              config,
+              envType,
+              target,
+              () => ctx.targetMarker(markerIdOf(envType, target)),
+            )
             if (targetRule !== null) {
               rule = targetRule
               resolved = target
@@ -291,7 +276,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           ),
         plan.revision,
       )
-      if (outside && output === 'env' && !ip.isEntry(ctx.identity.path)) {
+      if (judgedOwn && output === 'env' && !ip.isEntry(ctx.identity.path)) {
         const own = await ownViolation(ctx, plan)
         if (own) {
           facts.violations[output] = [own]

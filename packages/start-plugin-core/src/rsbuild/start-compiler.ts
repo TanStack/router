@@ -9,7 +9,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ASSET_QUERY_RE } from '@tanstack/router-utils/compiler'
+import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
+import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
@@ -159,9 +160,15 @@ export function registerStartCompiler(
       )
     }
     rules.unshift(...loaderRules)
-    if (s.start.ip) {
-      // an asset query of any file is never compiled: its verdict comes first.
-      // Last in the list: a rule's index is part of every module id it matches
+    const { ip } = s.start
+    if (ip && environment.type === 'client') {
+      // an asset no compile reads gets its verdict first; only one that can be
+      // denied meets the loader. Last in the list: a rule's index is part of
+      // every module id it matches
+      const resource = (file: string) =>
+        identify(file).lang !== null ||
+        (!file.startsWith('data:') &&
+          ownFileRule(ip.config, 'client', file) !== null)
       const use = [
         {
           loader: assetLoaderPath,
@@ -169,9 +176,15 @@ export function registerStartCompiler(
         },
       ]
       rules.push(
-        { resourceQuery: ASSET_QUERY_RE, enforce: 'pre', use },
-        // `new URL('./x.txt', import.meta.url)`: an asset nothing else judges
-        { dependency: 'url', exclude: JS_FILE_RE, enforce: 'pre', use },
+        { resourceQuery: ASSET_QUERY_RE, resource, enforce: 'pre', use },
+        // `new URL('./x.txt', import.meta.url)`
+        {
+          dependency: 'url',
+          exclude: JS_FILE_RE,
+          resource,
+          enforce: 'pre',
+          use,
+        },
       )
     }
     config.plugins.push(
