@@ -84,6 +84,51 @@ export { old } from './old'
     timeout,
   )
 
+  // Bug on Vite (main too: its map is never cleared): a watch rebuild keeps
+  // the client snapshot of a module the client no longer compiles, so the
+  // rebuilt resolver still lists the server fn as client-referenced.
+  ;(bundler === 'vite' ? test.fails : test)(
+    'a server fn the client stops importing is refused over HTTP by the rebuilt server',
+    async () => {
+      const ssrEntry = `export { greet } from './fns'
+export { old } from './old'
+${callByIdExports}`
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          ...files,
+          'old.ts': `import { createServerFn } from '@tanstack/react-start'
+export const old = createServerFn().handler(async () => 'MARK_OLD')
+`,
+          'client-entry.ts': `export { greet } from './fns'
+export { old } from './old'
+`,
+          'ssr-entry.ts': ssrEntry,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: {
+          'client-entry.ts': `export { greet } from './fns'
+`,
+        },
+      })
+      const { result } =
+        await ssr.run(`${callByIdPrelude}const settle = async (run) => {
+  try {
+    return await run()
+  } catch {
+    return 'rejected'
+  }
+}
+return {
+  overHttp: await settle(() => callById(serverFnId(entry.old))),
+  fromSsr: await settle(() => entry.old()),
+}`)
+      // (from SSR code it still works: the server fn is in the resolver)
+      expect(result).toEqual({ overHttp: 'rejected', fromSsr: 'MARK_OLD' })
+    },
+    timeout,
+  )
+
   test(
     'a module an edit marks server-only is a violation of its unchanged client importer',
     async () => {
