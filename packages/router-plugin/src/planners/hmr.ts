@@ -29,7 +29,12 @@ import { methodPrefixOf } from './decisions'
 import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
-import type { Frag, PlanContext, SymRef } from '@tanstack/router-utils/compiler'
+import type {
+  Frag,
+  PlanContext,
+  SymRef,
+  SymbolId,
+} from '@tanstack/router-utils/compiler'
 
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
   'component',
@@ -221,16 +226,34 @@ export function planHmrBlock(
   ]
   const body: Array<Frag> = []
   if (anchor) {
-    // the exports plugin-react ignores: the route, the anchor and the
-    // core's glue for the chunks (`x$1`, `tsr$x` included), but no export
-    // of the user's: plugin-react validates those, so a component updates
-    // in place and an edited value invalidates the module for its
-    // importers (a reload, as on main)
-    const routeNames = ctx.analysis.exports.flatMap((e) =>
-      e.kind === 'local' && e.local === route.routeSym ? [e.name] : [],
-    )
+    // the exports plugin-react ignores: the route, the anchor and
+    // (over-approximated) every module-level binding the core may export as
+    // glue for the chunks, by its name and, when renamed (`x$1`, `tsr$x`),
+    // by its glue name, but no other export of the user's: plugin-react
+    // validates those, so a component updates in place and an edited value
+    // invalidates the module for its importers (a reload, as on main)
+    const exportNames = new Set<string>()
+    const userExports = new Set<string>()
+    for (const e of ctx.analysis.exports) {
+      if (e.kind === 'star') {
+        continue
+      }
+      if (e.kind === 'local' && e.local === route.routeSym) {
+        exportNames.add(e.name)
+      } else if (e.kind !== 'local' || !e.typeOnly) {
+        userExports.add(e.name)
+      }
+    }
+    const { symbols } = ctx.t1
+    for (let i = 0; i < symbols.size; i++) {
+      const name = symbols.name(i as SymbolId)
+      if (symbols.isModuleLevel(i as SymbolId) && !userExports.has(name)) {
+        exportNames.add(name)
+      }
+    }
+    exportNames.add(anchor.name)
     call.push(
-      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...routeNames, anchor.name].map((n) => stringLiteral(n, '"')).join(', ')}`,
+      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...exportNames].map((n) => stringLiteral(n, '"')).join(', ')}`,
     )
     body.push(
       { k: 'text', parts: call },
