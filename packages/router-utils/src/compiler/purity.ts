@@ -5,7 +5,9 @@
  * arguments of `#__NO_SIDE_EFFECTS__` callee declarations and of the pure
  * exports of known packages (`RecognizerTable.pureCalls`: by import
  * binding or namespace member; re-exports are not followed), JSX with bound/intrinsic tags and
- * pure attributes and children. `import()` is impure. The same
+ * pure attributes and children, and a member of a module namespace import (`ns.x`: its [[Get]]
+ * reads the module's binding and runs no code, as an imported identifier does; a property of
+ * any other object may be a getter). `import()` is impure. The same
  * classification yields Tier 0's `ownEffects` at statement granularity.
  */
 import { unwrapExpression } from './source'
@@ -30,6 +32,8 @@ export interface PurityContext {
   noSideEffectCallees: ReadonlySet<number>
   /** Namespace imports (binding ids) of known packages → their pure exports. */
   pureNamespaces: ReadonlyMap<number, ReadonlySet<string>>
+  /** Value namespace imports (binding ids): `import * as ns from '…'`. */
+  namespaceImports: ReadonlySet<number>
 }
 
 const PURE_RE = /[@#]__PURE__/
@@ -264,6 +268,7 @@ export function isPureExpression(
     case 'JSXFragment':
       return node.children.every((ch) => isPureJsxChild(ctx, ch))
     case 'MemberExpression':
+      return isNamespaceMember(ctx, node)
     case 'ChainExpression':
     case 'TaggedTemplateExpression':
     case 'ImportExpression':
@@ -275,6 +280,27 @@ export function isPureExpression(
     default:
       return false
   }
+}
+
+/** `ns.x` / `ns['x']` of a namespace import (`namespaceImports`). */
+function isNamespaceMember(ctx: PurityContext, node: Node): boolean {
+  if (
+    ctx.namespaceImports.size === 0 ||
+    node.type !== 'MemberExpression' ||
+    (node.computed &&
+      !(
+        node.property.type === 'Literal' &&
+        typeof node.property.value === 'string'
+      ))
+  ) {
+    return false
+  }
+  const object = unwrapExpression(node.object as Node)
+  if (object.type !== 'Identifier') {
+    return false
+  }
+  const b = ctx.file.referenceOf(object)?.binding
+  return b !== undefined && b !== null && ctx.namespaceImports.has(b.id)
 }
 
 /** Whether a callee's calls are pure when their arguments are (`noSideEffectCallees`, `pureNamespaces`). */

@@ -157,7 +157,9 @@ directives, never license comments.
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).
   Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
-  an app module re-exporting it is not followed, and a third party's purity is never assumed.
+  an app module re-exporting it is not followed, and a third party's purity is never assumed. A member of a namespace
+  import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
+  and runs no code, as an imported identifier does; a property of any other value may be a getter.
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 

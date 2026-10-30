@@ -1456,12 +1456,22 @@ describe('extracted-export outputs', () => {
     ["Object.assign(Page, { x: track('page') })", false],
     ["Page[track('k')] = 1", false],
     ['Page.count++', false],
+    // a member of a namespace import reads that module's binding (no code
+    // runs, as for an imported identifier); a property of an imported
+    // object, or of a namespace member's value, may be a getter
+    ['Page.icon = Icons.Home', true],
+    ["Page.icon = Icons['Home']", true],
+    ['Object.assign(Page, { Item: Icons.Item })', true],
+    ['Page.icon = Shapes.Home', false],
+    ['Page.icon = Icons.Home.small', false],
   ])(
     'extracts an export augmented by `%s` only when the augmentation writes nothing but pure values (%s)',
     async (augmentation, extracted) => {
       const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { track } from './track'
+      import * as Icons from './icons'
+      import { Shapes } from './shapes'
       export function Page() { return 'page' }
       ${augmentation}
       export const Route = createFileRoute('/')({ component: Page })

@@ -300,12 +300,14 @@ export class ModuleAnalysis {
     this.header = analyzeHeader(file)
     const noSideEffectCallees = new Set<number>()
     const pureNamespaces = new Map<number, ReadonlySet<string>>()
+    const namespaceImports = new Set<number>()
     const pureCalls = opts.pureCalls
     this.purity = {
       file,
       comments: file.comments,
       noSideEffectCallees,
       pureNamespaces,
+      namespaceImports,
     }
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
@@ -324,6 +326,9 @@ export class ModuleAnalysis {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
+        if (record.kind === 'namespace' && !record.typeOnly) {
+          namespaceImports.add(local.id)
+        }
         // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
         const pure = pureCalls?.[record.specifier]
