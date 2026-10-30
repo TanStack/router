@@ -310,7 +310,14 @@ export async function invalidate(
       }
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
-        if (!(await fingerprintCurrent(fp, src))) {
+        // a resolution that found the removed file is stale: no need to ask
+        // a resolver (one may still cache the file until its next compile)
+        if (
+          (change.kind === 'unlink' &&
+            fp.kind === 'resolution' &&
+            fingerprintPath(fp) === change.path) ||
+          !(await fingerprintCurrent(fp, src))
+        ) {
           stale = true
           break
         }

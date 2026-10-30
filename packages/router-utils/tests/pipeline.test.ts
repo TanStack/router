@@ -549,6 +549,37 @@ describe('slice gates: invalidation', () => {
     })
   })
 
+  it('an unlink makes stale a plan that resolved to the removed file, whatever a resolver still answers', async () => {
+    // the resolver still has the removed file (a bundler's resolver caches
+    // what it found until its own next compile)
+    const host = new MemoryHost({
+      files: {
+        '/app/page.ts': `import './dep'\nexport const page = 1\n`,
+        '/app/dep.ts': 'export const dep = 1\n',
+      },
+      resolve: (specifier) => (specifier === './dep' ? '/app/dep.ts' : null),
+    })
+    const resolvesOnly: Planner = {
+      name: 'resolves-only',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        await ctx.resolve('./dep')
+      },
+      plan() {},
+    }
+    await host.compile('/app/page.ts', [resolvesOnly])
+    delete host.files['/app/dep.ts']
+    const removed = await invalidate(
+      host.caches,
+      { path: '/app/dep.ts', kind: 'unlink' },
+      host,
+    )
+    expect(removed.dependents.map((k) => k.canonicalId)).toEqual([
+      '/app/page.ts',
+    ])
+  })
+
   it('re-validates each environment with its own resolver on add/unlink (no cross-env resolution contamination)', async () => {
     // the client resolves `./dep` to the browser file, the server to the node
     // file, and only the server resolves `./maybe`: an `add` checked with the
