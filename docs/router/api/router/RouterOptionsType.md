@@ -143,7 +143,8 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 - Type: `(error: unknown, errorInfo: ErrorInfo) => void`
 - Optional
-- The default `onCatch` handler for errors caught by the Router ErrorBoundary
+- The default `onCatch` handler for errors caught by a route's error boundary.
+- A route has an error boundary only when it has an `errorComponent` or the router has a `defaultErrorComponent`. The global catch boundary does not call `defaultOnCatch`.
 
 ### `disableGlobalCatchBoundary` property
 
