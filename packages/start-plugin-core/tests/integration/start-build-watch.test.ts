@@ -2,7 +2,8 @@
  * `vite build --watch` and `rsbuild build --watch` of a Start app: the first
  * build succeeds, and an edit of a module both environments bundle rebuilds
  * them with it; the client's server fn is still served by the rebuilt server
- * (Start's own server entry, inside a real request).
+ * (Start's own server entry, inside a real request). A rebuild judges an
+ * unchanged module against what the edit changed in the modules it imports.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -11,6 +12,7 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { rejection, reportedViolations } from '../importProtection/start-apps'
 
 const timeout = 60_000
 
@@ -49,6 +51,36 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
         `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
       )
       expect(result).toBe('MARK_AFTER')
+    },
+    timeout,
+  )
+
+  test(
+    'a module an edit marks server-only is a violation of its unchanged client importer',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/lib.ts': `export const secret = () => 'MARK_SECRET'
+`,
+            'src/other.ts': `import { secret } from './lib'
+export const read = () => secret()
+`,
+            'src/entry.ts': `export { read } from './other'
+`,
+          },
+          entry: 'src/entry.ts',
+          watchEdits: {
+            'src/lib.ts': `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`,
+          },
+        }),
+      )
+      expect(
+        reportedViolations(error).map(({ environment }) => environment),
+      ).toContain('client')
     },
     timeout,
   )

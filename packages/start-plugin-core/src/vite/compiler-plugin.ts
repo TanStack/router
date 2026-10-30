@@ -662,10 +662,16 @@ export function startCompilerPlugin(
       async buildStart() {
         const s = requireSession()
         if (this.environment.mode === 'build' && env.type === 'client') {
-          // a new build: the registry of the previous one is gone (the client
-          // builds first; under RSC the rsc provider built before it and
-          // allocated its entries first: deterministic, not client-first)
-          s.start.registry.clear()
+          if (!this.meta.watchMode) {
+            // a new build: the registry of the previous one is gone (the
+            // client builds first; under RSC the rsc provider built before
+            // it and allocated its entries first: deterministic, not
+            // client-first). A rebuild of `build --watch` keeps it: the
+            // server environment rebuilds at the same time and reads it,
+            // while the compiles replace their modules' functions (a
+            // deleted file's leave at `watchChange`)
+            s.start.registry.clear()
+          }
           // one warning per file per run
           s.start.warnings.reset()
         }
@@ -831,35 +837,47 @@ export function startCompilerPlugin(
           ? [...live, ...changed]
           : undefined
       },
-      // bundled dev: the one invalidation of a file event, applied to every
+      // The one invalidation of a file event. Bundled dev: applied to every
       // environment's module graph (Vite's `hotUpdate` is not called there;
-      // this hook runs in `watchingEnv` only)
-      ...(watches && {
-        async watchChange(id, change) {
-          const s = requireSession()
-          if (!s.bundledDev || this.environment.mode !== 'dev') {
-            return
-          }
-          const kind = changeKindOf(change.event)
-          if (kind === 'unlink') {
-            s.start.forget(normalizePath(id))
-          }
-          const res = await invalidate(
+      // the watching environment's hook applies it). `build --watch`: each
+      // environment's watcher reports the files it bundles, and the rebuild
+      // compiles their dependents again, against the caches the
+      // invalidation left
+      async watchChange(id, change) {
+        const s = requireSession()
+        const environment = this.environment
+        if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
+          return
+        }
+        const kind = changeKindOf(change.event)
+        if (kind === 'unlink') {
+          s.start.forget(normalizePath(id))
+        }
+        if (environment.mode !== 'dev') {
+          await invalidate(
             s.start.caches,
             { path: id, kind },
-            invalidationHosts(s, server, this.environment),
+            hostFor(s, environment, (source, importer, options) =>
+              this.resolve(source, importer, options),
+            ),
           )
-          const now = Date.now()
-          const environments = server
-            ? Object.values(server.environments).filter((e) =>
-                envNames.has(e.name),
-              )
-            : [this.environment]
-          for (const environment of environments) {
-            applyInvalidation(environment, { path: id, kind }, res, now)
-          }
-        },
-      }),
+          return
+        }
+        const res = await invalidate(
+          s.start.caches,
+          { path: id, kind },
+          invalidationHosts(s, server, environment),
+        )
+        const now = Date.now()
+        const environments = server
+          ? Object.values(server.environments).filter((e) =>
+              envNames.has(e.name),
+            )
+          : [environment]
+        for (const environment of environments) {
+          applyInvalidation(environment, { path: id, kind }, res, now)
+        }
+      },
       renderChunk(code, chunk) {
         const s = requireSession()
         if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {

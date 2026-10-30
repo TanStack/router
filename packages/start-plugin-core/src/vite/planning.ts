@@ -201,7 +201,10 @@ export async function buildStartViteEnvironments(opts: {
   )
 
   if (!client.isBuilt) {
-    await opts.builder.build(client)
+    // `build --watch`: the build returns the client's watcher at once; the
+    // server's resolver lists the functions the client compiled, so the
+    // server builds once the client's first build ended
+    await firstBuildEnd(await opts.builder.build(client))
   }
 
   if (!server.isBuilt) {
@@ -221,6 +224,24 @@ export async function buildStartViteEnvironments(opts: {
   if (!providerEnv.isBuilt) {
     await opts.builder.build(providerEnv)
   }
+}
+
+/** Resolves once a watch mode build's first build ended (an output: at once). */
+function firstBuildEnd(
+  output: Awaited<ReturnType<vite.ViteBuilder['build']>>,
+): Promise<void> {
+  if (!('on' in output)) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => {
+    const ended = (event: vite.Rolldown.RolldownWatcherEvent) => {
+      if (event.code === 'END' || event.code === 'ERROR') {
+        output.off('event', ended)
+        resolve()
+      }
+    }
+    output.on('event', ended)
+  })
 }
 
 function escapeEntries(entries: Array<string>) {
