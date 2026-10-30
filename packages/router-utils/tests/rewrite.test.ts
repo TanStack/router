@@ -1101,7 +1101,7 @@ describe('renaming a `var` declared again', () => {
 
 describe('erased parts around a claim read elsewhere', () => {
   it('ends with an edit erasing exactly a hidden claim', () => {
-    const code = `const a = hoisted()\nexport const b = 1\n`
+    const code = `export const a = { x: hoisted() }\n`
     const e = engine(code)
     const { ctx } = e
     const range = rangeOf(code, 'hoisted()')
@@ -1139,12 +1139,21 @@ describe('erased parts around a claim read elsewhere', () => {
     })
     ctx.addRoot('env', { t: 'gen', id: gen })
     ctx.rewrites.add({
-      range,
+      range: rangeOf(code, '{ x: hoisted() }'),
       body: [{ k: 'text', parts: ['stub()'] }],
       scope: 'all-outputs',
-      by: 'other',
+      by: 'erases',
     })
-    expect(ctx.rewrites.tree('env').erasedParts()).toEqual(expect.any(Array))
+    ctx.rewrites.add({
+      range,
+      body: [{ k: 'text', parts: ['inner()'] }],
+      scope: 'all-outputs',
+      by: 'erases',
+    })
+    expect(ctx.rewrites.tree('env').erasedParts()).toEqual([
+      { start: code.indexOf('{ x'), end: range.start },
+      { start: range.end, end: code.indexOf('\n') },
+    ])
   })
 })
 
