@@ -2,9 +2,10 @@
  * A route file whose `createFileRoute` comes from a module of the app that
  * re-exports the router's (`export { createFileRoute } from
  * '@tanstack/react-router'`), a shape real apps use for a wrapper module.
- * SPEC J2.8: the route is split correctly or the run reports it once naming
- * the file; with Start's client `deleteNodes` its server options are
- * removed, reported or refused, never shipped silently.
+ * Only the router's own `createFileRoute` is recognised (by its import
+ * binding), so such a route is not split, and the run says so once naming
+ * the file and the fix (SPEC J2.8); with Start's client `deleteNodes` its
+ * server options would ship, so the compile fails naming the file.
  *
  * The route runs in a real browser page of a real Vite dev server
  * (`./route-app`): what the client gets is what the page requests and
@@ -69,53 +70,33 @@ async function serve(deleteNodes?: Array<DeletableNodes>) {
   }
 }
 
-// Bug: the factory is recognised by its import binding only and the warning
-// needs an import of a factory from the router package, so the route is
-// neither split nor reported. (Main's splitter matched the name, but main's
-// generator adds a second `createFileRoute` import to such a file, which
-// then no longer parses.)
-it.fails(
-  'a route whose createFileRoute an app module re-exports is split, or reported once naming the file',
-  async () => {
-    const { route, file, error, seen, diagnostics } = await serve()
-    expect(error).toBeUndefined()
-    expect(seen!.html).toContain('MARK_X_PAGE')
-    if (!(await route.isLazy('component'))) {
-      expectDiagnostic(diagnostics, {
-        severity: 'warning',
-        file,
-        root: route.host.root,
-        times: 1,
-      })
-    }
-  },
-)
+/** The fix the report gives: import the factory from the router. */
+const fix = `import { createFileRoute } from '@tanstack/react-router'`
 
-// Bug: same cause; the unrecognised route keeps its server handler and the
-// helper it imports in the client module, silently. (Main refused it, by
-// the parse error its generator causes.)
-it.fails(
-  "with Start's client deleteNodes, a route whose createFileRoute an app module re-exports loses its server options, or is reported naming the file",
-  async () => {
-    const { route, file, error, seen, diagnostics } = await serve([
-      'ssr',
-      'server',
-      'headers',
-    ])
-    if (error !== undefined || !seen) {
-      expectDiagnostic(diagnostics, {
-        severity: 'error',
-        file,
-        root: route.host.root,
-      })
-      return
-    }
-    expect(seen.html).toContain('MARK_X_PAGE')
-    if (seen.server || seen.requested.includes('/admin-helper.ts')) {
-      expectDiagnostic(diagnostics, {
-        file,
-        root: route.host.root,
-      })
-    }
-  },
-)
+it('a route whose createFileRoute an app module re-exports renders, and is reported once naming the file and the fix', async () => {
+  const { route, file, error, seen, diagnostics } = await serve()
+  expect(error).toBeUndefined()
+  expect(seen!.html).toContain('MARK_X_PAGE')
+  const report = expectDiagnostic(diagnostics, {
+    severity: 'warning',
+    file,
+    root: route.host.root,
+    times: 1,
+  })
+  expect(report.text).toContain(fix)
+})
+
+it("with Start's client deleteNodes, a route whose createFileRoute an app module re-exports fails to compile, naming the file and the fix", async () => {
+  const { route, file, error, diagnostics } = await serve([
+    'ssr',
+    'server',
+    'headers',
+  ])
+  expect(error).toBeDefined()
+  const report = expectDiagnostic(diagnostics, {
+    severity: 'error',
+    file,
+    root: route.host.root,
+  })
+  expect(report.text).toContain(fix)
+})

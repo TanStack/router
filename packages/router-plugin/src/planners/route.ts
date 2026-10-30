@@ -18,6 +18,7 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 import type { CodeSplitGroupings } from '../core/constants'
+import type { RouterPlannerConfig } from './config'
 
 export type RouteKind = 'file' | 'root' | 'lazy'
 
@@ -325,7 +326,17 @@ export function recognizeRoute(
   }
   const factory = resolveFactory(analysis, factoryNode, symbols)
   if (!factory) {
-    if (importsFactory(analysis)) {
+    const foreign = foreignFactory(analysis, factoryNode)
+    if (foreign) {
+      warnings.push(
+        foreignFactoryDiagnostic(
+          ctx.config as RouterPlannerConfig,
+          fileName,
+          foreign,
+          { start: factoryNode.start, end: factoryNode.end },
+        ),
+      )
+    } else if (importsFactory(analysis)) {
       warn(
         `[tanstack-router] The route of "${fileName}" is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
         { start: routeUnit.node.start, end: routeUnit.node.end },
@@ -416,6 +427,67 @@ export function recognizeRoute(
       routeId: entry?.routeId ?? null,
     },
     warnings,
+  }
+}
+
+/**
+ * A callee named like a route factory whose import is not a router
+ * package's (an app module re-exporting the router's `createFileRoute`): it
+ * is not recognised (only the router's own export is, by its binding), so
+ * the route is reported instead of passing silently.
+ */
+function foreignFactory(
+  analysis: ModuleAnalysis,
+  node: Node,
+): { name: string; specifier: string } | null {
+  const file = analysis.file
+  if (node.type === 'Identifier') {
+    const imp = file.referenceOf(node)?.binding?.import ?? null
+    if (!imp || imp.kind !== 'named' || ROUTER_PACKAGE_RE.test(imp.specifier)) {
+      return null
+    }
+    const name = FACTORIES.has(node.name) ? node.name : imp.name
+    return name !== null && FACTORIES.has(name)
+      ? { name, specifier: imp.specifier }
+      : null
+  }
+  if (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    FACTORIES.has(node.property.name)
+  ) {
+    const obj = unwrapExpression(node.object as Node)
+    const imp =
+      obj.type === 'Identifier'
+        ? (file.referenceOf(obj)?.binding?.import ?? null)
+        : null
+    return imp?.kind === 'namespace' && !ROUTER_PACKAGE_RE.test(imp.specifier)
+      ? { name: node.property.name, specifier: imp.specifier }
+      : null
+  }
+  return null
+}
+
+/**
+ * The report of a route whose factory comes from another module
+ * (`foreignFactory`): a warning, an error where `deleteNodes` must remove
+ * options (Start's client: its server options would ship otherwise).
+ */
+function foreignFactoryDiagnostic(
+  cfg: RouterPlannerConfig,
+  fileName: string,
+  foreign: { name: string; specifier: string },
+  range: Range,
+): Diagnostic {
+  const pkg = `@tanstack/${cfg.framework}-router`
+  const deleted = cfg.deleteNodes.map((k) => `\`${k}\``).join(', ')
+  return {
+    severity: cfg.deleteNodes.length > 0 ? 'error' : 'warning',
+    code: 'route-factory-foreign',
+    by: ROUTER_PLANNER,
+    message: `[tanstack-router] The route of "${fileName}" calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? ` and the options ${deleted} cannot be removed from this build` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
+    range,
   }
 }
 
