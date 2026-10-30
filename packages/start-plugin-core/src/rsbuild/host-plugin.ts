@@ -485,7 +485,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (compilation.compiler !== compiler) {
             return
           }
-          if (!knownFiles) {
+          if (!knownFiles && env.persistsModules) {
             const restored: Array<{
               plan: PersistedPlan
               layer: string | undefined
