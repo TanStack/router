@@ -167,7 +167,8 @@ directives, never license comments.
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
 (up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file is
-returned but not published.
+returned but not published. Requests of one text share one compile: a request (any id of the file) arriving while that
+text compiles waits for it and emits its own output from the result.
 
 ## Caches and invalidation (`cache.ts`, `host.ts`)
 
@@ -175,7 +176,8 @@ returned but not published.
   input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, summary digests, target facts,
-  route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans.
+  route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
+  rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
   environment's own resolver (add/unlink also retry failed resolutions) and returns `{ evicted, dependents }`, which

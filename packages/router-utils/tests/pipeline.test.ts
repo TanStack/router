@@ -736,105 +736,97 @@ describe('slice gates: invalidation', () => {
     ).toHaveLength(1)
   })
 
-  // .fails: r1's discard drops the (factory-inner, consumer) row r2 also recorded, and r2's publication never re-creates it.
-  it.fails(
-    '(d) overlapping save: after r1 is discarded and r2 published, a dependency edit still invalidates the consumer',
-    async () => {
-      const gate = deferred<void>()
-      const asked = deferred<void>()
-      let suspended = false
-      const host = new MemoryHost({
-        files: {
-          '/app/consumer.ts': CONSUMER,
-          '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
-        },
-        recognizer: RECOGNIZER,
-        // r1 recorded its resolution of `./factory-inner` and reads that file
-        // (not read yet: I/O); r2 records the same resolution and waits on the same read
-        onRead: async (path) => {
-          if (path === '/app/factory-inner.ts' && !suspended) {
-            suspended = true
-            asked.resolve()
-            await gate.promise
-          }
-        },
-      })
-      const r1 = CONSUMER
-      const r2 = `${CONSUMER}export const v2 = 2\n`
-      const planners = [toySummaryPlanner()]
-      const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
-      await asked.promise
-      host.write('/app/consumer.ts', r2)
+  it('(d) overlapping save: after r1 is discarded and r2 published, a dependency edit still invalidates the consumer', async () => {
+    const gate = deferred<void>()
+    const asked = deferred<void>()
+    let suspended = false
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+      // r1 recorded its resolution of `./factory-inner` and reads that file
+      // (not read yet: I/O); r2 records the same resolution and waits on the same read
+      onRead: async (path) => {
+        if (path === '/app/factory-inner.ts' && !suspended) {
+          suspended = true
+          asked.resolve()
+          await gate.promise
+        }
+      },
+    })
+    const r1 = CONSUMER
+    const r2 = `${CONSUMER}export const v2 = 2\n`
+    const planners = [toySummaryPlanner()]
+    const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
+    await asked.promise
+    host.write('/app/consumer.ts', r2)
+    await invalidate(
+      host.caches,
+      { path: '/app/consumer.ts', kind: 'change' },
+      host,
+    )
+    const fresh = host.compile('/app/consumer.ts', planners, { code: r2 })
+    // r2 records its resolution (after the dev server's turn) before the read settles
+    await new Promise((r) => setTimeout(r, 5))
+    gate.resolve()
+    const [stale, published] = await Promise.all([slow, fresh])
+    expect(stale!.code).not.toContain('v2')
+    expect(published!.code).toContain('export const v2 = 2')
+    const key = {
+      env: 'client',
+      canonicalId: '/app/consumer.ts',
+      configKey: 'cfg',
+    }
+    expect(host.caches.plans.get('client')!.get(key)!.plan.revision).toBe(
+      revision(r2),
+    )
+    // the dependency changes what the consumer sees: the host must hear of the consumer
+    host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
+    const r = await invalidate(
+      host.caches,
+      { path: '/app/factory-inner.ts', kind: 'change' },
+      host,
+    )
+    expect(r.dependents).toEqual([key])
+  })
+
+  it('(d) two quick saves of a module with two imports: a later dependency edit still invalidates it', async () => {
+    const consumer = `${CONSUMER}import { other } from './other'\nexport const both = () => run() + other\n`
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': consumer,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+        '/app/other.ts': 'export const other = 1\n',
+      },
+      recognizer: RECOGNIZER,
+    })
+    const planners = [toySummaryPlanner()]
+    await host.compile('/app/consumer.ts', planners)
+    const save = async (code: string) => {
+      host.write('/app/consumer.ts', code)
       await invalidate(
         host.caches,
         { path: '/app/consumer.ts', kind: 'change' },
         host,
       )
-      const fresh = host.compile('/app/consumer.ts', planners, { code: r2 })
-      // r2 records its resolution (after the dev server's turn) before the read settles
-      await new Promise((r) => setTimeout(r, 5))
-      gate.resolve()
-      const [stale, published] = await Promise.all([slow, fresh])
-      expect(stale!.code).not.toContain('v2')
-      expect(published!.code).toContain('export const v2 = 2')
-      const key = {
-        env: 'client',
-        canonicalId: '/app/consumer.ts',
-        configKey: 'cfg',
-      }
-      expect(host.caches.plans.get('client')!.get(key)!.plan.revision).toBe(
-        revision(r2),
-      )
-      // the dependency changes what the consumer sees: the host must hear of the consumer
-      host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-      const r = await invalidate(
-        host.caches,
-        { path: '/app/factory-inner.ts', kind: 'change' },
-        host,
-      )
-      expect(r.dependents).toEqual([key])
-    },
-  )
-
-  // .fails: as above, with no gate: the dev server's turn per own import lets r2 record the row before r1 is discarded.
-  it.fails(
-    '(d) two quick saves of a module with two imports: a later dependency edit still invalidates it',
-    async () => {
-      const consumer = `${CONSUMER}import { other } from './other'\nexport const both = () => run() + other\n`
-      const host = new MemoryHost({
-        files: {
-          '/app/consumer.ts': consumer,
-          '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
-          '/app/other.ts': 'export const other = 1\n',
-        },
-        recognizer: RECOGNIZER,
-      })
-      const planners = [toySummaryPlanner()]
-      await host.compile('/app/consumer.ts', planners)
-      const save = async (code: string) => {
-        host.write('/app/consumer.ts', code)
-        await invalidate(
-          host.caches,
-          { path: '/app/consumer.ts', kind: 'change' },
-          host,
-        )
-        return host.compile('/app/consumer.ts', planners, { code })
-      }
-      const r1 = save(`${consumer}export const v1 = 1\n`)
-      await new Promise((r) => setImmediate(r))
-      const r2 = save(`${consumer}export const v2 = 2\n`)
-      await Promise.all([r1, r2])
-      host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-      const r = await invalidate(
-        host.caches,
-        { path: '/app/factory-inner.ts', kind: 'change' },
-        host,
-      )
-      expect(r.dependents).toEqual([
-        { env: 'client', canonicalId: '/app/consumer.ts', configKey: 'cfg' },
-      ])
-    },
-  )
+      return host.compile('/app/consumer.ts', planners, { code })
+    }
+    const r1 = save(`${consumer}export const v1 = 1\n`)
+    await new Promise((r) => setImmediate(r))
+    const r2 = save(`${consumer}export const v2 = 2\n`)
+    await Promise.all([r1, r2])
+    host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
+    const r = await invalidate(
+      host.caches,
+      { path: '/app/factory-inner.ts', kind: 'change' },
+      host,
+    )
+    expect(r.dependents).toEqual([
+      { env: 'client', canonicalId: '/app/consumer.ts', configKey: 'cfg' },
+    ])
+  })
 
   it('(f) in-flight dependency-only edit restarts the compile', async () => {
     const verdict = deferred<boolean>()
@@ -986,159 +978,142 @@ describe('attempts that are overtaken or throw', () => {
     )
   })
 
-  // Review 1 claim #3: the in-flight record of an attempt is removed before its
-  // snapshot validation and publication; a request at the same revision in
-  // that window compiles again instead of waiting.
-  // .fails: the second request finds no in-flight record and runs its own attempt.
-  it.fails(
-    '(q) a request at the revision being validated waits for that attempt',
-    async () => {
-      const holdPrefetch = deferred<void>()
-      const prefetching = deferred<void>()
-      const holdValidation = deferred<void>()
-      const validating = deferred<void>()
-      let resolutions = 0
-      const host = new MemoryHost({
-        files: {
-          '/app/consumer.ts': CONSUMER,
-          '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
-        },
-        recognizer: RECOGNIZER,
-        onResolve: async (specifier) => {
-          // the second question for the pair is the snapshot validation's (a file appeared meanwhile)
-          if (specifier === './factory-inner' && ++resolutions === 2) {
-            validating.resolve()
-            await holdValidation.promise
-          }
-        },
-      })
-      let plans = 0
-      let held = false
-      const counting: Planner = {
-        name: 'toy-count',
-        tier: 0,
-        gate: () => true,
-        async prefetch() {
-          if (!held) {
-            held = true
-            prefetching.resolve()
-            await holdPrefetch.promise
-          }
-        },
-        plan() {
-          plans++
-        },
-      }
-      const planners = [toySummaryPlanner(), counting]
-      const first = host.compile('/app/consumer.ts', planners)
-      await prefetching.promise
-      // an unrelated file appears: the attempt's resolutions are validated again before publication
-      await invalidate(
-        host.caches,
-        { path: '/app/other.ts', kind: 'add' },
-        host,
-      )
-      holdPrefetch.resolve()
-      await validating.promise
-      // a request of the same text (e.g. a derived id of the same file) arrives meanwhile
-      const second = host.compile(
-        '/app/consumer.ts?tsr-split=component',
-        planners,
-      )
-      holdValidation.resolve()
-      await Promise.all([first, second])
-      expect(plans).toBe(1)
-    },
-  )
+  // The compile of a text stays in flight through its snapshot validation and
+  // publication: a request of the same text in that window waits for it.
+  it('(q) a request at the revision being validated waits for that attempt', async () => {
+    const holdPrefetch = deferred<void>()
+    const prefetching = deferred<void>()
+    const holdValidation = deferred<void>()
+    const validating = deferred<void>()
+    let resolutions = 0
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+      onResolve: async (specifier) => {
+        // the second question for the pair is the snapshot validation's (a file appeared meanwhile)
+        if (specifier === './factory-inner' && ++resolutions === 2) {
+          validating.resolve()
+          await holdValidation.promise
+        }
+      },
+    })
+    let plans = 0
+    let held = false
+    const counting: Planner = {
+      name: 'toy-count',
+      tier: 0,
+      gate: () => true,
+      async prefetch() {
+        if (!held) {
+          held = true
+          prefetching.resolve()
+          await holdPrefetch.promise
+        }
+      },
+      plan() {
+        plans++
+      },
+    }
+    const planners = [toySummaryPlanner(), counting]
+    const first = host.compile('/app/consumer.ts', planners)
+    await prefetching.promise
+    // an unrelated file appears: the attempt's resolutions are validated again before publication
+    await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
+    holdPrefetch.resolve()
+    await validating.promise
+    // a request of the same text (e.g. a derived id of the same file) arrives meanwhile
+    const second = host.compile(
+      '/app/consumer.ts?tsr-split=component',
+      planners,
+    )
+    holdValidation.resolve()
+    await Promise.all([first, second])
+    expect(plans).toBe(1)
+  })
 
-  // Review 1 claim #3: waits on other requests' attempts count as this request's attempts.
-  // .fails: the fourth request waits three times on attempts that publish nothing and throws "changed repeatedly".
-  it.fails(
-    '(r) concurrent requests of a file that does not parse all get its syntax error',
-    async () => {
-      const host = new MemoryHost({
-        files: { '/app/route.tsx': 'export const = 1\n' },
-      })
-      const planners = [toySplitPlanner()]
-      const outs = await Promise.all(
-        [
-          '/app/route.tsx',
-          '/app/route.tsx?tsr-split=component',
-          '/app/route.tsx?tsr-split=loader',
-          '/app/route.tsx?tsr-split=errorComponent',
-        ].map((id) => host.compile(id, planners)),
+  // Waiting on another request's compile is no attempt of this request's own.
+  it('(r) concurrent requests of a file that does not parse all get its syntax error', async () => {
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': 'export const = 1\n' },
+    })
+    const planners = [toySplitPlanner()]
+    const outs = await Promise.all(
+      [
+        '/app/route.tsx',
+        '/app/route.tsx?tsr-split=component',
+        '/app/route.tsx?tsr-split=loader',
+        '/app/route.tsx?tsr-split=errorComponent',
+      ].map((id) => host.compile(id, planners)),
+    )
+    for (const out of outs) {
+      expect(out!.diagnostics).toContainEqual(
+        expect.objectContaining({ severity: 'error' }),
       )
-      for (const out of outs) {
-        expect(out!.diagnostics).toContainEqual(
-          expect.objectContaining({ severity: 'error' }),
-        )
-      }
-    },
-  )
+    }
+  })
 
-  // Review 1 claim #3: a request whose hit validated finds another entry of the
-  // same revision published meanwhile, and deletes that entry.
-  // .fails: the valid newer entry is deleted and the module compiled a third time.
-  it.fails(
-    '(s) a valid hit keeps the entry another request published at the same revision',
-    async () => {
-      const holdValidation = deferred<void>()
-      const validating = deferred<void>()
-      let resolutions = 0
-      const host = new MemoryHost({
-        files: {
-          '/app/consumer.ts': CONSUMER,
-          '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
-        },
-        recognizer: RECOGNIZER,
-        onResolve: async (specifier) => {
-          // the second question for the pair is the hit validation's (a file appeared meanwhile)
-          if (specifier === './factory-inner' && ++resolutions === 2) {
-            validating.resolve()
-            await holdValidation.promise
-          }
-        },
-      })
-      let plans = 0
-      const counting: Planner = {
-        name: 'toy-count',
-        tier: 0,
-        gate: () => true,
-        plan() {
-          plans++
-        },
-      }
-      const planners = [toySummaryPlanner(), counting]
-      await host.compile('/app/consumer.ts', planners)
-      await invalidate(
-        host.caches,
-        { path: '/app/other-1.ts', kind: 'add' },
-        host,
-      )
-      const validated = host.compile('/app/consumer.ts', planners)
-      await validating.promise
-      // meanwhile the file is touched (same text) and another request republishes it
-      await invalidate(
-        host.caches,
-        { path: '/app/consumer.ts', kind: 'change' },
-        host,
-      )
-      await invalidate(
-        host.caches,
-        { path: '/app/other-2.ts', kind: 'add' },
-        host,
-      )
-      await host.compile('/app/consumer.ts', planners)
-      const cache = host.caches.plans.get('client')!
-      const republished = cache.get(key)
-      expect(republished).not.toBeNull()
-      expect(plans).toBe(2)
-      holdValidation.resolve()
-      await validated
-      expect(cache.get(key)).toBe(republished)
-      expect(plans).toBe(2)
-    },
-  )
+  // A request whose hit validated finds another entry of the same revision
+  // published meanwhile: it looks again instead of evicting that entry.
+  it('(s) a valid hit keeps the entry another request published at the same revision', async () => {
+    const holdValidation = deferred<void>()
+    const validating = deferred<void>()
+    let resolutions = 0
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+      onResolve: async (specifier) => {
+        // the second question for the pair is the hit validation's (a file appeared meanwhile)
+        if (specifier === './factory-inner' && ++resolutions === 2) {
+          validating.resolve()
+          await holdValidation.promise
+        }
+      },
+    })
+    let plans = 0
+    const counting: Planner = {
+      name: 'toy-count',
+      tier: 0,
+      gate: () => true,
+      plan() {
+        plans++
+      },
+    }
+    const planners = [toySummaryPlanner(), counting]
+    await host.compile('/app/consumer.ts', planners)
+    await invalidate(
+      host.caches,
+      { path: '/app/other-1.ts', kind: 'add' },
+      host,
+    )
+    const validated = host.compile('/app/consumer.ts', planners)
+    await validating.promise
+    // meanwhile the file is touched (same text) and another request republishes it
+    await invalidate(
+      host.caches,
+      { path: '/app/consumer.ts', kind: 'change' },
+      host,
+    )
+    await invalidate(
+      host.caches,
+      { path: '/app/other-2.ts', kind: 'add' },
+      host,
+    )
+    await host.compile('/app/consumer.ts', planners)
+    const cache = host.caches.plans.get('client')!
+    const republished = cache.get(key)
+    expect(republished).not.toBeNull()
+    expect(plans).toBe(2)
+    holdValidation.resolve()
+    await validated
+    expect(cache.get(key)).toBe(republished)
+    expect(plans).toBe(2)
+  })
 })
 
 describe('slice gates: claims and maps', () => {

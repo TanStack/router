@@ -9,6 +9,7 @@ import {
   edgeKeyOf,
   identify,
   isCommonJsPath,
+  planKeyString,
   revision,
 } from './identity'
 import { parseModule } from './source'
@@ -22,7 +23,7 @@ import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, planCacheFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
-import type { CacheEntry } from './cache'
+import type { CacheEntry, Settled } from './cache'
 import type {
   EmitPlan,
   EnvInfo,
@@ -32,7 +33,6 @@ import type {
 } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
-import type { Diagnostic } from './diagnostics'
 import type {
   CompileInput,
   CompileOutput,
@@ -73,8 +73,7 @@ export function createCompilerCaches(
 }
 
 type AttemptResult =
-  | { kind: 'untouched' }
-  | { kind: 'parse-error'; diagnostics: Array<Diagnostic> }
+  | Exclude<Settled, { kind: 'plan' }>
   | { kind: 'plan'; plan: EmitPlan }
 
 /**
@@ -105,11 +104,9 @@ export async function compileModule(
   const requested: OutputId = identity.derived
     ? `derived:${deriveId(identity.canonicalId, identity.derived)}`
     : 'env'
-  const keyString = `${key.env}\u0000${key.canonicalId}\u0000${key.configKey}`
-  // the plan of the last overtaken attempt: served (unpublished) when every attempt was overtaken
-  let overtaken: CacheEntry | null = null
+  const keyString = planKeyString(key)
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (;;) {
     cache.noteRevision(key, rev)
     const hit = cache.lookup(key, rev)
     if (hit) {
@@ -126,133 +123,144 @@ export async function compileModule(
         checks.push(fingerprintCurrent(fp, src))
       }
       const valid = (await Promise.all(checks)).every((ok) => ok)
-      if (valid && cache.lookup(key, rev) === hit) {
-        hit.resolvedAt = fileSetVersion
-        cache.counters.planHits++
-        return emitFrom(hit, requested, input, caches)
+      if (cache.lookup(key, rev) === hit) {
+        if (valid) {
+          hit.resolvedAt = fileSetVersion
+          cache.counters.planHits++
+          return emitFrom(hit, requested, input, caches)
+        }
+        cache.delete(key)
+        cache.bump(key)
       }
-      cache.delete(key)
-      cache.bump(key)
-      overtaken = hit
+      // evicted, or evicted and published again, meanwhile: look again
       continue
     }
-    const inflight = cache.inFlight.get(keyString)
-    if (inflight && inflight.revision === rev) {
-      try {
-        await inflight.promise
-      } catch {
-        // the owner reports; we retry below
+    const flight = cache.inFlight.get(keyString)
+    if (flight && flight.revision === rev) {
+      // another request of this text is compiling it: its outcome answers this request too
+      const settled = await flight.settled.catch(() => null)
+      if (settled) {
+        return emitSettled(settled, requested, input, caches)
       }
+      // it threw: its request reports the error, this one compiles on its own
       continue
     }
-    // the key's generation and latest revision stay meaningful until the attempt ends
-    cache.begin(key)
-    let outcome: CompileOutput | null | { retry: CacheEntry }
+    const record = {
+      revision: rev,
+      settled: settle(input, identity, tier0Only, host, caches, key, rev),
+    }
+    cache.inFlight.set(keyString, record)
     try {
-      outcome = await (async (): Promise<
-        CompileOutput | null | { retry: CacheEntry }
-      > => {
-        const generation = cache.generation(key)
-        const fileSetVersion = caches.fileSetVersion
-        const ledger = new DependencyLedger(key, generation, cache.dependents)
-        const promise = runAttempt(
-          input,
-          identity,
-          tier0Only,
-          host,
-          caches,
-          ledger,
-          rev,
-        )
-        const record = { revision: rev, promise }
-        cache.inFlight.set(keyString, record)
-        let result: AttemptResult
-        try {
-          result = await promise
-        } catch (error) {
-          // a throwing attempt (a planner error) leaves no in-flight dependents rows behind
-          ledger.discard()
-          throw error
-        } finally {
-          if (cache.inFlight.get(keyString) === record) {
-            cache.inFlight.delete(keyString)
-          }
-        }
-        if (result.kind === 'untouched') {
-          ledger.discard()
-          return null
-        }
-        if (result.kind === 'parse-error') {
-          ledger.discard()
-          return {
-            code: input.code,
-            map: null,
-            sideEffectFree: false,
-            edges: [],
-            facts: { marker: null, planners: {} },
-            diagnostics: result.diagnostics,
-            dependencies: [],
-            output: requested,
-          }
-        }
-        const plan = result.plan
-        plan.dependencies = [...ledger.entries]
-        const src = fingerprintSourceFor(caches, host, env.name)
-        const snapshotOk = await ledger.validateSnapshot(
-          src,
-          caches.fileSetVersion === fileSetVersion,
-        )
-        if (!snapshotOk || cache.generation(key) !== generation) {
-          ledger.discard()
-          const entry: CacheEntry = {
-            key,
-            revision: rev,
-            generation,
-            plan,
-            resolvedAt: fileSetVersion,
-          }
-          if (cache.latestRevision(key) !== rev) {
-            // superseded by a newer save: this text is stale; never publish, but answer this request
-            return emitFrom(entry, requested, input, caches)
-          }
-          return { retry: entry }
-        }
-        const entry: CacheEntry = {
-          key,
-          revision: rev,
-          generation,
-          plan,
-          resolvedAt: fileSetVersion,
-        }
+      return emitSettled(await record.settled, requested, input, caches)
+    } finally {
+      if (cache.inFlight.get(keyString) === record) {
+        cache.inFlight.delete(keyString)
+      }
+    }
+  }
+}
+
+/**
+ * Compiles a key at one revision: attempts until one is published or
+ * superseded by a newer revision. An attempt whose dependencies changed
+ * underneath it (snapshot validation, a generation bump) is retried, up to
+ * `MAX_ATTEMPTS`.
+ */
+async function settle(
+  input: CompileInput,
+  identity: SourceIdentity,
+  tier0Only: boolean,
+  host: HostServices,
+  caches: CompilerCaches,
+  key: PlanKey,
+  rev: string,
+): Promise<Settled> {
+  const cache = planCacheFor(caches, key.env)
+  // the key's generation and latest revision stay meaningful until the compile ends
+  cache.begin(key)
+  try {
+    let overtaken!: CacheEntry
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const generation = cache.generation(key)
+      const fileSetVersion = caches.fileSetVersion
+      const ledger = new DependencyLedger(key, generation, cache.dependents)
+      const result = await runAttempt(
+        input,
+        identity,
+        tier0Only,
+        host,
+        caches,
+        ledger,
+        rev,
+      )
+      if (result.kind !== 'plan') {
+        return result
+      }
+      const entry: CacheEntry = {
+        key,
+        revision: rev,
+        generation,
+        plan: result.plan,
+        resolvedAt: fileSetVersion,
+      }
+      entry.plan.dependencies = [...ledger.entries]
+      const src = fingerprintSourceFor(caches, host, key.env)
+      const snapshotOk = await ledger.validateSnapshot(
+        src,
+        caches.fileSetVersion === fileSetVersion,
+      )
+      if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {
           ledger.publish()
-        } else {
-          ledger.discard()
         }
-        return emitFrom(entry, requested, input, caches)
-      })()
-    } finally {
-      cache.end(key)
+        return { kind: 'plan', entry, overtaken: false }
+      }
+      if (cache.latestRevision(key) !== rev) {
+        // superseded by a newer save: this text is stale; never publish, but answer its requests
+        return { kind: 'plan', entry, overtaken: false }
+      }
+      overtaken = entry
     }
-    if (outcome === null || !('retry' in outcome)) {
-      return outcome
+    // Every attempt was overtaken (a save storm, a checkout touching several
+    // dependencies): the last plan answers without being published, so the
+    // next request compiles afresh; the host sees a warning instead of a
+    // transform error for a transient condition.
+    return { kind: 'plan', entry: overtaken, overtaken: true }
+  } finally {
+    cache.end(key)
+  }
+}
+
+/** A request's output from what the compile of its text settled on. */
+function emitSettled(
+  settled: Settled,
+  requested: OutputId,
+  input: CompileInput,
+  caches: CompilerCaches,
+): CompileOutput | null {
+  if (settled.kind === 'untouched') {
+    return null
+  }
+  if (settled.kind === 'parse-error') {
+    return {
+      code: input.code,
+      map: null,
+      sideEffectFree: false,
+      edges: [],
+      facts: { marker: null, planners: {} },
+      diagnostics: settled.diagnostics,
+      dependencies: [],
+      output: requested,
     }
-    overtaken = outcome.retry
   }
-  // Every attempt was overtaken (a save storm, a checkout touching several
-  // dependencies): the last plan answers this request without being
-  // published, so the next request compiles afresh; the host sees a warning
-  // instead of a transform error for a transient condition.
-  if (overtaken === null) {
-    throw new Error(
-      `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts)`,
-    )
+  const out = emitFrom(settled.entry, requested, input, caches)
+  if (!settled.overtaken) {
+    return out
   }
-  const served = emitFrom(overtaken, requested, input, caches)
   return {
-    ...served,
+    ...out,
     diagnostics: [
-      ...served.diagnostics,
+      ...out.diagnostics,
       {
         severity: 'warning',
         code: 'compile-overtaken',

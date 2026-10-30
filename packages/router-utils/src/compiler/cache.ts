@@ -8,6 +8,7 @@ import { approxBytes, cacheDisabled } from './stats'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
 import type { TargetFacts } from './facts'
+import type { Diagnostic } from './diagnostics'
 
 export type DependencyFingerprint =
   | { kind: 'summary'; canonicalId: string; digest: string | null }
@@ -107,23 +108,29 @@ interface DependentEntry {
 /**
  * Reverse index: dependency path (or the unresolved bucket) → plan keys
  * (published or in flight), with each key's own buckets (`planKey → paths`)
- * so publishing, discarding and evicting a plan touch its rows only. Empty
- * buckets are removed: the index holds rows of live plans and attempts only.
+ * so publishing and evicting a plan touch its rows only. A row is in flight
+ * while an attempt of its key recorded it and no published plan of the key
+ * depends on it; compiles of one key overlap (two quick saves) and share
+ * their rows, so the rows in flight live until the key's last compile ends
+ * (`PlanCache.end`). Empty buckets are removed: the index holds rows of live
+ * plans and compiles only.
  */
 class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
   private readonly byKey = new Map<string, Set<string>>()
 
-  /** An attempt's in-flight row (a published row of the key's previous plan stays published). */
-  add(path: string, key: PlanKey): void {
+  /** The row of (path, key); a new row is in flight. */
+  add(path: string, key: PlanKey): DependentEntry {
     let m = this.byPath.get(path)
     if (!m) {
       m = new Map()
       this.byPath.set(path, m)
     }
     const ks = planKeyString(key)
-    if (!m.has(ks)) {
-      m.set(ks, { key, inFlight: true })
+    let e = m.get(ks)
+    if (!e) {
+      e = { key, inFlight: true }
+      m.set(ks, e)
     }
     let paths = this.byKey.get(ks)
     if (!paths) {
@@ -131,6 +138,7 @@ class DependentsIndex {
       this.byKey.set(ks, paths)
     }
     paths.add(path)
+    return e
   }
 
   get(path: string): Array<DependentEntry> {
@@ -138,41 +146,28 @@ class DependentsIndex {
   }
 
   /**
-   * Publication of a key's plan whose dependencies index under `paths`: those
-   * rows become published, and the key's published rows of a previous plan
-   * that no longer depends on them are removed (rows of other attempts still
-   * in flight stay).
+   * Publication of a key's plan whose dependencies index under `paths`: the
+   * key's published rows become exactly those (rows in flight stay).
    */
   publish(key: PlanKey, paths: ReadonlySet<string>): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      const e = this.byPath.get(path)?.get(ks)
-      if (!e) {
-        continue
-      }
-      if (paths.has(path)) {
-        e.inFlight = false
-      } else if (!e.inFlight) {
+      if (!paths.has(path) && !this.byPath.get(path)!.get(ks)!.inFlight) {
         this.remove(path, ks)
       }
     }
-  }
-
-  /** Drops a key's in-flight entries (discarded attempt). */
-  dropInFlight(key: PlanKey): void {
-    const ks = planKeyString(key)
-    for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      if (this.byPath.get(path)?.get(ks)?.inFlight) {
-        this.remove(path, ks)
-      }
+    for (const path of paths) {
+      this.add(path, key).inFlight = false
     }
   }
 
-  /** Drops every entry of a key (eviction). */
-  drop(key: PlanKey): void {
+  /** Drops a key's published rows (eviction) or its rows in flight (its last compile ended). */
+  drop(key: PlanKey, inFlight: boolean): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      this.remove(path, ks)
+      if (this.byPath.get(path)!.get(ks)!.inFlight === inFlight) {
+        this.remove(path, ks)
+      }
     }
   }
 
@@ -291,10 +286,6 @@ export class DependencyLedger {
   publish(): void {
     this.index.publish(this.key, this.indexKeys)
   }
-
-  discard(): void {
-    this.index.dropInFlight(this.key)
-  }
 }
 
 /** One importer's resolutions: specifier → canonical id, or the resolver's pending answer. */
@@ -309,22 +300,33 @@ export interface CacheEntry {
   resolvedAt: number
 }
 
+/**
+ * What compiling a key at one revision settled on: every request of that
+ * revision emits its own output from it.
+ */
+export type Settled =
+  | { kind: 'untouched' }
+  | { kind: 'parse-error'; diagnostics: Array<Diagnostic> }
+  /** `overtaken`: every attempt was overtaken; the last plan answers, unpublished. */
+  | { kind: 'plan'; entry: CacheEntry; overtaken: boolean }
+
+/** The compile of a key at one revision, from its first attempt until it settled. */
 interface InFlight {
   revision: string
-  promise: Promise<unknown>
+  settled: Promise<Settled>
 }
 
 /**
  * One plan per (env, canonical id, config) at its latest content hash. A
- * key's generation and latest revision are kept while it has a plan or an
- * attempt in flight (`begin`/`end`); then they are retired: no attempt holds
+ * key's generation and latest revision are kept while it has a plan or a
+ * compile in flight (`begin`/`end`); then they are retired: no attempt holds
  * a generation number any more, and the next request starts over.
  */
 export class PlanCache {
   private readonly entries = new Map<string, CacheEntry>()
   private readonly generations = new Map<string, number>()
   private readonly latest = new Map<string, string>()
-  /** Attempts in flight per key (an overlapping attempt may have replaced the key's `inFlight` record). */
+  /** Compiles in flight per key (a compile of a newer revision may have replaced the key's `inFlight` record). */
   private readonly active = new Map<string, number>()
   /**
    * Path → live keys (`keysAt`): a key is indexed from its first attempt or
@@ -333,6 +335,7 @@ export class PlanCache {
    */
   private readonly byPath = new Map<string, Map<string, PlanKey>>()
   private readonly pathOf = new Map<string, string>()
+  /** The compile in flight per key: requests at its revision wait for it instead of compiling again. */
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
@@ -389,7 +392,7 @@ export class PlanCache {
     return this.latest.get(planKeyString(key))
   }
 
-  /** An attempt for `key` starts (its generation must stay meaningful until `end`). */
+  /** A compile of `key` starts (its generation must stay meaningful until `end`). */
   begin(key: PlanKey): void {
     const ks = planKeyString(key)
     this.active.set(ks, (this.active.get(ks) ?? 0) + 1)
@@ -426,7 +429,7 @@ export class PlanCache {
     }
   }
 
-  /** An attempt for `key` ended (published or not). */
+  /** A compile of `key` ended (published or not); the last one takes the key's rows in flight along. */
   end(key: PlanKey): void {
     const ks = planKeyString(key)
     const n = (this.active.get(ks) ?? 1) - 1
@@ -434,6 +437,7 @@ export class PlanCache {
       this.active.set(ks, n)
     } else {
       this.active.delete(ks)
+      this.dependents.drop(key, true)
     }
     this.retire(ks)
   }
@@ -476,7 +480,7 @@ export class PlanCache {
   delete(key: PlanKey): boolean {
     const ks = planKeyString(key)
     const had = this.entries.delete(ks)
-    this.dependents.drop(key)
+    this.dependents.drop(key, false)
     this.retire(ks)
     return had
   }
