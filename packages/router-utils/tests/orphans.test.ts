@@ -212,6 +212,7 @@ describe('function-local declarators only erased code read', () => {
     )
   })
 
+  // (a statement after a rendered `;` needs no `;` of its own)
   it('keeps an impure initialiser as a statement that parses and stands alone', async () => {
     expect(
       await client(`
@@ -230,8 +231,8 @@ describe('function-local declarators only erased code read', () => {
         export function f() {
           before()
           ;({ x: g() });
-          ;(function () { return g() }());
-          ;[g()];
+          (function () { return g() }());
+          [g()];
           g();
           return tsrStub()
         }

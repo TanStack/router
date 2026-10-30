@@ -1663,12 +1663,20 @@ describe('a statement that ends without a `;`', () => {
     },
   )
 
-  it('keeps the comment holding its line break, whatever renders next', async () => {
+  it('gets a line end where a comment held its line break, which stays with what it leads', async () => {
     const r = await split(
-      `${head}import { see } from './see'\nconst Page = () => 1 /* a\nb */ see('env')\n${route}\n`,
+      `${head}import { see } from './see'\nconst Page = () => 1 /* a\nb */ /* @__PURE__ */ see('env')\n${route}\n`,
     )
-    expect(r.chunks.component).toContain(`const Page = () => 1 /* a\nb */ \n`)
-    expect(r.env).toContain(`see('env')`)
+    expect(r.chunks.component).toContain(`const Page = () => 1 \n`)
+    expect(r.chunks.component).not.toContain('/* a')
+    expect(r.env).toContain(`/* a\nb */ /* @__PURE__ */ see('env')`)
+  })
+
+  it('stays a statement when what the comment leads goes', async () => {
+    const r = await split(
+      `${head}import { see } from './see'\nsee('kept') /* a\nb */ const Page = () => 1\nsee('next')\n${route}\n`,
+    )
+    expect(r.env).toContain(`see('kept') \nsee('next')`)
   })
 
   it('starts the next statement on its own line after a license comment holding its line break', async () => {
@@ -1678,13 +1686,27 @@ describe('a statement that ends without a `;`', () => {
     expect(r.chunks.component).not.toContain('/*!')
     expect(r.chunks.component).toContain(`const a = 1 \nconst Page = () => a`)
   })
+})
 
-  it('leaves a comment after a function body to the statement it leads', async () => {
+describe('a `var` declared again', () => {
+  const route = (name: string) =>
+    `export const Route = createFileRoute('/')({ component: ${name} })\n`
+  const head = `import { createFileRoute } from 'toy-router'\n`
+
+  it('is no write when the first declaration of a value follows a type of its name', async () => {
     const r = await split(
-      `${head}function Page() { return 1 } /* a\nb */ function other() {}\nother()\n${route}\n`,
+      `${head}type Page = { a: 1 }\nconst Page = () => 1\n${route('Page')}`,
     )
-    expect(r.chunks.component).not.toContain('/* a')
-    expect(r.env).toContain('/* a\nb */ function other() {}')
+    expect(r.main?.diagnostics).toEqual([])
+    expect(r.chunks.component).toContain('const Page = () => 1')
+    expect(r.env).not.toContain('const Page')
+  })
+
+  it('is no write of the module binding in a catch clause with a parameter of its name', async () => {
+    const r = await split(
+      `${head}var Page = () => 1\ntry {} catch (Page) { var Page = 2 }\n${route('Page')}`,
+    )
+    expect(r.chunks.component).toContain('var Page = () => 1')
   })
 })
 

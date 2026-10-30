@@ -10,7 +10,7 @@ import { siblingSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
-import { isLineTerminator, pragmasOf } from './header'
+import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { CORE_SEQ, GLUE_IMPORTS_SEQ } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
@@ -211,6 +211,28 @@ function renderEnv(
   const extra: Array<TreeEdit> = []
   let seq = CORE_SEQ
   const baseTree = rewrites.tree('env')
+  // a statement only the line break inside the multi-line comment after it
+  // ends: that comment leads what follows and may not render, so the statement
+  // gets a line end of its own (before anything else generated there)
+  for (const ended of [
+    ...analysis.header.directives,
+    ...items.map((item) => ({ range: item.nodeRange })),
+  ]) {
+    const at = extendOverTrailingLine(code, ended.range.end)
+    if (
+      code.startsWith('/*', at) &&
+      code[ended.range.end - 1] !== ';' &&
+      !isLineTerminator(code.charCodeAt(at - 1))
+    ) {
+      extra.push({
+        range: { start: at, end: at },
+        body: [{ k: 'text', parts: ['\n'] }],
+        by: 'core:glue',
+        seq: GLUE_IMPORTS_SEQ - 1,
+        claim: null,
+      })
+    }
+  }
   const anchored = anchoredGenerated(plan, 'env', placement)
   /** Offsets where generated text renders right before what the source wrote. */
   const generatedAt = new Set<number>()
@@ -219,12 +241,9 @@ function renderEnv(
     if (gen.body.length > 0) {
       generatedAt.add(at)
     }
-    // on a line of its own (text at the end of the file: below)
-    const midLine =
-      at > 0 && at < code.length && !isLineTerminator(code.charCodeAt(at - 1))
     extra.push({
       range: { start: at, end: at },
-      body: midLine ? [{ k: 'text', parts: ['\n'] }, ...gen.body] : gen.body,
+      body: gen.body,
       by: gen.by,
       seq: seq++,
       claim: null,
@@ -272,7 +291,10 @@ function renderEnv(
       }
     }
     const recipe = statementRecipe(item, units, retained, keepExport, code)
-    const afterGenerated = generatedAt.has(item.range.start)
+    // (a license comment between the statements belongs to neither)
+    const afterGenerated =
+      generatedAt.has(item.range.start) ||
+      (item.index > 0 && generatedAt.has(items[item.index - 1]!.range.end))
     if (
       recipe !== 'drop' &&
       (item.index > 0 || afterGenerated) &&
@@ -806,8 +828,8 @@ class Renderer {
   private importerId!: string
   private edges!: Array<EdgeRecord>
   private readonly refByStart = new Map<number, ClassifiedRef>()
-  /** Offsets starting a statement whose previous statement of the list has no `;`. */
-  private readonly unterminatedBefore = new Map<number, boolean>()
+  /** Whether an offset starts a statement of a statement list. */
+  private readonly statementStarts = new Map<number, boolean>()
 
   constructor(
     private readonly plan: AnalysisPlan,
@@ -1028,10 +1050,11 @@ class Renderer {
 
   /**
    * A `;` before text rendered at `offset` when it starts a statement of a
-   * list whose previous statement has no `;` and its first token could
-   * continue that statement (`const x = foo` + `(() => 1)()` would be a call
-   * of `foo`): an edit replacing a call with a parenthesised function, an
-   * orphaned initialiser kept as a statement, a placeholder.
+   * list, what renders before it does not end with a `;` and its first token
+   * could continue that (`const x = foo` + `(() => 1)()` would be a call of
+   * `foo`): an edit replacing a call with a parenthesised function, an orphaned
+   * initialiser kept as a statement, a placeholder. What renders before it may be
+   * generated, or the statement before the one the source wrote there.
    */
   private guardStatementStart(
     offset: number,
@@ -1052,18 +1075,18 @@ class Renderer {
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
     }
-    let guard = this.unterminatedBefore.get(offset)
-    if (guard === undefined) {
-      guard = this.unterminatedStatementBefore(offset)
-      this.unterminatedBefore.set(offset, guard)
+    let startsStatement = this.statementStarts.get(offset)
+    if (startsStatement === undefined) {
+      startsStatement = this.startsStatementOfList(offset)
+      this.statementStarts.set(offset, startsStatement)
     }
-    if (guard) {
+    if (startsStatement && this.continuable(out, from)) {
       out.splice(from, 0, { k: 'text', text: ';' })
     }
   }
 
-  /** Whether a statement of a statement list starts at `offset` after a statement without `;`. */
-  private unterminatedStatementBefore(offset: number): boolean {
+  /** Whether a statement of a statement list starts at `offset`. */
+  private startsStatementOfList(offset: number): boolean {
     const file = this.plan.analysis.file
     let node = file.nodeAt(offset)
     if (!node || node.start !== offset) {
@@ -1085,15 +1108,29 @@ class Renderer {
         : parent.type === 'SwitchCase'
           ? parent.consequent
           : null
-    if (!list) {
-      return false
+    return list !== null && (list as ReadonlyArray<Node>).includes(node)
+  }
+
+  /**
+   * Whether the text before segment `from` ends with something a next token
+   * could continue: anything but a `;` or a block's start (taken for a comment's
+   * end when its line holds a `//`: another `;` costs nothing).
+   */
+  private continuable(out: ReadonlyArray<Segment>, from: number): boolean {
+    for (let i = from - 1; i >= 0; i--) {
+      const seg = out[i]!
+      const text = (
+        seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
+      ).trimEnd()
+      if (text !== '') {
+        const last = text[text.length - 1]!
+        return (
+          (last !== ';' && last !== '{') ||
+          text.slice(text.lastIndexOf('\n') + 1).includes('//')
+        )
+      }
     }
-    const index = (list as ReadonlyArray<Node>).indexOf(node)
-    if (index <= 0) {
-      return false
-    }
-    const prev = (list as ReadonlyArray<Node>)[index - 1]!
-    return this.code[prev.end - 1] !== ';'
+    return false
   }
 
   /** The id of the module the current output takes `sym` from: the home it imports it from, else its own. */

@@ -1086,6 +1086,68 @@ describe('statement-level edits (one edit per statement)', () => {
   })
 })
 
+describe('renaming a `var` declared again', () => {
+  it('renames every declaration once', () => {
+    const code = `var a = 1\nvar a = 2\n{\n  var { a } = o\n}\nfor (var a of o) {}\nf(a)\n`
+    const e = engine(code)
+    const to = e.ctx.names.alloc('b')
+    const sym = e.ctx.t1.declaringUnits.keys().next().value!
+    e.ctx.renameRefs(sym, { sym: to.sym }, 'all-outputs', 'hmr')
+    expect(e.render().code).toBe(
+      `var b = 1\nvar b = 2\n{\n  var { a: b } = o\n}\nfor (var b of o) {}\nf(b)\n`,
+    )
+  })
+})
+
+describe('erased parts around a claim read elsewhere', () => {
+  it('ends with an edit erasing exactly a hidden claim', () => {
+    const code = `const a = hoisted()\nexport const b = 1\n`
+    const e = engine(code)
+    const { ctx } = e
+    const range = rangeOf(code, 'hoisted()')
+    const hoisted = ctx.names.alloc('tsrHoisted')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'after-header' },
+      home: 'auto',
+      by: 'env',
+    })
+    ctx.rewrites.claim({
+      region: ctx.region(range, 'custom'),
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      by: 'env',
+    })
+    const gen = ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: ['export const wrapper = () => ', { sym: hoisted.sym }, '\n'],
+        },
+      ],
+      declares: [],
+      effectful: true,
+      anchor: { k: 'end' },
+      home: 'auto',
+      by: 'env',
+    })
+    ctx.addRoot('env', { t: 'gen', id: gen })
+    ctx.rewrites.add({
+      range,
+      body: [{ k: 'text', parts: ['stub()'] }],
+      scope: 'all-outputs',
+      by: 'other',
+    })
+    expect(ctx.rewrites.tree('env').erasedParts()).toEqual(expect.any(Array))
+  })
+})
+
 describe('generated units next to what the source wrote', () => {
   const unit = (e: ReturnType<typeof engine>, anchor: Anchor) =>
     e.ctx.rewrites.addGenerated({
@@ -1106,6 +1168,15 @@ describe('generated units next to what the source wrote', () => {
     expect(e.render().code).toBe(
       `const a = 1 \nconst gen = 1\n/*! a\nb */ const b = 2\n`,
     )
+  })
+
+  it('gives a statement starting with a parenthesis its `;` past a license comment after the unit', () => {
+    const e = engine(`const a = 1;\n/*! l */\n(a).b = 1\n`)
+    e.ctx.addRoot('env', {
+      t: 'gen',
+      id: unit(e, { k: 'after-unit', unit: 0 }),
+    })
+    expect(e.render().code).toContain(`const gen = 1\n/*! l */\n;(a).b = 1`)
   })
 
   it('gives a statement starting with a parenthesis its `;`, after the unit', () => {

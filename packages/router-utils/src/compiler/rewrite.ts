@@ -688,7 +688,7 @@ export class RenderTree {
     // range), so that the edits nested under them are found
     // an erased part without the hidden claims inside it (relocated: their
     // text renders inside their owners)
-    const erased = (s: number, e: number) => {
+    const erased = (s: number, e: number, by: TreeEdit) => {
       let pos = s
       for (const c of this.hidden.size > 0 ? this.edits : []) {
         if (c.range.start >= e) {
@@ -700,7 +700,8 @@ export class RenderTree {
         if (c.range.start > pos) {
           out.push({ start: pos, end: c.range.start })
         }
-        visit(c.range.start, c.range.end, new Set([c]))
+        // (`by` may be on exactly the claim: it already erased what it erases)
+        visit(c.range.start, c.range.end, new Set([c, by]))
         pos = c.range.end
       }
       if (e > pos) {
@@ -727,14 +728,14 @@ export class RenderTree {
         covered.sort((a, b) => a.start - b.start)
         for (const c of covered) {
           if (c.start > pos) {
-            erased(pos, c.start)
+            erased(pos, c.start, ed)
           }
           if (c.end > pos) {
             pos = c.end
           }
         }
         if (ed.range.end > pos) {
-          erased(pos, ed.range.end)
+          erased(pos, ed.range.end, ed)
         }
         for (const f of ed.body) {
           if (f.k === 'slice') {

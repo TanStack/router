@@ -955,10 +955,15 @@ export class ModuleAnalysis {
     // an assignment, except what its declaring unit starts it with (a nested
     // declaration runs with its statement, whatever its position)
     for (const b of file.rootScope.bindings) {
-      const declarations = b.declarations
-      if (declarations.length < 2) {
+      if (b.declarations.length < 2 || !b.has(BindingFlags.ValueSpace)) {
         continue
       }
+      const declarations = b.declarations.filter((id) => {
+        const type = file.parentOf(id)?.type
+        return (
+          type !== 'TSTypeAliasDeclaration' && type !== 'TSInterfaceDeclaration'
+        )
+      })
       const sym = symbols.ofBinding(b)
       const own = units[declaringUnits.get(sym)?.[0] ?? -1]
       declarations.forEach((id, i) => {
@@ -1383,24 +1388,43 @@ function isTypeDeclaration(decl: Node): boolean {
   )
 }
 
-/** Whether the `var` name `id` declares takes a value there: an initialiser, or the head of a for-in/of. */
+/**
+ * Whether the `var` name `id` declares takes a value there: an initialiser, or
+ * the head of a for-in/of (not in `catch (x) { var x = 1 }`: that writes the
+ * parameter).
+ */
 function declarationAssigns(file: SourceFile, id: Node): boolean {
-  let node = file.parentOf(id)
-  while (node !== null && node.type !== 'VariableDeclarator') {
-    node = file.parentOf(node)
+  let declarator = file.parentOf(id)
+  while (declarator !== null && declarator.type !== 'VariableDeclarator') {
+    declarator = file.parentOf(declarator)
   }
-  if (node === null) {
+  const declaration = declarator && file.parentOf(declarator)
+  if (
+    declaration?.type !== 'VariableDeclaration' ||
+    declaration.kind !== 'var'
+  ) {
     return false
   }
-  if (node.init !== null) {
-    return true
+  const loop = file.parentOf(declaration)
+  if (
+    declarator!.init === null &&
+    !(
+      (loop?.type === 'ForInStatement' || loop?.type === 'ForOfStatement') &&
+      loop.left === declaration
+    )
+  ) {
+    return false
   }
-  const declaration = file.parentOf(node)
-  const loop = declaration && file.parentOf(declaration)
-  return (
-    (loop?.type === 'ForInStatement' || loop?.type === 'ForOfStatement') &&
-    loop.left === declaration
-  )
+  for (let n = loop; n !== null; n = file.parentOf(n)) {
+    if (
+      n.type === 'CatchClause' &&
+      n.param?.type === 'Identifier' &&
+      n.param.name === (id as { name?: string }).name
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 function classify(

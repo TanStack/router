@@ -167,28 +167,6 @@ export class UnparsableRouteFileError extends Error {
   override name = 'UnparsableRouteFileError'
 }
 
-/**
- * Waits for every read of a batch: its outcome does not depend on which
- * settled first. A route file that does not parse outranks another failure,
- * and every such file is named.
- */
-async function readFiles(reads: Array<Promise<void>>) {
-  const failures = (await Promise.allSettled(reads)).flatMap((read) =>
-    read.status === 'rejected' ? [read.reason as unknown] : [],
-  )
-  const unparsable = failures.filter(
-    (failure) => failure instanceof UnparsableRouteFileError,
-  )
-  if (unparsable.length > 0) {
-    throw new UnparsableRouteFileError(
-      unparsable.map((failure) => failure.message).join('\n'),
-    )
-  }
-  if (failures.length > 0) {
-    throw failures[0]
-  }
-}
-
 function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
   const position =
     diagnostic.line === undefined
@@ -404,14 +382,14 @@ export class Generator {
       let failure: { error: unknown } | undefined
       while (this.queue.length) {
         const batch = this.queue.splice(0)
-        const build = this.waiters.some((w) => w.build)
         try {
-          await this.processBatch(batch, build)
+          await this.processBatch(
+            batch,
+            this.waiters.some((w) => w.build),
+          )
           failure = undefined
         } catch (error) {
-          // a failure of another kind, whichever came first, does not hide
-          // the file a build fails on
-          failure = { error: (build && this.unparsableFiles()) || error }
+          failure = { error }
         }
       }
       const waiters = this.waiters.splice(0)
@@ -470,7 +448,14 @@ export class Generator {
 
     if (structural) {
       this.stale = true
-      const scan = await scanRoutes(this.config, this.root)
+      let scan: ScanResult
+      try {
+        scan = await scanRoutes(this.config, this.root)
+      } catch (error) {
+        // (rejects: a build fails on a file it knows broken, else with this)
+        await this.readFiles([Promise.reject(error)], build)
+        throw error
+      }
       this.scan = scan
       const nodes = filesOf(scan)
       const keys = new Set(nodes.map((node) => node.fullPath))
@@ -480,7 +465,7 @@ export class Generator {
           this.files.delete(key)
         }
       }
-      await readFiles(
+      await this.readFiles(
         nodes.map((node) =>
           this.updateFile(node, {
             isRoot: node === scan.rootRouteNode,
@@ -488,13 +473,14 @@ export class Generator {
             force: build || named.has(node.fullPath),
           }),
         ),
+        build,
       )
       changes.routes = true
     } else {
       const byKey = new Map(
         filesOf(this.scan!).map((node) => [node.fullPath, node]),
       )
-      await readFiles(
+      await this.readFiles(
         [...changed].map(async (key) => {
           const node = byKey.get(key)
           if (!node) {
@@ -507,15 +493,8 @@ export class Generator {
           })
           consider(key, before)
         }),
+        build,
       )
-    }
-
-    // a build has no last good route: it fails before anything is written
-    const unparsable = build && this.unparsableFiles()
-    if (unparsable) {
-      // what this batch read reaches the tree with the next one
-      this.stale = true
-      throw unparsable
     }
 
     // The tree's routes are as before (no tree rebuild, no print), unless
@@ -539,19 +518,42 @@ export class Generator {
     this.notifyPlugins()
   }
 
-  /** The failure of a build with route files that do not parse (each kept its last good route). */
-  private unparsableFiles(): UnparsableRouteFileError | undefined {
-    const broken = [...this.files].filter(([, state]) => state.unparsable)
-    return broken.length > 0
-      ? new UnparsableRouteFileError(
-          broken
-            .map(
-              ([file, state]) =>
-                `Cannot generate the route of ${file}:\n${state.unparsable}`,
-            )
-            .join('\n'),
-        )
-      : undefined
+  /**
+   * Waits for every read of a batch, so its outcome does not depend on which
+   * settled first. A route file that does not parse outranks any other
+   * failure, and every such file is named: read now, or, in a build, one that
+   * still holds the text that kept its last good route (a build has none: it
+   * fails before anything is written).
+   */
+  private async readFiles(reads: Array<Promise<void>>, build: boolean) {
+    const failures = (await Promise.allSettled(reads)).flatMap((read) =>
+      read.status === 'rejected' ? [read.reason as unknown] : [],
+    )
+    const unparsable = failures.flatMap((failure) =>
+      failure instanceof UnparsableRouteFileError ? [failure.message] : [],
+    )
+    if (build) {
+      for (const [file, state] of [...this.files].sort(([a], [b]) =>
+        a < b ? -1 : 1,
+      )) {
+        if (
+          state.unparsable &&
+          (await readIfExists(file).catch(() => null)) === state.content
+        ) {
+          unparsable.push(
+            `Cannot generate the route of ${file}:\n${state.unparsable}`,
+          )
+        }
+      }
+    }
+    if (unparsable.length > 0) {
+      // what this batch read reaches the tree with the next one
+      this.stale = true
+      throw new UnparsableRouteFileError(unparsable.join('\n'))
+    }
+    if (failures.length > 0) {
+      throw failures[0]
+    }
   }
 
   private rebuildModel() {

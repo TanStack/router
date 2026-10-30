@@ -421,6 +421,58 @@ test('a build fails on a route file known not to parse when the root route is go
   await expect(session.build()).rejects.toThrow('posts.tsx')
 })
 
+// The scan failed, so the build read nothing: the file is known broken only
+// while it still holds what broke it.
+test.each([
+  ['fixed', (posts: string) => writeFile(posts, postsRoute)],
+  ['deleted', (posts: string) => rm(posts)],
+])(
+  'a build reports a gone root route when the route file known not to parse was %s',
+  async (_, change) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute,
+      'src/routes/posts.tsx': postsRoute,
+    })
+    const posts = path.join(root, 'src/routes/posts.tsx')
+    const reports: Array<unknown> = []
+    const generator = new Generator({ config: configOf(root), root })
+    const session = createGeneratorSession({
+      generator: () => generator,
+      report: (error) => reports.push(error),
+    })
+    await session.run()
+    await writeFile(posts, 'export const Route = (')
+    await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
+    await change(posts)
+    await rm(path.join(root, 'src/routes/__root.tsx'))
+    await session.build()
+    expect(reports).toHaveLength(1)
+  },
+)
+
+test('a build names a route file known not to parse and one that never did', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
+  await writeFile(
+    path.join(root, 'src/routes/about.tsx'),
+    'export const Route = (',
+  )
+  const built = session.build()
+  await expect(built).rejects.toThrow('posts.tsx')
+  await expect(built).rejects.toThrow('about.tsx')
+})
+
 // (A symbolic link to itself: no read of it succeeds, for any user.)
 test.each(['a-unreadable.tsx', 'z-unreadable.tsx'])(
   'a cold build fails on a route file that does not parse next to an unreadable one (%s)',
