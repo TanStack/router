@@ -30,7 +30,7 @@ import {
   violationsOf,
 } from './violations'
 import { witnessLookup } from './witness'
-import { formatViolation } from './trace'
+import { formatUncheckedImporters, formatViolation } from './trace'
 import type { Planner } from '@tanstack/router-utils/compiler'
 import type {
   ImportProtectionConfig,
@@ -408,6 +408,8 @@ class ImportProtectionEnv {
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
   private buildInfos = new Map<string, ViolationInfo>()
+  /** Build, this pass: the mocked modules that are their own violation whose every importer is not checked (R89), with those importers. */
+  private unchecked = new Map<string, [EdgeViolation, Array<string>]>()
   private runtimeEmitted = false
   /** Build: the compiled modules that are their own violation, by id: the witness reads their survival (as their mock or as they are). */
   private readonly selfModules = new Map<string, string>()
@@ -950,12 +952,24 @@ class ImportProtectionEnv {
     graph: ImportGraphView | null,
   ): Promise<DecideResult> {
     this.graph = graph
+    this.unchecked = new Map()
     const live: Array<EdgeViolation> = []
     for (const key of liveKeys) {
       for (const v of this.modules.get(key)?.violations.values() ?? []) {
-        live.push(
-          ...(v.self ? this.importsOf(v, graph?.importers(v.importerId)) : [v]),
-        )
+        if (!v.self) {
+          live.push(v)
+          continue
+        }
+        const importers = [...(graph?.importers(v.importerId) ?? [])]
+        const checked = this.importsOf(v, importers)
+        live.push(...checked)
+        const others = importers.filter((id) => this.ip.ids.parse(id) === null)
+        if (!checked.length && others.length && !this.allowsSelf(v)) {
+          this.unchecked.set(v.edgeKey, [
+            v,
+            [...new Set(others.map(traceFile))],
+          ])
+        }
       }
     }
     const result = await this.build.decide(live, async (v) => {
@@ -1035,6 +1049,13 @@ class ImportProtectionEnv {
         message: formatViolation(info, this.ip.config.root),
         info,
       })
+    }
+    // not violations (no `onViolation`, no failure): a warning per module
+    for (const [v, importers] of this.unchecked.values()) {
+      const info = violationInfo(v, this.ip.config, () => [])
+      const { root } = this.ip.config
+      const message = formatUncheckedImporters(info, importers, root)
+      out.push({ severity: 'warning', message, info })
     }
     return out
   }

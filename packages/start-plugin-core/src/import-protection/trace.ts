@@ -53,6 +53,35 @@ export const SERVER_ENV_SUGGESTIONS = [
   'Move the client-only import out of this file into a separate .client.ts module that is not imported by any server code',
 ] as const
 
+function deniedBy(info: ViolationInfo): string {
+  return info.type === 'marker'
+    ? `  Denied by marker: module is restricted to the opposite environment`
+    : `  Denied by ${info.type} pattern: ${String(info.pattern)}`
+}
+
+/**
+ * A build's warning (not a violation): a denied file served as its mock to
+ * importers import protection does not check (KNOWN-BUGS.md, R89).
+ */
+export function formatUncheckedImporters(
+  info: ViolationInfo,
+  importers: Array<string>,
+  root: string,
+): string {
+  return [
+    ``,
+    `[import-protection] Denied file mocked in ${info.envType} environment, for importers that are not checked`,
+    ``,
+    deniedBy(info),
+    `  Denied file: ${relativizePath(info.importer, root)}`,
+    `  Importers (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
+    ...importers.map((file) => `    - ${relativizePath(file, root)}`),
+    ``,
+    `  Not a violation: these importers get the mock. To give them the real module, import the file statically from an exempt module inside the scope.`,
+    ``,
+  ].join('\n')
+}
+
 export function formatViolation(info: ViolationInfo, root: string): string {
   const rel = (p: string) => relativizePath(p, root)
 
@@ -74,15 +103,7 @@ export function formatViolation(info: ViolationInfo, root: string): string {
   lines.push(`[import-protection] Import denied in ${info.envType} environment`)
   lines.push(``)
 
-  if (info.type === 'specifier') {
-    lines.push(`  Denied by specifier pattern: ${String(info.pattern)}`)
-  } else if (info.type === 'file') {
-    lines.push(`  Denied by file pattern: ${String(info.pattern)}`)
-  } else {
-    lines.push(
-      `  Denied by marker: module is restricted to the opposite environment`,
-    )
-  }
+  lines.push(deniedBy(info))
 
   if (info.resolved === info.importer) {
     // a module that is its own violation: no import the compiler read brought it

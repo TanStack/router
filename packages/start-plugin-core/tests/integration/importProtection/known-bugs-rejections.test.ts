@@ -10,12 +10,14 @@
  *   template-literal `import()`, Rsbuild's `import.meta.webpackContext`);
  * - an importer outside `srcDirectory` (never compiled by import protection)
  *   importing an in-scope denied file with a plain import.
- * Today a dev server reports the denied file (it knows no importer of it); a
- * build reports nothing (no importer it checks imports it), and does not fail
- * with the `error` behaviour either. Controls: an exempt importer's plain
- * import gets the real module. Client environment, mock mode; builds and dev
- * servers (Vite, Vite's bundled dev, Rsbuild).
+ * A dev server reports the denied file (it knows no importer of it); a
+ * build prints one warning per denied file (its importers are not checked:
+ * not a violation, and the `error` behaviour does not fail the build).
+ * Controls: an exempt importer's plain import gets the real module. Client
+ * environment, mock mode; builds and dev servers (Vite, Vite's bundled dev,
+ * Rsbuild).
  */
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -175,6 +177,8 @@ interface Read {
 interface Outcome extends Read {
   /** The reported client files (the importer in a build, the denied file in dev). */
   reported: Array<string>
+  /** A build's warnings about unchecked importers (none in dev). */
+  unchecked?: Array<string>
 }
 
 const outcome = (read: Read, recorded: Recorded): Outcome => ({
@@ -182,18 +186,27 @@ const outcome = (read: Read, recorded: Recorded): Outcome => ({
   reported: importersIn(recorded, 'client'),
 })
 
+const uncheckedHeader =
+  '[import-protection] Denied file mocked in client environment, for importers that are not checked'
+
 async function build(
   bundler: 'vite' | 'rsbuild',
   files: Record<string, string>,
-) {
+  behavior: 'mock' | 'error' = 'mock',
+): Promise<Outcome> {
   const built = await buildStart({
     bundler,
     files,
     entry: 'src/entry.ts',
-    start: { importProtection },
+    start: { importProtection: { ...importProtection, behavior } },
   })
   const { result } = await built.client.run(readScript)
-  return outcome(result as Read, built)
+  return {
+    ...outcome(result as Read, built),
+    unchecked: problems(built.diagnostics)
+      .map(({ text }) => text)
+      .filter((text) => text.includes(uncheckedHeader)),
+  }
 }
 
 async function viteDev(files: Record<string, string>): Promise<Outcome> {
@@ -254,6 +267,7 @@ const hosts = [
   {
     name: 'vite build',
     kinds: viteKinds,
+    build: 'vite' as const,
     run: (files: Record<string, string>) => build('vite', files),
   },
   { name: 'vite dev', kinds: viteKinds, run: viteDev },
@@ -261,6 +275,7 @@ const hosts = [
   {
     name: 'rsbuild build',
     kinds: rsbuildKinds,
+    build: 'rsbuild' as const,
     run: (files: Record<string, string>) => build('rsbuild', files),
   },
   { name: 'rsbuild dev', kinds: rsbuildKinds, run: rsbuildDev },
@@ -289,12 +304,51 @@ const realModules = (uses: Array<Use>) => ({
 
 const options = Object.keys(exemptDirs) as Array<Option>
 
-describe.each(hosts)('$name', ({ kinds, run }) => {
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * A build's warnings about `uses` (R89 amendment), by the denied file each
+ * names: one per denied file, naming its importer, then the fix.
+ */
+const warnings = (unchecked: Array<string>, uses: Array<Use>) => {
+  const deniedOf = (text: string) => /Denied file: (\S+)/.exec(text)?.[1]
+  const named = unchecked.filter((text) =>
+    uses.some(({ denied }) => deniedOf(text) === denied),
+  )
+  return {
+    count: named.length,
+    byFile: Object.fromEntries(named.map((text) => [deniedOf(text), text])),
+  }
+}
+
+/** What `warnings` gives when each of `uses` is warned about (Rspack prefixes each line with `│`). */
+const warningsNaming = (uses: Array<Use>) => ({
+  count: uses.length,
+  byFile: Object.fromEntries(
+    uses.map(({ importer, denied }) => [
+      denied,
+      expect.stringMatching(
+        new RegExp(
+          `\n[│ ]* {4}- ${escaped(importer)}\n[^]*${escaped('import the file statically from an exempt module inside the scope')}`,
+        ),
+      ),
+    ]),
+  ),
+})
+
+describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
   const files = appOf(kinds)
   const allUses = [
     outsideUse,
     ...options.flatMap((option) =>
       ['plain', ...kinds].map((kind) => exemptUse(option, kind)),
+    ),
+  ]
+  /** The uses the accepted cases mock. */
+  const mocked = [
+    outsideUse,
+    ...options.flatMap((option) =>
+      kinds.map((kind) => exemptUse(option, kind)),
     ),
   ]
   let ran: Promise<Outcome> | undefined
@@ -338,6 +392,44 @@ describe.each(hosts)('$name', ({ kinds, run }) => {
     async () => {
       expect(about(await result(), [outsideUse])).toEqual(
         realModules([outsideUse]),
+      )
+    },
+    timeout,
+  )
+
+  // R89 amendment: a build warns about each file the accepted cases mock;
+  // not a violation (`onViolation` is not called, the build does not fail).
+  test.runIf(bundler)(
+    'a build warns once about each denied file whose every importer is exempt or outside srcDirectory, naming it, its importers and the fix',
+    async () => {
+      const outcome = await result()
+      expect({
+        reported: about(outcome, allUses).reported,
+        warnings: warnings(outcome.unchecked!, allUses),
+      }).toEqual({ reported: [], warnings: warningsNaming(mocked) })
+    },
+    timeout,
+  )
+
+  test.runIf(bundler)(
+    'a build with the error behaviour does not fail on them, and warns the same',
+    async () => {
+      const outcome = await build(bundler!, files, 'error')
+      expect({
+        reported: about(outcome, allUses).reported,
+        warnings: warnings(outcome.unchecked!, allUses),
+      }).toEqual({ reported: [], warnings: warningsNaming(mocked) })
+    },
+    timeout,
+  )
+
+  // Dev (unchanged): the dev server knows no importer of the denied file
+  // when it compiles it, and reports the file itself.
+  test.skipIf(bundler)(
+    'a dev server reports each denied file only an unchecked importer reaches',
+    async () => {
+      expect(about(await result(), mocked).reported).toEqual(
+        mocked.map(({ denied }) => denied).sort(),
       )
     },
     timeout,
