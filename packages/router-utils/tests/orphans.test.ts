@@ -49,6 +49,26 @@ describe('destructured bindings only erased code read', () => {
     )
   })
 
+  // the key stays out of the rest element; the default, evaluated only
+  // when the key is missing, goes with what only it reads
+  it('drops the default of a sibling kept while kept code reads the rest element', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        const { picked = secret(), ...others } = source
+        export const o = others
+        export const fn = wrapServer(() => picked)
+      `),
+    ).toBe(
+      dedent(`
+        const { picked, ...others } = source
+        export const o = others
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
   it('leaves a hole for an array element, also the last one', async () => {
     expect(
       await client(`

@@ -179,6 +179,7 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('routeHeaders', 'MARK_ROUTE_HEADERS'),
       ...dependency('routeSsr', 'MARK_ROUTE_SSR'),
       ...dependency('destructuredDefault', 'MARK_DESTRUCTURED_DEFAULT'),
+      ...dependency('restDefault', 'MARK_REST_DEFAULT'),
       ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
       ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
       ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
@@ -323,6 +324,17 @@ export const Route = createFileRoute('/destructured')({
   component: () => title,
 })
 `,
+      // The same with a rest element the component reads: the handler's
+      // binding stays in the pattern (its key must stay out of the rest),
+      // without its default value.
+      'src/routes/destructured-rest.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { restDefault } from '../deps/restDefault'
+const { secret = restDefault(), ...rest } = { title: 'MARK_REST_TITLE' }
+export const Route = createFileRoute('/destructured-rest')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => rest.title,
+})
+`,
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverRouteHandler } from '../deps/serverRouteHandler'
 export const Route = createFileRoute('/api')({
@@ -388,10 +400,12 @@ const get = async (path) =>
         isomorphic: build.client.where('MARK_ISOMORPHIC_CLIENT'),
         component: build.client.where('MARK_ROUTE_COMPONENT'),
         destructured: build.client.where('MARK_DESTRUCTURED_TITLE'),
+        rest: build.client.where('MARK_REST_TITLE'),
       }).toEqual({
         isomorphic: 'eager',
         component: 'lazy',
         destructured: 'lazy',
+        rest: 'lazy',
       })
     })
 
@@ -459,6 +473,13 @@ const get = async (path) =>
         marker: 'MARK_DESTRUCTURED_DEFAULT',
         run: `return await get('/destructured')`,
         expected: 'MARK_DESTRUCTURED_DEFAULT',
+      },
+      {
+        construct:
+          'route server.handlers reading a default value next to a rest element the component reads',
+        marker: 'MARK_REST_DEFAULT',
+        run: `return await get('/destructured-rest')`,
+        expected: 'MARK_REST_DEFAULT',
       },
       {
         construct: 'a server fn of a route file the loader calls',

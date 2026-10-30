@@ -96,6 +96,15 @@ export function cleanOrphanedDeclarations(
     const prunedDecls = new Map<Node, Pruned>()
     // declarators removed whole this round (every binding of a pattern)
     const removedDeclarators = new Set<Node>()
+    // pattern properties a live rest element keeps, by the range of their
+    // default: once nothing else goes (the rest element may go first, and
+    // its siblings with it), only the defaults go, with what only they read
+    // (`{ a = server(), ...rest }` → `{ a, ...rest }`)
+    const restKept: Array<{
+      binding: number
+      range: Range
+      refs: ReadonlyArray<ClassifiedRef>
+    }> = []
     for (const b of file.bindings) {
       if (handled.has(b.id) || b.import) {
         continue
@@ -175,9 +184,19 @@ export function cleanOrphanedDeclarations(
         }
       }
       if (inPattern) {
-        if (prunePatternElement(ctx, decl, refs, scopeOf, prunedProps, live)) {
+        const pruned = prunePatternElement(
+          ctx,
+          decl,
+          refs,
+          scopeOf,
+          prunedProps,
+          live,
+        )
+        if (pruned === true) {
           handled.add(b.id)
           changed = true
+        } else if (pruned !== false) {
+          restKept.push({ binding: b.id, range: pruned, refs })
         }
         continue
       }
@@ -215,6 +234,13 @@ export function cleanOrphanedDeclarations(
     }
     for (const [statement, decls] of prunedDecls) {
       removeDeclarators(ctx, statement, decls, live, scopeOf)
+    }
+    if (!changed) {
+      for (const { binding, range, refs } of restKept) {
+        handled.add(binding)
+        changed = true
+        rewrites.add({ range, body: [], scope: scopeOf(refs), by: BY })
+      }
     }
     if (!changed) {
       break
@@ -595,7 +621,8 @@ function callsHook(init: Node): boolean {
  * Removes a destructuring element whose binding only removed code read (its
  * default value or computed key may read server-only imports): an object
  * pattern property goes with its comma (never while the pattern keeps a
- * rest element, which would then receive the key); an object rest element
+ * rest element, which would then receive the key: the range of its default
+ * is returned instead, for `cleanOrphanedDeclarations`); an object rest element
  * goes too, after which its siblings may; an array pattern element becomes
  * a hole (the iterator is stepped as often as before), and an array rest
  * element stays (it exhausts the iterator).
@@ -607,7 +634,7 @@ function prunePatternElement(
   scopeOf: ScopeOf,
   prunedProps: Map<Node, Pruned>,
   live: LivenessView,
-): boolean {
+): boolean | Range {
   const file = ctx.analysis.file
   let node: Node = decl
   let parent = file.parentOf(node)
@@ -629,7 +656,10 @@ function prunePatternElement(
         (p) => p.type === 'RestElement' && !live.isErased(rangeOf(p)),
       )
     ) {
-      return false
+      // the key stays out of the rest: its default may go instead
+      return node.type === 'AssignmentPattern'
+        ? { start: node.left.end, end: node.end }
+        : false
     }
     prune(prunedProps, pattern, parent, refs)
     return true
