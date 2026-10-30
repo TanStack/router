@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { dedent } from './helpers'
 import { engine, rangeOf } from './engine'
 import type { OutputId } from '../src/compiler'
+import type { Anchor } from '../src/compiler/rewrite'
 
 describe('rewrite tree', () => {
   it('nests an inner edit inside a retained child slice and drops one inside erased text', () => {
@@ -1082,6 +1083,35 @@ describe('statement-level edits (one edit per statement)', () => {
     expect(e2.render(chunk2).code).toBe(
       "import { c } from './route.tsx'\nconst h = () => c\n",
     )
+  })
+})
+
+describe('generated units next to what the source wrote', () => {
+  const unit = (e: ReturnType<typeof engine>, anchor: Anchor) =>
+    e.ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: ['const gen = 1\n'] }],
+      declares: [e.ctx.names.alloc('gen').sym],
+      effectful: true,
+      anchor,
+      home: 'auto',
+      by: 'toy',
+    })
+
+  it('starts on its own line after a statement a license comment ends', () => {
+    const e = engine(`const a = 1 /*! a\nb */ const b = 2\n`)
+    e.ctx.addRoot('env', {
+      t: 'gen',
+      id: unit(e, { k: 'after-unit', unit: 0 }),
+    })
+    expect(e.render().code).toBe(
+      `const a = 1 \nconst gen = 1\n/*! a\nb */ const b = 2\n`,
+    )
+  })
+
+  it('gives a statement starting with a parenthesis its `;`, after the unit', () => {
+    const e = engine(`(a).b = 1\n`)
+    e.ctx.addRoot('env', { t: 'gen', id: unit(e, { k: 'after-header' }) })
+    expect(e.render().code).toBe(`const gen = 1\n;(a).b = 1\n`)
   })
 })
 

@@ -2,7 +2,7 @@
  * Header: hashbang, leading comments (pragmas, license), directive prologue
  * and the insertion offset after them.
  */
-import type { Comment, SourceFile } from 'yuku'
+import type { Comment, Node, SourceFile } from 'yuku'
 
 export interface Range {
   start: number
@@ -120,6 +120,35 @@ export function extendOverTrailingLine(code: string, end: number): number {
   return i
 }
 
+/**
+ * Where what a statement owns ends: its trailing line, and the multi-line
+ * comment on it when that comment's line break is what ends the statement
+ * (no `;`, no function or class body). The break then stays with the statement,
+ * whatever renders after it. A license comment stays between the statements:
+ * it belongs to none (`buildItems`).
+ */
+export function statementEnd(
+  file: SourceFile,
+  node: Node,
+  declaration: Node = node,
+): number {
+  const code = file.source
+  const end = extendOverTrailingLine(code, node.end)
+  if (
+    !code.startsWith('/*', end) ||
+    isLineTerminator(code.charCodeAt(end - 1)) ||
+    code[node.end - 1] === ';' ||
+    declaration.type === 'FunctionDeclaration' ||
+    declaration.type === 'ClassDeclaration'
+  ) {
+    return end
+  }
+  const comment = file.comments.find((c) => c.start === end)
+  return comment === undefined || isLicenseComment(comment)
+    ? end
+    : extendOverTrailingLine(code, comment.end)
+}
+
 export function analyzeHeader(file: SourceFile): Header {
   const code = file.source
   const program = file.program
@@ -188,7 +217,7 @@ export function analyzeHeader(file: SourceFile): Header {
       value: (d as unknown as { directive: string }).directive,
       range: { start: d.start, end: d.end },
     })
-    end = Math.max(end, extendOverTrailingLine(code, d.end))
+    end = Math.max(end, statementEnd(file, d))
   }
   const firstItem = body[directiveCount]
   if (firstItem !== undefined && end > firstItem.start) {

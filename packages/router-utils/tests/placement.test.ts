@@ -1647,6 +1647,47 @@ describe('a statement relying on the `;` that ends the one before it', () => {
   })
 })
 
+describe('a statement that ends without a `;`', () => {
+  const route = `export const Route = createFileRoute('/')({ component: Page })`
+  const head = `import { createFileRoute } from 'toy-router'\n`
+
+  it.each([
+    ['nothing', `const Page = () => 1`],
+    ['a line comment', `const Page = () => 1 // done`],
+    ['a block comment', `const Page = () => 1 /* done */`],
+  ])(
+    'ends the file with %s: the chunk export is a statement',
+    async (_, end) => {
+      const r = await split(`${head}${route}\n${end}`)
+      expect(r.chunks.component).toContain(`${end}\n`)
+    },
+  )
+
+  it('keeps the comment holding its line break, whatever renders next', async () => {
+    const r = await split(
+      `${head}import { see } from './see'\nconst Page = () => 1 /* a\nb */ see('env')\n${route}\n`,
+    )
+    expect(r.chunks.component).toContain(`const Page = () => 1 /* a\nb */ \n`)
+    expect(r.env).toContain(`see('env')`)
+  })
+
+  it('starts the next statement on its own line after a license comment holding its line break', async () => {
+    const r = await split(
+      `${head}const a = 1 /*! a\nb */ const Page = () => a\n${route}\n`,
+    )
+    expect(r.chunks.component).not.toContain('/*!')
+    expect(r.chunks.component).toContain(`const a = 1 \nconst Page = () => a`)
+  })
+
+  it('leaves a comment after a function body to the statement it leads', async () => {
+    const r = await split(
+      `${head}function Page() { return 1 } /* a\nb */ function other() {}\nother()\n${route}\n`,
+    )
+    expect(r.chunks.component).not.toContain('/* a')
+    expect(r.env).toContain('/* a\nb */ function other() {}')
+  })
+})
+
 describe('route-module specifics (lane router)', () => {
   it('drops `export { X }` of an inline type-only import with the import (route module)', async () => {
     const code = dedent(`

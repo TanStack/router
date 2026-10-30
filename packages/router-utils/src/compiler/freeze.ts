@@ -211,6 +211,26 @@ function renderEnv(
   const extra: Array<TreeEdit> = []
   let seq = CORE_SEQ
   const baseTree = rewrites.tree('env')
+  const anchored = anchoredGenerated(plan, 'env', placement)
+  /** Offsets where generated text renders right before what the source wrote. */
+  const generatedAt = new Set<number>()
+  // generated units homed here, at their anchors (before a statement's `;`)
+  for (const { at, gen } of anchored) {
+    if (gen.body.length > 0) {
+      generatedAt.add(at)
+    }
+    // on a line of its own (text at the end of the file: below)
+    const midLine =
+      at > 0 && at < code.length && !isLineTerminator(code.charCodeAt(at - 1))
+    extra.push({
+      range: { start: at, end: at },
+      body: midLine ? [{ k: 'text', parts: ['\n'] }, ...gen.body] : gen.body,
+      by: gen.by,
+      seq: seq++,
+      claim: null,
+      gen: gen.id,
+    } as TreeEdit)
+  }
   /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
   const siblingExports: Array<{ sym: SymbolId; name: string }> = []
   // statement-level DCE edits
@@ -252,10 +272,11 @@ function renderEnv(
       }
     }
     const recipe = statementRecipe(item, units, retained, keepExport, code)
+    const afterGenerated = generatedAt.has(item.range.start)
     if (
       recipe !== 'drop' &&
-      item.index > 0 &&
-      needsLeadingSemicolon(code, item, previous)
+      (item.index > 0 || afterGenerated) &&
+      needsLeadingSemicolon(code, item, afterGenerated ? undefined : previous)
     ) {
       extra.push({
         range: { start: item.nodeRange.start, end: item.nodeRange.start },
@@ -276,18 +297,6 @@ function renderEnv(
       seq: seq++,
       claim: null,
     })
-  }
-  // generated units homed here, at their anchors
-  const anchored = anchoredGenerated(plan, 'env', placement)
-  for (const { at, gen } of anchored) {
-    extra.push({
-      range: { start: at, end: at },
-      body: gen.body,
-      by: gen.by,
-      seq: seq++,
-      claim: null,
-      gen: gen.id,
-    } as TreeEdit)
   }
   // glue imports of the env output (from shared/derived homes) after the header
   const glueImports = glueImportText(
@@ -668,6 +677,7 @@ function renderDerived(
   }
   let previous: Piece | undefined
   for (const p of pieces) {
+    startLine(out, code)
     if (p.item !== undefined && needsLeadingSemicolon(code, p.item, previous)) {
       out.push({ k: 'text', text: ';' })
     }
@@ -675,8 +685,30 @@ function renderDerived(
     previous = p
   }
   const exportsText = exportGlue(plan, decl.id, placement, exportNameOf, null)
+  if (exportsText.length > 0) {
+    startLine(out, code)
+  }
   renderer.renderFrags(exportsText, null, null, out)
   return out
+}
+
+/**
+ * What renders next starts on its own line: what a derived output rendered
+ * last may be the end of a statement the source ended without a `;`, on the
+ * file's end or in a line comment there.
+ */
+function startLine(out: Array<Segment>, code: string): void {
+  const last = out[out.length - 1]
+  if (
+    last !== undefined &&
+    !isLineTerminator(
+      last.k === 'slice'
+        ? code.charCodeAt(last.end - 1)
+        : last.text.charCodeAt(last.text.length - 1),
+    )
+  ) {
+    out.push({ k: 'text', text: '\n' })
+  }
 }
 
 /** Whether the comments between an item's owned start and its statement carry a JSX pragma. */

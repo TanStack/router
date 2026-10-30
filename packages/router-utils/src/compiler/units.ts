@@ -8,7 +8,11 @@
  */
 import { BindingFlags } from 'yuku'
 import { hasRuntimeValue } from './symbols'
-import { extendOverTrailingLine, isLicenseComment } from './header'
+import {
+  extendOverTrailingLine,
+  isLicenseComment,
+  statementEnd,
+} from './header'
 import { patternIdentifiers, unwrapExpression } from './source'
 import {
   isPrimitiveLiteral,
@@ -411,7 +415,6 @@ export function buildItems(
         start = Math.min(node.start, extendOverTrailingLine(code, c.end))
       }
     }
-    const end = extendOverTrailingLine(code, node.end)
     const nodeRange = { start: node.start, end: node.end }
     let shape: ItemShape = 'single'
     let exportKeyword: Range | null = null
@@ -441,6 +444,7 @@ export function buildItems(
     ) {
       shape = 'import'
     }
+    const end = statementEnd(file, node, decl)
     items.push({
       index: items.length,
       range: { start, end },

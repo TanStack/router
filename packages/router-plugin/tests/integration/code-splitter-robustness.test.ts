@@ -144,3 +144,137 @@ export const Route = createFileRoute('/')({ component: Page })
   },
   120_000,
 )
+
+// A statement may end without a `;`: at the end of a file with no final
+// newline, or on the line break inside a comment. What renders after it (the
+// chunk's export, the next statement kept, a generated declaration) starts a
+// statement of its own: a compile error otherwise, or, after a line comment,
+// a chunk that silently exports nothing.
+const unterminated = [
+  {
+    name: 'the last statement has no `;` and no final newline',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+function Home() {
+  return <p>{text}</p>
+}
+const text = 'MARK'`,
+  },
+  {
+    name: 'the last statement is the component',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>MARK</p>`,
+  },
+  {
+    name: 'the last statement is an exported component',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+export const Home = () => <p>MARK</p>`,
+  },
+  {
+    name: 'the last statement is an import the chunk needs',
+    route: `export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>{text}</p>
+${head}import { text } from '../text'`,
+  },
+  {
+    name: 'the last statement is one of two declarators',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+const unused = 1, Home = () => <p>MARK</p>`,
+  },
+  {
+    name: 'a line comment ends the file',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>MARK</p> // done`,
+  },
+  {
+    name: 'a block comment ends the file',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>MARK</p> /* done */`,
+  },
+  {
+    name: 'CRLF line ends and no final newline',
+    route:
+      `${head}export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>MARK</p>`.replaceAll('\n', '\r\n'),
+  },
+  {
+    name: 'a comment holds the line break before the route',
+    route: `${head}const Home = () => <p>MARK</p> /* first
+second */ export const Route = createFileRoute('/')({ component: Home })
+`,
+  },
+  {
+    name: 'a license comment holds the line break before the route',
+    route: `${head}const Home = () => <p>MARK</p> /*! first
+second */ export const Route = createFileRoute('/')({ component: Home })
+`,
+  },
+  {
+    name: 'a comment holds the line break before a statement that moves',
+    route: `${head}globalThis.first = 'MARK' /* first
+second */ const Home = () => <p>{globalThis.first}</p>
+globalThis.second = globalThis.first
+export const Route = createFileRoute('/')({ component: Home })
+`,
+  },
+  {
+    name: 'a comment holds the line break before a statement that goes',
+    route: `${head}export const Route = createFileRoute('/')({ component: Home })
+const Home = () => <p>MARK</p> /* first
+second */ const unused = 1
+const alsoUnused = 2`,
+  },
+  {
+    name: 'a comment holds the line break before the route, which gets the importer',
+    route: `${head}globalThis.first = 'MARK' /* first
+second */ export const Route = createFileRoute('/')({
+  component: () => <p>{globalThis.first}</p>,
+})
+`,
+  },
+]
+
+let unterminatedResults: Promise<Array<string>> | undefined
+
+async function buildUnterminated() {
+  const app = await build({
+    bundler: 'vite',
+    env: 'ssr',
+    minify: false,
+    prefix: '.regression-build-',
+    registerCleanup: undefined,
+    files: {
+      'routes/__root.tsx': rootRoute,
+      'text.ts': `export const text = 'MARK'\n`,
+      ...Object.fromEntries(
+        unterminated.map((row, i) => [`routes/r${i}.tsx`, row.route]),
+      ),
+      'entry.ts': `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+${unterminated.map((_, i) => `import { Route as R${i} } from './routes/r${i}'`).join('\n')}
+export const routes = [${unterminated.map((_, i) => `R${i}`).join(', ')}]
+export async function render(component: any) {
+  await component.preload?.()
+  return renderToString(createElement(component))
+}
+`,
+    },
+  })
+  try {
+    return (
+      await app.run(
+        `return Promise.all(entry.routes.map((r) => entry.render(r.options.component)))`,
+      )
+    ).result as Array<string>
+  } finally {
+    await app.dispose()
+  }
+}
+
+test.each(unterminated.map((row, i) => [row.name, i] as const))(
+  'a split route renders when %s',
+  async (_name, i) => {
+    unterminatedResults ??= buildUnterminated()
+    expect((await unterminatedResults)[i]).toBe('<p>MARK</p>')
+  },
+  60_000,
+)
