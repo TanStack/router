@@ -313,3 +313,76 @@ return { before, log: globalThis.log }`)
     timeout,
   )
 })
+
+describe('exports of one declaration next to a split component, in an export list or by default', () => {
+  // The route's chunk reads `Home`; the route module also exports the other
+  // bindings of the same declaration. Every importer gets every export.
+  it.each([
+    {
+      shape: 'a destructuring exported in a list',
+      declarations: `const { Home, Other } = views
+export { Home, Other }`,
+      imports: '{ Home, Other }',
+    },
+    {
+      shape: 'a destructuring exported in a list and by default',
+      declarations: `const { Home, Other } = views
+export { Other }
+export default Home`,
+      imports: '{ default as Home, Other }',
+    },
+  ])(
+    '$shape: builds, renders, and gives importers every export',
+    async ({ declarations, imports }) => {
+      const app = await buildRoute(
+        `${head}const views = {
+  Home: () => <p>MARK_HOME</p>,
+  Other: () => <p>MARK_OTHER</p>,
+}
+${declarations}
+export const Route = createFileRoute('/')({ component: () => <Home /> })
+`,
+        `${clientMountEntry}export ${imports} from './routes/index'\n`,
+      )
+      const run =
+        await app.run(`await entry.mount(entry.Route.options.component)
+return [typeof entry.Home, entry.Other().props.children]`)
+      expect({ html: run.html, imported: run.result }).toEqual({
+        html: '<div id="root"><p>MARK_HOME</p></div>',
+        imported: ['function', 'MARK_OTHER'],
+      })
+    },
+    timeout,
+  )
+
+  // A `let` the exported function writes: importers see its live value.
+  it(
+    'a `let` and the function writing it exported in a list: importers read the live binding',
+    async () => {
+      const app = await buildRoute(
+        `${head}let count = 0
+function bump() {
+  count++
+  return <p>MARK_COUNT</p>
+}
+export { count, bump }
+export const Route = createFileRoute('/')({ component: () => bump() })
+`,
+        `${clientMountEntry}export { count, bump } from './routes/index'
+import * as route from './routes/index'
+export const read = () => route.count
+`,
+      )
+      const run =
+        await app.run(`await entry.mount(entry.Route.options.component)
+const afterMount = entry.read()
+entry.bump()
+return [afterMount, entry.read()]`)
+      expect({ html: run.html, counts: run.result }).toEqual({
+        html: '<div id="root"><p>MARK_COUNT</p></div>',
+        counts: [1, 2],
+      })
+    },
+    timeout,
+  )
+})

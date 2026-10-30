@@ -732,6 +732,45 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  // An export list (or `export default x`) of bindings of one cluster
+  // renders as the re-export glue: every binding it exports leaves with the
+  // cluster, whatever output each one was offered.
+  it.each([
+    [
+      'a destructuring exported in a list',
+      'const { Page, Other } = views\nexport { Page, Other }',
+      ['Other', 'Page'],
+    ],
+    [
+      'a destructuring exported in a list and by default',
+      'const { Page, Other } = views\nexport { Other }\nexport default Page',
+      ['Other', 'Page as default'],
+    ],
+    [
+      'a `let` and the function writing it exported in a list',
+      'let Other = 0\nfunction Page() { Other++; return Other }\nexport { Other, Page }',
+      ['Other', 'Page'],
+    ],
+  ])('re-exports every binding of %s', async (_, declarations, names) => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const views = { Page: () => 'page', Other: () => 'other' }
+      ${declarations.replaceAll('\n', '\n      ')}
+      export const Route = createFileRoute('/')({ component: () => Page() })
+    `)
+    const r = await extract(code)
+    const reexported = r.env.match(/export \{ ([^}]*) \} from '([^']+)'/)
+    expect(reexported![1]!.split(', ').sort()).toEqual(names)
+    // the companions render as that glue only
+    expect(r.env).not.toMatch(/^export (default |\{[^}]*\}$)/m)
+    const e = await r.host.compile(
+      `/app/${reexported![2]!.slice(2)}`,
+      [toySplitPlanner({ keys: ['component'], extractExports: true })],
+      build,
+    )
+    expect(e?.code).toMatch(/export \{ (Other, Page|Page, Other) \}/)
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

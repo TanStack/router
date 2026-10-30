@@ -17,7 +17,7 @@ import type { PlacementInput, RootRef } from '../reach'
 /** An exported cluster a planner allows into an extracted-export output. */
 export interface Candidate {
   output: OutputId
-  /** The exported symbols the planner allowed out. */
+  /** The exported symbols the planner allowed out, and those its companions export. */
   syms: Set<SymbolId>
   /** The export-specifier / `export default x` clusters that only read it (rendered as the env module's re-export glue when it leaves). */
   companions: Set<ClusterId>
@@ -106,6 +106,7 @@ export function seedRoots(
         continue
       }
       const targets = new Set<ClusterId>()
+      const exported = new Set<SymbolId>()
       for (const s of reads.clusterReads(cl.id, 'env', false).syms) {
         if (!symbols.isModuleLevel(s)) {
           continue
@@ -113,6 +114,7 @@ export function seedRoots(
         const d = clusterOfSym.get(s)
         if (d !== undefined && d !== cl.id) {
           targets.add(d)
+          exported.add(s)
         }
       }
       if (targets.size !== 1) {
@@ -121,7 +123,14 @@ export function seedRoots(
       const [target] = targets
       const e = candidates.get(target!)
       if (e) {
+        // it renders as the re-export glue: every binding it exports leaves
+        // with the cluster (`export { Page, Other }` of one destructuring,
+        // `export default Page` next to `export { Other }`), whatever output
+        // the planner offered each one
         e.companions.add(cl.id)
+        for (const s of exported) {
+          e.syms.add(s)
+        }
         extractRelated.add(cl.id)
       }
     }
