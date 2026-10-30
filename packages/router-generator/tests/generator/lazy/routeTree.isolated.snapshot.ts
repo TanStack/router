@@ -9,97 +9,98 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as PostsPostIdRouteImport } from './routes/posts/$postId'
+import { Route as PostsRouteRouteImport } from './routes/posts.route'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
-const IndexRoute: typeof IndexRouteImport = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsRoute: typeof PostsRouteImport = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/posts.lazy').then((d) => d.Route))
+const PostsRouteRoute: typeof PostsRouteRouteImport =
+  PostsRouteRouteImport.update({
+    id: '/posts',
+    path: '/posts',
+    getParentRoute: () => rootRouteImport,
+  } as any).lazy(() => import('./routes/posts.route.lazy').then((d) => d.Route))
+const PostsIndexRoute: typeof PostsIndexRouteImport =
+  PostsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PostsRouteRoute,
+  } as any)
 const PostsPostIdRoute: typeof PostsPostIdRouteImport =
   PostsPostIdRouteImport.update({
     id: '/$postId',
     path: '/$postId',
-    getParentRoute: () => PostsRoute,
+    getParentRoute: () => PostsRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/posts': typeof PostsRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts': typeof PostsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/posts': typeof PostsRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths: '/posts' | '/posts/$postId' | '/posts/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to: '/posts/$postId' | '/posts'
+  id: '__root__' | '/posts' | '/posts/$postId' | '/posts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  PostsRoute: typeof PostsRouteWithChildren
+  PostsRouteRoute: typeof PostsRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteRoute
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
+      parentRoute: typeof PostsRouteRoute
     }
   }
 }
 
-interface PostsRouteChildren {
+interface PostsRouteRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsIndexRoute: typeof PostsIndexRoute
 }
 
-const PostsRouteChildren: PostsRouteChildren = {
+const PostsRouteRouteChildren: PostsRouteRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
+  PostsIndexRoute: PostsIndexRoute,
 }
 
-const PostsRouteWithChildren: ReturnType<
-  typeof PostsRoute._addFileChildren<PostsRouteChildren>
-> = PostsRoute._addFileChildren(PostsRouteChildren)
+const PostsRouteRouteWithChildren: ReturnType<
+  typeof PostsRouteRoute._addFileChildren<PostsRouteRouteChildren>
+> = PostsRouteRoute._addFileChildren(PostsRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  PostsRoute: PostsRouteWithChildren,
+  PostsRouteRoute: PostsRouteRouteWithChildren,
 }
 const rootRouteWithChildren: ReturnType<
   typeof rootRouteImport._addFileChildren<RootRouteChildren>

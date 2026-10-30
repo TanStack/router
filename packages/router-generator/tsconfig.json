@@ -14,9 +14,8 @@
     "tests/generator/**/*.tsx",
     "tests/generator/**/routeTree.gen.js",
     "tests/generator/**/routeTree.gen.ts",
-    "tests/generator/**/routeTree.*.gen.ts",
-    "tests/generator/**/routeTree.*.gen.js",
     "tests/generator/**/routeTree.snapshot.js",
-    "tests/generator/**/routeTree.snapshot.ts"
+    "tests/generator/**/routeTree.snapshot.ts",
+    "tests/generator/**/routeTree.isolated.snapshot.ts"
   ]
 }

@@ -8,10 +8,11 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { lazyRouteComponent } from '@tanstack/vue-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
 const IndexRoute: typeof IndexRouteImport = IndexRouteImport.update({
   id: '/',
@@ -23,44 +24,41 @@ const AboutRoute: typeof AboutRouteImport = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsPostIdRoute: typeof PostsPostIdRouteImport =
-  PostsPostIdRouteImport.update({
-    id: '/posts/$postId',
-    path: '/posts/$postId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/about.component.vue'),
+      'default',
+    ),
+  })
+  .lazy(() => import('./routes/about.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/posts/$postId'
+  fullPaths: '/' | '/about'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/posts/$postId'
-  id: '__root__' | '/' | '/about' | '/posts/$postId'
+  to: '/' | '/about'
+  id: '__root__' | '/' | '/about'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  PostsPostIdRoute: typeof PostsPostIdRoute
 }
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
     '/': {
       id: '/'
@@ -76,24 +74,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/posts/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  PostsPostIdRoute: PostsPostIdRoute,
 }
+const rootRouteUpdated: typeof rootRouteImport = rootRouteImport.update({
+  component: lazyRouteComponent(
+    () => import('./routes/__root.component.vue'),
+    'default',
+  ),
+})
 const rootRouteWithChildren: ReturnType<
-  typeof rootRouteImport._addFileChildren<RootRouteChildren>
-> = rootRouteImport._addFileChildren(rootRouteChildren)
+  typeof rootRouteUpdated._addFileChildren<RootRouteChildren>
+> = rootRouteUpdated._addFileChildren(rootRouteChildren)
 export const routeTree: ReturnType<
   typeof rootRouteWithChildren._addFileTypes<FileRouteTypes>
 > = rootRouteWithChildren._addFileTypes<FileRouteTypes>()

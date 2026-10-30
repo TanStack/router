@@ -14,12 +14,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 
-const IndexRoute: typeof IndexRouteImport = IndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AboutRoute: typeof AboutRouteImport = AboutRouteImport.update({
+const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
   getParentRoute: () => rootRouteImport,
@@ -81,15 +81,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
 }
-const rootRouteUpdated: typeof rootRouteImport = rootRouteImport.update({
-  component: lazyRouteComponent(
-    () => import('./routes/__root.component.vue'),
-    'default',
-  ),
-})
-const rootRouteWithChildren: ReturnType<
-  typeof rootRouteUpdated._addFileChildren<RootRouteChildren>
-> = rootRouteUpdated._addFileChildren(rootRouteChildren)
-export const routeTree: ReturnType<
-  typeof rootRouteWithChildren._addFileTypes<FileRouteTypes>
-> = rootRouteWithChildren._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/__root.component.vue'),
+      'default',
+    ),
+  })
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
