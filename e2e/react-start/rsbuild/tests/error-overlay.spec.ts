@@ -176,11 +176,13 @@ class DevServer {
   }
 }
 
+// SPEC §5.7 leaves the wording and the reporting channel free (the bundler
+// may report a parse error itself); the file and the position must be shown.
 type ErrorOverlayIssue = {
   title: string | null
-  description: string | null
   runtime: 'client' | 'server' | null
-  sourceFrame: string | null
+  file: string | null
+  errorLine: number | null
   importTrace: Array<string>
 }
 
@@ -241,26 +243,23 @@ function getErrorRuntime(block: string): ErrorOverlayIssue['runtime'] {
   )
 }
 
-function findTrimmedLine(lines: Array<string>, text: string): string | null {
-  return lines.find((line) => line.includes(text))?.trim() ?? null
+function getErrorFile(lines: Array<string>): string | null {
+  return lines[0]?.match(/^File: (.+?)(?::\d+:\d+)?$/)?.[1] ?? null
 }
 
-function getSyntaxErrorDescription(lines: Array<string>): string | null {
-  return (
-    findTrimmedLine(lines, 'SyntaxError:')
-      ?.replace(/^.*SyntaxError:/, 'SyntaxError:')
-      .trim() ?? null
-  )
-}
+// The error's line, from a `(line:column)` message suffix or a code frame
+// header `[line:column]`, after the block's `File:` line.
+// A position in the message: SWC's `(line:col)`, the TanStack compilers'
+// `(file:line:col)`, or the header of Rspack's SWC code frame: `[line:col]`
+// since Rspack 2.1.6, `[file:line:col]` before.
+function getErrorLine(lines: Array<string>): number | null {
+  const match = lines
+    .slice(1)
+    .join('\n')
+    .match(/\((?:[^()\s]+:)?(\d+):\d+\)|\[(?:[^\]\s]+:)?(\d+):\d+\]/)
+  const line = match?.[1] ?? match?.[2]
 
-function getSourceFrame(lines: Array<string>): string | null {
-  const sourceFrame = [
-    lines[0]?.trim(),
-    findTrimmedLine(lines, 'Module build failed'),
-    findTrimmedLine(lines, 'SyntaxError:'),
-  ].filter(Boolean)
-
-  return sourceFrame.length > 0 ? sourceFrame.join('\n') : null
+  return line === undefined ? null : Number(line)
 }
 
 function getImportTrace(lines: Array<string>): Array<string> {
@@ -286,9 +285,9 @@ function parseErrorOverlayIssue(
 
   return {
     title,
-    description: getSyntaxErrorDescription(lines),
     runtime: getErrorRuntime(block),
-    sourceFrame: getSourceFrame(lines),
+    file: getErrorFile(lines),
+    errorLine: getErrorLine(lines),
     importTrace: getImportTrace(lines),
   }
 }
@@ -376,9 +375,9 @@ test('shows a module syntax error through the error overlay', async ({
       [
         {
           "title": "Build failed",
-          "description": "SyntaxError: Unexpected token (16:22)",
           "runtime": "client",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "file": "./src/routes/index.tsx",
+          "errorLine": 16,
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/client.tsx",
             "../../../packages/react-start/dist/esm/client.js",
@@ -389,9 +388,9 @@ test('shows a module syntax error through the error overlay', async ({
         },
         {
           "title": "Build failed",
-          "description": "SyntaxError: Unexpected token (16:22)",
           "runtime": "server",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "file": "./src/routes/index.tsx",
+          "errorLine": 16,
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/server.ts",
             "../../../packages/react-start/dist/esm/server.js",

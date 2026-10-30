@@ -24,19 +24,45 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest",
-    "test:unit:dev": "vitest --watch",
-    "test:eslint": "eslint ./src",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:integration && pnpm test:noncompiler",
+    "test:integration": "vitest --project integration",
+    "test:eslint": "eslint ./src ./tests/integration",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
-    "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
-    "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
-    "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
-    "test:types:ts60": "tsc6",
-    "test:types:ts70": "tsc",
+    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js && node ../../node_modules/typescript56/lib/tsc.js -p tests",
+    "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js && node ../../node_modules/typescript57/lib/tsc.js -p tests",
+    "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js && node ../../node_modules/typescript58/lib/tsc.js -p tests",
+    "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js && node ../../node_modules/typescript59/lib/tsc.js -p tests",
+    "test:types:ts60": "tsc6 && tsc6 -p tests",
+    "test:types:ts70": "tsc && tsc -p tests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build",
+    "test:noncompiler": "vitest --project noncompiler"
+  },
+  "nx": {
+    "targets": {
+      "test:integration": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/react-start"
+            ],
+            "target": "build"
+          }
+        ]
+      },
+      "test:noncompiler": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/react-start-client"
+            ],
+            "target": "build"
+          }
+        ]
+      }
+    }
   },
   "type": "module",
   "types": "dist/esm/src/index.d.ts",
@@ -67,12 +93,6 @@
       "import": {
         "types": "./dist/esm/src/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
-      }
-    },
-    "./plugin/rscCssTransform": {
-      "import": {
-        "types": "./dist/esm/src/plugin/rscCssTransform.d.ts",
-        "default": "./dist/esm/plugin/rscCssTransform.js"
       }
     },
     "./rsbuild/ssr-decode": {
@@ -107,11 +127,13 @@
     "pathe": "catalog:"
   },
   "devDependencies": {
-    "@rspack/core": "2.2.7",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@rspack/core": "2.2.9",
     "@testing-library/react": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitejs/plugin-rsc": "^0.5.37",
     "react-server-dom-rspack": "^0.0.2",
+    "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

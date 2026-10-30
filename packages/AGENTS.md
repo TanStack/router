@@ -1,6 +1,6 @@
 # Packages
 
-- Route generation/code splitting live in `router-generator`/`router-plugin`; Start build transforms live in `start-plugin-core`.
+- Route generation/code splitting live in `router-generator`/`router-plugin`; Start build transforms live in `start-plugin-core`. Both compilers are planners on the shared compiler core in `router-utils/src/compiler` ([README](router-utils/src/compiler/README.md)).
 
 ## Router bindings
 

@@ -17,9 +17,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
-    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/plugin-solid": "^1.2.2",
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",

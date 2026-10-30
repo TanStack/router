@@ -1,45 +1,20 @@
 import { createRspackPlugin } from 'unplugin'
 
-import { configSchema } from './core/config'
-import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
+import { configSchema, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
-import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
+import { createRouterCompilerWebpackPlugin } from './hosts/webpack'
+import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
+import type { CompilerLike } from './hosts/webpack'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
+import type { Rspack } from '@rsbuild/core'
+
+type RspackPluginInstance = Rspack.RspackPluginInstance
 
 type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
 
 const defaultRouterPluginContext = createRouterPluginContext()
-
-/**
- * Rspack uses webpack-compatible `module.hot` / `import.meta.webpackHot` HMR.
- * Force `plugin.hmr.style = 'webpack'` so the router HMR adapter emits
- * `module.hot`-style accept/dispose code instead of Vite's callback-receive
- * variant, regardless of what the user passes (or doesn't pass).
- */
-function withWebpackHmrStyle(
-  options: RspackRouterPluginOptions | undefined,
-): RspackRouterPluginOptions {
-  const mergeHmrStyle = (
-    config: Partial<Config> | undefined,
-  ): Partial<Config> => ({
-    ...config,
-    plugin: {
-      ...config?.plugin,
-      hmr: {
-        ...config?.plugin?.hmr,
-        style: 'webpack',
-      },
-    },
-  })
-
-  if (typeof options === 'function') {
-    return () => mergeHmrStyle(options())
-  }
-
-  return mergeHmrStyle(options)
-}
 
 /**
  * @example
@@ -68,6 +43,10 @@ const TanStackRouterGeneratorRspack = (
 }
 
 /**
+ * The route compiler alone (route splitting, and route HMR in development).
+ * Rspack uses webpack-compatible `import.meta.webpackHot` HMR, which the
+ * compiler emits for it.
+ *
  * @example
  * ```ts
  * export default defineConfig({
@@ -83,16 +62,13 @@ const TanStackRouterGeneratorRspack = (
 const TanStackRouterCodeSplitterRspack = (
   options?: RspackRouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
-) => {
+): RspackPluginInstance => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
-  return createRspackPlugin((pluginOptions) =>
-    createRouterCodeSplitterPlugin(
-      withWebpackHmrStyle(
-        pluginOptions as RspackRouterPluginOptions | undefined,
-      ) as Partial<Config | (() => Config)>,
-      pluginContext,
-    ),
-  )(options)
+  return createRouterCompilerWebpackPlugin(
+    splitterOptions(options),
+    pluginContext,
+    'rspack',
+  ) as RspackPluginInstance
 }
 
 /**
@@ -108,15 +84,26 @@ const TanStackRouterCodeSplitterRspack = (
  * })
  * ```
  */
-const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
-  (options, meta) =>
-    unpluginRouterComposedFactory(
-      withWebpackHmrStyle(
-        options as RspackRouterPluginOptions | undefined,
-      ) as Partial<Config | (() => Config)>,
-      meta,
-    ),
-)
+const TanStackRouterRspack = (
+  options?: RspackRouterPluginOptions,
+): RspackPluginInstance => {
+  const routerPluginContext = createRouterPluginContext()
+  const generator = TanStackRouterGeneratorRspack(options, routerPluginContext)
+  const compiler = createRouterCompilerWebpackPlugin(
+    options,
+    routerPluginContext,
+    'rspack',
+  )
+  return {
+    apply(rspackCompiler: Rspack.Compiler) {
+      new rspackCompiler.webpack.DefinePlugin(INLINE_CSS_DEFAULT_DEFINES).apply(
+        rspackCompiler,
+      )
+      generator.apply(rspackCompiler)
+      compiler.apply(rspackCompiler as unknown as CompilerLike)
+    },
+  }
+}
 const tanstackRouter = TanStackRouterRspack
 export default TanStackRouterRspack
 export {

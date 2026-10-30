@@ -19,7 +19,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.11",
+    "@rsbuild/core": "^2.2.14",
     "@rsbuild/plugin-react": "^2.0.0",
     "@rsbuild/plugin-tailwindcss": "^2.0.3",
     "@types/node": "25.0.9",

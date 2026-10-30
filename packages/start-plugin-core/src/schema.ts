@@ -312,9 +312,6 @@ type TanStackStartOptionsInput = NonNullable<
 export type TanStackStartInputConfig = TanStackStartOptionsInput
 export type TanStackStartOutputConfig = ReturnType<typeof parseStartConfig>
 
-export type ImportProtectionBehavior = z.infer<
-  typeof importProtectionBehaviorSchema
->
 export type ImportProtectionEnvRules = z.infer<
   typeof importProtectionEnvRulesSchema
 >

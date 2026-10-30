@@ -76,6 +76,9 @@ Call server functions from:
 - **Other server functions** - Compose server logic
 - **Event handlers** - Handle form submissions, clicks, etc.
 
+> [!NOTE]
+> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
+
 ```tsx
 // In a route loader
 export const Route = createFileRoute('/posts')({
@@ -418,14 +421,14 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
+By default, IDs are short hashes (22 characters, from SHA256) of the file and function name, to keep bundles compact and avoid leaking file paths.
 If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
 
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
-Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+The generator receives `filename` (the file's path relative to the project root) and `functionName` (the server function's export or variable name, e.g. `getUser`). Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
 Please note that this customization is **experimental** and subject to change.
 

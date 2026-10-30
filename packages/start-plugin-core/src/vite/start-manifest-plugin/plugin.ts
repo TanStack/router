@@ -1,6 +1,6 @@
 import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
-import { rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core/tooling'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
@@ -45,6 +45,11 @@ export function startManifestPlugin(opts: {
           throw new Error(
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
+        }
+        if (Object.keys(bundle).length === 0) {
+          // a pass of import protection's veto rebuild writes nothing (the
+          // compiler plugin discarded it); the final pass is captured
+          return
         }
 
         clientBuild = normalizeViteClientBuild(

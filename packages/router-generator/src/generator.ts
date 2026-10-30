@@ -1,1663 +1,815 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { existsSync, mkdirSync } from 'node:fs'
-import crypto from 'node:crypto'
-import { rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
-import {
-  isVirtualConfigFile,
-  getRouteNodes as physicalGetRouteNodes,
-} from './filesystem/physical/getRouteNodes'
-import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
+import { isVirtualConfigFile } from './filesystem/physical/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
+import { scanRoutes } from './filesystem/scan'
+import { replaceBackslash } from './utils'
+import { analyzeRouteFile, routeFileErrors } from './analyze/route-file'
+import { routerPackageOf, scaffoldRouteFile } from './scaffold/templates'
+import { buildTreeModel, checkRouteFullPathUniqueness } from './model/build'
+import { importedFiles, printTree } from './print/tree'
+import { styleOf } from './print/style'
+import { formatWithPrettier } from './print/format'
 import {
-  RoutePrefixMap,
-  buildFileRoutesByPathInterface,
-  buildImportString,
-  buildRouteTreeConfig,
-  checkFileExists,
-  checkRouteFullPathUniqueness,
-  countRoutePathSegments,
-  countSlashSeparatedParts,
-  createRouteNodesByFullPath,
-  createRouteNodesById,
-  createRouteNodesByTo,
-  createTokenRegex,
-  determineNodePath,
-  findParent,
-  format,
-  getImportForRouteNode,
-  getResolvedRouteNodeVariableName,
-  hasParentRoute,
-  isSegmentPathless,
-  mergeImportDeclarations,
-  multiSortBy,
-  removeExt,
-  removeGroups,
-  removeLastSegmentFromPath,
-  removeLayoutSegmentsAndUnderscoresWithEscape,
-  removeTrailingSlash,
-  replaceBackslash,
-  sortRouteNodes,
-  trimPathLeft,
-} from './utils'
-import { fillTemplate, getTargetTemplate } from './template'
-import { transform } from './transform/transform'
+  AtomicPublisher,
+  ConcurrentEditError,
+  readIfExists,
+} from './publish/atomic'
 import { validateRouteParams } from './validate-route-params'
+import type { FileDiagnostic } from './analyze/route-file'
+import type { ScanResult } from './filesystem/scan'
 import type { GeneratorPlugin } from './plugin/types'
-import type { TargetTemplate } from './template'
+import type { CodeStyle } from './print/style'
 import type {
   FsRouteType,
-  GetRouteNodesResult,
   GetRoutesByFileMapResult,
-  HandleNodeAccumulator,
-  ImportDeclaration,
+  GetRoutesByFileMapResultValue,
   RouteNode,
-  RoutePathSegmentMetadata,
+  RouteProps,
+  TreeModel,
 } from './types'
 import type { Config } from './config'
 import type { Logger } from './logger'
-
-interface fs {
-  stat: (
-    filePath: string,
-  ) => Promise<{ mtimeMs: bigint; mode: number; uid: number; gid: number }>
-  rename: (oldPath: string, newPath: string) => Promise<void>
-  writeFile: (filePath: string, content: string) => Promise<void>
-  readFile: (
-    filePath: string,
-  ) => Promise<
-    { stat: { mtimeMs: bigint }; fileContent: string } | 'file-not-existing'
-  >
-  chmod: (filePath: string, mode: number) => Promise<void>
-  chown: (filePath: string, uid: number, gid: number) => Promise<void>
-}
-
-function getRoutePathSegmentMetadataForPath(
-  node: RouteNode,
-  routePath: string,
-  parentRoutePath?: string,
-): Array<RoutePathSegmentMetadata | undefined> | undefined {
-  if (!node._routePathSegmentMetadata) return undefined
-
-  const segments = routePath.split('/')
-  const result = new Array<RoutePathSegmentMetadata | undefined>(
-    segments.length,
-  )
-  const parentSegmentCount = countRoutePathSegments(parentRoutePath)
-  let hasMetadata = false
-  let segmentCount = 0
-
-  for (let i = 0; i < segments.length; i++) {
-    if (!segments[i]) continue
-    const sourceIndex = parentSegmentCount + segmentCount + 1
-    result[i] = node._routePathSegmentMetadata[sourceIndex]
-    hasMetadata ||= !!result[i]
-    segmentCount++
-  }
-
-  return hasMetadata ? result : undefined
-}
-
-const DefaultFileSystem: fs = {
-  stat: async (filePath) => {
-    const res = await fsp.stat(filePath, { bigint: true })
-    return {
-      mtimeMs: res.mtimeMs,
-      mode: Number(res.mode),
-      uid: Number(res.uid),
-      gid: Number(res.gid),
-    }
-  },
-  rename: (oldPath, newPath) => fsp.rename(oldPath, newPath),
-  writeFile: (filePath, content) => fsp.writeFile(filePath, content),
-  readFile: async (filePath: string) => {
-    try {
-      const fileHandle = await fsp.open(filePath, 'r')
-      const stat = await fileHandle.stat({ bigint: true })
-      const fileContent = (await fileHandle.readFile()).toString()
-      await fileHandle.close()
-      return { stat, fileContent }
-    } catch (e: any) {
-      if ('code' in e) {
-        if (e.code === 'ENOENT') {
-          return 'file-not-existing'
-        }
-      }
-      throw e
-    }
-  },
-  chmod: (filePath, mode) => fsp.chmod(filePath, mode),
-  chown: (filePath, uid, gid) => fsp.chown(filePath, uid, gid),
-}
-
-interface Rerun {
-  rerun: true
-  msg?: string
-  event: GeneratorEvent
-}
-function rerun(opts: { msg?: string; event?: GeneratorEvent }): Rerun {
-  const { event, ...rest } = opts
-  return { rerun: true, event: event ?? { type: 'rerun' }, ...rest }
-}
-
-function isRerun(result: unknown): result is Rerun {
-  return (
-    typeof result === 'object' &&
-    result !== null &&
-    'rerun' in result &&
-    result.rerun === true
-  )
-}
 
 export type FileEventType = 'create' | 'update' | 'delete'
 export type FileEvent = {
   type: FileEventType
   path: string
 }
-export type GeneratorEvent = FileEvent | { type: 'rerun' }
+/**
+ * A file event; `rerun` regenerates everything; `build` too, for a run that
+ * does not watch: a route file that does not parse fails it, even one whose
+ * route an earlier read knows (R86).
+ */
+export type GeneratorEvent = FileEvent | { type: 'rerun' } | { type: 'build' }
 
-type FileCacheChange<TCacheEntry extends GeneratorCacheEntry> =
-  | {
-      result: false
-      cacheEntry: TCacheEntry
-    }
-  | { result: true; mtimeMs: bigint; cacheEntry: TCacheEntry }
-  | {
-      result: 'file-not-in-cache'
-    }
-  | {
-      result: 'cannot-stat-file'
-    }
+/**
+ * What a route file contributes to the tree, from its last analysis that
+ * parsed (a file saved mid-edit keeps the facts of its last parse until it
+ * parses again).
+ */
+type FileFacts =
+  | { included: false }
+  | { included: true; props: RouteProps | undefined }
 
-interface GeneratorCacheEntry {
-  mtimeMs: bigint
-  fileContent: string
+/** A file's modification time and size, to tell it unchanged without reading it. */
+interface FileStamp {
+  readonly mtimeMs: number
+  readonly size: number
 }
 
-interface RouteNodeCacheEntry extends GeneratorCacheEntry {
-  routeId: string
-  node: RouteNode
+interface FileState {
+  /** The content last read (or written by the generator). */
+  readonly content: string
+  readonly stamp?: FileStamp
+  /**
+   * What the file's upkeep writes (a scaffold, an id or constructor fix):
+   * written only while the route tree imports the file. A file the tree
+   * leaves out is never edited.
+   */
+  readonly pending?: string
+  /** The facts of the file as its upkeep leaves it. */
+  readonly facts: FileFacts
+  /**
+   * The route the file was kept up for (`roleOf`): a file is analysed again
+   * when the scan gives it another route, its content unchanged (SPEC J1.1).
+   */
+  readonly role: string
+  /**
+   * The file's real path, when it is not the scanned one (a symlinked file
+   * or root): bundlers resolve modules to it, so the registry lists the file
+   * under both.
+   */
+  readonly realPath?: string
+  /** Why the content does not parse (`facts` are those of its last good content). */
+  readonly unparsable?: string
 }
 
-type GeneratorRouteNodeCache = Map</** filePath **/ string, RouteNodeCacheEntry>
-
-interface CrawlingResult {
-  rootRouteNode: RouteNode
-  routeFileResult: Array<RouteNode>
-  acc: HandleNodeAccumulator
+/** What a file's analysis depends on besides its content. */
+function roleOf(node: RouteNode, isRoot: boolean) {
+  return `${isRoot ? 'root' : node._fsRouteType}:${node.routePath ?? ''}`
 }
 
+/**
+ * `TSR_COMPILER_STATS=1` (measurement aid): registers the generator's
+ * per-file facts in the process-global registry `compilerStats()` of
+ * `@tanstack/router-utils/compiler` reads (held through a `WeakRef`).
+ */
+function registerStats(
+  generator: Generator,
+  read: (g: Generator) => Record<string, number>,
+): void {
+  const g = globalThis as Record<symbol, unknown>
+  const key = Symbol.for('tanstack.compiler.stats')
+  const registry = (g[key] ??= []) as Array<unknown>
+  registry.push({
+    label: 'router-generator',
+    owner: new WeakRef(generator),
+    read,
+  })
+}
+
+async function stampOf(file: string): Promise<FileStamp | null> {
+  try {
+    const { mtimeMs, size } = await fsp.stat(file)
+    return { mtimeMs, size }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null
+    }
+    throw error
+  }
+}
+
+const pieceTypes: ReadonlyArray<FsRouteType> = [
+  'loader',
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+]
+
+const routeFileExtension = /\.(tsx|ts|jsx|js|vue)$/
+
+/** The files of a scan: the root route's and every route file's, once each. */
+function filesOf(scan: ScanResult) {
+  return [
+    scan.rootRouteNode,
+    ...scan.routeNodes.filter(
+      (node) => !node.isVirtual && !node.isVirtualParentRoute,
+    ),
+  ]
+}
+
+/** A path as the scan spells it: absolute, `/`-separated. */
+function normalize(file: string) {
+  return replaceBackslash(path.resolve(file))
+}
+
+function isUnder(file: string, dir: string) {
+  return file.startsWith(dir.endsWith('/') ? dir : `${dir}/`)
+}
+
+function sameProps(a: RouteProps | undefined, b: RouteProps | undefined) {
+  if (!a || !b) {
+    return a === b
+  }
+  return (
+    a.unknown === b.unknown &&
+    a.known.size === b.known.size &&
+    [...a.known].every((name) => b.known.has(name))
+  )
+}
+
+/** A route file no earlier read of the generator knows does not parse: it fails a build that does not watch (R86). */
+export class UnparsableRouteFileError extends Error {
+  override name = 'UnparsableRouteFileError'
+}
+
+function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
+  const position =
+    diagnostic.line === undefined
+      ? ''
+      : `:${diagnostic.line}:${diagnostic.column ?? 1}`
+  return `${file}${position}: ${diagnostic.message}`
+}
+
+/**
+ * The route generator of one app: keeps its route files up and its route
+ * tree generated. Events (`run(event)`) are queued and drained by one loop,
+ * a batch at a time, so events that arrive together are handled together
+ * and none is lost (SPEC J1.10). Each batch rebuilds the tree model from
+ * the scan and the facts of each route file, which are kept by path and
+ * replaced whenever the file's content changes; the model itself is never
+ * reused (no route node outlives a generation).
+ */
 export class Generator {
-  /**
-   * why do we have two caches for the route files?
-   * During processing, we READ from the cache and WRITE to the shadow cache.
-   *
-   * After a route file is processed, we write to the shadow cache.
-   * If during processing we bail out and re-run, we don't lose this modification
-   * but still can track whether the file contributed changes and thus the route tree file needs to be regenerated.
-   * After all files are processed, we swap the shadow cache with the main cache and initialize a new shadow cache.
-   * That way we also ensure deleted/renamed files don't stay in the cache forever.
-   */
-  private routeNodeCache: GeneratorRouteNodeCache = new Map()
-  private routeNodeShadowCache: GeneratorRouteNodeCache = new Map()
-
-  private routeTreeFileCache: GeneratorCacheEntry | undefined
-
-  private crawlingResult: CrawlingResult | undefined
   public config: Config
-  public targetTemplate: TargetTemplate
+  private readonly root: string
+  private readonly logger: Logger
+  private readonly plugins: ReadonlyArray<GeneratorPlugin>
+  private readonly style: CodeStyle
+  private readonly routerPackage: string
+  private readonly treeFile: string
+  /** The route tree file as event paths spell it. */
+  private readonly treeKey: string
+  private readonly routesDirectory: string
+  private readonly virtualConfigFile: string | undefined
+  private readonly publisher: AtomicPublisher
 
-  private root: string
-  private routesDirectoryPath: string
-  private sessionId?: string
-  private fs: fs
-  private logger: Logger
-  private generatedRouteTreePath: string
-  private runPromise: Promise<void> | undefined
-  private fileEventQueue: Array<GeneratorEvent> = []
-  private plugins: Array<GeneratorPlugin> = []
-  private static routeGroupPatternRegex = /\(.+\)/
-  private physicalDirectories: Array<string> = []
+  private scan: ScanResult | undefined
+  /** The route files of the last scan (a file a failed read left out of `files` is still known). */
+  private scanned = new Set<string>()
+  private readonly files = new Map<string, FileState>()
+  private model: TreeModel | undefined
+  /** The route tree as last published, to tell an external change of it. */
+  private published:
+    | { content: string; mtimeMs: number; size: number }
+    | undefined
+  /** A batch failed after the scan changed: the next one rebuilds the tree. */
+  private stale = false
+  private routesByFile: GetRoutesByFileMapResult = new Map()
 
-  /**
-   * Token regexes are pre-compiled once here and reused throughout route processing.
-   * We need TWO types of regex for each token because they match against different inputs:
-   *
-   * 1. FILENAME regexes: Match token patterns within full file path strings.
-   *    Example: For file "routes/dashboard.index.tsx", we want to detect ".index."
-   *    Pattern: `[./](?:token)[.]` - matches token bounded by path separators/dots
-   *    Used in: sorting route nodes by file path
-   *
-   * 2. SEGMENT regexes: Match token against a single logical route segment.
-   *    Example: For segment "index" (extracted from path), match the whole segment
-   *    Pattern: `^(?:token)$` - matches entire segment exactly
-   *    Used in: route parsing, determining route types, escape detection
-   *
-   * We cannot reuse one for the other without false positives or missing matches.
-   */
-  private indexTokenFilenameRegex: RegExp
-  private routeTokenFilenameRegex: RegExp
-  private indexTokenSegmentRegex: RegExp
-  private routeTokenSegmentRegex: RegExp
-  private static componentPieceRegex =
-    /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
+  private queue: Array<GeneratorEvent> = []
+  private waiters: Array<{
+    resolve: () => void
+    reject: (error: unknown) => void
+  }> = []
+  private draining: Promise<void> | undefined
 
-  constructor(opts: { config: Config; root: string; fs?: fs }) {
+  constructor(opts: { config: Config; root: string }) {
     this.config = opts.config
-    this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
-    this.fs = opts.fs || DefaultFileSystem
-    this.generatedRouteTreePath = this.getGeneratedRouteTreePath()
-    this.targetTemplate = getTargetTemplate(this.config)
-
-    this.routesDirectoryPath = this.getRoutesDirectoryPath()
-    this.plugins.push(...(opts.config.plugins || []))
-
-    // Create all token regexes once in constructor
-    this.indexTokenFilenameRegex = createTokenRegex(this.config.indexToken, {
-      type: 'filename',
-    })
-    this.routeTokenFilenameRegex = createTokenRegex(this.config.routeToken, {
-      type: 'filename',
-    })
-    this.indexTokenSegmentRegex = createTokenRegex(this.config.indexToken, {
-      type: 'segment',
-    })
-    this.routeTokenSegmentRegex = createTokenRegex(this.config.routeToken, {
-      type: 'segment',
-    })
-
+    this.logger = logging({ disabled: this.config.disableLogging })
+    this.style = styleOf(this.config)
+    this.routerPackage = routerPackageOf(this.config.target)
+    this.treeFile = path.resolve(this.root, this.config.generatedRouteTree)
+    this.treeKey = normalize(this.treeFile)
+    this.routesDirectory = normalize(
+      path.resolve(this.root, this.config.routesDirectory),
+    )
+    this.virtualConfigFile =
+      typeof this.config.virtualRouteConfig === 'string'
+        ? normalize(path.resolve(this.root, this.config.virtualRouteConfig))
+        : undefined
+    this.publisher = new AtomicPublisher(this.config.tmpDir)
+    this.plugins = [...(this.config.plugins ?? [])]
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
     }
-  }
-
-  private getGeneratedRouteTreePath() {
-    const generatedRouteTreePath = path.isAbsolute(
-      this.config.generatedRouteTree,
-    )
-      ? this.config.generatedRouteTree
-      : path.resolve(this.root, this.config.generatedRouteTree)
-
-    const generatedRouteTreeDir = path.dirname(generatedRouteTreePath)
-
-    if (!existsSync(generatedRouteTreeDir)) {
-      mkdirSync(generatedRouteTreeDir, { recursive: true })
+    if (process.env.TSR_COMPILER_STATS === '1') {
+      registerStats(this, (g) => {
+        let contentBytes = 0
+        for (const f of g.files.values()) {
+          contentBytes += f.content.length * 2
+        }
+        return {
+          files: g.files.size,
+          contentBytes,
+          routesByFile: g.routesByFile.size,
+          queue: g.queue.length,
+          waiters: g.waiters.length,
+        }
+      })
     }
-
-    return generatedRouteTreePath
   }
 
-  private getRoutesDirectoryPath() {
-    return path.isAbsolute(this.config.routesDirectory)
-      ? this.config.routesDirectory
-      : path.resolve(this.root, this.config.routesDirectory)
+  /**
+   * Handles a file event (or, without one, regenerates everything) and
+   * resolves once every queued event is handled; rejects when the last
+   * batch failed (no root route, conflicting routes, a failed write).
+   */
+  public run(event?: GeneratorEvent): Promise<void> {
+    if (event && event.type !== 'rerun' && event.type !== 'build') {
+      const file = normalize(event.path)
+      if (this.classify(file) === null) {
+        return Promise.resolve()
+      }
+      this.queue.push({ type: event.type, path: file })
+    } else {
+      this.queue.push(event ?? { type: 'rerun' })
+    }
+    const done = new Promise<void>((resolve, reject) => {
+      this.waiters.push({ resolve, reject })
+    })
+    this.drain()
+    return done
   }
 
+  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot per publishing batch; the plugin context dedupes an unchanged one). */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
-    return new Map(
-      [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
-        filePath,
-        { routeId: cacheEntry.routeId },
-      ]),
-    )
+    return this.routesByFile
   }
 
-  public async run(event?: GeneratorEvent): Promise<void> {
-    if (
-      event &&
-      event.type !== 'rerun' &&
-      !this.isFileRelevantForRouteTreeGeneration(event.path)
-    ) {
-      return
-    }
-    this.fileEventQueue.push(event ?? { type: 'rerun' })
-    // only allow a single run at a time
-    if (this.runPromise) {
-      return this.runPromise
-    }
-
-    this.runPromise = (async () => {
-      do {
-        // synchronously copy and clear the queue since we are going to iterate asynchronously over it
-        // and while we do so, a new event could be put into the queue
-        const tempQueue = this.fileEventQueue
-        this.fileEventQueue = []
-        // if we only have 'update' events in the queue
-        // and we already have the affected files' latest state in our cache, we can exit early
-        const remainingEvents = (
-          await Promise.all(
-            tempQueue.map(async (e) => {
-              if (e.type === 'update') {
-                let cacheEntry: GeneratorCacheEntry | undefined
-                if (e.path === this.generatedRouteTreePath) {
-                  cacheEntry = this.routeTreeFileCache
-                } else {
-                  // we only check the routeNodeCache here
-                  // if the file's state is only up-to-date in the shadow cache we need to re-run
-                  cacheEntry = this.routeNodeCache.get(e.path)
-                }
-                const change = await this.didFileChangeComparedToCache(
-                  { path: e.path },
-                  cacheEntry,
-                )
-                if (change.result === false) {
-                  return null
-                }
-              }
-              return e
-            }),
-          )
-        ).filter((e) => e !== null)
-
-        if (remainingEvents.length === 0) {
-          break
-        }
-
-        try {
-          await this.generatorInternal()
-        } catch (err) {
-          const errArray = !Array.isArray(err) ? [err] : err
-
-          const recoverableErrors = errArray.filter((e) => isRerun(e))
-          if (recoverableErrors.length === errArray.length) {
-            this.fileEventQueue.push(...recoverableErrors.map((e) => e.event))
-            recoverableErrors.forEach((e) => {
-              if (e.msg) {
-                this.logger.info(e.msg)
-              }
-            })
-          } else {
-            const unrecoverableErrors = errArray.filter((e) => !isRerun(e))
-            this.runPromise = undefined
-            throw new Error(
-              unrecoverableErrors.map((e) => (e as Error).message).join(),
-            )
-          }
-        }
-      } while (this.fileEventQueue.length)
-      this.runPromise = undefined
-    })()
-    return this.runPromise
+  /** The tree model of the last generation, after the queued events. */
+  public async getTreeModel(): Promise<TreeModel | undefined> {
+    await this.draining
+    return this.model
   }
 
-  private async generatorInternal() {
-    let writeRouteTreeFile: boolean | 'force' = false
-
-    let getRouteNodesResult: GetRouteNodesResult
-
-    if (this.config.virtualRouteConfig) {
-      getRouteNodesResult = await virtualGetRouteNodes(this.config, this.root, {
-        indexTokenSegmentRegex: this.indexTokenSegmentRegex,
-        routeTokenSegmentRegex: this.routeTokenSegmentRegex,
-      })
-    } else {
-      getRouteNodesResult = await physicalGetRouteNodes(
-        this.config,
-        this.root,
-        {
-          indexTokenSegmentRegex: this.indexTokenSegmentRegex,
-          routeTokenSegmentRegex: this.routeTokenSegmentRegex,
-        },
-      )
-    }
-
-    const {
-      rootRouteNode,
-      routeNodes: beforeRouteNodes,
-      physicalDirectories,
-    } = getRouteNodesResult
-    if (rootRouteNode === undefined) {
-      let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
-      if (!this.config.virtualRouteConfig) {
-        errorMessage += `\nMake sure that you add a "${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${this.config.routesDirectory}/${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}"`
-      }
-      throw new Error(errorMessage)
-    }
-    this.physicalDirectories = physicalDirectories
-
-    await this.handleRootNode(rootRouteNode)
-
-    const preRouteNodes = multiSortBy(beforeRouteNodes, [
-      (d) => (d.routePath === '/' ? -1 : 1),
-      (d) =>
-        d.routePath === undefined
-          ? undefined
-          : countSlashSeparatedParts(d.routePath),
-      (d) => (d.filePath.match(this.indexTokenFilenameRegex) ? 1 : -1),
-      (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
-      (d) => (d.filePath.match(this.routeTokenFilenameRegex) ? -1 : 1),
-      (d) => (d.routePath?.endsWith('/') ? -1 : 1),
-      (d) => d.routePath,
-    ]).filter((d) => {
-      // Exclude the root route itself, but keep component/loader pieces for the root
-      if (d.routePath === `/${rootPathId}`) {
-        return [
-          'component',
-          'errorComponent',
-          'notFoundComponent',
-          'pendingComponent',
-          'loader',
-          'lazy',
-        ].includes(d._fsRouteType)
-      }
-      return true
+  /**
+   * Prints a route tree module of `model` (e.g. a pruned copy) with this
+   * generator's options, some of them overridden.
+   */
+  public printRouteTree(
+    model: TreeModel,
+    overrides: {
+      disableTypes?: boolean
+      header?: ReadonlyArray<string>
+      footer?: ReadonlyArray<string>
+    } = {},
+  ): string {
+    return printTree(model, {
+      style: this.style,
+      disableTypes: overrides.disableTypes ?? this.config.disableTypes,
+      routerPackage: this.routerPackage,
+      treeFile: this.treeFile,
+      addExtensions: this.config.addExtensions,
+      importRoutesUsingAbsolutePaths:
+        this.config.importRoutesUsingAbsolutePaths,
+      header: overrides.header ?? this.config.routeTreeFileHeader,
+      footer: overrides.footer ?? this.footer(),
     })
-
-    const routeFileAllResult = await Promise.allSettled(
-      preRouteNodes
-        // only process routes that are backed by an actual file
-        .filter((n) => !n.isVirtualParentRoute && !n.isVirtual)
-        .map((n) => this.processRouteNodeFile(n)),
-    )
-
-    const rejections = routeFileAllResult.filter(
-      (result) => result.status === 'rejected',
-    )
-    if (rejections.length > 0) {
-      throw rejections.map((e) => e.reason)
-    }
-
-    const routeFileResult = routeFileAllResult.flatMap((result) => {
-      if (result.status === 'fulfilled' && result.value !== null) {
-        if (result.value.shouldWriteTree) {
-          writeRouteTreeFile = true
-        }
-        return result.value.node
-      }
-      return []
-    })
-
-    // reset children in case we re-use a node from the cache
-    routeFileResult.forEach((r) => (r.children = undefined))
-
-    const acc: HandleNodeAccumulator = {
-      routeTree: [],
-      routeNodes: [],
-      routePiecesByPath: {},
-      routeNodesByPath: new Map(),
-    }
-
-    const prefixMap = new RoutePrefixMap(routeFileResult)
-
-    for (const node of routeFileResult) {
-      Generator.handleNode(node, acc, prefixMap, this.config)
-    }
-
-    this.crawlingResult = { rootRouteNode, routeFileResult, acc }
-
-    // this is the first time the generator runs, so read in the route tree file if it exists yet
-    if (!this.routeTreeFileCache) {
-      const routeTreeFile = await this.fs.readFile(this.generatedRouteTreePath)
-      if (routeTreeFile !== 'file-not-existing') {
-        this.routeTreeFileCache = {
-          fileContent: routeTreeFile.fileContent,
-          mtimeMs: routeTreeFile.stat.mtimeMs,
-        }
-      }
-      writeRouteTreeFile = true
-    } else {
-      const routeTreeFileChange = await this.didFileChangeComparedToCache(
-        { path: this.generatedRouteTreePath },
-        this.routeTreeFileCache,
-      )
-      if (routeTreeFileChange.result !== false) {
-        writeRouteTreeFile = 'force'
-        if (routeTreeFileChange.result === true) {
-          const routeTreeFile = await this.fs.readFile(
-            this.generatedRouteTreePath,
-          )
-          if (routeTreeFile !== 'file-not-existing') {
-            this.routeTreeFileCache = {
-              fileContent: routeTreeFile.fileContent,
-              mtimeMs: routeTreeFile.stat.mtimeMs,
-            }
-          }
-        }
-      }
-    }
-
-    if (!writeRouteTreeFile) {
-      // only needs to be done if no other changes have been detected yet
-      // compare shadowCache and cache to identify deleted routes
-      if (this.routeNodeCache.size !== this.routeNodeShadowCache.size) {
-        writeRouteTreeFile = true
-      } else {
-        for (const fullPath of this.routeNodeCache.keys()) {
-          if (!this.routeNodeShadowCache.has(fullPath)) {
-            writeRouteTreeFile = true
-            break
-          }
-        }
-      }
-    }
-
-    if (!writeRouteTreeFile) {
-      this.swapCaches()
-      return
-    }
-
-    const buildResult = this.buildRouteTree({
-      rootRouteNode,
-      acc,
-      routeFileResult,
-    })
-    let routeTreeContent = buildResult.routeTreeContent
-
-    routeTreeContent = this.config.enableRouteTreeFormatting
-      ? await format(routeTreeContent, this.config)
-      : routeTreeContent
-
-    let newMtimeMs: bigint | undefined
-    if (this.routeTreeFileCache) {
-      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
-        // existing route tree file is already up-to-date, don't write it.
-        // When 'force' was set because an external change was detected,
-        // we still re-read and re-check here, but if the generated content
-        // matches we skip the write to avoid triggering another watcher cycle.
-      } else {
-        const newRouteTreeFileStat = await this.safeFileWrite({
-          filePath: this.generatedRouteTreePath,
-          newContent: routeTreeContent,
-          strategy: {
-            type: 'mtime',
-            expectedMtimeMs: this.routeTreeFileCache.mtimeMs,
-          },
-        })
-        newMtimeMs = newRouteTreeFileStat.mtimeMs
-      }
-    } else {
-      const newRouteTreeFileStat = await this.safeFileWrite({
-        filePath: this.generatedRouteTreePath,
-        newContent: routeTreeContent,
-        strategy: {
-          type: 'new-file',
-        },
-      })
-      newMtimeMs = newRouteTreeFileStat.mtimeMs
-    }
-
-    if (newMtimeMs !== undefined) {
-      this.routeTreeFileCache = {
-        fileContent: routeTreeContent,
-        mtimeMs: newMtimeMs,
-      }
-    }
-
-    this.plugins.map((plugin) => {
-      return plugin.onRouteTreeChanged?.({
-        routeTree: buildResult.routeTree,
-        routeNodes: buildResult.routeNodes,
-        acc,
-        rootRouteNode,
-      })
-    })
-    this.swapCaches()
   }
 
-  private swapCaches() {
-    this.routeNodeCache = this.routeNodeShadowCache
-    this.routeNodeShadowCache = new Map()
-  }
-
-  public buildRouteTree(opts: {
-    rootRouteNode: RouteNode
-    acc: HandleNodeAccumulator
-    routeFileResult: Array<RouteNode>
-    config?: Partial<Config>
-  }) {
-    const config = { ...this.config, ...(opts.config || {}) }
-
-    const { rootRouteNode, acc } = opts
-
-    // Use pre-compiled regex if config hasn't been overridden, otherwise create new one
-    const indexTokenSegmentRegex =
-      config.indexToken === this.config.indexToken
-        ? this.indexTokenSegmentRegex
-        : createTokenRegex(config.indexToken, { type: 'segment' })
-
-    const sortedRouteNodes = sortRouteNodes(
-      acc.routeNodes,
-      indexTokenSegmentRegex,
-    )
-
-    const routeImports: Array<ImportDeclaration> = []
-    const virtualRouteNodes: Array<string> = []
-
-    for (const node of sortedRouteNodes) {
-      if (node.isVirtual) {
-        virtualRouteNodes.push(
-          `const ${node.variableName}RouteImport = createFileRoute('${node.routePath}')()`,
-        )
-      } else {
-        routeImports.push(
-          getImportForRouteNode(
-            node,
-            config,
-            this.generatedRouteTreePath,
-            this.root,
-          ),
-        )
-      }
-    }
-
-    const imports: Array<ImportDeclaration> = []
-    if (virtualRouteNodes.length > 0) {
-      imports.push({
-        specifiers: [{ imported: 'createFileRoute' }],
-        source: this.targetTemplate.fullPkg,
-      })
-    }
-    // Add lazyRouteComponent import if there are component pieces
-    let hasComponentPieces = false
-    let hasLoaderPieces = false
-    for (const node of sortedRouteNodes) {
-      const pieces = acc.routePiecesByPath[node.routePath!]
-      if (pieces) {
-        if (
-          pieces.component ||
-          pieces.errorComponent ||
-          pieces.notFoundComponent ||
-          pieces.pendingComponent
-        ) {
-          hasComponentPieces = true
-        }
-        if (pieces.loader) {
-          hasLoaderPieces = true
-        }
-        if (hasComponentPieces && hasLoaderPieces) break
-      }
-    }
-    if (hasComponentPieces || hasLoaderPieces) {
-      const runtimeImport: ImportDeclaration = {
-        specifiers: [],
-        source: this.targetTemplate.fullPkg,
-      }
-      if (hasComponentPieces) {
-        runtimeImport.specifiers.push({ imported: 'lazyRouteComponent' })
-      }
-      if (hasLoaderPieces) {
-        runtimeImport.specifiers.push({ imported: 'lazyFn' })
-      }
-      imports.push(runtimeImport)
-    }
-    const routeTreeConfig = buildRouteTreeConfig(
-      acc.routeTree,
-      config.disableTypes,
-    )
-
-    const createUpdateRoutes = sortedRouteNodes.map((node) => {
-      const pieces = acc.routePiecesByPath[node.routePath!]
-      const loaderNode = pieces?.loader
-      const componentNode = pieces?.component
-      const errorComponentNode = pieces?.errorComponent
-      const notFoundComponentNode = pieces?.notFoundComponent
-      const pendingComponentNode = pieces?.pendingComponent
-      const lazyComponentNode = pieces?.lazy
-
-      return [
-        [
-          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
-            ${[
-              `id: '${node.path}'`,
-              !node.isNonPath ||
-              (node._fsRouteType === 'pathless_layout' && node.cleanedPath)
-                ? `path: '${node.cleanedPath}'`
-                : undefined,
-              `getParentRoute: () => ${findParent(node)}`,
-            ]
-              .filter(Boolean)
-              .join(',')}
-          }${config.disableTypes ? '' : 'as any'})`,
-          loaderNode
-            ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
-                removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(config.routesDirectory, loaderNode.filePath),
-                  ),
-                  config.addExtensions,
-                ),
-              )}'), 'loader') })`
-            : '',
-          componentNode ||
-          errorComponentNode ||
-          notFoundComponentNode ||
-          pendingComponentNode
-            ? `.update({
-                ${(
-                  [
-                    ['component', componentNode],
-                    ['errorComponent', errorComponentNode],
-                    ['notFoundComponent', notFoundComponentNode],
-                    ['pendingComponent', pendingComponentNode],
-                  ] as const
-                )
-                  .filter((d) => d[1])
-                  .map((d) => {
-                    // For .vue files, use 'default' as the export name since Vue SFCs export default
-                    const isVueFile = d[1]!.filePath.endsWith('.vue')
-                    const exportName = isVueFile ? 'default' : d[0]
-                    // Keep .vue extension for Vue files since Vite requires it
-                    const importPath = replaceBackslash(
-                      isVueFile
-                        ? path.relative(
-                            path.dirname(config.generatedRouteTree),
-                            path.resolve(
-                              config.routesDirectory,
-                              d[1]!.filePath,
-                            ),
-                          )
-                        : removeExt(
-                            path.relative(
-                              path.dirname(config.generatedRouteTree),
-                              path.resolve(
-                                config.routesDirectory,
-                                d[1]!.filePath,
-                              ),
-                            ),
-                            config.addExtensions,
-                          ),
-                    )
-                    return `${
-                      d[0]
-                    }: lazyRouteComponent(() => import('./${importPath}'), '${exportName}')`
-                  })
-                  .join('\n,')}
-              })`
-            : '',
-          lazyComponentNode
-            ? (() => {
-                // For .vue files, use 'default' export since Vue SFCs export default
-                const isVueFile = lazyComponentNode.filePath.endsWith('.vue')
-                const exportAccessor = isVueFile ? 'd.default' : 'd.Route'
-                // Keep .vue extension for Vue files since Vite requires it
-                const importPath = replaceBackslash(
-                  isVueFile
-                    ? path.relative(
-                        path.dirname(config.generatedRouteTree),
-                        path.resolve(
-                          config.routesDirectory,
-                          lazyComponentNode.filePath,
-                        ),
-                      )
-                    : removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(
-                            config.routesDirectory,
-                            lazyComponentNode.filePath,
-                          ),
-                        ),
-                        config.addExtensions,
-                      ),
-                )
-                return `.lazy(() => import('./${importPath}').then((d) => ${exportAccessor}))`
-              })()
-            : '',
-        ].join(''),
-      ].join('\n\n')
-    })
-
-    // Generate update for root route if it has component pieces
-    const rootRoutePath = `/${rootPathId}`
-    const rootPieces = acc.routePiecesByPath[rootRoutePath]
-    const rootComponentNode = rootPieces?.component
-    const rootErrorComponentNode = rootPieces?.errorComponent
-    const rootNotFoundComponentNode = rootPieces?.notFoundComponent
-    const rootPendingComponentNode = rootPieces?.pendingComponent
-
-    let rootRouteUpdate = ''
-    if (
-      rootComponentNode ||
-      rootErrorComponentNode ||
-      rootNotFoundComponentNode ||
-      rootPendingComponentNode
-    ) {
-      rootRouteUpdate = `const rootRouteWithChildren = rootRouteImport${
-        rootComponentNode ||
-        rootErrorComponentNode ||
-        rootNotFoundComponentNode ||
-        rootPendingComponentNode
-          ? `.update({
-              ${(
-                [
-                  ['component', rootComponentNode],
-                  ['errorComponent', rootErrorComponentNode],
-                  ['notFoundComponent', rootNotFoundComponentNode],
-                  ['pendingComponent', rootPendingComponentNode],
-                ] as const
-              )
-                .filter((d) => d[1])
-                .map((d) => {
-                  // For .vue files, use 'default' as the export name since Vue SFCs export default
-                  const isVueFile = d[1]!.filePath.endsWith('.vue')
-                  const exportName = isVueFile ? 'default' : d[0]
-                  // Keep .vue extension for Vue files since Vite requires it
-                  const importPath = replaceBackslash(
-                    isVueFile
-                      ? path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
-                        )
-                      : removeExt(
-                          path.relative(
-                            path.dirname(config.generatedRouteTree),
-                            path.resolve(
-                              config.routesDirectory,
-                              d[1]!.filePath,
-                            ),
-                          ),
-                          config.addExtensions,
-                        ),
-                  )
-                  return `${d[0]}: lazyRouteComponent(() => import('./${importPath}'), '${exportName}')`
-                })
-                .join('\n,')}
-            })`
-          : ''
-      }._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`
-    }
-
-    let fileRoutesByPathInterface = ''
-    let fileRoutesByFullPath = ''
-
-    if (!config.disableTypes) {
-      const routeNodesByFullPath = createRouteNodesByFullPath(acc.routeNodes)
-      const routeNodesByTo = createRouteNodesByTo(acc.routeNodes)
-      const routeNodesById = createRouteNodesById(acc.routeNodes)
-
-      fileRoutesByFullPath = [
-        `export interface FileRoutesByFullPath {
-${[...routeNodesByFullPath.entries()]
-  .filter(([fullPath]) => fullPath)
-  .map(([fullPath, routeNode]) => {
-    return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-  })}
-}`,
-        `export interface FileRoutesByTo {
-${[...routeNodesByTo.entries()]
-  .filter(([to]) => to)
-  .map(([to, routeNode]) => {
-    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-  })}
-}`,
-        `export interface FileRoutesById {
-'${rootRouteId}': typeof rootRouteImport,
-${[...routeNodesById.entries()].map(([id, routeNode]) => {
-  return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-})}
-}`,
-        `export interface FileRouteTypes {
-fileRoutesByFullPath: FileRoutesByFullPath
-fullPaths: ${
-          acc.routeNodes.length > 0
-            ? [...routeNodesByFullPath.keys()]
-                .filter((fullPath) => fullPath)
-                .map((fullPath) => `'${fullPath}'`)
-                .join('|')
-            : 'never'
-        }
-fileRoutesByTo: FileRoutesByTo
-to: ${
-          acc.routeNodes.length > 0
-            ? [...routeNodesByTo.keys()]
-                .filter((to) => to)
-                .map((to) => `'${to}'`)
-                .join('|')
-            : 'never'
-        }
-id: ${[`'${rootRouteId}'`, ...[...routeNodesById.keys()].map((id) => `'${id}'`)].join('|')}
-fileRoutesById: FileRoutesById
-}`,
-        `export interface RootRouteChildren {
-${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
-}`,
-      ].join('\n')
-
-      fileRoutesByPathInterface = buildFileRoutesByPathInterface({
-        module: this.targetTemplate.fullPkg,
-        interfaceName: 'FileRoutesByPath',
-        routeNodes: sortedRouteNodes,
-        config,
-      })
-    }
-
-    const routeTree = [
-      `const rootRouteChildren${config.disableTypes ? '' : `: RootRouteChildren`} = {
-  ${acc.routeTree
-    .map(
-      (child) =>
-        `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`,
-    )
-    .join(',')}
-}`,
-      rootRouteUpdate
-        ? rootRouteUpdate.replace(
-            'const rootRouteWithChildren = ',
-            'export const routeTree = ',
-          )
-        : `export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
-    ].join('\n')
-
-    checkRouteFullPathUniqueness(
-      sortedRouteNodes.filter(
-        (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
-      ),
-      config,
-    )
-
-    let mergedImports = mergeImportDeclarations(imports)
-    if (config.disableTypes) {
-      mergedImports = mergedImports.filter((d) => d.importKind !== 'type')
-    }
-
-    const importStatements = mergedImports.map(buildImportString)
-
-    const rootRouteImport = getImportForRouteNode(
-      rootRouteNode,
-      config,
-      this.generatedRouteTreePath,
-      this.root,
-    )
-    routeImports.unshift(rootRouteImport)
-
-    let footer: Array<string> = []
-    if (config.routeTreeFileFooter) {
-      if (Array.isArray(config.routeTreeFileFooter)) {
-        footer = config.routeTreeFileFooter
-      } else {
-        footer = config.routeTreeFileFooter()
-      }
-    }
-    const routeTreeContent = [
-      ...config.routeTreeFileHeader,
-      `// This file was automatically generated by TanStack Router.
-// You should NOT make any changes in this file as it will be overwritten.
-// Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
-      [...importStatements].join('\n'),
-      mergeImportDeclarations(routeImports).map(buildImportString).join('\n'),
-      virtualRouteNodes.join('\n'),
-      createUpdateRoutes.join('\n'),
-      fileRoutesByFullPath,
-      fileRoutesByPathInterface,
-      routeTreeConfig.join('\n'),
-      routeTree,
-      ...footer,
-    ]
-      .filter(Boolean)
-      .join('\n\n')
+  /**
+   * What a watcher must watch for this generator: the routes directory and
+   * every `physical()` mount (for created, changed and deleted files), and
+   * the route tree and virtual route config files.
+   */
+  public watchTargets(): { directories: Array<string>; files: Array<string> } {
     return {
-      routeTreeContent,
-      routeTree: acc.routeTree,
-      routeNodes: acc.routeNodes,
+      directories: [
+        this.routesDirectory,
+        ...(this.scan?.physicalDirectories ?? []).filter(
+          (dir) => !isUnder(dir, this.routesDirectory),
+        ),
+      ],
+      files: [
+        this.treeKey,
+        ...(this.virtualConfigFile ? [this.virtualConfigFile] : []),
+      ],
     }
   }
 
-  private async processRouteNodeFile(node: RouteNode): Promise<{
-    shouldWriteTree: boolean
-    cacheEntry: RouteNodeCacheEntry
-    node: RouteNode
-  } | null> {
-    const result = await this.isRouteFileCacheFresh(node)
+  private footer(): Array<string> {
+    const footer = this.config.routeTreeFileFooter
+    if (!footer) {
+      return []
+    }
+    return Array.isArray(footer) ? footer : footer()
+  }
 
-    if (result.status === 'fresh') {
-      return {
-        node: result.cacheEntry.node,
-        shouldWriteTree: false,
-        cacheEntry: result.cacheEntry,
+  /**
+   * What a (normalized) file is to the generator: the route tree, a virtual
+   * route config, a route file of the last scan (`known`), a route file the
+   * scan may find (`new`), or nothing of its (null).
+   */
+  private classify(file: string): 'tree' | 'config' | 'known' | 'new' | null {
+    if (file === this.treeKey) {
+      return 'tree'
+    }
+    if (
+      file === this.virtualConfigFile ||
+      isVirtualConfigFile(path.basename(file))
+    ) {
+      return 'config'
+    }
+    if (this.files.has(file) || this.scanned.has(file)) {
+      return 'known'
+    }
+    if (!routeFileExtension.test(file)) {
+      return null
+    }
+    return isUnder(file, this.routesDirectory) ||
+      (this.scan?.physicalDirectories ?? []).some((dir) => isUnder(file, dir))
+      ? 'new'
+      : null
+  }
+
+  private drain() {
+    if (this.draining) {
+      return
+    }
+    this.draining = (async () => {
+      // Events reported together (a rename's delete and create) join one batch
+      await Promise.resolve()
+      let failure: { error: unknown } | undefined
+      while (this.queue.length) {
+        const batch = this.queue.splice(0)
+        try {
+          await this.processBatch(batch)
+          failure = undefined
+        } catch (error) {
+          failure = { error }
+        }
+      }
+      const waiters = this.waiters.splice(0)
+      this.draining = undefined
+      for (const waiter of waiters) {
+        if (failure) {
+          waiter.reject(failure.error)
+        } else {
+          waiter.resolve()
+        }
+      }
+    })()
+  }
+
+  private async processBatch(batch: Array<GeneratorEvent>) {
+    let structural = !this.scan || this.stale
+    let build = false
+    const changed = new Set<string>()
+    /** The files the batch's events name: read whatever their stamps say. */
+    const named = new Set<string>()
+    for (const event of batch) {
+      if (event.type === 'rerun' || event.type === 'build') {
+        structural = true
+        build ||= event.type === 'build'
+        continue
+      }
+      named.add(event.path)
+      const kind = this.classify(event.path)
+      if (kind === 'tree') {
+        // Mostly our own write coming back: the tree is printed again only
+        // when the file on disk is no longer the one published (below)
+        continue
+      }
+      if (event.type !== 'update' || kind !== 'known') {
+        // A file added or removed, a virtual route config edited, or a file
+        // the last scan did not see: the routes are scanned again.
+        structural = true
+      } else {
+        changed.add(event.path)
       }
     }
 
-    const previousCacheEntry = result.cacheEntry
+    // What the re-read files changed: the tree's routes, or only the
+    // recorded options of some
+    const changes = { routes: false, props: false }
+    const consider = (key: string, before: FileState | undefined) => {
+      const after = this.files.get(key)
+      if (after?.facts.included !== before?.facts.included) {
+        changes.routes = true
+      } else if (
+        after?.facts.included &&
+        before?.facts.included &&
+        !sameProps(after.facts.props, before.facts.props)
+      ) {
+        changes.props = true
+      }
+    }
 
-    const existingRouteFile = await this.fs.readFile(node.fullPath)
-    if (existingRouteFile === 'file-not-existing') {
-      throw new Error(`⚠️ File ${node.fullPath} does not exist`)
+    if (structural) {
+      this.stale = true
+      const scan = await scanRoutes(this.config, this.root)
+      this.scan = scan
+      const nodes = filesOf(scan)
+      const keys = new Set(nodes.map((node) => node.fullPath))
+      this.scanned = keys
+      for (const key of [...this.files.keys()]) {
+        if (!keys.has(key)) {
+          this.files.delete(key)
+        }
+      }
+      await Promise.all(
+        nodes.map((node) =>
+          this.updateFile(node, {
+            isRoot: node === scan.rootRouteNode,
+            force: named.has(node.fullPath),
+          }),
+        ),
+      )
+      changes.routes = true
+    } else {
+      const byKey = new Map(
+        filesOf(this.scan!).map((node) => [node.fullPath, node]),
+      )
+      await Promise.all(
+        [...changed].map(async (key) => {
+          const node = byKey.get(key)
+          if (!node) {
+            return
+          }
+          const before = this.files.get(key)
+          await this.updateFile(node, {
+            isRoot: node === this.scan!.rootRouteNode,
+            force: true,
+          })
+          consider(key, before)
+        }),
+      )
+    }
+
+    // a build has no last good route: it fails before anything is written
+    if (build) {
+      const broken = [...this.files].filter(([, state]) => state.unparsable)
+      if (broken.length > 0) {
+        throw new UnparsableRouteFileError(
+          broken
+            .map(
+              ([file, state]) =>
+                `Cannot generate the route of ${file}:\n${state.unparsable}`,
+            )
+            .join('\n'),
+        )
+      }
+    }
+
+    // The tree's routes are as before (no tree rebuild, no print), unless
+    // the tree on disk is no longer the one published.
+    if (!changes.routes && (await this.treeOnDiskIsPublished())) {
+      if (changes.props) {
+        this.rebuildModel()
+        this.notifyPlugins()
+      }
+      await this.writePending()
+      return
+    }
+
+    // (until published: a failure here rebuilds on the next batch)
+    this.stale = true
+    this.rebuildModel()
+    await this.writePending()
+    await this.publishTree()
+    this.routesByFile = this.computeRoutesByFile()
+    this.stale = false
+    this.notifyPlugins()
+  }
+
+  private rebuildModel() {
+    const scan = this.scan!
+    const factsOf = (node: RouteNode) => this.files.get(node.fullPath)?.facts
+    const model = buildTreeModel({
+      scan,
+      config: this.config,
+      isIncluded: (node) => factsOf(node)?.included ?? false,
+      propsOf: (node) => {
+        const facts = factsOf(node)
+        return facts?.included ? facts.props : undefined
+      },
+    })
+    checkRouteFullPathUniqueness(model)
+    this.model = model
+  }
+
+  private notifyPlugins() {
+    for (const plugin of this.plugins) {
+      plugin.onRouteTreeChanged?.({ model: this.model!, generator: this })
+    }
+  }
+
+  /**
+   * Writes the upkeep of the route files the tree imports (SPEC J1.1, J1.3):
+   * the tree decides which files are routes, so a scanned file it leaves out
+   * (a `__root/route.tsx` beside `__root.tsx`, a lazy file of the root route,
+   * an unused duplicate) is never edited.
+   */
+  private async writePending() {
+    const treeFiles = importedFiles(this.model!)
+    await Promise.all(
+      [...this.files].map(async ([file, state]) => {
+        if (state.pending === undefined || !treeFiles.has(file)) {
+          return
+        }
+        if (state.content === '' && file === this.model!.root.file) {
+          this.logger.log(`🟡 Creating ${file}`)
+        }
+        try {
+          await this.publisher.write(file, state.pending, state.content)
+        } catch (error) {
+          if (error instanceof ConcurrentEditError) {
+            // Edited while we kept it up: handled again with its new content
+            this.queue.push({ type: 'update', path: file })
+            return
+          }
+          throw error
+        }
+        this.files.set(file, {
+          ...state,
+          content: state.pending,
+          pending: undefined,
+          // (the stamp of what it wrote)
+          stamp: (await stampOf(file)) ?? undefined,
+        })
+      }),
+    )
+  }
+
+  private async publishTree() {
+    let content = this.printRouteTree(this.model!)
+    if (this.config.enableRouteTreeFormatting === true) {
+      content = await formatWithPrettier(content, this.style)
+    }
+    // Compared with the disk, not with what was written last: a deleted or
+    // edited tree is written again (unchanged since published: no read).
+    const onDisk = (await this.treeOnDiskIsPublished())
+      ? this.published!.content
+      : await readIfExists(this.treeFile)
+    if (onDisk !== content) {
+      await this.publisher.write(this.treeFile, content)
+    }
+    const stat = await fsp.stat(this.treeFile)
+    this.published = { content, mtimeMs: stat.mtimeMs, size: stat.size }
+  }
+
+  private async treeOnDiskIsPublished() {
+    if (!this.published) {
+      return false
+    }
+    const stat = await fsp.stat(this.treeFile).catch(() => null)
+    return (
+      stat !== null &&
+      stat.mtimeMs === this.published.mtimeMs &&
+      stat.size === this.published.size
+    )
+  }
+
+  /**
+   * Reads a route file and, when its content changed since the last read,
+   * scaffolds or keeps it up and records its facts. A file that does not
+   * parse keeps the facts of its last good content (its route stays), and
+   * is reported with the position of the problem; without an earlier read,
+   * the run fails naming it.
+   */
+  private async updateFile(
+    node: RouteNode,
+    { isRoot, force }: { isRoot: boolean; force: boolean },
+  ) {
+    const key = node.fullPath
+    const file = node.fullPath
+    const role = roleOf(node, isRoot)
+    const known = this.files.get(key)
+    const previous = known?.role === role ? known : undefined
+    // (stamped before the read: a change after it shows in the next stamp)
+    const stamp = await stampOf(file)
+    if (
+      !force &&
+      stamp &&
+      previous?.stamp?.mtimeMs === stamp.mtimeMs &&
+      previous.stamp.size === stamp.size
+    ) {
+      return
+    }
+    const content = stamp ? await readIfExists(file) : null
+    if (content === null) {
+      if (isRoot) {
+        throw new Error(`⚠️ expected root route to exist at ${file}`)
+      }
+      this.files.set(key, { content: '', facts: { included: false }, role })
+      return
+    }
+    const real = replaceBackslash(await fsp.realpath(file).catch(() => file))
+    const realPath = real === file ? undefined : real
+    if (previous && previous.content === content) {
+      this.files.set(key, { ...previous, stamp: stamp!, realPath })
+      return
+    }
+    const state = this.factsOf(node, isRoot, content, known)
+    this.files.set(key, { ...state, role, stamp: stamp!, realPath })
+  }
+
+  private factsOf(
+    node: RouteNode,
+    isRoot: boolean,
+    content: string,
+    previous: FileState | undefined,
+  ): Omit<FileState, 'role'> {
+    const file = node.fullPath
+    const isVue = file.endsWith('.vue')
+    const isPiece = pieceTypes.includes(node._fsRouteType)
+    const routeId = node.routePath ?? ''
+
+    if (isRoot) {
+      if (content !== '') {
+        // (a single-file component is never parsed: its script is not its text)
+        const errors = isVue ? [] : routeFileErrors(content, file)
+        return errors.length > 0
+          ? this.unparsableFacts(file, content, errors, previous)
+          : { content, facts: { included: true, props: undefined } }
+      }
+      const scaffold = scaffoldRouteFile({
+        target: this.config.target,
+        kind: 'root',
+        routeId: rootPathId,
+        noJsx: /\.[mc]?ts$/.test(file),
+        style: this.style,
+      })
+      return {
+        content,
+        pending: scaffold,
+        facts: { included: true, props: undefined },
+      }
+    }
+
+    if (content === '' && (isVue || isPiece)) {
+      // Empty pieces stay empty and unused (SPEC J1.3, J1.17)
+      return { content, facts: { included: false } }
+    }
+    if (isVue) {
+      // Single-file components are pieces the generator never edits
+      return { content, facts: { included: true, props: undefined } }
     }
 
     if (node.routePath) {
       validateRouteParams(node.routePath, node.filePath, this.logger)
     }
 
-    const updatedCacheEntry: RouteNodeCacheEntry = {
-      fileContent: existingRouteFile.fileContent,
-      mtimeMs: existingRouteFile.stat.mtimeMs,
-      routeId: node.routePath ?? '$$TSR_NO_ROUTE_PATH_ASSIGNED$$',
-      node,
-    }
-
-    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
-
-    let shouldWriteRouteFile = false
-    let shouldWriteTree = false
-    // now we need to either scaffold the file or transform it
-    if (!existingRouteFile.fileContent) {
-      shouldWriteRouteFile = true
-      shouldWriteTree = true
-      // Creating a new lazy route file
-      if (node._fsRouteType === 'lazy') {
-        const tLazyRouteTemplate = this.targetTemplate.lazyRoute
-        // Check by default check if the user has a specific lazy route template
-        // If not, check if the user has a route template and use that instead
-        updatedCacheEntry.fileContent = await fillTemplate(
-          this.config,
-          (this.config.customScaffolding?.lazyRouteTemplate ||
-            this.config.customScaffolding?.routeTemplate) ??
-            tLazyRouteTemplate.template(),
-          {
-            tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
-            tsrExportStart:
-              tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
-            tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
-          },
-        )
-      } else if (
-        // Creating a new normal route file
-        (['layout', 'static'] satisfies Array<FsRouteType>).some(
-          (d) => d === node._fsRouteType,
-        ) ||
-        (
-          [
-            'component',
-            'pendingComponent',
-            'errorComponent',
-            'notFoundComponent',
-            'loader',
-          ] satisfies Array<FsRouteType>
-        ).every((d) => d !== node._fsRouteType)
-      ) {
-        const tRouteTemplate = this.targetTemplate.route
-        updatedCacheEntry.fileContent = await fillTemplate(
-          this.config,
-          this.config.customScaffolding?.routeTemplate ??
-            tRouteTemplate.template(),
-          {
-            tsrImports: tRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
-            tsrExportStart:
-              tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
-            tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
-          },
-        )
-      } else {
-        return null
-      }
-    }
-
-    // Check if this is a Vue component file
-    // Vue SFC files (.vue) don't need transformation as they can't have a Route export
-    const isVueFile = node.filePath.endsWith('.vue')
-
-    if (!isVueFile) {
-      // transform the file
-      const transformResult = await transform({
-        source: updatedCacheEntry.fileContent,
-        filename: node.fullPath,
-        ctx: {
-          target: this.config.target,
-          routeId: escapedRoutePath,
-          lazy: node._fsRouteType === 'lazy',
-        },
-        node,
+    const lazy = node._fsRouteType === 'lazy'
+    let source = content
+    if (content === '') {
+      const custom = this.config.customScaffolding
+      source = scaffoldRouteFile({
+        target: this.config.target,
+        kind: lazy ? 'lazy' : 'route',
+        routeId,
+        noJsx: /\.[mc]?ts$/.test(file),
+        style: this.style,
+        template: lazy
+          ? (custom?.lazyRouteTemplate ?? custom?.routeTemplate)
+          : custom?.routeTemplate,
       })
+    }
 
-      if (transformResult.result === 'no-route-export') {
-        const fileName = path.basename(node.fullPath)
-        const dirName = path.dirname(node.fullPath)
-        const ignorePrefix = this.config.routeFileIgnorePrefix
-        const ignorePattern = this.config.routeFileIgnorePattern
-        const suggestedFileName = `${ignorePrefix}${fileName}`
-        const suggestedFullPath = path.join(dirName, suggestedFileName)
+    const analysis = analyzeRouteFile(source, file, {
+      routeId,
+      lazy,
+      routerPackage: this.routerPackage,
+      style: this.style,
+    })
 
-        let message = `Warning: Route file "${node.fullPath}" does not export a Route. This file will not be included in the route tree.`
-        message += `\n\nIf this file is not intended to be a route, you can exclude it using one of these options:`
-        message += `\n  1. Rename the file to "${suggestedFullPath}" (prefix with "${ignorePrefix}")`
-        message += `\n  2. Use 'routeFileIgnorePattern' in your config to match this file`
-        message += `\n\nCurrent configuration:`
-        message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`
-        message += `\n  routeFileIgnorePattern: ${ignorePattern ? `"${ignorePattern}"` : 'undefined'}`
+    if (analysis.kind === 'error') {
+      return this.unparsableFacts(file, content, analysis.diagnostics, previous)
+    }
 
-        this.logger.warn(message)
-        return null
-      }
-      if (transformResult.result === 'error') {
-        throw new Error(
-          `Error transforming route file ${node.fullPath}: ${transformResult.error}`,
-        )
-      }
-      if (transformResult.result === 'modified') {
-        updatedCacheEntry.fileContent = transformResult.output
-        shouldWriteRouteFile = true
+    if (analysis.kind === 'no-route') {
+      this.warnNoRouteExport(file)
+      return {
+        content,
+        pending: source !== content ? source : undefined,
+        facts: { included: false },
       }
     }
 
-    for (const plugin of this.plugins) {
-      plugin.afterTransform?.({ node, prevNode: previousCacheEntry?.node })
+    for (const diagnostic of analysis.diagnostics) {
+      console.warn(formatDiagnostic(file, diagnostic))
     }
-
-    // file was changed
-    if (shouldWriteRouteFile) {
-      const stats = await this.safeFileWrite({
-        filePath: node.fullPath,
-        newContent: updatedCacheEntry.fileContent,
-        strategy: {
-          type: 'mtime',
-          expectedMtimeMs: updatedCacheEntry.mtimeMs,
-          expectedContent: existingRouteFile.fileContent,
-        },
-      })
-      updatedCacheEntry.mtimeMs = stats.mtimeMs
-    }
-
-    this.routeNodeShadowCache.set(node.fullPath, updatedCacheEntry)
+    const output = analysis.output ?? source
     return {
-      node,
-      shouldWriteTree,
-      cacheEntry: updatedCacheEntry,
+      content,
+      pending: output !== content ? output : undefined,
+      facts: { included: true, props: analysis.props },
     }
   }
 
-  private async didRouteFileChangeComparedToCache(
-    file: {
-      path: string
-      mtimeMs?: bigint
-    },
-    cache: 'routeNodeCache' | 'routeNodeShadowCache',
-  ): Promise<FileCacheChange<RouteNodeCacheEntry>> {
-    const cacheEntry = this[cache].get(file.path)
-    return this.didFileChangeComparedToCache(file, cacheEntry)
-  }
-
-  private async didFileChangeComparedToCache<
-    TCacheEntry extends GeneratorCacheEntry,
-  >(
-    file: {
-      path: string
-      mtimeMs?: bigint
-    },
-    cacheEntry: TCacheEntry | undefined,
-  ): Promise<FileCacheChange<TCacheEntry>> {
-    // for now we rely on the modification time of the file
-    // to determine if the file has changed
-    // we could also compare the file content but this would be slower as we would have to read the file
-
-    if (!cacheEntry) {
-      return { result: 'file-not-in-cache' }
-    }
-    let mtimeMs = file.mtimeMs
-
-    if (mtimeMs === undefined) {
-      try {
-        const currentStat = await this.fs.stat(file.path)
-        mtimeMs = currentStat.mtimeMs
-      } catch {
-        return { result: 'cannot-stat-file' }
-      }
-    }
-    return { result: mtimeMs !== cacheEntry.mtimeMs, mtimeMs, cacheEntry }
-  }
-
-  private async safeFileWrite(opts: {
-    filePath: string
-    newContent: string
-    strategy:
-      | {
-          type: 'mtime'
-          expectedMtimeMs: bigint
-          // An in-place save can truncate and rewrite a file within one mtime
-          // tick, so user-authored files also compare the content.
-          expectedContent?: string
-        }
-      | {
-          type: 'new-file'
-        }
-  }) {
-    const tmpPath = this.getTempFileName(opts.filePath)
-    await this.fs.writeFile(tmpPath, opts.newContent)
-
-    if (opts.strategy.type === 'mtime') {
-      const { expectedMtimeMs, expectedContent } = opts.strategy
-      const beforeStat = await this.fs.stat(opts.filePath)
-      const newFileState = await this.fs.stat(tmpPath)
-      if (newFileState.mode !== beforeStat.mode) {
-        await this.fs.chmod(tmpPath, beforeStat.mode)
-      }
-      if (
-        newFileState.uid !== beforeStat.uid ||
-        newFileState.gid !== beforeStat.gid
-      ) {
-        try {
-          await this.fs.chown(tmpPath, beforeStat.uid, beforeStat.gid)
-        } catch (err) {
-          if (
-            typeof err === 'object' &&
-            err !== null &&
-            'code' in err &&
-            (err as any).code === 'EPERM'
-          ) {
-            console.warn(
-              `[safeFileWrite] chown failed: ${(err as any).message}`,
-            )
-          } else {
-            throw err
-          }
-        }
-      }
-      // Check right before the rename so that changes made while the
-      // temporary file was prepared are not overwritten.
-      let changed: boolean
-      if (expectedContent === undefined) {
-        const current = await this.fs.stat(opts.filePath)
-        changed = current.mtimeMs !== expectedMtimeMs
-      } else {
-        const current = await this.fs.readFile(opts.filePath)
-        changed =
-          current === 'file-not-existing' ||
-          current.stat.mtimeMs !== expectedMtimeMs ||
-          current.fileContent !== expectedContent
-      }
-      if (changed) {
-        throw rerun({
-          msg: `File ${opts.filePath} was modified by another process during processing.`,
-          event: { type: 'update', path: opts.filePath },
-        })
-      }
-    } else {
-      if (await checkFileExists(opts.filePath)) {
-        throw rerun({
-          msg: `File ${opts.filePath} already exists. Cannot overwrite.`,
-          event: { type: 'update', path: opts.filePath },
-        })
-      }
-    }
-
-    await this.fs.rename(tmpPath, opts.filePath)
-
-    // stat the target file AFTER rename so the cached mtime matches
-    // what the filesystem reports for the actual file path.
-    // Previously we stat'd the temp file before rename, but rename()
-    // can assign a different mtime to the target on some filesystems,
-    // causing the cache to be permanently stale.
-    const stat = await this.fs.stat(opts.filePath)
-
-    return stat
-  }
-
-  private getTempFileName(filePath: string) {
-    const absPath = path.resolve(filePath)
-    const hash = crypto.createHash('md5').update(absPath).digest('hex')
-    // lazy initialize sessionId to only create tmpDir when it is first needed
-    if (!this.sessionId) {
-      // ensure the directory exists
-      mkdirSync(this.config.tmpDir, { recursive: true })
-      this.sessionId = crypto.randomBytes(4).toString('hex')
-    }
-    return path.join(this.config.tmpDir, `${this.sessionId}-${hash}`)
-  }
-
-  private async isRouteFileCacheFresh(node: RouteNode): Promise<
-    | {
-        status: 'fresh'
-        cacheEntry: RouteNodeCacheEntry
-      }
-    | { status: 'stale'; cacheEntry?: RouteNodeCacheEntry }
-  > {
-    const fileChangedCache = await this.didRouteFileChangeComparedToCache(
-      { path: node.fullPath },
-      'routeNodeCache',
-    )
-    if (fileChangedCache.result === false) {
-      this.routeNodeShadowCache.set(node.fullPath, fileChangedCache.cacheEntry)
-      return {
-        status: 'fresh',
-        cacheEntry: fileChangedCache.cacheEntry,
-      }
-    }
-    if (fileChangedCache.result === 'cannot-stat-file') {
-      throw new Error(`⚠️ expected route file to exist at ${node.fullPath}`)
-    }
-    const mtimeMs =
-      fileChangedCache.result === true ? fileChangedCache.mtimeMs : undefined
-
-    const shadowCacheFileChange = await this.didRouteFileChangeComparedToCache(
-      { path: node.fullPath, mtimeMs },
-      'routeNodeShadowCache',
-    )
-
-    if (shadowCacheFileChange.result === 'cannot-stat-file') {
-      throw new Error(`⚠️ expected route file to exist at ${node.fullPath}`)
-    }
-
-    if (shadowCacheFileChange.result === false) {
-      // shadow cache has latest file state already
-      if (fileChangedCache.result === true) {
-        return {
-          status: 'fresh',
-          cacheEntry: shadowCacheFileChange.cacheEntry,
-        }
-      }
-    }
-
-    if (fileChangedCache.result === 'file-not-in-cache') {
-      return {
-        status: 'stale',
-      }
-    }
-    return { status: 'stale', cacheEntry: fileChangedCache.cacheEntry }
-  }
-
-  private async handleRootNode(node: RouteNode) {
-    const result = await this.isRouteFileCacheFresh(node)
-
-    if (result.status === 'fresh') {
-      this.routeNodeShadowCache.set(node.fullPath, result.cacheEntry)
-    }
-    const rootNodeFile = await this.fs.readFile(node.fullPath)
-    if (rootNodeFile === 'file-not-existing') {
-      throw new Error(`⚠️ expected root route to exist at ${node.fullPath}`)
-    }
-
-    const updatedCacheEntry: RouteNodeCacheEntry = {
-      fileContent: rootNodeFile.fileContent,
-      mtimeMs: rootNodeFile.stat.mtimeMs,
-      routeId: node.routePath ?? '$$TSR_NO_ROOT_ROUTE_PATH_ASSIGNED$$',
-      node,
-    }
-
-    // scaffold the root route
-    if (!rootNodeFile.fileContent) {
-      const rootTemplate = this.targetTemplate.rootRoute
-      const rootRouteContent = await fillTemplate(
-        this.config,
-        rootTemplate.template(),
-        {
-          tsrImports: rootTemplate.imports.tsrImports(),
-          tsrPath: rootPathId,
-          tsrExportStart: rootTemplate.imports.tsrExportStart(),
-          tsrExportEnd: rootTemplate.imports.tsrExportEnd(),
-        },
+  /**
+   * A route file that does not parse. Nothing of this generator knows its
+   * route (a cold run, a dev server's first generation, a file created
+   * broken): the run fails naming it and leaves the route tree on disk as it
+   * is, as on main (a route never silently drops out of a build). Else it
+   * keeps the facts of its last good content and is reported; a build fails
+   * on it (`build`).
+   */
+  private unparsableFacts(
+    file: string,
+    content: string,
+    diagnostics: ReadonlyArray<FileDiagnostic>,
+    previous: FileState | undefined,
+  ): Omit<FileState, 'role'> {
+    const messages = diagnostics.map((d) => formatDiagnostic(file, d))
+    if (!previous) {
+      throw new UnparsableRouteFileError(
+        `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
       )
-
-      this.logger.log(`🟡 Creating ${node.fullPath}`)
-      const stats = await this.safeFileWrite({
-        filePath: node.fullPath,
-        newContent: rootRouteContent,
-        strategy: {
-          type: 'mtime',
-          expectedMtimeMs: rootNodeFile.stat.mtimeMs,
-          expectedContent: rootNodeFile.fileContent,
-        },
-      })
-      updatedCacheEntry.fileContent = rootRouteContent
-      updatedCacheEntry.mtimeMs = stats.mtimeMs
     }
-
-    this.routeNodeShadowCache.set(node.fullPath, updatedCacheEntry)
-  }
-
-  public async getCrawlingResult(): Promise<CrawlingResult | undefined> {
-    await this.runPromise
-    return this.crawlingResult
-  }
-
-  private static handleNode(
-    node: RouteNode,
-    acc: HandleNodeAccumulator,
-    prefixMap: RoutePrefixMap,
-    config?: Config,
-  ) {
-    let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
-
-    // Check routeNodesByPath for a closer parent that may not be in prefixMap.
-    //
-    // Why: The prefixMap excludes lazy routes by design. When lazy-only routes are
-    // nested inside a pathless layout, the virtual route created from the lazy file
-    // won't be in the prefixMap, but it will be in routeNodesByPath.
-    //
-    // Example: Given files _layout/path.lazy.tsx and _layout/path.index.lazy.tsx:
-    //   - prefixMap contains: /_layout (from route.tsx)
-    //   - routeNodesByPath contains: /_layout AND /_layout/path (virtual from lazy)
-    //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
-    //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
-    //
-    // We walk up the path segments to find the closest registered parent. This handles
-    // cases where multiple path segments (e.g., $a/$b) don't have intermediate routes.
-    if (node.routePath) {
-      let searchPath = node.routePath
-      while (searchPath.length > 0) {
-        const lastSlash = searchPath.lastIndexOf('/')
-        if (lastSlash <= 0) break
-
-        searchPath = searchPath.substring(0, lastSlash)
-        const candidate = acc.routeNodesByPath.get(searchPath)
-        if (candidate && candidate.routePath !== node.routePath) {
-          // Found a parent in routeNodesByPath
-          // If it's different from what prefixMap found AND is a closer match, use it
-          if (candidate !== parentRoute) {
-            // Check if this candidate is a closer parent than what prefixMap found
-            // (longer path prefix means closer parent)
-            if (
-              !parentRoute ||
-              (candidate.routePath?.length ?? 0) >
-                (parentRoute.routePath?.length ?? 0)
-            ) {
-              parentRoute = candidate
-            }
-          }
-          break
-        }
-      }
+    for (const message of messages) {
+      console.warn(message)
     }
-
-    // Virtual routes may have an explicit parent from virtual config.
-    // If we can find that exact parent, use it to prevent auto-nesting siblings
-    // based on path prefix matching (#5822, #5431).
-    if (node._virtualParentRoutePath !== undefined) {
-      const explicitParent = acc.routeNodesByPath.get(
-        node._virtualParentRoutePath,
-      )
-      if (explicitParent) {
-        parentRoute = explicitParent
-      } else if (node._virtualParentRoutePath === `/${rootPathId}`) {
-        // The explicit parent is the root route (handled separately).
-        // Override path-based inference so this node stays at root level.
-        parentRoute = null
-      }
-      // Otherwise the explicit parent was a virtual file-less route that got
-      // filtered out. Fall back to the path-based parentRoute already computed.
-    }
-
-    if (parentRoute) node.parent = parentRoute
-
-    node.path = determineNodePath(node)
-
-    const trimmedPath = trimPathLeft(node.path ?? '')
-    const originalPath =
-      node.originalRoutePath && node.parent?.originalRoutePath
-        ? node.originalRoutePath.replace(node.parent.originalRoutePath, '') ||
-          '/'
-        : node.originalRoutePath
-    const routePathSegmentMetadata = getRoutePathSegmentMetadataForPath(
-      node,
-      node.path ?? '/',
-      node.parent?.routePath,
-    )
-    const trimmedOriginalPath = trimPathLeft(originalPath ?? '')
-
-    const split = trimmedPath.split('/')
-    const pathSplit = (node.path ?? '').split('/')
-    const originalSplit = trimmedOriginalPath.split('/')
-    const lastRouteSegment = split[split.length - 1] ?? trimmedPath
-    const lastOriginalSegment =
-      originalSplit[originalSplit.length - 1] ?? trimmedOriginalPath
-    const lastRouteSegmentMetadata =
-      routePathSegmentMetadata?.[pathSplit.length - 1]
-
-    // A segment is non-path if it starts with underscore AND the underscore is not escaped
-    node.isNonPath =
-      (!lastRouteSegmentMetadata?.literalLeadingUnderscore &&
-        isSegmentPathless(lastRouteSegment, lastOriginalSegment)) ||
-      split.every((part) => this.routeGroupPatternRegex.test(part))
-
-    // Use a single pass so layout removal does not desync escaped underscore checks.
-    node.cleanedPath = removeGroups(
-      removeLayoutSegmentsAndUnderscoresWithEscape(
-        node.path,
-        originalPath,
-        routePathSegmentMetadata,
-      ),
-    )
-
-    if (
-      node._fsRouteType === 'layout' ||
-      node._fsRouteType === 'pathless_layout'
-    ) {
-      node.cleanedPath = removeTrailingSlash(node.cleanedPath)
-    }
-
-    if (
-      !node.isVirtual &&
-      (
-        [
-          'lazy',
-          'loader',
-          'component',
-          'pendingComponent',
-          'errorComponent',
-          'notFoundComponent',
-        ] satisfies Array<FsRouteType>
-      ).some((d) => d === node._fsRouteType)
-    ) {
-      acc.routePiecesByPath[node.routePath!] =
-        acc.routePiecesByPath[node.routePath!] || {}
-
-      const pieceKey =
-        node._fsRouteType === 'lazy'
-          ? 'lazy'
-          : (node._fsRouteType as keyof (typeof acc.routePiecesByPath)[string])
-      acc.routePiecesByPath[node.routePath!]![pieceKey] = node
-
-      const anchorRoute = acc.routeNodesByPath.get(node.routePath!)
-
-      // Don't create virtual routes for root route component pieces - the root route is handled separately
-      if (!anchorRoute && node.routePath !== `/${rootPathId}`) {
-        this.handleNode(
-          {
-            ...node,
-            isVirtual: true,
-            _fsRouteType: 'static',
-          },
-          acc,
-          prefixMap,
-          config,
-        )
-      }
-      return
-    }
-
-    const isPathlessLayoutWithPath =
-      node._fsRouteType === 'pathless_layout' &&
-      node.cleanedPath &&
-      node.cleanedPath.length > 0
-
-    // Special handling: pathless layouts with path need to find real ancestor
-    if (!node.isVirtual && isPathlessLayoutWithPath) {
-      const immediateParentPath =
-        removeLastSegmentFromPath(node.routePath) || '/'
-      const immediateParentOriginalPath =
-        removeLastSegmentFromPath(node.originalRoutePath) || '/'
-      let searchPath = immediateParentPath
-
-      // Find nearest real (non-virtual, non-index) parent
-      while (searchPath) {
-        const candidate = acc.routeNodesByPath.get(searchPath)
-        if (candidate && !candidate.isVirtual && candidate.path !== '/') {
-          node.parent = candidate
-          node.path =
-            node.routePath?.replace(candidate.routePath ?? '', '') || '/'
-          const pathRelativeToParent =
-            immediateParentPath.replace(candidate.routePath ?? '', '') || '/'
-          const originalPathRelativeToParent =
-            immediateParentOriginalPath.replace(
-              candidate.originalRoutePath ?? '',
-              '',
-            ) || '/'
-          const routePathSegmentMetadataRelativeToParent =
-            getRoutePathSegmentMetadataForPath(
-              node,
-              pathRelativeToParent,
-              candidate.routePath,
-            )
-          node.cleanedPath = removeGroups(
-            removeLayoutSegmentsAndUnderscoresWithEscape(
-              pathRelativeToParent,
-              originalPathRelativeToParent,
-              routePathSegmentMetadataRelativeToParent,
-            ),
-          )
-          break
-        }
-        if (searchPath === '/') break
-        searchPath = removeLastSegmentFromPath(searchPath) || '/'
-      }
-    }
-
-    // Add to parent's children or to root
-    if (node.parent) {
-      node.parent.children = node.parent.children ?? []
-      node.parent.children.push(node)
-    } else {
-      acc.routeTree.push(node)
-    }
-
-    acc.routeNodes.push(node)
-    if (node.routePath) {
-      // Always register routes by path so child routes can find parents.
-      // Virtual routes (created from lazy-only files) also need to be registered
-      // so that index routes like path.index.lazy.tsx can find their parent path.lazy.tsx.
-      // If a non-virtual route is later processed for the same path, it will overwrite.
-      acc.routeNodesByPath.set(node.routePath, node)
+    return {
+      content,
+      facts: previous.facts.included ? previous.facts : { included: false },
+      unparsable: messages.join('\n'),
     }
   }
 
-  // only process files that are relevant for the route tree generation
-  private isFileRelevantForRouteTreeGeneration(filePath: string): boolean {
-    // the generated route tree file
-    if (filePath === this.generatedRouteTreePath) {
-      return true
-    }
+  private warnNoRouteExport(file: string) {
+    const fileName = path.basename(file)
+    const dirName = path.dirname(file)
+    const ignorePrefix = this.config.routeFileIgnorePrefix
+    const ignorePattern = this.config.routeFileIgnorePattern
+    const suggestedFullPath = path.join(dirName, `${ignorePrefix}${fileName}`)
 
-    // files inside the routes folder
-    if (filePath.startsWith(this.routesDirectoryPath)) {
-      return true
-    }
+    let message = `Warning: Route file "${file}" does not export a Route. This file will not be included in the route tree.`
+    message += `\n\nIf this file is not intended to be a route, you can exclude it using one of these options:`
+    message += `\n  1. Rename the file to "${suggestedFullPath}" (prefix with "${ignorePrefix}")`
+    message += `\n  2. Use 'routeFileIgnorePattern' in your config to match this file`
+    message += `\n\nCurrent configuration:`
+    message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`
+    message += `\n  routeFileIgnorePattern: ${ignorePattern ? `"${ignorePattern}"` : 'undefined'}`
+    console.warn(message)
+  }
 
-    // the virtual route config file passed into `virtualRouteConfig`
-    if (
-      typeof this.config.virtualRouteConfig === 'string' &&
-      filePath === this.config.virtualRouteConfig
-    ) {
-      return true
+  private computeRoutesByFile(): GetRoutesByFileMapResult {
+    const map = new Map<string, GetRoutesByFileMapResultValue>()
+    const real: Array<[string, GetRoutesByFileMapResultValue]> = []
+    for (const node of filesOf(this.scan!)) {
+      const state = this.files.get(node.fullPath)
+      if (!state?.facts.included) {
+        continue
+      }
+      const value = { routeId: node.routePath ?? `/${rootPathId}` }
+      map.set(node.fullPath, value)
+      if (state.realPath) {
+        real.push([state.realPath, value])
+      }
     }
-
-    // this covers all files that are mounted via `virtualRouteConfig` or any `__virtual.ts` files
-    if (this.routeNodeCache.has(filePath)) {
-      return true
+    // a real path that is another scanned route file is that file's
+    for (const [file, value] of real) {
+      if (!map.has(file)) {
+        map.set(file, value)
+      }
     }
-
-    // virtual config files such as`__virtual.ts`
-    if (isVirtualConfigFile(path.basename(filePath))) {
-      return true
-    }
-
-    // route files inside directories mounted via `physical()` inside a virtual route config
-    if (this.physicalDirectories.some((dir) => filePath.startsWith(dir))) {
-      return true
-    }
-
-    return false
+    return map
   }
 }

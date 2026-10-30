@@ -1073,7 +1073,8 @@ declare global {
   // eslint-disable-next-line no-var
   var __TSR_CACHE__:
     | {
-        routeTree: AnyRoute
+        /** The root route's children: re-evaluating a route tree module gives its root, the same object, new ones. */
+        children: AnyRoute['children']
         caseSensitive: boolean | undefined
         processRouteTreeResult: RouteTreeCaches<AnyRoute>
       }
@@ -1118,6 +1119,12 @@ export interface RouterCore<
   _replaceRouteChunk:
     | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
     | undefined
+  /**
+   * @internal Development-only: a router catch boundary caught a render
+   * error that route HMR cannot recover from in place, so route hot updates
+   * reload the page (set by the framework adapters).
+   */
+  _hmrReload?: true
 }
 
 export type HydrationHandoff = [
@@ -1338,11 +1345,12 @@ export class RouterCore<
       if (
         process.env.NODE_ENV !== 'development' &&
         (isServer ?? this.isServer) &&
-        globalThis.__TSR_CACHE__ &&
-        globalThis.__TSR_CACHE__.routeTree === this.routeTree &&
-        globalThis.__TSR_CACHE__.caseSensitive === this.options.caseSensitive
+        this.routeTree.children &&
+        globalThis.__TSR_CACHE__?.children === this.routeTree.children &&
+        // it matched defined children: the cache exists
+        globalThis.__TSR_CACHE__!.caseSensitive === this.options.caseSensitive
       ) {
-        const cached = globalThis.__TSR_CACHE__
+        const cached = globalThis.__TSR_CACHE__!
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
         processRouteTreeResult = this.buildRouteTree()
@@ -1353,7 +1361,7 @@ export class RouterCore<
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
-            routeTree: this.routeTree,
+            children: this.routeTree.children,
             caseSensitive: this.options.caseSensitive,
             processRouteTreeResult: processRouteTreeResult as any,
           }

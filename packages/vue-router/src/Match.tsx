@@ -120,6 +120,7 @@ export const Match = Vue.defineComponent({
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {
+                ;(router as { _hmrReload?: true })._hmrReload = true
                 console.warn(`Warning: Error in route match: ${match?.id}`)
               }
               routeOnCatch?.(error)

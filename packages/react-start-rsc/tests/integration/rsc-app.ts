@@ -1,0 +1,614 @@
+/**
+ * Real React Start apps with RSC enabled, for tests of what the RSC CSS
+ * transform and Start's RSC wiring do end to end: a Vite dev server
+ * (`startRscDevServer`) runs the app the way `vite dev` does, with the built
+ * `@tanstack/react-start` (`tanstackStart({ rsc: { enabled: true } })` of its
+ * `plugin/vite` entry, linked into the app's `node_modules`), Vite's own RSC
+ * plugin (`@vitejs/plugin-rsc`, the three environments `client`, `ssr` and
+ * `rsc`) and `@vitejs/plugin-react`. With `browser`, a real page
+ * (`@tanstack/compiler-test-utils/browser`) loads the app over HTTP through
+ * Start's own dev server middleware (SSR), Vite's HMR client and React
+ * Refresh; Vite's own watcher reports the test's file edits (`write()`).
+ *
+ * The temporary apps stand in for apps in this directory
+ * (`@tanstack/compiler-test-utils/app-directory`): their bare imports (`react`,
+ * `@tanstack/react-router`, `@vitejs/plugin-rsc`, ...) resolve to this
+ * package's dependencies, as in an installed app. `@tanstack/react-start`
+ * is not one of them (it depends on this package), so the built workspace
+ * package is linked (`workspacePackageLinks`); the `test:integration` Nx
+ * target depends on its `build`.
+ */
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import react from '@vitejs/plugin-react'
+import rsc from '@vitejs/plugin-rsc'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import {
+  createApp,
+  pluginNames,
+  withBuildEnvironment,
+} from '@tanstack/compiler-test-utils/build-harness'
+import { createBuilder, mergeConfig, preview } from 'vite'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import { onTestFinished } from 'vitest'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type {
+  DevServer,
+  DevServerOptions,
+} from '@tanstack/compiler-test-utils/dev-server'
+import type {
+  RsbuildDevServer,
+  RsbuildDevServerOptions,
+} from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Node's own `import()`, outside Vitest's module runner (as
+ * start-plugin-core's `start-compose-app.ts` uses it): a plugin loaded with
+ * it imports the built server bundle as Node does.
+ */
+const nativeImport = createRequire(import.meta.url)(
+  '../../../compiler-test-utils/src/native-import.cjs',
+) as (specifier: string) => Promise<Record<string, any>>
+
+/**
+ * Resolve the installed public export with Node, independent of dist
+ * layout; with `native`, loaded by Node itself (`nativeImport`).
+ */
+async function tanstackStartPlugin(
+  bundler: 'vite' | 'rsbuild',
+  native = false,
+): Promise<(options?: Record<string, unknown>) => unknown> {
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-plugin-import-',
+    files: {
+      'plugin.mjs': `export { tanstackStart } from '@tanstack/react-start/plugin/${bundler}'`,
+    },
+    symlinks: workspacePackageLinks(['@tanstack/react-start']),
+  })
+  try {
+    const url = pathToFileURL(path.join(app.root, 'plugin.mjs')).href
+    return (
+      native ? await nativeImport(url) : await import(/* @vite-ignore */ url)
+    ).tanstackStart
+  } finally {
+    await app.dispose()
+  }
+}
+
+/**
+ * The files every app has unless it brings its own: Start's router entry
+ * (the real router over the generated route tree) and a root route that
+ * renders the document with Start's `HeadContent` and `Scripts`, so pages
+ * hydrate and load the client.
+ */
+export const rscAppFiles = {
+  'src/router.tsx': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export function getRouter() {
+  return createRouter({ routeTree })
+}
+`,
+  'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  const hydrated = useHydrated()
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="app"><Outlet /></div>
+        <span data-testid="hydrated">{hydrated ? 'hydrated' : 'hydrating'}</span>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+}
+
+export interface RscDevServerOptions extends Omit<
+  DevServerOptions,
+  'dir' | 'plugins'
+> {
+  /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
+  start?: Record<string, unknown>
+}
+
+/**
+ * Starts a Vite dev server on a React Start app with RSC enabled, of
+ * `files` over `rscAppFiles`. Without `browser`, the server runs in
+ * middleware mode (Vite's watcher still reports `write()`s, which
+ * `settle()` waits for); the `rsc` environment is runnable
+ * (`server.import(url, 'rsc')` runs a module in the provider).
+ */
+export async function startRscDevServer(
+  options: RscDevServerOptions,
+): Promise<DevServer> {
+  const { files, start, config, ...devServerOptions } = options
+  const tanstackStart = await tanstackStartPlugin('vite')
+  return createDevServer({
+    dir: harnessDir,
+    prefix: '.rsc-dev-server-',
+    registerCleanup: onTestFinished,
+    ...devServerOptions,
+    files: { ...rscAppFiles, ...files },
+    // An app may also import this package directly (`@tanstack/react-start-rsc`).
+    symlinks: {
+      ...workspacePackageLinks([
+        '@tanstack/react-start',
+        '@tanstack/react-start-rsc',
+      ]),
+      ...devServerOptions.symlinks,
+    },
+    config: mergeConfig(
+      {
+        // Start serves the pages (SSR through its dev middleware), not
+        // Vite's SPA fallback.
+        appType: 'custom',
+        // Pre-bundled up front, as Vite does once a page discovers them
+        // (the dependencies of Start's client RPC and of the Flight decoder,
+        // which the browser imports on the first server function call and
+        // the first decode): a discovery mid-test re-optimises and reloads
+        // the page.
+        optimizeDeps: {
+          include: [
+            '@tanstack/react-router > @tanstack/router-core > seroval',
+            '@tanstack/react-router > @tanstack/router-core > seroval-plugins/web',
+            '@tanstack/react-start > @tanstack/start-server-core > cookie-es',
+            '@vitejs/plugin-rsc/vendor/react-server-dom/client.browser',
+          ],
+        },
+      },
+      config ?? {},
+    ),
+    plugins: [
+      tanstackStart({ ...start, rsc: { enabled: true } }) as never,
+      rsc(),
+      react(),
+    ],
+  })
+}
+
+export interface RscPreviewServer {
+  /** The app root. */
+  root: string
+  /** The URL Start's preview server listens on. */
+  url: string
+  /** What the build logged (warnings and errors). */
+  messages: Array<string>
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `vite build` does (the `client`, `ssr` and `rsc`
+ * environments, `buildApp()`), and serves the build with `vite preview`
+ * (Start's own preview server runs the built server entry). The test
+ * process runs with `NODE_ENV=production` until the cleanup, as `vite
+ * preview` does, so the server's React matches the client's.
+ */
+export async function startRscPreviewServer(options: {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  config?: Record<string, unknown>
+  registerCleanup?: (cleanup: () => Promise<void>) => void
+}): Promise<RscPreviewServer> {
+  const registerCleanup = options.registerCleanup ?? onTestFinished
+  const tanstackStart = await tanstackStartPlugin('vite')
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-preview-server-',
+    registerCleanup,
+    files: { ...rscAppFiles, ...options.files },
+    symlinks: workspacePackageLinks([
+      '@tanstack/react-start',
+      '@tanstack/react-start-rsc',
+    ]),
+  })
+  const config = () =>
+    mergeConfig(
+      {
+        root: app.root,
+        configFile: false,
+        logLevel: 'warn',
+        plugins: [
+          tanstackStart({ ...options.start, rsc: { enabled: true } }),
+          rsc(),
+          react(),
+        ],
+      },
+      options.config ?? {},
+    )
+  const reported: Array<ChannelDiagnostic> = []
+  await withBuildEnvironment('production', reported, async () => {
+    const builder = await createBuilder(config())
+    await builder.buildApp()
+  })
+  const messages = reported.map(({ text }) => text)
+  const nodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+  const server = await preview({
+    ...config(),
+    // Vite's default port: the server binds the next free port itself
+    // (`port: 0` makes Vite 8 probe a port and bind it after, which another
+    // process can take meanwhile).
+    preview: { host: '127.0.0.1' },
+  })
+  registerCleanup(async () => {
+    await server.close()
+    process.env.NODE_ENV = nodeEnv
+  })
+  const url = server.resolvedUrls?.local[0]
+  if (!url) {
+    throw new Error('the preview server does not listen')
+  }
+  return { root: app.root, url, messages }
+}
+
+/** What `startRscRsbuildPreviewServer` uses of Rsbuild's JavaScript API. */
+interface RsbuildApi {
+  createRsbuild: (options: {
+    cwd: string
+    rsbuildConfig: Record<string, unknown>
+  }) => Promise<{
+    build: () => Promise<{ close: () => Promise<void> }>
+    preview: (options?: { getPortSilently?: boolean }) => Promise<{
+      urls: Array<string>
+      server: { close: () => Promise<void> }
+    }>
+  }>
+}
+
+/**
+ * Rsbuild's JavaScript API: the copy the shared Rsbuild harness runs
+ * (a dependency of `@tanstack/compiler-test-utils`, which this package's
+ * tests do not declare themselves).
+ */
+async function rsbuildApi(): Promise<RsbuildApi> {
+  const harness = createRequire(import.meta.url).resolve(
+    '@tanstack/compiler-test-utils/rsbuild-dev-server',
+  )
+  const rsbuild = createRequire(harness).resolve('@rsbuild/core')
+  return (await import(
+    /* @vite-ignore */ pathToFileURL(rsbuild).href
+  )) as RsbuildApi
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `rsbuild build` does in the app's directory (the
+ * built `@tanstack/react-start/plugin/rsbuild` and `@rsbuild/plugin-react`,
+ * as for `startRscRsbuildDevServer`), and serves the build as `rsbuild
+ * preview` does (Start's own middleware runs the built server entry). The
+ * test process runs with `NODE_ENV=production` until the cleanup, as for
+ * `startRscPreviewServer`. `errors`: what the build reported as errors.
+ */
+export async function startRscRsbuildPreviewServer(options: {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  registerCleanup?: (cleanup: () => Promise<void>) => void
+}): Promise<RscPreviewServer & { errors: Array<string> }> {
+  const registerCleanup = options.registerCleanup ?? onTestFinished
+  // Loaded by Node: Start's preview middleware imports the built server
+  // bundle, which Node runs, not Vitest's module runner
+  const tanstackStart = await tanstackStartPlugin('rsbuild', true)
+  const { createRsbuild } = await rsbuildApi()
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-rsbuild-preview-server-',
+    registerCleanup,
+    files: { ...rscAppFiles, ...options.files },
+    symlinks: workspacePackageLinks([
+      '@tanstack/react-start',
+      '@tanstack/react-start-rsc',
+    ]),
+  })
+  const reported: Array<ChannelDiagnostic> = []
+  const cwd = process.cwd()
+  const nodeEnv = process.env.NODE_ENV
+  // In the app's directory, as `rsbuild build` and `rsbuild preview` run
+  process.chdir(app.root)
+  try {
+    // The app's `rsbuild.config.ts`, for `rsbuild build` and then for
+    // `rsbuild preview` (each command configures the app anew)
+    const rsbuild = () =>
+      createRsbuild({
+        cwd: app.root,
+        rsbuildConfig: {
+          logLevel: 'silent',
+          plugins: [
+            pluginReact(),
+            tanstackStart({
+              ...options.start,
+              rsc: { enabled: true },
+            }) as never,
+          ],
+          // Start serves the pages, not an HTML template
+          tools: { htmlPlugin: false },
+          server: { host: '127.0.0.1' },
+          // Absolute: Start's preview middleware imports the server build
+          // from the output directory, which it resolves against the
+          // process's working directory when the first request comes
+          output: { distPath: { root: path.join(app.root, 'dist') } },
+        },
+      })
+    await withBuildEnvironment('production', reported, async () => {
+      const built = await (await rsbuild()).build()
+      await built.close()
+    })
+    process.env.NODE_ENV = 'production'
+    const { server, urls } = await (
+      await rsbuild()
+    ).preview({ getPortSilently: true })
+    registerCleanup(async () => {
+      await server.close()
+      process.env.NODE_ENV = nodeEnv
+    })
+    const url = urls[0]
+    if (!url) {
+      throw new Error('the preview server does not listen')
+    }
+    return {
+      root: app.root,
+      url,
+      messages: reported.map(({ text }) => text),
+      errors: reported
+        .filter(({ severity }) => severity === 'error')
+        .map(({ text }) => text),
+    }
+  } finally {
+    process.chdir(cwd)
+  }
+}
+
+export interface RscRsbuildDevServerOptions extends Omit<
+  RsbuildDevServerOptions,
+  'dir' | 'plugins' | 'entry'
+> {
+  /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
+  start?: Record<string, unknown>
+  /**
+   * Runs the server with the app root as the working directory, as
+   * `rsbuild dev` in the app does (default `true`). With `false`, the test
+   * process's directory stays (`rsbuild dev --root <app>` from elsewhere).
+   */
+  inAppDirectory?: boolean
+}
+
+/**
+ * Starts an Rsbuild dev server on a React Start app with RSC enabled, of
+ * `files` over `rscAppFiles`, with the built `@tanstack/react-start/plugin/
+ * rsbuild` (Start's client and SSR environments, its default entries, the
+ * RSC layer and `react-server-dom-rspack`) and `@rsbuild/plugin-react`, as
+ * an Rsbuild React app lists them (unless `config.plugins` has it, e.g.
+ * with other options). With `browser`, Start's own dev middleware serves
+ * the pages (SSR) and Rsbuild's HMR client runs in the page.
+ */
+export async function startRscRsbuildDevServer(
+  options: RscRsbuildDevServerOptions,
+): Promise<RsbuildDevServer> {
+  const {
+    files,
+    start,
+    config,
+    inAppDirectory = true,
+    ...devServerOptions
+  } = options
+  const tanstackStart = await tanstackStartPlugin('rsbuild')
+  const cwd = process.cwd()
+  try {
+    return await createRsbuildDevServer({
+      dir: harnessDir,
+      prefix: '.rsc-rsbuild-dev-server-',
+      registerCleanup: onTestFinished,
+      ...devServerOptions,
+      // Start's plugin defines the entries of its environments (the harness
+      // default is overridden by its client entry of the same name).
+      entry: 'src/router.tsx',
+      files: { ...rscAppFiles, ...files },
+      symlinks: {
+        ...workspacePackageLinks([
+          '@tanstack/react-start',
+          '@tanstack/react-start-rsc',
+        ]),
+        ...devServerOptions.symlinks,
+      },
+      config: {
+        ...config,
+        tools: {
+          // Start serves the pages, not an HTML template
+          htmlPlugin: false,
+          ...config?.tools,
+        },
+      },
+      plugins: [
+        ...(pluginNames(config?.plugins).includes('rsbuild:react')
+          ? []
+          : [pluginReact()]),
+        {
+          name: 'rsc-app:working-directory',
+          setup(api) {
+            if (inAppDirectory) {
+              process.chdir(api.context.rootPath)
+            }
+          },
+        },
+        tanstackStart({ ...start, rsc: { enabled: true } }) as never,
+      ],
+    })
+  } finally {
+    process.chdir(cwd)
+  }
+}
+
+/** The HTTP requests of a page in flight, and when that last changed. */
+interface Network {
+  pending: Set<unknown>
+  changed: number
+}
+
+const networks = new WeakMap<BrowserPage, Network>()
+
+/**
+ * Opens `pathname` of a dev server with `browser` in a real page, closed
+ * when the current test finishes unless `registerCleanup` says otherwise.
+ * The page's requests from then on are tracked for `settledValue`.
+ */
+export async function openRscPage(
+  server: Pick<DevServer | RsbuildDevServer, 'url'>,
+  pathname: string,
+  options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
+): Promise<BrowserPage> {
+  if (!server.url) {
+    throw new Error('the dev server does not listen: start it with `browser`')
+  }
+  const page = await openPage(new URL(pathname, server.url).href, {
+    registerCleanup: options.registerCleanup ?? onTestFinished,
+  })
+  const network: Network = { pending: new Set(), changed: Date.now() }
+  page.page.on('request', (request) => {
+    network.pending.add(request)
+    network.changed = Date.now()
+  })
+  const done = (request: unknown) => {
+    if (network.pending.delete(request)) {
+      network.changed = Date.now()
+    }
+  }
+  page.page.on('requestfinished', done)
+  page.page.on('requestfailed', done)
+  networks.set(page, network)
+  return page
+}
+
+/**
+ * Reads `read()` until `accept` takes its value, or until the page's
+ * network has settled (no request in flight for `quiet` ms, default 500)
+ * and one more read still does not: then whatever the page will show
+ * without another request, e.g. a stylesheet that never arrives. Gives up
+ * after `timeout` ms (default 15 000). Gives the last value read; the test
+ * asserts on it. For pages of `openRscPage`.
+ */
+export async function settledValue<T>(
+  page: BrowserPage,
+  read: () => Promise<T>,
+  accept: (value: T) => boolean,
+  { quiet = 500, timeout = 15_000 } = {},
+): Promise<T> {
+  const network = networks.get(page)
+  if (!network) {
+    throw new Error('settledValue needs a page of openRscPage')
+  }
+  const deadline = Date.now() + timeout
+  for (;;) {
+    const settled =
+      network.pending.size === 0 && Date.now() - network.changed >= quiet
+    let value: T | undefined
+    let readable = true
+    try {
+      value = await read()
+    } catch (error) {
+      // The page is (re)loading
+      readable = false
+      if (Date.now() > deadline) {
+        throw error
+      }
+    }
+    if (readable && (accept(value as T) || settled || Date.now() > deadline)) {
+      return value as T
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+}
+
+/**
+ * Waits until the app hydrated in the page (the root route of `rscAppFiles`
+ * shows it through the router's `useHydrated()`): only then does the page
+ * run the client, e.g. its HMR listeners.
+ */
+export function waitForHydration(page: BrowserPage): Promise<void> {
+  return page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+}
+
+/**
+ * Waits until Start's development-only stylesheet of the server-rendered
+ * page (`/@tanstack-start/styles.css`, which prevents a flash of unstyled
+ * content before hydration and which the client removes once it hydrated)
+ * is gone, so that the computed styles come from what the client loaded.
+ */
+export async function devStylesGone(page: BrowserPage): Promise<void> {
+  await page.page.waitForFunction(
+    () =>
+      document.querySelector('link[href*="/@tanstack-start/styles.css"]') ===
+      null,
+    undefined,
+    { timeout: 15_000 },
+  )
+}
+
+/**
+ * The computed value of a CSS `property` of the first element matching
+ * `selector` in the page, as the browser resolves it (colours as
+ * `rgb(r, g, b)`).
+ */
+export function computedStyle(
+  page: BrowserPage,
+  selector: string,
+  property: string,
+): Promise<string> {
+  return page.page
+    .locator(selector)
+    .first()
+    .evaluate(
+      (element, name) => getComputedStyle(element).getPropertyValue(name),
+      property,
+    )
+}
+
+/**
+ * Waits until the computed `property` of `selector` is `expected`, for at
+ * most `timeout` ms (default 15 000): a hot update applies asynchronously.
+ * Throws with the current value, the page's errors and console otherwise.
+ */
+export async function waitForStyle(
+  page: BrowserPage,
+  selector: string,
+  property: string,
+  expected: string,
+  timeout = 15_000,
+): Promise<void> {
+  const deadline = Date.now() + timeout
+  let current = ''
+  for (;;) {
+    try {
+      current = await computedStyle(page, selector, property)
+    } catch {
+      // The page is reloading
+      current = ''
+    }
+    if (current === expected) {
+      return
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        [
+          `${selector}'s ${property} did not become ${expected} within ${timeout} ms`,
+          `it is: ${JSON.stringify(current)}`,
+          `page loads: ${page.loads()}`,
+          `errors:\n${page.errors.join('\n') || '(none)'}`,
+          `console:\n${page.console.join('\n') || '(none)'}`,
+        ].join('\n'),
+      )
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+}
