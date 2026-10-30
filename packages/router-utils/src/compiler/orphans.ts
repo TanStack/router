@@ -14,6 +14,8 @@ import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
 import type { PlanContext } from './plan'
+import type { OutputDecl } from './reach'
+import type { SymbolId } from './symbols'
 import type { EditScope, Frag, LivenessView, OutputId } from './rewrite'
 
 const text = (part: string): Frag => ({ k: 'text', parts: [part] })
@@ -59,7 +61,10 @@ const prune = (
  * expression statement (its hook calls keep running); module level drops it
  * with the declaration (J4.12, documented removal). Iterates to a fixpoint.
  */
-export function cleanOrphanedDeclarations(ctx: PlanContext): void {
+export function cleanOrphanedDeclarations(
+  ctx: PlanContext,
+  outputs: ReadonlyMap<OutputId, OutputDecl>,
+): void {
   const { t1, symbols, rewrites } = ctx
   const file = ctx.analysis.file
   const code = ctx.analysis.source.code
@@ -69,6 +74,7 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
   for (;;) {
     const live = ctx.liveness('env')
     let shared: LivenessView | null = null
+    const everyOutput = () => (shared ??= ctx.liveness(EVERY_OUTPUT))
     /**
      * Where a removal applies: in every output when edits addressed to every
      * output alone erased what orphans it (the references of what it
@@ -77,13 +83,11 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
      * module only leaves the code live where another output renders it: a
      * server-function provider, a split chunk).
      */
-    const scopeOf: ScopeOf = (refs, gone = []) => {
-      shared ??= ctx.liveness(EVERY_OUTPUT)
-      return refs.every((r) => !shared!.live(r)) &&
-        gone.every((r) => shared!.isErased(r))
+    const scopeOf: ScopeOf = (refs, gone = []) =>
+      refs.every((r) => !everyOutput().live(r)) &&
+      gone.every((r) => everyOutput().isErased(r))
         ? 'all-outputs'
         : ['env']
-    }
     let changed = false
     // object pattern properties pruned this round, removed together per pattern
     const prunedProps = new Map<Node, Pruned>()
@@ -120,6 +124,18 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
         declParent?.type !== 'RestElement'
       ) {
         continue // the core's placement decides top-level units (destructuring leaves are pruned here)
+      }
+      // a module-level destructuring leaf stays while something else may
+      // read it: an importer, or another output (placement keeps the
+      // declaration here and that output imports it, or moves it there)
+      if (
+        symbols.isModuleLevel(sym) &&
+        declaring?.some((u) => t1.units[u]!.kind !== 'effect') &&
+        (declaring.some((u) => t1.units[u]!.exported.length > 0) ||
+          takenElsewhere(ctx, outputs, sym, refs, everyOutput))
+      ) {
+        handled.add(b.id)
+        continue
       }
       if (!decl || b.declarations.length !== 1) {
         continue
@@ -204,6 +220,38 @@ export function cleanOrphanedDeclarations(ctx: PlanContext): void {
       break
     }
   }
+}
+
+/**
+ * Whether an output other than the env module takes a binding: one of its
+ * roots names it (an identifier option value), or a claimed region reads
+ * it where no edit addressed to every output erased the read (its owner's
+ * output renders the region).
+ */
+function takenElsewhere(
+  ctx: PlanContext,
+  outputs: ReadonlyMap<OutputId, OutputDecl>,
+  sym: SymbolId,
+  refs: ReadonlyArray<ClassifiedRef>,
+  everyOutput: () => LivenessView,
+): boolean {
+  for (const [id, decl] of outputs) {
+    if (id !== 'env' && decl.roots.some((r) => r.t === 'sym' && r.id === sym)) {
+      return true
+    }
+  }
+  for (const claim of ctx.rewrites.claims.values()) {
+    const { start, end } = ctx.t1.regions.get(claim.region).range
+    if (
+      refs.some(
+        (r) =>
+          r.range.start >= start && r.range.end <= end && everyOutput().live(r),
+      )
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 /**

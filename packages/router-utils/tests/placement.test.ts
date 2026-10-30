@@ -1956,6 +1956,61 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain('const [Page] = make()')
   })
 
+  it('keeps a destructured binding a chunk imports in the pattern the route module keeps', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const views = { Home: () => 'home', Skeleton: () => 'skeleton' }
+      const { Home, Skeleton } = views
+      export const Route = createFileRoute('/')({
+        component: Home,
+        pendingComponent: Skeleton,
+      })
+    `)
+    // (an identifier option value: the real splitter's env edit + chunk root)
+    const r = await split(code, { identifierEdits: true })
+    expect(r.env).toContain('const { Home, Skeleton } = views')
+    expect(r.chunks.component).toMatch(
+      /import \{ Home\b[^}]*\} from '\.\/route\.tsx'/,
+    )
+  })
+
+  it('drops a destructured binding only a call every output erases reads inside a split option, with the import its default reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { secret } from './db'
+      const { picked = secret(), kept } = source
+      export const k = kept
+      export const Route = createFileRoute('/')({
+        component: () => wrapServer(() => picked),
+      })
+    `)
+    const r = await split(code, {
+      files: { '/app/db.ts': `export const secret = () => 's'\n` },
+    })
+    expect(r.env).toContain('const { kept } = source')
+    expect(r.env).not.toContain('secret')
+    expect(r.chunks.component).not.toContain('secret')
+  })
+
+  it('keeps an exported destructured binding a chunk reads in the pattern the route module keeps', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const views = { Home: () => 'home', Skeleton: () => 'skeleton' }
+      export const { Home, Skeleton } = views
+      export const Route = createFileRoute('/')({
+        component: Home,
+        pendingComponent: Skeleton,
+      })
+    `)
+    // (an identifier option value: the real splitter's env edit + chunk root)
+    const r = await split(code, { identifierEdits: true })
+    expect(r.env).toContain('export const { Home, Skeleton } = views')
+    expect(r.chunks.component).toMatch(
+      /import \{ Home\b[^}]*\} from '\.\/route\.tsx'/,
+    )
+  })
+
   it('reports a value declared by an effect the route module keeps (env-declared) instead of importing it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

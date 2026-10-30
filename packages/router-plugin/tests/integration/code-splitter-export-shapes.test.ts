@@ -55,11 +55,9 @@ return typeof entry.PageView`)
 
 describe('a destructuring declaration of components from a pure object', () => {
   // `const { Home, HomeSkeleton } = views`: the split component renders
-  // `Home`, the unsplit pending component `HomeSkeleton`.
-  // Bug (main built it): the route module drops `Home` from the pattern
-  // while it still reads it, so the build fails (`Export 'Home' is not
-  // defined`).
-  it.fails(
+  // `Home`, the unsplit pending component `HomeSkeleton`. The route module
+  // keeps `Home` in the pattern: the chunk imports it from there.
+  it(
     'builds and renders both components',
     async () => {
       const app = await buildRoute(
@@ -86,9 +84,8 @@ return entry.Route.options.pendingComponent().props.children`)
     timeout,
   )
 
-  // Bug (main built it): same cause; the split chunk imports `Home` from the
-  // route module, which no longer exports it (MISSING_EXPORT).
-  it.fails(
+  // The route module keeps exporting `Home`: the chunk and importers read it.
+  it(
     'builds and renders, also when the declaration is exported',
     async () => {
       const app = await buildRoute(

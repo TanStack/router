@@ -435,7 +435,7 @@ export class AnalysisPlan implements PlanContext {
     // function-scope declarations only erased code read go once every
     // planner erased what it erases (placement decides the module level)
     if (this.rewrites.tree('env').erasedParts().length > 0) {
-      cleanOrphanedDeclarations(this)
+      cleanOrphanedDeclarations(this, this.outputs)
     }
     const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({

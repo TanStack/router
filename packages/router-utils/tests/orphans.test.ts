@@ -82,6 +82,21 @@ describe('destructured bindings only erased code read', () => {
       `),
     )
   })
+
+  it('keeps an exported binding (importers of the module read it)', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export const { picked, kept } = source
+        export const fn = wrapServer(() => picked)
+      `),
+    ).toBe(
+      dedent(`
+        export const { picked, kept } = source
+        export const fn = tsrStub()
+      `),
+    )
+  })
 })
 
 describe('parameter patterns only erased code read', () => {
