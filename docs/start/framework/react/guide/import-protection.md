@@ -42,7 +42,7 @@ These defaults mean you can use the `.server.ts` / `.client.ts` naming conventio
 
 ## Pattern Imports
 
-Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it.
+Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
 
 ```ts
 // src/routes/admin.tsx: reported, and the client gets a mock of db.server.ts
@@ -258,6 +258,29 @@ importProtection: {
   ignoreImporters: ['**/*.test.ts', '**/*.spec.ts'],
 }
 ```
+
+## Limitations
+
+A denied file is judged when it is compiled, from the imports import protection has read so far. Two kinds of import are not visible there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file; a build serves the mock without a report.
+
+An exempt importer that reaches a denied file only through a pattern import:
+
+```ts
+// src/generated/registry.ts, with exclude: ['src/generated/**']
+// the client gets mocks of the matched *.server.ts files
+const modules = import.meta.glob('../lib/*.server.ts', { eager: true })
+```
+
+An importer outside the scope (`srcDirectory` or `include`) that imports a denied file inside it:
+
+```ts
+// lib/env.ts, outside srcDirectory: the client gets a mock of db.server.ts
+import { db } from '../src/lib/db.server'
+```
+
+To get the real module, write the import statically (a plain `import`), in a module inside the scope that `exclude` or `ignoreImporters` exempts.
+
+A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
 
 ## Reading Violation Traces
 
