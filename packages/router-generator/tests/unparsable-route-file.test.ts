@@ -31,20 +31,21 @@ async function createApp(files: Record<string, string>) {
   return root
 }
 
-function configOf(root: string) {
+function configOf(root: string, overrides: Record<string, unknown> = {}) {
   return getConfig(
     {
       disableLogging: true,
       routesDirectory: path.join(root, 'src/routes'),
       generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
       tmpDir: path.join(root, '.tanstack/tmp'),
+      ...overrides,
     },
     root,
   )
 }
 
 // Main's `run()` rejected naming the file (`tsr generate` exited 1).
-test('a cold generation with a route file that does not parse fails naming the file, or keeps its route', async () => {
+test('a cold generation with a route file that does not parse fails naming the file', async () => {
   const root = await createApp({
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 
@@ -63,16 +64,8 @@ export const Route = createFileRoute('/posts')({})
 
   await writeFile(posts, 'export const Route = (')
   const generator = new Generator({ config: configOf(root), root })
-  const failure = await generator.run().then(
-    () => undefined,
-    (error: unknown) => error,
-  )
-  if (failure === undefined) {
-    expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
-  } else {
-    expect(String(failure)).toContain('posts.tsx')
-    expect(await readFile(tree, 'utf8')).toBe(committed)
-  }
+  await expect(generator.run()).rejects.toThrow('posts.tsx')
+  expect(await readFile(tree, 'utf8')).toBe(committed)
 })
 
 test('a route file an edit breaks in a running generator keeps its route and is reported', async () => {
@@ -273,4 +266,73 @@ test('a build after a watch run that kept the route of a broken file fails, nami
   await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
   expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
   await expect(session.build()).rejects.toThrow('posts.tsx')
+})
+
+// Text that names no `Route` and does not parse is no route file without a
+// route: the run fails as for any route file that does not parse.
+test.each([['import { createFileRo'], ['export const = (']])(
+  'a cold generation and a build with a route file `%s` that names no Route fail naming the file',
+  async (content) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute,
+      'src/routes/posts.tsx': content,
+    })
+    const generator = () => new Generator({ config: configOf(root), root })
+    await expect(generator().run()).rejects.toThrow('posts.tsx')
+    const built = generator()
+    await expect(
+      createGeneratorSession({ generator: () => built }).build(),
+    ).rejects.toThrow('posts.tsx')
+  },
+)
+
+// A Vue root is a single-file component, which the generator never parses
+// (its script is not the file's text).
+test('a Vue root route file generates', async () => {
+  const root = await createApp({
+    'src/routes/__root.vue': `<script lang="ts">
+import { createRootRoute } from '@tanstack/vue-router'
+export const Route = createRootRoute()
+</script>
+<template><RouterView /></template>
+`,
+    'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/vue-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+  })
+  const config = configOf(root, { target: 'vue' })
+  await new Generator({ config, root }).run()
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toContain(
+    '__root.vue',
+  )
+})
+
+// A route file outside the routes directory (a virtual route config's
+// root) that a dev server's first generation could not read: an event of it
+// generates once it parses.
+test('a virtual root route outside the routes directory that did not parse at dev start generates once fixed', async () => {
+  const root = await createApp({
+    'src/layouts/root.tsx': 'export const Route = (',
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root, {
+    virtualRouteConfig: {
+      type: 'root',
+      file: '../layouts/root.tsx',
+      children: [{ type: 'route', file: 'posts.tsx', path: '/posts' }],
+    },
+  })
+  const generator = new Generator({ config, root })
+  const reports: Array<unknown> = []
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: (error) => reports.push(error),
+  })
+  await session.run()
+  expect(reports.map(String)).toEqual([expect.stringContaining('root.tsx')])
+  const rootFile = path.join(root, 'src/layouts/root.tsx')
+  await writeFile(rootFile, rootRoute)
+  await session.run({ type: 'update', path: rootFile })
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toContain('posts')
 })

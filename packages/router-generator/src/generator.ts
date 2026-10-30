@@ -199,6 +199,8 @@ export class Generator {
   private readonly publisher: AtomicPublisher
 
   private scan: ScanResult | undefined
+  /** The route files of the last scan (a file a failed read left out of `files` is still known). */
+  private scanned = new Set<string>()
   private readonly files = new Map<string, FileState>()
   private model: TreeModel | undefined
   /** The route tree as last published, to tell an external change of it. */
@@ -354,7 +356,7 @@ export class Generator {
     ) {
       return 'config'
     }
-    if (this.files.has(file)) {
+    if (this.files.has(file) || this.scanned.has(file)) {
       return 'known'
     }
     if (!routeFileExtension.test(file)) {
@@ -445,6 +447,7 @@ export class Generator {
       this.scan = scan
       const nodes = filesOf(scan)
       const keys = new Set(nodes.map((node) => node.fullPath))
+      this.scanned = keys
       for (const key of [...this.files.keys()]) {
         if (!keys.has(key)) {
           this.files.delete(key)
@@ -660,7 +663,8 @@ export class Generator {
 
     if (isRoot) {
       if (content !== '') {
-        const errors = routeFileErrors(content, file)
+        // (a single-file component is never parsed: its script is not its text)
+        const errors = isVue ? [] : routeFileErrors(content, file)
         return errors.length > 0
           ? this.unparsableFacts(file, content, errors, previous)
           : { content, facts: { included: true, props: undefined } }

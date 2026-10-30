@@ -315,10 +315,6 @@ export function analyzeRouteFile(
   filePath: string,
   expected: RouteFileExpectation,
 ): RouteFileAnalysis {
-  // (no `Route` anywhere: no Route export, without parsing)
-  if (!source.includes('Route')) {
-    return { kind: 'no-route' }
-  }
   const file = parseRouteFile(source, filePath)
   const errors = errorsOf(file)
   if (errors.length) {
