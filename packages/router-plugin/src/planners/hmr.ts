@@ -210,22 +210,28 @@ export function planHmrBlock(
     )
   }
   if (anchor) {
-    // every export name plugin-react may see: the module's own, the
-    // anchor, and (over-approximated) every module-level binding the
-    // core may export as glue for the chunks
+    // the exports plugin-react ignores: the route, the anchor and
+    // (over-approximated) every module-level binding the core may export as
+    // glue for the chunks, but no other export of the user's: plugin-react
+    // validates those, so a component updates in place and an edited value
+    // invalidates the module for its importers (a reload, as on main)
     const exportNames = new Set<string>()
+    const userExports = new Set<string>()
     for (const e of ctx.analysis.exports) {
       if (e.kind === 'star') {
         continue
       }
-      if (e.kind === 'expression' || !e.typeOnly) {
+      if (e.kind === 'local' && e.local === route.routeSym) {
         exportNames.add(e.name)
+      } else if (e.kind !== 'local' || !e.typeOnly) {
+        userExports.add(e.name)
       }
     }
     const { symbols } = ctx.t1
     for (let i = 0; i < symbols.size; i++) {
-      if (symbols.isModuleLevel(i as SymbolId)) {
-        exportNames.add(symbols.name(i as SymbolId))
+      const name = symbols.name(i as SymbolId)
+      if (symbols.isModuleLevel(i as SymbolId) && !userExports.has(name)) {
+        exportNames.add(name)
       }
     }
     exportNames.add(anchor.name)

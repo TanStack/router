@@ -38,12 +38,16 @@ describe('Vite dev: route edits after the split layout changed and changed back'
         files: { 'routes/index.tsx': route('text-v1') },
         ready: 'text-v1',
       })
+      // Exporting the component adds an export of the module: plugin-react
+      // validates the route file's own exports and reloads, as on main
       expect(
-        await app.edit(
-          { 'routes/index.tsx': route('text-v2', true) },
-          'text-v2',
-        ),
-      ).toEqual(inPlace)
+        (
+          await app.edit(
+            { 'routes/index.tsx': route('text-v2', true) },
+            'text-v2',
+          )
+        ).errors,
+      ).toEqual([])
       expect(
         await app.edit({ 'routes/index.tsx': route('text-v3') }, 'text-v3'),
       ).toEqual(inPlace)

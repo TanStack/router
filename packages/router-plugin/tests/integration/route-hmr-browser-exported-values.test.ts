@@ -20,10 +20,10 @@ function Page() {
 }
 `
 
-// Bug (main showed the edit): the route module's React Refresh boundary
-// ignores every module-level export, so plugin-react never invalidates it;
-// the route module accepts itself and `nav.tsx` keeps the old `navLabel`.
-test.fails(
+// plugin-react validates the route file's own exports (only the route and
+// the compiler's glue are ignored): the edited value invalidates the route
+// module, so `nav.tsx` gets the new `navLabel`, as on main.
+test(
   "an edit of a route file's exported value shows in the module that imports it",
   async ({ onTestFinished }) => {
     const app = await openRouteHmrPage({

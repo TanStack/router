@@ -72,8 +72,9 @@ export function __tsrRouteHmr(
     }
     const refreshExports = meta.refreshExports
     if (refreshExports) {
-      // plugin-react asks for the ignored exports of a module by its id. Every
-      // export but the anchor is ignored, which keeps the module a boundary.
+      // plugin-react asks for the ignored exports of a module by its id: the
+      // route and the compiler's glue. It validates the anchor (a component,
+      // which keeps the module a boundary) and the user's other exports.
       let byId = ignoredExportsById
       if (!byId) {
         const w = window as RefreshWindow
