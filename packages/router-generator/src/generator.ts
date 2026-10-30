@@ -578,7 +578,8 @@ export class Generator {
    * Reads a route file and, when its content changed since the last read,
    * scaffolds or keeps it up and records its facts. A file that does not
    * parse keeps the facts of its last good content (its route stays), and
-   * is reported with the position of the problem.
+   * is reported with the position of the problem; without an earlier read,
+   * the run fails naming it.
    */
   private async updateFile(
     node: RouteNode,
@@ -683,12 +684,24 @@ export class Generator {
     })
 
     if (analysis.kind === 'error') {
-      for (const diagnostic of analysis.diagnostics) {
-        console.warn(formatDiagnostic(file, diagnostic))
+      const messages = analysis.diagnostics.map((d) =>
+        formatDiagnostic(file, d),
+      )
+      if (!previous) {
+        // Nothing of this generator knows its route (a cold run, a dev
+        // server's first generation, a file created broken): the run fails
+        // naming it and leaves the route tree on disk as it is, as on main
+        // (a route never silently drops out of a build)
+        throw new Error(
+          `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
+        )
+      }
+      for (const message of messages) {
+        console.warn(message)
       }
       return {
         content,
-        facts: previous?.facts.included ? previous.facts : { included: false },
+        facts: previous.facts.included ? previous.facts : { included: false },
       }
     }
 
