@@ -190,7 +190,8 @@ text compiles waits for it and emits its own output from the result.
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
   environment's own resolver (add/unlink also retry failed resolutions; an add also re-asks the resolutions it may
-  take: a file of the same name with another extension, or of a directory a resolution went into) and returns
+  take: a file of the same name with another extension, or of a directory a resolution went into; a resolution that
+  found an unlinked file is stale without asking) and returns
   `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates importers
   only when its export-facts digest changed.
 - `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and

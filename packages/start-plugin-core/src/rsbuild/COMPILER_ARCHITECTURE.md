@@ -82,11 +82,11 @@ additional pass until no new veto appears; reports are published on the final pa
 
 The compiler core's invalidation runs once per logical change (the environment compilers of one watch cycle report the
 same modified and removed files; the session dedupes them by path, kind and mtime) and decides which modules are
-stale; each environment compiler is told their files changed. An edit of a file the last compilation read is
-invalidated at `watchRun` (a file's facts need no resolver): its stale dependents join the compilation that starts,
-built with the edited file. A created or removed file is invalidated at `make`, once Rspack's resolver forgot what it
-found in the last compilation (a file that appeared takes the resolutions it shadows): its stale dependents are built
-by the next compilation (`invalidateFiles`).
+stale; each environment compiler is told their files changed. An edit or a removal of a file the last compilation
+read is invalidated at `watchRun` (a file's facts need no resolver, and a resolution that found a removed file is
+stale): its stale dependents join the compilation that starts, built with the edited file. A created file is
+invalidated at `make`, once Rspack's resolver forgot what it found in the last compilation (a file that appeared takes
+the resolutions it shadows): its stale dependents are built by the next compilation (`invalidateFiles`).
 A dev server started again on the persistent cache checks, at its compilers' first `finishMake`, the plans persisted
 with the modules the cache restored: a module whose plan read facts that changed meanwhile (or another configuration's
 plan) is built again first; the others' plans join the session's invalidation.
