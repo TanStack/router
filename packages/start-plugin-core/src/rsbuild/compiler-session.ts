@@ -110,6 +110,13 @@ interface EnvState {
   compiled: Set<string>
   /** Where the file's text goes when the module map names it without it (host: `emittedMapTexts`). */
   recordMapText: RecordMapText | null
+  /**
+   * Whether the compiler's cache outlives the process (Rspack's persistent or
+   * filesystem cache): only then do modules carry their plan (another process
+   * restores them; Rspack copies a module's custom `buildInfo` into the
+   * module at every build while any cache is on).
+   */
+  persistsModules: boolean
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
@@ -146,6 +153,7 @@ export class StartRsbuildCompilerSession {
         transformImport: [],
         compiled: new Set(),
         recordMapText: null,
+        persistsModules: false,
       })
     }
     this.start = new StartCompilerSession({
@@ -552,7 +560,7 @@ export class StartRsbuildCompilerSession {
       throw error
     }
     const buildInfo = ctx._module?.buildInfo
-    if (out.persisted && buildInfo) {
+    if (env.persistsModules && out.persisted && buildInfo) {
       buildInfo[PLAN_BUILD_INFO_FIELD] = out.persisted
     }
     const serverFns = serverFnFactsOf(out)

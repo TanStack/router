@@ -191,6 +191,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         })
       }
 
+      const cache = compiler.options.cache
+      env.persistsModules = typeof cache === 'object' && cache.type !== 'memory'
       env.recordMapText = emittedMapTexts(
         compiler,
         session.start.opts.mode,
