@@ -431,6 +431,16 @@ export function startCompilerPlugin(
   /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
   const outputDigests = new Map<string, string>()
 
+  /** Forgets what the session and the host hold of a deleted file (`file`: its normalized path). */
+  const forgetFile = (s: Session, file: string): void => {
+    s.start.forget(file)
+    for (const key of outputDigests.keys()) {
+      if (identify(key.slice(key.indexOf('\0') + 1)).path === file) {
+        outputDigests.delete(key)
+      }
+    }
+  }
+
   /**
    * The dependents whose output the change altered: a dependent re-plans
    * (its plan was evicted), and the one the compiler emits again as the
@@ -877,7 +887,7 @@ export function startCompilerPlugin(
         }
         const res = await pending
         if (change.kind === 'unlink') {
-          s.start.forget(change.path)
+          forgetFile(s, change.path)
         }
         const extra = applyInvalidation(
           this.environment,
@@ -927,7 +937,7 @@ export function startCompilerPlugin(
           kind: changeKindOf(event.event),
         }
         if (change.kind === 'unlink') {
-          s.start.forget(change.path)
+          forgetFile(s, change.path)
         }
         if (environment.mode !== 'dev') {
           await invalidate(

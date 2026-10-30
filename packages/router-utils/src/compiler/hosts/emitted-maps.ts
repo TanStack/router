@@ -81,12 +81,17 @@ export interface EmittedMapsCompilerLike {
     Compilation: { PROCESS_ASSETS_STAGE_DEV_TOOLING: number }
     sources: { RawSource: new (source: Buffer) => unknown }
   }
+  /** The files a watch compilation found deleted (set when `watchRun` runs). */
+  removedFiles?: ReadonlySet<string>
   hooks: {
     thisCompilation: {
       tap: (
         name: string,
         fn: (compilation: EmittedMapsCompilationLike) => void,
       ) => void
+    }
+    watchRun: {
+      tap: (name: string, fn: () => void) => void
     }
   }
 }
@@ -135,8 +140,13 @@ export function emittedMapTexts(
   if (devtool.includes('nosources')) {
     return () => {}
   }
-  /** By normalized path; null: not a file the host compiles. */
+  /** By normalized path; null: not a file the host compiles. A deleted file's goes. */
   const texts = new Map<string, string | null>()
+  compiler.hooks.watchRun.tap('tanstack:emitted-maps', () => {
+    for (const file of compiler.removedFiles ?? []) {
+      texts.delete(path.normalize(file))
+    }
+  })
   const textOf = (file: string): string | undefined => {
     let text = texts.get(file)
     if (text === undefined) {
