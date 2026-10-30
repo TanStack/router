@@ -61,11 +61,16 @@ export function verifyPlan(
       recipe,
     })
   }
-  // the names of the source's module bindings no source read takes for a global
+  // the names of the source's module bindings no source read takes for a
+  // global, and the names the planners generated
   const moduleNames = new Set<string>()
   for (let s = 0; s < t1.symbols.size; s++) {
     const sym = s as SymbolId
-    if (t1.symbols.kind(sym) === 'source' && t1.symbols.isModuleLevel(sym)) {
+    const kind = t1.symbols.kind(sym)
+    if (
+      kind === 'generated' ||
+      (kind === 'source' && t1.symbols.isModuleLevel(sym))
+    ) {
       moduleNames.add(t1.symbols.name(sym))
     }
   }
@@ -148,8 +153,9 @@ export function verifyPlan(
         }
       }
     }
-    // (g) no output reads a module binding of the source it neither declares
-    // nor imports (the read would fall through to a global)
+    // (g) no output reads a module binding of the source, or a generated
+    // binding, it neither declares nor imports (the read would fall through
+    // to a global)
     const unbound = new Set(
       out.freeRefs.filter((f) => moduleNames.has(f.name)).map((f) => f.name),
     )

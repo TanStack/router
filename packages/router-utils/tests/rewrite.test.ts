@@ -533,6 +533,123 @@ describe('claims, homes and substitution', () => {
     )
   })
 
+  // An owner other generated code reads (a provider's hoisted server fn,
+  // its RPC wrapper's callee) is a declaration of its own: an erasure of
+  // its occurrence (an option a later planner deletes) removes the
+  // placeholder there, and the owner still renders with what it reads and
+  // the claims inside it. Without that reader it dies with the occurrence.
+  it.each([
+    { reader: true, outcome: 'keeps' },
+    { reader: false, outcome: 'kills' },
+  ])(
+    '$outcome a claim whose ancestor is erased (owner read elsewhere: $reader)',
+    ({ reader }) => {
+      const code = dedent(`
+        import { make } from './make'
+        export const opts = { loader: () => { const fn = make(() => 'hi'); return fn } }
+      `)
+      const e = engine(code)
+      const { ctx } = e
+      const handler = rangeOf(code, "() => 'hi'")
+      const lazy = ctx.declareOutput({
+        kind: 'hydrate',
+        key: 'h1',
+        derived: { kind: 'hydrate', value: 'h1' },
+      })
+      const local = ctx.names.alloc('tsrHandler')
+      const inner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
+          { k: 'slice', range: handler },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: lazy,
+        by: 'env',
+      })
+      ctx.addRoot(lazy, { t: 'gen', id: inner })
+      ctx.rewrites.claim({
+        region: ctx.region(handler, 'custom'),
+        owner: inner,
+        placeholder: [{ k: 'text', parts: ['tsrLazy'] }],
+        by: 'env',
+      })
+      const chain = rangeOf(code, "make(() => 'hi')")
+      const hoisted = ctx.names.alloc('tsrHoisted')
+      const region = ctx.region(chain, 'nested-chain')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'slice', range: chain },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'after-unit', unit: 0 },
+        home: 'auto',
+        by: 'env',
+      })
+      if (reader) {
+        const wrapper = ctx.names.alloc('tsrWrapper')
+        const gen = ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                'export const ',
+                { sym: wrapper.sym },
+                ' = () => ',
+                { sym: hoisted.sym },
+                '\n',
+              ],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: 'auto',
+          by: 'env',
+        })
+        ctx.addRoot('env', { t: 'gen', id: gen })
+      }
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        by: 'env',
+      })
+      // a later planner deletes the option
+      ctx.rewrites.add({
+        range: rangeOf(
+          code,
+          "loader: () => { const fn = make(() => 'hi'); return fn } ",
+        ),
+        body: [],
+        scope: 'all-outputs',
+        by: 'router',
+      })
+      e.freeze()
+      expect({ env: e.render('env').code, lazy: e.render(lazy).code }).toEqual(
+        reader
+          ? {
+              env: dedent(`
+                import { make } from './make'
+                const tsrHoisted = make(tsrLazy)
+                export const opts = { }
+                export const tsrWrapper = () => tsrHoisted
+              `),
+              lazy: "export const tsrHandler = () => 'hi'\n",
+            }
+          : {
+              env: 'export const opts = { }\n',
+              lazy: 'export {}\n',
+            },
+      )
+    },
+  )
+
   it('moves an import only generated text reads out of a non-route env module', () => {
     // a Solid `use:tip` directive is no reference in the semantic model: the planner's edit reads `tip`
     const code = dedent(`

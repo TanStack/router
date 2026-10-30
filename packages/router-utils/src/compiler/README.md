@@ -35,7 +35,9 @@ emits its own output. Nothing depends on transform order.
   fragments, insert. Fragments are retained original slices (rendered with their own nested edits), structured text
   with symbol references (`SymRef`), glue specifiers and context-aware reference rewrites (shorthand properties
   expand, export names stay). A _generated unit_ can claim a region: the region renders inside its owner, wherever the
-  owner is placed, and a placeholder renders at the original position. Edits nest, so a range moved into a chunk
+  owner is placed, and a placeholder renders at the original position. An erasure enclosing the occurrence kills the
+  claim and its owner, unless other generated code reads the owner (the provider's hoisted server fn its RPC wrapper
+  calls): then only the placeholder goes. Edits nest, so a range moved into a chunk
   carries the env edits inside it; an edit addressed to every output on exactly a claimed region travels with the
   region (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while
   an edit scoped to one output on exactly the region replaces the placeholder there (the env module keeps a
@@ -289,7 +291,8 @@ nothing per compile.
   invariants (`verify.ts`): no output assigns a binding it imports, every glue import names an export of its home
   output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
   the outputs that import from the env module, an extracted export's module never reads a binding of the env
-  module at its evaluation, and no output reads a module binding of the source it neither declares nor imports. A violation fails the compile. Every test run sets it (the shared run-directory setup and
+  module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
+  nor imports. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
