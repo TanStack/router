@@ -6,14 +6,22 @@
  */
 import { describe, expect, it } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
+import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 const timeout = 60_000
 
-async function buildRoute(route: string, entry: string) {
+async function buildRoute(
+  route: string,
+  entry: string,
+  options: { bundler?: Bundler; files?: Record<string, string> } = {},
+) {
   return build({
-    bundler: 'vite',
+    bundler: options.bundler ?? 'vite',
     env: 'client',
-    files: { ...routeApp(route, { env: 'client' }), 'entry.ts': entry },
+    files: {
+      ...routeApp(route, { env: 'client', files: options.files }),
+      'entry.ts': entry,
+    },
   })
 }
 
@@ -215,6 +223,49 @@ export const Route = createFileRoute('/')({ component: Page })
         clientMountEntry,
       )
       const run = await app.run(`const before = [...globalThis.log]
+await entry.mount(entry.Route.options.component)
+return { before, log: globalThis.log }`)
+      expect({ html: run.html, ...(run.result as object) }).toEqual({
+        html: '<div id="root"><p>MARK_PAGE</p></div>',
+        before: ['page', 'after'],
+        log: ['page', 'after'],
+      })
+    },
+    timeout,
+  )
+
+  // The augmentation calls an imported function: its module is not the
+  // route module's, so nothing else ties the declaration to the route
+  // module's evaluation.
+  // Bug (main ran it in order): an effectful augmentation does not count as
+  // a side effect of the exported declaration, which is extracted into a
+  // side-effect-free module only the chunk imports, so `track('page')` runs
+  // when the chunk loads, after `track('after')`.
+  it.fails.each(['vite', 'rspack', 'webpack'] as const)(
+    'runs an augmentation calling an imported function once, in source order, when no other module imports the component (%s)',
+    async (bundler) => {
+      const app = await buildRoute(
+        `${head}import { track } from '../tracker'
+export function Page() {
+  return <p>MARK_PAGE</p>
+}
+Page.x = track('page')
+track('after')
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        clientMountEntry,
+        {
+          bundler,
+          files: {
+            'tracker.ts': `export function track(name: string) {
+  ;((globalThis as any).log ??= []).push(name)
+  return name
+}
+`,
+          },
+        },
+      )
+      const run = await app.run(`const before = [...(globalThis.log ?? [])]
 await entry.mount(entry.Route.options.component)
 return { before, log: globalThis.log }`)
       expect({ html: run.html, ...(run.result as object) }).toEqual({
