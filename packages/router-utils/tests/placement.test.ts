@@ -805,6 +805,49 @@ describe('extracted-export outputs', () => {
     expect(r.chunk).toContain("import { count } from './route.tsx'")
   })
 
+  // `export * from …` may export any name: the glue export names are the
+  // compiler's own, so the module's importers still get the re-exported one.
+  it('exports glue under a name of its own in a module re-exporting with `export *`', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export * from './shared'
+      const config = { title: 'local' }
+      export const Route = createFileRoute('/')({
+        loader: () => config.title,
+        component: () => config.title,
+      })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export { config as tsr$config }')
+    expect(r.chunk).toContain(
+      "import { tsr$config as config } from './route.tsx'",
+    )
+  })
+
+  // An `exportName` ref names the export of a binding: its glue export name
+  // (renamed when the binding's name is an export of another binding), else
+  // its name; it is no read, so it keeps nothing in the env module.
+  it('renders an `exportName` ref as the export name of the binding, without reading it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export type Config = { title: string }
+      const Config = { title: 'cfg' }
+      const Only = { title: 'only' }
+      export const Route = createFileRoute('/')({
+        loader: () => Config.title,
+        component: () => Config.title + Only.title,
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [toySplitPlanner({ exportNames: ['Config', 'Only'] })]
+    const env = await host.compile('/app/route.tsx', planners, build)
+    expect(env?.code).toContain('export { Config as Config$1 }')
+    expect(env?.code).toContain(
+      'export const exportNames = ["Config$1", "Only", ]',
+    )
+    expect(env?.code).not.toContain("const Only = { title: 'only' }")
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

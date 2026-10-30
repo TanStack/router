@@ -66,6 +66,12 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     }
     return null
   }
+  // `export * from …` may export any name (its modules are not read): the
+  // glue of such a module exports names of the compiler's own (`tsr$`), so
+  // it never shadows a re-exported binding for the module's importers
+  const starExports = analysis.exports.some(
+    (e) => e.kind === 'star' && !e.typeOnly,
+  )
   for (const [home, syms] of placement.exportsNeeded) {
     const map = new Map<SymbolId, string>()
     for (const s of [...syms].sort((a, b) => a - b)) {
@@ -75,7 +81,9 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
         if (existing !== null && !plan.exportedRenames.has(s)) {
           name = existing
         } else {
-          name = plan.names.allocExportName(plan.nameOf(s))
+          name = plan.names.allocExportName(
+            starExports ? `tsr$${plan.nameOf(s)}` : plan.nameOf(s),
+          )
           glueExports.add(s)
         }
       } else {
@@ -86,7 +94,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     exportNameOf.set(home, map)
   }
 
-  const renderer = new Renderer(plan, code)
+  const renderer = new Renderer(plan, code, exportNameOf)
   const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
   // the units of each import declaration, once for every output
   const unitsOfImport = new Map<number, Array<Unit>>()
@@ -780,6 +788,10 @@ class Renderer {
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
+    private readonly exportNameOf: ReadonlyMap<
+      OutputId,
+      ReadonlyMap<SymbolId, string>
+    >,
   ) {
     for (const r of plan.t1.refs.all) {
       if (r.kind !== 'implicitJsxFactory') {
@@ -1096,6 +1108,12 @@ class Renderer {
   ): string {
     if (ctx === 'homeId') {
       return stringLiteral(this.homeIdOf(sym), '"')
+    }
+    if (ctx === 'exportName') {
+      return stringLiteral(
+        this.exportNameOf.get(this.output)?.get(sym) ?? this.plan.nameOf(sym),
+        '"',
+      )
     }
     const t = this.targetText({ sym }, env)
     if (ctx === 'callee' && t.includes('.')) {

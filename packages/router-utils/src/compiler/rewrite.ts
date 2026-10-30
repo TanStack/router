@@ -24,10 +24,18 @@ export type RefTarget =
   | { member: [SymbolId, ...Array<string>] }
 /**
  * How a `SymRef` renders: the binding's name (`expr`, `callee`, `jsxTag`),
- * or `homeId`: a string literal of the id of the module the output takes the
- * binding from (its own id when it holds the binding), decided by placement.
+ * `homeId`: a string literal of the id of the module the output takes the
+ * binding from (its own id when it holds the binding), decided by placement,
+ * or `exportName`: a string literal of the name the output exports the
+ * binding under (its glue export name, else its name). An `exportName` only
+ * names the binding: it is no read.
  */
-export type SymRefContext = 'expr' | 'callee' | 'jsxTag' | 'homeId'
+export type SymRefContext =
+  | 'expr'
+  | 'callee'
+  | 'jsxTag'
+  | 'homeId'
+  | 'exportName'
 export interface SymRef {
   sym: SymbolId
   ctx?: SymRefContext

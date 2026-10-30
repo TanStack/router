@@ -32,6 +32,7 @@ import type { RouterRound } from './router'
 import type {
   Frag,
   PlanContext,
+  SymRef,
   SymbolId,
 } from '@tanstack/router-utils/compiler'
 
@@ -209,38 +210,41 @@ export function planHmrBlock(
         .join(', ')} }`,
     )
   }
+  // the exports plugin-react ignores: the route, the anchor and
+  // (over-approximated) every module-level binding the core may export as
+  // glue for the chunks, under the name it exports it (`exportName`: a
+  // renamed `x$1`, a `tsr$x`), but no other export of the user's:
+  // plugin-react validates those, so a component updates in place and an
+  // edited value invalidates the module for its importers (a reload, as on
+  // main)
+  const refreshExports: Array<string | SymRef> = []
   if (anchor) {
-    // the exports plugin-react ignores: the route, the anchor and
-    // (over-approximated) every module-level binding the core may export as
-    // glue for the chunks, but no other export of the user's: plugin-react
-    // validates those, so a component updates in place and an edited value
-    // invalidates the module for its importers (a reload, as on main)
-    const exportNames = new Set<string>()
+    const routeNames: Array<string> = []
     const userExports = new Set<string>()
     for (const e of ctx.analysis.exports) {
       if (e.kind === 'star') {
         continue
       }
       if (e.kind === 'local' && e.local === route.routeSym) {
-        exportNames.add(e.name)
+        routeNames.push(e.name)
       } else if (e.kind !== 'local' || !e.typeOnly) {
         userExports.add(e.name)
       }
     }
+    const ignored = routeNames.map((n): string | SymRef =>
+      stringLiteral(n, '"'),
+    )
     const { symbols } = ctx.t1
     for (let i = 0; i < symbols.size; i++) {
-      const name = symbols.name(i as SymbolId)
-      if (symbols.isModuleLevel(i as SymbolId) && !userExports.has(name)) {
-        exportNames.add(name)
+      const sym = i as SymbolId
+      if (symbols.isModuleLevel(sym) && !userExports.has(symbols.name(sym))) {
+        ignored.push({ sym, ctx: 'exportName' })
       }
     }
-    exportNames.add(anchor.name)
-    metaParts.push(
-      `refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[
-        ...exportNames,
-      ]
-        .map((n) => stringLiteral(n, '"'))
-        .join(', ')}] }`,
+    refreshExports.push(
+      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [`,
+      ...ignored.flatMap((n, i) => (i === 0 ? [n] : [', ', n])),
+      '] }',
     )
   }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
@@ -254,7 +258,9 @@ export function planHmrBlock(
         { sym: hmr.sym, ctx: 'callee' },
         `(${stringLiteral(routerRouteId(route.routeId), '"')}, `,
         { sym: route.routeSym },
-        `, { ${metaParts.join(', ')} })\n}\n`,
+        `, { ${metaParts.join(', ')}`,
+        ...refreshExports,
+        ` })\n}\n`,
       ],
     },
   ]

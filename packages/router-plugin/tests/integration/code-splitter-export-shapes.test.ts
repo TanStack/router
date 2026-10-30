@@ -386,3 +386,38 @@ return [afterMount, entry.read()]`)
     timeout,
   )
 })
+
+describe('a route file re-exporting a module with `export *`, next to a split component', () => {
+  // `config` of the route file is its own: the split component and the
+  // loader read it. Importers of the route file get the re-exported
+  // module's `config`, as without splitting.
+  it.each(['vite', 'rspack', 'webpack'] as const)(
+    'gives importers the re-exported binding, not the route module own binding of the same name (%s)',
+    async (bundler) => {
+      const app = await buildRoute(
+        `${head}export * from '../shared'
+const config = { title: 'MARK_LOCAL' }
+export const Route = createFileRoute('/')({
+  loader: () => config.title,
+  component: () => <p>{config.title}</p>,
+})
+`,
+        `${clientMountEntry}export { config } from './routes/index'\n`,
+        {
+          bundler,
+          files: {
+            'shared.ts': `export const config = { title: 'MARK_SHARED' }\n`,
+          },
+        },
+      )
+      const run =
+        await app.run(`await entry.mount(entry.Route.options.component)
+return entry.config.title`)
+      expect({ html: run.html, imported: run.result }).toEqual({
+        html: '<div id="root"><p>MARK_LOCAL</p></div>',
+        imported: 'MARK_SHARED',
+      })
+    },
+    timeout,
+  )
+})

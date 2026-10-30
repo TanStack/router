@@ -40,8 +40,10 @@ emits its own output. Nothing depends on transform order.
   region (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while
   an edit scoped to one output on exactly the region replaces the placeholder there (the env module keeps a
   nested server-fn chain in place with its stub).
-- **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
-  allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
+- **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them (an `exportName` ref only
+  names the export of a binding: no read). Names come from one allocator per file over every name in every scope
+  (`names.ts`), so a name means the same thing in every output. Glue export names avoid the module's export names;
+  in a module with `export * from …`, whose re-exported names are unknown, they are the compiler's own (`tsr$x`).
 
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 

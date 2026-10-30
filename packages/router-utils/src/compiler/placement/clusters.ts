@@ -163,13 +163,13 @@ export const READ_KINDS = new Set([
  */
 export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
-/** The symbols generated text reads (its `SymRef`s and reference rewrites). */
+/** The symbols generated text reads (its `SymRef`s but the `exportName`s, and reference rewrites). */
 export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
   const out: Array<SymbolId> = []
   for (const f of frags) {
     if (f.k === 'text') {
       for (const p of f.parts) {
-        if (typeof p !== 'string') {
+        if (typeof p !== 'string' && p.ctx !== 'exportName') {
           out.push(p.sym)
         }
       }

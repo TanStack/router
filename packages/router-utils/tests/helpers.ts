@@ -18,6 +18,7 @@ import type {
   PlanContext,
   Planner,
   Range,
+  SymRef,
   SymbolId,
   Unit,
 } from '../src/compiler'
@@ -120,6 +121,8 @@ export interface ToySplitOptions {
   identifierEdits?: boolean
   /** Export the id of the module each chunk takes an identifier value from (`export const home = …`, a `homeId` ref). */
   homeIds?: boolean
+  /** List, in the env module, the export name of these module-level bindings (`export const exportNames = […]`, `exportName` refs). */
+  exportNames?: ReadonlyArray<string>
 }
 
 /**
@@ -301,6 +304,27 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           region: ctx.region(valueRange, 'option-value'),
           owner,
           placeholder,
+          by: 'toy-split',
+        })
+      }
+      if (opts.exportNames) {
+        const parts: Array<string | SymRef> = ['export const exportNames = [']
+        for (const b of ctx.analysis.file.bindings) {
+          const sym = ctx.symbols.ofBinding(b)
+          if (
+            ctx.symbols.isModuleLevel(sym) &&
+            opts.exportNames.includes(ctx.symbols.name(sym))
+          ) {
+            parts.push({ sym, ctx: 'exportName' }, ', ')
+          }
+        }
+        parts.push(']\n')
+        ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts }],
+          declares: [],
+          effectful: true,
+          anchor: { k: 'end' },
+          home: 'auto',
           by: 'toy-split',
         })
       }
