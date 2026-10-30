@@ -174,7 +174,13 @@ export interface RsbuildDevServer {
    * reports), by path relative to its output directory.
    */
   hotUpdates: (environment?: string) => Promise<Record<string, string>>
-  /** Modules (paths relative to the app root) the last compile built. */
+  /**
+   * Modules (paths relative to the app root) the compiles since the last
+   * `edit()` began built (since the server started before the first), in
+   * every environment: a module once per compile that built it. An edit may
+   * take more than one compile (a plugin may tell the compiler that more
+   * files changed), and each one's modules count.
+   */
   rebuilt: Array<string>
   /** Errors of the last compile (`diagnostics` keeps every compile's). */
   errors: Array<string>
@@ -402,6 +408,19 @@ async function startServer(
             )
             notify()
           })
+          // Every compile, also one Rspack follows with another before
+          // reporting the end (the compiler was told of more changes meanwhile)
+          environmentCompiler.hooks.afterCompile.tap(
+            'rsbuild-dev-server-harness',
+            (compilation) => {
+              for (const module of compilation.builtModules) {
+                const resource = (module as { resource?: string }).resource
+                if (resource) {
+                  rebuilt.push(path.relative(root, resource))
+                }
+              }
+            },
+          )
           const chunks: Record<string, string> = {}
           hotUpdateChunks.set(environmentCompiler, chunks)
           // Before Rsbuild's own `done` taps, which report the end of the
@@ -425,19 +444,12 @@ async function startServer(
         const all = 'stats' in stats ? stats.stats : [stats]
         const names = Object.keys(environments)
         const compilers = [...hotUpdateChunks.keys()]
-        const built: Array<string> = []
         const compileErrors: Array<string> = []
         const compileWarnings: Array<string> = []
         try {
           all.forEach((environmentStats, index) => {
             const { compilation } = environmentStats
             compilerOf[compilation.name ?? names[index]!] = compilers[index]!
-            for (const module of compilation.builtModules) {
-              const resource = (module as { resource?: string }).resource
-              if (resource) {
-                built.push(path.relative(root, resource))
-              }
-            }
             for (const error of compilation.errors) {
               compileErrors.push(error.message)
             }
@@ -454,7 +466,6 @@ async function startServer(
           }
           throw error
         }
-        rebuilt.splice(0, rebuilt.length, ...built)
         errors.splice(0, errors.length, ...compileErrors)
         warnings.splice(0, warnings.length, ...compileWarnings)
         recordedAt = ended
@@ -667,6 +678,7 @@ async function startServer(
     },
     settle,
     edit: (files, editOptions = {}) => {
+      rebuilt.length = 0
       for (const chunks of hotUpdateChunks.values()) {
         for (const file of Object.keys(chunks)) {
           delete chunks[file]
