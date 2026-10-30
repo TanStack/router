@@ -30,8 +30,12 @@ The loader runs for every JavaScript/TypeScript id of an environment, derived id
 their file at the same revision. The planners run in the core's fixed order: `start-env` (server functions,
 environment separation), `hydrate`, `rsc-css` (modules of the RSC layer), `router` (every layer but the RSC one; route
 HMR in the development client), `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
-as the map source, `addDependency`s every file the plan depended on, writes the module's server-function facts and
-import-protection records into `module.buildInfo`, and fails the module on an error diagnostic.
+as the map source, writes the plan's key and dependencies, the module's server-function facts and import-protection
+records into `module.buildInfo`, and fails the module on an error diagnostic. A module depends on no file but its own
+(Rspack builds it again for a change of its file only): the compiler's invalidation decides which modules a change
+makes stale (see "Development invalidation"). The analysis resolves through the resolver a loader's `getResolve()`
+gives, asked outside the loader (whose resolve context records every file it looks at as a dependency); its answers
+are memoised until a file appears or disappears.
 
 Dependency modules under `node_modules` that import protection does not check are passed through without a parse
 when their text names nothing the planners recognise (`compiler/scope.ts`, the rule the Vite host shares).
@@ -76,11 +80,16 @@ additional pass until no new veto appears; reports are published on the final pa
 
 ## Development invalidation
 
-`watchRun` runs the one invalidation operation of the compiler core once per logical change (the environment compilers
-of one watch cycle report the same modified and removed files; the session dedupes them by path, kind and mtime) and
-bumps `fileSetVersion` so recorded resolutions are re-asked once; Rspack rebuilds the modules whose recorded
-dependencies changed, and a module whose plan's fingerprints are unchanged is emitted again from the cached plan
-(outputs are not memoised).
+The compiler core's invalidation runs once per logical change (the environment compilers of one watch cycle report the
+same modified and removed files; the session dedupes them by path, kind and mtime) and decides which modules are
+stale; each environment compiler is told their files changed. An edit of a file the last compilation read is
+invalidated at `watchRun` (a file's facts need no resolver): its stale dependents join the compilation that starts,
+built with the edited file. A created or removed file is invalidated at `make`, once Rspack's resolver forgot what it
+found in the last compilation (a file that appeared takes the resolutions it shadows): its stale dependents are built
+by the next compilation (`invalidateFiles`).
+A dev server started again on the persistent cache checks, at its compilers' first `finishMake`, the plans persisted
+with the modules the cache restored: a module whose plan read facts that changed meanwhile (or another configuration's
+plan) is built again first; the others' plans join the session's invalidation.
 A route-registry change (the generator published new route ids) evicts the plans of the files concerned; Rspack sees
 no file event for them, so each environment compiler is told they changed (`invalidateFiles`) and builds them again,
 rules re-matched, at the compilation it starts. The generator runs before each compilation with the compiler's file

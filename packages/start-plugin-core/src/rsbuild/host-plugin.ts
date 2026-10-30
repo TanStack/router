@@ -1,21 +1,24 @@
 /**
  * The Rspack plugin of one Start environment compiler: installs the loader
  * implementation on the compiler, the generator as a precondition of the
- * compilation (`beforeRun`/`watchRun`), the one invalidation operation on
- * `watchRun`, the `finishMake` replay of server-fn and import-protection
+ * compilation (`beforeRun`/`watchRun`), the one invalidation operation of
+ * the file events (`watchRun`, `make`), the `finishMake` replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build verdict
  * (`processAssets` witness, `decide`,
  * `needAdditionalPass` to the fixed point) and dev reports (`finishModules`),
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
  */
+import path from 'node:path'
 import {
   emittedMapTexts,
+  identify,
   initialChunkResources,
   invalidateFiles,
   normalizePath,
   rebuildModules,
   warnEagerExports,
+  webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
 import {
@@ -23,6 +26,7 @@ import {
   rspackGraphView,
 } from '../import-protection/witness'
 import {
+  PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
 } from './compiler-session'
@@ -36,6 +40,7 @@ import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { ImportGraphView } from '../import-protection/graph-trace'
+import type { PersistedPlan } from '@tanstack/router-utils/compiler'
 import type { Rspack, rspack as rspackNamespaceType } from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
@@ -79,6 +84,7 @@ function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
 interface ModuleLike {
   resource?: string
   buildInfo?: Record<string, unknown>
+  layer?: string | null
   identifier: () => string
 }
 
@@ -127,30 +133,45 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }),
         )
       }
-      try {
-        const resolver = compiler.resolverFactory.get('normal', {
-          dependencyType: 'esm',
-        })
-        session.resolvers.set(
-          environment.name,
-          (dir, request) =>
-            new Promise((resolve) => {
-              try {
-                resolver.resolve({}, dir, request, {}, (error, result) => {
-                  resolve(
-                    !error && typeof result === 'string'
-                      ? normalizePath(result)
-                      : null,
-                  )
-                })
-              } catch {
-                resolve(null)
-              }
-            }),
-        )
-      } catch {
-        // no resolver outside loaders: the invalidation re-resolves nothing
-      }
+      // a loader's `getResolve()` resolver, without the resolve context that
+      // records what it looks at as dependencies of the module compiling. Got
+      // at the first resolution, in a compilation: one got before the
+      // compiler's first compilation keeps a file system cache that no
+      // compilation clears (Rspack 2.2: a created file is never seen)
+      let resolver: ReturnType<typeof compiler.resolverFactory.get> | undefined
+      session.resolvers.set(
+        environment.name,
+        (dir, request) =>
+          new Promise((resolve) => {
+            try {
+              resolver ??= compiler.resolverFactory.get('normal')
+              resolver.resolve({}, dir, request, {}, (error, result) => {
+                resolve(
+                  !error && typeof result === 'string'
+                    ? webpackResourceId(result)
+                    : null,
+                )
+              })
+            } catch {
+              resolve(null)
+            }
+          }),
+      )
+      /**
+       * The changed files of the compilation this compiler is starting, open
+       * during its `watchRun` (Rspack's watcher hands the compiler this set,
+       * which the compilation reads once `watchRun` ended).
+       */
+      let starting: Set<string> | null = null
+      session.rebuilders.set(environment.name, (paths) => {
+        if (!starting) {
+          invalidateFiles(compiler, paths)
+          return
+        }
+        for (const file of paths) {
+          starting.add(path.normalize(file))
+        }
+      })
 
       // import-protection edge modules are virtual files of this environment, written when
       // they are defined (the importer's compile) or change state (a build veto); an importer
@@ -193,20 +214,45 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         await opts.generator.beforeRun()
       })
 
+      const isKnown = (file: string) => !knownFiles || knownFiles.has(file)
+      // the edits of files the last compilation read, invalidated before this compilation
+      // starts: the modules of their stale dependents are built with them (a file's facts
+      // need no resolver)
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         ipEnvOf()?.beginLogicalBuild()
-        // Rspack reports no event for a file created while nothing depended on it (a target
-        // deleted and recreated between edits): failed resolutions and missing-file facts are
-        // re-read by the compiles of this compilation
-        session.forgetMisses()
-        await session.invalidateFileEvents(
-          modified,
-          removed,
-          (file) => !knownFiles || knownFiles.has(file),
-        )
+        starting = (c.modifiedFiles as Set<string> | undefined) ?? null
+        try {
+          await session.invalidateFileEvents(
+            modified
+              .filter(isKnown)
+              .map((file) => ({ file, kind: 'change' as const })),
+          )
+        } finally {
+          starting = null
+        }
         await opts.generator.watchRun(modified, removed)
+      })
+      // created and removed files, invalidated once Rspack's resolver forgot what it found
+      // in the last compilation (at `make`, before the modules build): the modules of their
+      // stale dependents are built by the next compilation
+      compiler.hooks.make.tapPromise(PLUGIN_NAME, async (compilation) => {
+        if (compilation.compiler !== compiler) {
+          return
+        }
+        // Rspack reports no event for a file created while nothing depended on it (a
+        // target deleted and recreated between edits): missing-file facts are read again
+        session.forgetMisses()
+        await session.invalidateFileEvents([
+          ...[...(compiler.modifiedFiles ?? [])]
+            .filter((file) => !isKnown(file))
+            .map((file) => ({ file, kind: 'add' as const })),
+          ...[...(compiler.removedFiles ?? [])].map((file) => ({
+            file,
+            kind: 'unlink' as const,
+          })),
+        ])
       })
       // a registry change (the generator published new route ids): Rspack sees
       // no file event for the files concerned, so it is told they changed and
@@ -404,16 +450,45 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       // the replay of this compilation's modules (built now or restored from the persistent
-      // cache): the environment's server-fn snapshot and the import-protection records. In dev,
-      // a module restored with violations, or an edge module restored with pending ones, was
-      // judged by another session (its `onViolation` verdicts decided its output; its reports
-      // were printed there): built again first. Only a compiler's first compilation restores
-      // modules (Rspack loads the cache's module graph in a build, never in a rebuild)
+      // cache): the plans of restored modules, the environment's server-fn snapshot and the
+      // import-protection records. A restored module whose plan read facts that changed since
+      // (or no plan of this configuration) is built again first; in dev, so is a module
+      // restored with violations, or an edge module restored with pending ones: another
+      // session judged it (its `onViolation` verdicts decided its output; its reports were
+      // printed there). Only a compiler's first compilation restores modules (Rspack loads the
+      // cache's module graph in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
         async (compilation) => {
           if (compilation.compiler !== compiler) {
             return
+          }
+          if (!knownFiles) {
+            const restored: Array<{
+              plan: PersistedPlan
+              layer: string | undefined
+            }> = []
+            for (const m of compilation.modules) {
+              const module = m as unknown as ModuleLike
+              const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD] as
+                | PersistedPlan
+                | undefined
+              if (
+                plan &&
+                module.resource &&
+                !env.compiled.has(module.resource)
+              ) {
+                restored.push({ plan, layer: module.layer ?? undefined })
+              }
+            }
+            const stale = await session.restorePlans(environment.name, restored)
+            if (stale.size > 0) {
+              await rebuildModules(
+                compilation,
+                stale,
+                (r) => identify(canonicalResource(r)).path,
+              )
+            }
           }
           const ipEnv = ipEnvOf()
           if (ipEnv && session.start.opts.mode === 'dev' && !knownFiles) {

@@ -3,10 +3,12 @@
  * README.md, "Hosts"): the loader implementation compiling every id (env and
  * derived) of a module of an environment and layer through the shared Start
  * session (`compiler/session.ts`), from one `pre` loader per environment
- * (`compiler-loader.ts`); the server-fn facts persisted in the modules'
- * `buildInfo`; and the one invalidation operation on `watchRun`. The Rspack
- * hooks live in `host-plugin.ts`; this module is bundler-API free except for
- * the loader context shape.
+ * (`compiler-loader.ts`); the server-fn facts and the plan's dependencies
+ * persisted in the modules' `buildInfo`; and the one invalidation operation
+ * of a compilation's file events, whose stale dependents the environment
+ * compilers are told to build again (a module depends on no file but its
+ * own). The Rspack hooks live in `host-plugin.ts`; this module is bundler-API
+ * free except for the loader context shape.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -17,7 +19,9 @@ import {
   invalidate,
   normalizePath,
   pathsOf,
+  planKeyString,
   registerCompilerStats,
+  restorePlans,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
@@ -37,12 +41,16 @@ import type {
   HostServices,
   InputSourceMap,
   InvalidateChange,
+  PersistedPlan,
   PlanKey,
   RecordMapText,
 } from '@tanstack/router-utils/compiler'
 
 /** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
 export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
+
+/** The `buildInfo` field holding the key and dependencies of a module's plan (persisted by Rspack's cache; checked at a compiler's first `finishMake`). */
+export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
 
 export interface ServerFnBuildInfo {
   version: 2
@@ -78,9 +86,6 @@ interface LoaderContextLike {
   sourceMap?: boolean
   addDependency: (file: string) => void
   emitWarning: (error: Error) => void
-  getResolve: (
-    options?: object,
-  ) => (context: string, request: string) => Promise<string | false | undefined>
   _module?: { buildInfo?: Record<string, unknown>; layer?: string | null }
 }
 
@@ -116,11 +121,21 @@ export class StartRsbuildCompilerSession {
     string,
     (file: string) => Promise<string | null>
   >()
-  /** A resolver per environment for the invalidation operation (outside any loader). */
+  /**
+   * The resolver of each environment, for its compiles and its
+   * invalidations: the one a loader's `getResolve()` gives, asked outside
+   * any loader (Rspack would record every file it looks at as a dependency
+   * of the module compiling).
+   */
   readonly resolvers = new Map<
     string,
     (importerDir: string, specifier: string) => Promise<string | null>
   >()
+  /**
+   * Tells each environment's compiler that files changed (it builds their
+   * modules again): the compilation it is starting, or its next one.
+   */
+  readonly rebuilders = new Map<string, (paths: Array<string>) => void>()
 
   constructor(opts: StartRsbuildSessionOptions) {
     for (const env of opts.environments) {
@@ -186,13 +201,8 @@ export class StartRsbuildCompilerSession {
   /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
   private readonly missing = new Set<string>()
 
-  /**
-   * Drops every missing-file fact and lets the compiles of the starting
-   * watch compilation re-resolve recorded resolutions once (the file set
-   * may have changed without an event: `fileSetVersion`).
-   */
+  /** Drops every missing-file fact (a file may appear without an event: nothing watches it). */
   forgetMisses(): void {
-    this.start.caches.fileSetVersion++
     for (const file of this.missing) {
       this.start.rawFacts.markStale(file)
     }
@@ -226,41 +236,31 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** Host services of one compile, bound to a loader context's resolver. */
-  private hostFor(ctx: LoaderContextLike, env: EnvState): HostServices {
-    const resolver = ctx.getResolve()
-    return this.start.host(
-      async (specifier, importer) => {
-        try {
-          const dir = path.dirname(identify(importer).path)
-          const r = await resolver(dir, specifier)
-          return typeof r === 'string' ? { id: normalizePath(r) } : null
-        } catch {
-          return null
-        }
-      },
-      { importRewrite: this.importRewrite(env) },
-    )
-  }
+  private readonly hosts = new Map<string, HostServices>()
 
-  /**
-   * The host of the invalidation operation for an environment: its own
-   * resolver (per-environment aliases and conditions); an environment
-   * without a registered resolver yet asks the others in turn.
-   */
-  private invalidationHost(env?: string): HostServices {
-    const own = env === undefined ? undefined : this.resolvers.get(env)
-    const resolvers = own ? [own] : [...this.resolvers.values()]
-    return this.start.host(async (specifier, importer) => {
-      const dir = path.dirname(identify(importer).path)
-      for (const resolve of resolvers) {
-        const id = await resolve(dir, specifier)
-        if (id !== null) {
-          return { id }
-        }
+  /** The host services of an environment's compiles and invalidations (its own resolver: aliases and conditions differ). */
+  private hostFor(envName: string): HostServices {
+    let host = this.hosts.get(envName)
+    if (!host) {
+      const resolve = this.resolvers.get(envName)
+      if (!resolve) {
+        throw new Error(
+          `[tanstack-start] no resolver for the Rsbuild environment "${envName}"`,
+        )
       }
-      return null
-    })
+      host = this.start.host(
+        async (specifier, importer) => {
+          const id = await resolve(
+            path.dirname(identify(importer).path),
+            specifier,
+          )
+          return id === null ? null : { id }
+        },
+        { importRewrite: this.importRewrite(this.env(envName)) },
+      )
+      this.hosts.set(envName, host)
+    }
+    return host
   }
 
   /** Per environment: the files its last compilation depended on (dev; see `retain`). */
@@ -294,9 +294,9 @@ export class StartRsbuildCompilerSession {
     const keepEnv = keepIn((p) => live.has(p))
     const plans = this.start.caches.plans.get(envName)
     if (plans) {
-      for (const entry of [...plans.values()]) {
-        if (!keepEnv(identify(entry.key.canonicalId).path)) {
-          plans.delete(entry.key)
+      for (const key of plans.keys()) {
+        if (!keepEnv(identify(key.canonicalId).path)) {
+          plans.delete(key)
         }
       }
     }
@@ -324,7 +324,11 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** The one invalidation operation (compiler plans and bundler transforms together): the host's bundler rebuilds through the loader's `addDependency` set. */
+  /**
+   * The one invalidation operation (compiler plans and bundler modules
+   * together): the caller has the modules of the stale dependents built
+   * again (`rebuildDependents`, a registry change's listeners).
+   */
   invalidate(
     file: string,
     kind: InvalidateChange['kind'],
@@ -332,44 +336,109 @@ export class StartRsbuildCompilerSession {
     return invalidate(
       this.start.caches,
       { path: normalizePath(file), kind },
-      (env) => this.invalidationHost(env),
+      (env) => this.hostFor(env),
     )
   }
 
-  /** The last file event invalidated per path (`kind:mtime:size`, or `unlink`). */
-  private readonly lastEvent = new Map<string, string>()
+  /**
+   * The last file event invalidated per path (`kind:mtime:size`, or
+   * `unlink`), and the end of the invalidation it was part of.
+   */
+  private readonly lastEvent = new Map<
+    string,
+    { stamp: string; done: Promise<void> }
+  >()
 
   /**
-   * The invalidation of a watch cycle's file events, once per logical
+   * The invalidation of a compilation's file events, once per logical
    * change: every environment compiler of the cycle reports the same
    * modified and removed files, and a second invalidation of the same
    * change would evict the plans the first compiler just rebuilt and
-   * restart the compiles in flight. `isKnown`: whether the compilation
-   * depended on the file before (else the event is a creation).
+   * restart the compiles in flight (a compiler seeing a change another one
+   * is invalidating waits for it). The modules of the dependents it finds
+   * stale are built again (`rebuildDependents`).
    */
   async invalidateFileEvents(
-    modified: ReadonlyArray<string>,
-    removed: ReadonlyArray<string>,
-    isKnown: (file: string) => boolean,
+    events: ReadonlyArray<{ file: string; kind: FileEventKind }>,
   ): Promise<void> {
-    for (const file of modified) {
-      const kind = isKnown(file) ? 'change' : 'add'
-      const stat = fs.statSync(file, { throwIfNoEntry: false })
-      const stamp = stat ? `${kind}:${stat.mtimeMs}:${stat.size}` : kind
-      if (this.lastEvent.get(file) === stamp) {
-        continue
+    const others: Array<Promise<void>> = []
+    const mine: Array<{ file: string; kind: FileEventKind }> = []
+    let end!: () => void
+    const done = new Promise<void>((resolve) => (end = resolve))
+    for (const event of events) {
+      const stamp = stampOf(event.file, event.kind)
+      const last = this.lastEvent.get(event.file)
+      if (last?.stamp === stamp) {
+        others.push(last.done)
+      } else {
+        this.lastEvent.set(event.file, { stamp, done })
+        mine.push(event)
       }
-      this.lastEvent.set(file, stamp)
-      await this.invalidate(file, kind)
     }
-    for (const file of removed) {
-      if (this.lastEvent.get(file) === 'unlink') {
-        continue
+    try {
+      const stale: Array<PlanKey> = []
+      for (const { file, kind } of mine) {
+        stale.push(...(await this.invalidate(file, kind)).dependents)
+        if (kind === 'unlink') {
+          this.start.forget(normalizePath(file))
+        }
       }
-      this.lastEvent.set(file, 'unlink')
-      await this.invalidate(file, 'unlink')
-      this.start.forget(normalizePath(file))
+      this.rebuildDependents(stale)
+    } finally {
+      end()
     }
+    await Promise.all(others)
+  }
+
+  /**
+   * Has each environment compiler build again the modules of its stale
+   * plans (`rebuilders`): Rspack builds a module for a change of its own
+   * file only, so it is told their files changed. That change is no new
+   * event (the files are as the invalidation saw them): recorded as
+   * invalidated.
+   */
+  private rebuildDependents(keys: ReadonlyArray<PlanKey>): void {
+    if (keys.length === 0) {
+      return
+    }
+    const done = Promise.resolve()
+    for (const [env, rebuild] of this.rebuilders) {
+      const paths = pathsOf(keys, env)
+      for (const file of paths) {
+        this.lastEvent.set(file, { stamp: stampOf(file, 'change'), done })
+      }
+      rebuild(paths)
+    }
+  }
+
+  /**
+   * The plans an earlier process persisted with an environment's modules
+   * (`PLAN_BUILD_INFO_FIELD`), which Rspack's persistent cache restored
+   * without a compile: each one compiled with this session's configuration
+   * and whose dependencies are all current joins the session's plans
+   * (`restorePlans`); returns the files of the others, whose modules are
+   * to be built again.
+   */
+  async restorePlans(
+    envName: string,
+    modules: Iterable<{ plan: PersistedPlan; layer: string | undefined }>,
+  ): Promise<Set<string>> {
+    const env = this.env(envName)
+    const current = new Map<string, PersistedPlan>()
+    const stale: Array<PlanKey> = []
+    for (const { plan, layer } of modules) {
+      if (this.start.configured(plan.key.configKey, env, layer)) {
+        current.set(planKeyString(plan.key), plan)
+      } else {
+        stale.push(plan.key)
+      }
+    }
+    stale.push(
+      ...(await restorePlans(this.start.caches, current.values(), (name) =>
+        this.hostFor(name),
+      )),
+    )
+    return new Set(pathsOf(stale))
   }
 
   /** Whether a compilation of any environment finished (the hosts set it at `done`). */
@@ -459,15 +528,10 @@ export class StartRsbuildCompilerSession {
         wantMap: ctx.sourceMap !== false,
         late,
       },
-      this.hostFor(ctx, env),
+      this.hostFor(env.name),
     )
     if (!out) {
       return passthrough
-    }
-    for (const dep of out.dependencies) {
-      if (dep !== identity.path) {
-        ctx.addDependency(dep)
-      }
     }
     this.reportDiagnostics(ctx, out, identity.path, source, env.type)
     env.compiled.add(ctx.resource)
@@ -480,6 +544,9 @@ export class StartRsbuildCompilerSession {
       throw error
     }
     const buildInfo = ctx._module?.buildInfo
+    if (out.persisted && buildInfo) {
+      buildInfo[PLAN_BUILD_INFO_FIELD] = out.persisted
+    }
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {
       buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
@@ -583,6 +650,18 @@ export class StartRsbuildCompilerSession {
         .sort(),
     )
   }
+}
+
+/** A file event of a compilation: an edit, a creation, a removal. */
+export type FileEventKind = 'change' | 'add' | 'unlink'
+
+/** A file event's record (`lastEvent`): its kind and the file as it is now. */
+function stampOf(file: string, kind: FileEventKind): string {
+  if (kind === 'unlink') {
+    return kind
+  }
+  const stat = fs.statSync(file, { throwIfNoEntry: false })
+  return stat ? `${kind}:${stat.mtimeMs}:${stat.size}` : kind
 }
 
 /**

@@ -337,7 +337,7 @@ export class StartCompilerSession {
         planners: late ? [this.ip!.planner] : this.plannersFor(env, rsc),
         config: late
           ? {
-              configKey: `late\u0000${config.configKey}`,
+              configKey: lateConfigKey(config.configKey),
               perPlanner: { [IMPORT_EDGES_PLANNER]: env.type },
             }
           : config,
@@ -356,6 +356,24 @@ export class StartCompilerSession {
       )
     }
     return out
+  }
+
+  /**
+   * Whether a plan's configuration key (one an earlier process persisted)
+   * is this session's for a module of `env` and `layer`, of the main
+   * compile or of the late pass.
+   */
+  configured(
+    configKey: string,
+    env: StartCompilerEnvironment,
+    layer: string | undefined,
+  ): boolean {
+    const own = this.configFor(
+      env,
+      this.rendersServerComponents(env.name, layer),
+      layer,
+    ).configKey
+    return configKey === own || configKey === lateConfigKey(own)
   }
 
   /**
@@ -438,6 +456,9 @@ export class StartCompilerSession {
     this.ip?.release(envName)
   }
 }
+
+/** The configuration key of the late pass (import protection over a non-JS module's JS) of a configuration. */
+const lateConfigKey = (configKey: string) => `late\u0000${configKey}`
 
 /** The server functions a compile defines (start-env's facts), if any. */
 export function serverFnFactsOf(
