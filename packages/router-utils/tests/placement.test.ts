@@ -746,6 +746,19 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  it('keeps a default export of an expression reading a candidate in the env module (it is no re-export)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function Page() { return 'page' }
+      export default () => Page()
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export default () => Page()')
+    expect(r.env).toContain('export function Page()')
+    expect(r.env).not.toContain('export~')
+  })
+
   it('moves an exported function with the module state it writes, when only the chunk reads it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

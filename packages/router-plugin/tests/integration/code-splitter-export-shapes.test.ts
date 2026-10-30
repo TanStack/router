@@ -115,11 +115,8 @@ return [typeof entry.Home, typeof entry.HomeSkeleton]`)
 
 describe('a default export that wraps an exported component the split component renders', () => {
   // `export default () => <Page />` next to `export function Page`: the
-  // route module keeps its default export.
-  // Bug (main built it): the default export moves to Page's extracted
-  // module and the route module's re-export lists only `Page`, so
-  // `default` is gone (MISSING_EXPORT).
-  it.fails(
+  // route module keeps its default export (it is no re-export of `Page`).
+  it(
     'builds, renders, and gives importers the default export',
     async () => {
       const app = await buildRoute(

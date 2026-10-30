@@ -93,8 +93,14 @@ export function seedRoots(
       if (
         cl.kind !== 'export' ||
         !cl.units.every((u) => {
-          const k = units[u]!.kind
-          return k === 'export-specifier' || k === 'export-default'
+          const { kind, node } = units[u]!
+          // `export default () => <Page />` is no re-export of its target
+          return (
+            kind === 'export-specifier' ||
+            (kind === 'export-default' &&
+              node.type === 'ExportDefaultDeclaration' &&
+              node.declaration.type === 'Identifier')
+          )
         })
       ) {
         continue
