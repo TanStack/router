@@ -508,7 +508,8 @@ dir)` is not a conflict by itself.
   not answer a direct HTTP call by id. In dev, an HTTP call by id may run any server function. Calling a server
   function from server code is documented: a server function only server code calls (another handler, a middleware
   `.server()`, an SSR-only module) works for those callers in every production build, whether or not the client
-  build found it, in any module processing order (G4).
+  build found it, in any module processing order (G4). A server function defined in code the provider erases but the
+  client runs (`createClientOnlyFn`, an isomorphic fn's `.client()`, `<ClientOnly>` children) is registered all the same.
 - **J4.3 `createServerFn` during SSR.** Calling a server function while rendering runs the handler directly (no HTTP
   fetch), with the same result as an HTTP call. When SSR and the provider share an environment, the handler may stay
   in the SSR module or be looked up by id (§5.4). When the provider is a separate environment (RSC), the handler runs

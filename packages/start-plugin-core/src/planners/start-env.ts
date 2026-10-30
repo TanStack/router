@@ -722,7 +722,7 @@ function planStartEnv(
     // at the capture, or every env supports it); the hoist itself happens on the provider
     let hoisted: ReturnType<typeof hoist> = null
     if (site.nested) {
-      hoisted = hoist(ctx, site, providerOut ?? 'auto', by)
+      hoisted = hoist(ctx, site, providerOut ?? 'auto', role === 'provider', by)
       if (!hoisted) {
         continue
       }
@@ -1016,6 +1016,7 @@ function hoist(
   ctx: PlanContext,
   site: ServerFnSite,
   home: 'auto' | OutputId,
+  provider: boolean,
   by: string,
 ): {
   sym: SymbolId
@@ -1029,8 +1030,14 @@ function hoist(
   const xRange = rangeOf(X)
   const h = site.handler
   const hRange = rangeOf(h)
-  // the claim is dead where the enclosing code is erased: no diagnostics there
-  if (ctx.liveness(home === 'auto' ? 'env' : home).isErased(xRange)) {
+  // the claim is dead where the enclosing code is erased: no diagnostics
+  // there. Except on the provider: what it erases may run on the client
+  // (`createClientOnlyFn`, `<ClientOnly>` children), which calls the server
+  // fn, so the provider still serves it
+  if (
+    !provider &&
+    ctx.liveness(home === 'auto' ? 'env' : home).isErased(xRange)
+  ) {
     return null
   }
   const refuse = (message: string, range: Range) => {

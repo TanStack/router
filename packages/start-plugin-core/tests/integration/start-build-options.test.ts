@@ -426,6 +426,117 @@ ${callByIdExports}`,
     timeout,
   )
 
+  // Code the server erases may run on the client, which then calls a server
+  // fn defined inside it: the server serves that fn all the same.
+  test.each([
+    {
+      shape: 'a createClientOnlyFn',
+      definition: `export const pick = createClientOnlyFn(() => {
+  const greet = createServerFn().handler(async () => 'MARK_ERASED_FN')
+  return greet
+})`,
+      url: `entry.pick().url`,
+    },
+    {
+      shape: "an isomorphic fn's client implementation",
+      definition: `export const pick = createIsomorphicFn()
+  .client(() => {
+    const greet = createServerFn().handler(async () => 'MARK_ERASED_FN')
+    return greet
+  })
+  .server(() => null)`,
+      url: `entry.pick().url`,
+    },
+    {
+      shape: 'the children of <ClientOnly>',
+      definition: `const Button = () => null
+export const pick = () => (
+  <ClientOnly>
+    <Button greet={createServerFn().handler(async () => 'MARK_ERASED_FN')} />
+  </ClientOnly>
+)`,
+      url: `entry.pick().props.children.props.greet.url`,
+    },
+    {
+      shape: 'a server fn nested in another one',
+      definition: `export const pick = createClientOnlyFn(() =>
+  createServerFn().handler(async () => {
+    const inner = createServerFn().handler(async () => 'MARK_INNER_FN')
+    return [await inner(), 'MARK_ERASED_FN'].join()
+  }),
+)`,
+      url: `entry.pick().url`,
+      called: 'MARK_INNER_FN,MARK_ERASED_FN',
+    },
+  ])(
+    'a server fn defined inside $shape runs on the server',
+    async ({ definition, url, called = 'MARK_ERASED_FN' }) => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...routeFiles,
+          'src/routes/index.tsx': `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import {
+  createClientOnlyFn,
+  createIsomorphicFn,
+  createServerFn,
+} from '@tanstack/react-start'
+${definition}
+export const Route = createFileRoute('/')({
+  component: () => 'MARK_COMPONENT',
+})
+`,
+          'src/client-entry.ts': `export { getRouter } from './router'
+export { pick } from './routes/index'
+`,
+          'src/ssr-entry.ts': `export { getRouter } from './router'
+export { pick } from './routes/index'
+${callByIdExports}`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      const id = (await client.run(`return ${url}`)).result
+      expect(
+        (
+          await ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(id)}))`,
+          )
+        ).result,
+      ).toBe(called)
+    },
+    timeout,
+  )
+
+  // Generated declarations render above the file's first statement on the
+  // server; a statement starting with a parenthesis must not become a call of
+  // the last of them.
+  test(
+    'a route file whose first statement starts with a parenthesis stays a statement of its own',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          ...routeFiles,
+          'src/routes/index.tsx': `;(globalThis).parenStatement = 'MARK_PAREN'
+export const greet = createServerFn().handler(async () => 'MARK_FN')
+import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+export const Route = createFileRoute('/')({ component: () => 'MARK_COMPONENT' })
+`.slice(1),
+          'src/client-entry.ts': `export { getRouter } from './router'\n`,
+          'src/ssr-entry.ts': `export { getRouter } from './router'
+export { greet } from './routes/index'
+`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect((await ssr.run(`return globalThis.parenStatement`)).result).toBe(
+        'MARK_PAREN',
+      )
+    },
+    timeout,
+  )
+
   // Source: mutation testing (the footer Start adds to the
   // route tree was never type-checked).
   // The footer augments the Start package of the app's framework.
