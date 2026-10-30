@@ -14,4 +14,5 @@ Rebuild the route generator without Babel.
 - Writes are atomic per write (also when `tmpDir` is on another filesystem); the generator's own writes no longer regenerate.
 - `tsr watch` and the Rspack/webpack plugins watch every route root, including `physical()` mounts.
 - `GeneratorPlugin.onRouteTreeChanged` receives the tree model (`{ model }`). The internal helpers `format`, `inferFullPath`, `checkRouteFullPathUniqueness` and `writeIfDifferent` are no longer exported.
+- The `GeneratorPlugin.afterTransform` hook is removed: a plugin reads every route from the tree model `onRouteTreeChanged` receives.
 - `@tanstack/router-generator` and `@tanstack/router-cli` require Node `^20.19.0 || >=22.12.0`: the CommonJS build and the `tsr` binary load the ESM-only parser through `require(esm)`.
