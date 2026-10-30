@@ -954,7 +954,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     )
     .join(',')}
 }`,
-      routeTreeLines.join('\n'),
+      ...routeTreeLines,
     ].join('\n')
 
     checkRouteFullPathUniqueness(

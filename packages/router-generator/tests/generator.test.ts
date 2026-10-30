@@ -373,12 +373,12 @@ describe('generator works', async () => {
       const generator = new Generator({ config, root: folderRoot })
       const error = shouldThrow(folderName)
       if (error) {
-        const runError = await generator.run().then(
-          () => undefined,
-          (e: unknown) => e,
-        )
-        expect(runError).toBeInstanceOf(Error)
-        expect((runError as Error).message.startsWith(error)).toBe(true)
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
       } else {
         await generator.run()
 

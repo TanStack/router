@@ -19,9 +19,7 @@ it.each(['nested', 'lazy', 'lazy-only-layout-and-index'])(
       path.join(root, 'routeTree.isolated.snapshot.ts'),
     )
     const inferredFile = tsPath(path.join(root, 'routeTree.snapshot.ts'))
-    const checkFile = tsPath(
-      path.join(fixtureDirectory(fixture), 'route-tree-types.check.ts'),
-    )
+    const checkFile = tsPath(path.join(root, 'route-tree-types.check.ts'))
     const checkSource = `
 import { routeTree as isolated } from './routeTree.isolated.snapshot'
 import { routeTree as inferred } from './routeTree.snapshot'
@@ -74,9 +72,7 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
         file && diagnostic.start !== undefined
           ? file.getLineAndCharacterOfPosition(diagnostic.start).line + 1
           : 0
-      const fileName = file
-        ? path.relative(fixtureDirectory(fixture), file.fileName)
-        : '<program>'
+      const fileName = file ? path.relative(root, file.fileName) : '<program>'
       return `${fileName}:${line} TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`
     })
     expect(errors).toEqual([])
