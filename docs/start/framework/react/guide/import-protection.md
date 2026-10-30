@@ -263,6 +263,45 @@ importProtection: {
 }
 ```
 
+## What the Compiler Guarantees
+
+Server code stays out of the client when it is written with these primitives:
+
+- **Server functions** (`createServerFn`): the client gets a call to the server, never the handler.
+- **`createServerOnlyFn`** and the `.server()` of `createIsomorphicFn` and `createMiddleware`: the client never gets the implementation.
+- **`.server` files and `server-only` markers**, through import protection: the client build fails, or gets a mock.
+- **A route's `server` option**: removed from the client.
+
+A use of these the compiler cannot follow (a builder passed to another function, stored in an object, reassigned) fails the client build.
+
+Everything else is ordinary code. A plain call in a declaration that client code also reads ships to the client, with its import:
+
+```ts
+import { readSecret } from './secrets' // not a .server file, so not denied
+
+const config = { name: 'app', secret: readSecret() }
+
+export const appName = () => config.name // the client reads config, so readSecret() ships
+```
+
+Arguments ship too. A parameter only server code reads gets a build warning, because its calls keep their arguments on the client:
+
+```ts
+// warns: 'admin' still ships to the client
+const requireRole = (role: string) =>
+  createMiddleware().server(({ next }) => check(role, next))
+
+export const adminOnly = requireRole('admin')
+```
+
+A parameter passed directly as the server code, as in `(fn) => createServerOnlyFn(fn)`, fails the build: the wrapper's argument would ship.
+
+To write safe code:
+
+- Call server-only code inside a server function, `createServerOnlyFn` or `.server()`.
+- Keep modules that hold secrets in `.server` files, so import protection catches any import that survives.
+- Read secrets inside the server code, not through parameters.
+
 ## Limitations
 
 A denied file is judged when it is compiled, from the imports import protection has read so far. Some imports are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.

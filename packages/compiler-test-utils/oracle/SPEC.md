@@ -531,7 +531,20 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   `createStart(...).createMiddleware`, `.middleware([...])` chains that return callable builders, and re-exports under
   string export names (`export { createServerFn as 'create server fn' }`). A configured builder passed in another
   builder's `.middleware([...])` contributes its middleware list. Option objects given by identifier or spread are
-  ordinary input. Unrecognised shapes must not leak silently (J4.12): for a builder method called through a computed
+  ordinary input. Also recognised: a Start namespace or start instance destructured (`const { createServerFn } =
+  Start`), a sequence callee (`(0, createServerFn)()`), a builder chosen between two of the same kind (`c ?
+  createServerFn({ method: 'POST' }) : createServerFn()`, `??`, `||`, `&&`), a factory whose single `return` follows
+  statements that cannot return, and the JavaScript of a late-pass module (`.mdx`, `.vue`, …) that names a Start
+  package. Any other use of a builder, a factory, a start instance, a Start namespace, a middleware or isomorphic fn
+  without `.server()`, or a function returning one, fails the client build with an error at the use (passed to a
+  function, stored in a container, a class field or another variable, awaited, a detached or unknown member, returned
+  from control flow, an async function or a method, a reassigned binding, destructured, a Start package imported
+  dynamically). A parameter passed directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`) fails the
+  client build at that use, since every call keeps its argument, which is server code; one only read inside server code
+  gets one warning at its definition. Neither looks across modules. An importer of a module
+  exporting one of them that is not a compiled module importing it statically (a dynamic import, `require`, a glob, a
+  virtual module, a passed namespace) fails the client build naming both modules. Unrecognised shapes must not leak
+  silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an
   error at the call. Look-alikes are left alone (G15).
