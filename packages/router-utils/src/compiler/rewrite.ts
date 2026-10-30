@@ -112,6 +112,7 @@ interface RegionClaim {
 }
 
 const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
+const NO_REGIONS: ReadonlySet<RegionId> = new Set()
 
 /**
  * Bands of edit sequences (`TreeEdit.seq`). Among edits of one range a
@@ -147,8 +148,6 @@ export class RewriteSet {
   private seq = 0
   private version = 0
   private trees = new Map<string, { version: number; tree: RenderTree }>()
-  private read: { version: number; owners: ReadonlySet<GenUnitId> } | null =
-    null
 
   constructor(private readonly regions: RegionTable) {}
 
@@ -259,45 +258,58 @@ export class RewriteSet {
       }
     }
     // Claims: live iff the region's occurrence is not erased by a planner
-    // edit strictly enclosing it (inside the claimed region enclosing it, if
-    // any: that region renders inside its owner). A claim whose owner other
-    // generated code reads (`readOwners`: the provider's hoisted server fn
-    // its RPC wrapper calls) is a declaration in its own right and always
-    // live: an erasure of its occurrence removes the placeholder there, and
-    // the owner stays while placement reaches it. An edit scoped to this
-    // output on exactly the region replaces the placeholder here (it sorts
-    // before the claim); one addressed to every output nests inside the
-    // claim and renders where the region does, inside its owner. The
-    // internal edits (`extra`) never decide it: placement drops a statement
-    // it does not place, not the claimed regions in it, which render inside
-    // their owners wherever those are placed (as reach saw them).
-    const claimEdit = (claim: RegionClaim): TreeEdit => ({
-      range: this.regions.get(claim.region).range,
-      body: claim.placeholder,
-      by: claim.by,
-      seq: claimSeq(claim.region),
-      claim: claim.region,
-    })
-    const read = this.readOwners()
+    // edit strictly enclosing it. A claim whose owner other generated code
+    // reads (`readOwners`: the provider's hoisted server fn its RPC wrapper
+    // calls) is a declaration in its own right and stays live (`hidden`):
+    // an erasure of its occurrence removes the placeholder there, the owner
+    // stays while placement reaches it, and the claims inside its region are
+    // decided inside it. An edit scoped to this output on exactly the region
+    // replaces the placeholder here (it sorts before the claim); one
+    // addressed to every output nests inside the claim and renders where the
+    // region does, inside its owner. The internal edits (`extra`) never
+    // decide it: placement drops a statement it does not place, not the
+    // claimed regions in it, which render inside their owners wherever those
+    // are placed (as reach saw them).
+    const live: Array<RegionClaim> = []
+    let erased: Array<RegionClaim> | undefined
+    const base = new RenderTree(edits, this.regions)
     for (const claim of this.claims.values()) {
-      if (read.has(claim.owner)) {
-        edits.push(claimEdit(claim))
+      const { range } = this.regions.get(claim.region)
+      if (base.isErasedAt(range.start, null, range)) {
+        ;(erased ??= []).push(claim)
+      } else {
+        live.push(claim)
       }
     }
-    const base = new RenderTree(edits, this.regions)
+    let hidden: Set<RegionId> | undefined
+    if (erased) {
+      const read = this.readOwners()
+      for (const claim of erased) {
+        if (read.has(claim.owner)) {
+          ;(hidden ??= new Set()).add(claim.region)
+          edits.push(claimEdit(this.regions, claim))
+        }
+      }
+      if (hidden) {
+        const relocated = new RenderTree(edits, this.regions, hidden)
+        for (const claim of erased) {
+          const { range } = this.regions.get(claim.region)
+          if (
+            !hidden.has(claim.region) &&
+            !relocated.isErasedAt(range.start, null, range)
+          ) {
+            live.push(claim)
+          }
+        }
+      }
+    }
     for (const x of extra) {
       edits.push(x)
     }
-    for (const claim of this.claims.values()) {
-      const range = this.regions.get(claim.region).range
-      if (
-        !read.has(claim.owner) &&
-        !base.isErasedAt(range.start, null, range)
-      ) {
-        edits.push(claimEdit(claim))
-      }
+    for (const claim of live) {
+      edits.push(claimEdit(this.regions, claim))
     }
-    const tree = new RenderTree(edits, this.regions)
+    const tree = new RenderTree(edits, this.regions, hidden)
     if (cacheable) {
       this.trees.set(output, { version: this.version, tree })
     }
@@ -306,36 +318,32 @@ export class RewriteSet {
 
   /** The claim owners other generated code (another unit, another placeholder) reads a symbol of. */
   private readOwners(): ReadonlySet<GenUnitId> {
-    if (this.read?.version === this.version) {
-      return this.read.owners
-    }
-    const owners = new Set<GenUnitId>()
-    const readers: Array<{ by: GenUnitId; frags: ReadonlyArray<Frag> }> = [
-      ...this.generated.map((g) => ({ by: g.id, frags: g.body })),
-      ...[...this.claims.values()].map((c) => ({
-        by: c.owner,
-        frags: c.placeholder,
-      })),
-    ]
-    for (const claim of this.claims.values()) {
-      const declares = this.generated[claim.owner]!.declares
-      if (
-        readers.some(
-          (r) =>
-            r.by !== claim.owner &&
-            r.frags.some(
-              (f) =>
-                f.k === 'text' &&
-                f.parts.some(
-                  (p) => typeof p !== 'string' && declares.includes(p.sym),
-                ),
-            ),
-        )
-      ) {
-        owners.add(claim.owner)
+    const ownerOf = new Map<SymbolId, GenUnitId>()
+    for (const { owner } of this.claims.values()) {
+      for (const s of this.generated[owner]!.declares) {
+        ownerOf.set(s, owner)
       }
     }
-    this.read = { version: this.version, owners }
+    const owners = new Set<GenUnitId>()
+    const scan = (by: GenUnitId, frags: ReadonlyArray<Frag>) => {
+      for (const f of frags) {
+        if (f.k !== 'text') {
+          continue
+        }
+        for (const p of f.parts) {
+          const o = typeof p === 'string' ? undefined : ownerOf.get(p.sym)
+          if (o !== undefined && o !== by) {
+            owners.add(o)
+          }
+        }
+      }
+    }
+    for (const g of this.generated) {
+      scan(g.id, g.body)
+    }
+    for (const c of this.claims.values()) {
+      scan(c.owner, c.placeholder)
+    }
     return owners
   }
 
@@ -351,6 +359,17 @@ export class RewriteSet {
 export interface LivenessView {
   live: (ref: ClassifiedRef) => boolean
   isErased: (range: Range) => boolean
+}
+
+/** A claim's placeholder edit. */
+function claimEdit(regions: RegionTable, claim: RegionClaim): TreeEdit {
+  return {
+    range: regions.get(claim.region).range,
+    body: claim.placeholder,
+    by: claim.by,
+    seq: claimSeq(claim.region),
+    claim: claim.region,
+  }
 }
 
 /** The sequence of a claim's placeholder edit (see `CLAIM_SEQ`). */
@@ -376,6 +395,8 @@ export class RenderTree {
   constructor(
     edits: Array<TreeEdit>,
     private readonly regions: RegionTable,
+    /** Claims in the tree only to relocate their region (their occurrence is erased). */
+    private readonly hidden: ReadonlySet<RegionId> = NO_REGIONS,
   ) {
     const sorted = [...edits].sort(
       (a, b) =>
@@ -456,11 +477,11 @@ export class RenderTree {
 
   /** Whether the claim's placeholder renders here (live, its occurrence not erased, and not overridden by an edit on exactly the region). */
   placeholderRenders(region: RegionId): boolean {
-    if (!this.claimRegions.has(region) || this.overrideOf(region) !== null) {
-      return false
-    }
-    const e = this.edits.find((x) => x.claim === region)!
-    return this.editRenders(e)
+    return (
+      this.claimRegions.has(region) &&
+      !this.hidden.has(region) &&
+      this.overrideOf(region) === null
+    )
   }
 
   /**
@@ -553,9 +574,9 @@ export class RenderTree {
    * by an edit). With `until`, only edits enclosing `until` are consulted
    * (does the text at `until`'s position render?). Claim placeholders are
    * transparent: relocation is not erasure — the region's text renders
-   * inside its owner, where only the edits inside the region apply (unless
-   * an edit on exactly the region replaces the placeholder here: what it
-   * keeps renders here).
+   * inside its owner, and inside a hidden claim only the edits inside the
+   * region apply (unless an edit on exactly the region replaces the
+   * placeholder here: what it keeps renders here).
    */
   isErasedAt(
     offset: number,
@@ -591,7 +612,10 @@ export class RenderTree {
       const enclosing = outer
       outer = e
       if (e.claim !== null) {
-        if (!(enclosing && sameRange(enclosing, e))) {
+        if (
+          this.hidden.has(e.claim) &&
+          !(enclosing && sameRange(enclosing, e))
+        ) {
           erased = false
         }
         continue
@@ -616,6 +640,9 @@ export class RenderTree {
         }
       }
       if (!covered) {
+        if (this.hidden.size === 0) {
+          return true
+        }
         erased = true
       }
     }
@@ -675,7 +702,7 @@ export class RenderTree {
     // region replaces here
     const erased = (s: number, e: number) => {
       let pos = s
-      for (let i = 0; i < this.edits.length; i++) {
+      for (let i = 0; this.hidden.size > 0 && i < this.edits.length; i++) {
         const c = this.edits[i]!
         if (c.range.start >= e) {
           break
