@@ -1174,7 +1174,10 @@ export function buildRouteTreeConfig(
     .join(',')}
 }`
 
-      const routeWithChildren = `const ${route}RouteWithChildren${isolatedDeclarations ? `: ReturnType<typeof ${route}Route._addFileChildren<${route}RouteChildren>>` : ''} = ${route}Route._addFileChildren(${route}RouteChildren)`
+      const routeWithChildrenAnnotation = isolatedDeclarations
+        ? `: ReturnType<typeof ${route}Route._addFileChildren<${route}RouteChildren>>`
+        : ''
+      const routeWithChildren = `const ${route}RouteWithChildren${routeWithChildrenAnnotation} = ${route}Route._addFileChildren(${route}RouteChildren)`
 
       return [
         childConfigs.join('\n'),
