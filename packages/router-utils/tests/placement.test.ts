@@ -810,6 +810,41 @@ describe('extracted-export outputs', () => {
     expect(r.chunk).toContain("import { count } from './route.tsx'")
   })
 
+  // Above the `var` declaring `x`, `export default x` holds `undefined` (the
+  // initialiser runs later): no re-export of the binding either, and no
+  // name a chunk can import the binding by. A hoisted function has its
+  // value already: that export is its binding.
+  it.each([
+    ['the env module reads it too', 'loader: () => items, '],
+    ['only the chunk reads it', ''],
+  ])(
+    'imports a `var` the module exports by default above it under a name of its own (%s)',
+    async (_, loader) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        export default items
+        var items = [1]
+        export const Route = createFileRoute('/')({ ${loader}component: () => items })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain('export default items\nvar items = [1]')
+      expect(r.env).toContain('export { items }')
+      expect(r.chunk).toContain("import { items } from './route.tsx'")
+    },
+  )
+
+  it('extracts a function the module exports by default above its declaration', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export default Page
+      function Page() { return 'page' }
+      export const Route = createFileRoute('/')({ component: () => Page() })
+    `)
+    const r = await extract(code)
+    expect(r.env).not.toContain('function Page')
+    expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+  })
+
   // `export * from …` may export any name: the glue export names are the
   // compiler's own, so the module's importers still get the re-exported one.
   it.each([

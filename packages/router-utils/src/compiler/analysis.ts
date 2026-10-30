@@ -238,6 +238,18 @@ export interface Tier1 {
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
   /**
+   * Whether `export default x` at `at` (the value `x` has when the statement
+   * runs) may not be the binding: `x` is assigned (`live`: in code an output
+   * keeps), or declared after the statement by anything but a hoisted
+   * function (a later `var` gives it its value afterwards: the export holds
+   * `undefined`).
+   */
+  snapshotDiffers: (
+    sym: SymbolId,
+    at: number,
+    live?: (ref: ClassifiedRef) => boolean,
+  ) => boolean
+  /**
    * Whether code at `offset` evaluates lazily (not when the module loads):
    * inside a function body other than one called where it is written (an
    * immediately invoked function runs at module load, like a class static
@@ -1018,6 +1030,19 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
+      snapshotDiffers: (sym, at, live) => {
+        if (mutation.isReassigned(sym, live)) {
+          return true
+        }
+        const id = symbols.isImport(sym)
+          ? null
+          : symbols.binding(sym)?.declarations[0]
+        if (!id || id.start < at) {
+          return false
+        }
+        const parent = file.parentOf(id)
+        return !(parent?.type === 'FunctionDeclaration' && parent.id === id)
+      },
       isLazyAt,
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),

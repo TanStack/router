@@ -69,6 +69,36 @@ return [before, await entry.render(component), entry.Route.options.loader(), ent
     expect(result).toEqual(['<p>0</p>', '<p>1</p>', 1, 0])
   }, 30_000)
 
+  // `export default items` above `var items = …` holds `undefined` (the
+  // statement runs before the initialiser); the split component reads the
+  // binding, which has its value by then. With a loader reading it too
+  // (`items` stays in the route module) and without.
+  it.each([
+    { name: 'a loader reads it too', loader: 'loader: () => items.length,' },
+    { name: 'only the component reads it', loader: '' },
+  ])(
+    'gives the split component the value of a `var` the route file exports by default before declaring it ($name)',
+    async ({ loader }) => {
+      const result = await buildAndRun(
+        `${head}export default items
+var items = ['a', 'b']
+export const Route = createFileRoute('/')({
+  ${loader}
+  component: () => <p>{items.join()}</p>,
+})
+`,
+        `return [await entry.render(entry.Route.options.component), entry.first === undefined]`,
+        {
+          files: {
+            'entry.ts': `${ssrRenderEntry}export { default as first } from './routes/index'\n`,
+          },
+        },
+      )
+      expect(result).toEqual(['<p>a,b</p>', true])
+    },
+    30_000,
+  )
+
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {
     const html = await buildAndRun(

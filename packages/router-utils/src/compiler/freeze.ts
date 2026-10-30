@@ -49,7 +49,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   /** Symbols whose export is glue (not an existing export of the module). */
   const glueExports = new Set<SymbolId>()
   // an export of the binding itself (`export default x` of a reassigned
-  // `x` holds the value it had then)
+  // `x`, or above its `var`, holds the value it had then)
   const existingExportName = (sym: SymbolId): string | null => {
     for (const e of analysis.exports) {
       if (
@@ -58,7 +58,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
         !e.typeOnly &&
         !(
           e.snapshot &&
-          plan.t1.mutation.isReassigned(sym, plan.liveness('env').live)
+          plan.t1.snapshotDiffers(sym, e.range.start, plan.liveness('env').live)
         )
       ) {
         return e.name

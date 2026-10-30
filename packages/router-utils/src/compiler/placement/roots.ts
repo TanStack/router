@@ -88,10 +88,10 @@ export function seedRoots(
     }
     e.syms.add(sym)
   }
-  const reassignedAt = (id: Node): boolean =>
+  const snapshotDiffersAt = (id: Node): boolean =>
     refs
       .refsIn({ start: id.start, end: id.end })
-      .some((r) => t1.mutation.isReassigned(r.sym, liveInEnv))
+      .some((r) => t1.snapshotDiffers(r.sym, id.start, liveInEnv))
   const extractRelated = new Set<ClusterId>()
   if (candidates.size > 0) {
     for (const cl of clusters) {
@@ -100,14 +100,14 @@ export function seedRoots(
         !cl.units.every((u) => {
           const { kind, node } = units[u]!
           // `export default () => <Page />` is no re-export of its target,
-          // nor `export default count` of a reassigned `count` (it holds
-          // the value `count` has then)
+          // nor `export default count` of a reassigned `count`, or above
+          // its `var` (it holds the value `count` has then)
           return (
             kind === 'export-specifier' ||
             (kind === 'export-default' &&
               node.type === 'ExportDefaultDeclaration' &&
               node.declaration.type === 'Identifier' &&
-              !reassignedAt(node.declaration))
+              !snapshotDiffersAt(node.declaration))
           )
         })
       ) {
