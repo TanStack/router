@@ -31,6 +31,7 @@ import {
   devFunctionId,
   placeholderId,
 } from '../server-fns/ids'
+import type { StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -69,6 +70,10 @@ export interface StartEnvConfig {
 
 export interface StartEnvFacts {
   serverFns: Array<ServerFnFact>
+  /** Client: the exports server code can still be attached to (their importers are checked at build end). */
+  leakProneExports?: Array<string>
+  /** Client: the specifiers of namespace imports whose object escapes the analysis. */
+  escapingNamespaces?: Array<string>
 }
 
 type Role = 'client' | 'ssr-caller' | 'provider'
@@ -937,6 +942,15 @@ function planStartEnv(
 
   // ---- 6. uses the compiler cannot follow, where the client output keeps them
   if (role === 'client') {
+    if (analysis.leakProneExports.length > 0) {
+      facts.leakProneExports = analysis.leakProneExports
+    }
+    const prefetched = ctx.prefetched.get(START_ENV) as
+      | StartPrefetch
+      | undefined
+    if (prefetched && prefetched.escapingNamespaces.length > 0) {
+      facts.escapingNamespaces = prefetched.escapingNamespaces
+    }
     for (const e of analysis.escapes) {
       ctx.liveDiagnostic({
         severity: 'error',

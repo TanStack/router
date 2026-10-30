@@ -43,11 +43,19 @@ async function expectImportersThroughRpc(reExports: Record<string, string>) {
   )
   const host = await createStartHost({ serve: false })
   try {
+    // (the builder and its chain in a directory of the case: the page
+    // loads top-level case modules only, and a page loading a module that
+    // exports a builder fails the build)
     const startCase = await host.case({
-      'd.ts': `${head}export const base = createServerFn()`,
+      'chain/d.ts': `${head}export const base = createServerFn()`,
       'db.server.ts': `export const db = { x: () => 'from the server' }\n`,
-      ...reExports,
-      'via-a.tsx': `import { base } from './${first}'
+      ...Object.fromEntries(
+        Object.entries(reExports).map(([file, code]) => [
+          `chain/${file}`,
+          code,
+        ]),
+      ),
+      'via-a.tsx': `import { base } from './chain/${first}'
 import { db } from './db.server'
 export const viaA = base.handler(async () => db.x())
 ${others.map((name) => `export { via as via_${name} } from './later/via-${name}'`).join('\n')}
@@ -55,7 +63,7 @@ ${others.map((name) => `export { via as via_${name} } from './later/via-${name}'
       ...Object.fromEntries(
         others.map((name) => [
           `later/via-${name}.tsx`,
-          `import { base } from '../${name}'
+          `import { base } from '../chain/${name}'
 import { db } from '../db.server'
 export const via = base.handler(async () => db.x())
 `,

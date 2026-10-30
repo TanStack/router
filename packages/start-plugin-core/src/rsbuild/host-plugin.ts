@@ -26,6 +26,7 @@ import {
   rspackGraphView,
 } from '../import-protection/witness'
 import {
+  LEAK_FACTS_BUILD_INFO_FIELD,
   PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
@@ -33,9 +34,11 @@ import {
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
+  LeakFactsBuildInfo,
   ServerFnBuildInfo,
   StartRsbuildCompilerSession,
 } from './compiler-session'
+import type { LeakFacts } from '../compiler/escape-graph'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
@@ -59,6 +62,54 @@ interface StartHostPluginOptions {
 }
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
+
+/** A client compilation's graph for `checkClientGraph`, by canonical resource (once its modules are built). */
+function rspackClientGraph(compilation: Rspack.Compilation) {
+  const resourceOf = (m: Rspack.Module | null): string | null => {
+    const resource = (m as unknown as ModuleLike | null)?.resource
+    return resource ? canonicalResource(resource) : null
+  }
+  const byResource = new Map<string, Rspack.Module>()
+  for (const m of compilation.modules) {
+    const resource = resourceOf(m)
+    if (resource) {
+      byResource.set(resource, m)
+    }
+  }
+  return {
+    modules: byResource.keys(),
+    *importers(id: string) {
+      const module = byResource.get(id)
+      if (!module) {
+        return
+      }
+      for (const c of compilation.moduleGraph.getIncomingConnections(module)) {
+        const origin = c.originModule
+        if (!origin) {
+          continue
+        }
+        // (an origin without a resource: a context or virtual module of the bundler)
+        yield {
+          id: resourceOf(origin) ?? origin.identifier(),
+          dynamic: c.dependency.type === 'import()',
+        }
+      }
+    },
+    resolve(specifier: string, importer: string) {
+      const module = byResource.get(importer)
+      if (module) {
+        for (const c of compilation.moduleGraph.getOutgoingConnections(
+          module,
+        )) {
+          if (c.dependency.request === specifier) {
+            return Promise.resolve(resourceOf(c.module))
+          }
+        }
+      }
+      return Promise.resolve(null)
+    },
+  }
+}
 
 /** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
 function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
@@ -317,6 +368,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           })
         }
+        if (environment.type === 'client') {
+          // what no single compile sees: the importers of a module exporting a builder
+          compilation.hooks.finishModules.tapPromise(PLUGIN_NAME, async () => {
+            const graph = rspackClientGraph(compilation)
+            const problems = await session.start.checkClientGraph(
+              environment.name,
+              graph,
+              graph.modules,
+            )
+            for (const message of problems) {
+              compilation.errors.push(new WebpackError(message))
+            }
+          })
+        }
         if (
           session.start.opts.mode === 'build' &&
           environment.type === 'client'
@@ -549,6 +614,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }
           const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
+          const leakFacts = new Map<string, LeakFacts>()
           for (const m of compilation.modules) {
             const module = m as unknown as ModuleLike
             const info = module.buildInfo
@@ -561,12 +627,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (fns?.version === 2) {
               snapshot.set(fns.canonicalId, fns.facts)
             }
+            const leak = info[LEAK_FACTS_BUILD_INFO_FIELD] as
+              | LeakFactsBuildInfo
+              | undefined
+            if (leak?.version === 1) {
+              leakFacts.set(leak.canonicalId, leak.facts)
+            }
             const ip = info[RSPACK_BUILD_INFO_KEY]
             if (ipEnv && ip && module.resource) {
               ipEnv.replay(canonicalResource(module.resource), ip)
             }
           }
           session.start.registry.replace(env, snapshot)
+          if (environment.type === 'client') {
+            session.start.replaceLeakFacts(environment.name, leakFacts)
+          }
           opts.onServerFnsReplayed()
         },
       )

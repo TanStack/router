@@ -35,7 +35,13 @@ import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
-import { opaquePackageModule, startCompileScope } from './scope'
+import {
+  NODE_MODULES_RE,
+  opaquePackageModule,
+  startCompileScope,
+} from './scope'
+import { NO_LEAK_FACTS, unfollowedImports } from './escape-graph'
+import type { ClientGraph, LeakFacts, ReExport } from './escape-graph'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -149,6 +155,12 @@ export class StartCompilerSession {
   >()
   private readonly planners = new Map<string, Array<Planner>>()
   private readonly configs = new Map<string, CompileConfig>()
+  /**
+   * What each client compile recorded for the check of its environment's
+   * graph (`checkClientGraph`), by environment and canonical id: one entry
+   * per module the Start planners compiled there.
+   */
+  private readonly leakFacts = new Map<string, Map<string, LeakFacts>>()
 
   constructor(readonly opts: StartCompilerSessionOptions) {
     this.allocator = opts.generateFunctionId
@@ -350,13 +362,109 @@ export class StartCompilerSession {
       this.caches,
     )
     if (!late) {
-      this.registry.set(
-        env,
-        identify(input.id).canonicalId,
-        out && serverFnFactsOf(out),
-      )
+      const identity = identify(input.id)
+      this.registry.set(env, identity.canonicalId, out && serverFnFactsOf(out))
+      if (env.type === 'client' && identity.derived === null) {
+        this.leakFactsIn(env.name).set(
+          identity.canonicalId,
+          out
+            ? leakFactsOf(out, NODE_MODULES_RE.test(identity.path))
+            : NO_LEAK_FACTS,
+        )
+      }
     }
     return out
+  }
+
+  private leakFactsIn(env: string): Map<string, LeakFacts> {
+    let facts = this.leakFacts.get(env)
+    if (!facts) {
+      facts = new Map()
+      this.leakFacts.set(env, facts)
+    }
+    return facts
+  }
+
+  /** Replaces a client environment's records (Rsbuild: replayed from the modules' `buildInfo`, persistent cache included). */
+  replaceLeakFacts(env: string, facts: Map<string, LeakFacts>): void {
+    this.leakFacts.set(env, facts)
+  }
+
+  /**
+   * The check of a client environment's module graph (`escape-graph.ts`):
+   * the messages of the importers of a module exporting a builder that the
+   * compiler did not follow. `modules`: the graph's module ids.
+   */
+  checkClientGraph(
+    env: string,
+    graph: Pick<ClientGraph, 'importers' | 'resolve'>,
+    modules: Iterable<string>,
+  ): Promise<Array<string>> {
+    const facts = this.leakFactsIn(env)
+    /** Directory → the name of the package it belongs to (null: none). */
+    const packages = new Map<string, Promise<string | null>>()
+    const packageOf = (dir: string): Promise<string | null> => {
+      let name = packages.get(dir)
+      if (!name) {
+        name = this.opts.readFile(`${dir}/package.json`).then((text) => {
+          const parent = dir.slice(0, dir.lastIndexOf('/'))
+          if (text !== null) {
+            try {
+              const pkg = JSON.parse(text) as { name?: unknown }
+              if (typeof pkg.name === 'string') {
+                return pkg.name
+              }
+            } catch {
+              // (not a package manifest)
+            }
+          }
+          return parent.length > 0 && parent !== dir ? packageOf(parent) : null
+        })
+        packages.set(dir, name)
+      }
+      return name
+    }
+    const known = startRecognizer().factories
+    return unfollowedImports(
+      {
+        ...graph,
+        facts: (id) => {
+          const identity = identify(id)
+          const f = facts.get(identity.canonicalId)
+          // a derived module of a compiled module (a split chunk) exports none of its builders
+          return f && identity.derived !== null ? NO_LEAK_FACTS : f
+        },
+        reexports: async (id) => {
+          const summary = (
+            await this.rawFacts.get(identify(id).canonicalId, env)
+          ).summary
+          const out: Array<ReExport> = []
+          for (const [name, fact] of Object.entries(summary?.exports ?? {})) {
+            if (fact.kind === 'reExport') {
+              out.push({ specifier: fact.specifier, name, from: fact.fromName })
+            } else if (fact.kind === 'namespace') {
+              out.push({ specifier: fact.specifier, name, from: null })
+            }
+          }
+          for (const specifier of summary?.stars ?? []) {
+            out.push({ specifier, name: null, from: null })
+          }
+          return out
+        },
+        isStartPackage: async (id) => {
+          const path = identify(id).path
+          const slash = path.lastIndexOf('/')
+          if (slash <= 0) {
+            return false
+          }
+          const name = await packageOf(path.slice(0, slash))
+          return name !== null && Object.hasOwn(known, name)
+        },
+        read: (id) => this.opts.readFile(identify(id).path),
+        name: (id) => relativeName(this.opts.root, identify(id).path),
+      },
+      modules,
+    )
   }
 
   /**
@@ -409,6 +517,13 @@ export class StartCompilerSession {
   forget(path: string): void {
     this.registry.forget(path)
     this.ip?.forget(path)
+    for (const facts of this.leakFacts.values()) {
+      for (const id of facts.keys()) {
+        if (id.split('?')[0] === path) {
+          facts.delete(id)
+        }
+      }
+    }
   }
 
   /**
@@ -467,11 +582,33 @@ export class StartCompilerSession {
   release(envName: string): void {
     releaseEnvironment(this.caches, envName)
     this.ip?.release(envName)
+    this.leakFacts.delete(envName)
   }
 }
 
 /** The configuration key of the late pass (import protection over a non-JS module's JS) of a configuration. */
 const lateConfigKey = (configKey: string) => `late\u0000${configKey}`
+
+/**
+ * What a client compile records for the graph check: start-env's facts and
+ * the module's `import()` / `require()` specifiers. A dependency's exports
+ * are not followed (a Start library's modules, like Start's own, are each
+ * their own; see `startCompileScope`).
+ */
+export function leakFactsOf(out: CompileOutput, dependency = false): LeakFacts {
+  const facts = out.facts.planners[START_ENV] as StartEnvFacts | undefined
+  return {
+    leakProneExports: (!dependency && facts?.leakProneExports) || [],
+    escapingNamespaces: facts?.escapingNamespaces ?? [],
+    dynamicImports: out.edges.flatMap((e) =>
+      e.form === 'dynamic' || e.form === 'require' ? [e.specifier] : [],
+    ),
+  }
+}
+
+function relativeName(root: string, path: string): string {
+  return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path
+}
 
 /** The server functions a compile defines (start-env's facts), if any. */
 export function serverFnFactsOf(

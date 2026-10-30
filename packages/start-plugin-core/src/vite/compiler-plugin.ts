@@ -44,7 +44,7 @@ import {
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
 import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
-import { StartCompilerSession } from '../compiler/session'
+import { StartCompilerSession, leakFactsOf } from '../compiler/session'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
 import {
@@ -155,6 +155,31 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ASSET_FILE_RE,
   ASSET_QUERY_RE,
 ]
+
+/** A build's importers of a module, the `import()` ones marked. */
+function importersOf(
+  info: {
+    importers: ReadonlyArray<string>
+    dynamicImporters: ReadonlyArray<string>
+  } | null,
+): Array<{ id: string; dynamic: boolean }> {
+  return info
+    ? [
+        ...info.importers.map((id) => ({ id, dynamic: false })),
+        ...info.dynamicImporters.map((id) => ({ id, dynamic: true })),
+      ]
+    : []
+}
+
+/** A dev server's importers of a module so far (which load it with `import()` is told by their own edges). */
+function devImportersOf(
+  graph: DevEnvironment['moduleGraph'],
+  id: string,
+): Array<{ id: string; dynamic: boolean }> {
+  return [...(graph.getModuleById(id)?.importers ?? [])].flatMap((m) =>
+    m.id === null ? [] : [{ id: m.id, dynamic: false }],
+  )
+}
 
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
 function toDevSpecifier(id: string, root: string): string {
@@ -696,6 +721,27 @@ export function startCompilerPlugin(
           `${environment.name}\0${id}`,
           revision(mock?.code ?? out.code),
         )
+        if (
+          !mock &&
+          env.type === 'client' &&
+          leakFactsOf(out, NODE_MODULES_RE.test(identity.path)).leakProneExports
+            .length > 0
+        ) {
+          // development, best effort: the importers already in the graph (a build checks them all)
+          const graph = (environment as DevEnvironment).moduleGraph
+          const problems = await s.start.checkClientGraph(
+            env.name,
+            {
+              importers: (x) => devImportersOf(graph, x),
+              resolve: async (specifier, importer) =>
+                (await this.resolve(specifier, importer))?.id ?? null,
+            },
+            [id],
+          )
+          if (problems.length > 0) {
+            this.error(problems.join('\n'))
+          }
+        }
       }
       if (mock) {
         return { code: mock.code, map: null }
@@ -800,7 +846,26 @@ export function startCompilerPlugin(
           return info.code
         })
       },
-      buildEnd() {
+      async buildEnd(error) {
+        if (
+          !error &&
+          this.environment.mode === 'build' &&
+          env.type === 'client'
+        ) {
+          // what no single compile sees: the importers of a module exporting a builder
+          const problems = await requireSession().start.checkClientGraph(
+            env.name,
+            {
+              importers: (id) => importersOf(this.getModuleInfo(id)),
+              resolve: async (specifier, importer) =>
+                (await this.resolve(specifier, importer))?.id ?? null,
+            },
+            this.getModuleIds(),
+          )
+          if (problems.length > 0) {
+            this.error(problems.join('\n'))
+          }
+        }
         if (
           this.environment.mode === 'build' &&
           env.type === 'client' &&
