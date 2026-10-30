@@ -158,3 +158,22 @@ describe('a module whose code is no JS/TS of its own (`.mdx`)', () => {
     ).rejects.toThrow(/derived output/)
   })
 })
+
+describe('the output checker of the test runs (`TSR_COMPILER_VERIFY`)', () => {
+  // A module importing a module of another directory with the same file
+  // name: only `./<name>?<query>` names one of the module's own outputs.
+  it('reads an import of a same-named module of another directory as no import of the module itself', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/api/cost.ts': `import { wrapServer } from 'toy-start'
+import { total } from '../core/cost.ts'
+export const fn = wrapServer(() => total())
+export const shown = total
+`,
+        '/app/core/cost.ts': `export const total = () => 1\n`,
+      },
+    })
+    const out = await host.compile('/app/api/cost.ts', [toyEnvPlanner()])
+    expect(out!.code).toContain('tsrStub()')
+  })
+})

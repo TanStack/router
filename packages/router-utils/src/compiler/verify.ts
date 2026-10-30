@@ -25,6 +25,12 @@ const copies = (kind: OutputKind) => kind === 'provider'
 
 const tailOf = (id: string) => id.slice(id.lastIndexOf('/') + 1)
 
+/** The tail of a specifier naming a module of this directory (`./name?query`: how glue imports name the module's outputs), else null. */
+const siblingTailOf = (specifier: string) =>
+  specifier.startsWith('./') && !specifier.slice(2).split('?')[0]!.includes('/')
+    ? specifier.slice(2)
+    : null
+
 export function verifyPlan(
   plan: AnalysisPlan,
   emitPlan: EmitPlan,
@@ -88,10 +94,11 @@ export function verifyPlan(
       }
     }
     for (const imp of analysis.imports) {
-      if (!imp.specifier.startsWith('.')) {
+      const tail = siblingTailOf(imp.specifier)
+      if (tail === null) {
         continue
       }
-      const target = outputByTail.get(tailOf(imp.specifier))
+      const target = outputByTail.get(tail)
       const home = target === undefined ? undefined : outputs.get(target)
       if (home === undefined) {
         continue
