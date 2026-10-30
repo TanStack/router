@@ -57,3 +57,54 @@ export function Nav() {
   },
   timeout,
 )
+
+// The split component reads the value too, so its chunk imports it from the
+// route module, under the user's export name: that export is still the
+// user's, validated by plugin-react, and `nav.tsx` gets the edit.
+const aliasedRoute = (label: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+const makeLabel = (text: string) => ({ text })
+const label = makeLabel('${label}')
+export { label as navLabel }
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return <p data-probe="page">page {label.text.length}</p>
+}
+`
+
+test(
+  "an edit of a route file's value exported under another name, which the split component reads, shows in the module that imports it",
+  async ({ onTestFinished }) => {
+    const app = await openRouteHmrPage({
+      onTestFinished,
+      files: {
+        'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { Nav } from '../nav'
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <Nav />
+      <Outlet />
+    </>
+  ),
+})
+`,
+        'nav.tsx': `import { navLabel } from './routes/index'
+export function Nav() {
+  return <nav data-probe="nav">{navLabel.text}</nav>
+}
+`,
+        'routes/index.tsx': aliasedRoute('label-v1'),
+      },
+      ready: 'label-v1',
+    })
+    const { errors } = await app.edit(
+      { 'routes/index.tsx': aliasedRoute('label-v2') },
+      'label-v2',
+    )
+    expect(errors).toEqual([])
+  },
+  timeout,
+)

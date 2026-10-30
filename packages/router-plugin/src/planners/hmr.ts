@@ -29,12 +29,7 @@ import { methodPrefixOf } from './decisions'
 import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
-import type {
-  Frag,
-  PlanContext,
-  SymRef,
-  SymbolId,
-} from '@tanstack/router-utils/compiler'
+import type { Frag, PlanContext, SymRef } from '@tanstack/router-utils/compiler'
 
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
   'component',
@@ -210,65 +205,41 @@ export function planHmrBlock(
         .join(', ')} }`,
     )
   }
-  // the exports plugin-react ignores: the route, the anchor and
-  // (over-approximated) every module-level binding the core may export as
-  // glue for the chunks, under the name it exports it (`exportName`: a
-  // renamed `x$1`, a `tsr$x`), but no other export of the user's:
-  // plugin-react validates those, so a component updates in place and an
-  // edited value invalidates the module for its importers (a reload, as on
-  // main)
-  const refreshExports: Array<string | SymRef> = []
-  if (anchor) {
-    const routeNames: Array<string> = []
-    const userExports = new Set<string>()
-    for (const e of ctx.analysis.exports) {
-      if (e.kind === 'star') {
-        continue
-      }
-      if (e.kind === 'local' && e.local === route.routeSym) {
-        routeNames.push(e.name)
-      } else if (e.kind !== 'local' || !e.typeOnly) {
-        userExports.add(e.name)
-      }
-    }
-    const ignored = routeNames.map((n): string | SymRef =>
-      stringLiteral(n, '"'),
-    )
-    const { symbols } = ctx.t1
-    for (let i = 0; i < symbols.size; i++) {
-      const sym = i as SymbolId
-      if (symbols.isModuleLevel(sym) && !userExports.has(symbols.name(sym))) {
-        ignored.push({ sym, ctx: 'exportName' })
-      }
-    }
-    refreshExports.push(
-      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [`,
-      ...ignored.flatMap((n, i) => (i === 0 ? [n] : [', ', n])),
-      '] }',
-    )
-  }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it
   const hmrSpecifier = `${route.routerPackage}/hmr`
-  const body: Array<Frag> = [
-    {
-      k: 'text',
-      parts: [
-        `if (${hot}) {\n  ${hot}.accept()\n  `,
-        { sym: hmr.sym, ctx: 'callee' },
-        `(${stringLiteral(routerRouteId(route.routeId), '"')}, `,
-        { sym: route.routeSym },
-        `, { ${metaParts.join(', ')}`,
-        ...refreshExports,
-        ` })\n}\n`,
-      ],
-    },
+  const call: Array<string | SymRef> = [
+    `if (${hot}) {\n  ${hot}.accept()\n  `,
+    { sym: hmr.sym, ctx: 'callee' },
+    `(${stringLiteral(routerRouteId(route.routeId), '"')}, `,
+    { sym: route.routeSym },
+    `, { ${metaParts.join(', ')}`,
   ]
+  const body: Array<Frag> = []
   if (anchor) {
-    body.push({
-      k: 'text',
-      parts: [`export function ${anchor.name}() { return null }\n`],
-    })
+    // the exports plugin-react ignores: the route, the anchor and the
+    // core's glue for the chunks (`x$1`, `tsr$x` included), but no export
+    // of the user's: plugin-react validates those, so a component updates
+    // in place and an edited value invalidates the module for its
+    // importers (a reload, as on main)
+    const routeNames = ctx.analysis.exports.flatMap((e) =>
+      e.kind === 'local' && e.local === route.routeSym ? [e.name] : [],
+    )
+    call.push(
+      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...routeNames, anchor.name].map((n) => stringLiteral(n, '"')).join(', ')}`,
+    )
+    body.push(
+      { k: 'text', parts: call },
+      { k: 'glueExportNames' },
+      {
+        k: 'text',
+        parts: [
+          `] } })\n}\nexport function ${anchor.name}() { return null }\n`,
+        ],
+      },
+    )
+  } else {
+    body.push({ k: 'text', parts: [...call, ' })\n}\n'] })
   }
   ctx.rewrites.addGenerated({
     body,

@@ -149,7 +149,7 @@ export function readIndex(
     for (const f of frags) {
       if (f.k === 'text') {
         for (const p of f.parts) {
-          if (typeof p !== 'string' && p.ctx !== 'exportName') {
+          if (typeof p !== 'string') {
             into.syms.push(p.sym)
           }
         }

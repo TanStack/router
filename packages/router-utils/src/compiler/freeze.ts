@@ -94,7 +94,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     exportNameOf.set(home, map)
   }
 
-  const renderer = new Renderer(plan, code, exportNameOf)
+  const renderer = new Renderer(plan, code, exportNameOf, glueExports)
   const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
   // the units of each import declaration, once for every output
   const unitsOfImport = new Map<number, Array<Unit>>()
@@ -792,6 +792,8 @@ class Renderer {
       OutputId,
       ReadonlyMap<SymbolId, string>
     >,
+    /** The env module's exports that are glue (the derived outputs export nothing else). */
+    private readonly glueExports: ReadonlySet<SymbolId>,
   ) {
     for (const r of plan.t1.refs.all) {
       if (r.kind !== 'implicitJsxFactory') {
@@ -988,6 +990,18 @@ class Renderer {
           })
           break
         }
+        case 'glueExportNames': {
+          let text = ''
+          for (const [sym, name] of this.exportNameOf.get(this.output) ?? []) {
+            if (this.output !== 'env' || this.glueExports.has(sym)) {
+              text += `, ${stringLiteral(name, '"')}`
+            }
+          }
+          if (text.length > 0) {
+            out.push({ k: 'text', text })
+          }
+          break
+        }
         case 'ref': {
           out.push({
             k: 'text',
@@ -1108,12 +1122,6 @@ class Renderer {
   ): string {
     if (ctx === 'homeId') {
       return stringLiteral(this.homeIdOf(sym), '"')
-    }
-    if (ctx === 'exportName') {
-      return stringLiteral(
-        this.exportNameOf.get(this.output)?.get(sym) ?? this.plan.nameOf(sym),
-        '"',
-      )
     }
     const t = this.targetText({ sym }, env)
     if (ctx === 'callee' && t.includes('.')) {

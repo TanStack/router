@@ -824,28 +824,28 @@ describe('extracted-export outputs', () => {
     )
   })
 
-  // An `exportName` ref names the export of a binding: its glue export name
-  // (renamed when the binding's name is an export of another binding), else
-  // its name; it is no read, so it keeps nothing in the env module.
-  it('renders an `exportName` ref as the export name of the binding, without reading it', async () => {
+  // A `glueExportNames` frag lists the env module's glue exports: renamed
+  // ones (`Config$1`: `Config` is another export's name) included, and no
+  // export of the module itself, whatever binding it names.
+  it('lists the glue export names of the env module, not its own exports', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
+      import { make } from './make'
       export type Config = { title: string }
       const Config = { title: 'cfg' }
-      const Only = { title: 'only' }
+      const label = make()
+      export { label as navLabel }
       export const Route = createFileRoute('/')({
-        loader: () => Config.title,
-        component: () => Config.title + Only.title,
+        loader: () => Config.title + label,
+        component: () => Config.title + label,
       })
     `)
     const host = new MemoryHost({ files: { '/app/route.tsx': code } })
-    const planners = [toySplitPlanner({ exportNames: ['Config', 'Only'] })]
+    const planners = [toySplitPlanner({ glueNames: true })]
     const env = await host.compile('/app/route.tsx', planners, build)
     expect(env?.code).toContain('export { Config as Config$1 }')
-    expect(env?.code).toContain(
-      'export const exportNames = ["Config$1", "Only", ]',
-    )
-    expect(env?.code).not.toContain("const Only = { title: 'only' }")
+    expect(env?.code).toContain('export { label as navLabel }')
+    expect(env?.code).toContain(`export const glueNames = ['', "Config$1"]`)
   })
 
   it('re-exports a string export name as a string literal', async () => {

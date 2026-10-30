@@ -18,7 +18,6 @@ import type {
   PlanContext,
   Planner,
   Range,
-  SymRef,
   SymbolId,
   Unit,
 } from '../src/compiler'
@@ -121,8 +120,8 @@ export interface ToySplitOptions {
   identifierEdits?: boolean
   /** Export the id of the module each chunk takes an identifier value from (`export const home = …`, a `homeId` ref). */
   homeIds?: boolean
-  /** List, in the env module, the export name of these module-level bindings (`export const exportNames = […]`, `exportName` refs). */
-  exportNames?: ReadonlyArray<string>
+  /** List, in the env module, the names it exports as glue (`export const glueNames = ['', …]`, a `glueExportNames` frag). */
+  glueNames?: boolean
 }
 
 /**
@@ -307,20 +306,13 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           by: 'toy-split',
         })
       }
-      if (opts.exportNames) {
-        const parts: Array<string | SymRef> = ['export const exportNames = [']
-        for (const b of ctx.analysis.file.bindings) {
-          const sym = ctx.symbols.ofBinding(b)
-          if (
-            ctx.symbols.isModuleLevel(sym) &&
-            opts.exportNames.includes(ctx.symbols.name(sym))
-          ) {
-            parts.push({ sym, ctx: 'exportName' }, ', ')
-          }
-        }
-        parts.push(']\n')
+      if (opts.glueNames) {
         ctx.rewrites.addGenerated({
-          body: [{ k: 'text', parts }],
+          body: [
+            { k: 'text', parts: ["export const glueNames = [''"] },
+            { k: 'glueExportNames' },
+            { k: 'text', parts: [']\n'] },
+          ],
           declares: [],
           effectful: true,
           anchor: { k: 'end' },
