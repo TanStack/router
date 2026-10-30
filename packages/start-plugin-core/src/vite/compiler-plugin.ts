@@ -792,9 +792,14 @@ export function startCompilerPlugin(
         })
       },
       buildEnd() {
-        if (this.environment.mode === 'build' && env.type === 'client') {
-          // the functions the client references are those of the modules
-          // this build bundles (the server's resolver gates on them)
+        if (
+          this.environment.mode === 'build' &&
+          env.type === 'client' &&
+          this.meta.watchMode
+        ) {
+          // a rebuild keeps the registry (a new build cleared it): the
+          // functions the client references are those of the modules this
+          // build bundles (the server's resolver gates on them)
           const graph = new Set<string>()
           const files = new Set<string>()
           for (const id of this.getModuleIds()) {
@@ -808,9 +813,7 @@ export function startCompilerPlugin(
             }
           }
           requireSession().start.registry.retain(env.name, graph)
-          if (this.meta.watchMode) {
-            clientFiles = [...files]
-          }
+          clientFiles = [...files]
           clientRebuild?.end()
           clientRebuild = null
         }
