@@ -747,6 +747,11 @@ describe('extracted-export outputs', () => {
       ['Other', 'Page as default'],
     ],
     [
+      'a destructuring exported in a list under other names and by default',
+      'const { Page, Other } = views\nexport { Other as O, Page as P }\nexport default Page',
+      ['Other as O', 'Page as P', 'Page as default'],
+    ],
+    [
       'a `let` and the function writing it exported in a list',
       'let Other = 0\nfunction Page() { Other++; return Other }\nexport { Other, Page }',
       ['Other', 'Page'],
@@ -807,22 +812,36 @@ describe('extracted-export outputs', () => {
 
   // `export * from …` may export any name: the glue export names are the
   // compiler's own, so the module's importers still get the re-exported one.
-  it('exports glue under a name of its own in a module re-exporting with `export *`', async () => {
-    const code = dedent(`
+  it.each([
+    ["export * from './shared'", 'tsr$config'],
+    // a named export and a type-only one: their names are known
+    ["export * as shared from './shared'", 'config'],
+    ["export type * from './shared'", 'config'],
+  ])(
+    'exports glue under a name of its own in a module re-exporting with `export *` (`%s`: `%s`)',
+    async (reexport, glue) => {
+      const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      export * from './shared'
+      ${reexport}
       const config = { title: 'local' }
       export const Route = createFileRoute('/')({
         loader: () => config.title,
         component: () => config.title,
       })
     `)
-    const r = await extract(code)
-    expect(r.env).toContain('export { config as tsr$config }')
-    expect(r.chunk).toContain(
-      "import { tsr$config as config } from './route.tsx'",
-    )
-  })
+      const r = await extract(code)
+      expect(r.env).toContain(
+        glue === 'config'
+          ? 'export { config }'
+          : `export { config as ${glue} }`,
+      )
+      expect(r.chunk).toContain(
+        glue === 'config'
+          ? "import { config } from './route.tsx'"
+          : `import { ${glue} as config } from './route.tsx'`,
+      )
+    },
+  )
 
   // A `glueExportNames` frag lists the env module's glue exports: renamed
   // ones (`Config$1`: `Config` is another export's name) included, and no
