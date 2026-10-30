@@ -272,14 +272,19 @@ export class StartRsbuildCompilerSession {
    * protection's importer records). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
    * `unlink`; without this its state stayed for the session (every cache
-   * must stay bounded by the live modules).
+   * must stay bounded by the live modules). The same files as the last
+   * compilation's (an edit): nothing to forget.
    */
   retain(envName: string, files: Iterable<string>): void {
     const live = new Set<string>()
     for (const f of files) {
       live.add(normalizePath(f))
     }
+    const before = this.liveFiles.get(envName)
     this.liveFiles.set(envName, live)
+    if (before?.size === live.size && [...live].every((f) => before.has(f))) {
+      return
+    }
     const isFile = (path: string) =>
       path.startsWith('/') || /^[A-Za-z]:\//.test(path)
     const keepIn =
