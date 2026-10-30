@@ -8,7 +8,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
-import { normalizePath } from '@tanstack/router-utils/compiler'
+import { identify, normalizePath } from '@tanstack/router-utils/compiler'
 import { importEdgesPlanner } from '../planners/edges'
 import { resolveImportProtectionConfig } from './config'
 import {
@@ -20,12 +20,14 @@ import {
 import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
-import { importerInScope } from './rules'
+import { importerInScope, markerViolates, ownFileRule } from './rules'
 import { normalizeFilePath, relativizePath } from './utils'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
 import {
+  IMPORT_EDGES_PLANNER,
   dedupeKey,
   selfEdgeKey,
+  selfViolationOf,
   violationInfo,
   violationsOf,
 } from './violations'
@@ -375,7 +377,7 @@ interface RegisteredModule {
 }
 
 /** A compile output, as `compileModule` returns it (structural). */
-interface CompiledOutputLike {
+export interface CompiledOutputLike {
   output: string
   facts: { planners: Record<string, unknown> }
 }
@@ -521,6 +523,45 @@ class ImportProtectionEnv {
       this.onceVerdicts.set(key, p)
     }
     return p
+  }
+
+  /**
+   * An id with an asset query (`x.ts?raw`, `?url`, `?inline`, `?worker`) is
+   * the file's text and never compiled, so the planner cannot make it its
+   * own violation: the same verdict, as the output of a compile, for the host
+   * to hand to `afterCompile`. Null when the file is not denied here. The
+   * file's marker is read only for a file of a language (`marker`).
+   */
+  async assetOutput(
+    id: string,
+    marker: (path: string) => Promise<MarkerKind | 'conflict' | null>,
+  ): Promise<CompiledOutputLike | null> {
+    const { path } = identify(id)
+    const { config } = this.ip
+    if (!this.ip.inScope(path) && !this.ip.exempt(path)) {
+      return null
+    }
+    const rule =
+      ownFileRule(config, this.type, path) ??
+      (markerViolates(this.type, await marker(path))
+        ? ({ type: 'marker' } as const)
+        : null)
+    if (rule === null) {
+      return null
+    }
+    const violation = selfViolationOf(config, this, id, rule, {
+      names: [],
+      hasDefault: true,
+      effectful: false,
+    })
+    return {
+      output: id,
+      facts: {
+        planners: {
+          [IMPORT_EDGES_PLANNER]: { violations: { [id]: [violation] } },
+        },
+      },
+    }
   }
 
   /**

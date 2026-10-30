@@ -64,7 +64,10 @@ import {
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import type { CompileOutcome } from '../import-protection/session'
+import type {
+  CompileOutcome,
+  CompiledOutputLike,
+} from '../import-protection/session'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type {
   CompileStartFrameworkOptions,
@@ -622,7 +625,7 @@ export function startCompilerPlugin(
     s: Session,
     env: StartCompilerEnvironment,
     id: string,
-    out: CompileOutput,
+    out: CompiledOutputLike,
     fail: (error: Error) => never,
   ): CompileOutcome['mock'] | Promise<CompileOutcome['mock']> => {
     const finish = ({ error, mock }: CompileOutcome) => {
@@ -853,7 +856,7 @@ export function startCompilerPlugin(
         },
       },
       load: {
-        filter: { id: [IP_SPECIFIER_RE, OWNED_QUERY_RE] },
+        filter: { id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE] },
         async handler(id) {
           const s = requireSession()
           if (IP_SPECIFIER_RE.test(id)) {
@@ -861,6 +864,22 @@ export function startCompilerPlugin(
             return load
               ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
               : null
+          }
+          if (ASSET_QUERY_RE.test(id)) {
+            // never compiled (the transform filters exclude it), and an
+            // import the compiler does not read may have brought it here:
+            // a denied file's text is served as its mock
+            const out = await s.start.assetOutput(env, id)
+            const mock =
+              out &&
+              (await afterCompile(s, env, id, out, (error) =>
+                this.error(error),
+              ))
+            if (!mock) {
+              return null
+            }
+            this.addWatchFile(identify(id).path)
+            return { code: mock.code }
           }
           return loadDerivedSource(this, id)
         },

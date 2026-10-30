@@ -34,6 +34,7 @@ import {
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { StartCompilerSessionOptions } from '../compiler/session'
+import type { CompiledOutputLike } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -99,7 +100,7 @@ export interface LoaderOptions {
   environment: string
   /** `late`: the J6-only pass over the JS output of a non-JS module
    * (`.vue`, `.mdx`: Tier 0 only, with a host-supplied language). */
-  pass?: 'late' | 'edge'
+  pass?: 'late' | 'edge' | 'asset'
 }
 
 interface EnvState {
@@ -515,6 +516,17 @@ export class StartRsbuildCompilerSession {
       return { code: ip?.load(ctx.resource)?.code ?? source, map: null }
     }
     const id = canonicalResource(ctx.resource)
+    if (options.pass === 'asset') {
+      // never compiled, and an import the compiler does not read may have
+      // brought it here: a denied file's text is served as its mock
+      const asset = await this.start.assetOutput(env, id)
+      return (
+        (asset && (await this.protect(ctx, env, id, asset))) ?? {
+          code: '',
+          map: null,
+        }
+      )
+    }
     const identity = identify(id)
     // (the late pass is registered only with import protection on)
     const late = options.pass === 'late'
@@ -550,15 +562,7 @@ export class StartRsbuildCompilerSession {
       return passthrough
     }
     this.reportDiagnostics(ctx, out, identity.path, source, env.type)
-    env.compiled.add(ctx.resource)
-    // the registry, and import protection's edges and, in development, the
-    // violations of this compile (with `log: 'always'`, decided at every
-    // compile)
-    const outcome = this.start.afterCompile(env, id, out)
-    const { error, mock } = outcome instanceof Promise ? await outcome : outcome
-    if (error) {
-      throw error
-    }
+    const mock = await this.protect(ctx, env, id, out)
     const buildInfo = ctx._module?.buildInfo
     if (env.persistsModules && out.persisted && buildInfo) {
       // one string: Rspack converts a structured field value by value
@@ -572,18 +576,8 @@ export class StartRsbuildCompilerSession {
         facts: serverFns,
       } satisfies ServerFnBuildInfo
     }
-    const ipEnv = ip?.env(env.name, env.type)
-    if (ipEnv && buildInfo) {
-      const info = ipEnv.buildInfo(id, out)
-      if (info) {
-        buildInfo[info.key] = info.value
-      }
-    }
     if (mock) {
-      // the module is its own violation: served as its mock, whose virtual
-      // file a verdict rewrites (so the module is built again as it is)
-      ctx.addDependency(mock.id)
-      return { code: mock.code, map: null }
+      return mock
     }
     if (identity.derived === null && out.code === source) {
       return passthrough
@@ -598,6 +592,40 @@ export class StartRsbuildCompilerSession {
         env.recordMapText,
       ),
     }
+  }
+
+  /**
+   * What follows a compile: the registry, and import protection's edges and,
+   * in development, the violations of this compile (with `log: 'always'`,
+   * decided at every compile), recorded in the module's `buildInfo`. The
+   * module that is its own violation is served as its mock (returned), whose
+   * virtual file a verdict rewrites (so the module is built again as it is).
+   */
+  private async protect(
+    ctx: LoaderContextLike,
+    env: EnvState,
+    id: string,
+    out: CompiledOutputLike,
+  ): Promise<LoaderResult | null> {
+    env.compiled.add(ctx.resource)
+    const outcome = this.start.afterCompile(env, id, out)
+    const { error, mock } = outcome instanceof Promise ? await outcome : outcome
+    if (error) {
+      throw error
+    }
+    const buildInfo = ctx._module?.buildInfo
+    const ipEnv = this.start.ip?.env(env.name, env.type)
+    if (ipEnv && buildInfo) {
+      const info = ipEnv.buildInfo(id, out)
+      if (info) {
+        buildInfo[info.key] = info.value
+      }
+    }
+    if (!mock) {
+      return null
+    }
+    ctx.addDependency(mock.id)
+    return { code: mock.code, map: null }
   }
 
   /** Reports a compile's diagnostics: warnings to the loader context, the errors thrown together (the module fails). */

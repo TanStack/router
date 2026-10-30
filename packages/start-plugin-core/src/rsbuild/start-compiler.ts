@@ -9,6 +9,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { ASSET_QUERY_RE } from '@tanstack/router-utils/compiler'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
@@ -130,6 +131,17 @@ export function registerStartCompiler(
             {
               loader: loaderPath,
               options: { environment: environment.name, pass: 'late' },
+            },
+          ],
+        },
+        // an asset query of any file is never compiled: its verdict comes first
+        {
+          resourceQuery: ASSET_QUERY_RE,
+          enforce: 'pre',
+          use: [
+            {
+              loader: loaderPath,
+              options: { environment: environment.name, pass: 'asset' },
             },
           ],
         },

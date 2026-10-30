@@ -38,6 +38,7 @@ import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
 import type {
   CompileOutcome,
+  CompiledOutputLike,
   ImportProtection,
 } from '../import-protection/session'
 import type { EdgeModuleIds } from '../import-protection/edge-modules'
@@ -387,9 +388,21 @@ export class StartCompilerSession {
   afterCompile(
     env: StartCompilerEnvironment,
     id: string,
-    out: CompileOutput,
+    out: CompiledOutputLike,
   ): CompileOutcome | Promise<CompileOutcome> {
     return this.ip?.env(env.name, env.type).afterCompile(id, out) ?? NO_OUTCOME
+  }
+
+  /** Import protection's verdict on an id with an asset query, for `afterCompile`; null when it is not denied (`ImportProtectionEnv.assetOutput`). */
+  async assetOutput(
+    env: StartCompilerEnvironment,
+    id: string,
+  ): Promise<CompiledOutputLike | null> {
+    return (
+      this.ip
+        ?.env(env.name, env.type)
+        .assetOutput(id, (path) => this.rawFacts.marker(path, env.name)) ?? null
+    )
   }
 
   /** Forgets what the session holds of a deleted file (by path): its server functions and import protection's records. */

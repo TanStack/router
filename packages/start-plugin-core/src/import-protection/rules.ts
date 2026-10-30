@@ -83,6 +83,17 @@ export function matchFile(
   return m ? { type: 'file', index: rules.files.indexOf(m) } : null
 }
 
+/** The file rule denying a module's own path in an environment of `envType` (`excludeFiles` skips it). */
+export function ownFileRule(
+  config: ImportProtectionConfig,
+  envType: EnvType,
+  path: string,
+): RuleRef | null {
+  const rules = rulesFor(config, envType)
+  const rel = relativeTargetPath(config, path)
+  return targetExcluded(rules, rel) ? null : matchFile(rules, rel)
+}
+
 /** Whether a target's marker denies it in an env of `envType` (a conflict is reported in the marked file itself). */
 export function markerViolates(
   envType: EnvType,

@@ -4,7 +4,8 @@
  * (`ViolationInfo`, J6.5).
  */
 import { identify } from '@tanstack/router-utils/compiler'
-import { patternOf, rulesFor } from './rules'
+import { edgeModuleKey } from './edge-modules'
+import { patternOf, relativeTargetPath, rulesFor } from './rules'
 import type { EdgeModuleContent } from './edge-modules'
 import type { ImportProtectionConfig } from './config'
 import type { EnvType, RuleRef } from './rules'
@@ -51,6 +52,52 @@ export interface EdgeViolation {
 /** The edge key of a module's own violation (`EdgeViolation.self`) in an environment. */
 export function selfEdgeKey(canonicalId: string): string {
   return `self\u0000${canonicalId}`
+}
+
+/** A module's own violation (`EdgeViolation.self`), its mock describing the module (`target`). */
+export function selfViolationOf(
+  config: ImportProtectionConfig,
+  env: { name: string; type: EnvType },
+  id: string,
+  rule: RuleRef,
+  target: {
+    names: Array<string>
+    hasDefault: boolean
+    effectful: boolean
+  },
+): EdgeViolation {
+  const file = relativeTargetPath(config, id)
+  const edgeKey = selfEdgeKey(id)
+  // the id's query is how it was imported (`x.server.ts?raw`)
+  const query = id.indexOf('?')
+  const specifier = query === -1 ? file : `${file}${id.slice(query)}`
+  const content: EdgeModuleContent = {
+    env: env.name,
+    edgeKey,
+    specifier,
+    importer: '',
+    file,
+    names: target.names.sort(),
+    effectful: target.effectful,
+    resolved: id,
+    hasDefault: target.hasDefault,
+    bare: false,
+  }
+  return {
+    edgeKey,
+    env: env.name,
+    envType: env.type,
+    rule,
+    specifier,
+    importer: identify(id).path,
+    importerId: id,
+    resolved: id,
+    loc: null,
+    snippet: null,
+    behavior: config.behavior,
+    module: { key: edgeModuleKey(content), content },
+    self: true,
+  }
 }
 
 /** What the planner stores in `plan.facts.planners['import-edges']`. */
