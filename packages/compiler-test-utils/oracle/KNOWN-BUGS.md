@@ -1,12 +1,14 @@
 # Known bugs
 
-Two parts, one entry per root cause: the bug, the SPEC clause, its tests (`file` and test names; paths under
+Three parts, one entry per root cause: the bug, the SPEC clause, its tests (`file` and test names; paths under
 `packages/`; `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment
 (`Bug:`, `Impact:`) has the details.
 
 - **Remaining pins**: bugs today's compiler still has. Each is pinned by `.fails` tests that assert the correct
   outcome and accept any correct fix. When a compiler fixes one, its pins fail with "Expect test to fail": remove the
   `.fails`, keep the test, and move the entry to the second part.
+- **Known incorrect rejections (accepted, R89)**: wrong outcomes kept on purpose, all in the safe direction (the client
+  gets a mock, never server code). Pinned like the remaining pins; a fix that serves the real module may unpin them.
 - **Fixed, kept as regression tests**: bugs main's compilers (the Babel-based ones) had, which the compilers on the
   shared core fix. Their tests run as ordinary tests, mostly in the `known-bugs-*` files. "Cause" files name main's
   implementation.
@@ -44,6 +46,22 @@ code.test.ts`: "a root route's %s loads lazily".
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom type importing
   a denied specifier is reported, and its real code does not run".
+
+## Known incorrect rejections (accepted, R89)
+
+Reason, for both: a denied file is judged at its own compile, from the imports the compiler indexed; the bundler's graph
+is not consulted there in dev, so these imports are not visible. A dev server serves the mock and reports the denied
+file; a build serves the mock without a report. Tests in
+`start-plugin-core/tests/integration/importProtection/known-bugs-rejections.test.ts` (Vite build, Vite dev, Vite
+bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' plain imports get the real module).
+
+- **An exempt importer that reaches a denied file only through a pattern import gets the mock** (`import.meta.glob`, a
+  template-literal `import()`, Rsbuild's `import.meta.webpackContext`; exempt by `exclude` or `ignoreImporters`). SPEC
+  J6.7. "an importer exempted by %s reaching a denied file only through a pattern import gets the real module, and is
+  not reported". Workaround: import the file statically.
+- **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
+  SPEC J6.7, J6.1. "an importer outside srcDirectory gets the real module of an in-scope denied file it imports, and is
+  not reported". Workaround: import the file from a module inside the scope.
 
 ## Fixed, kept as regression tests
 
