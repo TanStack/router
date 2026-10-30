@@ -955,7 +955,8 @@ export class ModuleAnalysis {
     // an assignment, except what its declaring unit starts it with (a nested
     // declaration runs with its statement, whatever its position)
     for (const b of file.rootScope.bindings) {
-      if (b.declarations.length < 2 || !b.has(BindingFlags.ValueSpace)) {
+      // (reading `declarations` builds them: a `var` is the rare case)
+      if (!b.has(BindingFlags.FunctionScopedVariable)) {
         continue
       }
       const declarations = b.declarations.filter((id) => {
@@ -964,6 +965,9 @@ export class ModuleAnalysis {
           type !== 'TSTypeAliasDeclaration' && type !== 'TSInterfaceDeclaration'
         )
       })
+      if (declarations.length < 2) {
+        continue
+      }
       const sym = symbols.ofBinding(b)
       const own = units[declaringUnits.get(sym)?.[0] ?? -1]
       declarations.forEach((id, i) => {
@@ -1398,16 +1402,13 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   while (declarator !== null && declarator.type !== 'VariableDeclarator') {
     declarator = file.parentOf(declarator)
   }
-  const declaration = declarator && file.parentOf(declarator)
-  if (
-    declaration?.type !== 'VariableDeclaration' ||
-    declaration.kind !== 'var'
-  ) {
+  if (declarator === null) {
     return false
   }
+  const declaration = file.parentOf(declarator)!
   const loop = file.parentOf(declaration)
   if (
-    declarator!.init === null &&
+    declarator.init === null &&
     !(
       (loop?.type === 'ForInStatement' || loop?.type === 'ForOfStatement') &&
       loop.left === declaration

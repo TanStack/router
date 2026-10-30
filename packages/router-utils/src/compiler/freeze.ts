@@ -214,14 +214,10 @@ function renderEnv(
   // a statement only the line break inside the multi-line comment after it
   // ends: that comment leads what follows and may not render, so the statement
   // gets a line end of its own (before anything else generated there)
-  for (const ended of [
-    ...analysis.header.directives,
-    ...items.map((item) => ({ range: item.nodeRange })),
-  ]) {
-    const at = extendOverTrailingLine(code, ended.range.end)
+  const endLine = (statementEnd: number, at: number) => {
     if (
       code.startsWith('/*', at) &&
-      code[ended.range.end - 1] !== ';' &&
+      code[statementEnd - 1] !== ';' &&
       !isLineTerminator(code.charCodeAt(at - 1))
     ) {
       extra.push({
@@ -232,6 +228,9 @@ function renderEnv(
         claim: null,
       })
     }
+  }
+  for (const { range } of analysis.header.directives) {
+    endLine(range.end, extendOverTrailingLine(code, range.end))
   }
   const anchored = anchoredGenerated(plan, 'env', placement)
   /** Offsets where generated text renders right before what the source wrote. */
@@ -259,6 +258,7 @@ function renderEnv(
     if (baseTree.isErasedAt(item.nodeRange.start)) {
       continue
     }
+    endLine(item.nodeRange.end, item.range.end)
     const retained = includedUnitsOf(plan, item, included, placement, false)
     let keepExport = true
     for (const uid of item.units) {
@@ -293,8 +293,9 @@ function renderEnv(
     const recipe = statementRecipe(item, units, retained, keepExport, code)
     // (a license comment between the statements belongs to neither)
     const afterGenerated =
-      generatedAt.has(item.range.start) ||
-      (item.index > 0 && generatedAt.has(items[item.index - 1]!.range.end))
+      generatedAt.size > 0 &&
+      (generatedAt.has(item.range.start) ||
+        (item.index > 0 && generatedAt.has(items[item.index - 1]!.range.end)))
     if (
       recipe !== 'drop' &&
       (item.index > 0 || afterGenerated) &&
