@@ -49,7 +49,13 @@ export interface RawFacts {
 
 interface RawFactsOptions {
   readFile: (path: string) => Promise<string | null>
-  loadVirtual: (id: string) => Promise<string | null>
+  /**
+   * A virtual id's text, loaded by the environment that asks for its facts:
+   * it resolved the id, while another environment's bundler may not own it
+   * (asking one that runs concurrently, e.g. in `vite build --watch`, fails
+   * that build).
+   */
+  loadVirtual: (id: string, env: string) => Promise<string | null>
   recognizer?: RecognizerTable
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /**
@@ -211,11 +217,12 @@ export class RawFactsCache {
     }
   }
 
-  async get(canonicalId: string): Promise<RawFacts> {
+  /** The facts of a module, read (on a miss) for environment `env`. */
+  async get(canonicalId: string, env: string): Promise<RawFacts> {
     if (this.noFacts) {
       return this.isKnownSpecifier(canonicalId)
         ? this.knownFacts(canonicalId)
-        : this.build(canonicalId, await this.read(canonicalId))
+        : this.build(canonicalId, await this.read(canonicalId, env))
     }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
@@ -237,7 +244,7 @@ export class RawFactsCache {
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
-      const text = await this.read(canonicalId)
+      const text = await this.read(canonicalId, env)
       const built = this.build(canonicalId, text)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
@@ -306,7 +313,10 @@ export class RawFactsCache {
    * import, so it is not parsed; one with the literal gets its full facts.
    * Served from the entry's facts when they are current.
    */
-  async marker(canonicalId: string): Promise<TargetFacts['marker']> {
+  async marker(
+    canonicalId: string,
+    env: string,
+  ): Promise<TargetFacts['marker']> {
     const e = this.entries.get(canonicalId)
     if (e && !this.noTargets) {
       if (e.facts && !e.stale) {
@@ -329,12 +339,12 @@ export class RawFactsCache {
     }
     const holder: { p: Promise<TargetFacts['marker']> | null } = { p: null }
     holder.p = (async () => {
-      const text = await this.read(canonicalId)
+      const text = await this.read(canonicalId, env)
       if (text !== null && this.mayHaveMarker(text)) {
         if (entry.pendingMarker === holder.p) {
           entry.pendingMarker = null
         }
-        return (await this.getTarget(canonicalId)).targetFacts.marker
+        return (await this.getTarget(canonicalId, env)).targetFacts.marker
       }
       if (entry.pendingMarker === holder.p) {
         entry.pendingMarker = null
@@ -363,17 +373,17 @@ export class RawFactsCache {
     return false
   }
 
-  async digestOf(canonicalId: string): Promise<string | null> {
-    const f = await this.get(canonicalId)
+  async digestOf(canonicalId: string, env: string): Promise<string | null> {
+    const f = await this.get(canonicalId, env)
     return f.summary?.digest ?? null
   }
 
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
-  async getTarget(canonicalId: string): Promise<RawFacts> {
+  async getTarget(canonicalId: string, env: string): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
-      return this.build(canonicalId, await this.read(canonicalId), true)
+      return this.build(canonicalId, await this.read(canonicalId, env), true)
     }
-    const facts = await this.get(canonicalId)
+    const facts = await this.get(canonicalId, env)
     if (!facts.opaque) {
       return facts
     }
@@ -382,7 +392,7 @@ export class RawFactsCache {
     // summaries whether or not a mock asked about it, so the digest plans
     // recorded (`null`) stays current and nothing is evicted by the question
     const e = this.entries.get(canonicalId)
-    const text = await this.read(canonicalId)
+    const text = await this.read(canonicalId, env)
     const full: RawFacts = {
       ...this.build(canonicalId, text, true),
       summary: null,
@@ -393,8 +403,8 @@ export class RawFactsCache {
     return full
   }
 
-  async targetDigestOf(canonicalId: string): Promise<string> {
-    const f = await this.getTarget(canonicalId)
+  async targetDigestOf(canonicalId: string, env: string): Promise<string> {
+    const f = await this.getTarget(canonicalId, env)
     return f.targetFacts.digest
   }
 
@@ -460,10 +470,10 @@ export class RawFactsCache {
   }
 
   /** The module's text; '' for a file that is no JavaScript (an asset, `?url`): never read, `build` describes it unanalysed. */
-  private async read(canonicalId: string): Promise<string | null> {
+  private async read(canonicalId: string, env: string): Promise<string | null> {
     if (isVirtualId(canonicalId)) {
       this.counters.factsReads++
-      return this.opts.loadVirtual(canonicalId)
+      return this.opts.loadVirtual(canonicalId, env)
     }
     const id = identify(canonicalId)
     if (id.lang === null) {

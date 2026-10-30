@@ -407,7 +407,7 @@ async function runAttempt(
     return resolved
   }
   const summaryOf = async (canonicalId: string) => {
-    const facts = await host.rawFacts.get(canonicalId)
+    const facts = await host.rawFacts.get(canonicalId, env.name)
     ledger.record({
       kind: 'summary',
       canonicalId,
@@ -416,7 +416,7 @@ async function runAttempt(
     return facts.summary
   }
   const targetFactsOf = async (canonicalId: string) => {
-    const facts = await host.rawFacts.getTarget(canonicalId)
+    const facts = await host.rawFacts.getTarget(canonicalId, env.name)
     ledger.record({
       kind: 'target-facts',
       canonicalId,
@@ -425,7 +425,7 @@ async function runAttempt(
     return facts.targetFacts
   }
   const targetMarkerOf = async (canonicalId: string) => {
-    const marker = await host.rawFacts.marker(canonicalId)
+    const marker = await host.rawFacts.marker(canonicalId, env.name)
     ledger.record({ kind: 'target-marker', canonicalId, marker })
     return marker
   }

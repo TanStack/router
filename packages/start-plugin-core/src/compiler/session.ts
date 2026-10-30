@@ -99,8 +99,8 @@ export interface StartCompilerSessionOptions {
   /** The route registry (the generator's `routesByFile`). */
   routes: RouteRegistry
   readFile: (file: string) => Promise<string | null>
-  /** Reads a genuinely virtual module (a Vite plugin's `load`). */
-  loadVirtual: (id: string) => Promise<string | null>
+  /** Reads a genuinely virtual module through environment `env`, which resolved it (a Vite plugin's `load`). */
+  loadVirtual: (id: string, env: string) => Promise<string | null>
   /**
    * Vite: modules the summaries never read, whatever their text
    * (pre-bundled dependencies), besides Start's rule (`opaquePackageModule`).

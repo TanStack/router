@@ -13,14 +13,14 @@ describe('RawFactsCache', () => {
         }),
       loadVirtual: () => Promise.resolve(null),
     })
-    const first = cache.get('/app/a.ts')
+    const first = cache.get('/app/a.ts', 'client')
     // the file changes while the first read is pending; the host reports it
     text = 'export const a = 2\n'
     cache.markStale('/app/a.ts')
     release!()
     await first
     // the next read sees the new text, not the superseded read's
-    const second: Promise<unknown> = cache.get('/app/a.ts')
+    const second: Promise<unknown> = cache.get('/app/a.ts', 'client')
     release!()
     const facts = (await second) as { rawRevision: string }
     const superseded = (await first) as { rawRevision: string }
@@ -39,8 +39,8 @@ describe('RawFactsCache', () => {
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    expect(await cache.marker('/app/a.ts')).toBe(null)
-    expect(await cache.marker('/app/missing.ts')).toBe(null)
+    expect(await cache.marker('/app/a.ts', 'client')).toBe(null)
+    expect(await cache.marker('/app/missing.ts', 'client')).toBe(null)
     expect(cache.stats(false)).toMatchObject({
       rawFacts: 1,
       rawFactsMarkerless: 1,
@@ -49,19 +49,19 @@ describe('RawFactsCache', () => {
     // the scan knew the revision: a compile of the same text publishes its analysis
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
     // the literal is there: parsed, and a bare marker import is the marker
-    expect(await cache.marker('/app/s.ts')).toBe('server-only')
+    expect(await cache.marker('/app/s.ts', 'client')).toBe('server-only')
     // the literal is there but it is not a bare import: no marker (the parse decides)
-    expect(await cache.marker('/app/c.ts')).toBe(null)
+    expect(await cache.marker('/app/c.ts', 'client')).toBe(null)
     expect(cache.stats(false)).toMatchObject({
       rawFacts: 3,
       rawFactsMarkerless: 1,
     })
     // asked again: no read
-    await cache.marker('/app/a.ts')
-    await cache.marker('/app/s.ts')
+    await cache.marker('/app/a.ts', 'client')
+    await cache.marker('/app/s.ts', 'client')
     expect(cache.stats(false).factsReads).toBe(6)
     // the full facts of a scanned target are built when asked, once
-    const facts = await cache.get('/app/a.ts')
+    const facts = await cache.get('/app/a.ts', 'client')
     expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
     expect(cache.stats(false)).toMatchObject({
       rawFactsMarkerless: 0,
@@ -70,7 +70,7 @@ describe('RawFactsCache', () => {
     // a change makes the next question read again
     files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`
     cache.markStale('/app/a.ts')
-    expect(await cache.marker('/app/a.ts')).toBe('server-only')
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
   })
 
   it('an opaque module is not parsed: no summary, its marker from the text, target facts when asked', async () => {
@@ -84,35 +84,45 @@ describe('RawFactsCache', () => {
       loadVirtual: () => Promise.resolve(null),
       opaque: (path) => path.includes('/node_modules/'),
     })
-    const lib = await cache.get('/app/node_modules/lib/index.js')
+    const lib = await cache.get('/app/node_modules/lib/index.js', 'client')
     expect(lib.opaque).toBe(true)
     expect(lib.summary).toBe(null)
-    expect(await cache.marker('/app/node_modules/lib/index.js')).toBe(null)
+    expect(await cache.marker('/app/node_modules/lib/index.js', 'client')).toBe(
+      null,
+    )
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
     // a mock of it asks for its target facts: parsed then, and kept; the
     // module stays opaque to the summaries (its summary digest never
     // changes: no plan that summarised the package is evicted by the question)
-    const before = await cache.digestOf('/app/node_modules/lib/index.js')
-    const target = await cache.getTarget('/app/node_modules/lib/index.js')
+    const before = await cache.digestOf(
+      '/app/node_modules/lib/index.js',
+      'client',
+    )
+    const target = await cache.getTarget(
+      '/app/node_modules/lib/index.js',
+      'client',
+    )
     expect(target.opaque).toBeUndefined()
     expect(target.targetFacts.exportNames).toEqual(['lib'])
-    expect((await cache.get('/app/node_modules/lib/index.js')).summary).toBe(
-      null,
-    )
-    expect(await cache.digestOf('/app/node_modules/lib/index.js')).toBe(before)
-    expect(await cache.targetDigestOf('/app/node_modules/lib/index.js')).toBe(
-      target.targetFacts.digest,
-    )
+    expect(
+      (await cache.get('/app/node_modules/lib/index.js', 'client')).summary,
+    ).toBe(null)
+    expect(
+      await cache.digestOf('/app/node_modules/lib/index.js', 'client'),
+    ).toBe(before)
+    expect(
+      await cache.targetDigestOf('/app/node_modules/lib/index.js', 'client'),
+    ).toBe(target.targetFacts.digest)
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 0 })
     // a marker literal is never opaque: the marker is a parse's finding
-    expect(await cache.marker('/app/node_modules/marked/index.js')).toBe(
-      'server-only',
-    )
     expect(
-      (await cache.get('/app/node_modules/marked/index.js')).opaque,
+      await cache.marker('/app/node_modules/marked/index.js', 'client'),
+    ).toBe('server-only')
+    expect(
+      (await cache.get('/app/node_modules/marked/index.js', 'client')).opaque,
     ).toBeUndefined()
     // the app's own modules are never opaque
-    expect((await cache.get('/app/src/a.ts')).opaque).toBeUndefined()
+    expect((await cache.get('/app/src/a.ts', 'client')).opaque).toBeUndefined()
   })
 
   it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
@@ -124,9 +134,9 @@ describe('RawFactsCache', () => {
       readFile: (p) => Promise.resolve(files[p.split('?')[0]!] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    await cache.get('/app/a.ts')
-    await cache.get('/app/a.ts?flavour=b')
-    await cache.get('/app/b.ts')
+    await cache.get('/app/a.ts', 'client')
+    await cache.get('/app/a.ts?flavour=b', 'client')
+    await cache.get('/app/b.ts', 'client')
     expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactPaths: 2 })
     cache.markStale('/app/a.ts')
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(true)
@@ -137,7 +147,7 @@ describe('RawFactsCache', () => {
     expect(cache.peekRevision('/app/a.ts?flavour=b')).toBeNull()
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
     // a missing file's facts are not kept either
-    await cache.get('/app/missing.ts')
+    await cache.get('/app/missing.ts', 'client')
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
     cache.retain(() => false)
     expect(cache.stats(false)).toMatchObject({ rawFacts: 0, rawFactPaths: 0 })
@@ -147,19 +157,23 @@ describe('RawFactsCache', () => {
 describe('facts of a module that is not JavaScript', () => {
   it('are never read from its file: an asset, a stylesheet or a `?url` import is no module of ours', async () => {
     const read: Array<string> = []
+    const loaded: Array<[string, string]> = []
     const cache = new RawFactsCache({
       readFile: (p) => {
         read.push(p)
         return Promise.resolve('export const a = 1\n')
       },
-      loadVirtual: () => Promise.resolve('export const v = 1\n'),
+      loadVirtual: (id, env) => {
+        loaded.push([id, env])
+        return Promise.resolve('export const v = 1\n')
+      },
     })
     for (const id of [
       '/app/node_modules/esbuild-wasm/esbuild.wasm?url',
       '/app/styles.css',
       '/app/data.ts?raw',
     ]) {
-      const facts = await cache.get(id)
+      const facts = await cache.get(id, 'client')
       expect(facts.summary).toBeNull()
       expect(facts.targetFacts).toMatchObject({
         exists: true,
@@ -169,10 +183,12 @@ describe('facts of a module that is not JavaScript', () => {
       })
     }
     expect(read).toEqual([])
-    // a module that is JavaScript is read, a virtual one loaded
-    expect((await cache.get('/app/a.ts')).summary).not.toBeNull()
-    expect((await cache.get('\0virtual:thing')).summary).not.toBeNull()
+    // a module that is JavaScript is read, a virtual one loaded by the
+    // environment asking (the one that resolved it)
+    expect((await cache.get('/app/a.ts', 'client')).summary).not.toBeNull()
+    expect((await cache.get('\0virtual:thing', 'ssr')).summary).not.toBeNull()
     expect(read).toEqual(['/app/a.ts'])
+    expect(loaded).toEqual([['\0virtual:thing', 'ssr']])
     expect(cache.stats(false)).toMatchObject({ factsReads: 2 })
   })
 })
@@ -191,12 +207,12 @@ describe('target facts of a marked module', () => {
         '@tanstack/react-start/client-only': 'client-only',
       },
     })
-    const marked = await cache.get('/app/marked.ts')
+    const marked = await cache.get('/app/marked.ts', 'client')
     expect(marked.targetFacts.marker).toBe('server-only')
     expect(marked.targetFacts.imports).toEqual([])
     expect(marked.targetFacts.effectful).toBe(false)
     // a bare import of anything else still is
-    const effects = await cache.get('/app/effects.ts')
+    const effects = await cache.get('/app/effects.ts', 'client')
     expect(effects.targetFacts.imports).toEqual(['./side-effect'])
     expect(effects.targetFacts.effectful).toBe(true)
   })
@@ -212,17 +228,17 @@ describe('target facts of an opaque module', () => {
       loadVirtual: () => Promise.resolve(null),
       opaque: (path) => path.includes('/node_modules/'),
     })
-    await cache.get('/app/node_modules/lib/index.js')
+    await cache.get('/app/node_modules/lib/index.js', 'client')
     cache.markStale('/app/node_modules/lib/index.js')
     // the facts are re-read (opaque again) while a mock asks for the target facts
     const [, target] = await Promise.all([
-      cache.get('/app/node_modules/lib/index.js'),
-      cache.getTarget('/app/node_modules/lib/index.js'),
+      cache.get('/app/node_modules/lib/index.js', 'client'),
+      cache.getTarget('/app/node_modules/lib/index.js', 'client'),
     ])
     expect(target.targetFacts.exportNames).toEqual(['lib'])
     expect(
-      (await cache.getTarget('/app/node_modules/lib/index.js')).targetFacts
-        .exportNames,
+      (await cache.getTarget('/app/node_modules/lib/index.js', 'client'))
+        .targetFacts.exportNames,
     ).toEqual(['lib'])
   })
 })
@@ -241,15 +257,21 @@ describe('target facts: own effects', () => {
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    expect((await cache.get('/app/before.ts')).targetFacts).toMatchObject({
+    expect(
+      (await cache.get('/app/before.ts', 'client')).targetFacts,
+    ).toMatchObject({
       effectful: false,
       codeEffects: false,
     })
-    expect((await cache.get('/app/after.ts')).targetFacts).toMatchObject({
+    expect(
+      (await cache.get('/app/after.ts', 'client')).targetFacts,
+    ).toMatchObject({
       effectful: false,
       codeEffects: false,
     })
-    expect((await cache.get('/app/plain.ts')).targetFacts).toMatchObject({
+    expect(
+      (await cache.get('/app/plain.ts', 'client')).targetFacts,
+    ).toMatchObject({
       effectful: true,
       codeEffects: true,
     })
@@ -271,7 +293,7 @@ export const value = b
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    const facts = await cache.get('/app/a.ts')
+    const facts = await cache.get('/app/a.ts', 'client')
     expect(facts.targetFacts.imports).toEqual(['./b'])
     expect(facts.targetFacts.lazyImports).toEqual([
       './panel',
@@ -290,19 +312,19 @@ describe('facts of a file that stops parsing', () => {
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    const parsed = await cache.get('/app/a.ts')
+    const parsed = await cache.get('/app/a.ts', 'client')
     expect(parsed.targetFacts.exportNames).toEqual(['a'])
     // the file is saved half-written: it does not parse
     files['/app/a.ts'] = 'export const a = 1\nconst = ;\n'
     cache.markStale('/app/a.ts')
-    const broken = await cache.get('/app/a.ts')
+    const broken = await cache.get('/app/a.ts', 'client')
     expect(broken.targetFacts.digest).toBe(parsed.targetFacts.digest)
     expect(broken.summary?.digest).toBe(parsed.summary?.digest)
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
     // parsing again with other exports: the facts follow the file
     files['/app/a.ts'] = 'export const b = 1\n'
     cache.markStale('/app/a.ts')
-    const fixed = await cache.get('/app/a.ts')
+    const fixed = await cache.get('/app/a.ts', 'client')
     expect(fixed.targetFacts.exportNames).toEqual(['b'])
     expect(fixed.targetFacts.digest).not.toBe(parsed.targetFacts.digest)
   })
@@ -312,7 +334,7 @@ describe('facts of a file that stops parsing', () => {
       readFile: () => Promise.resolve('const = ;\n'),
       loadVirtual: () => Promise.resolve(null),
     })
-    const facts = await cache.get('/app/a.ts')
+    const facts = await cache.get('/app/a.ts', 'client')
     expect(facts.summary).toBeNull()
     expect(facts.targetFacts.esm).toBe(false)
   })

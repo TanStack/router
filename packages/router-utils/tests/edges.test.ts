@@ -355,7 +355,7 @@ describe('target facts', () => {
         '/app/fx.ts': `export * from './a'\nglobalThis.x = 1\n`,
       },
     })
-    const t = await host.rawFacts.get('/app/t.ts')
+    const t = await host.rawFacts.get('/app/t.ts', 'client')
     expect(t.targetFacts).toMatchObject({
       exists: true,
       exportNames: ['default', 'own', 'x'],
@@ -365,16 +365,16 @@ describe('target facts', () => {
       effectful: true,
     })
     // module loading is an own effect, not an effect of the module's own code
-    const barrel = await host.rawFacts.get('/app/barrel.ts')
+    const barrel = await host.rawFacts.get('/app/barrel.ts', 'client')
     expect(barrel.targetFacts).toMatchObject({
       effectful: true,
       codeEffects: false,
     })
-    const fx = await host.rawFacts.get('/app/fx.ts')
+    const fx = await host.rawFacts.get('/app/fx.ts', 'client')
     expect(fx.targetFacts.codeEffects).toBe(true)
-    const c = await host.rawFacts.get('/app/c.cjs')
+    const c = await host.rawFacts.get('/app/c.cjs', 'client')
     expect(c.targetFacts.esm).toBe(false)
-    const missing = await host.rawFacts.get('/app/none.ts')
+    const missing = await host.rawFacts.get('/app/none.ts', 'client')
     expect(missing.targetFacts).toMatchObject({ exists: false, esm: false })
   })
 })
@@ -449,7 +449,7 @@ describe('markers', () => {
     }
     await host.compile('/app/m.ts', [rec])
     expect(marker).toBe('server-only')
-    const raw = await host.rawFacts.get('/app/m.ts')
+    const raw = await host.rawFacts.get('/app/m.ts', 'client')
     expect(raw.targetFacts.marker).toBe('server-only')
   })
 })

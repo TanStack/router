@@ -184,7 +184,7 @@ describe('known specifiers and planner withdrawal', () => {
     expect(host.resolveCalls.some((c) => c.specifier === 'toy-start')).toBe(
       false,
     )
-    const facts = await host.rawFacts.get('toy-start')
+    const facts = await host.rawFacts.get('toy-start', 'client')
     expect(facts.summary?.exports.createServerFn).toMatchObject({
       kind: 'local',
       value: { t: 'factory', kind: 'serverFn' },

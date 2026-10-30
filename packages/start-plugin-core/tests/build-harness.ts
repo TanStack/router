@@ -96,7 +96,7 @@ import type {
 import type { TanStackStartInputConfig } from '../src'
 import type { ViolationInfo } from './importProtection/public-types'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
-import type { InlineConfig, Plugin } from 'vite'
+import type { InlineConfig, Plugin, Rolldown } from 'vite'
 
 /**
  * Links (`AppOptions.symlinks`) that give an app Start's real runtime:
@@ -305,9 +305,11 @@ export interface StartBuildOptions {
    */
   viteConfig?: InlineConfig
   /**
-   * Rsbuild builds: builds in watch mode (`rsbuild build --watch`), applies
-   * these app file edits (`null` deletes a file) once the first build is
-   * done, and describes the rebuild they cause (its errors reject).
+   * Builds in watch mode (`vite build --watch`, `rsbuild build --watch`),
+   * applies these app file edits (`null` deletes a file) once the first
+   * build is done, and describes the rebuild they cause (its errors
+   * reject, as the first build's do). Vite: the edits are files the
+   * builds' watchers report.
    */
   watchEdits?: Record<string, string | null>
   /**
@@ -738,6 +740,8 @@ async function buildWithVite(
   const { createBuilder, mergeConfig } = await import('vite')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
+  /** The builds of a watch mode build. */
+  const watch = target.watchEdits ? trackViteWatch() : undefined
   /** The evidence of the client's dangling-name check (`describeBuild`). */
   const clientParsedModules = parsedModules()
   /** Records what each environment emitted. */
@@ -788,6 +792,7 @@ async function buildWithVite(
         emptyOutDir: true,
         target: 'esnext',
         rolldownOptions: { onwarn },
+        ...(watch && { watch: {} }),
       },
     }
   }
@@ -846,6 +851,7 @@ async function buildWithVite(
               : []),
             outputPlugin,
             appOnwarnPlugin,
+            ...(watch ? [watch.plugin] : []),
             ...(target.mode === 'production'
               ? [
                   recordViteModules(clientParsedModules, {
@@ -859,6 +865,20 @@ async function buildWithVite(
       ),
     )
     await builder.buildApp()
+    if (watch && target.watchEdits) {
+      try {
+        await watch.first(watchTimeout)
+        errors.length = 0
+        warnings.client.length = 0
+        warnings.ssr.length = 0
+        describedFrom.set(channel, channel.mark())
+        // (the violations the rebuild reports)
+        target.violations.length = 0
+        await watch.edit(target.root, target.watchEdits, watchTimeout)
+      } finally {
+        await watch.close()
+      }
+    }
   } catch (error) {
     throw new BuildError(
       'vite',
@@ -871,6 +891,155 @@ async function buildWithVite(
     process.chdir(cwd)
   }
   return checkOutputs(outputs)
+}
+
+/**
+ * The builds of `vite build --watch`, per environment: its watcher (what
+ * `builder.build` returns in watch mode) ends each build with `BUNDLE_END`
+ * or `ERROR`. A build reads an edit when it began (`buildStart`) after the
+ * environment's watcher reported the edited file (`watchChange`): an edit
+ * is settled once every edited file was reported and every environment
+ * that reported one ended such a build.
+ */
+function trackViteWatch() {
+  interface EnvironmentBuilds {
+    /** The last build ended with this error (`ERROR`). */
+    error: unknown
+    /** Some build has ended. */
+    ended: boolean
+    /** The watcher reported an edited file after the running build began. */
+    owed: boolean
+    /** The running build began after the watcher reported an edited file. */
+    reading: boolean
+  }
+  const environments = new Map<string, EnvironmentBuilds>()
+  const watchers: Array<Rolldown.RolldownWatcher> = []
+  /** The edited files (absolute) and whether a watcher reported each. */
+  let edited = new Map<string, boolean>()
+  let changed = () => {}
+  const builds = (name: string) => {
+    let state = environments.get(name)
+    if (!state) {
+      state = { error: null, ended: false, owed: false, reading: false }
+      environments.set(name, state)
+    }
+    return state
+  }
+  /** Resolves once `done()` holds after a build ended or a file was reported (rejects after `timeout`). */
+  const until = (done: () => boolean, timeout: number, what: string) =>
+    new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`vite build --watch: no ${what} within ${timeout} ms`))
+      }, timeout)
+      changed = () => {
+        if (done()) {
+          clearTimeout(timer)
+          changed = () => {}
+          resolve()
+        }
+      }
+      changed()
+    })
+  /** The first error of the builds `of` describes (they ended). */
+  const failure = (of: (state: EnvironmentBuilds) => boolean) => {
+    for (const state of environments.values()) {
+      if (of(state) && state.error) {
+        throw state.error
+      }
+    }
+  }
+  const plugin: Plugin = {
+    name: 'start-build-harness:watch',
+    buildApp: {
+      order: 'pre',
+      handler(builder) {
+        const build = builder.build.bind(builder)
+        builder.build = async (environment) => {
+          const output = await build(environment)
+          if ('on' in output) {
+            watchers.push(output)
+            const state = builds(environment.name)
+            output.on('event', (event) => {
+              if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
+                state.ended = true
+                state.reading = false
+                state.error = event.code === 'ERROR' ? event.error : null
+                changed()
+              }
+            })
+          }
+          return output
+        }
+        return Promise.resolve()
+      },
+    },
+    watchChange(id) {
+      const file = path.resolve(id)
+      if (edited.has(file)) {
+        edited.set(file, true)
+        builds(this.environment.name).owed = true
+        changed()
+      }
+    },
+    buildStart() {
+      const state = builds(this.environment.name)
+      state.reading = state.owed
+      state.owed = false
+    },
+  }
+  return {
+    plugin,
+    /** The first build of every environment ended (rejects with an error of one). */
+    first: async (timeout: number) => {
+      await until(
+        () =>
+          environments.size > 0 &&
+          [...environments.values()].every((state) => state.ended),
+        timeout,
+        'first build',
+      )
+      failure(() => true)
+    },
+    /** Writes `edits` and waits for the builds that read them (rejects with an error of one). */
+    edit: async (
+      root: string,
+      edits: Record<string, string | null>,
+      timeout: number,
+    ) => {
+      edited = new Map(
+        Object.keys(edits).map((file) => [path.resolve(root, file), false]),
+      )
+      const readers = new Set<EnvironmentBuilds>()
+      for (const [file, content] of Object.entries(edits)) {
+        const absolute = path.join(root, file)
+        if (content === null) {
+          await rm(absolute, { force: true })
+        } else {
+          await mkdir(path.dirname(absolute), { recursive: true })
+          await writeFile(absolute, content)
+        }
+      }
+      await until(
+        () => {
+          for (const state of environments.values()) {
+            if (state.owed || state.reading) {
+              readers.add(state)
+            }
+          }
+          return (
+            [...edited.values()].every(Boolean) &&
+            [...readers].every((state) => !state.owed && !state.reading)
+          )
+        },
+        timeout,
+        `rebuild of ${Object.keys(edits).join(', ')}`,
+      )
+      failure((state) => readers.has(state))
+    },
+    close: async () => {
+      await Promise.all(watchers.map((watcher) => watcher.close()))
+    },
+  }
 }
 
 /** A handler of Rolldown warnings (`build.rolldownOptions.onwarn`). */

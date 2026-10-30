@@ -219,7 +219,12 @@ export function startCompilerPlugin(
       ? [opts.providerEnvName]
       : [VITE_ENVIRONMENT_NAMES.server, opts.providerEnvName],
   )
-  /** Per-env loaders of genuinely virtual ids (the dev plugin container, or `this.load` in a build). */
+  /**
+   * Per-env loaders of genuinely virtual ids (the dev plugin container, or
+   * `this.load` in a build): an id is loaded by the environment that
+   * resolved it, never asked of another one (in `vite build --watch` the
+   * environments build at once, and an id a build cannot load fails it).
+   */
   const virtualLoaders = new Map<
     string,
     (id: string) => Promise<string | null>
@@ -279,14 +284,9 @@ export function startCompilerPlugin(
         isEntry: (p) => entriesOf(s).has(normalizePath(p)),
         routes: new RouteRegistryView(opts.routerPluginContext),
         readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-        loadVirtual: async (id) => {
-          for (const load of virtualLoaders.values()) {
-            const code = await load(id).catch(() => null)
-            if (code !== null) {
-              return code
-            }
-          }
-          return null
+        loadVirtual: async (id, env) => {
+          const load = virtualLoaders.get(env)
+          return load ? load(id).catch(() => null) : null
         },
         // pre-bundled dependencies (a Start library declaring the framework
         // as a peer is never pre-bundled): what the optimizer metadata maps
@@ -509,7 +509,7 @@ export function startCompilerPlugin(
       if (NODE_MODULES_RE.test(identity.path)) {
         continue
       }
-      const facts = await rawFacts.get(identity.canonicalId)
+      const facts = await rawFacts.get(identity.canonicalId, env.name)
       if (!facts.targetFacts.exists) {
         continue
       }
