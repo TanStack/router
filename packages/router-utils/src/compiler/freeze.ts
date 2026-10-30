@@ -792,7 +792,7 @@ class Renderer {
       OutputId,
       ReadonlyMap<SymbolId, string>
     >,
-    /** The env module's exports that are glue (the derived outputs export nothing else). */
+    /** The env module's glue exports (its other `exportNameOf` names are the module's own; a derived output's are all glue). */
     private readonly glueExports: ReadonlySet<SymbolId>,
   ) {
     for (const r of plan.t1.refs.all) {
