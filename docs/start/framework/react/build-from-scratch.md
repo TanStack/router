@@ -130,6 +130,8 @@ Then configure TanStack Start's build tool plugin:
 # Vite
 
 ```ts title="vite.config.ts"
+// vite.config.ts
+
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -152,6 +154,8 @@ export default defineConfig({
 # Rsbuild
 
 ```ts title="rsbuild.config.ts"
+// rsbuild.config.ts
+
 import { defineConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
