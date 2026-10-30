@@ -72,9 +72,11 @@ export function virtualPath(root: string, moduleId: string): string {
  * router is always loaded before a server function runs, so a separate
  * shared chunk only costs a file and chunk boundaries); a module two other
  * async chunks share goes to one shared chunk instead (Rspack's default
- * groups are off: nothing else moves).
+ * groups are off: nothing else moves). The dev server keeps the shared
+ * chunk only: one instance of each module is all it needs, and the router
+ * group's test would run on every rebuild for bytes nobody ships.
  */
-function serverSplitChunks(root: string) {
+function serverSplitChunks(root: string, dev: boolean) {
   const resolver = virtualPath(root, VIRTUAL_MODULES.serverFnResolver)
   const importedBy = (group: Rspack.ChunkGroup, path: string) =>
     group.origins.some((origin) => origin.module?.nameForCondition() === path)
@@ -109,12 +111,14 @@ function serverSplitChunks(root: string) {
     cacheGroups: {
       default: false,
       defaultVendors: false,
-      router: {
-        name: 'tanstack-start-router',
-        chunks: routerOrProvider,
-        minSize: 0,
-        priority: 1,
-      },
+      ...(!dev && {
+        router: {
+          name: 'tanstack-start-router',
+          chunks: routerOrProvider,
+          minSize: 0,
+          priority: 1,
+        },
+      }),
       shared: { minChunks: 2, minSize: 0, reuseExistingChunk: true },
     },
   } as const satisfies EnvironmentConfig['splitChunks']
@@ -250,7 +254,7 @@ export function createRsbuildEnvironmentPlan(opts: {
           },
           splitChunks: opts.rsc
             ? { preset: 'single-vendor' }
-            : serverSplitChunks(opts.root),
+            : serverSplitChunks(opts.root, opts.dev === true),
         },
         environmentOverrides.all,
         environmentOverrides.server,
