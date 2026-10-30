@@ -159,8 +159,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       )
       /**
        * The changed files of the compilation this compiler is starting, open
-       * during its `watchRun` (Rspack's watcher hands the compiler this set,
-       * which the compilation reads once `watchRun` ended).
+       * during its `watchRun`. Rspack's `Watching` hands the compiler its own
+       * set (`this.compiler.modifiedFiles = this.#collectedChangedFiles`), calls
+       * `watchRun`, then `compiler.compile()`, whose `#build` reads the set
+       * (`instance.rebuild(Array.from(this.modifiedFiles || []), …)`):
+       * packages/rspack/src/Watching.ts L310/316/347 and Compiler.ts
+       * L790/800/845 at v2.1.1, L313/327/359 and L798/808/857 at v2.2.9,
+       * L326/340/372 and L805/815/864 at v2.3.0. Typed `ReadonlySet`: no
+       * official way for a plugin to add changed files exists (a stale
+       * dependent added here is built by this compilation, not a second one).
        */
       let starting: Set<string> | null = null
       session.rebuilders.set(environment.name, (paths) => {
