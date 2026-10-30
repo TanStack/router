@@ -44,6 +44,8 @@ These defaults mean you can use the `.server.ts` / `.client.ts` naming conventio
 
 Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
 
+A file rule judges the denied file itself on the client, wherever it lives in your project and whichever file type it is: a pattern that reaches `../lib/*.server.ts` or `./*.server.json` gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. A package's own files in `node_modules` are not judged this way.
+
 Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
 
 ```ts

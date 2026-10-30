@@ -32,21 +32,6 @@ async function emitsCanary(dir: string): Promise<boolean> {
 
 test.fails.each<[string, string, Record<string, string>]>([
   [
-    'a denied file outside srcDirectory, glob ?raw',
-    `export const m = import.meta.glob('../lib/*.server.ts', { query: '?raw', eager: true })\n`,
-    { 'lib/s.server.ts': secrets },
-  ],
-  [
-    'a denied file outside srcDirectory, plain glob',
-    `export const m = import.meta.glob('../lib/*.server.ts', { eager: true })\n`,
-    { 'lib/s.server.ts': secrets },
-  ],
-  [
-    'a denied JSON file, plain glob',
-    `export const m = import.meta.glob('./*.server.json', { eager: true })\n`,
-    { 'src/a.server.json': `{"a":"${CANARY}"}` },
-  ],
-  [
     'a clean ?worker importing a denied file',
     `import W from './w.ts?worker'\nexport const m = new W()\n`,
     {

@@ -119,6 +119,21 @@ function markerIdOf(envType: EnvType, target: string): string {
 
 export function importEdgesPlanner(ip: ImportProtection): Planner {
   const { config } = ip
+  const isAppFile = (path: string) =>
+    !path.includes('/node_modules/') && !path.startsWith('\0')
+  /** The module's own violation, if its file rule or its marker denies it here. */
+  const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
+    const id = ctx.identity.canonicalId
+    const rule: RuleRef | null =
+      ownFileRule(config, ctx.env.type, ctx.identity.path) ??
+      (markerViolates(ctx.env.type, plan.facts.marker)
+        ? { type: 'marker' }
+        : null)
+    return (
+      rule &&
+      selfViolationOf(config, ctx.env, id, rule, await describeTarget(id, ctx))
+    )
+  }
   return {
     name: IMPORT_EDGES_PLANNER,
     tier: 0,
@@ -138,7 +153,11 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       ) {
         return false
       }
-      return ip.inScope(path) || ip.exempt(path)
+      return (
+        ip.inScope(path) ||
+        ip.exempt(path) ||
+        (envType === 'client' && isAppFile(path))
+      )
     },
     plan() {},
     async policy(plan, output, edges, ctx) {
@@ -157,7 +176,15 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       // an exempt importer's imports are only indexed: a denied module it
       // imports is allowed (`ImportProtectionEnv.allowsSelf`)
       const exempt = !ip.inScope(ctx.identity.path)
-      if (exempt && !ip.exempt(ctx.identity.path)) {
+      const isExempt = exempt && ip.exempt(ctx.identity.path)
+      // the scope is about importers: on a client an app file outside it is
+      // indexed like an exempt importer, and judged itself as a denied file
+      const outside =
+        exempt &&
+        !isExempt &&
+        ctx.env.type === 'client' &&
+        isAppFile(ctx.identity.path)
+      if (exempt && !isExempt && !outside) {
         return
       }
       const envType = ctx.env.type
@@ -264,6 +291,12 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           ),
         plan.revision,
       )
+      if (outside && output === 'env' && !ip.isEntry(ctx.identity.path)) {
+        const own = await ownViolation(ctx, plan)
+        if (own) {
+          facts.violations[output] = [own]
+        }
+      }
       if (exempt) {
         return
       }
@@ -325,22 +358,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       // the module's own violation (an entry's own marker is judged at its
       // marker import above)
       if (output === 'env' && !ip.isEntry(ctx.identity.path)) {
-        const rule: RuleRef | null =
-          ownFileRule(config, envType, ctx.identity.path) ??
-          (markerViolates(envType, plan.facts.marker)
-            ? { type: 'marker' }
-            : null)
-        if (rule !== null) {
-          const id = ctx.identity.canonicalId
-          violations.push(
-            selfViolationOf(
-              config,
-              ctx.env,
-              id,
-              rule,
-              await describeTarget(id, ctx),
-            ),
-          )
+        const own = await ownViolation(ctx, plan)
+        if (own) {
+          violations.push(own)
         }
       }
       if (violations.length > 0) {

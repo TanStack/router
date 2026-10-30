@@ -8,6 +8,9 @@
  * with the `error` behaviour fail; a veto, an exempt importer of a static
  * import and `excludeFiles` give the real text; a file that is not denied keeps
  * it, byte for byte. A server gets the text or URL of a client-only marked file.
+ * The file rule judges the denied file wherever it lives: outside the source
+ * directory, or a file no compile reads (`*.server.json` in a glob, Rsbuild's
+ * `new URL` of a text file); a dependency's own files stay out of it.
  */
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -597,4 +600,235 @@ export const s = '${CANARY}'
     expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
   },
   timeout,
+)
+
+/** Denied files wherever they live, and the files the rule leaves alone: the scope is about importers. */
+const secretsIn = (dir: string) => ({
+  [`${dir}/s.server.ts`]: `export const s = '${CANARY}'\n`,
+})
+const plainGlob = (pattern: string) =>
+  `const modules = import.meta.glob('${pattern}', { eager: true });\n${exposing('Object.values(modules).map(toText)')}`
+
+describe.each<[string, string, Files]>([
+  [
+    'a denied file outside the source directory, glob ?raw',
+    eagerGlob('../lib/*.server.ts', '?raw'),
+    secretsIn('lib'),
+  ],
+  [
+    'a denied file outside the source directory, plain glob',
+    plainGlob('../lib/*.server.ts'),
+    secretsIn('lib'),
+  ],
+  [
+    'a denied JSON file, plain glob',
+    plainGlob('./*.server.json'),
+    { 'src/a.server.json': `{"a":"${CANARY}"}` },
+  ],
+  ['a denied text file, plain glob', plainGlob('./*.server.txt'), textFile],
+])('vite: %s', (_name, entry, files) => {
+  test(
+    'a build mocks and reports it',
+    async () => {
+      const result = await buildApp('vite', entry, files)
+      expect(await emittedCanaries(result.client.outDir)).toEqual([])
+      expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+    },
+    timeout,
+  )
+
+  test(
+    'the error behaviour fails the build naming the importer',
+    async () => {
+      const error = await rejection(
+        buildApp('vite', entry, files, { behavior: 'error' }),
+      )
+      expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
+    },
+    timeout,
+  )
+
+  test(
+    'a veto gives the real file',
+    async () => {
+      const result = await buildApp('vite', entry, files, {
+        ...importProtection,
+        onViolation: () => false,
+      })
+      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+    },
+    timeout,
+  )
+
+  test(
+    'a dev server mocks and reports it',
+    async () => {
+      const recorder = violationRecorder(importProtection)
+      const server = await startDevServer({
+        browser: true,
+        start: { importProtection: recorder.importProtection },
+        files: app(entry, files),
+      })
+      const { result } = await runViteClient(
+        server,
+        '/src/router.ts',
+        readTexts,
+      )
+      await server.idle()
+      expect(String(result)).not.toContain(CANARY)
+      expect(clientViolations(recorder)).toBeGreaterThan(0)
+    },
+    timeout,
+  )
+})
+
+describe.each<[string, string, Files]>([
+  [
+    'a denied file outside the source directory, template ?raw',
+    `${toText}(globalThis as any).texts = async (name = 's') => [toText(await import(\`../lib/\${name}.server.ts?raw\`))]\n`,
+    secretsIn('lib'),
+  ],
+  [
+    'a denied file outside the source directory, plain template',
+    `${toText}(globalThis as any).texts = async (name = 's') => [toText(await import(\`../lib/\${name}.server.ts\`))]\n`,
+    secretsIn('lib'),
+  ],
+  [
+    'a denied text file, new URL',
+    exposing(`[new URL('./notes.server.txt', import.meta.url).href]`),
+    textFile,
+  ],
+])('rsbuild: %s', (_name, entry, files) => {
+  test(
+    'a build mocks and reports it',
+    async () => {
+      const result = await buildApp('rsbuild', entry, files)
+      expect(await emittedCanaries(result.client.outDir)).toEqual([])
+      expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+    },
+    timeout,
+  )
+
+  test(
+    'the error behaviour fails the build naming the importer',
+    async () => {
+      const error = await rejection(
+        buildApp('rsbuild', entry, files, { behavior: 'error' }),
+      )
+      expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
+    },
+    timeout,
+  )
+
+  test(
+    'a dev server mocks and reports it',
+    async () => {
+      const recorder = violationRecorder(importProtection)
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: timeout,
+        browser: true,
+        hmr: false,
+        files: app(entry, files),
+        start: { importProtection: recorder.importProtection },
+      })
+      const { result } = await captureConsole(() =>
+        runInClient(server, readTexts),
+      )
+      expect(String((result as { result: unknown }).result)).not.toContain(
+        CANARY,
+      )
+      expect(clientViolations(recorder)).toBeGreaterThan(0)
+    },
+    timeout,
+  )
+})
+
+describe.each<[StartBundler, string]>([
+  ['vite', plainGlob('./*.json')],
+  ['rsbuild', exposing(`[new URL('./plain.txt', import.meta.url).href]`)],
+])('%s: what no rule denies', (bundler, entry) => {
+  test(
+    'a data file reached by a pattern keeps its text, unreported',
+    async () => {
+      const result = await buildApp(bundler, entry, {
+        'src/plain.json': `{"a":"${CANARY}"}`,
+        'src/plain.txt': CANARY,
+      })
+      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+      expect(clientViolations(result)).toBe(0)
+    },
+    timeout,
+  )
+})
+
+test(
+  'a dependency keeps its own denied-looking file: its importer is no app module',
+  async () => {
+    const result = await buildApp('vite', staticImport('dep'), {
+      'node_modules/dep/package.json': `{"name":"dep","type":"module","exports":"./index.js"}`,
+      'node_modules/dep/index.js': `export { s } from './own.server.js'\n`,
+      'node_modules/dep/own.server.js': `export const s = '${CANARY}'\n`,
+    })
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+    expect(clientViolations(result)).toBe(0)
+  },
+  timeout,
+)
+
+test(
+  'a server keeps a client-only named file outside the source directory, and the build passes',
+  async () => {
+    const result = await buildApp(
+      'vite',
+      plainGlob('../lib/*.client.ts'),
+      { 'lib/gui.client.ts': `export const s = '${CANARY}'\n` },
+      { behavior: 'error' },
+    )
+    expect(await emittedCanaries(result.ssr.outDir)).not.toEqual([])
+  },
+  timeout,
+)
+
+describe.each<StartBundler>(['vite', 'rsbuild'])(
+  '%s build: an importer outside the source directory',
+  (bundler) => {
+    const lib = {
+      ...secretsIn('lib'),
+      'lib/a.ts': `import { s } from './s.server'
+export const read = () => s
+`,
+    }
+
+    test(
+      'gets the real module of a denied file outside it too, unreported',
+      async () => {
+        const result = await buildApp(
+          bundler,
+          `import { read } from '../lib/a'
+;(globalThis as any).read = read
+`,
+          lib,
+          { behavior: 'error' },
+        )
+        expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+      },
+      timeout,
+    )
+
+    test(
+      'next to an importer in the scope, which gets the mock and is reported',
+      async () => {
+        const result = await buildApp(
+          bundler,
+          `import { read } from '../lib/a'
+import { s } from '../lib/s.server'
+;(globalThis as any).reads = [read, s]
+`,
+          lib,
+        )
+        expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+      },
+      timeout,
+    )
+  },
 )

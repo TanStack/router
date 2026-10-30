@@ -162,16 +162,17 @@ export function registerStartCompiler(
     if (s.start.ip) {
       // an asset query of any file is never compiled: its verdict comes first.
       // Last in the list: a rule's index is part of every module id it matches
-      rules.push({
-        resourceQuery: ASSET_QUERY_RE,
-        enforce: 'pre',
-        use: [
-          {
-            loader: assetLoaderPath,
-            options: { environment: environment.name, pass: 'asset' },
-          },
-        ],
-      })
+      const use = [
+        {
+          loader: assetLoaderPath,
+          options: { environment: environment.name, pass: 'asset' },
+        },
+      ]
+      rules.push(
+        { resourceQuery: ASSET_QUERY_RE, enforce: 'pre', use },
+        // `new URL('./x.txt', import.meta.url)`: an asset nothing else judges
+        { dependency: 'url', exclude: JS_FILE_RE, enforce: 'pre', use },
+      )
     }
     config.plugins.push(
       createStartHostPlugin({

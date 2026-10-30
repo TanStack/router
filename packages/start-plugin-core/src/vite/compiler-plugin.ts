@@ -143,12 +143,16 @@ const DEPENDENCY_SCRIPT_RE =
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
+/** Files that are no code: a pattern can reach them, and nothing compiles them. */
+const ASSET_FILE_RE =
+  /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss|json|json5|yaml|yml|toml|html|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp[34]|webm|ogg|wav|flac|aac|pdf|txt|wasm|zip)(?:\?|$)/i
+
 /** Ids the late import-protection pass never compiles (not code, or served by the pre plugin). */
 const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ...TRANSFORM_ID_REGEX,
   /^\0/,
   NODE_MODULES_RE,
-  /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss|json|json5|yaml|yml|toml|html|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp[34]|webm|ogg|wav|flac|aac|pdf|txt|wasm|zip)(?:\?|$)/i,
+  ASSET_FILE_RE,
   ASSET_QUERY_RE,
 ]
 
@@ -856,7 +860,9 @@ export function startCompilerPlugin(
         },
       },
       load: {
-        filter: { id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE] },
+        filter: {
+          id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE, ASSET_FILE_RE],
+        },
         async handler(id) {
           const s = requireSession()
           if (IP_SPECIFIER_RE.test(id)) {
@@ -865,7 +871,7 @@ export function startCompilerPlugin(
               ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
               : null
           }
-          if (ASSET_QUERY_RE.test(id)) {
+          if (ASSET_QUERY_RE.test(id) || ASSET_FILE_RE.test(id)) {
             // never compiled (the transform filters exclude it), and an
             // import the compiler does not read may have brought it here:
             // a denied file's text is served as its mock
@@ -879,7 +885,8 @@ export function startCompilerPlugin(
               return null
             }
             this.addWatchFile(identify(id).path)
-            return { code: mock.code }
+            // (Vite's JSON plugin parses what a `.json` loads as)
+            return { code: id.endsWith('.json') ? '{}' : mock.code }
           }
           return loadDerivedSource(this, id)
         },

@@ -550,7 +550,8 @@ class ImportProtectionEnv {
     const { config } = this.ip
     if (
       this.type !== 'client' ||
-      (!this.ip.inScope(path) && !this.ip.exempt(path))
+      id.startsWith('\0') ||
+      path.includes('/node_modules/')
     ) {
       return null
     }
@@ -691,8 +692,11 @@ class ImportProtectionEnv {
     ) {
       return true
     }
+    // (an importer merely outside the scope: only of a file outside it too, R89)
+    const inside = this.ip.inScope(traceFile(self.resolved!))
     for (const importerId of this.edges.importers(self.resolved!)) {
-      if (!this.ip.inScope(traceFile(importerId))) {
+      const importer = traceFile(importerId)
+      if (!this.ip.inScope(importer) && (!inside || this.ip.exempt(importer))) {
         return true
       }
     }

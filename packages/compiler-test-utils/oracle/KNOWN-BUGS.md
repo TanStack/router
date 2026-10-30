@@ -53,13 +53,12 @@ code.test.ts`: "a root route's %s loads lazily".
   J2.5. `router-plugin/tests/integration/code-splitter-module-state.test.ts`: "gives the split component the value a
   `var` declared again takes in a head or a pattern (Rolldown)". Fix: upstream.
 
-- **Forms that reach a denied file's text past import protection, on a Vite client build, unreported** (asset queries
-  themselves are covered: `importProtection/asset-query.test.ts`). A denied file outside `srcDirectory`/`include` through
-  a pattern, with or without `?raw` (a build's `behavior: 'error'` no longer fails; main reports it); a denied non-code
-  file through a plain pattern (`*.server.json`; main reports it too); a clean `?worker`'s imports (Vite's worker build
-  has no Start plugin; main too); `new URL('./x.server.ts', import.meta.url)` (main too); a marked `.mdx`/`.vue` with an
-  asset query (no language, no marker read; main too); a marked file that does not parse with an asset query (main too).
-  SPEC J6.1. `start-plugin-core/tests/integration/importProtection/known-bugs-asset-forms.test.ts`.
+- **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
+  (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's
+  worker build has no Start plugin); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
+  query (no language, no marker read); a marked file that does not parse with an asset query. Rsbuild, the same: a plain
+  `import.meta.webpackContext` of a non-code file (`*.server.json`). SPEC J6.1.
+  `start-plugin-core/tests/integration/importProtection/known-bugs-asset-forms.test.ts`.
 
 ## Known incorrect rejections (accepted, R89)
 
