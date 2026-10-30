@@ -51,7 +51,9 @@ code.test.ts`: "a root route's %s loads lazily".
 
 Reason, for both: a denied file is judged at its own compile, from the imports the compiler indexed; the bundler's graph
 is not consulted there in dev, so these imports are not visible. A dev server serves the mock and reports the denied
-file; a build serves the mock without a report. Tests in
+file; a build serves the mock and prints one warning per denied file whose every importer is exempt or outside the
+scope, naming the file, its importers and the fix (not a violation: no `onViolation` call, no failure with the `error`
+behaviour; "a build warns once about each denied file…"). Tests in
 `start-plugin-core/tests/integration/importProtection/known-bugs-rejections.test.ts` (Vite build, Vite dev, Vite
 bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' plain imports get the real module).
 

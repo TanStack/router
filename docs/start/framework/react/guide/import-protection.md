@@ -261,7 +261,7 @@ importProtection: {
 
 ## Limitations
 
-A denied file is judged when it is compiled, from the imports import protection has read so far. Two kinds of import are not visible there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file; a build serves the mock without a report.
+A denied file is judged when it is compiled, from the imports import protection has read so far. Two kinds of import are not visible there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
 
 An exempt importer that reaches a denied file only through a pattern import:
 
