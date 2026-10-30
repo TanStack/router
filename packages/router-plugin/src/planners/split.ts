@@ -7,7 +7,7 @@
  * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
  * core places everything else by needers (what both sides read lives in
  * the route module and is imported by the chunk). `deleteNodes` erases
- * properties in the env output only.
+ * properties in every output.
  */
 import {
   listEnd,
@@ -40,9 +40,11 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
   ctx.markBenignEffect(route.routeUnit.id)
 
-  // deleteNodes: the properties are erased in the env output only (J2.14),
-  // each run of them with its commas (`{ server: {…}, }` erased to `{ , }`
-  // is no syntax)
+  // deleteNodes: the properties are erased in every output (J2.14), each
+  // run of them with its commas (`{ server: {…}, }` erased to `{ , }` is no
+  // syntax). Only the env module renders the options, but what only the
+  // properties read is orphaned in every output: a declaration a chunk
+  // takes leaves their reads behind too (`const { a, b = server() } = …`)
   if (
     plan.deleted.length > 0 &&
     route.options.kind === 'object' &&
@@ -56,7 +58,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       (p) => deleted.has(p),
       deleted,
       listEnd(ctx.analysis.source.code, props),
-      { scope: ['env'], by: ROUTER_PLANNER },
+      { scope: 'all-outputs', by: ROUTER_PLANNER },
     )
   }
 

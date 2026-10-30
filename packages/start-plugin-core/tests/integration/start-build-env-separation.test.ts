@@ -178,6 +178,7 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('routeHandler', 'MARK_ROUTE_HANDLER'),
       ...dependency('routeHeaders', 'MARK_ROUTE_HEADERS'),
       ...dependency('routeSsr', 'MARK_ROUTE_SSR'),
+      ...dependency('destructuredDefault', 'MARK_DESTRUCTURED_DEFAULT'),
       ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
       ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
       ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
@@ -311,6 +312,17 @@ export const Route = createFileRoute('/')({
   component: () => 'MARK_ROUTE_COMPONENT',
 })
 `,
+      // The handler reads a binding of a declaration the component also
+      // reads, and only the binding's default value calls server code: the
+      // component's chunk takes the declaration without it.
+      'src/routes/destructured.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { destructuredDefault } from '../deps/destructuredDefault'
+const { title, secret = destructuredDefault() } = { title: 'MARK_DESTRUCTURED_TITLE' }
+export const Route = createFileRoute('/destructured')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => title,
+})
+`,
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverRouteHandler } from '../deps/serverRouteHandler'
 export const Route = createFileRoute('/api')({
@@ -375,7 +387,12 @@ const get = async (path) =>
       expect({
         isomorphic: build.client.where('MARK_ISOMORPHIC_CLIENT'),
         component: build.client.where('MARK_ROUTE_COMPONENT'),
-      }).toEqual({ isomorphic: 'eager', component: 'lazy' })
+        destructured: build.client.where('MARK_DESTRUCTURED_TITLE'),
+      }).toEqual({
+        isomorphic: 'eager',
+        component: 'lazy',
+        destructured: 'lazy',
+      })
     })
 
     // Source: review (Rsbuild, Start's plugin wiring and each construct were
@@ -435,6 +452,13 @@ const get = async (path) =>
         marker: 'MARK_ROUTE_SSR',
         run: `return route('/').options.ssr()`,
         expected: true,
+      },
+      {
+        construct:
+          'route server.handlers reading a default value in a declaration the component reads',
+        marker: 'MARK_DESTRUCTURED_DEFAULT',
+        run: `return await get('/destructured')`,
+        expected: 'MARK_DESTRUCTURED_DEFAULT',
       },
       {
         construct: 'a server fn of a route file the loader calls',
