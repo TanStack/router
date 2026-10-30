@@ -54,8 +54,7 @@ async function expectNoSilentLeak(shape: Shape) {
 }
 
 describe('unrecognised builder shapes never leak silently', () => {
-  // .fails: none of these shapes is recognised, and the client keeps the server code without a report.
-  test.fails.each<Shape>([
+  test.each<Shape>([
     {
       name: 'createServerFn destructured from a namespace import',
       code: `import * as Start from '@tanstack/react-start'
@@ -65,19 +64,25 @@ export const fn = createServerFn().handler(async () => db.x())`,
       body: 'db.x()',
     },
     {
-      name: 'a builder method read into a variable',
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-const handler = createServerFn().handler
-export const fn = handler(async () => db.x())`,
-      body: 'db.x()',
-    },
-    {
       name: 'a builder chosen by a ternary',
       code: `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const base = Math.random() > 2 ? createServerFn({ method: 'POST' }) : createServerFn()
 export const fn = base.handler(async () => db.x())`,
+      body: 'db.x()',
+    },
+  ])('$name', async (shape) => {
+    await expectNoSilentLeak(shape)
+  })
+
+  // .fails: none of these shapes is recognised, and the client keeps the server code without a report.
+  test.fails.each<Shape>([
+    {
+      name: 'a builder method read into a variable',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const handler = createServerFn().handler
+export const fn = handler(async () => db.x())`,
       body: 'db.x()',
     },
     {

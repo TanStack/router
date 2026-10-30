@@ -56,6 +56,8 @@ export type AbstractValue =
       args: Array<AbstractValue | null>
       site: LinkSite
     }
+  /** Symbolic: one of two values (`c ? a : b`, `a ?? b`) that are not reducible yet. */
+  | { t: 'join'; a: AbstractValue; b: AbstractValue }
   | { t: 'unknown' }
 
 export const UNKNOWN: AbstractValue = { t: 'unknown' }
@@ -111,7 +113,9 @@ export function isKnownSpecifier(
 }
 
 function isSymbolicValue(v: AbstractValue): boolean {
-  return v.t === 'importRef' || v.t === 'member' || v.t === 'call'
+  return (
+    v.t === 'importRef' || v.t === 'member' || v.t === 'call' || v.t === 'join'
+  )
 }
 
 type ImportResolver = (specifier: string, name: string) => AbstractValue
@@ -146,6 +150,7 @@ export function applyMember(
     case 'importRef':
     case 'member':
     case 'call':
+    case 'join':
       return { t: 'member', object: obj, name }
     default:
       return UNKNOWN
@@ -238,7 +243,43 @@ export function applyCall(
     }
     case 'importRef':
     case 'call':
+    case 'join':
       return { t: 'call', callee: fn, args: args(), site }
+    default:
+      return UNKNOWN
+  }
+}
+
+/**
+ * The transfer function of an expression that is one of two values
+ * (`c ? a : b`, `a ?? b`, `a || b`, `a && b`): known when both are the same
+ * kind of value. A link only one of them has is dropped (a middleware is
+ * configured on both sides or on neither); a symbolic side keeps the join
+ * symbolic, so a summary and the local analysis agree once it is reduced.
+ */
+export function joinValues(a: AbstractValue, b: AbstractValue): AbstractValue {
+  if (isSymbolicValue(a) || isSymbolicValue(b)) {
+    return { t: 'join', a, b }
+  }
+  const common = (x: Array<Link>, y: Array<Link>) =>
+    x.filter((l) => y.some((m) => m.method === l.method))
+  switch (a.t) {
+    case 'factory':
+      return b.t === 'factory' && b.kind === a.kind ? a : UNKNOWN
+    case 'startInstance':
+      return b.t === 'startInstance' ? a : UNKNOWN
+    case 'builder':
+      return b.t === 'builder' && b.kind === a.kind
+        ? { t: 'builder', kind: a.kind, links: common(a.links, b.links) }
+        : UNKNOWN
+    case 'serverFn':
+    case 'middleware':
+    case 'isoFn':
+      return b.t === a.t ? { t: a.t, links: common(a.links, b.links) } : UNKNOWN
+    case 'envOnlyResult':
+      return b.t === 'envOnlyResult' && b.kind === a.kind ? a : UNKNOWN
+    case 'namespace':
+      return b.t === 'namespace' && b.specifier === a.specifier ? a : UNKNOWN
     default:
       return UNKNOWN
   }
@@ -282,6 +323,12 @@ export function stampSites(
           a === null ? null : stampSites(a, canonicalId),
         ),
         site: site(v.site),
+      }
+    case 'join':
+      return {
+        t: 'join',
+        a: stampSites(v.a, canonicalId),
+        b: stampSites(v.b, canonicalId),
       }
     default:
       return v
@@ -366,6 +413,26 @@ export class ValueAnalysis {
     if (parent.type === 'FunctionDeclaration') {
       return this.functionValue(parent)
     }
+    // `const { createServerFn: csf } = Start`: the member of the initialiser
+    if (parent.type === 'Property' && parent.value === decl) {
+      const key = staticPropertyKey(parent)
+      const pattern = this.file.parentOf(parent)
+      const declarator = pattern && this.file.parentOf(pattern)
+      if (
+        key !== null &&
+        pattern?.type === 'ObjectPattern' &&
+        declarator?.type === 'VariableDeclarator' &&
+        declarator.id === pattern &&
+        declarator.init
+      ) {
+        return applyMember(
+          this.opts.table,
+          this.valueOf(declarator.init),
+          key,
+          this.opts.resolveImport,
+        )
+      }
+    }
     return UNKNOWN
   }
 
@@ -397,6 +464,15 @@ export class ValueAnalysis {
       case 'ArrowFunctionExpression':
       case 'FunctionExpression':
         return this.functionValue(node)
+      case 'SequenceExpression':
+        return this.valueOf(node.expressions[node.expressions.length - 1]!)
+      case 'ConditionalExpression':
+        return joinValues(
+          this.valueOf(node.consequent),
+          this.valueOf(node.alternate),
+        )
+      case 'LogicalExpression':
+        return joinValues(this.valueOf(node.left), this.valueOf(node.right))
       case 'MemberExpression': {
         if (node.computed) {
           return UNKNOWN
@@ -439,7 +515,8 @@ export class ValueAnalysis {
     }
     const body = fn.body
     let ret: Node | null = null
-    if (body === null) {
+    // an async or generator function returns a promise or an iterator
+    if (body === null || fn.async || fn.generator) {
       return UNKNOWN
     }
     if (fn.type === 'ArrowFunctionExpression' && fn.expression) {
@@ -449,10 +526,7 @@ export class ValueAnalysis {
       if (
         returns.length === 1 &&
         body.body.every(
-          (s) =>
-            s.type === 'ReturnStatement' ||
-            s.type === 'VariableDeclaration' ||
-            s.type === 'FunctionDeclaration',
+          (s) => s.type === 'ReturnStatement' || HOLDS_NO_RETURN.has(s.type),
         )
       ) {
         ret = (returns[0] as Extract<Node, { type: 'ReturnStatement' }>)
@@ -479,6 +553,33 @@ export class ValueAnalysis {
   }
 }
 
+/** Statements that cannot hold a `return` of the function whose body they are in. */
+const HOLDS_NO_RETURN: ReadonlySet<string> = new Set([
+  'ExpressionStatement',
+  'VariableDeclaration',
+  'FunctionDeclaration',
+  'ClassDeclaration',
+  'EmptyStatement',
+  'TSTypeAliasDeclaration',
+  'TSInterfaceDeclaration',
+])
+
+/** The name of a property with a static key (`a`, `'a'`), or null. */
+export function staticPropertyKey(
+  p: Extract<Node, { type: 'Property' }>,
+): string | null {
+  if (p.computed) {
+    return null
+  }
+  if (p.key.type === 'Identifier') {
+    return p.key.name
+  }
+  if (p.key.type === 'Literal' && typeof p.key.value === 'string') {
+    return p.key.value
+  }
+  return null
+}
+
 /** Strips link sites to method names (export-facts digest input: importers observe the methods, not the arguments). */
 export function stripSites(
   v: AbstractValue | { t: 'param'; index: number },
@@ -500,6 +601,8 @@ export function stripSites(
         callee: stripSites(v.callee),
         args: v.args.map((a) => (a === null ? null : stripSites(a))),
       }
+    case 'join':
+      return { t: v.t, a: stripSites(v.a), b: stripSites(v.b) }
     default:
       return v
   }

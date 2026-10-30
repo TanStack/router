@@ -13,8 +13,10 @@ import {
   applyCall,
   applyMember,
   isKnownSpecifier,
+  joinValues,
   recognizeImport,
   stampSites,
+  staticPropertyKey,
 } from '@tanstack/router-utils/compiler'
 import type {
   AbstractValue,
@@ -155,6 +157,11 @@ export async function prefetchStartValues(
         }
         return applyCall(table, callee, () => args, v.site)
       }
+      case 'join':
+        return joinValues(
+          await reduce(v.a, owner, path),
+          await reduce(v.b, owner, path),
+        )
       case 'function':
         return {
           t: 'function',
@@ -169,6 +176,18 @@ export async function prefetchStartValues(
   }
 
   const work: Array<Promise<void>> = []
+  const prefetchImport = async (specifier: string, name: string) => {
+    const v = await importedValue(
+      ctx.identity.canonicalId,
+      specifier,
+      name,
+      LookupPath.start(),
+    )
+    values.set(importKey(specifier, name), v)
+    if (isStartValue(table, v)) {
+      relevant = true
+    }
+  }
   for (const imp of t0.imports) {
     if (imp.typeOnly || imp.bare) {
       continue
@@ -209,23 +228,22 @@ export async function prefetchStartValues(
             parent.object === r.node
           ) {
             names.add(parent.property.name)
+          } else if (
+            parent.type === 'VariableDeclarator' &&
+            parent.init === r.node &&
+            parent.id.type === 'ObjectPattern'
+          ) {
+            // `const { a, 'b': c } = ns`: the destructured names
+            for (const prop of parent.id.properties) {
+              const key = prop.type === 'Property' && staticPropertyKey(prop)
+              if (key) {
+                names.add(key)
+              }
+            }
           }
         }
         for (const name of names) {
-          work.push(
-            (async () => {
-              const v = await importedValue(
-                ctx.identity.canonicalId,
-                imp.specifier,
-                name,
-                LookupPath.start(),
-              )
-              values.set(importKey(imp.specifier, name), v)
-              if (isStartValue(table, v)) {
-                relevant = true
-              }
-            })(),
-          )
+          work.push(prefetchImport(imp.specifier, name))
         }
         continue
       }
@@ -236,20 +254,7 @@ export async function prefetchStartValues(
         }
         continue
       }
-      work.push(
-        (async () => {
-          const v = await importedValue(
-            ctx.identity.canonicalId,
-            imp.specifier,
-            spec.imported,
-            LookupPath.start(),
-          )
-          values.set(importKey(imp.specifier, spec.imported), v)
-          if (isStartValue(table, v)) {
-            relevant = true
-          }
-        })(),
-      )
+      work.push(prefetchImport(imp.specifier, spec.imported))
     }
   }
   await Promise.all(work)

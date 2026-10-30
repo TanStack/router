@@ -5,6 +5,7 @@ import {
   applyCall,
   applyMember,
   buildSummary,
+  joinValues,
   parseModule,
   stampSites,
   stripSites,
@@ -126,6 +127,153 @@ describe('symbolic value terms', () => {
     expect(valueOf('mw')).toMatchObject({ t: 'builder', kind: 'middleware' })
     expect(valueOf('fn')).toMatchObject({ t: 'serverFn' })
     expect(valueOf('same')).toMatchObject({ t: 'builder', kind: 'serverFn' })
+  })
+})
+
+describe('destructuring, sequences, joins and factory bodies', () => {
+  const localValues = (code: string) => {
+    const a = analyse(code)
+    const values = new ValueAnalysis(a.file, {
+      table: TABLE,
+      resolveImport: (spec, name) =>
+        spec === './factory' && name === 'csf'
+          ? { t: 'factory', kind: 'serverFn' }
+          : { t: 'unknown' },
+    })
+    return (name: string) => {
+      const e = a.exports.find((x) => x.kind === 'local' && x.name === name)
+      return e && e.kind === 'local' && e.local !== null
+        ? values.valueOfBinding(e.local)
+        : null
+    }
+  }
+
+  it('reads a destructured binding as the member of its initialiser', () => {
+    const valueOf = localValues(`
+      import * as S from 'toy-start'
+      import { createStart } from 'toy-start'
+      export const { createServerFn: csf, 'createIsomorphicFn': iso } = S
+      export const { createMiddleware } = createStart()
+      export const { a: { createServerFn: nested } } = { a: S }
+      export const { createServerFn: withDefault = 1 } = S
+    `)
+    expect(valueOf('csf')).toEqual({ t: 'factory', kind: 'serverFn' })
+    expect(valueOf('iso')).toEqual({ t: 'factory', kind: 'isoFn' })
+    expect(valueOf('createMiddleware')).toEqual({
+      t: 'factory',
+      kind: 'middleware',
+    })
+    expect(valueOf('nested')).toEqual({ t: 'unknown' })
+    expect(valueOf('withDefault')).toEqual({ t: 'unknown' })
+  })
+
+  it('takes the last operand of a sequence', () => {
+    const valueOf = localValues(`
+      import { createServerFn } from 'toy-start'
+      export const b = (0, createServerFn)()
+    `)
+    expect(valueOf('b')).toMatchObject({ t: 'builder', kind: 'serverFn' })
+  })
+
+  it('joins two values of the same kind and nothing else', () => {
+    const valueOf = localValues(`
+      import { createServerFn, createIsomorphicFn } from 'toy-start'
+      export const same = Math.random() ? createServerFn().middleware([]) : createServerFn()
+      export const both = Math.random() ? createServerFn().middleware([]) : createServerFn().middleware([])
+      export const nullish = createServerFn() ?? createServerFn()
+      export const kinds = Math.random() ? createServerFn() : createIsomorphicFn()
+      export const other = globalThis.x || createServerFn()
+    `)
+    expect(valueOf('same')).toEqual({
+      t: 'builder',
+      kind: 'serverFn',
+      links: [],
+    })
+    expect(valueOf('both')).toMatchObject({
+      t: 'builder',
+      links: [{ method: 'middleware' }],
+    })
+    expect(valueOf('nullish')).toMatchObject({ t: 'builder', kind: 'serverFn' })
+    expect(valueOf('kinds')).toEqual({ t: 'unknown' })
+    expect(valueOf('other')).toEqual({ t: 'unknown' })
+  })
+
+  it('keeps a join of imports symbolic in a summary, and reduces it like the local analysis', () => {
+    const code = `
+      import { csf } from './factory'
+      import { createServerFn } from 'toy-start'
+      export const base = Math.random() ? csf({ method: 'POST' }) : createServerFn()
+    `
+    const summary = buildSummary(analyse(code), TABLE)
+    const term = (summary.exports.base as { value: AbstractValue }).value
+    expect(term.t).toBe('join')
+    const reduce = (v: AbstractValue): AbstractValue => {
+      switch (v.t) {
+        case 'importRef':
+          return { t: 'factory', kind: 'serverFn' }
+        case 'call':
+          return applyCall(
+            TABLE,
+            reduce(v.callee),
+            () => v.args.map((x) => (x === null ? null : reduce(x))),
+            v.site,
+          )
+        case 'join':
+          return joinValues(reduce(v.a), reduce(v.b))
+        default:
+          return v
+      }
+    }
+    expect(stripSites(reduce(term))).toEqual(
+      stripSites(localValues(code)('base')!),
+    )
+    expect(reduce(term)).toMatchObject({ t: 'builder', kind: 'serverFn' })
+  })
+
+  it('reads a single return after statements that cannot return, and no async or generator return', () => {
+    const valueOf = localValues(`
+      import { createServerFn } from 'toy-start'
+      export function statements() {
+        console.log('make')
+        const method = 'POST'
+        class Local {}
+        return createServerFn({ method })
+      }
+      export function branch(post) {
+        if (post) {
+          return createServerFn({ method: 'POST' })
+        }
+        return createServerFn()
+      }
+      export function guarded() {
+        try {
+          return createServerFn()
+        } finally {
+        }
+      }
+      export async function later() {
+        return createServerFn()
+      }
+      export const lazy = async () => createServerFn()
+      export function* gen() {
+        return createServerFn()
+      }
+    `)
+    expect(valueOf('statements')).toMatchObject({
+      t: 'function',
+      returns: { t: 'builder', kind: 'serverFn' },
+    })
+    expect(valueOf('branch')).toEqual({
+      t: 'function',
+      returns: { t: 'unknown' },
+    })
+    expect(valueOf('guarded')).toEqual({
+      t: 'function',
+      returns: { t: 'unknown' },
+    })
+    expect(valueOf('later')).toEqual({ t: 'unknown' })
+    expect(valueOf('lazy')).toEqual({ t: 'unknown' })
+    expect(valueOf('gen')).toEqual({ t: 'unknown' })
   })
 })
 

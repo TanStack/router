@@ -21,7 +21,6 @@ import type {
   YukuNode as Node,
   PlanContext,
   RecognizerTable,
-  SymbolId,
 } from '@tanstack/router-utils/compiler'
 
 type CallNode = Extract<Node, { type: 'CallExpression' }>
@@ -76,8 +75,6 @@ export interface StartAnalysis {
   clientOnlyElements: Array<JsxElementNode>
   rscCalls: Array<RscCall>
   unsupported: Array<UnsupportedUse>
-  /** Bindings (symbols) whose value is a Start value. */
-  startBindings: Set<SymbolId>
 }
 
 const cache = new WeakMap<ModuleAnalysis, StartAnalysis>()
@@ -131,7 +128,6 @@ export function startAnalysisOf(
     clientOnlyElements: [],
     rscCalls: [],
     unsupported: [],
-    startBindings: new Set(),
   }
   const parentOf = (n: Node) => file.parentOf(n)
   const seenTerminal = new Set<Node>()
@@ -152,6 +148,16 @@ export function startAnalysisOf(
 
   const memberName = (m: MemberNode): string | null =>
     !m.computed && m.property.type === 'Identifier' ? m.property.name : null
+
+  /** Values a segment hands on to a new segment (a join, a function expression returning it). */
+  const handoffs: Array<[Node, AbstractValue]> = []
+  const handedOff = new Set<Node>()
+  const handoff = (n: Node, v: AbstractValue) => {
+    if (!handedOff.has(n)) {
+      handedOff.add(n)
+      handoffs.push([n, v])
+    }
+  }
 
   const jsxCandidate = (opening: Node) => {
     const element = parentOf(opening)
@@ -327,19 +333,43 @@ export function startAnalysisOf(
         }
         return
       }
+      if (p.type === 'SequenceExpression') {
+        if (p.expressions[p.expressions.length - 1] !== outer) {
+          // a discarded operand
+          return
+        }
+        node = p
+        continue
+      }
       break
     }
-    // terminal
+    // the segment ends; its value may go on as a new segment
     if (
       p &&
-      p.type === 'VariableDeclarator' &&
-      p.init === outer &&
-      p.id.type === 'Identifier'
+      ((p.type === 'ConditionalExpression' && p.test !== outer) ||
+        p.type === 'LogicalExpression')
     ) {
-      const b = file.bindingOf(p.id)
-      if (b && isStartValue(table, value)) {
-        result.startBindings.add(b.id as SymbolId)
-        enqueueBinding(b.id)
+      // a join: each branch keeps its own links (and edits), the joined value starts a new segment
+      const joined = values.valueOf(p)
+      if (isStartValue(table, joined)) {
+        handoff(p, joined)
+      }
+    } else if (p && p.type === 'VariableDeclarator' && p.init === outer) {
+      if (p.id.type === 'Identifier') {
+        const b = file.bindingOf(p.id)
+        if (b && isStartValue(table, value)) {
+          enqueueBinding(b.id)
+        }
+      } else if (p.id.type === 'ObjectPattern') {
+        // `const { createServerFn } = Start`: each destructured binding at any scope
+        for (const prop of p.id.properties) {
+          if (prop.type === 'Property' && prop.value.type === 'Identifier') {
+            const b = file.bindingOf(prop.value)
+            if (b && isStartValue(table, values.valueOfBinding(b.id))) {
+              enqueueBinding(b.id)
+            }
+          }
+        }
       }
     }
     if (links.length === 0 && !headIsFactoryCall) {
@@ -386,7 +416,6 @@ export function startAnalysisOf(
     ) {
       continue
     }
-    result.startBindings.add(b.id as SymbolId)
     enqueueBinding(b.id)
   }
   while (queue.length > 0) {
@@ -416,6 +445,10 @@ export function startAnalysisOf(
         }
         continue
       }
+      climb(n, v)
+    }
+    while (handoffs.length > 0) {
+      const [n, v] = handoffs.shift()!
       climb(n, v)
     }
   }
