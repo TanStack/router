@@ -47,7 +47,6 @@ import {
 import type { Files } from './asset-query-app'
 import type { StartBundler } from '../../build-harness'
 
-type Files = Record<string, string>
 const bothHosts: Array<[string, string, Files]> = [
   ['a marked file, static ?raw', staticImport('./marked.ts?raw'), byMarker],
   ['a marked file, static ?url', staticImport('./marked.ts?url'), byMarker],
