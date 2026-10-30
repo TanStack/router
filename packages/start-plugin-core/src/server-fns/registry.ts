@@ -102,6 +102,22 @@ export class ServerFnRegistry {
     this.byId = null
   }
 
+  /**
+   * Drops an env's snapshots of modules outside `modules` (the canonical ids
+   * of a build's module graph): a module the build no longer bundles
+   * defines nothing in that env (a rebuild of `build --watch` keeps the
+   * registry, and its compiles replace only the modules it bundles).
+   */
+  retain(envName: string, modules: ReadonlySet<string>): void {
+    const snapshots = this.envs.get(envName)
+    for (const id of snapshots?.modules.keys() ?? []) {
+      if (!modules.has(id)) {
+        snapshots!.modules.delete(id)
+        this.byId = null
+      }
+    }
+  }
+
   /** Forgets the snapshots of a file (a deleted file; by path, every query variant). */
   forget(path: string): void {
     for (const env of this.envs.values()) {

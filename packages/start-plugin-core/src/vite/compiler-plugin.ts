@@ -242,6 +242,16 @@ export function startCompilerPlugin(
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
   /**
+   * `build --watch`: the server's resolver lists the functions the client
+   * build references, so it watches the files of the client's module graph
+   * (an edit only the client bundles rebuilds the server too) and waits for
+   * the client build a file event started (`clientRebuild`, until its
+   * `buildEnd`): the environments rebuild at once.
+   */
+  let clientFiles: Array<string> = []
+  let clientRebuild: { ended: Promise<void>; end: () => void } | null = null
+
+  /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
    * re-transform when a file appears (see `applyInvalidation`).
    */
@@ -701,6 +711,30 @@ export function startCompilerPlugin(
           return info.code
         })
       },
+      buildEnd() {
+        if (this.environment.mode === 'build' && env.type === 'client') {
+          // the functions the client references are those of the modules
+          // this build bundles (the server's resolver gates on them)
+          const graph = new Set<string>()
+          const files = new Set<string>()
+          for (const id of this.getModuleIds()) {
+            const identity = identify(id)
+            graph.add(identity.canonicalId)
+            if (
+              path.isAbsolute(identity.path) &&
+              !NODE_MODULES_RE.test(identity.path)
+            ) {
+              files.add(identity.path)
+            }
+          }
+          requireSession().start.registry.retain(env.name, graph)
+          if (this.meta.watchMode) {
+            clientFiles = [...files]
+          }
+          clientRebuild?.end()
+          clientRebuild = null
+        }
+      },
       closeBundle() {
         if (this.environment.mode === 'build') {
           unsubscribeRoutes?.()
@@ -850,6 +884,13 @@ export function startCompilerPlugin(
         const environment = this.environment
         if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
           return
+        }
+        if (environment.mode === 'build' && env.type === 'client') {
+          if (!clientRebuild) {
+            let end!: () => void
+            const ended = new Promise<void>((resolve) => (end = resolve))
+            clientRebuild = { ended, end }
+          }
         }
         // the file's path once, as every module id and compiler key holds it
         // (Rolldown reports its watcher's native path: backslashes on Windows)
@@ -1134,7 +1175,13 @@ export function startCompilerPlugin(
     moduleId: VIRTUAL_MODULES.serverFnResolver,
     enforce: 'pre',
     applyToEnvironment: (e) => resolverEnvironments.has(e.name),
-    load() {
+    async load() {
+      if (this.environment.mode === 'build' && this.meta.watchMode) {
+        await clientRebuild?.ended
+        for (const file of clientFiles) {
+          this.addWatchFile(file)
+        }
+      }
       if (this.environment.name !== opts.providerEnvName) {
         const mod = envOf(this.environment.name)?.getServerFnById
         if (mod) {
