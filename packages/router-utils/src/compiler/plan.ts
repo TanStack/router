@@ -170,6 +170,13 @@ export interface PlanContext {
   liveness: (output: OutputId) => LivenessView
   /** The binding name a symbol renders as (after module-wide renames). */
   nameOf: (sym: SymbolId) => string
+  /**
+   * The name the env module exports `sym` under as glue for another output,
+   * as freeze allocates it (a module export or an earlier glue name takes
+   * `x`, `x$1` …); a planner naming it ahead (route HMR) may miss a glue
+   * name another binding's glue took first.
+   */
+  glueExportName: (sym: SymbolId) => string
   renameRefs: (
     sym: SymbolId,
     to: RefTarget,
@@ -199,6 +206,8 @@ export class AnalysisPlan implements PlanContext {
   readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
   private readonly keptSyms = new Set<SymbolId>()
+  /** Whether the module has a value `export * from …` (`glueExportBase`). */
+  private starExports: boolean | undefined
   routeModule = false
   moduleWords: ModuleWords | null = null
   placement: Placement | null = null
@@ -348,6 +357,23 @@ export class AnalysisPlan implements PlanContext {
   nameOf(sym: SymbolId): string {
     const to = this.renames.get(sym)
     return this.symbols.name(to ?? sym)
+  }
+
+  glueExportName(sym: SymbolId): string {
+    return this.names.peekExportName(this.glueExportBase(sym))
+  }
+
+  /**
+   * What a glue export of `sym` is named after: its name, or in a module
+   * with `export * from …`, which may export any name (its modules are not
+   * read), a name of the compiler's own (`tsr$x`), so the glue never
+   * shadows a re-exported binding for the module's importers.
+   */
+  glueExportBase(sym: SymbolId): string {
+    this.starExports ??= this.analysis.exports.some(
+      (e) => e.kind === 'star' && !e.typeOnly,
+    )
+    return this.starExports ? `tsr$${this.nameOf(sym)}` : this.nameOf(sym)
   }
 
   /** Renames every reference and declaration of `sym` (context-aware; exports keep their public names). */

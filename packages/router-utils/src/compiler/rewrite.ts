@@ -61,12 +61,6 @@ export type Frag =
       /** Edge form of the glue literal (default 'static'). */
       form?: 'static' | 'dynamic'
     }
-  /**
-   * The names the output exports for other outputs that are no exports of
-   * the module (its glue), decided by placement: each as `, "name"`, to
-   * append to a list. Reads nothing.
-   */
-  | { k: 'glueExportNames' }
   | {
       k: 'ref'
       range: Range

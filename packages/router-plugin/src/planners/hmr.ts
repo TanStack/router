@@ -228,10 +228,11 @@ export function planHmrBlock(
   if (anchor) {
     // the exports plugin-react ignores: the route, the anchor and
     // (over-approximated) every module-level binding the core may export as
-    // glue for the chunks, by its name and, when renamed (`x$1`, `tsr$x`),
-    // by its glue name, but no other export of the user's: plugin-react
-    // validates those, so a component updates in place and an edited value
-    // invalidates the module for its importers (a reload, as on main)
+    // glue for the chunks, by its name and by its glue name (`x$1` when `x`
+    // is an export's name, `tsr$x` next to `export *`), but no other export
+    // of the user's: plugin-react validates those, so a component updates in
+    // place and an edited value invalidates the module for its importers (a
+    // reload, as on main)
     const exportNames = new Set<string>()
     const userExports = new Set<string>()
     for (const e of ctx.analysis.exports) {
@@ -246,25 +247,31 @@ export function planHmrBlock(
     }
     const { symbols } = ctx.t1
     for (let i = 0; i < symbols.size; i++) {
-      const name = symbols.name(i as SymbolId)
-      if (symbols.isModuleLevel(i as SymbolId) && !userExports.has(name)) {
+      const sym = i as SymbolId
+      if (!symbols.isModuleLevel(sym)) {
+        continue
+      }
+      const name = symbols.name(sym)
+      if (!userExports.has(name)) {
         exportNames.add(name)
+      }
+      // a glue name other than its name is free of the module's exports
+      const glue = sym === route.routeSym ? name : ctx.glueExportName(sym)
+      if (glue !== name) {
+        exportNames.add(glue)
       }
     }
     exportNames.add(anchor.name)
     call.push(
       `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...exportNames].map((n) => stringLiteral(n, '"')).join(', ')}`,
     )
-    body.push(
-      { k: 'text', parts: call },
-      { k: 'glueExportNames' },
-      {
-        k: 'text',
-        parts: [
-          `] } })\n}\nexport function ${anchor.name}() { return null }\n`,
-        ],
-      },
-    )
+    body.push({
+      k: 'text',
+      parts: [
+        ...call,
+        `] } })\n}\nexport function ${anchor.name}() { return null }\n`,
+      ],
+    })
   } else {
     body.push({ k: 'text', parts: [...call, ' })\n}\n'] })
   }

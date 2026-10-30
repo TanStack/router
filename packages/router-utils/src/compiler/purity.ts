@@ -268,7 +268,7 @@ export function isPureExpression(
     case 'JSXFragment':
       return node.children.every((ch) => isPureJsxChild(ctx, ch))
     case 'MemberExpression':
-      return isNamespaceMember(ctx, node)
+      return ctx.namespaceImports.size > 0 && isNamespaceMember(ctx, node)
     case 'ChainExpression':
     case 'TaggedTemplateExpression':
     case 'ImportExpression':
@@ -285,7 +285,6 @@ export function isPureExpression(
 /** `ns.x` / `ns['x']` of a namespace import (`namespaceImports`). */
 function isNamespaceMember(ctx: PurityContext, node: Node): boolean {
   if (
-    ctx.namespaceImports.size === 0 ||
     node.type !== 'MemberExpression' ||
     (node.computed &&
       !(

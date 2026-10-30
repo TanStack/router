@@ -66,12 +66,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     }
     return null
   }
-  // `export * from …` may export any name (its modules are not read): the
-  // glue of such a module exports names of the compiler's own (`tsr$`), so
-  // it never shadows a re-exported binding for the module's importers
-  const starExports = analysis.exports.some(
-    (e) => e.kind === 'star' && !e.typeOnly,
-  )
   for (const [home, syms] of placement.exportsNeeded) {
     const map = new Map<SymbolId, string>()
     for (const s of [...syms].sort((a, b) => a - b)) {
@@ -81,9 +75,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
         if (existing !== null && !plan.exportedRenames.has(s)) {
           name = existing
         } else {
-          name = plan.names.allocExportName(
-            starExports ? `tsr$${plan.nameOf(s)}` : plan.nameOf(s),
-          )
+          name = plan.names.allocExportName(plan.glueExportBase(s))
           glueExports.add(s)
         }
       } else {
@@ -94,7 +86,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     exportNameOf.set(home, map)
   }
 
-  const renderer = new Renderer(plan, code, exportNameOf, glueExports)
+  const renderer = new Renderer(plan, code)
   const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
   // the units of each import declaration, once for every output
   const unitsOfImport = new Map<number, Array<Unit>>()
@@ -788,12 +780,6 @@ class Renderer {
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
-    private readonly exportNameOf: ReadonlyMap<
-      OutputId,
-      ReadonlyMap<SymbolId, string>
-    >,
-    /** The env module's glue exports (its other `exportNameOf` names are the module's own; a derived output's are all glue). */
-    private readonly glueExports: ReadonlySet<SymbolId>,
   ) {
     for (const r of plan.t1.refs.all) {
       if (r.kind !== 'implicitJsxFactory') {
@@ -988,18 +974,6 @@ class Renderer {
             names: [...(f.names ?? [])],
             provenance: f.provenance ?? { origin: 'runtime' },
           })
-          break
-        }
-        case 'glueExportNames': {
-          let text = ''
-          for (const [sym, name] of this.exportNameOf.get(this.output) ?? []) {
-            if (this.output !== 'env' || this.glueExports.has(sym)) {
-              text += `, ${stringLiteral(name, '"')}`
-            }
-          }
-          if (text.length > 0) {
-            out.push({ k: 'text', text })
-          }
           break
         }
         case 'ref': {

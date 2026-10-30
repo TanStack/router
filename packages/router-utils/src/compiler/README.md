@@ -43,8 +43,8 @@ emits its own output. Nothing depends on transform order.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are
-  unknown, they are the compiler's own (`tsr$x`). A `glueExportNames` fragment renders the names an output exports as
-  glue (React route HMR lists them for plugin-react to ignore).
+  unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
+  (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 

@@ -120,8 +120,8 @@ export interface ToySplitOptions {
   identifierEdits?: boolean
   /** Export the id of the module each chunk takes an identifier value from (`export const home = …`, a `homeId` ref). */
   homeIds?: boolean
-  /** List, in the env module, the names it exports as glue (`export const glueNames = ['', …]`, a `glueExportNames` frag). */
-  glueNames?: boolean
+  /** List, in the env module, the glue export names of these module-level bindings (`export const glueNames = […]`, `glueExportName`). */
+  glueNames?: ReadonlyArray<string>
 }
 
 /**
@@ -307,11 +307,22 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         })
       }
       if (opts.glueNames) {
+        const names: Array<string> = []
+        for (const b of ctx.analysis.file.bindings) {
+          const sym = ctx.symbols.ofBinding(b)
+          if (
+            ctx.symbols.isModuleLevel(sym) &&
+            opts.glueNames.includes(ctx.symbols.name(sym))
+          ) {
+            names.push(JSON.stringify(ctx.glueExportName(sym)))
+          }
+        }
         ctx.rewrites.addGenerated({
           body: [
-            { k: 'text', parts: ["export const glueNames = [''"] },
-            { k: 'glueExportNames' },
-            { k: 'text', parts: [']\n'] },
+            {
+              k: 'text',
+              parts: [`export const glueNames = [${names.join(', ')}]\n`],
+            },
           ],
           declares: [],
           effectful: true,

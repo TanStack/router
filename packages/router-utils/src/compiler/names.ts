@@ -45,6 +45,11 @@ export class NameAllocator {
     return name
   }
 
+  /** The name `allocExportName(base)` gives now (allocates nothing). */
+  peekExportName(base: string): string {
+    return this.pick(this.exportsTaken, base)
+  }
+
   isExportNameFree(name: string): boolean {
     return !this.exportsTaken.has(name)
   }

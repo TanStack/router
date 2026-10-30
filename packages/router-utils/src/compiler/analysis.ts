@@ -47,6 +47,9 @@ export interface ImportEntry {
   specifiers: Array<ImportSpecifierEntry>
 }
 
+/** The namespace imports of a module without any (shared, never written). */
+const NO_NAMESPACES: ReadonlySet<number> = new Set()
+
 type ExportEntry =
   | {
       kind: 'local'
@@ -300,15 +303,8 @@ export class ModuleAnalysis {
     this.header = analyzeHeader(file)
     const noSideEffectCallees = new Set<number>()
     const pureNamespaces = new Map<number, ReadonlySet<string>>()
-    const namespaceImports = new Set<number>()
+    let namespaceImports: Set<number> | null = null
     const pureCalls = opts.pureCalls
-    this.purity = {
-      file,
-      comments: file.comments,
-      noSideEffectCallees,
-      pureNamespaces,
-      namespaceImports,
-    }
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
@@ -327,7 +323,7 @@ export class ModuleAnalysis {
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
         if (record.kind === 'namespace' && !record.typeOnly) {
-          namespaceImports.add(local.id)
+          ;(namespaceImports ??= new Set()).add(local.id)
         }
         // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
@@ -344,6 +340,13 @@ export class ModuleAnalysis {
           }
         }
       }
+    }
+    this.purity = {
+      file,
+      comments: file.comments,
+      noSideEffectCallees,
+      pureNamespaces,
+      namespaceImports: namespaceImports ?? NO_NAMESPACES,
     }
     const exportLocals = new Map<number, SymbolId>()
     for (const record of file.exports) {
