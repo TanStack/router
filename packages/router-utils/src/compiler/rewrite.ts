@@ -291,14 +291,14 @@ export class RewriteSet {
         }
       }
       if (hidden) {
+        // inside a hidden claim, what is erased is decided inside it
         const relocated = new RenderTree(edits, this.regions, hidden)
         for (const claim of erased) {
           const { range } = this.regions.get(claim.region)
-          if (
-            !hidden.has(claim.region) &&
-            !relocated.isErasedAt(range.start, null, range)
-          ) {
-            live.push(claim)
+          if (!relocated.isErasedAt(range.start, null, range)) {
+            if (!hidden.delete(claim.region)) {
+              live.push(claim)
+            }
           }
         }
       }
@@ -376,9 +376,6 @@ function claimEdit(regions: RegionTable, claim: RegionClaim): TreeEdit {
 function claimSeq(region: RegionId): number {
   return CLAIM_SEQ + region
 }
-
-const sameRange = (a: TreeEdit, b: TreeEdit) =>
-  a.range.start === b.range.start && a.range.end === b.range.end
 
 function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
@@ -547,6 +544,10 @@ export class RenderTree {
         break
       }
       if (e.range.end > end) {
+        // an edit enclosing the range from its start, as opposed to one past it
+        if (e.range.start === start) {
+          continue
+        }
         break
       }
       if (e === exclude || (exclude instanceof Set && exclude.has(e))) {
@@ -575,8 +576,7 @@ export class RenderTree {
    * (does the text at `until`'s position render?). Claim placeholders are
    * transparent: relocation is not erasure — the region's text renders
    * inside its owner, and inside a hidden claim only the edits inside the
-   * region apply (unless an edit on exactly the region replaces the
-   * placeholder here: what it keeps renders here).
+   * region apply.
    */
   isErasedAt(
     offset: number,
@@ -584,7 +584,6 @@ export class RenderTree {
     strictlyEnclosing: Range | null = null,
   ): boolean {
     let erased = false
-    let outer: TreeEdit | null = null
     for (const e of this.edits) {
       if (e.range.start > offset) {
         break
@@ -609,13 +608,8 @@ export class RenderTree {
       ) {
         break
       }
-      const enclosing = outer
-      outer = e
       if (e.claim !== null) {
-        if (
-          this.hidden.has(e.claim) &&
-          !(enclosing && sameRange(enclosing, e))
-        ) {
+        if (this.hidden.has(e.claim)) {
           erased = false
         }
         continue
@@ -696,23 +690,15 @@ export class RenderTree {
     // `excluded`: the edits on exactly the visited range already looked
     // through (a claim, its override, an edit whose slice keeps its whole
     // range), so that the edits nested under them are found
-    // an erased part without the claims inside it (a claim an erasure
-    // encloses is live when its owner is read elsewhere: relocated, its
-    // text renders inside the owner), but for one an edit on exactly its
-    // region replaces here
+    // an erased part without the hidden claims inside it (relocated: their
+    // text renders inside their owners)
     const erased = (s: number, e: number) => {
       let pos = s
-      for (let i = 0; this.hidden.size > 0 && i < this.edits.length; i++) {
-        const c = this.edits[i]!
+      for (const c of this.hidden.size > 0 ? this.edits : []) {
         if (c.range.start >= e) {
           break
         }
-        if (
-          c.claim === null ||
-          c.range.start < pos ||
-          c.range.end > e ||
-          (i > 0 && sameRange(this.edits[i - 1]!, c))
-        ) {
+        if (c.claim === null || c.range.start < pos || c.range.end > e) {
           continue
         }
         if (c.range.start > pos) {

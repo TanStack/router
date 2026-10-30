@@ -8,6 +8,7 @@
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
+import { writeKind } from './mutation'
 import { isPureClass, isPureExpression } from './purity'
 import { patternIdentifiers, propertyKeyName, unwrapExpression } from './source'
 import type { Node } from 'yuku'
@@ -61,7 +62,8 @@ const prune = (
  * expression statement (its hook calls keep running); module level drops it
  * with the declaration (J4.12, documented removal). A leaf's value in the
  * literal its declarator destructures goes under the same rule
- * (`{ a, b } = { a: 1, b: f() }`). Iterates to a fixpoint.
+ * (`{ a, b } = { a: 1, b: f() }`), unless it writes something
+ * (`literalValueGoes`). Iterates to a fixpoint.
  */
 export function cleanOrphanedDeclarations(
   ctx: PlanContext,
@@ -528,11 +530,46 @@ function destructuredLiteral(ctx: PlanContext, pattern: Node): Node | null {
 }
 
 /**
+ * Whether a literal value goes with its orphaned leaf: pure, or its effects
+ * may go (`initGoes`) and it writes nothing kept code may read (unlike a
+ * call's unknown effects, a write the source shows: `{ a: ++n, b: n }`).
+ */
+function literalValueGoes(
+  ctx: PlanContext,
+  value: Node,
+  at: number,
+  live: LivenessView,
+): boolean {
+  if (isPureExpression(ctx.analysis.purity, value)) {
+    return true
+  }
+  if (ctx.t1.refs.refsIn(rangeOf(value)).some((r) => writeKind(r) !== null)) {
+    return false
+  }
+  return !assigns(value) && initGoes(ctx, value, at, live)
+}
+
+/** Whether an expression assigns anything (`x = …`, `o.p = …`, `++x`), a global's member too. */
+function assigns(expr: Node): boolean {
+  let found = false
+  walk(expr, {
+    enter: (n, wctx) => {
+      if (n.type === 'AssignmentExpression' || n.type === 'UpdateExpression') {
+        found = true
+        wctx.stop()
+      }
+    },
+  })
+  return found
+}
+
+/**
  * Removes, from the object literal a pattern destructures, the properties
- * of the pattern properties `pruned` whose effects may go (`initGoes`): one
+ * of the pattern elements `pruned` whose values go (`literalValueGoes`): one
  * plain property per key no pattern property that stays reads (a computed
- * one may read any), in a literal without accessors (a getter reads the
- * literal's other properties through `this`).
+ * one may read any); a pruned rest element held every key the pattern does
+ * not name. Never in a literal with an accessor or a prototype (a getter
+ * reads the literal's other properties through `this`).
  */
 function removeLiteralProperties(
   ctx: PlanContext,
@@ -545,13 +582,23 @@ function removeLiteralProperties(
   if (
     pattern.type !== 'ObjectPattern' ||
     literal?.type !== 'ObjectExpression' ||
-    literal.properties.some((p) => p.type === 'Property' && p.kind !== 'init')
+    literal.properties.some(
+      (p) =>
+        p.type === 'Property' &&
+        (p.kind !== 'init' || propertyKeyName(p) === '__proto__'),
+    )
   ) {
     return
   }
   const read = new Set<string | null>()
+  const gone = new Set<string | null>()
+  let rest = false
   for (const p of pattern.properties) {
-    if (p.type === 'Property' && !pruned.has(p) && !live.isErased(rangeOf(p))) {
+    if (p.type === 'RestElement') {
+      rest ||= pruned.has(p)
+    } else if (pruned.has(p)) {
+      gone.add(propertyKeyName(p))
+    } else if (!live.isErased(rangeOf(p))) {
       read.add(propertyKeyName(p))
     }
   }
@@ -560,19 +607,17 @@ function removeLiteralProperties(
   }
   const props = literal.properties as ReadonlyArray<Node>
   const values = new Set<Node>()
-  for (const prop of pruned) {
-    const key = propertyKeyName(prop)
-    if (read.has(key)) {
-      continue
-    }
-    const same = props.filter((p) => key !== null && propertyKeyName(p) === key)
-    const value = same.length === 1 ? same[0]! : null
+  for (const p of props) {
+    const key = propertyKeyName(p)
     if (
-      value?.type === 'Property' &&
-      key !== '__proto__' &&
-      initGoes(ctx, value.value, pattern.start, live)
+      p.type === 'Property' &&
+      key !== null &&
+      !read.has(key) &&
+      (rest || gone.has(key)) &&
+      props.filter((o) => propertyKeyName(o) === key).length === 1 &&
+      literalValueGoes(ctx, p.value, pattern.start, live)
     ) {
-      values.add(value)
+      values.add(p)
     }
   }
   if (values.size === 0) {
@@ -771,6 +816,15 @@ function prunePatternElement(
     return true
   }
   if (parent.type === 'ArrayPattern') {
+    const code = ctx.analysis.source.code
+    const hole = (range: Range) =>
+      ctx.rewrites.add({
+        range,
+        body: commaFollows(code, range.end) ? [] : [text(',')],
+        scope: scopeOf(refs),
+        by: BY,
+      })
+    hole(rangeOf(node))
     const literal = destructuredLiteral(ctx, parent)
     const index = (parent.elements as ReadonlyArray<Node | null>).indexOf(node)
     const element =
@@ -780,21 +834,28 @@ function prunePatternElement(
         .some((e) => e?.type === 'SpreadElement')
         ? literal.elements[index]
         : null
-    for (const hole of [node, element]) {
-      if (hole && (hole === node || initGoes(ctx, hole, parent.start, live))) {
-        ctx.rewrites.add({
-          range: rangeOf(hole),
-          body: commaFollows(ctx.analysis.source.code, hole.end)
-            ? []
-            : [text(',')],
-          scope: scopeOf(refs),
-          by: BY,
-        })
-      }
+    // an edit or a claim on exactly the element is a planner's: it stays
+    if (
+      element &&
+      !plannerOwnsExactly(ctx, rangeOf(element)) &&
+      literalValueGoes(ctx, element, parent.start, live)
+    ) {
+      hole(rangeOf(element))
     }
     return true
   }
   return false
+}
+
+/** Whether a planner's edit or claim addresses exactly `range`. */
+function plannerOwnsExactly(ctx: PlanContext, { start, end }: Range): boolean {
+  const same = (r: Range) => r.start === start && r.end === end
+  return (
+    ctx.rewrites.edits.some((e) => same(e.range)) ||
+    [...ctx.rewrites.claims.values()].some((c) =>
+      same(ctx.t1.regions.get(c.region).range),
+    )
+  )
 }
 
 /** Where a list ends: after its last item and the comma that may follow it (`closing` of `removeListItems`; `{ , }` is no syntax). */

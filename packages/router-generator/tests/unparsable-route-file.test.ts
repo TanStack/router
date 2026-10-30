@@ -4,6 +4,7 @@
  * session knows its route: the run fails naming the file, as on main. In a
  * session that knew it (dev, watch), it keeps its route and is reported.
  */
+import { writeFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { afterAll, expect, test } from 'vitest'
@@ -296,6 +297,98 @@ test('a build fails on a route file that does not parse when another event arriv
   await expect(built).rejects.toThrow('posts.tsx')
   await expect(later).rejects.toThrow('posts.tsx')
   expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
+})
+
+// A build arriving while a dev batch generates: the drain's last batch is the
+// build's, whatever the first waiter asked for.
+test('a build arriving during a dev batch fails on a route file that does not parse', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  const dev = session.run({ type: 'update', path: posts })
+  await Promise.resolve()
+  await Promise.resolve()
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+  await dev
+})
+
+test('a build resolves when an event arriving while it generates fixes the route file', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config: configOf(root), root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  const built = session.build()
+  await Promise.resolve()
+  await writeFile(posts, postsRoute)
+  await generator.run({ type: 'update', path: posts })
+  await built
+  expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
+})
+
+// A build batch that fails before publishing still read what changed: the
+// next batch publishes it, though the file that broke it is all it reads.
+test('a route change a failed build read reaches the tree once the broken file is fixed', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+    'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/about')({})
+`,
+  })
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const about = path.join(root, 'src/routes/about.tsx')
+  const config = configOf(root)
+  let armed = false
+  const runs: Array<Promise<void>> = []
+  config.plugins = [
+    {
+      name: 'edits-during-the-build',
+      // synchronous: the events join the drain of the batch that notifies
+      onRouteTreeChanged: () => {
+        if (armed) {
+          armed = false
+          writeFileSync(about, 'export const notARoute = 1\n')
+          writeFileSync(posts, 'export const Route = (')
+          runs.push(
+            generator.run({ type: 'update', path: about }),
+            generator.run({ type: 'update', path: posts }),
+          )
+        }
+      },
+    },
+  ]
+  const generator = new Generator({ config, root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  armed = true
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+  await Promise.allSettled(runs)
+  await writeFile(posts, postsRoute)
+  await session.run({ type: 'update', path: posts })
+  expect(await readFile(config.generatedRouteTree, 'utf8')).not.toContain(
+    "'/about'",
+  )
 })
 
 // Text that names no `Route` and does not parse is no route file without a

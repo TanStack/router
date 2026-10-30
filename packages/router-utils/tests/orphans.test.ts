@@ -218,6 +218,81 @@ describe('literal values of destructured bindings only erased code read', () => 
     expect(out).toContain("import { secret } from './db'")
   })
 
+  // An edit on exactly the element is the planner's: what it renders stays.
+  it('keeps an array element a planner rewrites at exactly its range', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        const [picked, kept] = [wrapServer(() => 1), 1]
+        export const k = kept
+        export const fn = wrapServer(() => picked)
+      `),
+    ).toBe(
+      dedent(`
+        const [, kept] = [tsrStub(), 1]
+        export const k = kept
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
+  // What a value writes, kept code may read: unlike a call's unknown effects
+  // (J4.12), the write is in the source.
+  it.each([
+    ['let n = 0\nconst { picked, kept } = { picked: ++n, kept: n }', '++n'],
+    ['let n = 0\nconst [picked, kept] = [++n, n]', '++n'],
+    [
+      'let n = 0\nconst { picked, kept } = { picked: (n = 5), kept: n }',
+      'n = 5',
+    ],
+    [
+      'const reg = []\nconst { picked, kept } = { picked: reg.push(1), kept: reg.length }',
+      'reg.push(1)',
+    ],
+    [
+      'const { picked, kept } = { picked: (window.x = 1), kept: window.x }',
+      'window.x = 1',
+    ],
+  ])('keeps a value that writes: %s', async (declarations, value) => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      ${declarations.replaceAll('\n', '\n      ')}
+      export const k = kept
+      export const fn = wrapServer(() => picked)
+    `)
+    expect(out).toContain(value)
+  })
+
+  it('keeps a value next to a prototype a getter may read it through', async () => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      import { secret } from './db'
+      const { picked, kept } = { __proto__: { get kept() { return this.picked } }, picked: secret() }
+      export const k = kept
+      export const fn = wrapServer(() => picked)
+    `)
+    expect(out).toContain('secret()')
+  })
+
+  // An orphaned rest element held whatever the pattern does not name.
+  it('drops the values only an orphaned rest element held', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { secret } from './db'
+        const { kept, ...others } = { kept: 1, s: secret() }
+        export const k = kept
+        export const fn = wrapServer(() => others)
+      `),
+    ).toBe(
+      dedent(`
+        const { kept } = { kept: 1 }
+        export const k = kept
+        export const fn = tsrStub()
+      `),
+    )
+  })
+
   it('keeps a function-level value that calls a hook, drops a server-only one', async () => {
     expect(
       await client(`

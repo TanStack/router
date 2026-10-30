@@ -491,6 +491,8 @@ export class Generator {
     if (build) {
       const broken = [...this.files].filter(([, state]) => state.unparsable)
       if (broken.length > 0) {
+        // what this batch read reaches the tree with the next one
+        this.stale = true
         throw new UnparsableRouteFileError(
           broken
             .map(

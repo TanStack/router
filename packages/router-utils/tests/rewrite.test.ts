@@ -650,6 +650,216 @@ describe('claims, homes and substitution', () => {
     },
   )
 
+  // The erasure may start where the claim does (`[make(…) as any, 1]`): the
+  // edits inside the region still render inside its owner.
+  it('renders the edits inside a claim read elsewhere when the erasure starts with it', () => {
+    const code = dedent(`
+      import { make } from './make'
+      export const list = [make(() => 'hi') as any, 1]
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    const chain = rangeOf(code, "make(() => 'hi')")
+    ctx.rewrites.add({
+      range: rangeOf(code, "() => 'hi'"),
+      body: [{ k: 'text', parts: ['tsrRpc'] }],
+      scope: 'all-outputs',
+      by: 'env',
+    })
+    const hoisted = ctx.names.alloc('tsrHoisted')
+    const region = ctx.region(chain, 'nested-chain')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range: chain },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'after-unit', unit: 0 },
+      home: 'auto',
+      by: 'env',
+    })
+    const wrapper = ctx.names.alloc('tsrWrapper')
+    const gen = ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: [
+            'export const ',
+            { sym: wrapper.sym },
+            ' = () => ',
+            { sym: hoisted.sym },
+            '\n',
+          ],
+        },
+      ],
+      declares: [wrapper.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: 'auto',
+      by: 'env',
+    })
+    ctx.addRoot('env', { t: 'gen', id: gen })
+    ctx.rewrites.claim({
+      region,
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      by: 'env',
+    })
+    ctx.rewrites.add({
+      range: rangeOf(code, "make(() => 'hi') as any"),
+      body: [{ k: 'text', parts: [','] }],
+      scope: 'all-outputs',
+      by: 'router',
+    })
+    e.freeze()
+    expect(e.render('env').code).toContain('const tsrHoisted = make(tsrRpc)')
+  })
+
+  // A claim read elsewhere inside another one: its occurrence renders inside
+  // the outer owner, so its placeholder's reads count.
+  it('renders the placeholder of a claim read elsewhere inside another such claim', () => {
+    const code = dedent(`
+      import { make, inner } from './make'
+      export const opts = { loader: () => make(() => inner(1)) }
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    const claimRead = (range: { start: number; end: number }, name: string) => {
+      const hoisted = ctx.names.alloc(name)
+      const region = ctx.region(range, 'nested-chain')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'slice', range },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'after-unit', unit: 0 },
+        home: 'auto',
+        by: 'env',
+      })
+      const wrapper = ctx.names.alloc(`${name}Wrapper`)
+      const gen = ctx.rewrites.addGenerated({
+        body: [
+          {
+            k: 'text',
+            parts: [
+              'export const ',
+              { sym: wrapper.sym },
+              ' = () => ',
+              { sym: hoisted.sym },
+              '\n',
+            ],
+          },
+        ],
+        declares: [wrapper.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'env',
+      })
+      ctx.addRoot('env', { t: 'gen', id: gen })
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        by: 'env',
+      })
+      return { hoisted, region }
+    }
+    const inner = claimRead(rangeOf(code, 'inner(1)'), 'tsrInner')
+    claimRead(rangeOf(code, 'make(() => inner(1))'), 'tsrOuter')
+    ctx.rewrites.add({
+      range: rangeOf(code, 'loader: () => make(() => inner(1)) '),
+      body: [],
+      scope: 'all-outputs',
+      by: 'router',
+    })
+    e.freeze()
+    expect(ctx.rewrites.tree('env').placeholderRenders(inner.region)).toBe(true)
+    expect(e.render('env').code).toContain(
+      'const tsrOuter = make(() => tsrInner)',
+    )
+  })
+
+  // The env module of a separate provider: its own edit on exactly the region
+  // replaces the placeholder, and the owner lives in the provider. Under an
+  // erasure nothing of the region renders in the env module, so what only it
+  // reads leaves, and the provider keeps both.
+  it('erases a claim read elsewhere in an output whose own edit replaces it', () => {
+    const code = dedent(`
+      import { make } from './make'
+      export const opts = { loader: () => make(1) }
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    const chain = rangeOf(code, 'make(1)')
+    const provider = ctx.declareOutput({
+      kind: 'hydrate',
+      key: 'p1',
+      derived: { kind: 'hydrate', value: 'p1' },
+    })
+    const hoisted = ctx.names.alloc('tsrHoisted')
+    const region = ctx.region(chain, 'nested-chain')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range: chain },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: provider,
+      by: 'env',
+    })
+    const wrapper = ctx.names.alloc('tsrWrapper')
+    const gen = ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: [
+            'export const ',
+            { sym: wrapper.sym },
+            ' = () => ',
+            { sym: hoisted.sym },
+            '\n',
+          ],
+        },
+      ],
+      declares: [wrapper.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: provider,
+      by: 'env',
+    })
+    ctx.addRoot(provider, { t: 'gen', id: gen })
+    ctx.rewrites.claim({
+      region,
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      by: 'env',
+    })
+    ctx.rewrites.add({
+      range: chain,
+      body: [{ k: 'slice', range: chain }],
+      scope: ['env'],
+      by: 'env',
+    })
+    ctx.rewrites.add({
+      range: rangeOf(code, 'loader: () => make(1) '),
+      body: [],
+      scope: 'all-outputs',
+      by: 'router',
+    })
+    e.freeze()
+    expect(e.render('env').code).not.toContain('make')
+    expect(e.render(provider).code).toContain('const tsrHoisted = make(1)')
+  })
+
   it('moves an import only generated text reads out of a non-route env module', () => {
     // a Solid `use:tip` directive is no reference in the semantic model: the planner's edit reads `tip`
     const code = dedent(`

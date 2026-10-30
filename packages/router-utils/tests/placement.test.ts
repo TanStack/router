@@ -833,6 +833,48 @@ describe('extracted-export outputs', () => {
     },
   )
 
+  // Any declaration of the binding counts: a later `var` changes it, whatever
+  // declared it first (a type, another `var`).
+  it.each([
+    ['var items = [1]\nexport default items\nvar items = [2]'],
+    ['var items\nexport default items\nvar items = [2]'],
+    ['interface items { a: 1 }\nexport default items\nvar items = [2]'],
+    ['var items = [1]\nexport default items\nfor (var items of [[2]]) {}'],
+  ])(
+    'imports a binding a later `var` changes under a name of its own: %s',
+    async (declarations) => {
+      const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      ${declarations.replaceAll('\n', '\n      ')}
+      export const Route = createFileRoute('/')({ loader: () => items, component: () => items })
+    `)
+      const r = await extract(code)
+      expect(r.env).toContain('export default items')
+      expect(r.env).toContain('export { items }')
+      expect(r.chunk).toContain("import { items } from './route.tsx'")
+    },
+  )
+
+  // Type declarations give no value: the function's is there before the
+  // statement runs.
+  it.each([
+    ['function Page(a: string): string\nfunction Page(a: any) { return a }'],
+    ['interface Page { a: 1 }\nfunction Page() { return 1 }'],
+  ])(
+    'extracts a function declared below `export default` with types: %s',
+    async (declarations) => {
+      const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export default Page
+      ${declarations.replaceAll('\n', '\n      ')}
+      export const Route = createFileRoute('/')({ component: () => Page() })
+    `)
+      const r = await extract(code)
+      expect(r.env).not.toContain('function Page')
+      expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+    },
+  )
+
   it('extracts a function the module exports by default above its declaration', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

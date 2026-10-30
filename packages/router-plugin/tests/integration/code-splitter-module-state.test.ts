@@ -99,6 +99,34 @@ export const Route = createFileRoute('/')({
     30_000,
   )
 
+  // A later `var` changes the binding, not what the export took.
+  it.each([
+    { name: 'a loader reads it too', loader: 'loader: () => items.length,' },
+    { name: 'only the component reads it', loader: '' },
+  ])(
+    'gives the split component the value a later `var` gives the binding the route file exports by default ($name)',
+    async ({ loader }) => {
+      const result = await buildAndRun(
+        `${head}var items = ['a']
+export default items
+var items = ['b']
+export const Route = createFileRoute('/')({
+  ${loader}
+  component: () => <p>{items.join()}</p>,
+})
+`,
+        `return [await entry.render(entry.Route.options.component), entry.first]`,
+        {
+          files: {
+            'entry.ts': `${ssrRenderEntry}export { default as first } from './routes/index'\n`,
+          },
+        },
+      )
+      expect(result).toEqual(['<p>b</p>', ['a']])
+    },
+    30_000,
+  )
+
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {
     const html = await buildAndRun(

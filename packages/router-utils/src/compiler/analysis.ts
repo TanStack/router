@@ -240,9 +240,9 @@ export interface Tier1 {
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
-   * keeps), or declared after the statement by anything but a hoisted
-   * function (a later `var` gives it its value afterwards: the export holds
-   * `undefined`).
+   * keeps), or a declaration after the statement, other than a hoisted
+   * function or a type, may give it a value afterwards (a later `var`: the
+   * export holds what it had, `undefined` if nothing came before).
    */
   snapshotDiffers: (
     sym: SymbolId,
@@ -1034,14 +1034,19 @@ export class ModuleAnalysis {
         if (mutation.isReassigned(sym, live)) {
           return true
         }
-        const id = symbols.isImport(sym)
-          ? null
-          : symbols.binding(sym)?.declarations[0]
-        if (!id || id.start < at) {
+        if (symbols.isImport(sym)) {
           return false
         }
-        const parent = file.parentOf(id)
-        return !(parent?.type === 'FunctionDeclaration' && parent.id === id)
+        return (symbols.binding(sym)?.declarations ?? []).some((id) => {
+          const parent = id.start < at ? null : file.parentOf(id)
+          return (
+            parent !== null &&
+            parent.type !== 'FunctionDeclaration' &&
+            parent.type !== 'TSDeclareFunction' &&
+            parent.type !== 'TSInterfaceDeclaration' &&
+            parent.type !== 'TSTypeAliasDeclaration'
+          )
+        })
       },
       isLazyAt,
       inFunctionAt,
