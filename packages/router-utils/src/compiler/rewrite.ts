@@ -113,6 +113,23 @@ interface RegionClaim {
 
 const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
 
+/**
+ * Bands of edit sequences (`TreeEdit.seq`). Among edits of one range a
+ * lower sequence is the outer edit (`RenderTree`), and among inserts at one
+ * position the first. Planner edits count from 0 (`RewriteSet.add`). A
+ * claim's placeholder is `CLAIM_SEQ + region`, above them: a planner edit
+ * scoped to one output on exactly the claimed region replaces it there, and
+ * one addressed to every output nests inside it (`+ NESTED_IN_CLAIM`, below
+ * the next region's). The core's glue imports (`GLUE_IMPORTS_SEQ`) and its
+ * own edits of an output (from `CORE_SEQ` up: statement-level removals,
+ * generated units, export glue) come last. Planner edits and regions stay
+ * far below the bands' gaps (5e8).
+ */
+export const CLAIM_SEQ = 1e9
+export const NESTED_IN_CLAIM = 0.5
+export const GLUE_IMPORTS_SEQ = 1.5e9
+export const CORE_SEQ = 2e9
+
 /** An internal edit of a render tree: a planner edit or a claim placeholder. */
 export interface TreeEdit {
   range: Range
@@ -225,7 +242,7 @@ export class RewriteSet {
               c.range.start === e.range.start &&
               c.range.end === e.range.end
             ) {
-              seq = c.seq + 0.5
+              seq = c.seq + NESTED_IN_CLAIM
               break
             }
           }
@@ -285,9 +302,9 @@ export interface LivenessView {
   isErased: (range: Range) => boolean
 }
 
-/** The sequence of a claim's placeholder edit: above every planner edit, so that an edit on exactly the claimed region nests inside it (or, scoped, replaces it). */
+/** The sequence of a claim's placeholder edit (see `CLAIM_SEQ`). */
 function claimSeq(region: RegionId): number {
-  return 1e9 + region
+  return CLAIM_SEQ + region
 }
 
 function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {

@@ -11,6 +11,7 @@ import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { isLineTerminator, pragmasOf } from './header'
+import { CORE_SEQ, GLUE_IMPORTS_SEQ } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -197,7 +198,7 @@ function renderEnv(
   const { items, units } = t1
   const code = analysis.source.code
   const extra: Array<TreeEdit> = []
-  let seq = 2e9
+  let seq = CORE_SEQ
   const baseTree = rewrites.tree('env')
   /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
   const siblingExports: Array<{ sym: SymbolId; name: string }> = []
@@ -290,7 +291,7 @@ function renderEnv(
       range: { start: analysis.header.end, end: analysis.header.end },
       body: glueImports,
       by: 'core:glue',
-      seq: 1.5e9,
+      seq: GLUE_IMPORTS_SEQ,
       claim: null,
     })
   }
@@ -619,10 +620,13 @@ function renderDerived(
       importsEnd = Math.max(importsEnd, item.range.end)
     }
   }
+  // a piece's position is a source offset: between the last included import
+  // (it starts before its end) and a statement starting where it ends
+  const afterImports = importsEnd - 0.5
   for (const a of anchored) {
     const pos =
       a.gen.anchor.k === 'after-header'
-        ? importsEnd - 0.5
+        ? afterImports
         : a.gen.anchor.k === 'end'
           ? Infinity
           : a.at
