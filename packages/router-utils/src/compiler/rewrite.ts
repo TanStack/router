@@ -544,10 +544,6 @@ export class RenderTree {
         break
       }
       if (e.range.end > end) {
-        // an edit enclosing the range from its start, as opposed to one past it
-        if (e.range.start === start) {
-          continue
-        }
         break
       }
       if (e === exclude || (exclude instanceof Set && exclude.has(e))) {

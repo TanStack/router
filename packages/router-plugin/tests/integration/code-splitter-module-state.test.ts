@@ -127,6 +127,24 @@ export const Route = createFileRoute('/')({
     30_000,
   )
 
+  // Only the deleted option reads `a`: the literal keeps both calls, so `b`
+  // gets the second value.
+  it('gives a binding of a destructured array literal its value when a deleted option read the one before it', async () => {
+    const result = await buildAndRun(
+      `${head}let calls = 0
+const next = () => ++calls
+const [a, b] = [next(), next()]
+export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => new Response(String(a)) } },
+  component: () => <p>{b}</p>,
+})
+`,
+      `return await entry.render(entry.Route.options.component)`,
+      { deleteNodes: ['server'] },
+    )
+    expect(result).toBe('<p>2</p>')
+  }, 30_000)
+
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {
     const html = await buildAndRun(

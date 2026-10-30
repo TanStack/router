@@ -117,198 +117,39 @@ describe('destructured bindings only erased code read', () => {
       `),
     )
   })
-})
 
-// The literal a declarator destructures is a new value nothing else
-// holds: what only a removed leaf read of it goes too, under the
-// declarator's rule for effects (module level: they go).
-describe('literal values of destructured bindings only erased code read', () => {
-  it('drops the property of an object literal, with the import it read', async () => {
+  // The initialiser stays as written: the elements keep their order and
+  // effects, so `kept` gets the value the source gives it.
+  it('leaves the array literal an array pattern with a removed element destructures', async () => {
     expect(
       await client(`
         import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const { picked, kept } = { picked: secret(), kept: 1 }
+        const [picked, kept] = [next(), next()]
         export const k = kept
         export const fn = wrapServer(() => picked)
       `),
     ).toBe(
       dedent(`
-        const { kept } = { kept: 1 }
+        const [, kept] = [next(), next()]
         export const k = kept
         export const fn = tsrStub()
       `),
     )
   })
 
-  it('drops the property of a key kept out of a live rest element', async () => {
+  it('leaves the object literal an object pattern with a removed property destructures', async () => {
     expect(
       await client(`
         import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const { picked, ...others } = { kept: 1, picked: secret() }
-        export const o = others
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        const { picked, ...others } = { kept: 1 }
-        export const o = others
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it('leaves a hole for the element of an array literal, also the last one', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const [first, kept, last] = [secret(), 1, secret()]
-        export const k = kept
-        export const fn = wrapServer(() => [first, last])
-      `),
-    ).toBe(
-      dedent(`
-        const [, kept, ,] = [, 1, ,]
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it.each([
-    [
-      'a getter reads the literal',
-      'const { picked, kept } = { get kept() { return this.picked }, picked: secret() }',
-    ],
-    [
-      'the key is defined twice',
-      'const { picked, kept } = { picked: secret(), kept: 1, picked: secret() }',
-    ],
-    [
-      'a computed pattern key',
-      'const { [name]: picked, kept } = { picked: secret(), kept: 1 }',
-    ],
-    [
-      'a spread element shifts the array',
-      'const [kept, picked] = [...list, secret()]',
-    ],
-    [
-      'another binding reads the key',
-      'const { picked, picked: kept } = { picked: secret() }',
-    ],
-    [
-      'a computed key may read it',
-      'const { picked, [name]: kept } = { picked: secret() }',
-    ],
-    [
-      'the literal is an inner one',
-      'const { o: { picked, kept } } = { o: { picked: secret(), kept: 1 } }',
-    ],
-  ])('keeps the value when %s', async (_, declaration) => {
-    const out = await client(`
-      import { wrapServer } from 'toy-start'
-      import { secret } from './db'
-      ${declaration}
-      export const k = kept
-      export const fn = wrapServer(() => picked)
-    `)
-    expect(out).toContain('secret()')
-    expect(out).toContain("import { secret } from './db'")
-  })
-
-  // An edit on exactly the element is the planner's: what it renders stays.
-  it('keeps an array element a planner rewrites at exactly its range', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        const [picked, kept] = [wrapServer(() => 1), 1]
+        const { picked, kept } = { picked: next(), kept: next() }
         export const k = kept
         export const fn = wrapServer(() => picked)
       `),
     ).toBe(
       dedent(`
-        const [, kept] = [tsrStub(), 1]
+        const { kept } = { picked: next(), kept: next() }
         export const k = kept
         export const fn = tsrStub()
-      `),
-    )
-  })
-
-  // What a value writes, kept code may read: unlike a call's unknown effects
-  // (J4.12), the write is in the source.
-  it.each([
-    ['let n = 0\nconst { picked, kept } = { picked: ++n, kept: n }', '++n'],
-    ['let n = 0\nconst [picked, kept] = [++n, n]', '++n'],
-    [
-      'let n = 0\nconst { picked, kept } = { picked: (n = 5), kept: n }',
-      'n = 5',
-    ],
-    [
-      'const reg = []\nconst { picked, kept } = { picked: reg.push(1), kept: reg.length }',
-      'reg.push(1)',
-    ],
-    [
-      'const { picked, kept } = { picked: (window.x = 1), kept: window.x }',
-      'window.x = 1',
-    ],
-  ])('keeps a value that writes: %s', async (declarations, value) => {
-    const out = await client(`
-      import { wrapServer } from 'toy-start'
-      ${declarations.replaceAll('\n', '\n      ')}
-      export const k = kept
-      export const fn = wrapServer(() => picked)
-    `)
-    expect(out).toContain(value)
-  })
-
-  it('keeps a value next to a prototype a getter may read it through', async () => {
-    const out = await client(`
-      import { wrapServer } from 'toy-start'
-      import { secret } from './db'
-      const { picked, kept } = { __proto__: { get kept() { return this.picked } }, picked: secret() }
-      export const k = kept
-      export const fn = wrapServer(() => picked)
-    `)
-    expect(out).toContain('secret()')
-  })
-
-  // An orphaned rest element held whatever the pattern does not name.
-  it('drops the values only an orphaned rest element held', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const { kept, ...others } = { kept: 1, s: secret() }
-        export const k = kept
-        export const fn = wrapServer(() => others)
-      `),
-    ).toBe(
-      dedent(`
-        const { kept } = { kept: 1 }
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it('keeps a function-level value that calls a hook, drops a server-only one', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        export function Comp() {
-          const { a, b, kept } = { a: useThing(), b: secret(), kept: 1 }
-          return [kept, wrapServer(() => [a, b])]
-        }
-      `),
-    ).toBe(
-      dedent(`
-        export function Comp() {
-          const { kept } = { a: useThing(), kept: 1 }
-          return [kept, tsrStub()]
-        }
       `),
     )
   })

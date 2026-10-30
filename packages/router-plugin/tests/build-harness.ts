@@ -558,6 +558,7 @@ export async function buildAndRun(
   options: {
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
+    deleteNodes?: Array<string>
     prefix?: string
   } = {},
 ) {
@@ -567,8 +568,11 @@ export async function buildAndRun(
     minify: false,
     prefix: options.prefix ?? '.regression-build-',
     files: routeApp(route, { files: options.files }),
-    pluginOptions: options.groupings && {
-      codeSplittingOptions: { defaultBehavior: options.groupings },
+    pluginOptions: (options.groupings || options.deleteNodes) && {
+      codeSplittingOptions: {
+        defaultBehavior: options.groupings,
+        deleteNodes: options.deleteNodes,
+      },
     },
   })
   try {

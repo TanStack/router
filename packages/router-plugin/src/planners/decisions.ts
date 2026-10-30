@@ -4,11 +4,7 @@
  * `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import {
-  propertyKeyName,
-  unwrapExpression,
-  walk,
-} from '@tanstack/router-utils/compiler'
+import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { splitGroupingsSchema } from '../core/config'
 import { ROUTER_PLANNER } from './config'
 import {
@@ -18,6 +14,7 @@ import {
   isExportedSymbol,
   isFallbackLiteral,
   liveInEnv,
+  propertyKeyName,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'

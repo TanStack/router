@@ -8,9 +8,8 @@
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
-import { writeKind } from './mutation'
 import { isPureClass, isPureExpression } from './purity'
-import { patternIdentifiers, propertyKeyName, unwrapExpression } from './source'
+import { patternIdentifiers } from './source'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
@@ -60,10 +59,7 @@ const prune = (
  * whose references are erased in the env output: pure initialisers go with
  * the declarator; an impure initialiser at function level stays as an
  * expression statement (its hook calls keep running); module level drops it
- * with the declaration (J4.12, documented removal). A leaf's value in the
- * literal its declarator destructures goes under the same rule
- * (`{ a, b } = { a: 1, b: f() }`), unless it writes something
- * (`literalValueGoes`). Iterates to a fixpoint.
+ * with the declaration (J4.12, documented removal). Iterates to a fixpoint.
  */
 export function cleanOrphanedDeclarations(
   ctx: PlanContext,
@@ -100,13 +96,13 @@ export function cleanOrphanedDeclarations(
     const prunedDecls = new Map<Node, Pruned>()
     // declarators removed whole this round (every binding of a pattern)
     const removedDeclarators = new Set<Node>()
-    // pattern properties a live rest element keeps: once nothing else goes
-    // (the rest element may go first, and its siblings with it), only their
-    // defaults and literal values go, with what only they read
+    // pattern properties a live rest element keeps, by the range of their
+    // default: once nothing else goes (the rest element may go first, and
+    // its siblings with it), only the defaults go, with what only they read
     // (`{ a = server(), ...rest }` → `{ a, ...rest }`)
     const restKept: Array<{
       binding: number
-      property: Node
+      range: Range
       refs: ReadonlyArray<ClassifiedRef>
     }> = []
     for (const b of file.bindings) {
@@ -200,7 +196,7 @@ export function cleanOrphanedDeclarations(
           handled.add(b.id)
           changed = true
         } else if (pruned !== false) {
-          restKept.push({ binding: b.id, property: pruned, refs })
+          restKept.push({ binding: b.id, range: pruned, refs })
         }
         continue
       }
@@ -239,24 +235,11 @@ export function cleanOrphanedDeclarations(
     for (const [statement, decls] of prunedDecls) {
       removeDeclarators(ctx, statement, decls, live, scopeOf)
     }
-    if (!changed && restKept.length > 0) {
-      const values = new Map<Node, Pruned>()
-      for (const { binding, property, refs } of restKept) {
+    if (!changed) {
+      for (const { binding, range, refs } of restKept) {
         handled.add(binding)
         changed = true
-        const value = property.type === 'Property' ? property.value : null
-        if (value?.type === 'AssignmentPattern') {
-          rewrites.add({
-            range: { start: value.left.end, end: value.end },
-            body: [],
-            scope: scopeOf(refs),
-            by: BY,
-          })
-        }
-        prune(values, file.parentOf(property)!, property, refs)
-      }
-      for (const [pattern, props] of values) {
-        removeLiteralProperties(ctx, pattern, props, live, scopeOf)
+        rewrites.add({ range, body: [], scope: scopeOf(refs), by: BY })
       }
     }
     if (!changed) {
@@ -324,9 +307,13 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
+  const moduleLevel = !ctx.t1.inFunctionAt(declarator.start)
   const effectsGo =
     declarator.init === null ||
-    initGoes(ctx, declarator.init, declarator.start, live)
+    isPureExpression(ctx.analysis.purity, declarator.init) ||
+    moduleLevel ||
+    (!callsHook(declarator.init) &&
+      initReadsOnlyOrphanedImports(ctx, declarator.init, live))
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
@@ -510,127 +497,6 @@ function removePatternProperties(
     scope: scopeOf(refs, goneBefore(props, pruned, live)),
     by: BY,
   })
-  removeLiteralProperties(ctx, pattern, { items: pruned, refs }, live, scopeOf)
-}
-
-/**
- * The literal a pattern destructures, when it is its declarator's
- * initialiser (`const { a } = { a: 1 }`): an object or array literal is a
- * new value nothing else holds, so a property or element only a pruned leaf
- * read goes with it. A pattern nested in another one is left as written (a
- * rest element of the outer pattern holds the inner literal).
- */
-function destructuredLiteral(ctx: PlanContext, pattern: Node): Node | null {
-  const parent = ctx.analysis.file.parentOf(pattern)
-  return parent?.type === 'VariableDeclarator' &&
-    parent.id === pattern &&
-    parent.init
-    ? unwrapExpression(parent.init)
-    : null
-}
-
-/**
- * Whether a literal value goes with its orphaned leaf: pure, or its effects
- * may go (`initGoes`) and it writes nothing kept code may read (unlike a
- * call's unknown effects, a write the source shows: `{ a: ++n, b: n }`).
- */
-function literalValueGoes(
-  ctx: PlanContext,
-  value: Node,
-  at: number,
-  live: LivenessView,
-): boolean {
-  if (isPureExpression(ctx.analysis.purity, value)) {
-    return true
-  }
-  if (ctx.t1.refs.refsIn(rangeOf(value)).some((r) => writeKind(r) !== null)) {
-    return false
-  }
-  return !assigns(value) && initGoes(ctx, value, at, live)
-}
-
-/** Whether an expression assigns anything (`x = …`, `o.p = …`, `++x`), a global's member too. */
-function assigns(expr: Node): boolean {
-  let found = false
-  walk(expr, {
-    enter: (n, wctx) => {
-      if (n.type === 'AssignmentExpression' || n.type === 'UpdateExpression') {
-        found = true
-        wctx.stop()
-      }
-    },
-  })
-  return found
-}
-
-/**
- * Removes, from the object literal a pattern destructures, the properties
- * of the pattern elements `pruned` whose values go (`literalValueGoes`): one
- * plain property per key no pattern property that stays reads (a computed
- * one may read any); a pruned rest element held every key the pattern does
- * not name. Never in a literal with an accessor or a prototype (a getter
- * reads the literal's other properties through `this`).
- */
-function removeLiteralProperties(
-  ctx: PlanContext,
-  pattern: Node,
-  { items: pruned, refs }: Pruned,
-  live: LivenessView,
-  scopeOf: ScopeOf,
-): void {
-  const literal = destructuredLiteral(ctx, pattern)
-  if (
-    pattern.type !== 'ObjectPattern' ||
-    literal?.type !== 'ObjectExpression' ||
-    literal.properties.some(
-      (p) =>
-        p.type === 'Property' &&
-        (p.kind !== 'init' || propertyKeyName(p) === '__proto__'),
-    )
-  ) {
-    return
-  }
-  const read = new Set<string | null>()
-  const gone = new Set<string | null>()
-  let rest = false
-  for (const p of pattern.properties) {
-    if (p.type === 'RestElement') {
-      rest ||= pruned.has(p)
-    } else if (pruned.has(p)) {
-      gone.add(propertyKeyName(p))
-    } else if (!live.isErased(rangeOf(p))) {
-      read.add(propertyKeyName(p))
-    }
-  }
-  if (read.has(null)) {
-    return
-  }
-  const props = literal.properties as ReadonlyArray<Node>
-  const values = new Set<Node>()
-  for (const p of props) {
-    const key = propertyKeyName(p)
-    if (
-      p.type === 'Property' &&
-      key !== null &&
-      !read.has(key) &&
-      (rest || gone.has(key)) &&
-      props.filter((o) => propertyKeyName(o) === key).length === 1 &&
-      literalValueGoes(ctx, p.value, pattern.start, live)
-    ) {
-      values.add(p)
-    }
-  }
-  if (values.size === 0) {
-    return
-  }
-  removeListItems(
-    ctx,
-    props,
-    (p) => values.has(p) || live.isErased(rangeOf(p)),
-    values,
-    literal.end - 1,
-    { scope: scopeOf(refs, goneBefore(props, values, live)), by: BY },
-  )
 }
 
 /**
@@ -686,24 +552,6 @@ export function removeListItems(
     }
     i = j
   }
-}
-
-/**
- * Whether the effects of an orphaned initialiser (or literal value) at
- * `at` may go with it: pure, at module level (J4.12), or server-only code
- * (`initReadsOnlyOrphanedImports`) that calls no hook.
- */
-function initGoes(
-  ctx: PlanContext,
-  init: Node,
-  at: number,
-  live: LivenessView,
-): boolean {
-  return (
-    isPureExpression(ctx.analysis.purity, init) ||
-    !ctx.t1.inFunctionAt(at) ||
-    (!callsHook(init) && initReadsOnlyOrphanedImports(ctx, init, live))
-  )
 }
 
 /**
@@ -773,12 +621,11 @@ function callsHook(init: Node): boolean {
  * Removes a destructuring element whose binding only removed code read (its
  * default value or computed key may read server-only imports): an object
  * pattern property goes with its comma (never while the pattern keeps a
- * rest element, which would then receive the key: the property is returned
- * instead, for `cleanOrphanedDeclarations`); an object rest element goes
- * too, after which its siblings may; an array pattern element becomes a
- * hole (the iterator is stepped as often as before), and so does its element
- * of the array literal the pattern destructures, and an array rest element
- * stays (it exhausts the iterator).
+ * rest element, which would then receive the key: the range of its default
+ * is returned instead, for `cleanOrphanedDeclarations`); an object rest element
+ * goes too, after which its siblings may; an array pattern element becomes
+ * a hole (the iterator is stepped as often as before), and an array rest
+ * element stays (it exhausts the iterator).
  */
 function prunePatternElement(
   ctx: PlanContext,
@@ -787,7 +634,7 @@ function prunePatternElement(
   scopeOf: ScopeOf,
   prunedProps: Map<Node, Pruned>,
   live: LivenessView,
-): boolean | Node {
+): boolean | Range {
   const file = ctx.analysis.file
   let node: Node = decl
   let parent = file.parentOf(node)
@@ -809,53 +656,24 @@ function prunePatternElement(
         (p) => p.type === 'RestElement' && !live.isErased(rangeOf(p)),
       )
     ) {
-      // the key stays out of the rest: its default and value may go instead
-      return parent
+      // the key stays out of the rest: its default may go instead
+      return node.type === 'AssignmentPattern'
+        ? { start: node.left.end, end: node.end }
+        : false
     }
     prune(prunedProps, pattern, parent, refs)
     return true
   }
   if (parent.type === 'ArrayPattern') {
-    const code = ctx.analysis.source.code
-    const hole = (range: Range) =>
-      ctx.rewrites.add({
-        range,
-        body: commaFollows(code, range.end) ? [] : [text(',')],
-        scope: scopeOf(refs),
-        by: BY,
-      })
-    hole(rangeOf(node))
-    const literal = destructuredLiteral(ctx, parent)
-    const index = (parent.elements as ReadonlyArray<Node | null>).indexOf(node)
-    const element =
-      literal?.type === 'ArrayExpression' &&
-      !literal.elements
-        .slice(0, index + 1)
-        .some((e) => e?.type === 'SpreadElement')
-        ? literal.elements[index]
-        : null
-    // an edit or a claim on exactly the element is a planner's: it stays
-    if (
-      element &&
-      !plannerOwnsExactly(ctx, rangeOf(element)) &&
-      literalValueGoes(ctx, element, parent.start, live)
-    ) {
-      hole(rangeOf(element))
-    }
+    ctx.rewrites.add({
+      range: { start: node.start, end: node.end },
+      body: commaFollows(ctx.analysis.source.code, node.end) ? [] : [text(',')],
+      scope: scopeOf(refs),
+      by: BY,
+    })
     return true
   }
   return false
-}
-
-/** Whether a planner's edit or claim addresses exactly `range`. */
-function plannerOwnsExactly(ctx: PlanContext, { start, end }: Range): boolean {
-  const same = (r: Range) => r.start === start && r.end === end
-  return (
-    ctx.rewrites.edits.some((e) => same(e.range)) ||
-    [...ctx.rewrites.claims.values()].some((c) =>
-      same(ctx.t1.regions.get(c.region).range),
-    )
-  )
 }
 
 /** Where a list ends: after its last item and the comma that may follow it (`closing` of `removeListItems`; `{ , }` is no syntax). */

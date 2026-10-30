@@ -5,10 +5,7 @@
  * module-level constant, through TypeScript wrappers) and every property of
  * it with its kind and source ranges. Computed once per planning round.
  */
-import {
-  propertyKeyName,
-  unwrapExpression,
-} from '@tanstack/router-utils/compiler'
+import { unwrapExpression } from '@tanstack/router-utils/compiler'
 import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
@@ -133,6 +130,28 @@ export type RouteRecognition =
 /** The router planner's phase A result: the route registry entry. */
 export interface RouteEntryFacts {
   routeId: string
+}
+
+export function propertyKeyName(prop: Node): string | null {
+  if (prop.type !== 'Property') {
+    return null
+  }
+  const key = prop.key
+  if (prop.computed) {
+    if (key.type === 'Literal' && typeof key.value === 'string') {
+      return key.value
+    }
+    return null
+  }
+  if (key.type === 'Identifier') {
+    return key.name
+  }
+  if (key.type === 'Literal') {
+    return typeof key.value === 'string' || typeof key.value === 'number'
+      ? String(key.value)
+      : null
+  }
+  return null
 }
 
 function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
