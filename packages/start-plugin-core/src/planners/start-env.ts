@@ -710,6 +710,11 @@ function planStartEnv(
   }
 
   // ---- 2b. server fn rewrites
+  // After steps 3-5: a nested server fn is hoisted (and its captures refused)
+  // only where it is live (`hoist` reads the rewrite tree), so every edit
+  // that can erase it must be recorded first: the handler stubs of step 2,
+  // the isomorphic and env-only implementations of steps 3-4, the
+  // `<ClientOnly>` children of step 5.
   let devRevision: string | undefined
   for (const site of sites) {
     const key = { rootRel, stableKey: site.stableKey }
