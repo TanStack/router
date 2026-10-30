@@ -40,10 +40,10 @@ code.test.ts`: "a root route's %s loads lazily".
   still emits the async chunk of the `import()` inside it (webpack behaves the same). SPEC J5.6.
   `start-plugin-core/tests/integration/hydrate-build-cases.ts`: "an unused exported component with a boundary is not
   in the client" (Rsbuild).
-- **Rsbuild checks importers by file extension** (JS/TS only): custom module types and `.mdx` are never checked. SPEC
-  J6.1, §2.1. `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom
-  type importing $name is reported, and its real code does not run"; "an .mdx page importing $name is reported in its
-  source, and its real code does not run".
+- **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
+  checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
+  `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom type importing
+  a denied specifier is reported, and its real code does not run".
 
 ## Fixed, kept as regression tests
 
@@ -665,6 +665,9 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   "in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is
   reported"; "imported by an ignored importer and, further from the entry, another importer: the violation blames the
   other importer".
+- **A denied file only a module of a custom type imports is mocked but not reported** (Rsbuild: the importer is not
+  compiled). SPEC J6.1. `ip/known-bugs-dev.test.ts`: "a module of a custom type importing a denied file is reported,
+  and its real code does not run".
 - **`mockAccess` is ignored in production and server mocks** (always silent). SPEC J6.3. `ip/build-mock.test.ts`:
   "with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import";
   `ip/dev.test.ts`: "$mockAccess: the server gets a safe mock, and using it is reported as an $severity naming the

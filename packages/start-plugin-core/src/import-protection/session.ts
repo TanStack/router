@@ -18,10 +18,17 @@ import {
   viteEdgeModuleIds,
 } from './edge-modules'
 import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
+import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
 import { importerInScope } from './rules'
+import { normalizeFilePath, relativizePath } from './utils'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
-import { dedupeKey, violationInfo, violationsOf } from './violations'
+import {
+  dedupeKey,
+  selfEdgeKey,
+  violationInfo,
+  violationsOf,
+} from './violations'
 import { witnessLookup } from './witness'
 import { formatViolation } from './trace'
 import type { Planner } from '@tanstack/router-utils/compiler'
@@ -190,6 +197,23 @@ export class ImportProtection {
     return importerInScope(this.config, importerPath, this.scopeCache)
   }
 
+  /**
+   * Whether an importer is exempt by `exclude` or `ignoreImporters` (SPEC
+   * J6.7): its imports are not checked, but the planner indexes them, so a
+   * denied module it imports is allowed (`ImportProtectionEnv.allowsSelf`).
+   */
+  exempt(importerPath: string): boolean {
+    const { exclude, ignoreImporters, root } = this.config
+    if (exclude.length === 0 && ignoreImporters.length === 0) {
+      return false
+    }
+    const rel = relativizePath(normalizeFilePath(importerPath), root)
+    return (
+      matchesAny(rel, exclude) !== undefined ||
+      matchesAny(rel, ignoreImporters) !== undefined
+    )
+  }
+
   /** Called with the code of every edge module (and runtime) when it is defined or changes state (Rspack: write the virtual file). */
   onEdgeModule(listener: EdgeModuleListener): () => void {
     this.listeners.add(listener)
@@ -356,9 +380,14 @@ interface CompiledOutputLike {
   facts: { planners: Record<string, unknown> }
 }
 
-/** The outcome of a dev compile for its host: an error fails the transform (`behavior: 'error'`). */
-export interface DevCompileOutcome {
+/**
+ * The outcome of a compile for its host: an error fails the module (dev
+ * `behavior: 'error'`); `mock` is served instead of its output (its own
+ * violation, `EdgeViolation.self`; `id`: the mock's id among our modules).
+ */
+export interface CompileOutcome {
   error: Error | null
+  mock?: { code: string; id: string }
 }
 
 /** One Start environment's import protection. */
@@ -380,6 +409,8 @@ class ImportProtectionEnv {
   private readonly confirmed = new Set<string>()
   private buildInfos = new Map<string, ViolationInfo>()
   private runtimeEmitted = false
+  /** Build: the compiled modules that are their own violation, by id: the witness reads their survival (as their mock or as they are). */
+  private readonly selfModules = new Map<string, string>()
 
   constructor(
     private readonly ip: ImportProtection,
@@ -431,7 +462,12 @@ class ImportProtectionEnv {
       return
     }
     for (const v of record.violations) {
-      if (v.env !== this.name || v.behavior !== 'mock' || v.pending) {
+      if (
+        v.env !== this.name ||
+        v.behavior !== 'mock' ||
+        v.pending ||
+        (v.self && this.allowsSelf(v))
+      ) {
         continue
       }
       if (await this.devVerdict(v)) {
@@ -494,14 +530,42 @@ class ImportProtectionEnv {
    * `log: 'always'` each violation is decided first (`devVerdict`: a compile the
    * plan cache answers asks `onViolation` too), asynchronously; otherwise
    * the outcome is synchronous (the planner decided with `log: 'once'`).
+   * A module that is its own violation is served as its mock unless it is
+   * allowed (`allowsSelf`); a build decides it on survival (`decide`), a
+   * dev compile now, as its only violation (its imports reach nothing).
    */
   afterCompile(
     importerId: string,
     out: CompiledOutputLike,
-  ): DevCompileOutcome | Promise<DevCompileOutcome> {
+  ): CompileOutcome | Promise<CompileOutcome> {
     const violations = violationsOf(out)
     this.register(importerId, violations)
-    if (this.ip.config.mode !== 'dev' || violations.length === 0) {
+    const self = violations.find((v) => v.self && v.env === this.name)
+    const mock = self && !this.allowsSelf(self) ? this.mockOf(self) : undefined
+    if (this.ip.config.mode !== 'dev') {
+      if (self) {
+        this.selfModules.set(normalizePath(importerId), self.module!.key)
+      } else if (this.selfModules.size > 0) {
+        this.selfModules.delete(normalizePath(importerId))
+      }
+      return { error: null, ...(mock && { mock }) }
+    }
+    if (mock) {
+      return this.devVerdict(self!).then((reported) =>
+        reported
+          ? { error: this.errorOf(this.report(self!)), mock }
+          : this.afterCompile(importerId, out),
+      )
+    }
+    return this.reportDev(
+      self ? violations.filter((v) => v !== self) : violations,
+    )
+  }
+
+  private reportDev(
+    violations: Array<EdgeViolation>,
+  ): CompileOutcome | Promise<CompileOutcome> {
+    if (violations.length === 0) {
       return { error: null }
     }
     if (this.ip.config.log === 'always') {
@@ -518,7 +582,7 @@ class ImportProtectionEnv {
 
   private async reportDecided(
     violations: Array<EdgeViolation>,
-  ): Promise<DevCompileOutcome> {
+  ): Promise<CompileOutcome> {
     const errors: Array<ViolationInfo> = []
     for (const v of violations) {
       if (v.env === this.name && !v.pending && (await this.devVerdict(v))) {
@@ -528,11 +592,53 @@ class ImportProtectionEnv {
     return { error: this.errorOf(errors) }
   }
 
+  /** The mock a module that is its own violation is served as. */
+  private mockOf(self: EdgeViolation): { code: string; id: string } {
+    const key = self.module!.key
+    return {
+      code: this.edgeLoad(key)!.code,
+      id: this.ip.ids.specifier({ env: this.name, kind: 'edge', key }),
+    }
+  }
+
+  /**
+   * Whether a module that is its own violation is served as it is: an import
+   * of it was vetoed (one module, one identity: `allowTarget`), or an exempt
+   * importer imports it (SPEC J6.7: it gets the real module; compiled before
+   * the module, its imports are indexed).
+   */
+  private allowsSelf(self: EdgeViolation): boolean {
+    if (
+      this.ip.config.mode === 'build'
+        ? this.build.stateOf(self.edgeKey) === 'allowed'
+        : this.allowed.has(self.edgeKey)
+    ) {
+      return true
+    }
+    for (const importerId of this.edges.importers(self.resolved!)) {
+      if (!this.ip.inScope(traceFile(importerId))) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** Dev: a vetoed import brings its module into the environment, which allows it there itself (`allowsSelf`). */
+  allowTarget(resolved: string | null): void {
+    if (resolved !== null) {
+      this.allowed.add(selfEdgeKey(resolved))
+    }
+  }
+
   /** Replays an Rspack module's `buildInfo` record (a module restored from the persistent cache). */
   replay(importerId: string, info: unknown): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
       this.register(importerId, record.violations)
+      const self = record.violations.find((v) => v.self)
+      if (self && this.ip.config.mode === 'build') {
+        this.selfModules.set(normalizePath(importerId), self.module!.key)
+      }
       // a module compiled in this process indexed its edges itself
       if (record.edges && !this.edges.has(importerId)) {
         this.edges.set(importerId, record.edges, record.revision ?? null)
@@ -713,6 +819,7 @@ class ImportProtectionEnv {
         : await ask()
     if (verdict === false) {
       this.allowed.add(v.edgeKey)
+      this.allowTarget(v.resolved)
       return false
     }
     return true
@@ -810,12 +917,21 @@ class ImportProtectionEnv {
     return { code: mockModuleCode(c, runtime), moduleSideEffects: null }
   }
 
-  /** The witness readers' view of this environment's edge modules. */
+  /** The witness readers' view of this environment's edge modules and of the modules that are their own violation. */
   witness(): WitnessLookup {
-    return witnessLookup(this.ip.ids, this.name, (key) => {
+    const effectfulOf = (key: string) => {
       const m = this.modules.get(key)
       return m ? m.content.effectful : null
-    })
+    }
+    const edges = witnessLookup(this.ip.ids, this.name, effectfulOf)
+    if (this.selfModules.size === 0) {
+      return edges
+    }
+    return (id) => {
+      const key = this.selfModules.get(normalizePath(id))
+      const effectful = key === undefined ? null : effectfulOf(key)
+      return effectful === null ? edges(id) : { key: key!, effectful }
+    }
   }
 
   /** A fresh logical build of this environment (Vite `buildApp`, Rspack `run`/`watchRun`). */
@@ -836,12 +952,13 @@ class ImportProtectionEnv {
     this.graph = graph
     const live: Array<EdgeViolation> = []
     for (const key of liveKeys) {
-      const m = this.modules.get(key)
-      if (m) {
-        live.push(...m.violations.values())
+      for (const v of this.modules.get(key)?.violations.values() ?? []) {
+        live.push(
+          ...(v.self ? this.importsOf(v, graph?.importers(v.importerId)) : [v]),
+        )
       }
     }
-    return this.build.decide(live, async (v) => {
+    const result = await this.build.decide(live, async (v) => {
       const info = violationInfo(v, this.ip.config, () =>
         this.trace(v.importerId, graph),
       )
@@ -849,6 +966,43 @@ class ImportProtectionEnv {
       this.buildInfos.set(v.edgeKey, info)
       return this.ip.config.onViolation?.(info)
     })
+    // a vetoed import brings its module into the environment, which allows it
+    // there itself (`allowsSelf`; the veto asks for another pass)
+    for (const v of live) {
+      if (v.resolved !== null && this.build.stateOf(v.edgeKey) === 'allowed') {
+        this.build.allow(selfEdgeKey(v.resolved))
+      }
+    }
+    return result
+  }
+
+  /**
+   * Build: the violations a module's own violation stands for, one per module
+   * of the graph importing it that import protection checks (our own modules
+   * aside).
+   */
+  private importsOf(
+    self: EdgeViolation,
+    importers: Iterable<string> = [],
+  ): Array<EdgeViolation> {
+    const { self: _self, ...violation } = self
+    const out: Array<EdgeViolation> = []
+    for (const importerId of new Set(importers)) {
+      const importer = traceFile(importerId)
+      if (
+        this.ip.ids.parse(importerId) !== null ||
+        !this.ip.inScope(importer)
+      ) {
+        continue
+      }
+      out.push({
+        ...violation,
+        edgeKey: `${self.edgeKey}\u0000${importerId}`,
+        importer,
+        importerId,
+      })
+    }
+    return out
   }
 
   /**

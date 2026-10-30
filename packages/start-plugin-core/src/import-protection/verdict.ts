@@ -109,6 +109,18 @@ export class BuildVerdicts {
   }
 
   /**
+   * Switches `edgeKey` to the allowed state in the pass that vetoed another
+   * key (a module a vetoed import brings into the environment is allowed
+   * there itself: `ImportProtectionEnv.decide`).
+   */
+  allow(edgeKey: string): void {
+    if (this.stateOf(edgeKey) === 'mock') {
+      this.states.set(edgeKey, 'allowed')
+      this.onStateChange?.(edgeKey, 'allowed')
+    }
+  }
+
+  /**
    * The fixed-point driver for hosts that rebuild an environment themselves
    * (Vite: `builder.build(env)` again from Start's build loop). `build` runs
    * one pass, whose witness reader calls `decide`.

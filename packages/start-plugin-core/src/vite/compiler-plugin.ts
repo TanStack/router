@@ -64,7 +64,7 @@ import {
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import type { DevCompileOutcome } from '../import-protection/session'
+import type { CompileOutcome } from '../import-protection/session'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type {
   CompileStartFrameworkOptions,
@@ -615,7 +615,8 @@ export function startCompilerPlugin(
    * `error`-behaviour violation fails the module; otherwise the import
    * protection reports whose importers the graph (or the judged edges) can
    * reach now are printed, before the module is served (a host completion
-   * event, no microtask polling).
+   * event, no microtask polling). Gives the mock to serve instead of the
+   * output, if any.
    */
   const afterCompile = (
     s: Session,
@@ -623,19 +624,16 @@ export function startCompilerPlugin(
     id: string,
     out: CompileOutput,
     fail: (error: Error) => never,
-  ): Promise<void> | undefined => {
-    const finish = ({ error }: DevCompileOutcome): void => {
+  ): CompileOutcome['mock'] | Promise<CompileOutcome['mock']> => {
+    const finish = ({ error, mock }: CompileOutcome) => {
       if (error) {
         fail(error)
       }
       s.start.ip?.env(env.name, env.type).reporter?.flush()
+      return mock
     }
     const outcome = s.start.afterCompile(env, id, out)
-    if (outcome instanceof Promise) {
-      return outcome.then(finish)
-    }
-    finish(outcome)
-    return undefined
+    return outcome instanceof Promise ? outcome.then(finish) : finish(outcome)
   }
 
   const changeKindOf = (
@@ -682,14 +680,18 @@ export function startCompilerPlugin(
         return null
       }
       reportDiagnostics(s, this, out, identity.path, id, code, env.type)
-      const decided = afterCompile(s, env, id, out, (error) =>
-        this.error(error),
-      )
-      if (decided) {
-        await decided
+      let mock = afterCompile(s, env, id, out, (error) => this.error(error))
+      if (mock instanceof Promise) {
+        mock = await mock
       }
       if (s.start.opts.mode === 'dev') {
-        outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
+        outputDigests.set(
+          `${environment.name}\0${id}`,
+          revision(mock?.code ?? out.code),
+        )
+      }
+      if (mock) {
+        return { code: mock.code, map: null }
       }
       if (identity.derived === null && out.code === code) {
         return null
@@ -1142,11 +1144,12 @@ export function startCompilerPlugin(
           return null
         }
         reportDiagnostics(s, this, out, identify(id).path, id, code, env.type)
-        const decided = afterCompile(s, env, id, out, (error) =>
-          this.error(error),
-        )
-        if (decided) {
-          await decided
+        let mock = afterCompile(s, env, id, out, (error) => this.error(error))
+        if (mock instanceof Promise) {
+          mock = await mock
+        }
+        if (mock) {
+          return { code: mock.code, map: null }
         }
         if (out.code === code) {
           return null

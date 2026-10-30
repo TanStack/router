@@ -238,7 +238,7 @@ export function rspackGraphView(
   return {
     importers(id) {
       const out: Array<string> = []
-      for (const m of modulesOf(id)) {
+      const visit = (m: RspackModuleLike, viaContext: boolean) => {
         for (const c of moduleGraph.getIncomingConnections?.(m) ?? []) {
           // a ConcatenatedModule holds the connections of each of its inner modules
           const target = c.resolvedModule?.resource
@@ -251,10 +251,19 @@ export function rspackGraphView(
               ? moduleGraph.getParentModule?.(c.dependency)
               : null) ?? c.originModule
           const res = origin?.resource
-          if (res && res !== id && !out.includes(res)) {
-            out.push(res)
+          if (res) {
+            if (res !== id && !out.includes(res)) {
+              out.push(res)
+            }
+          } else if (origin && !viaContext) {
+            // a context module (`import.meta.webpackContext`, a template
+            // literal `import()`): the modules importing it import `id`
+            visit(origin, true)
           }
         }
+      }
+      for (const m of modulesOf(id)) {
+        visit(m, false)
       }
       return out
     },

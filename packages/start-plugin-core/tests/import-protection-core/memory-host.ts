@@ -21,8 +21,8 @@ import type {
   Planner,
 } from '@tanstack/router-utils/compiler'
 import type {
+  CompileOutcome,
   CreateImportProtectionOptions,
-  DevCompileOutcome,
   ImportProtection,
 } from '../../src/import-protection/session'
 
@@ -161,7 +161,7 @@ export class MemoryApp {
     } = {},
   ): Promise<{
     out: CompileOutput | null
-    outcome: DevCompileOutcome
+    outcome: CompileOutcome
   }> {
     const id = rel.startsWith('/') ? rel : `${ROOT}/${rel}`
     const path = id.split('?')[0]!

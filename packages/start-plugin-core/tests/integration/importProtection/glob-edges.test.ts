@@ -3,14 +3,18 @@
  * `import.meta.glob` (eager and lazy) and a template-literal `import()` on
  * Vite, an `import.meta.webpackContext` and a template-literal `import()` on
  * Rsbuild, each matching only a `*.server.ts` file (the default client file
- * rule). The client never runs the denied file and each importer is
- * reported. Client environment, mock mode, builds and dev servers (Vite,
- * Vite's bundled dev, Rsbuild).
+ * rule). The client never runs the denied file, and each is reported: a
+ * build names each importer (the bundle's graph has them), a dev server the
+ * denied file as it compiles it (nothing has recorded its importer yet).
+ * Client environment, mock mode, builds and dev servers (Vite, Vite's
+ * bundled dev, Rsbuild); builds with the `error` behaviour (the default)
+ * fail; a veto gives the real module.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart, startBundlers } from '../../build-harness'
 import {
+  rejection,
   startProtectedDevServer,
   violationRecorder,
 } from '../../importProtection/start-apps'
@@ -36,6 +40,13 @@ const recording = (name: string, value: string) =>
   `;((globalThis as any).loaded ??= []).push('${name}')
 export const ${name} = () => '${value}'
 `
+
+/** The denied module each use reaches. */
+const deniedOf: Record<string, string> = {
+  eager: 'src/globbed/eager.server.ts',
+  lazy: 'src/globbed/lazy.server.ts',
+  template: 'src/dyn/template.server.ts',
+}
 
 const denied = {
   'src/globbed/eager.server.ts': recording('eager', 'MARK_EAGER'),
@@ -190,25 +201,46 @@ async function rsbuildDev(): Promise<Outcome> {
   })
 }
 
+const importerOf = (name: string) => `src/uses/${name}.ts`
 const hosts = [
-  { name: 'vite build', run: viteBuild, uses: ['eager', 'lazy', 'template'] },
-  { name: 'vite dev', run: viteDev, uses: ['eager', 'lazy', 'template'] },
+  {
+    name: 'vite build',
+    run: viteBuild,
+    uses: ['eager', 'lazy', 'template'],
+    reportedAs: importerOf,
+  },
+  {
+    name: 'vite dev',
+    run: viteDev,
+    uses: ['eager', 'lazy', 'template'],
+    reportedAs: (name: string) => deniedOf[name]!,
+  },
   {
     name: 'vite bundledDev',
     run: viteBundledDev,
     uses: ['eager', 'lazy', 'template'],
+    reportedAs: (name: string) => deniedOf[name]!,
   },
-  { name: 'rsbuild build', run: rsbuildBuild, uses: ['eager', 'template'] },
-  { name: 'rsbuild dev', run: rsbuildDev, uses: ['eager', 'template'] },
+  {
+    name: 'rsbuild build',
+    run: rsbuildBuild,
+    uses: ['eager', 'template'],
+    reportedAs: importerOf,
+  },
+  {
+    name: 'rsbuild dev',
+    run: rsbuildDev,
+    uses: ['eager', 'template'],
+    reportedAs: (name: string) => deniedOf[name]!,
+  },
 ]
 
-describe.each(hosts)('$name', ({ run, uses }) => {
+describe.each(hosts)('$name', ({ run, uses, reportedAs }) => {
   let ran: Promise<Outcome> | undefined
   const result = () => (ran ??= run())
 
-  // Regression (main mocks every one): the compile judges only the imports it
-  // reads, before the bundler expands the pattern; nothing judges the expanded ones.
-  test.fails(
+  // (Main mocks every one too.)
+  test(
     'the client never runs a denied module',
     async () => {
       expect((await result()).leaked).toEqual([])
@@ -217,11 +249,55 @@ describe.each(hosts)('$name', ({ run, uses }) => {
   )
 
   // Main reports these in vite build only (its dev hosts and Rsbuild mock them silently).
-  test.fails(
-    'each importer is reported',
+  test(
+    'each denied import is reported',
     async () => {
-      expect((await result()).reported).toEqual(
-        uses.map((name) => `src/uses/${name}.ts`),
+      expect((await result()).reported).toEqual(uses.map(reportedAs).sort())
+    },
+    timeout,
+  )
+})
+
+const appFor = (bundler: (typeof startBundlers)[number]) =>
+  bundler === 'vite'
+    ? { files: viteApp, uses: ['eager', 'lazy', 'template'] }
+    : { files: rsbuildApp, uses: ['eager', 'template'] }
+
+describe.each(startBundlers)('%s build verdicts', (bundler) => {
+  const { files, uses } = appFor(bundler)
+
+  test(
+    'with the error behaviour (the default), the build fails naming each importer',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files,
+          entry: 'src/entry.ts',
+          start: { importProtection: { behavior: 'error' } },
+        }),
+      )
+      expect(importersIn(error, 'client')).toEqual(uses.map(importerOf))
+    },
+    timeout,
+  )
+
+  test(
+    'a veto gives the client the real module',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files,
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { ...importProtection, onViolation: () => false },
+        },
+      })
+      const { result: read } = await build.client.run(readScript)
+      expect((read as Read).values).toEqual(
+        Object.fromEntries(
+          uses.map((name) => [name, `MARK_${name.toUpperCase()}`]),
+        ),
       )
     },
     timeout,

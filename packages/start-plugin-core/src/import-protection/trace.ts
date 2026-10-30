@@ -84,10 +84,18 @@ export function formatViolation(info: ViolationInfo, root: string): string {
     )
   }
 
-  lines.push(`  Importer: ${relLoc(info.importer, info.importerLoc)}`)
-  lines.push(`  Import: "${rel(info.specifier)}"`)
-  if (info.resolved) {
-    lines.push(`  Resolved: ${rel(info.resolved)}`)
+  if (info.resolved === info.importer) {
+    // a module that is its own violation: no import the compiler read brought it
+    lines.push(`  Denied file: ${rel(info.importer)}`)
+    lines.push(
+      `  Compiled in the ${info.env} environment, which no import the compiler read brought it to (a pattern import such as import.meta.glob, a template literal import() or import.meta.webpackContext, or a request of the file itself)`,
+    )
+  } else {
+    lines.push(`  Importer: ${relLoc(info.importer, info.importerLoc)}`)
+    lines.push(`  Import: "${rel(info.specifier)}"`)
+    if (info.resolved) {
+      lines.push(`  Resolved: ${rel(info.resolved)}`)
+    }
   }
 
   if (info.trace.length > 0) {

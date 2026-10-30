@@ -40,6 +40,17 @@ export interface EdgeViolation {
    * (`ImportProtectionEnv.confirm`).
    */
   pending?: true
+  /**
+   * The module's own violation: denied where it is compiled, so an import the
+   * compiler does not read brought it there (`import.meta.glob`, a template
+   * literal `import()`): `importer` is the module itself, `module` its mock.
+   */
+  self?: true
+}
+
+/** The edge key of a module's own violation (`EdgeViolation.self`) in an environment. */
+export function selfEdgeKey(canonicalId: string): string {
+  return `self\u0000${canonicalId}`
 }
 
 /** What the planner stores in `plan.facts.planners['import-edges']`. */

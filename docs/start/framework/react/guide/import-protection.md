@@ -40,6 +40,15 @@ By default, files inside `node_modules` are excluded from resolved-target deny c
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
+## Pattern Imports
+
+Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it.
+
+```ts
+// src/routes/admin.tsx: reported, and the client gets a mock of db.server.ts
+const modules = import.meta.glob('../lib/*.ts')
+```
+
 ## Type-Only Imports
 
 Type-only imports and re-exports are ignored by import protection because they are erased from the runtime bundle and cannot leak environment-specific code.

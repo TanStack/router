@@ -33,14 +33,16 @@ import { RSC_CSS } from '../planners/rsc-css'
 import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
+import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
 import type {
-  DevCompileOutcome,
+  CompileOutcome,
   ImportProtection,
 } from '../import-protection/session'
 import type { EdgeModuleIds } from '../import-protection/edge-modules'
 import type { HydratePlannerConfig } from '../planners/hydrate'
+import type { ImportEdgesConfig } from '../planners/edges'
 import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { GenerateFunctionId } from '../server-fns/ids'
@@ -127,7 +129,7 @@ export interface StartCompileInput {
   late?: boolean
 }
 
-const NO_OUTCOME: DevCompileOutcome = { error: null }
+const NO_OUTCOME: CompileOutcome = { error: null }
 
 export class StartCompilerSession {
   /** Import protection of the session (null: `enabled: false`). */
@@ -290,6 +292,7 @@ export class StartCompilerSession {
           ip: this.ip?.config.configKey ?? null,
         }),
         perPlanner: {
+          [IMPORT_EDGES_PLANNER]: env.type satisfies ImportEdgesConfig,
           [START_ENV]: startEnv,
           [HYDRATE_PLANNER]: hydrate,
           [RSC_CSS]: rscCss,
@@ -333,7 +336,10 @@ export class StartCompilerSession {
         env: this.envInfo(env, layer),
         planners: late ? [this.ip!.planner] : this.plannersFor(env, rsc),
         config: late
-          ? { configKey: `late\u0000${config.configKey}`, perPlanner: {} }
+          ? {
+              configKey: `late\u0000${config.configKey}`,
+              perPlanner: { [IMPORT_EDGES_PLANNER]: env.type },
+            }
           : config,
         inputMap: input.inputMap,
         wantMap: input.wantMap,
@@ -356,13 +362,15 @@ export class StartCompilerSession {
    * After every compile of an id (fresh or cached): import protection
    * registers its edges and, in dev, reports its violations: an
    * `error`-behaviour one fails the module (the host serves no output). A
-   * promise only when violations are decided now (`log: 'always'`).
+   * module that is its own violation is served as its mock (`mock`). A
+   * promise only when violations are decided now (`log: 'always'`, a
+   * module's own violation in Vite's dev server).
    */
   afterCompile(
     env: StartCompilerEnvironment,
     id: string,
     out: CompileOutput,
-  ): DevCompileOutcome | Promise<DevCompileOutcome> {
+  ): CompileOutcome | Promise<CompileOutcome> {
     return this.ip?.env(env.name, env.type).afterCompile(id, out) ?? NO_OUTCOME
   }
 

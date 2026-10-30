@@ -22,6 +22,14 @@
  *   behaviours); `onViolation` runs after tree-shaking (`verdict.ts`): an
  *   erased edge module is absent from the bundle.
  *
+ * A module that a file rule or its own marker denies in the environment it
+ * is compiled in is its own violation (`EdgeViolation.self`): each import of
+ * it the plan reads is substituted, so an import the compiler does not read
+ * brought it there (an `import.meta.glob`, a template literal `import()`).
+ * The host serves its mock, unless an exempt importer imports it (its
+ * imports are indexed, not judged) or a veto allowed it; a dev compile
+ * reports it then, a build names its importers from the bundler's graph.
+ *
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
@@ -40,6 +48,7 @@ import { relativizePath } from '../import-protection/utils'
 import {
   IMPORT_EDGES_PLANNER,
   dedupeKey,
+  selfEdgeKey,
   violationInfo,
 } from '../import-protection/violations'
 import type {
@@ -51,7 +60,7 @@ import type {
 import type { EdgeModuleContent } from '../import-protection/edge-modules'
 import type { IndexedEdge } from '../import-protection/graph-trace'
 import type { OriginalLocation } from '../import-protection/locate'
-import type { RuleRef } from '../import-protection/rules'
+import type { EnvType, RuleRef } from '../import-protection/rules'
 import type { ImportProtection } from '../import-protection/session'
 import type {
   EdgeViolation,
@@ -69,6 +78,9 @@ export type ImportRewrite = (
   specifier: string,
   names: ReadonlyArray<string>,
 ) => Array<string> | null
+
+/** The planner's configuration of a compile (`CompileConfig.perPlanner`): its environment's type. */
+export type ImportEdgesConfig = EnvType
 
 /** Most modules an effect classification follows from one target (beyond: effectful). */
 const MAX_EFFECT_WALK = 256
@@ -91,6 +103,12 @@ interface TargetDescription {
 
 export function importEdgesPlanner(ip: ImportProtection): Planner {
   const { config } = ip
+  /** The file rule denying a module's own path in an environment of `envType` (`excludeFiles` skips it). */
+  const ownFileRule = (envType: EnvType, path: string): RuleRef | null => {
+    const rules = rulesFor(config, envType)
+    const rel = relativeTargetPath(config, path)
+    return targetExcluded(rules, rel) ? null : matchFile(rules, rel)
+  }
   return {
     name: IMPORT_EDGES_PLANNER,
     tier: 0,
@@ -98,14 +116,19 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       if (t0.markers === 'conflict') {
         return true
       }
+      const path = ctx.identity.path
+      // the environment's type (`ImportEdgesConfig`): a module importing
+      // nothing can still be its own violation there
+      const envType = ctx.config as ImportEdgesConfig | undefined
       if (
         t0.imports.length === 0 &&
         t0.reexports.length === 0 &&
-        t0.dynamicEdges.length === 0
+        t0.dynamicEdges.length === 0 &&
+        (envType === undefined || ownFileRule(envType, path) === null)
       ) {
         return false
       }
-      return ip.inScope(ctx.identity.path)
+      return ip.inScope(path) || ip.exempt(path)
     },
     plan() {},
     async policy(plan, output, edges, ctx) {
@@ -121,7 +144,10 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           code: 'import-protection-marker-conflict',
         })
       }
-      if (!ip.inScope(ctx.identity.path)) {
+      // an exempt importer's imports are only indexed: a denied module it
+      // imports is allowed (`ImportProtectionEnv.allowsSelf`)
+      const exempt = !ip.inScope(ctx.identity.path)
+      if (exempt && !ip.exempt(ctx.identity.path)) {
         return
       }
       const envType = ctx.env.type
@@ -181,7 +207,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           rule = { type: 'marker' }
         }
         let resolved = await ctx.resolve(raw, from)
-        if (rule === null) {
+        if (rule === null && !exempt) {
           // a bundler rewrite of the import (Rsbuild `source.transformImport`)
           // makes the file and marker rules judge the rewritten targets
           const rewritten = rewriter?.(raw, e.names) ?? null
@@ -228,6 +254,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           ),
         plan.revision,
       )
+      if (exempt) {
+        return
+      }
 
       const violations: Array<EdgeViolation> = []
       for (const j of judged) {
@@ -271,6 +300,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             ),
           )
           if (verdict === false) {
+            env.allowTarget(j.resolved)
             continue
           }
         }
@@ -282,12 +312,62 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         }
         violations.push(base)
       }
+      // the module's own violation (an entry's own marker is judged at its
+      // marker import above)
+      if (output === 'env' && !ip.isEntry(ctx.identity.path)) {
+        const rule: RuleRef | null =
+          ownFileRule(envType, ctx.identity.path) ??
+          (markerViolates(envType, plan.facts.marker)
+            ? { type: 'marker' }
+            : null)
+        if (rule !== null) {
+          violations.push(await selfViolation(rule, ctx))
+        }
+      }
       if (violations.length > 0) {
         facts.violations[output] = violations
       } else {
         delete facts.violations[output]
       }
     },
+  }
+
+  /** The module's own violation (`EdgeViolation.self`), its mock describing the module itself. */
+  async function selfViolation(
+    rule: RuleRef,
+    ctx: PolicyContext,
+  ): Promise<EdgeViolation> {
+    const id = ctx.identity.canonicalId
+    const file = relativeTargetPath(config, id)
+    const target = await describeTarget(id, ctx)
+    const edgeKey = selfEdgeKey(id)
+    const content: EdgeModuleContent = {
+      env: ctx.env.name,
+      edgeKey,
+      specifier: file,
+      importer: '',
+      file,
+      names: target.names.sort(),
+      effectful: target.effectful,
+      resolved: id,
+      hasDefault: target.hasDefault,
+      bare: false,
+    }
+    return {
+      edgeKey,
+      env: ctx.env.name,
+      envType: ctx.env.type,
+      rule,
+      specifier: file,
+      importer: ctx.identity.path,
+      importerId: id,
+      resolved: id,
+      loc: null,
+      snippet: null,
+      behavior: config.behavior,
+      module: { key: edgeModuleKey(content), content },
+      self: true,
+    }
   }
 
   /** The edge module of a violation: names, effect witness and allowed form. */

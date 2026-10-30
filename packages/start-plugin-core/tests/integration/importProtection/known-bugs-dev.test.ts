@@ -169,62 +169,84 @@ describe('Rsbuild dev', () => {
     timeout,
   )
 
+  /**
+   * What a module of the custom type importing `files`' denied module
+   * (behavior "error") reports, and whether its real code ran.
+   */
+  async function customTypeOutcome(files: Record<string, string>) {
+    const recorder = violationRecorder({
+      behavior: 'error',
+      client: { specifiers: ['db-lib'] },
+    })
+    const server = await startBrowserRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      config: pageModules,
+      files: {
+        ...files,
+        'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
+      },
+    })
+    // (a denied module fails to build: the page throws the denial)
+    const messages = await runRsbuildClient(server).catch((error: unknown) =>
+      String(error).includes('[import-protection] Import denied')
+        ? []
+        : Promise.reject(error as Error),
+    )
+    return {
+      reported: reportedImporters({
+        root: server.root,
+        violations: recorder.violations,
+      }),
+      ranRealCode: messages.some((message) => message.includes('MARK_')),
+    }
+  }
+
+  // The importer is not compiled (below), but the denied file is, in the
+  // client: it is its own violation, mocked and reported, named itself (a
+  // dev server knows no importer of it when it compiles it).
+  test(
+    'a module of a custom type importing a denied file is reported, and its real code does not run',
+    async () => {
+      expect(
+        await customTypeOutcome({
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/home.page': `import { secret } from './secret.server'\nexport const page = () => secret()\n`,
+        }),
+      ).toEqual({
+        reported: ['client src/secret.server.ts'],
+        ranRealCode: false,
+      })
+    },
+    timeout,
+  )
+
   // Bug: Rsbuild import protection checks importers by file extension (the
   // Start loader rule's `JS_FILE_RE`, src/rsbuild/start-compiler.ts: only
   // JS/TS extensions), and that rule only compiles those files, so an
   // importer of another module type that compiles to JS (a custom type
   // here, `.mdx` through its real loader below) is never checked: a denied
-  // file is mocked (the file rule) but not reported, and a denied specifier
-  // is neither reported nor mocked.
-  // Impact: behavior "error" does not fail for denied imports of such
-  // modules, and the real code of a denied specifier runs on the client.
+  // specifier is neither reported nor mocked (a denied file is, as its own
+  // violation, above).
+  // Impact: behavior "error" does not fail for denied specifiers of such
+  // modules, and their real code runs on the client.
   // Source: mutation testing; the JS/TS
   // extensions are covered by rsbuild/import-protection.test.ts "is reported
   // when it is a .$extension file".
-  test.fails.each<{ name: string; files: Record<string, string> }>([
-    {
-      name: 'a denied file',
-      files: {
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/home.page': `import { secret } from './secret.server'\nexport const page = () => secret()\n`,
-      },
-    },
-    {
-      name: 'a denied specifier',
-      files: {
-        'node_modules/db-lib/package.json': JSON.stringify({
-          name: 'db-lib',
-          type: 'module',
-          exports: { '.': './index.js' },
+  test.fails(
+    'a module of a custom type importing a denied specifier is reported, and its real code does not run',
+    async () => {
+      expect(
+        await customTypeOutcome({
+          'node_modules/db-lib/package.json': JSON.stringify({
+            name: 'db-lib',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/db-lib/index.js': `export const secret = () => 'MARK_LIB'\n`,
+          'src/home.page': `import { secret } from 'db-lib'\nexport const page = () => secret()\n`,
         }),
-        'node_modules/db-lib/index.js': `export const secret = () => 'MARK_LIB'\n`,
-        'src/home.page': `import { secret } from 'db-lib'\nexport const page = () => secret()\n`,
-      },
-    },
-  ])(
-    'a module of a custom type importing $name is reported, and its real code does not run',
-    async ({ files }) => {
-      const recorder = violationRecorder({
-        behavior: 'error',
-        client: { specifiers: ['db-lib'] },
-      })
-      const server = await startBrowserRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        config: pageModules,
-        files: {
-          ...files,
-          'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
-        },
-      })
-      const messages = await runRsbuildClient(server)
-      expect({
-        reported: reportedImporters({
-          root: server.root,
-          violations: recorder.violations,
-        }),
-        ranRealCode: messages.some((message) => message.includes('MARK_')),
-      }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
+      ).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
     },
     timeout,
   )

@@ -195,10 +195,14 @@ describe('rules', () => {
       options: { onViolation: rec.onViolation },
       isEntry,
     })
-    // a marked module that is no entry is judged through its importers only
+    // a marked module that is no entry: its marker import is no violation;
+    // compiled where it is denied, it is its own (named itself: no importer)
     const { out: marked } = await a.compile('src/marked.ts', 'client')
     expect(edgeImports(marked!.code)).toHaveLength(0)
-    expect(rec.calls).toHaveLength(0)
+    expect(rec.calls.map((c) => [c.type, c.importer])).toEqual([
+      ['marker', `${ROOT}/src/marked.ts`],
+    ])
+    rec.calls.length = 0
     const { out } = await a.compile('src/client.ts', 'client')
     expect(
       rec.calls.map((c) => [

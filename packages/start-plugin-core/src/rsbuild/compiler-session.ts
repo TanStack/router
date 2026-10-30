@@ -475,7 +475,7 @@ export class StartRsbuildCompilerSession {
     // violations of this compile (with `log: 'always'`, decided at every
     // compile)
     const outcome = this.start.afterCompile(env, id, out)
-    const { error } = outcome instanceof Promise ? await outcome : outcome
+    const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
       throw error
     }
@@ -494,6 +494,12 @@ export class StartRsbuildCompilerSession {
       if (info) {
         buildInfo[info.key] = info.value
       }
+    }
+    if (mock) {
+      // the module is its own violation: served as its mock, whose virtual
+      // file a verdict rewrites (so the module is built again as it is)
+      ctx.addDependency(mock.id)
+      return { code: mock.code, map: null }
     }
     if (identity.derived === null && out.code === source) {
       return passthrough
