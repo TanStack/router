@@ -2,7 +2,7 @@
  * Server fns of builders derived from one imported builder, in a real
  * production build of each bundler (build-harness.ts): Start's cross-module
  * prefetch must recognise every derived builder, also when two of a
- * module's imports lead to the same builder at once (review 1, claim #1).
+ * module's imports lead to the same builder at once.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
@@ -41,14 +41,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
   }, timeout)
   afterAll(() => dispose?.())
 
-  // .fails: the second builder's lookup of `base` meets the first one's in flight and reads it as a cycle (UNKNOWN).
-  test.fails(
-    'two builders derived from one imported builder: neither handler reaches the client',
-    () => {
-      expect({
-        get: build.client.where('MARK_GET_HANDLER'),
-        post: build.client.where('MARK_POST_HANDLER'),
-      }).toEqual({ get: 'nowhere', post: 'nowhere' })
-    },
-  )
+  test('two builders derived from one imported builder: neither handler reaches the client', () => {
+    expect({
+      get: build.client.where('MARK_GET_HANDLER'),
+      post: build.client.where('MARK_POST_HANDLER'),
+    }).toEqual({ get: 'nowhere', post: 'nowhere' })
+  })
 })

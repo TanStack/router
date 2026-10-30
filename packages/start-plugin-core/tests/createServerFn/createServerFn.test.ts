@@ -413,8 +413,8 @@ export const sharedFn = createServerFn().handler(async () => db.x())
   })
 })
 
-// Start's cross-module prefetch reads a second concurrent lookup of one
-// (module, export) as a cycle (review 1, claim #1).
+// Start's cross-module prefetch follows several of a module's imports at
+// once: two of them may lead to one (module, export) concurrently.
 describe('builders derived from one imported builder', () => {
   const dbFile = `export const db = { x: () => 'x', secret: () => 'secret' }\n`
   const baseFile = `import { createServerFn } from '@tanstack/react-start'
@@ -436,26 +436,57 @@ export const authed = base.middleware([])`,
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('secret')
   })
 
-  // .fails: the second builder's lookup of `base` meets the first one's in flight and reads it as a cycle (UNKNOWN).
-  test.fails(
-    'two builders of one module derived from one imported builder: both handlers leave the client',
-    async () => {
-      const served = await serveCase(await host(), {
-        'module.tsx': `import { authedGet, authedPost } from './builders'
+  test('two builders of one module derived from one imported builder: both handlers leave the client', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { authedGet, authedPost } from './builders'
 import { db } from './db.server'
 export const getFn = authedGet.handler(async () => db.x())
 export const postFn = authedPost.handler(async () => db.secret())`,
-        'builders.ts': `import { base } from './base'
+      'builders.ts': `import { base } from './base'
 export const authedGet = base.middleware([])
 export const authedPost = base.middleware([])`,
-        'base.ts': baseFile,
-        'db.server.ts': dbFile,
-      })
-      expectNotLoaded(await served.loads(), ['./db.server'])
-      expect(await serverFnUrls(served)).toHaveLength(2)
-      expect(await callServerFnThroughCallers(served, 'module.postFn')).toBe(
-        'secret',
-      )
-    },
-  )
+      'base.ts': baseFile,
+      'db.server.ts': dbFile,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await serverFnUrls(served)).toHaveLength(2)
+    expect(await callServerFnThroughCallers(served, 'module.postFn')).toBe(
+      'secret',
+    )
+  })
+
+  // `f` and `g` call each other across two modules, and the module imports
+  // both: its two lookups enter the import cycle at once, each from its own
+  // side. Each cuts the cycle on its own path; one waiting on the other's
+  // unfinished lookup would never settle (the test times out).
+  test('two imports entering one import cycle at once: compiling settles and both handlers leave the client', async () => {
+    const files = {
+      'module.tsx': `import { authedA, f } from './a'
+import { authedB, g } from './b'
+import { db } from './db.server'
+export const fnA = authedA.handler(async () => db.x())
+export const fnB = authedB.handler(async () => db.secret())
+export const calls = [f, g]`,
+      'a.ts': `import { base } from './base'
+import { g } from './b'
+export const authedA = base.middleware([])
+export function f(): unknown {
+  return g()
+}`,
+      'b.ts': `import { base } from './base'
+import { f } from './a'
+export const authedB = base.middleware([])
+export function g(): unknown {
+  return f()
+}`,
+      'base.ts': baseFile,
+      'db.server.ts': dbFile,
+    }
+    const served = await serveCase(await host(), files)
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await serverFnUrls(served)).toHaveLength(2)
+    expect(await callServerFnThroughCallers(served, 'module.fnB')).toBe(
+      'secret',
+    )
+  })
 })

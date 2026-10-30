@@ -1,11 +1,44 @@
 /**
  * Cross-module export resolution over summaries: DFS
- * with an active stack; explicit exports beat stars; two stars resolving to
+ * with a lookup path; explicit exports beat stars; two stars resolving to
  * different origins are ambiguous; results computed across a cut cycle edge
  * are tainted and not memoised; untainted results are memoised per resolver.
  */
 import type { ModuleSummary } from './summary'
 import type { AbstractValue } from './values'
+
+/**
+ * The keys a recursive lookup is computing, innermost first. Each top-level
+ * lookup starts its own path, so concurrent lookups never read each other's
+ * unfinished work as a cycle. Memoise settled results only: waiting on an
+ * unfinished lookup deadlocks on a real cycle.
+ */
+export class LookupPath {
+  /** A lookup on this path met a cut cycle: its result may differ from another entry point's and must not be memoised. */
+  tainted = false
+
+  private constructor(
+    private readonly key: string | null,
+    private readonly parent: LookupPath | null,
+  ) {}
+
+  static start(): LookupPath {
+    return new LookupPath(null, null)
+  }
+
+  /** This path extended by `key`, or null when `key` is on it already: a cycle, cut here, which taints every lookup on the path. */
+  enter(key: string): LookupPath | null {
+    for (let p: LookupPath | null = this; p; p = p.parent) {
+      if (p.key === key) {
+        for (let q: LookupPath | null = this; q; q = q.parent) {
+          q.tainted = true
+        }
+        return null
+      }
+    }
+    return new LookupPath(key, this)
+  }
+}
 
 type ResolveOutcome =
   | {
@@ -32,110 +65,108 @@ export class ExportResolver {
 
   constructor(private readonly deps: ResolverDeps) {}
 
-  async resolve(canonicalId: string, name: string): Promise<ResolveOutcome> {
-    // one active stack per top-level resolution: concurrent resolutions never see each other's path as a cycle
-    const { outcome } = await this.walk(canonicalId, name, [])
-    return outcome
+  resolve(canonicalId: string, name: string): Promise<ResolveOutcome> {
+    return this.walk(canonicalId, name, LookupPath.start())
   }
 
   private async walk(
     canonicalId: string,
     name: string,
-    active: Array<string>,
-  ): Promise<{ outcome: ResolveOutcome; tainted: boolean }> {
+    path: LookupPath,
+  ): Promise<ResolveOutcome> {
     const key = `${canonicalId}\u0000${name}`
     const hit = this.memo.get(key)
     if (hit) {
-      return { outcome: hit, tainted: false }
+      return hit
     }
-    if (active.includes(canonicalId)) {
-      return { outcome: { k: 'cycleUnknown' }, tainted: true }
+    // a module met again on the path is a cycle, whatever name it is asked for
+    const inner = path.enter(canonicalId)
+    if (!inner) {
+      return { k: 'cycleUnknown' }
     }
     const summary = await this.deps.summaryOf(canonicalId)
     if (!summary) {
-      return { outcome: { k: 'absent' }, tainted: false }
+      return { k: 'absent' }
     }
-    active.push(canonicalId)
-    try {
-      let tainted = false
-      const fact = summary.exports[name]
-      if (fact) {
-        if (fact.kind === 'local') {
-          const outcome: ResolveOutcome = {
-            k: 'found',
-            origin: { canonicalId, local: name },
-            value: fact.value,
-          }
-          this.memo.set(key, outcome)
-          return { outcome, tainted: false }
-        }
-        if (fact.kind === 'namespace') {
-          const outcome: ResolveOutcome = {
-            k: 'found',
-            origin: { canonicalId, local: name },
-            value: { t: 'namespace', specifier: fact.specifier },
-          }
-          this.memo.set(key, outcome)
-          return { outcome, tainted: false }
-        }
-        const target = await this.deps.resolveSpecifier(
-          fact.specifier,
-          canonicalId,
-        )
-        if (target === null) {
-          const outcome: ResolveOutcome = {
-            k: 'found',
-            origin: { canonicalId, local: name },
-            value: {
-              t: 'importRef',
-              specifier: fact.specifier,
-              name: fact.fromName,
-            },
-          }
-          this.memo.set(key, outcome)
-          return { outcome, tainted: false }
-        }
-        const r = await this.walk(target, fact.fromName, active)
-        if (!r.tainted) {
-          this.memo.set(key, r.outcome)
-        }
-        return r
+    const fact = summary.exports[name]
+    if (fact) {
+      if (fact.kind === 'local') {
+        return this.settle(key, inner, {
+          k: 'found',
+          origin: { canonicalId, local: name },
+          value: fact.value,
+        })
       }
-      if (name === 'default') {
-        return { outcome: { k: 'absent' }, tainted: false }
+      if (fact.kind === 'namespace') {
+        return this.settle(key, inner, {
+          k: 'found',
+          origin: { canonicalId, local: name },
+          value: { t: 'namespace', specifier: fact.specifier },
+        })
       }
-      let found: Extract<ResolveOutcome, { k: 'found' }> | null = null
-      let ambiguous = false
-      for (const star of summary.stars) {
-        const target = await this.deps.resolveSpecifier(star, canonicalId)
-        if (target === null) {
-          continue
-        }
-        const r = await this.walk(target, name, active)
-        tainted ||= r.tainted
-        if (r.outcome.k === 'found') {
-          if (
-            found &&
-            (found.origin.canonicalId !== r.outcome.origin.canonicalId ||
-              found.origin.local !== r.outcome.origin.local)
-          ) {
-            ambiguous = true
-          } else {
-            found = r.outcome
-          }
-        } else if (r.outcome.k === 'ambiguous') {
+      const target = await this.deps.resolveSpecifier(
+        fact.specifier,
+        canonicalId,
+      )
+      if (target === null) {
+        return this.settle(key, inner, {
+          k: 'found',
+          origin: { canonicalId, local: name },
+          value: {
+            t: 'importRef',
+            specifier: fact.specifier,
+            name: fact.fromName,
+          },
+        })
+      }
+      return this.settle(
+        key,
+        inner,
+        await this.walk(target, fact.fromName, inner),
+      )
+    }
+    if (name === 'default') {
+      return { k: 'absent' }
+    }
+    let found: Extract<ResolveOutcome, { k: 'found' }> | null = null
+    let ambiguous = false
+    for (const star of summary.stars) {
+      const target = await this.deps.resolveSpecifier(star, canonicalId)
+      if (target === null) {
+        continue
+      }
+      const r = await this.walk(target, name, inner)
+      if (r.k === 'found') {
+        if (
+          found &&
+          (found.origin.canonicalId !== r.origin.canonicalId ||
+            found.origin.local !== r.origin.local)
+        ) {
           ambiguous = true
+        } else {
+          found = r
         }
+      } else if (r.k === 'ambiguous') {
+        ambiguous = true
       }
-      const outcome: ResolveOutcome = ambiguous
-        ? { k: 'ambiguous' }
-        : (found ?? (tainted ? { k: 'cycleUnknown' } : { k: 'absent' }))
-      if (!tainted) {
-        this.memo.set(key, outcome)
-      }
-      return { outcome, tainted }
-    } finally {
-      active.pop()
     }
+    return this.settle(
+      key,
+      inner,
+      ambiguous
+        ? { k: 'ambiguous' }
+        : (found ?? (inner.tainted ? { k: 'cycleUnknown' } : { k: 'absent' })),
+    )
+  }
+
+  private settle(
+    key: string,
+    path: LookupPath,
+    outcome: ResolveOutcome,
+  ): ResolveOutcome {
+    if (!path.tainted) {
+      this.memo.set(key, outcome)
+    }
+    return outcome
   }
 }

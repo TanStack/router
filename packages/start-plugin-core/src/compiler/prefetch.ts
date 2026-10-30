@@ -8,6 +8,7 @@
  * with the core's transfer function once their imports are known.
  */
 import {
+  LookupPath,
   UNKNOWN,
   applyCall,
   applyMember,
@@ -74,42 +75,37 @@ export async function prefetchStartValues(
   const values = new Map<string, AbstractValue>()
   let relevant = false
   const file = t0.file
-  const memo = new Map<string, Promise<AbstractValue>>()
-  const active = new Set<string>()
+  // settled values only: two of this module's imports may lead to one export at once
+  const memo = new Map<string, AbstractValue>()
 
   /** The value of `name` exported by `canonicalId`, reduced; cycles → unknown. */
-  const exportValue = (
+  const exportValue = async (
     canonicalId: string,
     name: string,
+    path: LookupPath,
   ): Promise<AbstractValue> => {
+    if (isKnownSpecifier(table, canonicalId)) {
+      return recognizeImport(table, canonicalId, name)
+    }
     const key = importKey(canonicalId, name)
-    if (active.has(key)) {
-      // a cycle: the result is unknown here and never memoised (a cut cycle edge may
-      // answer differently from another entry point)
-      return Promise.resolve(UNKNOWN)
+    const hit = memo.get(key)
+    if (hit) {
+      return hit
     }
-    let p = memo.get(key)
-    if (!p) {
-      active.add(key)
-      p = (async () => {
-        try {
-          if (isKnownSpecifier(table, canonicalId)) {
-            return recognizeImport(table, canonicalId, name)
-          }
-          const outcome = await ctx.resolver.resolve(canonicalId, name)
-          if (outcome.k !== 'found') {
-            return UNKNOWN
-          }
-          const owner = outcome.origin.canonicalId
-          const reduced = await reduce(outcome.value, owner)
-          return stampSites(reduced, owner)
-        } finally {
-          active.delete(key)
-        }
-      })()
-      memo.set(key, p)
+    const inner = path.enter(key)
+    if (!inner) {
+      return UNKNOWN
     }
-    return p
+    let value = UNKNOWN
+    const outcome = await ctx.resolver.resolve(canonicalId, name)
+    if (outcome.k === 'found') {
+      const owner = outcome.origin.canonicalId
+      value = stampSites(await reduce(outcome.value, owner, inner), owner)
+    }
+    if (!inner.tainted) {
+      memo.set(key, value)
+    }
+    return value
   }
 
   /** Resolves `specifier` as imported by `owner` and reads `name` of it. */
@@ -117,6 +113,7 @@ export async function prefetchStartValues(
     owner: string,
     specifier: string,
     name: string,
+    path: LookupPath,
   ): Promise<AbstractValue> => {
     if (isKnownSpecifier(table, specifier)) {
       return recognizeImport(table, specifier, name)
@@ -125,17 +122,18 @@ export async function prefetchStartValues(
     if (target === null) {
       return UNKNOWN
     }
-    return exportValue(target, name)
+    return exportValue(target, name, path)
   }
 
   /** Reduces a summary term of module `owner` with the transfer function. */
   const reduce = async (
     v: AbstractValue,
     owner: string,
+    path: LookupPath,
   ): Promise<AbstractValue> => {
     switch (v.t) {
       case 'importRef':
-        return importedValue(owner, v.specifier, v.name)
+        return importedValue(owner, v.specifier, v.name, path)
       case 'namespace':
         if (isKnownSpecifier(table, v.specifier)) {
           return v
@@ -143,17 +141,17 @@ export async function prefetchStartValues(
         // a namespace of a project module: its members are resolved on demand (member terms)
         return v
       case 'member': {
-        const obj = await reduce(v.object, owner)
+        const obj = await reduce(v.object, owner, path)
         if (obj.t === 'namespace' && !isKnownSpecifier(table, obj.specifier)) {
-          return importedValue(owner, obj.specifier, v.name)
+          return importedValue(owner, obj.specifier, v.name, path)
         }
         return applyMember(table, obj, v.name)
       }
       case 'call': {
-        const callee = await reduce(v.callee, owner)
+        const callee = await reduce(v.callee, owner, path)
         const args: Array<AbstractValue | null> = []
         for (const a of v.args) {
-          args.push(a === null ? null : await reduce(a, owner))
+          args.push(a === null ? null : await reduce(a, owner, path))
         }
         return applyCall(table, callee, () => args, v.site)
       }
@@ -163,7 +161,7 @@ export async function prefetchStartValues(
           returns:
             v.returns.t === 'param'
               ? v.returns
-              : await reduce(v.returns, owner),
+              : await reduce(v.returns, owner, path),
         }
       default:
         return v
@@ -220,6 +218,7 @@ export async function prefetchStartValues(
                 ctx.identity.canonicalId,
                 imp.specifier,
                 name,
+                LookupPath.start(),
               )
               values.set(importKey(imp.specifier, name), v)
               if (isStartValue(table, v)) {
@@ -243,6 +242,7 @@ export async function prefetchStartValues(
             ctx.identity.canonicalId,
             imp.specifier,
             spec.imported,
+            LookupPath.start(),
           )
           values.set(importKey(imp.specifier, spec.imported), v)
           if (isStartValue(table, v)) {

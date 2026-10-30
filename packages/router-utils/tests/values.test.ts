@@ -167,6 +167,37 @@ describe('export resolution', () => {
       value: { t: 'factory', kind: 'serverOnly' },
     })
   })
+
+  it('memoises no result computed across a cut cycle: another entry point still finds the export', async () => {
+    // a → b → a is cut while resolving from a; b's answer on that path
+    // (no export) must not answer a later resolution entering at b
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `export * from './b'\nexport * from './c'\n`,
+        '/app/b.ts': `export * from './a'\n`,
+        '/app/c.ts': `export { createServerFn } from 'toy-start'\n`,
+      },
+      recognizer: TABLE,
+    })
+    const seen: Array<unknown> = []
+    const planner: Planner = {
+      name: 'toy-star-cycle',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        for (const entry of ['./a', './b']) {
+          const target = (await ctx.resolve(entry))!
+          seen.push(await ctx.resolver.resolve(target, 'createServerFn'))
+        }
+      },
+      plan() {},
+    }
+    await host.compile('/app/m.ts', [planner], {
+      code: `import { createServerFn } from './a'\nexport const x = createServerFn\n`,
+    })
+    const found = { k: 'found', value: { t: 'factory', kind: 'serverFn' } }
+    expect(seen).toMatchObject([found, found])
+  })
 })
 
 describe('known specifiers and planner withdrawal', () => {
