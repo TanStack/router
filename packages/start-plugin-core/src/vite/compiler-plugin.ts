@@ -799,8 +799,9 @@ export function startCompilerPlugin(
       },
       async hotUpdate(ctx) {
         const s = requireSession()
+        // the file's path once, as every module id and compiler key holds it
         const change: InvalidateChange = {
-          path: ctx.file,
+          path: normalizePath(ctx.file),
           kind: changeKindOf(ctx.type),
         }
         let pending = invalidations.get(ctx.read)
@@ -813,8 +814,8 @@ export function startCompilerPlugin(
           invalidations.set(ctx.read, pending)
         }
         const res = await pending
-        if (ctx.type === 'delete') {
-          s.start.forget(normalizePath(ctx.file))
+        if (change.kind === 'unlink') {
+          s.start.forget(change.path)
         }
         const extra = applyInvalidation(
           this.environment,
@@ -831,7 +832,7 @@ export function startCompilerPlugin(
           (await liveModules(
             this.environment as DevEnvironment,
             s.start.caches,
-            ctx.file,
+            change.path,
             ctx.modules,
           )) ?? ctx.modules
         return changed.length > 0 || live !== ctx.modules
@@ -844,20 +845,25 @@ export function startCompilerPlugin(
       // environment's watcher reports the files it bundles, and the rebuild
       // compiles their dependents again, against the caches the
       // invalidation left
-      async watchChange(id, change) {
+      async watchChange(id, event) {
         const s = requireSession()
         const environment = this.environment
         if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
           return
         }
-        const kind = changeKindOf(change.event)
-        if (kind === 'unlink') {
-          s.start.forget(normalizePath(id))
+        // the file's path once, as every module id and compiler key holds it
+        // (Rolldown reports its watcher's native path: backslashes on Windows)
+        const change: InvalidateChange = {
+          path: normalizePath(id),
+          kind: changeKindOf(event.event),
+        }
+        if (change.kind === 'unlink') {
+          s.start.forget(change.path)
         }
         if (environment.mode !== 'dev') {
           await invalidate(
             s.start.caches,
-            { path: id, kind },
+            change,
             hostFor(s, environment, (source, importer, options) =>
               this.resolve(source, importer, options),
             ),
@@ -866,7 +872,7 @@ export function startCompilerPlugin(
         }
         const res = await invalidate(
           s.start.caches,
-          { path: id, kind },
+          change,
           invalidationHosts(s, server, environment),
         )
         const now = Date.now()
@@ -876,7 +882,7 @@ export function startCompilerPlugin(
             )
           : [environment]
         for (const environment of environments) {
-          applyInvalidation(environment, { path: id, kind }, res, now)
+          applyInvalidation(environment, change, res, now)
         }
       },
       renderChunk(code, chunk) {
