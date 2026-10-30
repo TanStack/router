@@ -23,6 +23,30 @@ const config = defineConfig(({ mode }) => {
     }
   }
 
+  if (mode === 'hydration') {
+    // Hydratable client output, hydrating markup rendered by Solid's server
+    // build in `globalSetup`.
+    return {
+      plugins: [solid({ ssr: true })] as ViteUserConfig['plugins'],
+      resolve: {
+        conditions: ['development', 'browser'],
+      },
+      test: {
+        name: `${packageJson.name} (hydration)`,
+        dir: './tests/hydration',
+        watch: false,
+        environment: 'jsdom',
+        globalSetup: ['./tests/hydration/render-on-server.tsx'],
+        setupFiles: ['./tests/setupTests.tsx'],
+        server: {
+          deps: {
+            inline: [/@solidjs/, /@tanstack\/solid-store/, /solid-js/],
+          },
+        },
+      },
+    }
+  }
+
   return {
     plugins: [solid()] as ViteUserConfig['plugins'],
     // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
@@ -35,7 +59,7 @@ const config = defineConfig(({ mode }) => {
     test: {
       name: packageJson.name,
       dir: './tests',
-      exclude: ['server'],
+      exclude: ['server', 'hydration'],
       watch: false,
       environment: 'jsdom',
       typecheck: { enabled: true },
