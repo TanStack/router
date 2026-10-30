@@ -127,7 +127,12 @@ export function stripSearchParams<
     } else {
       Object.entries(input as Record<string, unknown>).forEach(
         ([key, value]) => {
-          if (deepEqual(result[key], value)) {
+          // Without validation (e.g. Link hrefs) the default may only exist on
+          // the incoming search, where an outer retain would restore it.
+          const isDefault = hasOwn.call(result, key)
+            ? deepEqual(result[key], value)
+            : deepEqual((search as Record<string, unknown>)[key], value)
+          if (isDefault) {
             delete result[key]
             if (meta) {
               ;(meta.removed ||= new Map()).set(key, value)
