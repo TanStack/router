@@ -17,4 +17,4 @@ export type UseLoaderDataResult<
   TSelected,
 > = unknown extends TSelected
   ? ResolveUseLoaderData<TRouter, TFrom, TStrict>
-  : TSelected
+  : NoInfer<TSelected>
