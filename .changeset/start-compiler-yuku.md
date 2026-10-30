@@ -27,6 +27,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 - Default production ids are shorter (22 characters).
 - Server functions are recognised by binding through re-exports, namespaces, aliases, user factories and stored builders, whatever the code formatting (#7280). With SSR as the provider a server function's module evaluates once and server-side callers call it directly (#7213, #8731); the modules only its handlers import still load on the first call, like before, without running the module's code again (a handler that writes state its module reads, or one in a module that awaits at its top level, loads with its module). `createServerOnlyFn(...)` passed to `.handler()` works (#8446). Nested server functions are hoisted on the server when safe, also inside a route option `deleteNodes` removes from the server build (the client keeps the option and calls them).
 - Client middleware sees only the server function's id during SSR, as in the browser.
+- A server function defined in code the server erases (`createClientOnlyFn`, an isomorphic function's `.client()`, `<ClientOnly>` children) works: the server registers it.
 - Vite `bundledDev`: lazy dependencies load, edits no longer crash the hot update, and SSR reflects edits (#8407, #8062, #7535).
 
 **Import protection**
