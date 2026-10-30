@@ -766,8 +766,9 @@ export function startCompilerPlugin(
               code,
               env,
               inputMap: () => inputMapOf(this, code, identity.path),
-              // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
-              wantMap: true,
+              wantMap:
+                s.start.opts.mode === 'dev' ||
+                environment.config.build.sourcemap !== false,
             },
             hostFor(s, this.environment, (source, imp, options) =>
               this.resolve(source, imp, options),
