@@ -110,9 +110,7 @@ console.log(a1, a2, u1(), u2())
         expect.arrayContaining(['src/a1.ts', 'src/a2.ts', 'src/lib/base.ts']),
       )
       expect(
-        built.filter((file) =>
-          /^src\/(u1|u2|lib\/other)\.ts$/.test(file),
-        ),
+        built.filter((file) => /^src\/(u1|u2|lib\/other)\.ts$/.test(file)),
       ).toEqual([])
     },
     timeout,
