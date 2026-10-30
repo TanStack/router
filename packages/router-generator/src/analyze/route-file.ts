@@ -85,6 +85,31 @@ function applySplices(source: string, splices: Array<Splice>) {
   return output
 }
 
+function parseRouteFile(source: string, filePath: string): SourceFile {
+  return parse(source, {
+    lang: langOf(filePath),
+    sourceType: 'module',
+    analyze: true,
+  })
+}
+
+function errorsOf(file: SourceFile): Array<FileDiagnostic> {
+  return file.diagnostics
+    .filter((d) => d.severity === 'error')
+    .map((d) => diagnosticAt(file, d.start, d.message))
+}
+
+/**
+ * The errors of a route file the generator reads but never edits (the root
+ * route): it parses when there are none.
+ */
+export function routeFileErrors(
+  source: string,
+  filePath: string,
+): Array<FileDiagnostic> {
+  return errorsOf(parseRouteFile(source, filePath))
+}
+
 function diagnosticAt(
   file: SourceFile,
   offset: number,
@@ -294,17 +319,10 @@ export function analyzeRouteFile(
   if (!source.includes('Route')) {
     return { kind: 'no-route' }
   }
-  const file = parse(source, {
-    lang: langOf(filePath),
-    sourceType: 'module',
-    analyze: true,
-  })
-  const errors = file.diagnostics.filter((d) => d.severity === 'error')
+  const file = parseRouteFile(source, filePath)
+  const errors = errorsOf(file)
   if (errors.length) {
-    return {
-      kind: 'error',
-      diagnostics: errors.map((d) => diagnosticAt(file, d.start, d.message)),
-    }
+    return { kind: 'error', diagnostics: errors }
   }
 
   const routeExport = file.exports.find(

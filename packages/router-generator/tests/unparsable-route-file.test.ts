@@ -179,3 +179,98 @@ export const Route = createRootRoute()
     expect.stringContaining('_auth/index.tsx'),
   ])
 })
+
+const rootRoute = `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`
+const postsRoute = `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`
+
+// The root route file too: a cold run reads every route file.
+test('a cold generation with a root route file that does not parse fails naming the file', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root)
+  await new Generator({ config, root }).run()
+  const committed = await readFile(config.generatedRouteTree, 'utf8')
+
+  await writeFile(
+    path.join(root, 'src/routes/__root.tsx'),
+    'export const Route = (',
+  )
+  await expect(new Generator({ config, root }).run()).rejects.toThrow(
+    '__root.tsx',
+  )
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(committed)
+})
+
+test('a root route file an edit breaks in a running generator keeps the tree and is reported', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root)
+  const rootFile = path.join(root, 'src/routes/__root.tsx')
+  const generator = new Generator({ config, root })
+  await generator.run()
+  const tree = await readFile(config.generatedRouteTree, 'utf8')
+
+  await writeFile(rootFile, 'export const Route = (')
+  const { diagnostics } = await captureDiagnostics(() =>
+    generator.run({ type: 'update', path: rootFile }),
+  )
+  expectDiagnostic(diagnostics, {
+    severity: 'warning',
+    file: rootFile,
+    root,
+    position: { line: 1 },
+  })
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
+})
+
+// A plugin instance can build more than once in one process (a bundler's
+// `run()` called again, a programmatic build repeated): each build is a
+// run that does not watch, whatever an earlier one read.
+test('a build of a generator that built before fails when a route file no longer parses, naming the file', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root)
+  const generator = new Generator({ config, root })
+  const session = createGeneratorSession({ generator: () => generator })
+  await session.build()
+  const tree = await readFile(config.generatedRouteTree, 'utf8')
+
+  await writeFile(
+    path.join(root, 'src/routes/posts.tsx'),
+    'export const Route = (',
+  )
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+  expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
+})
+
+// The route a watch run kept for a broken file is no route of a build.
+test('a build after a watch run that kept the route of a broken file fails, naming the file', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute,
+    'src/routes/posts.tsx': postsRoute,
+  })
+  const config = configOf(root)
+  const posts = path.join(root, 'src/routes/posts.tsx')
+  const generator = new Generator({ config, root })
+  const session = createGeneratorSession({
+    generator: () => generator,
+    report: () => {},
+  })
+  await session.run()
+  await writeFile(posts, 'export const Route = (')
+  await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
+  expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
+  await expect(session.build()).rejects.toThrow('posts.tsx')
+})

@@ -5,7 +5,7 @@ import { isVirtualConfigFile } from './filesystem/physical/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import { scanRoutes } from './filesystem/scan'
 import { replaceBackslash } from './utils'
-import { analyzeRouteFile } from './analyze/route-file'
+import { analyzeRouteFile, routeFileErrors } from './analyze/route-file'
 import { routerPackageOf, scaffoldRouteFile } from './scaffold/templates'
 import { buildTreeModel, checkRouteFullPathUniqueness } from './model/build'
 import { importedFiles, printTree } from './print/tree'
@@ -37,7 +37,12 @@ export type FileEvent = {
   type: FileEventType
   path: string
 }
-export type GeneratorEvent = FileEvent | { type: 'rerun' }
+/**
+ * A file event; `rerun` regenerates everything; `build` too, for a run that
+ * does not watch: a route file that does not parse fails it, even one whose
+ * route an earlier read knows (R86).
+ */
+export type GeneratorEvent = FileEvent | { type: 'rerun' } | { type: 'build' }
 
 /**
  * What a route file contributes to the tree, from its last analysis that
@@ -77,6 +82,8 @@ interface FileState {
    * under both.
    */
   readonly realPath?: string
+  /** Why the content does not parse (`facts` are those of its last good content). */
+  readonly unparsable?: string
 }
 
 /** What a file's analysis depends on besides its content. */
@@ -252,14 +259,14 @@ export class Generator {
    * batch failed (no root route, conflicting routes, a failed write).
    */
   public run(event?: GeneratorEvent): Promise<void> {
-    if (event && event.type !== 'rerun') {
+    if (event && event.type !== 'rerun' && event.type !== 'build') {
       const file = normalize(event.path)
       if (this.classify(file) === null) {
         return Promise.resolve()
       }
       this.queue.push({ type: event.type, path: file })
     } else {
-      this.queue.push({ type: 'rerun' })
+      this.queue.push(event ?? { type: 'rerun' })
     }
     const done = new Promise<void>((resolve, reject) => {
       this.waiters.push({ resolve, reject })
@@ -390,12 +397,14 @@ export class Generator {
 
   private async processBatch(batch: Array<GeneratorEvent>) {
     let structural = !this.scan || this.stale
+    let build = false
     const changed = new Set<string>()
     /** The files the batch's events name: read whatever their stamps say. */
     const named = new Set<string>()
     for (const event of batch) {
-      if (event.type === 'rerun') {
+      if (event.type === 'rerun' || event.type === 'build') {
         structural = true
+        build ||= event.type === 'build'
         continue
       }
       named.add(event.path)
@@ -468,6 +477,21 @@ export class Generator {
           consider(key, before)
         }),
       )
+    }
+
+    // a build has no last good route: it fails before anything is written
+    if (build) {
+      const broken = [...this.files].filter(([, state]) => state.unparsable)
+      if (broken.length > 0) {
+        throw new UnparsableRouteFileError(
+          broken
+            .map(
+              ([file, state]) =>
+                `Cannot generate the route of ${file}:\n${state.unparsable}`,
+            )
+            .join('\n'),
+        )
+      }
     }
 
     // The tree's routes are as before (no tree rebuild, no print), unless
@@ -636,7 +660,10 @@ export class Generator {
 
     if (isRoot) {
       if (content !== '') {
-        return { content, facts: { included: true, props: undefined } }
+        const errors = routeFileErrors(content, file)
+        return errors.length > 0
+          ? this.unparsableFacts(file, content, errors, previous)
+          : { content, facts: { included: true, props: undefined } }
       }
       const scaffold = scaffoldRouteFile({
         target: this.config.target,
@@ -689,25 +716,7 @@ export class Generator {
     })
 
     if (analysis.kind === 'error') {
-      const messages = analysis.diagnostics.map((d) =>
-        formatDiagnostic(file, d),
-      )
-      if (!previous) {
-        // Nothing of this generator knows its route (a cold run, a dev
-        // server's first generation, a file created broken): the run fails
-        // naming it and leaves the route tree on disk as it is, as on main
-        // (a route never silently drops out of a build)
-        throw new UnparsableRouteFileError(
-          `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
-        )
-      }
-      for (const message of messages) {
-        console.warn(message)
-      }
-      return {
-        content,
-        facts: previous.facts.included ? previous.facts : { included: false },
-      }
+      return this.unparsableFacts(file, content, analysis.diagnostics, previous)
     }
 
     if (analysis.kind === 'no-route') {
@@ -727,6 +736,36 @@ export class Generator {
       content,
       pending: output !== content ? output : undefined,
       facts: { included: true, props: analysis.props },
+    }
+  }
+
+  /**
+   * A route file that does not parse. Nothing of this generator knows its
+   * route (a cold run, a dev server's first generation, a file created
+   * broken): the run fails naming it and leaves the route tree on disk as it
+   * is, as on main (a route never silently drops out of a build). Else it
+   * keeps the facts of its last good content and is reported; a build fails
+   * on it (`build`).
+   */
+  private unparsableFacts(
+    file: string,
+    content: string,
+    diagnostics: ReadonlyArray<FileDiagnostic>,
+    previous: FileState | undefined,
+  ): Omit<FileState, 'role'> {
+    const messages = diagnostics.map((d) => formatDiagnostic(file, d))
+    if (!previous) {
+      throw new UnparsableRouteFileError(
+        `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
+      )
+    }
+    for (const message of messages) {
+      console.warn(message)
+    }
+    return {
+      content,
+      facts: previous.facts.included ? previous.facts : { included: false },
+      unparsable: messages.join('\n'),
     }
   }
 

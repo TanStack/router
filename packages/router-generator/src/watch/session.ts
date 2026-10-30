@@ -65,7 +65,7 @@ export function createGeneratorSession(opts: {
     run: (event) => settle(opts.generator().run(event)),
     async build() {
       try {
-        await opts.generator().run()
+        await opts.generator().run({ type: 'build' })
       } catch (error) {
         if (error instanceof UnparsableRouteFileError) {
           throw error
