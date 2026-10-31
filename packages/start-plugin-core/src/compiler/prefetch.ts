@@ -161,50 +161,6 @@ export function isPlainRead(
   }
 }
 
-/**
- * Whether `node` is what `@vitejs/plugin-vue` generates in a development
- * `<script setup>`'s `setup()` to expose a binding to the template:
- * `const __returned__ = { base, get f() { return f }, set f(v) { f = v } }`,
- * marked by `__isScriptSetup`. Nothing attaches code to a binding there. An
- * object the block writes itself holds no such name and is judged like any other.
- */
-export function isVueSetupBinding(
-  t0: ModuleAnalysis,
-  path: string,
-  node: Node,
-): boolean {
-  if (!path.endsWith('.vue') || !t0.source.code.includes('__isScriptSetup')) {
-    return false
-  }
-  const file = t0.file
-  let prop = file.parentOf(node)
-  if (prop?.type !== 'Property') {
-    // `return f`, `f = v`: the one statement of a generated accessor
-    const statement =
-      prop?.type === 'AssignmentExpression' ? file.parentOf(prop) : prop
-    const body = statement && file.parentOf(statement)
-    const fn = body && file.parentOf(body)
-    prop = fn && file.parentOf(fn)
-    if (
-      body?.type !== 'BlockStatement' ||
-      body.body.length !== 1 ||
-      fn?.type !== 'FunctionExpression' ||
-      prop?.type !== 'Property' ||
-      prop.kind === 'init'
-    ) {
-      return false
-    }
-  }
-  const object = file.parentOf(prop)
-  const declarator = object && file.parentOf(object)
-  return (
-    declarator?.type === 'VariableDeclarator' &&
-    declarator.init === object &&
-    declarator.id.type === 'Identifier' &&
-    declarator.id.name === '__returned__'
-  )
-}
-
 /** An isomorphic fn or a middleware with a `.client()` and no `.server()` (`createClientOnlyFn` is the API for client-only code). */
 export function isClientOnlyPartial(v: AbstractValue): boolean {
   return (
@@ -383,9 +339,6 @@ export async function prefetchStartValues(
     nodes: ReadonlyArray<Node>,
   ) => {
     const escapes = async (target: string, at: Node) => {
-      if (isVueSetupBinding(t0, ctx.identity.path, at)) {
-        return
-      }
       const exported = await openExport(target, new Set())
       if (exported !== null) {
         namespaceEscapes.push({
