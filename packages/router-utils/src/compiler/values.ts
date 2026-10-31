@@ -145,6 +145,9 @@ export function applyMember(
       const kind = table.startMembers?.[name]
       return kind ? { t: 'factory', kind } : UNKNOWN
     }
+    case 'factory':
+      // `createServerFn.call(thisArg, options)`: its call is the factory's
+      return name === 'call' && table.builderKinds.has(obj.kind) ? obj : UNKNOWN
     case 'builder':
     case 'isoFn':
     case 'importRef':

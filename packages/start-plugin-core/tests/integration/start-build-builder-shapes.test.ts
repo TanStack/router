@@ -760,6 +760,45 @@ export const Route = withMeta(createFileRoute('/')({ component: () => null }))
   },
 )
 
+compiled.push(
+  {
+    name: 'a builder under a cast',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const mw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+export const a = (createServerFn() as any).handler(async () => 'MARK_SERVER_SECRET')
+export const b = (createServerFn() as any).middleware([mw]).handler(async () => 'MARK_SERVER_SECRET')
+export const c = (createServerFn().middleware([mw]) as any).handler(async () => 'MARK_SERVER_SECRET')
+export const d = ((createServerFn() as any).middleware([mw]) as any).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'the factory’s `.call()`',
+    files: {
+      'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn.call(null)
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+export const direct = createServerFn.call(null, { method: 'POST' }).handler(async () => 'MARK_SERVER_SECRET')
+`,
+      'src/entry.ts': `export { fn, direct } from './fns'\n`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'an unknown method on a builder under a cast',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+export const fn = (createServerFn() as any).foo().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
     '$name compiles',

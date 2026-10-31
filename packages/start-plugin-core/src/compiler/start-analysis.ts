@@ -570,15 +570,21 @@ export function startAnalysisOf(
             value = v2
             continue
           }
-          if (value.t === 'namespace' || value.t === 'startInstance') {
+          if (
+            value.t === 'namespace' ||
+            value.t === 'startInstance' ||
+            value.t === 'factory'
+          ) {
             const mv = values.valueOf(member)
             if (isStartValue(table, mv)) {
               node = member
               value = mv
               continue
             }
-            // another export of the package, another member of the instance: a plain call
-            return
+            if (value.t !== 'factory') {
+              // another export of the package, another member of the instance: a plain call
+              return
+            }
           }
           // a method of a factory or of a finished value (`.call`, `.bind`)
           escape(member, value, 'member')

@@ -469,6 +469,10 @@ const supported: Array<Shape> = [
     name: '`createCompositeComponent` in a helper only a server fn calls',
     code: `import { createServerFn } from '@tanstack/react-start'\nimport { createCompositeComponent } from '@tanstack/react-start/rsc'\nimport { db } from './db.server'\nasync function card() {\n  return createCompositeComponent(() => db.x())\n}\nexport const load = createServerFn().handler(async () => card())`,
   },
+  {
+    name: 'the factory’s `.call()`',
+    code: `${P}export const fn = createServerFn.call(null).handler(async () => db.x())`,
+  },
 ]
 
 describe('builder shapes the client compiles', () => {
@@ -518,11 +522,6 @@ const refused: Array<Refused> = [
     name: 'a computed member of the package namespace',
     code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = S['createServerFn']().handler(async () => db.x())`,
     at: `S['createServerFn']`,
-  },
-  {
-    name: 'the factory’s `.call()`',
-    code: `${P}export const fn = createServerFn.call(null).handler(async () => db.x())`,
-    at: 'createServerFn.call',
   },
   {
     name: 'the package namespace passed to a function',
