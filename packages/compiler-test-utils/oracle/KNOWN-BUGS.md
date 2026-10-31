@@ -53,6 +53,10 @@ code.test.ts`: "a root route's %s loads lazily".
   J2.5. `router-plugin/tests/integration/code-splitter-module-state.test.ts`: "gives the split component the value a
   `var` declared again takes in a head or a pattern (Rolldown)". Fix: upstream.
 
+- **A Vue `<script setup>` binding holding a Start factory or builder is a compile error on the dev server** (plugin-vue's
+  generated `__returned__` object reads as an escape); the build is fine. Accepted for now, R92 amendment 3: a fix must
+  not need a special case for the plugin's output. SPEC J4.5.
+  `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles".
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
   (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's
   worker build has no Start plugin); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
