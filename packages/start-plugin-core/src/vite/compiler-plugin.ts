@@ -45,7 +45,6 @@ import {
 } from '../constants'
 import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
 import { StartCompilerSession } from '../compiler/session'
-import { lateModuleUsesStart } from '../compiler/recognizer'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
 import {
@@ -1133,7 +1132,7 @@ export function startCompilerPlugin(
    * The late pass: modules whose id is not
    * JS/TS but whose code reaches us as JS through other plugins (`.mdx`, a
    * compiled `.vue` module, custom types) are judged with the `import-edges`
-   * planner, and compiled by start-env when their text may use a Start value
+   * planner, and compiled by start-env in place
    * (`StartEnvConfig.late`), after the framework plugins (`post`), their
    * positions mapped through the combined source map.
    */
@@ -1151,11 +1150,7 @@ export function startCompilerPlugin(
       async handler(code, id) {
         const s = requireSession()
         const env = envOf(this.environment.name)
-        if (
-          (!s.start.ip && !lateModuleUsesStart(code)) ||
-          !env ||
-          identify(id).lang !== null
-        ) {
+        if (!env || identify(id).lang !== null) {
           return null
         }
         const out = await s.start.compile(

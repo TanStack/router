@@ -18,10 +18,14 @@ import {
   isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
-  unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import { START_KINDS } from './recognizer'
-import { importResolverOf, isStartValue, takesServerCode } from './prefetch'
+import {
+  importResolverOf,
+  isPlainRead,
+  isStartValue,
+  takesServerCode,
+} from './prefetch'
 import type { StartPrefetch } from './prefetch'
 import type {
   AbstractValue,
@@ -217,26 +221,36 @@ export function startAnalysisOf(
     )
   }
 
+  /** A Start call handing back what its argument returns: `createClientOnlyFn` and an isomorphic fn's implementations. */
+  const handsBack = (call: CallNode): boolean => {
+    const v = values.valueOf(call.callee)
+    return v.t === 'factory'
+      ? table.envOnlyKinds[v.kind] === 'client'
+      : v.t === 'member' &&
+          (v.object.t === 'isoFn' ||
+            (v.object.t === 'builder' &&
+              table.terminal[v.object.kind] === 'isoFn'))
+  }
+
   /** A call whose arguments Start's runtime consumes as data: a factory's, or a builder's or start instance's method. */
   const isStartSink = (call: CallNode): boolean => {
     const v = values.valueOf(call.callee)
     return (
-      v.t === 'factory' ||
-      (v.t === 'member' &&
-        (v.object.t === 'builder' ||
-          v.object.t === 'isoFn' ||
-          v.object.t === 'startInstance'))
+      !handsBack(call) &&
+      (v.t === 'factory' ||
+        (v.t === 'member' &&
+          (v.object.t === 'builder' ||
+            v.object.t === 'isoFn' ||
+            v.object.t === 'startInstance')))
     )
   }
 
-  /** A call of a method of the global `console`: its arguments are only printed. */
-  const isConsoleCall = (call: CallNode): boolean => {
-    const callee = unwrapExpression(call.callee)
+  /** A TS namespace's export is a property of the namespace, read by no reference. */
+  const isNamespaceExport = (declaration: Node | null): boolean => {
+    const e = declaration && parentOf(declaration)
     return (
-      callee.type === 'MemberExpression' &&
-      callee.object.type === 'Identifier' &&
-      callee.object.name === 'console' &&
-      !file.referenceOf(callee.object)?.binding
+      e?.type === 'ExportNamedDeclaration' &&
+      parentOf(e)?.type === 'TSModuleBlock'
     )
   }
 
@@ -285,12 +299,15 @@ export function startAnalysisOf(
       declarator.id.type === 'Identifier' ? file.bindingOf(declarator.id) : null
     if (
       !b ||
-      seen.has(declarator) ||
       declaration?.type !== 'VariableDeclaration' ||
       declaration.kind !== 'const' ||
       parentOf(declaration)?.type === 'ExportNamedDeclaration'
     ) {
       return false
+    }
+    // (judged at its first visit)
+    if (seen.has(declarator)) {
+      return true
     }
     seen.add(declarator)
     return b.references.every(
@@ -311,31 +328,22 @@ export function startAnalysisOf(
     switch (p.type) {
       case 'CallExpression':
         // a callee is a use (a server fn called); an argument a Start call
-        // consumes is data, unless it hands back what that function returns
+        // consumes is data; so is an open middleware an implementation returns
         return (
           p.callee === outer ||
-          isConsoleCall(p) ||
-          (value.t !== 'function' && isStartSink(p))
+          isStartSink(p) ||
+          isPlainRead(file, p, outer) ||
+          (handsBack(p) &&
+            value.t === 'function' &&
+            value.returns.t === 'builder' &&
+            table.terminal[value.returns.kind] === 'middleware')
         )
       case 'ArrayExpression':
       case 'SpreadElement':
       case 'Property':
         return reachesStartSink(outer)
-      case 'ExpressionStatement':
-      case 'UnaryExpression':
-      case 'BinaryExpression':
-      case 'TemplateLiteral':
-      case 'SwitchCase':
-        return true
-      case 'SwitchStatement':
-        return p.discriminant === outer
-      case 'IfStatement':
-      case 'WhileStatement':
-      case 'DoWhileStatement':
-      case 'ForStatement':
-        return p.test === outer
       default:
-        return false
+        return isPlainRead(file, p, outer)
     }
   }
 
@@ -348,6 +356,7 @@ export function startAnalysisOf(
     return (
       write.operator === '=' &&
       target.t === 'builder' &&
+      takesServerCode(table, target) &&
       value.t === 'builder' &&
       value.kind === target.kind
     )
@@ -366,7 +375,11 @@ export function startAnalysisOf(
       case 'ExportSpecifier': // summaries follow exports
         return
       case 'AssignmentExpression':
-        if (p.right === outer && isSameBuilder(p, value)) {
+        if (
+          p.right === outer &&
+          parentOf(p)?.type === 'ExpressionStatement' &&
+          isSameBuilder(p, value)
+        ) {
           return
         }
         break
@@ -401,7 +414,11 @@ export function startAnalysisOf(
               ? values.valueOfBinding(binding.id)
               : UNKNOWN
             : values.valueOf(fn)
-        if (fv.t !== 'function' || !isStartValue(table, fv.returns)) {
+        if (
+          fv.t !== 'function' ||
+          !isStartValue(table, fv.returns) ||
+          isNamespaceExport(fn)
+        ) {
           // the function's value does not carry what it returns
           escape(outer, value, 'return')
         } else if (binding) {
@@ -416,17 +433,20 @@ export function startAnalysisOf(
           return
         }
         if (p.id.type === 'Identifier') {
-          // (a TS namespace's export is a property of the namespace, read by no reference)
-          if (parentOf(parentOf(parentOf(p)!)!)?.type === 'TSModuleBlock') {
+          if (isNamespaceExport(parentOf(p))) {
             escape(outer, value, 'flow')
             return
           }
           const b = file.bindingOf(p.id)
           if (b && isStartValue(table, value)) {
-            if (isStartValue(table, values.valueOfBinding(b.id))) {
+            // (`var a = 1; var a = createServerFn()`: the name's value is the first)
+            const first = b.declarations.find((d) => {
+              const q = parentOf(d)
+              return q?.type === 'VariableDeclarator' && q.init !== null
+            })
+            if (first?.start === p.id.start) {
               enqueueBinding(b.id)
             } else {
-              // (`var a = 1; var a = createServerFn()`: the name's value is the first)
               escape(outer, value, 'reassigned')
             }
           }
@@ -590,9 +610,9 @@ export function startAnalysisOf(
           escape(member, value, 'member')
           break
         }
-        // a member read that is not called
+        // a member read that is not called (a namespace read through a namespace too)
         const mv = values.valueOf(member)
-        if (isStartValue(table, mv)) {
+        if (isStartValue(table, mv) || mv.t === 'namespace') {
           node = member
           value = mv
           continue
@@ -656,14 +676,22 @@ export function startAnalysisOf(
     })
   }
 
-  /** Whether a namespace of a project module has a member with a Start value (phase A). */
-  const namespaceHasStartMember = (specifier: string): boolean => {
-    if (!prefetch) {
+  /** Whether a namespace of a project module has a member with a Start value (phase A), maybe through a namespace. */
+  const namespaceHasStartMember = (
+    specifier: string,
+    seen = new Set<string>(),
+  ): boolean => {
+    if (!prefetch || seen.has(specifier)) {
       return false
     }
+    seen.add(specifier)
     const prefix = `${specifier}\u0000`
     for (const [k, v] of prefetch.values) {
-      if (k.startsWith(prefix) && isStartValue(table, v)) {
+      if (
+        k.startsWith(prefix) &&
+        (isStartValue(table, v) ||
+          (v.t === 'namespace' && namespaceHasStartMember(v.specifier, seen)))
+      ) {
         return true
       }
     }

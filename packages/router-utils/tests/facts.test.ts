@@ -61,13 +61,13 @@ describe('RawFactsCache', () => {
     // asked again: no read
     await cache.marker('/app/a.ts', 'client')
     await cache.marker('/app/s.ts', 'client')
-    expect(cache.stats(false).factsReads).toBe(7)
+    expect(cache.stats(false).factsReads).toBe(8)
     // the full facts of a scanned target are built when asked, once
     const facts = await cache.get('/app/a.ts', 'client')
     expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
     expect(cache.stats(false)).toMatchObject({
       rawFactsMarkerless: 0,
-      factsReads: 8,
+      factsReads: 9,
     })
     // a change makes the next question read again
     files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`

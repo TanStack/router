@@ -26,7 +26,6 @@ import {
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
-import { lateModuleUsesStart } from '../compiler/recognizer'
 import { providerModuleId } from '../server-fns/registry'
 import {
   CLIENT_REFERENCED_IDS_PLACEHOLDER,
@@ -532,10 +531,6 @@ export class StartRsbuildCompilerSession {
     const identity = identify(id)
     const late = options.pass === 'late'
     if (late ? identity.lang !== null : identity.lang === null) {
-      return passthrough
-    }
-    if (late && !ip && !lateModuleUsesStart(source)) {
-      // (the late pass: import protection's, and Start's where the text may use it)
       return passthrough
     }
     if (!late && !this.start.compiles(identity.path, source)) {

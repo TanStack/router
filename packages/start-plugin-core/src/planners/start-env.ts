@@ -274,7 +274,8 @@ function describeServerFn(
           if (b && direct && b.scope === file.rootScope) {
             const sym = symbols.ofBinding(b)
             const units = t1.declaringUnits.get(sym)
-            if (units && units.length > 0) {
+            // (the RPC reads the fn from this binding: a written one holds another fn)
+            if (units?.length === 1 && !t1.mutation.isReassigned(sym)) {
               topLevelSym = sym
               topLevelUnit = t1.units[units[0]!]!
             }
@@ -348,14 +349,17 @@ function roleOf(ctx: PlanContext, config: StartEnvConfig): Role {
   return 'ssr-caller'
 }
 
-export function startEnvPlanner(): Planner {
+export function startEnvPlanner(opts?: { late: true }): Planner {
   const table = startRecognizer()
   return {
     name: START_ENV,
     tier: 1,
     gate: (t0) => t0.hasImportOrExport,
     async prefetch(t0, ctx) {
-      const result = await prefetchStartValues(t0, ctx, { table })
+      const result = await prefetchStartValues(t0, ctx, {
+        table,
+        late: opts?.late,
+      })
       ctx.set(result)
       return result.relevant
     },
@@ -962,6 +966,12 @@ function planStartEnv(
         code: `start-escape:${e.reason}`,
       })
     }
+    const prefetched = ctx.prefetched.get(START_ENV) as
+      | StartPrefetch
+      | undefined
+    for (const range of prefetched?.lateExports ?? []) {
+      diag(LATE_MESSAGE, range)
+    }
     // an RSC primitive's argument is server code only a server fn's erasure removes
     for (const { call } of analysis.rscCalls) {
       ctx.liveDiagnostic({
@@ -973,9 +983,6 @@ function planStartEnv(
         code: 'start-escape:rsc',
       })
     }
-    const prefetched = ctx.prefetched.get(START_ENV) as
-      | StartPrefetch
-      | undefined
     for (const { range, exported } of prefetched?.namespaceEscapes ?? []) {
       ctx.liveDiagnostic({
         severity: 'error',

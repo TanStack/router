@@ -12,12 +12,14 @@ import {
   UNKNOWN,
   applyCall,
   applyMember,
+  buildSummary,
   isExpressionWrapper,
   isKnownSpecifier,
   joinValues,
   recognizeImport,
   stampSites,
   staticPropertyKey,
+  unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from './scope'
 import type {
@@ -36,6 +38,8 @@ export interface StartPrefetch {
   relevant: boolean
   /** Where a project namespace with an open builder among its exports goes where the analysis does not follow it. */
   namespaceEscapes: Array<NamespaceEscape>
+  /** A late-pass module's exports of an open builder: an importer reads the file, not this output, so it can't follow them. */
+  lateExports: Array<Range>
 }
 
 export interface NamespaceEscape {
@@ -88,7 +92,8 @@ export function takesServerCode(
       return (
         table.builderKinds.has(v.kind) ||
         table.envOnlyKinds[v.kind] === 'server' ||
-        v.kind === table.startKind
+        v.kind === table.startKind ||
+        v.kind.startsWith('rsc:')
       )
     case 'startInstance':
       return true
@@ -114,6 +119,45 @@ export function takesServerCode(
   }
 }
 
+/**
+ * Where a value `outer` in `p` is only read: nothing can attach code to it
+ * there (a test, an operator, an unknown tag excepted, the global `console`).
+ */
+export function isPlainRead(
+  file: ModuleAnalysis['file'],
+  p: Node,
+  outer: Node,
+): boolean {
+  switch (p.type) {
+    case 'CallExpression': {
+      const callee = unwrapExpression(p.callee)
+      return (
+        p.callee !== outer &&
+        callee.type === 'MemberExpression' &&
+        callee.object.type === 'Identifier' &&
+        callee.object.name === 'console' &&
+        !file.referenceOf(callee.object)?.binding
+      )
+    }
+    case 'ExpressionStatement':
+    case 'UnaryExpression':
+    case 'BinaryExpression':
+    case 'SwitchCase':
+      return true
+    case 'TemplateLiteral':
+      return file.parentOf(p)?.type !== 'TaggedTemplateExpression'
+    case 'SwitchStatement':
+      return p.discriminant === outer
+    case 'IfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+    case 'ForStatement':
+      return p.test === outer
+    default:
+      return false
+  }
+}
+
 /** An isomorphic fn or a middleware with a `.client()` and no `.server()` (`createClientOnlyFn` is the API for client-only code). */
 export function isClientOnlyPartial(v: AbstractValue): boolean {
   return (
@@ -125,6 +169,7 @@ export function isClientOnlyPartial(v: AbstractValue): boolean {
 
 interface PrefetchOptions {
   table: RecognizerTable
+  late?: boolean
 }
 
 /**
@@ -140,6 +185,7 @@ export async function prefetchStartValues(
   const { table } = opts
   const values = new Map<string, AbstractValue>()
   const namespaceEscapes: Array<NamespaceEscape> = []
+  const lateExports: Array<Range> = []
   let relevant = false
   const file = t0.file
   // settled values only: two of this module's imports may lead to one export at once
@@ -276,8 +322,9 @@ export async function prefetchStartValues(
   /**
    * Follows the reads `nodes` of the namespace object of project module `id`,
    * whose members this module keys by `specifier`: members read by name are
-   * prefetched; anywhere else, what the namespace exports is beyond this
-   * compile, which refuses an open builder among its exports.
+   * prefetched, a namespace among them followed the same way; anywhere else,
+   * what the namespace exports is beyond this compile, which refuses an open
+   * builder among its exports.
    */
   const followNamespace = async (
     specifier: string,
@@ -300,8 +347,9 @@ export async function prefetchStartValues(
       if (isStartValue(table, v)) {
         relevant = true
       } else if (v.t === 'namespace') {
-        // (a namespace of a namespace is not followed further)
-        await escapes(v.specifier, at)
+        await (at.type === 'Property'
+          ? escapes(v.specifier, at)
+          : followNamespace(v.specifier, v.specifier, [at]))
       }
     }
     const reads: Array<Promise<void>> = []
@@ -341,15 +389,44 @@ export async function prefetchStartValues(
           reads.push(key !== null ? member(key, prop) : escapes(id, prop))
         }
       } else if (
-        // (an exported namespace is followed by the summaries; `typeof` reads no member)
+        // (an exported namespace is followed by the summaries)
         parent.type !== 'ExportSpecifier' &&
         parent.type !== 'ExportDefaultDeclaration' &&
-        !(parent.type === 'UnaryExpression' && parent.operator === 'typeof')
+        !isPlainRead(file, parent, outer)
       ) {
         reads.push(escapes(id, outer))
       }
     }
     await Promise.all(reads)
+  }
+
+  const judgeLateExports = async () => {
+    const self = ctx.identity.canonicalId
+    const summary = buildSummary(t0, table)
+    const open = async (v: AbstractValue) =>
+      takesServerCode(table, v) ||
+      (v.t === 'namespace' &&
+        (await openExport(v.specifier, new Set())) !== null)
+    for (const e of t0.exports) {
+      const fact = 'name' in e ? summary.exports[e.name] : undefined
+      const start = LookupPath.start()
+      const v =
+        fact?.kind === 'local'
+          ? await reduce(fact.value, self, start)
+          : fact?.kind === 'reExport'
+            ? await importedValue(self, fact.specifier, fact.fromName, start)
+            : e.kind === 'star' || e.kind === 'namespace'
+              ? await reduce(
+                  { t: 'namespace', specifier: e.specifier },
+                  self,
+                  start,
+                )
+              : UNKNOWN
+      if (await open(v)) {
+        lateExports.push(e.range)
+        relevant = true
+      }
+    }
   }
 
   const work: Array<Promise<void>> = []
@@ -417,10 +494,13 @@ export async function prefetchStartValues(
       work.push(prefetchImport(imp.specifier, spec.imported, refs))
     }
   }
+  if (opts.late) {
+    work.push(judgeLateExports())
+  }
   await Promise.all(work)
   // (their order is the order the lookups settled in)
   namespaceEscapes.sort((a, b) => a.range.start - b.range.start)
-  return { values, relevant, namespaceEscapes }
+  return { values, relevant, namespaceEscapes, lateExports }
 }
 
 /** The `resolveImport` callback of the local value analysis over a prefetch result. */

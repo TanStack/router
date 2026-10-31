@@ -34,11 +34,7 @@ import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
-import {
-  lateModuleUsesStart,
-  namesStartSpecifier,
-  startRecognizer,
-} from './recognizer'
+import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
 import type {
   CompileOutcome,
@@ -258,13 +254,13 @@ export class StartCompilerSession {
     return planners
   }
 
-  /** The planners of a late pass: import protection's, and start-env's when the text may use Start (in place: no derived module of a file that is no JavaScript). */
-  private latePlanners(start: boolean): Array<Planner> {
-    const key = `\u0000late\u0000${start}`
+  /** The planners of a late pass: import protection's and start-env's (in place: no derived module of a file that is no JavaScript). */
+  private latePlanners(): Array<Planner> {
+    const key = '\u0000late'
     let planners = this.planners.get(key)
     if (!planners) {
       planners = [
-        ...(start ? [startEnvPlanner()] : []),
+        startEnvPlanner({ late: true }),
         ...(this.ip ? [this.ip.planner] : []),
       ]
       this.planners.set(key, planners)
@@ -339,7 +335,7 @@ export class StartCompilerSession {
   /**
    * Compiles one id (env or derived) of a module of an environment; the
    * server functions the compile reports (none included) replace the
-   * module's in the registry (a late pass naming no Start package reports none of its own).
+   * module's in the registry.
    */
   async compile(
     input: StartCompileInput,
@@ -348,44 +344,36 @@ export class StartCompilerSession {
     const { env, layer, late } = input
     const rsc = this.rendersServerComponents(env.name, layer)
     const config = this.configFor(env, rsc, layer)
-    // a late module naming a Start package: its server code is Start's to remove
-    const lateStart = late === true && lateModuleUsesStart(input.code)
     const out = await compileModule(
       {
         id: input.id,
         code: input.code,
         env: this.envInfo(env, layer),
-        planners: late
-          ? this.latePlanners(lateStart)
-          : this.plannersFor(env, rsc),
+        planners: late ? this.latePlanners() : this.plannersFor(env, rsc),
         config: late
           ? {
               configKey: lateConfigKey(config.configKey),
               perPlanner: {
                 [IMPORT_EDGES_PLANNER]: env.type,
-                ...(lateStart && {
-                  [START_ENV]: {
-                    ...(config.perPlanner[START_ENV] as StartEnvConfig),
-                    late: true,
-                  } satisfies StartEnvConfig,
-                }),
+                [START_ENV]: {
+                  ...(config.perPlanner[START_ENV] as StartEnvConfig),
+                  late: true,
+                } satisfies StartEnvConfig,
               },
             }
           : config,
         inputMap: input.inputMap,
         wantMap: input.wantMap,
-        ...(late ? { lang: 'jsx' as const, inPlace: lateStart } : {}),
+        ...(late ? { lang: 'jsx' as const, inPlace: true } : {}),
       },
       host,
       this.caches,
     )
-    if (!late || lateStart) {
-      this.registry.set(
-        env,
-        identify(input.id).canonicalId,
-        out && serverFnFactsOf(out),
-      )
-    }
+    this.registry.set(
+      env,
+      identify(input.id).canonicalId,
+      out && serverFnFactsOf(out),
+    )
     return out
   }
 
@@ -500,7 +488,7 @@ export class StartCompilerSession {
   }
 }
 
-/** The configuration key of the late pass (import protection, and start-env where the text may use Start, over a non-JS module's JS) of a configuration. */
+/** The configuration key of the late pass (import protection and start-env over a non-JS module's JS) of a configuration. */
 const lateConfigKey = (configKey: string) => `late\u0000${configKey}`
 
 /** The server functions a compile defines (start-env's facts), if any. */

@@ -279,18 +279,6 @@ export const fn = pass(inner).authed.handler(async () => 'MARK_SERVER_SECRET')
     },
   },
   {
-    name: 'a namespace read through another namespace',
-    file: 'src/entry.ts',
-    line: 2,
-    files: {
-      'src/foo.ts': fooModule,
-      'src/middle.ts': `export * as inner from './foo'\n`,
-      'src/entry.ts': `import * as m from './middle'
-export const fn = m.inner.authed.handler(async () => 'MARK_SERVER_SECRET')
-`,
-    },
-  },
-  {
     name: 'a namespace of a module whose builder comes through `export *`',
     file: 'src/entry.ts',
     line: 2,
@@ -793,6 +781,219 @@ export const fn = (createServerFn() as any).foo().handler(async () => 'MARK_SERV
 `,
   },
 })
+
+compiled.push(
+  {
+    name: 'a namespace read through another namespace',
+    files: {
+      'src/foo.ts': fooModule,
+      'src/middle.ts': `export * as inner from './foo'\n`,
+      'src/top.ts': `export * as outer from './middle'\n`,
+      'src/entry.ts': `import * as m from './middle'
+import { outer } from './top'
+export const a = m.inner.authed.handler(async () => 'MARK_SERVER_SECRET')
+export const b = outer.inner.authed.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a server fn read through a re-exported namespace with an open sibling',
+    files: {
+      'src/fns.ts': `${fooModule}export const getUser = authed.handler(async () => 'MARK_SERVER_SECRET')
+`,
+      'src/api.ts': `export * as users from './fns'\n`,
+      'src/entry.ts': `import * as api from './api'
+export const call = () => api.users.getUser()
+`,
+    },
+  },
+  {
+    name: 'a namespace whose module exports a builder, only read',
+    files: {
+      'src/foo.ts': `${fooModule}export const getX = authed.handler(async () => 'MARK_SERVER_SECRET')
+`,
+      'src/entry.ts': `import * as foo from './foo'
+console.log(foo)
+export const has = 'authed' in foo
+export const yes = !foo
+export const text = \`\${foo}\`
+if (foo) {
+  console.log('here')
+}
+export const call = () => foo.getX()
+`,
+    },
+  },
+  {
+    name: 'a re-export cycle through a star',
+    files: {
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+      'src/a.ts': `export { base as x } from './index2'\n`,
+      'src/index2.ts': `export * from './a'\nexport * from './b'\n`,
+      'src/entry.ts': `import { x } from './index2'
+export const fn = x.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a `const` list spread twice',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const logging = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+const a = [logging]
+const b = [...a, ...a]
+export const fn = createServerFn().middleware(b).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'an open middleware returned through an isomorphic fn',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+const serverMw = createMiddleware().server(async ({ next }) => next())
+const clerk = createIsomorphicFn().server(() => serverMw).client(() => createMiddleware())
+export const gate = createMiddleware().middleware([clerk()]).server(async ({ next }) => {
+  console.log('MARK_SERVER_SECRET')
+  return next()
+})
+`,
+    },
+  },
+  {
+    name: 'a marker imported dynamically in code the client erases',
+    files: {
+      'src/entry.ts': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => {
+  await import('@tanstack/react-start/server-only')
+  return 'MARK_SERVER_SECRET'
+})
+export const only = createServerOnlyFn(async () => {
+  await import('@tanstack/react-start/server-only')
+  return 'MARK_SERVER_SECRET'
+})
+`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'an assignment’s value finished where it is written',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+let base: any = createServerFn()
+export const fn = (base = base.middleware([])).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a closed middleware binding reassigned with an open one',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createMiddleware } from '@tanstack/react-start'
+let m: any = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+m = createMiddleware({ type: 'function' })
+const holder = { m }
+export const out = holder.m.server(async ({ next }: any) => {
+  console.log('MARK_SERVER_SECRET')
+  return next()
+})
+`,
+    },
+  },
+  {
+    name: 'a builder in an object returned through a client-only fn',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+const get = createClientOnlyFn(() => ({ b: createServerFn() }))
+export const fn = () => get().b.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a factory given to createClientOnlyFn',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+const make = createClientOnlyFn(createServerFn as any) as any
+export const fn = () => make().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a factory function exported by a TS namespace',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+namespace N {
+  export function get(): any { return createServerFn() }
+}
+export const fn = N.get().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a builder in a tagged template',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const tag = (_: any, b: any) => b
+export const fn = tag\`\${createServerFn()}\`.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: '`var` redeclared with a builder after a finished server fn',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+var a: any = createServerFn().handler(async () => 'x')
+var a: any = createServerFn()
+export const fn = a.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a marker imported as a namespace',
+    file: 'src/entry.ts',
+    line: 1,
+    files: {
+      'src/marked.ts': `import * as m from '@tanstack/react-start/server-only'
+export const s = () => {
+  console.log(m)
+  return 'MARK_SERVER_SECRET'
+}
+`,
+      'src/entry.ts': `import { s } from './marked'
+export const f = s
+`,
+    },
+  },
+  {
+    name: 'a second route factory call with `server` in a constant',
+    file: 'src/r.tsx',
+    line: 3,
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const opts = { server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } } }
+export const Admin = createFileRoute('/' as any)(opts)
+export const Route = createFileRoute('/')({ component: () => null })
+`,
+      'src/entry.ts': `export { Route, Admin } from './r'\n`,
+    },
+  },
+)
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
