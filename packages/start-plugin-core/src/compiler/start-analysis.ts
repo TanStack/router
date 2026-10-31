@@ -358,7 +358,12 @@ export function startAnalysisOf(
         if (p.id.type === 'Identifier') {
           const b = file.bindingOf(p.id)
           if (b && isStartValue(table, value)) {
-            enqueueBinding(b.id)
+            if (isStartValue(table, values.valueOfBinding(b.id))) {
+              enqueueBinding(b.id)
+            } else {
+              // (`var a = 1; var a = createServerFn()`: the name's value is the first)
+              escape(outer, value, 'reassigned')
+            }
           }
           return
         }

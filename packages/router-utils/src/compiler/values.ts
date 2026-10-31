@@ -393,25 +393,29 @@ export class ValueAnalysis {
       }
       return UNKNOWN
     }
-    const decl = b.declarations[0]
-    if (!decl) {
-      return UNKNOWN
+    // (a type, an interface, a type-only namespace, an overload or a `declare`
+    // of the same name holds no value)
+    for (const decl of b.declarations) {
+      const v = this.valueOfDeclaration(decl)
+      if (v) {
+        return v
+      }
     }
+    return UNKNOWN
+  }
+
+  private valueOfDeclaration(decl: Node): AbstractValue | null {
     const parent =
       (this.opts.declarations && declaredIn(this.opts.declarations, decl)) ??
       this.file.parentOf(decl)
     if (!parent) {
-      return UNKNOWN
+      return null
     }
-    if (
-      parent.type === 'VariableDeclarator' &&
-      parent.id === decl &&
-      parent.init
-    ) {
-      return this.valueOf(parent.init)
+    if (parent.type === 'VariableDeclarator' && parent.id === decl) {
+      return parent.init ? this.valueOf(parent.init) : null
     }
     if (parent.type === 'FunctionDeclaration') {
-      return this.functionValue(parent)
+      return parent.body ? this.functionValue(parent) : null
     }
     // `const { createServerFn: csf } = Start`: the member of the initialiser
     if (parent.type === 'Property' && parent.value === decl) {
@@ -433,7 +437,7 @@ export class ValueAnalysis {
         )
       }
     }
-    return UNKNOWN
+    return null
   }
 
   valueOf(expr: Node): AbstractValue {

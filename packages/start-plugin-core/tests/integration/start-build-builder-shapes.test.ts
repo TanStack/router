@@ -79,7 +79,103 @@ export const fn = (foo as any).authed.handler(async () => 'MARK_SERVER_SECRET')
   },
 ]
 
+compiled.push(
+  ...[
+    ['a type', `export type base = string`],
+    ['an interface', `export interface base {\n  a: string\n}`],
+    ['a type-only namespace', `export namespace base {\n  export type E = string\n}`],
+    ['a `declare var`', `export declare var base: any`],
+  ].map(([what, before]) => ({
+    name: `${what} of the same name before a builder`,
+    files: {
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+${before}
+export const base = createServerFn().middleware([])
+`,
+      'src/entry.ts': `import { base } from './b'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  })),
+  {
+    name: 'a type-only namespace after a builder of the same name',
+    files: {
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn().middleware([])
+export namespace base {
+  export type E = string
+}
+`,
+      'src/entry.ts': `import { base } from './b'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a type of the same name before an isomorphic builder',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+type iso = string
+const iso = createIsomorphicFn()
+export const f = iso.server(() => 'MARK_SERVER_SECRET').client(() => 'client')
+export type { iso }
+`,
+    },
+  },
+  {
+    name: '`var` declared twice, the builder in the second',
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+var base: any
+var base: any = createServerFn()
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'an overloaded factory',
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+function make(a: 'x'): any
+function make(a: string): any
+function make(a: string) {
+  return createServerFn()
+}
+export const fn = make('x').handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a type-only namespace merged with a factory',
+    files: {
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export namespace make {
+  export type E = string
+}
+export function make() {
+  return createServerFn()
+}
+`,
+      'src/entry.ts': `import { make } from './b'
+export const fn = make().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 const refused: Array<Refused> = [
+  {
+    name: '`var` redeclared with a builder after another value',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+var base: any = 1
+var base: any = createServerFn()
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
   {
     name: 'a namespace behind a ternary in an object',
     file: 'src/middle.ts',
