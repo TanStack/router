@@ -278,7 +278,7 @@ function describeServerFn(
             if (
               units &&
               units.length > 0 &&
-              !t1.mutation.isReassigned(sym)
+              !b.references.some((r) => r.isWrite)
             ) {
               topLevelSym = sym
               topLevelUnit = t1.units[units[0]!]!

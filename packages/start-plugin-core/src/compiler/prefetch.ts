@@ -433,7 +433,7 @@ export async function prefetchStartValues(
   const prefetchImport = async (
     specifier: string,
     name: string,
-    refs: ReadonlyArray<Node>,
+    refs: ReadonlyArray<{ node: Node }>,
   ) => {
     const v = await importedValue(
       ctx.identity.canonicalId,
@@ -445,16 +445,24 @@ export async function prefetchStartValues(
     if (isStartValue(table, v)) {
       relevant = true
     } else if (v.t === 'namespace') {
-      await followNamespace(v.specifier, v.specifier, refs)
+      await followNamespace(
+        v.specifier,
+        v.specifier,
+        refs.map((r) => r.node),
+      )
     }
   }
   const prefetchNamespace = async (
     specifier: string,
-    refs: ReadonlyArray<Node>,
+    refs: ReadonlyArray<{ node: Node }>,
   ) => {
     const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
     if (id !== null) {
-      await followNamespace(specifier, id, refs)
+      await followNamespace(
+        specifier,
+        id,
+        refs.map((r) => r.node),
+      )
     }
   }
   for (const imp of t0.imports) {
@@ -470,9 +478,7 @@ export async function prefetchStartValues(
       if (!binding) {
         continue
       }
-      const refs = binding.references.flatMap((r) =>
-        r.inTypePosition ? [] : [r.node],
-      )
+      const refs = binding.references.filter((r) => !r.inTypePosition)
       if (refs.length === 0) {
         continue
       }
