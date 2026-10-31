@@ -436,6 +436,44 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+refused.push(
+  {
+    name: 'a builder returned through an isomorphic fn',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const getBuilder = createIsomorphicFn().server(() => createServerFn()).client(() => createServerFn())
+export const fn = getBuilder().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a builder returned through a client-only fn',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+const getBuilder = createClientOnlyFn(() => createServerFn())
+export const fn = () => getBuilder().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a builder as a TS namespace member',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+namespace Fns {
+  export const base = createServerFn()
+}
+export const fn = Fns.base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',

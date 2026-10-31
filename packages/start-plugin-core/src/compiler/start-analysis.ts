@@ -267,11 +267,14 @@ export function startAnalysisOf(
   }
 
   /** Where a value is consumed as data (`outer` in `p`): nothing attaches code to it there. */
-  const isDataUse = (p: Node, outer: Node): boolean => {
+  const isDataUse = (p: Node, outer: Node, value: AbstractValue): boolean => {
     switch (p.type) {
       case 'CallExpression':
-        // a callee is a use (a server fn called); an argument a Start call consumes is data
-        return p.callee === outer || isStartSink(p)
+        // a callee is a use (a server fn called); an argument a Start call
+        // consumes is data, unless it hands back what that function returns
+        return (
+          p.callee === outer || (value.t !== 'function' && isStartSink(p))
+        )
       case 'ArrayExpression':
       case 'SpreadElement':
       case 'Property':
@@ -371,6 +374,11 @@ export function startAnalysisOf(
           return
         }
         if (p.id.type === 'Identifier') {
+          // (a TS namespace's export is a property of the namespace, read by no reference)
+          if (parentOf(parentOf(parentOf(p)!)!)?.type === 'TSModuleBlock') {
+            escape(outer, value, 'flow')
+            return
+          }
           const b = file.bindingOf(p.id)
           if (b && isStartValue(table, value)) {
             if (isStartValue(table, values.valueOfBinding(b.id))) {
@@ -405,7 +413,7 @@ export function startAnalysisOf(
         escape(p.id, value, 'pattern')
         return
     }
-    if (takesServerCode(table, value) && !isDataUse(p, outer)) {
+    if (takesServerCode(table, value) && !isDataUse(p, outer, value)) {
       escape(outer, value, 'flow')
     }
   }
