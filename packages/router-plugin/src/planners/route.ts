@@ -31,6 +31,12 @@ export type RouteFactory =
   | 'createRootRouteWithContext'
   | 'createLazyFileRoute'
 
+/** The factories whose first call takes the route path, and the call it returns the options. */
+const CURRIED_FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
+  'createFileRoute',
+  'createRootRouteWithContext',
+  'createLazyFileRoute',
+])
 const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
   'createFileRoute',
   'createRootRoute',
@@ -100,7 +106,7 @@ export interface RouteOption {
 
 export type OptionsResolution =
   | { kind: 'object'; node: Node }
-  | { kind: 'opaque'; reason: 'imported' | 'call' | 'other' }
+  | { kind: 'opaque'; reason: 'imported' | 'call' | 'written' | 'other' }
   /** `createRootRoute()`: no options to split or remove */
   | { kind: 'none' }
 
@@ -350,11 +356,7 @@ export function recognizeRoute(
     }
     return { route: null, warnings }
   }
-  const needsCurry =
-    factory.name === 'createFileRoute' ||
-    factory.name === 'createRootRouteWithContext' ||
-    factory.name === 'createLazyFileRoute'
-  if (needsCurry !== curried) {
+  if (CURRIED_FACTORIES.has(factory.name) !== curried) {
     return { route: null, warnings }
   }
   const kind: RouteKind =
@@ -391,8 +393,12 @@ export function recognizeRoute(
       const decl = sym !== null ? declaratorOf(ctx, sym) : null
       const init = decl ? unwrapExpression(decl.init) : null
       if (decl && init && init.type === 'ObjectExpression') {
-        options = { kind: 'object', node: init }
-        optionsUnit = decl.unit
+        if (t1.mutation.isMutated(sym!, liveInEnv(ctx))) {
+          options = { kind: 'opaque', reason: 'written' }
+        } else {
+          options = { kind: 'object', node: init }
+          optionsUnit = decl.unit
+        }
       } else if (sym !== null && symbols.isImport(sym)) {
         options = { kind: 'opaque', reason: 'imported' }
       } else {
@@ -530,17 +536,30 @@ export function unownedRouteOptions(
   }
   const file = ctx.analysis.file
   const out: Array<Diagnostic> = []
-  /** The call `node` is the callee of, through wrappers. */
-  const called = (node: Node): Node | null => {
+  /** The expression `node` is, through wrappers, and its parent. */
+  const outermost = (node: Node) => {
     let outer = node
     let p = file.parentOf(outer)
     while (p && isExpressionWrapper(p)) {
       outer = p
       p = file.parentOf(outer)
     }
+    return { outer, p }
+  }
+  /** The call `node` is the callee of. */
+  const called = (node: Node): Node | null => {
+    const { outer, p } = outermost(node)
     return p?.type === 'CallExpression' && p.callee === outer ? p : null
   }
-  const judge = (call: Node | null) => {
+  /** The references of the variable `node` initialises. */
+  const readsOf = (node: Node) => {
+    const { p } = outermost(node)
+    return p?.type === 'VariableDeclarator' && p.id.type === 'Identifier'
+      ? (file.bindingOf(p.id)?.references ?? [])
+      : []
+  }
+  /** `takesOptions`: the call's first argument is the options, not a route path. */
+  const judge = (call: Node | null, takesOptions: boolean) => {
     if (call?.type !== 'CallExpression' || call === route?.optionsCall) {
       return
     }
@@ -550,13 +569,20 @@ export function unownedRouteOptions(
       const decl = b && declaratorOf(ctx, ctx.symbols.ofBinding(b))
       options = decl ? unwrapExpression(decl.init) : options
     }
-    const deleted =
-      options?.type === 'ObjectExpression'
-        ? options.properties.flatMap((prop) => {
-            const key = propertyKeyName(prop)
-            return key !== null && cfg.deleteNodes.includes(key) ? [key] : []
-          })
-        : []
+    const deleted: Array<string> = []
+    let unread = false
+    if (options?.type === 'ObjectExpression') {
+      for (const prop of options.properties) {
+        const key = propertyKeyName(prop)
+        if (key === null) {
+          unread = true
+        } else if (cfg.deleteNodes.includes(key)) {
+          deleted.push(key)
+        }
+      }
+    } else {
+      unread = options !== undefined
+    }
     if (deleted.length > 0) {
       out.push({
         severity: 'error',
@@ -565,17 +591,34 @@ export function unownedRouteOptions(
         message: `[tanstack-router] "${ctx.identity.path}" holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so they cannot be removed from this build. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
         range: { start: call.start, end: call.end },
       })
+    } else if (unread && takesOptions) {
+      out.push({
+        severity: 'warning',
+        code: 'route-unowned-unread',
+        by: ROUTER_PLANNER,
+        message: `[tanstack-router] "${ctx.identity.path}" has a route factory call that is not bound directly to its \`Route\` export, with options the compiler cannot read: any \`${cfg.deleteNodes.join('`, `')}\` in them are not removed, so any server code in them ships to the client. Write what to remove as properties of an object literal, in a call of the form \`export const Route = createFileRoute(path)({ ... })\`, or move it to its own route file.`,
+        range: { start: call.start, end: call.end },
+      })
     }
   }
-  /** The calls of a factory read at `node`: `factory(path)(options)`, `factory(options)`, a stored `factory(path)`. */
-  const judgeCalls = (node: Node) => {
+  const aliases = new Set<Node>()
+  /** The calls of a factory read at `node`: `factory(path)(options)`, `factory(options)`, a stored `factory(path)`, the factory under another name. */
+  const judgeCalls = (node: Node, curried: boolean) => {
     const first = called(node)
-    const second = first && called(first)
-    judge(second ?? first)
-    const p = first && file.parentOf(first)
-    if (p?.type === 'VariableDeclarator' && p.id.type === 'Identifier') {
-      for (const ref of file.bindingOf(p.id)?.references ?? []) {
-        judge(called(ref.node))
+    if (!first) {
+      for (const ref of readsOf(node)) {
+        if (!aliases.has(ref.node)) {
+          aliases.add(ref.node)
+          judgeCalls(ref.node, curried)
+        }
+      }
+      return
+    }
+    const second = called(first)
+    judge(second ?? first, !curried || second !== null)
+    if (!second && curried) {
+      for (const ref of readsOf(first)) {
+        judge(called(ref.node), true)
       }
     }
   }
@@ -583,13 +626,14 @@ export function unownedRouteOptions(
     const named = spec.imported !== '*'
     for (const ref of file.bindings[spec.local]?.references ?? []) {
       const member = named ? ref.node : file.parentOf(ref.node)
-      if (
-        named ||
-        (member?.type === 'MemberExpression' &&
-          member.property.type === 'Identifier' &&
-          FACTORIES.has(member.property.name))
-      ) {
-        judgeCalls(member!)
+      const name = named
+        ? spec.imported
+        : member?.type === 'MemberExpression' &&
+            member.property.type === 'Identifier'
+          ? member.property.name
+          : null
+      if (name !== null && FACTORIES.has(name)) {
+        judgeCalls(member!, CURRIED_FACTORIES.has(name))
       }
     }
   }

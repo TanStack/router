@@ -407,9 +407,12 @@ dir)` is not a conflict by itself.
   Options the compiler cannot read statically (an options object imported from another module, factory-built
   options, a cast it does not unwrap) fall under this clause: split correctly or report once naming the file (the dev
   full-reload allowance for factory-built options stands). Under Start, the client build never ships their
-  `ssr`/`server`/`headers` silently: a spread, options from a call or an import and a computed key build and warn once,
-  saying what isn't split or removed, that server code in it ships, and what to write instead (J2.14, J4.12). The
-  server code they hold is the user's responsibility.
+  `ssr`/`server`/`headers` silently: a spread, options from a call or an import or written to after their declaration,
+  and a computed key build and warn once, saying what isn't split or removed, that server code in it ships, and what
+  to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
+  them doesn't warn: a spread of a module object literal of static keys that only it reads, a computed key naming a
+  module string const (that option stays unsplit). Options that can't be read at all may be one object shared across
+  evaluations, which the route adopts: an edit of the route file reloads the page.
 - **J2.9 Best-effort shapes.** Method-shorthand options split (and refresh) like any other. Spread or computed
   option keys: best effort, safe fallback (J1.9), never a silent wrong split. Initialiser timing of shared bindings
   is free: run once, same value everywhere.
@@ -417,7 +420,8 @@ dir)` is not a conflict by itself.
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
   compiler warns or errors naming the file. Under `deleteNodes`, a call other than the route's own (a second, wrapped
-  or stored one) holding a deleted option fails the build at the call.
+  or stored one, also through another name) with a deleted option written in its options fails the build at the call;
+  one with options the compiler can't read warns (J2.8).
 - **J2.12 Bindings the route module still reads stay declared.** Moving an option's declaration never removes an
   import or declaration another surviving statement (an exported wrapper, `head()`, an unsplit option, a top-level
   call) reads; the route module stays valid (G1, G8).
@@ -547,8 +551,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   Static analyzability is expected (R92): `import()`, `require()` and `import.meta.glob` of Start values, and modules
   other plugins generate or rewrite, are neither followed nor refused. Any other use of a builder, a factory, a start
   instance, a Start namespace, a middleware or isomorphic fn without `.server()`, or a function returning one, fails
-  the client build with an error at the use (passed to a function, wrapped, stored in a container, a class field or
-  another variable, awaited, a detached or unknown member, returned from control flow, an async function or a method,
+  the client build with an error at the use (passed to a function, wrapped, stored in a container or a class field,
+  assigned to a variable (a `const` initialised with it is followed), awaited, a detached or unknown member, returned from control flow, an async function or a method,
   a binding reassigned otherwise, destructured). A `const` list only read by a Start call is followed to it. So fails a
   project namespace object that goes anywhere but a member read or a plain read (`console.*`, `typeof`, `!ns`), when its module (through `export *` and nested
   namespaces, dependencies excepted) exports one of them, and an RSC primitive outside a server fn. A parameter passed

@@ -340,24 +340,25 @@ export function splitPlanOf(
   const splitting = cfg.split && route.kind === 'file'
   const groupings = splitting ? effectiveGroupings(ctx, cfg, route) : []
 
-  const deletedNames = () =>
-    [...deleteNodes].map((k) => `\`${k}\``).join(', ')
+  const deletedNames = () => [...deleteNodes].map((k) => `\`${k}\``).join(', ')
 
   if (route.options.kind === 'opaque') {
-    if (splitting || deleteNodes.size > 0) {
+    if (!cfg.clientReportsUnread && (splitting || deleteNodes.size > 0)) {
       const how =
         route.options.reason === 'imported'
           ? 'imported from another module'
           : route.options.reason === 'call'
             ? 'returned by a call'
-            : 'not an object literal'
+            : route.options.reason === 'written'
+              ? 'written to after their declaration'
+              : 'not an object literal'
       warnings.push({
         severity: 'warning',
         code: 'options-opaque',
         by: ROUTER_PLANNER,
         message:
           deleteNodes.size > 0
-            ? `[tanstack-router] The route options of "${file}" are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`createFileRoute(path)({ component, server })\`).`
+            ? `[tanstack-router] The route options of "${file}" are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, server })\`).`
             : `[tanstack-router] The route options of "${file}" are ${how}, so the route is not code-split.`,
         range: {
           start: route.optionsCall.start,
@@ -386,7 +387,7 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             option.kind === 'spread'
-              ? `[tanstack-router] "${file}" spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it are not removed, so any server code in it ships to the client. Write what to split or remove as properties next to the spread.`
+              ? `[tanstack-router] "${file}" spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it are not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
               : `[tanstack-router] "${file}" computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })

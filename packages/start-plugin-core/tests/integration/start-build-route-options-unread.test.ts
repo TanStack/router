@@ -67,6 +67,79 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
+  test.each([
+    { name: 'options', route: `shared` },
+    { name: 'a call', route: `((o) => o)(shared)` },
+  ])(
+    'unread options from $name warn once, whichever environments compile the file',
+    async ({ route }) => {
+      const result = await build(bundler, route)
+      // (a host may report one warning on several channels)
+      const said = new Set(
+        result.diagnostics.flatMap((d) =>
+          d.severity === 'warning'
+            ? (d.text.match(/\[tanstack-router\][^\n]*/g) ?? [])
+            : [],
+        ),
+      )
+      expect([...said]).toEqual([expect.stringContaining('ships to the client')])
+    },
+    timeout,
+  )
+
+  test(
+    'options written to after their declaration warn, and what they hold ships',
+    async () => {
+      const result = await buildStart({
+        bundler,
+        files: {
+          'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const options: any = { ${component} }
+options.server = { handlers: { GET: () => new Response('MARK_SPREAD_SERVER') } }
+export const Route = createFileRoute('/x')(options)
+`,
+          'src/entry.ts': `export { Route } from './r'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expectDiagnostic(result.diagnostics, {
+        severity: 'warning',
+        file: 'src/r.tsx',
+      })
+    },
+    timeout,
+  )
+
+  test.each([
+    { name: 'a spread', options: `{ ...shared }` },
+    { name: 'imported options', options: `shared` },
+    { name: 'a call', options: `((o) => o)(shared)` },
+  ])(
+    'a route factory call other than the route’s, with $name: the build warns, and what it holds ships',
+    async ({ options }) => {
+      const result = await buildStart({
+        bundler,
+        files: {
+          'src/x.shared.ts': shared,
+          'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { shared } from './x.shared'
+export const Route = createFileRoute('/x')({ ${component} })
+export const Other = createFileRoute('/y' as any)(${options})
+`,
+          'src/entry.ts': `export { Route, Other } from './r'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'warning' && d.text.includes('ships'),
+        ),
+      ).toBe(true)
+      expect(result.client.where('MARK_SPREAD_SERVER')).not.toBe('nowhere')
+    },
+    timeout,
+  )
+
   test(
     'a property written next to the spread is split, and server options written next to it are removed',
     async () => {

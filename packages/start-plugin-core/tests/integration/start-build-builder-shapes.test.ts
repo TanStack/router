@@ -1138,6 +1138,39 @@ export const v = (globalThis as any).use?.(pick())
   },
 )
 
+refused.push(
+  {
+    name: 'a route factory called through another name, as the route',
+    file: 'src/r.tsx',
+    line: 3,
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const f = createFileRoute
+export const Route = f('/')({
+  server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } },
+})
+`,
+      'src/entry.ts': `export { Route } from './r'\n`,
+    },
+  },
+  {
+    name: 'a route factory called through another name, its call stored',
+    file: 'src/r.tsx',
+    line: 5,
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })
+const f = createFileRoute
+const part = f('/' as any)
+export const Admin = part({
+  headers: () => ({ a: 'MARK_SERVER_SECRET' }),
+})
+`,
+      'src/entry.ts': `export { Route, Admin } from './r'\n`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test(
     'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',

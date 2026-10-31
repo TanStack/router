@@ -18,6 +18,8 @@ export interface RouterPlannerConfig {
     | ((params: { routeId: string }) => CodeSplitGroupings | undefined | void)
     | undefined
   deleteNodes: ReadonlyArray<string>
+  /** Start's server environments: the client's compile of the file says what it can't read of its options, and what ships. */
+  clientReportsUnread: boolean
   /** Route HMR with the bundler's hot API: a development client environment only; null elsewhere. */
   hmr: { style: HmrStyle } | null
 }
@@ -67,6 +69,7 @@ export function routerPlannerConfigFrom(
       env.start && client
         ? START_CLIENT_DELETE_NODES
         : (options?.deleteNodes ?? []),
+    clientReportsUnread: env.start && !client,
     hmr: hmr ? { style: env.hmrStyle } : null,
   }
 }
@@ -79,6 +82,7 @@ export function routerPlannerConfigDigest(cfg: RouterPlannerConfig): string {
     groupings: cfg.defaultGroupings,
     splitBehavior: cfg.splitBehavior?.toString() ?? null,
     deleteNodes: cfg.deleteNodes,
+    clientReportsUnread: cfg.clientReportsUnread,
     hmr: cfg.hmr,
   })
 }
