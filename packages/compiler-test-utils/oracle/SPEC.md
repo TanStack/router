@@ -537,15 +537,16 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   createServerFn({ method: 'POST' }) : createServerFn()`, `??`, `||`, `&&`), a factory whose single `return` follows
   statements that cannot return, `createServerFn.call(thisArg, options)`, a `let` builder reassigned with a builder of
   the same kind, a project namespace read by member, also after an export (`export * as`, `export { ns }`, `export
-  default ns`), a name's first declaration holding a value (a type, an overload or a `declare` before it is no value),
-  and the JavaScript of a late-pass module (`.mdx`, `.vue`, …) that names a Start package or calls a builder's method.
+  default ns`) and through another namespace, a name's first declaration holding a value (a type, an overload or a `declare` before it is no value),
+  and the JavaScript of a late-pass module (`.mdx`, `.vue`, …), though no open builder may leave one: its importers read
+  the file, so an export of one fails the client build.
   Static analyzability is expected (R92): `import()`, `require()` and `import.meta.glob` of Start values, and modules
   other plugins generate or rewrite, are neither followed nor refused. Any other use of a builder, a factory, a start
   instance, a Start namespace, a middleware or isomorphic fn without `.server()`, or a function returning one, fails
   the client build with an error at the use (passed to a function, wrapped, stored in a container, a class field or
   another variable, awaited, a detached or unknown member, returned from control flow, an async function or a method,
   a binding reassigned otherwise, destructured). A `const` list only read by a Start call is followed to it. So fails a
-  project namespace object that goes anywhere but a member read, when its module (through `export *` and nested
+  project namespace object that goes anywhere but a member read or a plain read (`console.*`, `typeof`, `!ns`), when its module (through `export *` and nested
   namespaces, dependencies excepted) exports one of them, and an RSC primitive outside a server fn. A parameter passed
   directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`, `.validator(schema)`) fails the client
   build at that use, since every call keeps its argument, which is server code; one only read inside server code gets
