@@ -542,13 +542,12 @@ export function startAnalysisOf(
           value = v2
           continue
         }
-        // an isomorphic fn gives what its implementation returns
+        // an isomorphic fn gives what its implementation returns: the fn's own
+        // chain ends here, and that value starts a new segment
         if (value.t === 'isoFn') {
           const v2 = values.valueOf(call)
           if (isStartValue(table, v2)) {
-            node = call
-            value = v2
-            continue
+            handoff(call, v2)
           }
         }
         // calling a server fn, an isomorphic fn or an env-only result (a use as data): the chain ends here

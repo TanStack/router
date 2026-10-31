@@ -177,8 +177,12 @@ function isoFnLink(
     implementation?.t === 'function' && implementation.returns.t !== 'unknown'
       ? implementation.returns
       : undefined
+  // the client's implementation decides, whatever it gives; the server's only
+  // speaks for a fn without one
   const returns =
-    method === 'client' ? (returned ?? previous) : (previous ?? returned)
+    method === 'client' || !links.some((l) => l.method === 'client')
+      ? returned
+      : previous
   return { t: 'isoFn', links, ...(returns && { returns }) }
 }
 

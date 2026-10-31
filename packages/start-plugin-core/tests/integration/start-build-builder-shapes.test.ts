@@ -1065,6 +1065,79 @@ export const out = [clerk].map((get) => get().server(async ({ next }: any) => { 
   },
 )
 
+compiled.push(
+  {
+    name: 'an isomorphic fn called where its chain ends, returning a server fn',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const sf = createServerFn().handler(async () => 1)
+export const v = createIsomorphicFn()
+  .server(() => {
+    console.log('MARK_SERVER_SECRET')
+    return sf
+  })
+  .client(() => sf)()
+`,
+    },
+  },
+  {
+    name: 'an isomorphic fn stored, finished and called where its chain ends',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const sf = createServerFn().handler(async () => 1)
+const base = createIsomorphicFn().client(() => sf)
+export const v = base.server(() => {
+  console.log('MARK_SERVER_SECRET')
+  return sf
+})()
+`,
+    },
+  },
+  {
+    name: 'the server fn an isomorphic fn returns, called in place',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const sf = createServerFn().handler(async () => 1)
+export const v = () =>
+  createIsomorphicFn()
+    .server(() => {
+      console.log('MARK_SERVER_SECRET')
+      return sf
+    })
+    .client(() => sf)()()
+`,
+    },
+  },
+  {
+    name: 'a value only the isomorphic fn’s server side builds: its client side gives plain data',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const pick = createIsomorphicFn()
+  .server(() => {
+    console.log('MARK_SERVER_SECRET')
+    return createServerFn()
+  })
+  .client(() => ({ a: 1 }))
+export const v = (globalThis as any).use?.(pick())
+`,
+    },
+  },
+  {
+    name: 'the same, the client side written first',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const pick = createIsomorphicFn()
+  .client(() => ({ a: 1 }))
+  .server(() => {
+    console.log('MARK_SERVER_SECRET')
+    return createServerFn()
+  })
+export const v = (globalThis as any).use?.(pick())
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test(
     'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',
