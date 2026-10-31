@@ -5,11 +5,7 @@
  * part moves the others to their chunks and erases `deleteNodes`
  * (`split.ts`), then route HMR appends the dev block.
  */
-import {
-  recognizeRoute,
-  routeEntryDigest,
-  unownedRouteOptions,
-} from './route'
+import { recognizeRoute, routeEntryDigest, unownedRouteOptions } from './route'
 import { splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'

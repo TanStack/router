@@ -414,7 +414,8 @@ dir)` is not a conflict by itself.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
-  compiler warns or errors naming the file.
+  compiler warns or errors naming the file. Under `deleteNodes`, a call other than the route's own (a second, wrapped
+  or stored one) holding a deleted option fails the build at the call.
 - **J2.12 Bindings the route module still reads stay declared.** Moving an option's declaration never removes an
   import or declaration another surviving statement (an exported wrapper, `head()`, an unsplit option, a top-level
   call) reads; the route module stays valid (G1, G8).
@@ -534,16 +535,21 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   ordinary input. Also recognised: a Start namespace or start instance destructured (`const { createServerFn } =
   Start`), a sequence callee (`(0, createServerFn)()`), a builder chosen between two of the same kind (`c ?
   createServerFn({ method: 'POST' }) : createServerFn()`, `??`, `||`, `&&`), a factory whose single `return` follows
-  statements that cannot return, and the JavaScript of a late-pass module (`.mdx`, `.vue`, …) that names a Start
-  package. Any other use of a builder, a factory, a start instance, a Start namespace, a middleware or isomorphic fn
-  without `.server()`, or a function returning one, fails the client build with an error at the use (passed to a
-  function, stored in a container, a class field or another variable, awaited, a detached or unknown member, returned
-  from control flow, an async function or a method, a reassigned binding, destructured, a Start package imported
-  dynamically). A parameter passed directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`) fails the
-  client build at that use, since every call keeps its argument, which is server code; one only read inside server code
-  gets one warning at its definition. Neither looks across modules. An importer of a module
-  exporting one of them that is not a compiled module importing it statically (a dynamic import, `require`, a glob, a
-  virtual module, a passed namespace) fails the client build naming both modules. Unrecognised shapes must not leak
+  statements that cannot return, `createServerFn.call(thisArg, options)`, a `let` builder reassigned with a builder of
+  the same kind, a project namespace read by member, also after an export (`export * as`, `export { ns }`, `export
+  default ns`), a name's first declaration holding a value (a type, an overload or a `declare` before it is no value),
+  and the JavaScript of a late-pass module (`.mdx`, `.vue`, …) that names a Start package or calls a builder's method.
+  Static analyzability is expected (R92): `import()`, `require()` and `import.meta.glob` of Start values, and modules
+  other plugins generate or rewrite, are neither followed nor refused. Any other use of a builder, a factory, a start
+  instance, a Start namespace, a middleware or isomorphic fn without `.server()`, or a function returning one, fails
+  the client build with an error at the use (passed to a function, wrapped, stored in a container, a class field or
+  another variable, awaited, a detached or unknown member, returned from control flow, an async function or a method,
+  a binding reassigned otherwise, destructured). A `const` list only read by a Start call is followed to it. So fails a
+  project namespace object that goes anywhere but a member read, when its module (through `export *` and nested
+  namespaces, dependencies excepted) exports one of them, and an RSC primitive outside a server fn. A parameter passed
+  directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`, `.validator(schema)`) fails the client
+  build at that use, since every call keeps its argument, which is server code; one only read inside server code gets
+  one warning at its definition. Neither looks across modules. Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an

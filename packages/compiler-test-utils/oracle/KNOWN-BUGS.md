@@ -523,8 +523,8 @@ Paths under `start-plugin-core/tests/` unless noted.
   namespace, a builder returned by a call or passed through a helper, `wrap(wrap(...))`, a library function creating
   server fns. SPEC J4.5, J4.12. `known-bugs-start-compiler.test.ts`: "client builds compile a builder read from a
   namespace import"; "client builds compile factories of a re-exported Start namespace"; "client builds compile a
-  builder returned by a function of $name"; "client builds compile a server fn whose builder passes through a helper
-  function"; `createServerFn/declaration-sites.test.ts`: "with %s imported, a server fn wrapped in two calls works like
+  builder returned by a function of $name"; "a server fn whose builder passes through a helper function fails the
+  client"; `createServerFn/declaration-sites.test.ts`: "with %s imported, a server fn wrapped in two calls works like
   an unwrapped one"; `integration/known-bugs-start-compiler.test.ts`: "a server fn created by a library function: the
   handler is not in the client bundle, or the build fails clearly". Fix: the client has no server code, or the build
   fails at the call.

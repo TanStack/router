@@ -272,7 +272,14 @@ Server code stays out of the client when it is written with these primitives:
 - **`.server` files and `server-only` markers**, through import protection: the client build fails, or gets a mock.
 - **A route's `server` option**: removed from the client.
 
-A use of these the compiler cannot follow (a builder passed to another function, stored in an object, reassigned) fails the client build.
+A use of these the compiler cannot follow (a builder passed to another function, stored in an object, a namespace object holding one passed around) fails the client build.
+
+The compiler reads your code statically, which limits this guarantee:
+
+- `import()`, `require()` and `import.meta.glob` of a builder are not followed, and nothing reports them. Attach server code to a builder you imported statically.
+- Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either.
+- A `.server` file behind a neutral module outside the protected scope (`srcDirectory`, `include`) isn't caught: the scope is about importers.
+- Only the route factory call bound to a file's `Route` export has its `server`, `ssr` and `headers` removed. Another call holding them fails the build. Code-based `createRoute` isn't supported by Start, and nothing removes its `server`.
 
 Everything else is ordinary code. A plain call in a declaration that client code also reads ships to the client, with its import:
 
@@ -294,7 +301,7 @@ const requireRole = (role: string) =>
 export const adminOnly = requireRole('admin')
 ```
 
-A parameter passed directly as the server code, as in `(fn) => createServerOnlyFn(fn)`, fails the build: the wrapper's argument would ship.
+A parameter passed directly as the server code, as in `(fn) => createServerOnlyFn(fn)` or `(schema) => createServerFn().validator(schema)`, fails the build: the wrapper's argument would ship.
 
 To write safe code:
 

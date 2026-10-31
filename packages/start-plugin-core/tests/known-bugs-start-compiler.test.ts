@@ -435,21 +435,24 @@ export const fn = applyStep(
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
   // a function"), on the client and on the server.
-  test.fails('each output keeps its implementation of an isomorphic fn whose chain passes through a helper function', async () => {
-    const startCase = await newCase({
-      'module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
+  test.fails(
+    'each output keeps its implementation of an isomorphic fn whose chain passes through a helper function',
+    async () => {
+      const startCase = await newCase({
+        'module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
 function withBuilder<T>(builder: T) {
   return builder
 }
 export const getEnv = withBuilder(
   createIsomorphicFn().server(() => 'server'),
 ).client(() => 'client')`,
-    })
-    expect({
-      client: await clientValue(startCase, 'module.getEnv()'),
-      ssr: settle((await startCase.ssr()).getEnv),
-    }).toEqual({ client: 'client', ssr: 'server' })
-  })
+      })
+      expect({
+        client: await clientValue(startCase, 'module.getEnv()'),
+        ssr: settle((await startCase.ssr()).getEnv),
+      }).toEqual({ client: 'client', ssr: 'server' })
+    },
+  )
 
   // Bug: env-only factories nested in other code are found by the factory's
   // exported name (`isNestedDirectCallCandidate`), so a renamed import or a

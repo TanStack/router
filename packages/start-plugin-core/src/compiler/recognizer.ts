@@ -104,7 +104,8 @@ export function runtimeSpecifiers(framework: CompileStartFrameworkOptions) {
 let specifierPattern: RegExp | null = null
 
 /** A call of a builder's method that takes server code. */
-const SERVER_CODE_CALL_RE = /\.\s*(?:handler|server|client|validator|inputValidator)\s*\(/
+const SERVER_CODE_CALL_RE =
+  /\.\s*(?:handler|server|client|validator|inputValidator)\s*\(/
 
 /**
  * Whether the JavaScript of a late-pass module (`.mdx`, `.vue`, …) may use a

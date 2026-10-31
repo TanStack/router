@@ -5,10 +5,7 @@
  * module at the use.
  */
 import { expect, test } from 'vitest'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { compileError, useStartHost } from './regression-helpers'
 import { expectCompileError } from './diagnostics'
 

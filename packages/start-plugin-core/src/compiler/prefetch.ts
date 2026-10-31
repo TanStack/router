@@ -23,10 +23,10 @@ import { NODE_MODULES_RE } from './scope'
 import type {
   AbstractValue,
   ModuleAnalysis,
+  YukuNode as Node,
   PrefetchContext,
   Range,
   RecognizerTable,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 /** Phase A result: `${specifier}\0${name}` → value, for this module's imports. */

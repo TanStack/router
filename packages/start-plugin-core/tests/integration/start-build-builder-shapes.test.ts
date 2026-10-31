@@ -90,7 +90,10 @@ compiled.push(
   ...[
     ['a type', `export type base = string`],
     ['an interface', `export interface base {\n  a: string\n}`],
-    ['a type-only namespace', `export namespace base {\n  export type E = string\n}`],
+    [
+      'a type-only namespace',
+      `export namespace base {\n  export type E = string\n}`,
+    ],
     ['a `declare var`', `export declare var base: any`],
   ].map(([what, before]) => ({
     name: `${what} of the same name before a builder`,
@@ -378,17 +381,15 @@ export const fn = createServerFn().middleware([m]).handler(async () => 'x')
   },
 )
 
-compiled.push(
-  {
-    name: 'a method called on a server fn where it is created',
-    files: {
-      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+compiled.push({
+  name: 'a method called on a server fn where it is created',
+  files: {
+    'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET').bind(null)
 export const called = createServerFn().handler(async () => 'MARK_SERVER_SECRET').call
 `,
-    },
   },
-)
+})
 
 compiled.push(
   {
@@ -507,19 +508,17 @@ export const call = () => foo.getX()
   },
 )
 
-refused.push(
-  {
-    name: 'a builder passed to a local `console`',
-    file: 'src/entry.ts',
-    line: 3,
-    files: {
-      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+refused.push({
+  name: 'a builder passed to a local `console`',
+  file: 'src/entry.ts',
+  line: 3,
+  files: {
+    'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
 const console = { log: (b: any) => b.handler(async () => 'MARK_SERVER_SECRET') }
 export const fn = console.log(createServerFn())
 `,
-    },
   },
-)
+})
 
 compiled.push(
   {
@@ -646,22 +645,20 @@ export const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
-compiled.push(
-  {
-    name: 'a builder module under an alias with a colon',
-    viteConfig: { resolve: { alias: { 'app:b': '/src/b.ts' } } },
-    // (Rspack refuses the scheme itself)
-    bundlers: ['vite'],
-    files: {
-      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+compiled.push({
+  name: 'a builder module under an alias with a colon',
+  viteConfig: { resolve: { alias: { 'app:b': '/src/b.ts' } } },
+  // (Rspack refuses the scheme itself)
+  bundlers: ['vite'],
+  files: {
+    'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-      'src/entry.ts': `import { base } from 'app:b'
+    'src/entry.ts': `import { base } from 'app:b'
 export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
 `,
-    },
   },
-)
+})
 
 refused.push(
   {
@@ -786,18 +783,16 @@ export const direct = createServerFn.call(null, { method: 'POST' }).handler(asyn
   },
 )
 
-refused.push(
-  {
-    name: 'an unknown method on a builder under a cast',
-    file: 'src/entry.ts',
-    line: 2,
-    files: {
-      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+refused.push({
+  name: 'an unknown method on a builder under a cast',
+  file: 'src/entry.ts',
+  line: 2,
+  files: {
+    'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
 export const fn = (createServerFn() as any).foo().handler(async () => 'MARK_SERVER_SECRET')
 `,
-    },
   },
-)
+})
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
