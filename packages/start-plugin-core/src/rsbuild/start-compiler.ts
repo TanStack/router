@@ -124,7 +124,7 @@ export function registerStartCompiler(
         sideEffects: false,
       },
     ]
-    // the late pass (import protection; start-env where the text names Start)
+    // the late pass (import protection; start-env where the text may use Start)
     loaderRules.push({
       test: LATE_PASS_RE,
       enforce: 'post',

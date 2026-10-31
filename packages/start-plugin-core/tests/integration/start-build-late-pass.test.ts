@@ -4,7 +4,9 @@
  * Rsbuild) and that uses a TanStack Start factory (SPEC J4.12, G5): the
  * Start compiler compiles its output like any module of the app, so its
  * server fn's handler stays on the server and the client calls it by its
- * id. A page naming only the router is left as it is.
+ * id. A page naming only the router is left as it is. A module that names
+ * no Start package and finishes a builder another module exports is compiled
+ * too.
  */
 import { createRequire } from 'node:module'
 import mdx from '@mdx-js/rollup'
@@ -30,8 +32,18 @@ import { Link } from '@tanstack/react-router'
 export const fn = createServerFn().handler(async () => 'MARK_MDX_HANDLER')
 export const home = () => <Link to="/">home</Link>
 `,
-  'src/entry.ts': `export { fn } from './page.mdx'\n`,
-  'src/ssr-entry.ts': `export { fn } from './page.mdx'\n${callByIdExports}`,
+  'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+  'src/finish.mdx': `import { base } from './b'
+export const finished = base.handler(async () => 'MARK_MDX_FINISHED')
+`,
+  'src/entry.ts': `export { fn } from './page.mdx'
+export { finished } from './finish.mdx'
+`,
+  'src/ssr-entry.ts': `export { fn } from './page.mdx'
+export { finished } from './finish.mdx'
+${callByIdExports}`,
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
@@ -71,5 +83,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
       `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
     )
     expect(result).toBe('MARK_MDX_HANDLER')
+  })
+
+  test('a module finishing an imported builder keeps its handler on the server too', async () => {
+    expect(build.client.where('MARK_MDX_FINISHED')).toBe('nowhere')
+    const url = (await build.client.run(`return entry.finished.url`)).result
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_MDX_FINISHED')
   })
 })

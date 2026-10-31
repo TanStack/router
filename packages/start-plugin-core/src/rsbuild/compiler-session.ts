@@ -25,13 +25,8 @@ import {
   restorePlans,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
-import {
-  StartCompilerSession,
-  leakFactsOf,
-  serverFnFactsOf,
-} from '../compiler/session'
-import { NODE_MODULES_RE } from '../compiler/scope'
-import { namesStartSpecifier } from '../compiler/recognizer'
+import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
+import { lateModuleUsesStart } from '../compiler/recognizer'
 import { providerModuleId } from '../server-fns/registry'
 import {
   CLIENT_REFERENCED_IDS_PLACEHOLDER,
@@ -44,7 +39,6 @@ import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { CompiledOutputLike } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
-import type { LeakFacts } from '../compiler/escape-graph'
 import type {
   CompileOutput,
   DiagnosticPosition,
@@ -66,15 +60,6 @@ export interface ServerFnBuildInfo {
   version: 2
   canonicalId: string
   facts: Array<ServerFnFact>
-}
-
-/** The `buildInfo` field holding what a client module's compile recorded for the graph check (replayed at `finishMake`). */
-export const LEAK_FACTS_BUILD_INFO_FIELD = 'tanstack.start.leakFacts'
-
-export interface LeakFactsBuildInfo {
-  version: 1
-  canonicalId: string
-  facts: LeakFacts
 }
 
 /** Rsbuild `source.transformImport` entries (the array form) the host predicts, so the file and
@@ -549,8 +534,8 @@ export class StartRsbuildCompilerSession {
     if (late ? identity.lang !== null : identity.lang === null) {
       return passthrough
     }
-    if (late && !ip && !namesStartSpecifier(source)) {
-      // (the late pass: import protection's, and Start's where the text names it)
+    if (late && !ip && !lateModuleUsesStart(source)) {
+      // (the late pass: import protection's, and Start's where the text may use it)
       return passthrough
     }
     if (!late && !this.start.compiles(identity.path, source)) {
@@ -587,13 +572,6 @@ export class StartRsbuildCompilerSession {
     if (env.persistsModules && out.persisted && buildInfo) {
       // one string: Rspack converts a structured field value by value
       buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
-    }
-    if (buildInfo && env.type === 'client' && !late && !identity.derived) {
-      buildInfo[LEAK_FACTS_BUILD_INFO_FIELD] = {
-        version: 1,
-        canonicalId: identity.canonicalId,
-        facts: leakFactsOf(out, NODE_MODULES_RE.test(identity.path)),
-      } satisfies LeakFactsBuildInfo
     }
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {

@@ -103,6 +103,18 @@ export function runtimeSpecifiers(framework: CompileStartFrameworkOptions) {
 
 let specifierPattern: RegExp | null = null
 
+/** A call of a builder's method that takes server code. */
+const SERVER_CODE_CALL_RE = /\.\s*(?:handler|server|client|validator|inputValidator)\s*\(/
+
+/**
+ * Whether the JavaScript of a late-pass module (`.mdx`, `.vue`, …) may use a
+ * Start value: it names a Start package, or calls a builder's method on what
+ * it imports from another module of the app.
+ */
+export function lateModuleUsesStart(code: string): boolean {
+  return namesStartSpecifier(code) || SERVER_CODE_CALL_RE.test(code)
+}
+
 /**
  * Whether a module's text names a package of the recognizer table (a Start
  * or router package): the cheap gate of a module the compiler must never

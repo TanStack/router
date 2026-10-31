@@ -63,7 +63,7 @@ export const fn = myServerFn.handler(() => secret())
 
 const isomorphicClient = `import { createIsomorphicFn } from '@tanstack/react-start'
 import { secret } from './secret.server'
-export const fn = createIsomorphicFn().client(() => secret()).server(() => null)
+export const fn = createIsomorphicFn().client(() => secret())
 `
 
 const unicode =

@@ -103,12 +103,6 @@ export interface StartAnalysis {
   clientOnlyElements: Array<JsxElementNode>
   rscCalls: Array<RscCall>
   escapes: Array<Escape>
-  /**
-   * The exports whose value server code can still be attached to: their
-   * importers must be followed too (a client build checks that each one is a
-   * module this compiler compiled, importing them statically).
-   */
-  leakProneExports: Array<string>
 }
 
 const cache = new WeakMap<ModuleAnalysis, StartAnalysis>()
@@ -164,7 +158,6 @@ export function startAnalysisOf(
     clientOnlyElements: [],
     rscCalls: [],
     escapes: [],
-    leakProneExports: [],
   }
   const parentOf = (n: Node) => file.parentOf(n)
   const seenTerminal = new Set<Node>()
@@ -668,31 +661,6 @@ export function startAnalysisOf(
     while (handoffs.length > 0) {
       const [n, v] = handoffs.shift()!
       climb(n, v)
-    }
-  }
-  for (const e of ctx.analysis.exports) {
-    let v: AbstractValue = UNKNOWN
-    if (e.kind === 'local') {
-      if (!e.typeOnly && e.local !== null) {
-        v = values.valueOfBinding(e.local)
-      }
-    } else if (e.kind === 'expression') {
-      const stmt = file.program.body.find(
-        (n) =>
-          n.type === 'ExportDefaultDeclaration' && n.start === e.range.start,
-      )
-      if (stmt?.type === 'ExportDefaultDeclaration') {
-        v = values.valueOf(stmt.declaration)
-      }
-    } else if (!e.typeOnly && isKnownSpecifier(table, e.specifier)) {
-      // (a re-export of another module: that module's own facts)
-      v =
-        e.kind === 'reExport'
-          ? recognizeImport(table, e.specifier, e.fromName)
-          : { t: 'namespace', specifier: e.specifier }
-    }
-    if (takesServerCode(table, v)) {
-      result.leakProneExports.push(e.kind === 'star' ? '*' : e.name)
     }
   }
   // a Start package's namespace loaded at run time is beyond any static view

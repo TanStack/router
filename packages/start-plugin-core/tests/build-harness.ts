@@ -384,14 +384,11 @@ const routerPackages = {
  * The client entry of the app: imports the app's documented entries that
  * Start's default client entry imports, when the app has them (the router
  * entry `src/router.ts` and the start entry `src/start.ts`; Start's
- * defaults, as no test moves them), and the test's entry module. Like
- * Start's client runtime, it reads the start instance's options (handing
- * the start module's namespace to page code would hand it a builder
- * factory, which fails a client build).
+ * defaults, as no test moves them), and the test's entry module.
  */
 const clientEntry = (testEntry: string, start: boolean, router: boolean) =>
-  `${start ? `import { startInstance } from '../src/start'\n` : ''}${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
-globalThis.__tssBuildHarnessApp = { ${[start && 'startOptions: startInstance?.getOptions', router && 'router'].filter(Boolean).join(', ')} }
+  `${start ? `import * as start from '../src/start'\n` : ''}${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
+globalThis.__tssBuildHarnessApp = { ${[start && 'start', router && 'router'].filter(Boolean).join(', ')} }
 globalThis.${entryGlobal} = entry
 `
 

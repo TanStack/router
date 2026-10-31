@@ -30,13 +30,6 @@ export interface StartPrefetch {
   values: Map<string, AbstractValue>
   /** Whether any import carries a Start value (the async half of the gate). */
   relevant: boolean
-  /**
-   * Specifiers of the module's namespace imports (of modules other than
-   * Start's packages) whose object goes where the analysis does not follow
-   * it (passed, stored, aliased): what the namespace exports is beyond this
-   * compile, so the client build checks it against the exporter's facts.
-   */
-  escapingNamespaces: Array<string>
 }
 
 function importKey(specifier: string, name: string): string {
@@ -134,7 +127,6 @@ export async function prefetchStartValues(
 ): Promise<StartPrefetch> {
   const { table } = opts
   const values = new Map<string, AbstractValue>()
-  const escapingNamespaces: Array<string> = []
   let relevant = false
   const file = t0.file
   // settled values only: two of this module's imports may lead to one export at once
@@ -271,7 +263,6 @@ export async function prefetchStartValues(
           continue
         }
         const names = new Set<string>()
-        let escapes = false
         for (const r of refs) {
           const parent = file.parentOf(r.node)
           if (!parent) {
@@ -301,14 +292,7 @@ export async function prefetchStartValues(
                 names.add(key)
               }
             }
-          } else if (parent.type !== 'ExportSpecifier') {
-            // (an exported namespace is followed by the summaries)
-            escapes = true
           }
-        }
-        if (escapes) {
-          escapingNamespaces.push(imp.specifier)
-          relevant = true
         }
         for (const name of names) {
           work.push(prefetchImport(imp.specifier, name))
@@ -325,13 +309,6 @@ export async function prefetchStartValues(
       work.push(prefetchImport(imp.specifier, spec.imported))
     }
   }
-  // a re-export of a Start package: its importers are checked (leak-prone exports)
-  relevant ||= t0.exports.some(
-    (e) =>
-      (e.kind === 'reExport' || e.kind === 'namespace' || e.kind === 'star') &&
-      !e.typeOnly &&
-      isKnownSpecifier(table, e.specifier),
-  )
   // a Start package loaded at run time: the client compile reports it
   relevant ||= t0.dynamicEdges.some(
     (e) =>
@@ -339,7 +316,7 @@ export async function prefetchStartValues(
       takesServerCode(table, { t: 'namespace', specifier: e.specifier }),
   )
   await Promise.all(work)
-  return { values, relevant, escapingNamespaces }
+  return { values, relevant }
 }
 
 /** The `resolveImport` callback of the local value analysis over a prefetch result. */

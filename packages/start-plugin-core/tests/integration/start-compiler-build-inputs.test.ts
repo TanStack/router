@@ -73,12 +73,6 @@ interface Row {
   absent?: { client?: Array<string>; ssr?: Array<string> }
   /** Default: every bundler. */
   bundlers?: Array<StartBundler>
-  /**
-   * The module's exports the page reads, when it also exports a builder
-   * (default: all of them): a module exporting a builder handed to page code
-   * fails the client build.
-   */
-  exposed?: Array<string>
 }
 
 /** The library package names of the app (`libraryPackages`). */
@@ -170,7 +164,6 @@ const rows: Array<Row> = [
   {
     name: 'server fn builders with middleware called as factories',
     files: { 'module.tsx': factoryBuilderModule },
-    exposed: ['myAuthedFn', 'deleteUserFn', 'x'],
     serverFns: {
       myAuthedFn: ['myAuthedFn', { auth: 'auth' }],
       deleteUserFn: ['deleteUserFn', { auth: 'auth', admin: 'admin' }],
@@ -234,16 +227,9 @@ function appFiles(list: Array<Row>) {
         : code
     }
   }
-  for (const row of list) {
-    if (row.exposed) {
-      files[`src/rows/${slug(row)}/exposed.ts`] =
-        `export { ${row.exposed.join(', ')} } from './module'\n`
-    }
-  }
   files['src/entry.ts'] = list
     .map(
-      (row) =>
-        `export * as ${slug(row)} from './rows/${slug(row)}/${row.exposed ? 'exposed' : 'module'}'\n`,
+      (row) => `export * as ${slug(row)} from './rows/${slug(row)}/module'\n`,
     )
     .join('')
   files['src/ssr-entry.ts'] = `export * from './entry'\n${callByIdExports}`

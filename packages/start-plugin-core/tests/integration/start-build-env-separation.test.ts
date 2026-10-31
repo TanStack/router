@@ -368,6 +368,7 @@ export {
   viaFnMiddleware,
   viaStartMiddleware,
 } from './middleware-fns'
+export { startInstance } from './start'
 export { getRouter } from './router'
 `,
       // Start's server entry: its server-fn HTTP handler finds the server
