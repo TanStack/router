@@ -440,17 +440,6 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
 
 refused.push(
   {
-    name: 'a builder returned through an isomorphic fn',
-    file: 'src/entry.ts',
-    line: 2,
-    files: {
-      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
-const getBuilder = createIsomorphicFn().server(() => createServerFn()).client(() => createServerFn())
-export const fn = getBuilder().handler(async () => 'MARK_SERVER_SECRET')
-`,
-    },
-  },
-  {
     name: 'a builder returned through a client-only fn',
     file: 'src/entry.ts',
     line: 2,
@@ -1001,11 +990,10 @@ export const Route = createFileRoute('/')({ component: () => null })
   },
 )
 
-compiled.push(
-  {
-    name: 'a type-only namespace merged with a finished server fn, its options with a side effect',
-    files: {
-      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+compiled.push({
+  name: 'a type-only namespace merged with a finished server fn, its options with a side effect',
+  files: {
+    'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
 const schema = (globalThis as any).makeSchema?.() ?? ((d: unknown) => d)
 export namespace fn {
   export type Error = string
@@ -1014,11 +1002,110 @@ export const fn = createServerFn()
   .validator(schema.strip?.() ?? schema)
   .handler(async () => 'MARK_SERVER_SECRET')
 `,
+  },
+})
+
+compiled.push(
+  {
+    name: 'server code attached to an open middleware an isomorphic fn returns',
+    files: {
+      'src/iso.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const clerk = createIsomorphicFn()
+  .server(() => createMiddleware())
+  .client(() => createMiddleware())
+`,
+      'src/entry.ts': `import { clerk } from './iso'
+export const local = clerk().server(async ({ next }) => {
+  console.log('MARK_SERVER_SECRET')
+  return next()
+})
+const stored = clerk()
+export const later = stored.server(async ({ next }) => {
+  console.log('MARK_SERVER_SECRET')
+  return next()
+})
+`,
+    },
+  },
+  {
+    name: 'server code attached to a builder an isomorphic fn returns',
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const getBuilder = createIsomorphicFn().server(() => createServerFn()).client(() => createServerFn())
+export const fn = getBuilder().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'a builder from an isomorphic fn passed to unknown code',
+    file: 'src/entry.ts',
+    line: 5,
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+const clerk = createIsomorphicFn().server(() => createMiddleware()).client(() => createMiddleware())
+const attach = (m: any) => m.server(async ({ next }: any) => { console.log('MARK_SERVER_SECRET'); return next() })
+const middle = (x: any) => attach(x)
+export const m = middle(clerk())
+`,
+    },
+  },
+  {
+    name: 'an isomorphic fn returning a builder passed to unknown code',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+const clerk = createIsomorphicFn().server(() => createMiddleware()).client(() => createMiddleware())
+export const out = [clerk].map((get) => get().server(async ({ next }: any) => { console.log('MARK_SERVER_SECRET'); return next() }))
+`,
     },
   },
 )
 
 describe.each(startBundlers)('%s build', (bundler) => {
+  test(
+    'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',
+    async () => {
+      const module = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
+const serverMw = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+  return next({ context: { from: 'MARK_SERVER_MW' } })
+})
+const open = createIsomorphicFn()
+  .server(() => createMiddleware({ type: 'function' }).middleware([serverMw]))
+  .client(() => createMiddleware({ type: 'function' }))
+const attached = open().server(async ({ next }) => {
+  console.log('MARK_ATTACHED')
+  return next({ context: { attached: 'yes' } })
+})
+export const fn = createServerFn()
+  .middleware([attached, open()])
+  .handler(async ({ context }) => [context.from, context.attached].join())
+`
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': module,
+          'src/entry.ts': `export { fn } from './fns'\n`,
+          'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect({
+        attached: build.client.where('MARK_ATTACHED'),
+        server: build.client.where('MARK_SERVER_MW'),
+      }).toEqual({ attached: 'nowhere', server: 'nowhere' })
+      const url = (await build.client.run(`return entry.fn.url`)).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_SERVER_MW,yes')
+    },
+    timeout,
+  )
+
   test(
     'a written binding holding server fns: each id runs its own handler',
     async () => {

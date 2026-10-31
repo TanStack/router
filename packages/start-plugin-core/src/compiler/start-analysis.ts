@@ -221,27 +221,25 @@ export function startAnalysisOf(
     )
   }
 
-  /** A Start call handing back what its argument returns: `createClientOnlyFn` and an isomorphic fn's implementations. */
-  const handsBack = (call: CallNode): boolean => {
+  /** Whether a call is an isomorphic fn's `.server(fn)` or `.client(fn)`: what `fn` returns is what the fn's call gives. */
+  const isIsoFnLink = (call: CallNode): boolean => {
     const v = values.valueOf(call.callee)
-    return v.t === 'factory'
-      ? table.envOnlyKinds[v.kind] === 'client'
-      : v.t === 'member' &&
-          (v.object.t === 'isoFn' ||
-            (v.object.t === 'builder' &&
-              table.terminal[v.object.kind] === 'isoFn'))
+    return (
+      v.t === 'member' &&
+      (v.object.t === 'isoFn' ||
+        (v.object.t === 'builder' && table.terminal[v.object.kind] === 'isoFn'))
+    )
   }
 
-  /** A call whose arguments Start's runtime consumes as data: a factory's, or a builder's or start instance's method. */
+  /** A call whose arguments Start's runtime consumes as data: a factory's, or a builder's or start instance's method; not one handing back what its argument returns. */
   const isStartSink = (call: CallNode): boolean => {
     const v = values.valueOf(call.callee)
     return (
-      !handsBack(call) &&
-      (v.t === 'factory' ||
-        (v.t === 'member' &&
-          (v.object.t === 'builder' ||
-            v.object.t === 'isoFn' ||
-            v.object.t === 'startInstance')))
+      !isIsoFnLink(call) &&
+      (v.t === 'factory'
+        ? table.envOnlyKinds[v.kind] !== 'client'
+        : v.t === 'member' &&
+          (v.object.t === 'builder' || v.object.t === 'startInstance'))
     )
   }
 
@@ -328,15 +326,13 @@ export function startAnalysisOf(
     switch (p.type) {
       case 'CallExpression':
         // a callee is a use (a server fn called); an argument a Start call
-        // consumes is data; so is an open middleware an implementation returns
+        // consumes is data; a function an isomorphic fn calls is followed
+        // through the fn's own call
         return (
           p.callee === outer ||
           isStartSink(p) ||
           isPlainRead(file, p, outer) ||
-          (handsBack(p) &&
-            value.t === 'function' &&
-            value.returns.t === 'builder' &&
-            table.terminal[value.returns.kind] === 'middleware')
+          (value.t === 'function' && isIsoFnLink(p))
         )
       case 'ArrayExpression':
       case 'SpreadElement':
@@ -545,6 +541,15 @@ export function startAnalysisOf(
           node = call
           value = v2
           continue
+        }
+        // an isomorphic fn gives what its implementation returns
+        if (value.t === 'isoFn') {
+          const v2 = values.valueOf(call)
+          if (isStartValue(table, v2)) {
+            node = call
+            value = v2
+            continue
+          }
         }
         // calling a server fn, an isomorphic fn or an env-only result (a use as data): the chain ends here
         break

@@ -41,7 +41,9 @@ export type AbstractValue =
   | { t: 'factory'; kind: Kind }
   | { t: 'startInstance' }
   | { t: 'builder'; kind: Kind; links: Array<Link> }
-  | { t: 'serverFn' | 'middleware' | 'isoFn'; links: Array<Link> }
+  | { t: 'serverFn' | 'middleware'; links: Array<Link> }
+  /** `returns`: what calling it gives, when an implementation returns a known value. */
+  | { t: 'isoFn'; links: Array<Link>; returns?: AbstractValue }
   | { t: 'envOnlyResult'; kind: 'server' | 'client' }
   | { t: 'namespace'; specifier: string }
   | { t: 'function'; returns: AbstractValue }
@@ -161,6 +163,26 @@ export function applyMember(
 }
 
 /**
+ * An isomorphic fn after a `.server(fn)` or `.client(fn)` link. Its call gives
+ * what an implementation returns: the client's when it says, since the client
+ * is the output that keeps the code attached to it.
+ */
+function isoFnLink(
+  links: Array<Link>,
+  previous: AbstractValue | undefined,
+  method: 'server' | 'client',
+  implementation: AbstractValue | null | undefined,
+): AbstractValue {
+  const returned =
+    implementation?.t === 'function' && implementation.returns.t !== 'unknown'
+      ? implementation.returns
+      : undefined
+  const returns =
+    method === 'client' ? (returned ?? previous) : (previous ?? returned)
+  return { t: 'isoFn', links, ...(returns && { returns }) }
+}
+
+/**
  * The transfer function of a call `fn(args)` on a known callee value. `args`
  * is a thunk: argument values are only computed when the callee needs them
  * (a symbolic callee).
@@ -197,7 +219,12 @@ export function applyCall(
           case 'server':
           case 'client':
             if (terminal === 'isoFn') {
-              return { t: 'isoFn', links: [...recv.links, { method, site }] }
+              return isoFnLink(
+                [...recv.links, { method, site }],
+                undefined,
+                method,
+                args()[0],
+              )
             }
             return {
               t: 'builder',
@@ -209,7 +236,12 @@ export function applyCall(
         }
       }
       if (recv.t === 'isoFn' && (method === 'server' || method === 'client')) {
-        return { t: 'isoFn', links: [...recv.links, { method, site }] }
+        return isoFnLink(
+          [...recv.links, { method, site }],
+          recv.returns,
+          method,
+          args()[0],
+        )
       }
       if (isSymbolicValue(recv)) {
         return { t: 'call', callee: fn, args: args(), site }
@@ -238,6 +270,8 @@ export function applyCall(
       }
     case 'function':
       return fn.returns
+    case 'isoFn':
+      return fn.returns ?? UNKNOWN
     case 'importRef':
     case 'call':
     case 'join':
@@ -271,8 +305,19 @@ export function joinValues(a: AbstractValue, b: AbstractValue): AbstractValue {
         : UNKNOWN
     case 'serverFn':
     case 'middleware':
-    case 'isoFn':
       return b.t === a.t ? { t: a.t, links: common(a.links, b.links) } : UNKNOWN
+    case 'isoFn': {
+      if (b.t !== 'isoFn') {
+        return UNKNOWN
+      }
+      const returns =
+        a.returns && b.returns ? joinValues(a.returns, b.returns) : undefined
+      return {
+        t: 'isoFn',
+        links: common(a.links, b.links),
+        ...(returns && { returns }),
+      }
+    }
     case 'envOnlyResult':
       return b.t === 'envOnlyResult' && b.kind === a.kind ? a : UNKNOWN
     case 'namespace':
@@ -296,8 +341,13 @@ export function stampSites(
       return { t: 'builder', kind: v.kind, links: links(v.links) }
     case 'serverFn':
     case 'middleware':
-    case 'isoFn':
       return { t: v.t, links: links(v.links) }
+    case 'isoFn':
+      return {
+        t: 'isoFn',
+        links: links(v.links),
+        ...(v.returns && { returns: stampSites(v.returns, canonicalId) }),
+      }
     case 'function':
       return {
         t: 'function',
@@ -572,8 +622,13 @@ export function stripSites(v: AbstractValue): unknown {
       return { t: v.t, kind: v.kind, links: v.links.map((l) => l.method) }
     case 'serverFn':
     case 'middleware':
-    case 'isoFn':
       return { t: v.t, links: v.links.map((l) => l.method) }
+    case 'isoFn':
+      return {
+        t: v.t,
+        links: v.links.map((l) => l.method),
+        ...(v.returns && { returns: stripSites(v.returns) }),
+      }
     case 'function':
       return { t: v.t, returns: stripSites(v.returns) }
     case 'member':

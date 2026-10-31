@@ -103,7 +103,10 @@ export function takesServerCode(
         v.links.some((l) => l.method === 'server')
       )
     case 'isoFn':
-      return !v.links.some((l) => l.method === 'server')
+      return (
+        !v.links.some((l) => l.method === 'server') ||
+        (v.returns !== undefined && takesServerCode(table, v.returns))
+      )
     case 'namespace': {
       const exports = table.factories[v.specifier]
       return exports !== undefined
@@ -280,6 +283,10 @@ export async function prefetchStartValues(
           t: 'function',
           returns: await reduce(v.returns, owner, path),
         }
+      case 'isoFn':
+        return v.returns
+          ? { ...v, returns: await reduce(v.returns, owner, path) }
+          : v
       default:
         return v
     }
