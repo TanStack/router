@@ -322,6 +322,12 @@ export class ModuleAnalysis {
     const exportEntries: Array<ExportEntry> = []
     const reexports: Array<ReexportEntry> = []
     let marker: Marker = null
+    const noteMarker = (specifier: string) => {
+      const m = markers[specifier]
+      if (m) {
+        marker = marker === null || marker === m ? m : 'conflict'
+      }
+    }
     let ownEffects = false
     let codeEffects = false
     // the bindings import specifiers declare and exports name, from Yuku's
@@ -409,15 +415,15 @@ export class ModuleAnalysis {
           this.importByStatement.set(stmt.start, entry.index)
           imports.push(entry)
           if (entry.bare && !entry.typeOnly) {
-            const m = markers[entry.specifier]
-            if (m) {
-              marker = marker === null || marker === m ? m : 'conflict'
-            }
+            noteMarker(entry.specifier)
           }
           break
         }
         case 'ExportAllDeclaration': {
           const typeOnly = stmt.exportKind === 'type'
+          if (!typeOnly) {
+            noteMarker(stmt.source.value)
+          }
           if (stmt.exported) {
             const name =
               stmt.exported.type === 'Identifier'
@@ -597,6 +603,7 @@ export class ModuleAnalysis {
       if (!specNode) {
         continue
       }
+      noteMarker(imp.specifier)
       dynamicEdges.push({
         specifier: imp.specifier,
         specifierRange: { start: specNode.start, end: specNode.end },

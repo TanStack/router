@@ -663,6 +663,35 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+refused.push(
+  {
+    name: 'a marker as `export * from`',
+    file: 'src/entry.ts',
+    line: 1,
+    files: {
+      'src/marked.ts': `export * from '@tanstack/react-start/server-only'
+export const s = () => 'MARK_SERVER_SECRET'
+`,
+      'src/entry.ts': `import { s } from './marked'
+export const f = s
+`,
+    },
+  },
+  {
+    name: 'a marker as a dynamic import',
+    file: 'src/entry.ts',
+    line: 1,
+    files: {
+      'src/marked.ts': `await import('@tanstack/react-start/server-only')
+export const s = () => 'MARK_SERVER_SECRET'
+`,
+      'src/entry.ts': `import { s } from './marked'
+export const f = s
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
     '$name compiles',
