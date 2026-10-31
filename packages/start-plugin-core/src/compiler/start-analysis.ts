@@ -24,6 +24,7 @@ import {
   importResolverOf,
   isPlainRead,
   isStartValue,
+  isVueSetupBinding,
   takesServerCode,
 } from './prefetch'
 import type { StartPrefetch } from './prefetch'
@@ -139,7 +140,7 @@ export function isFunctionNode(n: Node): n is Extract<
  * The Start analysis of a plan: computed once per compile attempt.
  */
 export function startAnalysisOf(
-  ctx: Pick<PlanContext, 'analysis' | 'symbols' | 'prefetched'>,
+  ctx: Pick<PlanContext, 'analysis' | 'identity' | 'symbols' | 'prefetched'>,
   table: RecognizerTable,
 ): StartAnalysis {
   const hit = cache.get(ctx.analysis)
@@ -194,7 +195,11 @@ export function startAnalysisOf(
 
   const escaped = new Set<Node>()
   const escape = (node: Node, value: AbstractValue, reason: EscapeReason) => {
-    if (takesServerCode(table, value) && !escaped.has(node)) {
+    if (
+      takesServerCode(table, value) &&
+      !escaped.has(node) &&
+      !isVueSetupBinding(ctx.analysis, ctx.identity.path, node)
+    ) {
       escaped.add(node)
       result.escapes.push({ node, reason, value })
     }
