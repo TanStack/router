@@ -78,6 +78,11 @@ export interface SplitPlan {
   warnings: Array<Diagnostic>
   /** Options the splitter deletes in the env output (`deleteNodes`). */
   deleted: Array<RouteOption>
+  /**
+   * The deleted options written after a spread or a computed key that may
+   * hold them: they stay as `undefined`, or removing them would let that value win.
+   */
+  shadowing: ReadonlySet<RouteOption>
 }
 
 export const SPLITTABLE_KEYS: ReadonlyArray<string> = [
@@ -327,12 +332,15 @@ export function splitPlanOf(
   const decisions: Array<SplitDecision> = []
   const notSplit: Array<NotSplit> = []
   const deleted: Array<RouteOption> = []
+  const shadowing = new Set<RouteOption>()
   const deleteNodes = new Set(cfg.deleteNodes)
   // root routes are never split: their components render on every page or on
   // error and not-found responses, where a lazy chunk only adds a round trip
   // (and the manifest preloads it on every page anyway)
   const splitting = cfg.split && route.kind === 'file'
   const groupings = splitting ? effectiveGroupings(ctx, cfg, route) : []
+
+  const deletedNames = [...deleteNodes].map((k) => `\`${k}\``).join(', ')
 
   if (route.options.kind === 'opaque') {
     if (splitting || deleteNodes.size > 0) {
@@ -342,31 +350,24 @@ export function splitPlanOf(
           : route.options.reason === 'call'
             ? 'returned by a call'
             : 'not an object literal'
-      const consequences: Array<string> = []
-      if (splitting) {
-        consequences.push('the route is not code-split')
-      }
-      if (deleteNodes.size > 0) {
-        consequences.push(
-          `the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build`,
-        )
-      }
-      // with deleteNodes the build is refused: it would ship the options
-      // silently otherwise (J2.8, J2.14)
       warnings.push({
-        severity: deleteNodes.size > 0 ? 'error' : 'warning',
+        severity: 'warning',
         code: 'options-opaque',
         by: ROUTER_PLANNER,
-        message: `[tanstack-router] The route options of "${file}" are ${how}, so ${consequences.join(' and ')}.${deleteNodes.size > 0 ? ' Write the route options as an object literal in the route file.' : ''}`,
+        message:
+          deleteNodes.size > 0
+            ? `[tanstack-router] The route options of "${file}" are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`createFileRoute(path)({ component, server })\`).`
+            : `[tanstack-router] The route options of "${file}" are ${how}, so the route is not code-split.`,
         range: {
           start: route.optionsCall.start,
           end: route.optionsCall.end,
         },
       })
     }
-    return { route, decisions, warnings, deleted }
+    return { route, decisions, warnings, deleted, shadowing }
   }
 
+  let afterUnread = false
   for (const option of route.props) {
     if (
       option.kind === 'spread' ||
@@ -376,11 +377,16 @@ export function splitPlanOf(
         deleteNodes.size > 0 &&
         !hidesNoDeletedOption(ctx, option, deleteNodes)
       ) {
+        // what the compiler cannot read builds, and is the user's responsibility (J2.8)
+        afterUnread = true
         warnings.push({
-          severity: 'error',
-          code: 'delete-nodes-dynamic',
+          severity: 'warning',
+          code: 'options-unread',
           by: ROUTER_PLANNER,
-          message: `[tanstack-router] "${file}" spreads or computes route options, so the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build. Write them as literal properties of the route options.`,
+          message:
+            option.kind === 'spread'
+              ? `[tanstack-router] "${file}" spreads route options: what the spread holds is not code-split, and ${deletedNames} in it are not removed, so any server code in it ships to the client. Write what to split or remove as properties next to the spread.`
+              : `[tanstack-router] "${file}" computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
       }
@@ -388,11 +394,14 @@ export function splitPlanOf(
     }
     if (option.key !== null && deleteNodes.has(option.key)) {
       deleted.push(option)
+      if (afterUnread) {
+        shadowing.add(option)
+      }
     }
   }
 
   if (!splitting) {
-    return { route, decisions, warnings, deleted }
+    return { route, decisions, warnings, deleted, shadowing }
   }
 
   for (const group of groupings) {
@@ -506,6 +515,7 @@ export function splitPlanOf(
     decisions,
     warnings,
     deleted,
+    shadowing,
   }
 }
 

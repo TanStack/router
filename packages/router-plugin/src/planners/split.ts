@@ -51,7 +51,22 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     route.options.node.type === 'ObjectExpression'
   ) {
     const props = route.options.node.properties as ReadonlyArray<Node>
-    const deleted = new Set<Node>(plan.deleted.map((d) => d.prop))
+    const deleted = new Set<Node>()
+    for (const option of plan.deleted) {
+      if (plan.shadowing.has(option)) {
+        // (a spread before it may hold the key: it keeps its place, or that value would win)
+        ctx.rewrites.add({
+          range: { start: option.prop.start, end: option.prop.end },
+          body: [
+            { k: 'text', parts: [`${stringLiteral(option.key!)}: undefined`] },
+          ],
+          scope: 'all-outputs',
+          by: ROUTER_PLANNER,
+        })
+      } else {
+        deleted.add(option.prop)
+      }
+    }
     removeListItems(
       ctx,
       props,
