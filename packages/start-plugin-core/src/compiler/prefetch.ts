@@ -341,9 +341,10 @@ export async function prefetchStartValues(
           reads.push(key !== null ? member(key, prop) : escapes(id, prop))
         }
       } else if (
-        // (an exported namespace is followed by the summaries)
+        // (an exported namespace is followed by the summaries; `typeof` reads no member)
         parent.type !== 'ExportSpecifier' &&
-        parent.type !== 'ExportDefaultDeclaration'
+        parent.type !== 'ExportDefaultDeclaration' &&
+        !(parent.type === 'UnaryExpression' && parent.operator === 'typeof')
       ) {
         reads.push(escapes(id, outer))
       }

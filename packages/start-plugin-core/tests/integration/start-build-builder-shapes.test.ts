@@ -474,6 +474,46 @@ export const fn = Fns.base.handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+compiled.push(
+  {
+    name: 'a builder logged while debugging',
+    files: {
+      'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+const base = createServerFn()
+console.log(base)
+console.debug?.(base)
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+      'src/entry.ts': `export { fn } from './fns'\n`,
+    },
+  },
+  {
+    name: '`typeof` of a namespace whose module exports a builder',
+    files: {
+      'src/foo.ts': `${fooModule}export const getX = authed.handler(async () => 'MARK_SERVER_SECRET')
+`,
+      'src/entry.ts': `import * as foo from './foo'
+export const kind = typeof foo
+export const call = () => foo.getX()
+`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'a builder passed to a local `console`',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const console = { log: (b: any) => b.handler(async () => 'MARK_SERVER_SECRET') }
+export const fn = console.log(createServerFn())
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',

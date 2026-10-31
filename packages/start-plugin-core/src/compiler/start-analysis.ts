@@ -18,6 +18,7 @@ import {
   isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
+  unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import { START_KINDS } from './recognizer'
 import { importResolverOf, isStartValue, takesServerCode } from './prefetch'
@@ -228,6 +229,17 @@ export function startAnalysisOf(
     )
   }
 
+  /** A call of a method of the global `console`: its arguments are only printed. */
+  const isConsoleCall = (call: CallNode): boolean => {
+    const callee = unwrapExpression(call.callee)
+    return (
+      callee.type === 'MemberExpression' &&
+      callee.object.type === 'Identifier' &&
+      callee.object.name === 'console' &&
+      !file.referenceOf(callee.object)?.binding
+    )
+  }
+
   /**
    * Whether a value inside array and object literals (and the function
    * returning them) reaches a Start call's argument: `.middleware([mw])`,
@@ -273,7 +285,9 @@ export function startAnalysisOf(
         // a callee is a use (a server fn called); an argument a Start call
         // consumes is data, unless it hands back what that function returns
         return (
-          p.callee === outer || (value.t !== 'function' && isStartSink(p))
+          p.callee === outer ||
+          isConsoleCall(p) ||
+          (value.t !== 'function' && isStartSink(p))
         )
       case 'ArrayExpression':
       case 'SpreadElement':
