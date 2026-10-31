@@ -511,9 +511,9 @@ export function startAnalysisOf(
             // another export of the package, another member of the instance: a plain call
             return
           }
-          // a method of a factory or of a function (`.call`, `.bind`)
+          // a method of a factory or of a finished value (`.call`, `.bind`)
           escape(member, value, 'member')
-          return
+          break
         }
         // a member read that is not called
         const mv = values.valueOf(member)

@@ -52,10 +52,6 @@ code.test.ts`: "a root route's %s loads lazily".
   inlines the first value in the importing module (see "Upstream issues"; webpack and Rspack read the last one). SPEC
   J2.5. `router-plugin/tests/integration/code-splitter-module-state.test.ts`: "gives the split component the value a
   `var` declared again takes in a head or a pattern (Rolldown)". Fix: upstream.
-- **A method called on a server fn where it is created ships its handler** (`createServerFn().handler(h).bind(null)`):
-  the client analysis drops the chain at the method, so nothing replaces or reports the handler. SPEC J4.5, J4.12.
-  `start-plugin-core/tests/known-bugs-start-builder-shapes.test.ts`: "a server fn bound where it is created". Fix: the
-  client calls the server fn by its id, or the build fails at the method.
 
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
   (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's

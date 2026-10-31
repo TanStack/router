@@ -126,11 +126,7 @@ export const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn
 })
 
 describe('a method called on a server fn where it is created', () => {
-  // Bug: the client analysis ends the chain at a method of the finished
-  // server fn (`.bind`) without keeping it, so the handler is neither
-  // replaced by its client call nor reported.
-  // Impact: the handler and its server-only imports ship to the client.
-  test.fails.each<Shape>([
+  test.each<Shape>([
     {
       name: 'a server fn bound where it is created',
       code: `import { createServerFn } from '@tanstack/react-start'
