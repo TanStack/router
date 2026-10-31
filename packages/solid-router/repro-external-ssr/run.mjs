@@ -21,7 +21,7 @@ await build({
   logLevel: 'error',
   root: here,
   mode: 'development',
-  plugins: [solid({ ssr: true, hot: false })],
+  plugins: [solid({ ssr: true, refresh: false })],
   resolve: { alias },
   ssr: { noExternal: true },
   build: {
@@ -49,7 +49,7 @@ await build({
   mode: 'development',
   // ssr: true is required on the client build too: it makes the compiled
   // output hydratable (claim server nodes instead of creating fresh ones).
-  plugins: [solid({ ssr: true, hot: false })],
+  plugins: [solid({ ssr: true, refresh: false })],
   resolve: {
     alias,
     conditions: ['browser', 'development', 'module', 'import'],

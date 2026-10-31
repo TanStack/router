@@ -14,7 +14,7 @@ export default defineConfig({
     tanstackStart({
       srcDirectory: 'src',
     }),
-    solid({ ssr: true, hot: false, dev: false }),
+    solid({ ssr: true, refresh: false, dev: false }),
   ],
   build: {
     outDir: './dist',
