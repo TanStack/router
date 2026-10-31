@@ -275,7 +275,11 @@ function describeServerFn(
             const sym = symbols.ofBinding(b)
             const units = t1.declaringUnits.get(sym)
             // (the RPC reads the fn from this binding: a written one holds another fn)
-            if (units?.length === 1 && !t1.mutation.isReassigned(sym)) {
+            if (
+              units &&
+              units.length > 0 &&
+              !t1.mutation.isReassigned(sym)
+            ) {
               topLevelSym = sym
               topLevelUnit = t1.units[units[0]!]!
             }

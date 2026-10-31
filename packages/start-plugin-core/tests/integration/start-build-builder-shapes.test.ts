@@ -5,7 +5,13 @@
  */
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import {
+  StartBuildError,
+  buildStart,
+  callByIdExports,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
 import type { StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { InlineConfig } from 'vite'
@@ -995,7 +1001,58 @@ export const Route = createFileRoute('/')({ component: () => null })
   },
 )
 
+compiled.push(
+  {
+    name: 'a type-only namespace merged with a finished server fn, its options with a side effect',
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const schema = (globalThis as any).makeSchema?.() ?? ((d: unknown) => d)
+export namespace fn {
+  export type Error = string
+}
+export const fn = createServerFn()
+  .validator(schema.strip?.() ?? schema)
+  .handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
+  test(
+    'a written binding holding server fns: each id runs its own handler',
+    async () => {
+      const module = `import { createServerFn } from '@tanstack/react-start'
+let fn0 = createServerFn().handler(async () => 'MARK_FIRST')
+export const first = fn0
+fn0 = createServerFn().handler(async () => 'MARK_SECOND')
+export const second = fn0
+`
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': module,
+          'src/entry.ts': `export { first, second } from './fns'\n`,
+          'src/ssr-entry.ts': `export { first, second } from './fns'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      const call = async (name: string) => {
+        const url = (await build.client.run(`return entry.${name}.url`)).result
+        return (
+          await build.ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+        ).result
+      }
+      expect({
+        first: await call('first'),
+        second: await call('second'),
+      }).toEqual({ first: 'MARK_FIRST', second: 'MARK_SECOND' })
+    },
+    timeout,
+  )
+
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
     '$name compiles',
     async (row) => {
