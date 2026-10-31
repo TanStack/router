@@ -512,8 +512,8 @@ function planStartEnv(
     return { out: handlerOut, load: handlerLoad }
   }
 
-  /** The arguments the client erases, with their call; `impl`: the server's implementation itself, not a validator. */
-  const serverCode: Array<{ arg: Node; call: Node; impl: boolean }> = []
+  /** The arguments the client erases, with their call. */
+  const serverCode: Array<{ arg: Node; call: Node }> = []
 
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
   for (const chain of analysis.chains) {
@@ -550,7 +550,6 @@ function planStartEnv(
         serverCode.push({
           arg: link.arg,
           call: link.call,
-          impl: link.method === 'server',
         })
       }
     }
@@ -658,7 +657,7 @@ function planStartEnv(
     if (!isServer) {
       for (const l of chain.links) {
         if (l.method === 'server' && l.arg !== null) {
-          serverCode.push({ arg: l.arg, call: l.call, impl: true })
+          serverCode.push({ arg: l.arg, call: l.call })
         }
       }
     }
@@ -721,7 +720,7 @@ function planStartEnv(
       )
     } else {
       if (c.arg !== null) {
-        serverCode.push({ arg: c.arg, call: c.call, impl: true })
+        serverCode.push({ arg: c.arg, call: c.call })
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens('arrow', wrapped, parent)
@@ -981,8 +980,8 @@ function planStartEnv(
       SymbolId,
       { name: Node; fn: Node; direct: Node | null }
     >()
-    for (const { arg, call, impl } of serverCode) {
-      const code = impl ? unwrapExpression(arg) : null
+    for (const { arg, call } of serverCode) {
+      const code = unwrapExpression(arg)
       for (const { kind, sym, range } of t1.refs.refsIn(rangeOf(arg))) {
         const param =
           kind === 'value' &&
@@ -992,9 +991,7 @@ function planStartEnv(
           continue
         }
         const direct =
-          code?.type === 'Identifier' && code.start === range.start
-            ? code
-            : null
+          code.type === 'Identifier' && code.start === range.start ? code : null
         if (!params.get(sym)?.direct) {
           params.set(sym, { ...param, direct })
         }

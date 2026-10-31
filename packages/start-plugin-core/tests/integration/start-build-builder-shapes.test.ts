@@ -325,6 +325,64 @@ export const fn = reg.base.handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+refused.push(
+  {
+    name: 'a parameter passed to `.validator()`',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const withInput = (schema: any) => createServerFn().validator(schema)
+export const fn = withInput((d: unknown) => {
+  console.log('MARK_SERVER_SECRET')
+  return d
+}).handler(async () => 'x')
+`,
+    },
+  },
+  {
+    name: 'a parameter passed to `.inputValidator()`',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const withInput = (schema: any) => (createServerFn() as any).inputValidator(schema)
+export const fn = withInput((d: unknown) => {
+  console.log('MARK_SERVER_SECRET')
+  return d
+}).handler(async () => 'x')
+`,
+    },
+  },
+  {
+    name: 'a parameter passed to a middleware’s `.validator()`',
+    file: 'src/entry.ts',
+    line: 2,
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const withInput = (schema: any) => createMiddleware({ type: 'function' }).validator(schema)
+const m = withInput((d: unknown) => {
+  console.log('MARK_SERVER_SECRET')
+  return d
+})
+export const fn = createServerFn().middleware([m]).handler(async () => 'x')
+`,
+    },
+  },
+)
+
+compiled.push(
+  {
+    name: 'a method called on a server fn where it is created',
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET').bind(null)
+export const called = createServerFn().handler(async () => 'MARK_SERVER_SECRET').call
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',

@@ -658,6 +658,11 @@ const refused: Array<Refused> = [
     at: 'handler)\nexport',
   },
   {
+    name: 'a parameter passed as a validator',
+    code: `${P}export const make = (schema: any) => createMiddleware({ type: 'function' }).validator(schema)`,
+    at: 'schema)',
+  },
+  {
     name: 'a parameter passed as server code under a cast, client code reading it too',
     code: `${P}const serverOnly = (fn: any) => { console.log(fn); return createServerOnlyFn(fn as () => string) }\nexport const read = serverOnly(() => db.x())`,
     at: 'fn as ()',
@@ -810,12 +815,6 @@ const warned: Array<Warned> = [
     code: `${P}export const make = (n: number) => createServerOnlyFn(() => db.y(n))`,
     at: 'n:',
     body: 'db.y',
-  },
-  {
-    name: 'a parameter passed as a validator (a schema, not certainly server code)',
-    code: `${P}export const make = (schema: any) => createMiddleware({ type: 'function' }).validator(schema)`,
-    at: 'schema:',
-    body: 'validator',
   },
 ]
 
