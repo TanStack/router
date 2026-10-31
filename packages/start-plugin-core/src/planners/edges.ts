@@ -212,13 +212,17 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         // an entry's own marker denies it here (a server-only-marked client
         // entry): its marker import is the violating edge, located at the
         // marker. A marked non-entry module is judged through its importers
-        // (an exempt importer gets it, J6.7).
+        // (an exempt importer gets it, J6.7). A dynamic import of a marker
+        // doesn't mark its module: only the one this output keeps is a
+        // violation (in a handler, the client erases it).
         const ownMarker = ip.markerSpecifiers[raw]
         if (
           rule === null &&
           ownMarker !== undefined &&
           markerViolates(envType, ownMarker) &&
-          ip.isEntry(importerPath)
+          (ip.isEntry(importerPath) ||
+            e.form === 'dynamic' ||
+            e.form === 'require')
         ) {
           rule = { type: 'marker' }
         }
