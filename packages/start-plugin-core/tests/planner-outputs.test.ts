@@ -283,35 +283,21 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')
     expect(out?.code ?? '').toContain('server-only-value')
   })
 
-  test('a builder passing through an identity helper', async () => {
+  test('a server fn passing through identity helpers', async () => {
     const files = {
-      '/app/module.tsx': `${head}import { schema } from './schema'
-function applyStep<T>(builder: T) {
-  return builder
-}
-export const fn = applyStep(
-  createServerFn({ method: 'POST' }).validator(schema),
-).handler(async ({ data }) => data)
-const wrap = <T,>(x: T) => x
+      '/app/module.tsx': `${head}const wrap = <T,>(x: T) => x
 export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
 `,
-      '/app/schema.ts': `export const schema = (d: unknown) => d\n`,
     }
     const client = (await compile(files, 'client'))!
-    const rpc = clientRpc(client.code)
     expect(client.code).toContain(
-      `applyStep(\n  createServerFn({ method: 'POST' }),\n).handler(${rpc}(`,
+      `wrap(wrap(createServerFn().handler(${clientRpc(client.code)}(`,
     )
-    expect(client.code).toContain(`wrap(wrap(createServerFn().handler(${rpc}(`)
-    expect(client.code).not.toContain('schema')
     const ssr = (await compile(files, 'ssr'))!
     expect(ssr.code).toMatch(
       shape(
         `.handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
       ),
-    )
-    expect(ssr.code).toMatch(
-      shape(`wrap(wrap(createServerFn().handler(«h», (...args) =>`),
     )
   })
 

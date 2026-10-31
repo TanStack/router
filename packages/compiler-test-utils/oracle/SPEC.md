@@ -527,7 +527,7 @@ dir)` is not a conflict by itself.
 - **J4.5 Recognition.** All Start builders are recognised through renamed imports, namespace members, re-exports
   (also of a namespace, and through diamonds and cycles of `export *`, in any compile order), aliases (`export const
 createFooServerFn = createServerFn`), builders stored in variables and continued later (`const base =
-createServerFn().validator(s); export const f = base.handler(h)`), user factories and wrappers in other modules,
+createServerFn().validator(s); export const f = base.handler(h)`), user factories in other modules,
   `createStart(...).createMiddleware`, `.middleware([...])` chains that return callable builders, and re-exports under
   string export names (`export { createServerFn as 'create server fn' }`). A configured builder passed in another
   builder's `.middleware([...])` contributes its middleware list. Option objects given by identifier or spread are

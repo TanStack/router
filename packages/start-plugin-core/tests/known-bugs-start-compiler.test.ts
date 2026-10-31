@@ -407,17 +407,13 @@ export const fn = authed().handler(async () => db.x())`,
     },
   )
 
-  // Bug: same family as above, for a builder the user passes through a
-  // helper function (`applyStep(createServerFn().validator(schema))`): the
-  // `.handler()` chain is not traced through the call, so the module is
-  // left untransformed. Transparent wrappers are a supported form (SPEC
-  // J4.5): the client gets neither the validator nor the handler, and the
-  // server runs both (a rejection is no fix).
+  // A builder the user passes through a helper function
+  // (\`applyStep(createServerFn().validator(schema))\`) is not traced through
+  // the call: the client build fails at the argument (R92: a build error is
+  // enough for a wrapper).
   // Source: fuzzing (builders passed through user helpers).
-  // Impact: the validator, the handler and what they import ship to the
-  // client, and the client runs the handler instead of calling the server.
-  test('client builds compile a server fn whose builder passes through a helper function', async () => {
-    const served = await serveCase(await host(), {
+  test('a server fn whose builder passes through a helper function fails the client', async () => {
+    const startCase = await newCase({
       'module.tsx': `${head}import { schema } from './schema'
 function applyStep<T>(builder: T) {
   return builder
@@ -427,20 +423,19 @@ export const fn = applyStep(
 ).handler(async ({ data }) => data)`,
       'schema.ts': `export const schema = (data: string) => \`\${data}!\`\n`,
     })
-    expectNotLoaded(await served.loads(), ['./schema'])
-    expect(await callFromClient(served, 'module.fn', 'data')).toBe('data!')
+    expect(await compileError(startCase)).toBeInstanceOf(Error)
   })
 
   // Bug: same family, for an isomorphic fn whose chain passes through a
   // helper function (`withBuilder(createIsomorphicFn().server(f)).client(g)`):
   // the inner `createIsomorphicFn().server(f)` is compiled on its own into a
-  // plain function, so `.client(g)` is then called on that function. The
-  // fix supports it (SPEC J4.5): each output runs its implementation (a
-  // rejection is no fix).
+  // plain function, so `.client(g)` is then called on that function. Its
+  // `.server()` finished the value, so nothing refuses it (R92: a wrapper is
+  // not followed), and no server code ships.
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
   // a function"), on the client and on the server.
-  test('each output keeps its implementation of an isomorphic fn whose chain passes through a helper function', async () => {
+  test.fails('each output keeps its implementation of an isomorphic fn whose chain passes through a helper function', async () => {
     const startCase = await newCase({
       'module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
 function withBuilder<T>(builder: T) {

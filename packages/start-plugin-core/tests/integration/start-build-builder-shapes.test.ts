@@ -295,6 +295,36 @@ export const fn = bar[0]!.authed.handler(async () => 'MARK_SERVER_SECRET')
   },
 ]
 
+refused.push(
+  {
+    name: 'a builder through an identity helper',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const id = <T,>(x: T) => x
+export const fn = id(createServerFn()).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a builder through an identity helper that also stores it',
+    file: 'src/entry.ts',
+    line: 7,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+const reg: any = {}
+const register = <T,>(b: T): T => {
+  reg.base = b
+  return b
+}
+register(createServerFn())
+export const fn = reg.base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',

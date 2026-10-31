@@ -44,7 +44,7 @@ export type AbstractValue =
   | { t: 'serverFn' | 'middleware' | 'isoFn'; links: Array<Link> }
   | { t: 'envOnlyResult'; kind: 'server' | 'client' }
   | { t: 'namespace'; specifier: string }
-  | { t: 'function'; returns: AbstractValue | { t: 'param'; index: number } }
+  | { t: 'function'; returns: AbstractValue }
   /** Symbolic: an import nobody resolved yet (summaries; local analysis without `resolveImport`). */
   | { t: 'importRef'; specifier: string; name: string }
   /** Symbolic: a member of a value that is not reducible yet. */
@@ -160,7 +160,7 @@ export function applyMember(
 /**
  * The transfer function of a call `fn(args)` on a known callee value. `args`
  * is a thunk: argument values are only computed when the callee needs them
- * (a user function returning a parameter, a symbolic callee).
+ * (a symbolic callee).
  */
 export function applyCall(
   table: RecognizerTable,
@@ -233,14 +233,8 @@ export function applyCall(
         kind: fn.kind,
         links: [...fn.links, { method: 'call', site }],
       }
-    case 'function': {
-      const r = fn.returns
-      if (r.t === 'param') {
-        const arg = args()[r.index]
-        return arg ?? UNKNOWN
-      }
-      return r
-    }
+    case 'function':
+      return fn.returns
     case 'importRef':
     case 'call':
     case 'join':
@@ -304,10 +298,7 @@ export function stampSites(
     case 'function':
       return {
         t: 'function',
-        returns:
-          v.returns.t === 'param'
-            ? v.returns
-            : stampSites(v.returns, canonicalId),
+        returns: stampSites(v.returns, canonicalId),
       }
     case 'member':
       return {
@@ -540,19 +531,6 @@ export class ValueAnalysis {
     if (!ret) {
       return { t: 'function', returns: UNKNOWN }
     }
-    const u = unwrapExpression(ret)
-    if (u.type === 'Identifier') {
-      const ref = this.file.referenceOf(u)
-      const b = ref?.binding
-      if (b) {
-        const idx = fn.params.findIndex(
-          (p) => p.type === 'Identifier' && this.file.bindingOf(p)?.id === b.id,
-        )
-        if (idx !== -1) {
-          return { t: 'function', returns: { t: 'param', index: idx } }
-        }
-      }
-    }
     return { t: 'function', returns: this.valueOf(ret) }
   }
 }
@@ -585,9 +563,7 @@ export function staticPropertyKey(
 }
 
 /** Strips link sites to method names (export-facts digest input: importers observe the methods, not the arguments). */
-export function stripSites(
-  v: AbstractValue | { t: 'param'; index: number },
-): unknown {
+export function stripSites(v: AbstractValue): unknown {
   switch (v.t) {
     case 'builder':
       return { t: v.t, kind: v.kind, links: v.links.map((l) => l.method) }

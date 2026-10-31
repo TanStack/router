@@ -337,11 +337,7 @@ export function startAnalysisOf(
               ? values.valueOfBinding(binding.id)
               : UNKNOWN
             : values.valueOf(fn)
-        if (
-          fv.t !== 'function' ||
-          fv.returns.t === 'param' ||
-          !isStartValue(table, fv.returns)
-        ) {
+        if (fv.t !== 'function' || !isStartValue(table, fv.returns)) {
           // the function's value does not carry what it returns
           escape(outer, value, 'return')
         } else if (binding) {
@@ -529,22 +525,6 @@ export function startAnalysisOf(
         if (value.t !== 'namespace' && value.t !== 'startInstance') {
           // a detached method (`.handler`), a property of a builder
           escape(member, value, 'member')
-        }
-        break
-      }
-      if (p.type === 'CallExpression' && p.callee !== outer) {
-        // an argument of a user helper returning that parameter (`wrap(x)`): the value flows through
-        const idx = (p.arguments as ReadonlyArray<Node>).indexOf(outer)
-        if (idx !== -1) {
-          const fnValue = values.valueOf(p.callee)
-          if (
-            fnValue.t === 'function' &&
-            fnValue.returns.t === 'param' &&
-            fnValue.returns.index === idx
-          ) {
-            node = p
-            continue
-          }
         }
         break
       }

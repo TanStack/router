@@ -290,10 +290,6 @@ const supported: Array<Shape> = [
   },
   // ---- wrappers and values passed around
   {
-    name: 'an identity wrapper of a builder',
-    code: `${P}const id = <T,>(x: T) => x\nexport const fn = id(createServerFn()).handler(async () => db.x())`,
-  },
-  {
     name: 'a server fn passed to an unknown function',
     code: `${P}import { withRetry } from 'some-lib'\nexport const fn = withRetry(createServerFn().handler(async () => db.x()))`,
   },

@@ -65,7 +65,7 @@ export function isStartValue(
     case 'namespace':
       return isKnownSpecifier(table, v.specifier)
     case 'function':
-      return v.returns.t === 'param' ? false : isStartValue(table, v.returns)
+      return isStartValue(table, v.returns)
     default:
       return false
   }
@@ -108,7 +108,7 @@ export function takesServerCode(
         : false
     }
     case 'function':
-      return v.returns.t !== 'param' && takesServerCode(table, v.returns)
+      return takesServerCode(table, v.returns)
     default:
       return false
   }
@@ -232,10 +232,7 @@ export async function prefetchStartValues(
       case 'function':
         return {
           t: 'function',
-          returns:
-            v.returns.t === 'param'
-              ? v.returns
-              : await reduce(v.returns, owner, path),
+          returns: await reduce(v.returns, owner, path),
         }
       default:
         return v

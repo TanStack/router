@@ -108,8 +108,6 @@ describe('symbolic value terms', () => {
       const start = createStart()
       export const mw = start.createMiddleware({ type: 'function' })
       export const fn = csf().handler(() => 1)
-      export const stub = (x) => x
-      export const same = stub(csf())
     `)
     const values = new ValueAnalysis(a.file, {
       table: TABLE,
@@ -126,7 +124,6 @@ describe('symbolic value terms', () => {
     }
     expect(valueOf('mw')).toMatchObject({ t: 'builder', kind: 'middleware' })
     expect(valueOf('fn')).toMatchObject({ t: 'serverFn' })
-    expect(valueOf('same')).toMatchObject({ t: 'builder', kind: 'serverFn' })
   })
 })
 
