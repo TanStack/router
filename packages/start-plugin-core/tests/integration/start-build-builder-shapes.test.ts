@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import type { StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { InlineConfig } from 'vite'
 
@@ -22,6 +23,8 @@ interface Compiled {
   files: Record<string, string>
   viteConfig?: InlineConfig
   rsbuildConfig?: RsbuildConfig
+  /** Default: every bundler. */
+  bundlers?: Array<StartBundler>
 }
 
 interface Refused extends Compiled {
@@ -643,8 +646,25 @@ export const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+compiled.push(
+  {
+    name: 'a builder module under an alias with a colon',
+    viteConfig: { resolve: { alias: { 'app:b': '/src/b.ts' } } },
+    // (Rspack refuses the scheme itself)
+    bundlers: ['vite'],
+    files: {
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+      'src/entry.ts': `import { base } from 'app:b'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each(compiled)(
+  test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
     '$name compiles',
     async (row) => {
       const build = await buildStart({
