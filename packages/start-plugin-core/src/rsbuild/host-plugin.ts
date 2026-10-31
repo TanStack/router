@@ -135,6 +135,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
       // a loader's `getResolve()` resolver, without the resolve context that
       // records what it looks at as dependencies of the module compiling. Got
+      // (`esm`: the resolver of the imports it analyses, with their `exports` conditions)
       // at the first resolution, in a compilation: one got before the
       // compiler's first compilation keeps a file system cache that no
       // compilation clears (Rspack 2.2: a created file is never seen)
@@ -144,7 +145,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         (dir, request) =>
           new Promise((resolve) => {
             try {
-              resolver ??= compiler.resolverFactory.get('normal')
+              resolver ??= compiler.resolverFactory.get('normal', {
+                dependencyType: 'esm',
+              })
               resolver.resolve({}, dir, request, {}, (error, result) => {
                 resolve(
                   !error && typeof result === 'string'

@@ -6,6 +6,8 @@
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import type { RsbuildConfig } from '@rsbuild/core'
+import type { InlineConfig } from 'vite'
 
 const timeout = 60_000
 
@@ -18,6 +20,8 @@ export const authed = createServerFn().middleware([auth])
 interface Compiled {
   name: string
   files: Record<string, string>
+  viteConfig?: InlineConfig
+  rsbuildConfig?: RsbuildConfig
 }
 
 interface Refused extends Compiled {
@@ -605,11 +609,51 @@ export const call = () => setTimeout(getTheme)
   },
 )
 
+compiled.push(
+  {
+    name: 'a library with import-only `exports` holding a builder',
+    files: {
+      'node_modules/@acme/auth/package.json': JSON.stringify({
+        name: '@acme/auth',
+        version: '1.0.0',
+        type: 'module',
+        exports: { '.': { import: './b.js' } },
+      }),
+      'node_modules/@acme/auth/b.js': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+      'src/entry.ts': `import { base } from '@acme/auth'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'an alias of the Start package',
+    viteConfig: {
+      resolve: { alias: { '@start': '@tanstack/react-start' } },
+    },
+    rsbuildConfig: {
+      resolve: { alias: { '@start': '@tanstack/react-start' } },
+    },
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@start'
+export const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',
-    async ({ files }) => {
-      const build = await buildStart({ bundler, files, entry: 'src/entry.ts' })
+    async (row) => {
+      const build = await buildStart({
+        bundler,
+        files: row.files,
+        viteConfig: row.viteConfig,
+        rsbuildConfig: row.rsbuildConfig,
+        entry: 'src/entry.ts',
+      })
       expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
     },
     timeout,
