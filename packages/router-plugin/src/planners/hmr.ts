@@ -197,7 +197,14 @@ export function planHmrBlock(
   style: HmrStyle,
 ): void {
   const { cfg, route } = round
-  if (route.kind === 'lazy' || route.routeId === null) {
+  // options the compiler can't read may be one object shared across
+  // evaluations, which the route adopts: a second evaluation can't take it, so
+  // an edit reloads the page (J2.8)
+  if (
+    route.kind === 'lazy' ||
+    route.routeId === null ||
+    route.options.kind === 'opaque'
+  ) {
     return
   }
   const { names } = ctx
