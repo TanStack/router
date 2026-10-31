@@ -12,17 +12,21 @@ import {
   UNKNOWN,
   applyCall,
   applyMember,
+  isExpressionWrapper,
   isKnownSpecifier,
   joinValues,
   recognizeImport,
   stampSites,
   staticPropertyKey,
 } from '@tanstack/router-utils/compiler'
+import { NODE_MODULES_RE } from './scope'
 import type {
   AbstractValue,
   ModuleAnalysis,
   PrefetchContext,
+  Range,
   RecognizerTable,
+  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 /** Phase A result: `${specifier}\0${name}` → value, for this module's imports. */
@@ -30,6 +34,14 @@ export interface StartPrefetch {
   values: Map<string, AbstractValue>
   /** Whether any import carries a Start value (the async half of the gate). */
   relevant: boolean
+  /** Where a project namespace with an open builder among its exports goes where the analysis does not follow it. */
+  namespaceEscapes: Array<NamespaceEscape>
+}
+
+export interface NamespaceEscape {
+  range: Range
+  /** The export server code can still be attached to. */
+  exported: string
 }
 
 function importKey(specifier: string, name: string): string {
@@ -127,6 +139,7 @@ export async function prefetchStartValues(
 ): Promise<StartPrefetch> {
   const { table } = opts
   const values = new Map<string, AbstractValue>()
+  const namespaceEscapes: Array<NamespaceEscape> = []
   let relevant = false
   const file = t0.file
   // settled values only: two of this module's imports may lead to one export at once
@@ -188,16 +201,18 @@ export async function prefetchStartValues(
     switch (v.t) {
       case 'importRef':
         return importedValue(owner, v.specifier, v.name, path)
-      case 'namespace':
+      case 'namespace': {
         if (isKnownSpecifier(table, v.specifier)) {
           return v
         }
-        // a namespace of a project module: its members are resolved on demand (member terms)
-        return v
+        // a namespace of a project module, named by its module: it leaves `owner`
+        const target = await ctx.resolveFrom(v.specifier, owner)
+        return target === null ? UNKNOWN : { t: 'namespace', specifier: target }
+      }
       case 'member': {
         const obj = await reduce(v.object, owner, path)
         if (obj.t === 'namespace' && !isKnownSpecifier(table, obj.specifier)) {
-          return importedValue(owner, obj.specifier, v.name, path)
+          return exportValue(obj.specifier, v.name, path)
         }
         return applyMember(table, obj, v.name)
       }
@@ -227,8 +242,124 @@ export async function prefetchStartValues(
     }
   }
 
+  /** An export of `id` (or of a namespace it exports) that server code can still be attached to. A dependency's are not followed. */
+  const openExport = async (
+    id: string,
+    seen: Set<string>,
+  ): Promise<string | null> => {
+    if (seen.has(id) || NODE_MODULES_RE.test(id)) {
+      return null
+    }
+    seen.add(id)
+    if (isKnownSpecifier(table, id)) {
+      return takesServerCode(table, { t: 'namespace', specifier: id })
+        ? id
+        : null
+    }
+    const summary = await ctx.resolver.summary(id)
+    for (const name of Object.keys(summary?.exports ?? {})) {
+      const v = await exportValue(id, name, LookupPath.start())
+      const open = takesServerCode(table, v)
+        ? name
+        : v.t === 'namespace' && (await openExport(v.specifier, seen))
+      if (open) {
+        return open
+      }
+    }
+    for (const star of summary?.stars ?? []) {
+      const target = await ctx.resolveFrom(star, id)
+      const open = target !== null && (await openExport(target, seen))
+      if (open) {
+        return open
+      }
+    }
+    return null
+  }
+
+  /**
+   * Follows the reads `nodes` of the namespace object of project module `id`,
+   * whose members this module keys by `specifier`: members read by name are
+   * prefetched; anywhere else, what the namespace exports is beyond this
+   * compile, which refuses an open builder among its exports.
+   */
+  const followNamespace = async (
+    specifier: string,
+    id: string,
+    nodes: ReadonlyArray<Node>,
+  ) => {
+    const escapes = async (target: string, at: Node) => {
+      const exported = await openExport(target, new Set())
+      if (exported !== null) {
+        namespaceEscapes.push({
+          range: { start: at.start, end: at.end },
+          exported,
+        })
+        relevant = true
+      }
+    }
+    const member = async (name: string, at: Node) => {
+      const v = await exportValue(id, name, LookupPath.start())
+      values.set(importKey(specifier, name), v)
+      if (isStartValue(table, v)) {
+        relevant = true
+      } else if (v.t === 'namespace') {
+        // (a namespace of a namespace is not followed further)
+        await escapes(v.specifier, at)
+      }
+    }
+    const reads: Array<Promise<void>> = []
+    for (const node of nodes) {
+      let outer = node
+      let parent = file.parentOf(outer)
+      while (parent && isExpressionWrapper(parent)) {
+        outer = parent
+        parent = file.parentOf(outer)
+      }
+      if (!parent) {
+        continue
+      }
+      if (
+        parent.type === 'MemberExpression' &&
+        parent.object === outer &&
+        !parent.computed &&
+        parent.property.type === 'Identifier'
+      ) {
+        reads.push(member(parent.property.name, parent))
+      } else if (
+        parent.type === 'JSXMemberExpression' &&
+        parent.object === outer
+      ) {
+        reads.push(member(parent.property.name, parent))
+      } else if (
+        parent.type === 'VariableDeclarator' &&
+        parent.init === outer &&
+        parent.id.type === 'ObjectPattern'
+      ) {
+        // `const { a, 'b': c } = ns`: the destructured names; a rest element, a default or a nested pattern escapes
+        for (const prop of parent.id.properties) {
+          const key =
+            prop.type === 'Property' && prop.value.type === 'Identifier'
+              ? staticPropertyKey(prop)
+              : null
+          reads.push(key !== null ? member(key, prop) : escapes(id, prop))
+        }
+      } else if (
+        // (an exported namespace is followed by the summaries)
+        parent.type !== 'ExportSpecifier' &&
+        parent.type !== 'ExportDefaultDeclaration'
+      ) {
+        reads.push(escapes(id, outer))
+      }
+    }
+    await Promise.all(reads)
+  }
+
   const work: Array<Promise<void>> = []
-  const prefetchImport = async (specifier: string, name: string) => {
+  const prefetchImport = async (
+    specifier: string,
+    name: string,
+    refs: ReadonlyArray<Node>,
+  ) => {
     const v = await importedValue(
       ctx.identity.canonicalId,
       specifier,
@@ -238,6 +369,17 @@ export async function prefetchStartValues(
     values.set(importKey(specifier, name), v)
     if (isStartValue(table, v)) {
       relevant = true
+    } else if (v.t === 'namespace') {
+      await followNamespace(v.specifier, v.specifier, refs)
+    }
+  }
+  const prefetchNamespace = async (
+    specifier: string,
+    refs: ReadonlyArray<Node>,
+  ) => {
+    const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
+    if (id !== null) {
+      await followNamespace(specifier, id, refs)
     }
   }
   for (const imp of t0.imports) {
@@ -253,49 +395,17 @@ export async function prefetchStartValues(
       if (!binding) {
         continue
       }
-      const refs = binding.references.filter((r) => !r.inTypePosition)
+      const refs = binding.references.flatMap((r) =>
+        r.inTypePosition ? [] : [r.node],
+      )
       if (refs.length === 0) {
         continue
       }
       if (spec.imported === '*') {
         if (known) {
           relevant = true
-          continue
-        }
-        const names = new Set<string>()
-        for (const r of refs) {
-          const parent = file.parentOf(r.node)
-          if (!parent) {
-            continue
-          }
-          if (
-            parent.type === 'MemberExpression' &&
-            parent.object === r.node &&
-            !parent.computed &&
-            parent.property.type === 'Identifier'
-          ) {
-            names.add(parent.property.name)
-          } else if (
-            parent.type === 'JSXMemberExpression' &&
-            parent.object === r.node
-          ) {
-            names.add(parent.property.name)
-          } else if (
-            parent.type === 'VariableDeclarator' &&
-            parent.init === r.node &&
-            parent.id.type === 'ObjectPattern'
-          ) {
-            // `const { a, 'b': c } = ns`: the destructured names
-            for (const prop of parent.id.properties) {
-              const key = prop.type === 'Property' && staticPropertyKey(prop)
-              if (key) {
-                names.add(key)
-              }
-            }
-          }
-        }
-        for (const name of names) {
-          work.push(prefetchImport(imp.specifier, name))
+        } else {
+          work.push(prefetchNamespace(imp.specifier, refs))
         }
         continue
       }
@@ -306,11 +416,13 @@ export async function prefetchStartValues(
         }
         continue
       }
-      work.push(prefetchImport(imp.specifier, spec.imported))
+      work.push(prefetchImport(imp.specifier, spec.imported, refs))
     }
   }
   await Promise.all(work)
-  return { values, relevant }
+  // (their order is the order the lookups settled in)
+  namespaceEscapes.sort((a, b) => a.range.start - b.range.start)
+  return { values, relevant, namespaceEscapes }
 }
 
 /** The `resolveImport` callback of the local value analysis over a prefetch result. */

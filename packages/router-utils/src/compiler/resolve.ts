@@ -69,6 +69,11 @@ export class ExportResolver {
     return this.walk(canonicalId, name, LookupPath.start())
   }
 
+  /** The module's summary, for a caller listing what it exports. */
+  summary(canonicalId: string): Promise<ModuleSummary | null> {
+    return this.deps.summaryOf(canonicalId)
+  }
+
   private async walk(
     canonicalId: string,
     name: string,

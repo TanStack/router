@@ -31,6 +31,7 @@ import {
   devFunctionId,
   placeholderId,
 } from '../server-fns/ids'
+import type { StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -960,6 +961,18 @@ function planStartEnv(
         range: rangeOf(e.node),
         by,
         code: `start-escape:${e.reason}`,
+      })
+    }
+    const prefetched = ctx.prefetched.get(START_ENV) as
+      | StartPrefetch
+      | undefined
+    for (const { range, exported } of prefetched?.namespaceEscapes ?? []) {
+      ctx.liveDiagnostic({
+        severity: 'error',
+        message: `This namespace object goes where the compiler cannot follow it, and its module exports \`${exported}\`, a TanStack Start builder or factory, so server code attached to it there would ship to the client. Import what you use by name, or read it directly (\`ns.${exported}\`).`,
+        range,
+        by,
+        code: 'start-escape:namespace',
       })
     }
     // a parameter that reaches server code: every call keeps its argument on the client
