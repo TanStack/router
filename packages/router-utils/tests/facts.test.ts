@@ -33,7 +33,8 @@ describe('RawFactsCache', () => {
     const files: Record<string, string> = {
       '/app/a.ts': `export const a = 1\n`,
       '/app/s.ts': `import 'server-only'\nexport const s = 1\n`,
-      '/app/c.ts': `import x from 'client-only'\nexport const c = x\n`,
+      '/app/c.ts': `export const c = 'client-only'\n`,
+      '/app/n.ts': `import x from 'client-only'\nexport const n = x\n`,
     }
     const cache = new RawFactsCache({
       readFile: (p) => Promise.resolve(files[p] ?? null),
@@ -48,24 +49,25 @@ describe('RawFactsCache', () => {
     })
     // the scan knew the revision: a compile of the same text publishes its analysis
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
-    // the literal is there: parsed, and a bare marker import is the marker
+    // the literal is there: parsed, and an import of the marker is the marker
     expect(await cache.marker('/app/s.ts', 'client')).toBe('server-only')
-    // the literal is there but it is not a bare import: no marker (the parse decides)
+    expect(await cache.marker('/app/n.ts', 'client')).toBe('client-only')
+    // the literal is there but it is not an import: no marker (the parse decides)
     expect(await cache.marker('/app/c.ts', 'client')).toBe(null)
     expect(cache.stats(false)).toMatchObject({
-      rawFacts: 3,
+      rawFacts: 4,
       rawFactsMarkerless: 1,
     })
     // asked again: no read
     await cache.marker('/app/a.ts', 'client')
     await cache.marker('/app/s.ts', 'client')
-    expect(cache.stats(false).factsReads).toBe(6)
+    expect(cache.stats(false).factsReads).toBe(7)
     // the full facts of a scanned target are built when asked, once
     const facts = await cache.get('/app/a.ts', 'client')
     expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
     expect(cache.stats(false)).toMatchObject({
       rawFactsMarkerless: 0,
-      factsReads: 7,
+      factsReads: 8,
     })
     // a change makes the next question read again
     files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`

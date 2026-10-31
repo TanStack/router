@@ -414,7 +414,10 @@ export class ModuleAnalysis {
           }
           this.importByStatement.set(stmt.start, entry.index)
           imports.push(entry)
-          if (entry.bare && !entry.typeOnly) {
+          if (
+            !entry.typeOnly &&
+            (entry.bare || entry.specifiers.some((spec) => !spec.typeOnly))
+          ) {
             noteMarker(entry.specifier)
           }
           break
@@ -471,6 +474,9 @@ export class ModuleAnalysis {
         case 'ExportNamedDeclaration': {
           const typeOnly = stmt.exportKind === 'type'
           if (stmt.source !== null) {
+            if (!typeOnly) {
+              noteMarker(stmt.source.value)
+            }
             const names: Array<string> = []
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
@@ -603,7 +609,18 @@ export class ModuleAnalysis {
       if (!specNode) {
         continue
       }
-      noteMarker(imp.specifier)
+      // (loaded when the module evaluates: in a function, it may be code an output erases)
+      if (
+        markers[imp.specifier] !== undefined &&
+        ![...file.ancestors(node)].some(
+          (a) =>
+            a.type === 'ArrowFunctionExpression' ||
+            a.type === 'FunctionExpression' ||
+            a.type === 'FunctionDeclaration',
+        )
+      ) {
+        noteMarker(imp.specifier)
+      }
       dynamicEdges.push({
         specifier: imp.specifier,
         specifierRange: { start: specNode.start, end: specNode.end },
