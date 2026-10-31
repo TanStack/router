@@ -461,6 +461,14 @@ const supported: Array<Shape> = [
     name: 'a reassigned `let` builder',
     code: `${P}let base = createServerFn()\nbase = base.middleware([])\nexport const fn = base.handler(async () => db.x())`,
   },
+  {
+    name: '`renderServerComponent` in a server fn',
+    code: `import { createServerFn } from '@tanstack/react-start'\nimport { renderServerComponent } from '@tanstack/react-start/rsc'\nimport { db } from './db.server'\nexport const load = createServerFn().handler(async () => renderServerComponent(db.x()))`,
+  },
+  {
+    name: '`createCompositeComponent` in a helper only a server fn calls',
+    code: `import { createServerFn } from '@tanstack/react-start'\nimport { createCompositeComponent } from '@tanstack/react-start/rsc'\nimport { db } from './db.server'\nasync function card() {\n  return createCompositeComponent(() => db.x())\n}\nexport const load = createServerFn().handler(async () => card())`,
+  },
 ]
 
 describe('builder shapes the client compiles', () => {
@@ -655,6 +663,16 @@ const refused: Array<Refused> = [
     name: 'a destructured parameter passed as `.server()`',
     code: `${P}const mw = ({ handler }: any) => createMiddleware().server(handler)\nexport const m = mw({ handler: async ({ next }: any) => { db.x(); return next() } })`,
     at: 'handler)\nexport',
+  },
+  {
+    name: '`renderServerComponent` outside a server fn',
+    code: `import { renderServerComponent } from '@tanstack/react-start/rsc'\nimport { Secret } from './db.server'\nexport const load = () => renderServerComponent(<Secret />)`,
+    at: 'renderServerComponent(<',
+  },
+  {
+    name: '`createCompositeComponent` outside a server fn',
+    code: `import { createCompositeComponent } from '@tanstack/react-start/rsc'\nimport { Secret } from './db.server'\nexport const load = () => createCompositeComponent(() => <Secret />)`,
+    at: 'createCompositeComponent(()',
   },
   {
     name: 'a parameter passed as a validator',

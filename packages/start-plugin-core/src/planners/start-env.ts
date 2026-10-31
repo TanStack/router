@@ -962,6 +962,17 @@ function planStartEnv(
         code: `start-escape:${e.reason}`,
       })
     }
+    // an RSC primitive's argument is server code only a server fn's erasure removes
+    for (const { call } of analysis.rscCalls) {
+      ctx.liveDiagnostic({
+        severity: 'error',
+        message:
+          'A server component is rendered outside a server function, so it and what it imports would ship to the client. Call this inside `createServerFn().handler()`.',
+        range: rangeOf(call),
+        by,
+        code: 'start-escape:rsc',
+      })
+    }
     const prefetched = ctx.prefetched.get(START_ENV) as
       | StartPrefetch
       | undefined
