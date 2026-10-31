@@ -457,6 +457,10 @@ const supported: Array<Shape> = [
     name: 'a member call on the result of createServerOnlyFn',
     code: `${P}export const f = createServerOnlyFn(() => db.x()).bind(null)`,
   },
+  {
+    name: 'a reassigned `let` builder',
+    code: `${P}let base = createServerFn()\nbase = base.middleware([])\nexport const fn = base.handler(async () => db.x())`,
+  },
 ]
 
 describe('builder shapes the client compiles', () => {
@@ -547,11 +551,6 @@ const refused: Array<Refused> = [
     name: 'a computed `.handler`',
     code: `${P}export const fn = createServerFn()['handler'](async () => db.x())`,
     at: `createServerFn()['handler']`,
-  },
-  {
-    name: 'a reassigned `let` builder',
-    code: `${P}let base = createServerFn()\nbase = base.middleware([])\nexport const fn = base.handler(async () => db.x())`,
-    at: 'base = base',
   },
   {
     name: 'an unknown builder method',

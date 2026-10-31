@@ -294,6 +294,20 @@ export function startAnalysisOf(
     }
   }
 
+  /** Whether `value` is the same kind of builder as the binding plain assignment `write` writes. */
+  const isSameBuilder = (
+    write: Extract<Node, { type: 'AssignmentExpression' }>,
+    value: AbstractValue,
+  ): boolean => {
+    const target = values.valueOf(write.left)
+    return (
+      write.operator === '=' &&
+      target.t === 'builder' &&
+      value.t === 'builder' &&
+      value.kind === target.kind
+    )
+  }
+
   /**
    * Classifies the position a segment's value `outer` ends in, `p` its
    * parent: followed (a binding, a join or a function's return starts a new
@@ -306,6 +320,11 @@ export function startAnalysisOf(
       case 'ExportDefaultDeclaration':
       case 'ExportSpecifier': // summaries follow exports
         return
+      case 'AssignmentExpression':
+        if (p.right === outer && isSameBuilder(p, value)) {
+          return
+        }
+        break
       case 'ConditionalExpression':
       case 'LogicalExpression': {
         if (p.type === 'ConditionalExpression' && p.test === outer) {
@@ -620,8 +639,16 @@ export function startAnalysisOf(
         continue
       }
       if (ref.isWrite) {
-        // the binding's value is its initialiser's only while nothing writes it
-        escape(ref.node, v, 'reassigned')
+        // the binding's value is its initialiser's only while nothing writes it,
+        // or only the same kind of builder does
+        const write = parentOf(ref.node)
+        if (
+          write?.type !== 'AssignmentExpression' ||
+          write.left !== ref.node ||
+          !isSameBuilder(write, values.valueOf(write.right))
+        ) {
+          escape(ref.node, v, 'reassigned')
+        }
         continue
       }
       const n = ref.node

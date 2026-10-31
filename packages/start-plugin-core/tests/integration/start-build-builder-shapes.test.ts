@@ -383,6 +383,59 @@ export const called = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
   },
 )
 
+compiled.push(
+  {
+    name: 'a `let` builder reassigned with a link',
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+let base = createServerFn()
+base = base.middleware([])
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a `let` builder conditionally reassigned with a link',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const mw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+let base = createServerFn()
+if (Math.random() > 2) {
+  base = base.middleware([mw])
+}
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'a `let` builder reassigned with something else',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+let base: any = createServerFn()
+base = (globalThis as any).other
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a `let` holding something else, reassigned with a builder',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+let base: any = null
+base = createServerFn()
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',
