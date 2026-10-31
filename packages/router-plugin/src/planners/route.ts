@@ -5,7 +5,10 @@
  * module-level constant, through TypeScript wrappers) and every property of
  * it with its kind and source ranges. Computed once per planning round.
  */
-import { unwrapExpression } from '@tanstack/router-utils/compiler'
+import {
+  isExpressionWrapper,
+  unwrapExpression,
+} from '@tanstack/router-utils/compiler'
 import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
@@ -489,6 +492,91 @@ function foreignFactoryDiagnostic(
     message: `[tanstack-router] The route of "${fileName}" calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? ` and the options ${deleted} cannot be removed from this build` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
     range,
   }
+}
+
+/**
+ * A route factory call other than the route's own (a second call, a wrapped
+ * or a stored factory) holding an option `deleteNodes` must remove: only the
+ * route's own call has it removed, so it is an error at the call. The
+ * generator takes one `Route` export per file, so such a call is no route.
+ */
+export function unownedRouteOptions(
+  ctx: PlanContext,
+  cfg: RouterPlannerConfig,
+  own: Node | null,
+): Array<Diagnostic> {
+  if (cfg.deleteNodes.length === 0) {
+    return []
+  }
+  const file = ctx.analysis.file
+  const out: Array<Diagnostic> = []
+  /** The call `node` is the callee of, through wrappers. */
+  const called = (node: Node): Node | null => {
+    let outer = node
+    let p = file.parentOf(outer)
+    while (p && isExpressionWrapper(p)) {
+      outer = p
+      p = file.parentOf(outer)
+    }
+    return p?.type === 'CallExpression' && p.callee === outer ? p : null
+  }
+  const judge = (call: Node | null) => {
+    if (call?.type !== 'CallExpression' || call === own) {
+      return
+    }
+    const options = call.arguments[0] && unwrapExpression(call.arguments[0])
+    const deleted =
+      options?.type === 'ObjectExpression'
+        ? options.properties.flatMap((prop) => {
+            const key = propertyKeyName(prop)
+            return key !== null && cfg.deleteNodes.includes(key) ? [key] : []
+          })
+        : []
+    if (deleted.length > 0) {
+      out.push({
+        severity: 'error',
+        code: 'route-unowned-options',
+        by: ROUTER_PLANNER,
+        message: `[tanstack-router] "${ctx.identity.path}" holds \`${deleted.join('`, `')}\` in a route factory call that is not the one bound to its \`Route\` export, so they cannot be removed from this build. The generator takes one \`Route\` export per file: make this call that export, or move it to its own route file.`,
+        range: { start: call.start, end: call.end },
+      })
+    }
+  }
+  /** The calls of a factory read at `node`: `factory(path)(options)`, `factory(options)`, a stored `factory(path)`. */
+  const judgeCalls = (node: Node) => {
+    const first = called(node)
+    const second = first && called(first)
+    judge(second ?? first)
+    const p = first && file.parentOf(first)
+    if (p?.type === 'VariableDeclarator' && p.id.type === 'Identifier') {
+      for (const ref of file.bindingOf(p.id)?.references ?? []) {
+        judge(called(ref.node))
+      }
+    }
+  }
+  for (const imp of ctx.analysis.imports) {
+    if (!ROUTER_PACKAGE_RE.test(imp.specifier)) {
+      continue
+    }
+    for (const spec of imp.specifiers) {
+      const named = FACTORIES.has(spec.imported)
+      if (spec.local < 0 || !(named || spec.imported === '*')) {
+        continue
+      }
+      for (const ref of file.bindings[spec.local]?.references ?? []) {
+        const member = named ? ref.node : file.parentOf(ref.node)
+        if (
+          named ||
+          (member?.type === 'MemberExpression' &&
+            member.property.type === 'Identifier' &&
+            FACTORIES.has(member.property.name))
+        ) {
+          judgeCalls(member!)
+        }
+      }
+    }
+  }
+  return out
 }
 
 function importsFactory(analysis: ModuleAnalysis): boolean {

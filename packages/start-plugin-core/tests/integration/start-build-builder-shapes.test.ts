@@ -692,6 +692,74 @@ export const f = s
   },
 )
 
+refused.push(
+  {
+    name: 'a second route factory call carrying `server`',
+    file: 'src/r.tsx',
+    line: 3,
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })
+export const Admin = createFileRoute('/' as any)({
+  server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } },
+})
+`,
+      'src/entry.ts': `export { Route, Admin } from './r'\n`,
+    },
+  },
+  {
+    name: 'a wrapped route factory call carrying `ssr`',
+    file: 'src/r.tsx',
+    line: 3,
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const withMeta = <T,>(r: T) => r
+export const Route = withMeta(createFileRoute('/')({
+  ssr: () => { console.log('MARK_SERVER_SECRET'); return true },
+}))
+`,
+      'src/entry.ts': `export { Route } from './r'\n`,
+    },
+  },
+  {
+    name: 'a stored route factory called with `headers`',
+    file: 'src/r.tsx',
+    line: 3,
+    files: {
+      'src/r.tsx': `import * as R from '@tanstack/react-router'
+const make = R.createFileRoute('/')
+export const Route = make({
+  headers: () => ({ a: 'MARK_SERVER_SECRET' }),
+})
+`,
+      'src/entry.ts': `export { Route } from './r'\n`,
+    },
+  },
+)
+
+compiled.push(
+  {
+    name: 'a second route factory call without server options',
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })
+export const Other = createFileRoute('/' as any)({ component: () => null })
+`,
+      'src/entry.ts': `export { Route, Other } from './r'\n`,
+    },
+  },
+  {
+    name: 'a wrapped route factory call without server options',
+    files: {
+      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const withMeta = <T,>(r: T) => r
+export const Route = withMeta(createFileRoute('/')({ component: () => null }))
+`,
+      'src/entry.ts': `export { Route } from './r'\n`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
     '$name compiles',

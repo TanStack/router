@@ -5,7 +5,11 @@
  * part moves the others to their chunks and erases `deleteNodes`
  * (`split.ts`), then route HMR appends the dev block.
  */
-import { recognizeRoute, routeEntryDigest } from './route'
+import {
+  recognizeRoute,
+  routeEntryDigest,
+  unownedRouteOptions,
+} from './route'
 import { splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'
@@ -62,6 +66,13 @@ export function routerPlanner(): Planner {
       const entry = ctx.prefetched.get(ROUTER_PLANNER) as RouteEntryFacts | null
       const recognition = recognizeRoute(ctx, entry)
       const route = recognition.route
+      for (const d of unownedRouteOptions(
+        ctx,
+        cfg,
+        route?.optionsCall ?? null,
+      )) {
+        ctx.diagnostic(d)
+      }
       if (!route) {
         // no recognised route: report what recognition found (J2.10, J2.11)
         for (const w of recognition.warnings) {
