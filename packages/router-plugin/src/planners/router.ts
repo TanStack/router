@@ -62,11 +62,7 @@ export function routerPlanner(): Planner {
       const entry = ctx.prefetched.get(ROUTER_PLANNER) as RouteEntryFacts | null
       const recognition = recognizeRoute(ctx, entry)
       const route = recognition.route
-      for (const d of unownedRouteOptions(
-        ctx,
-        cfg,
-        route?.optionsCall ?? null,
-      )) {
+      for (const d of unownedRouteOptions(ctx, cfg, route)) {
         ctx.diagnostic(d)
       }
       if (!route) {

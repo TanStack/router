@@ -114,6 +114,8 @@ export interface RouteModuleInfo {
   routeUnit: Unit
   /** The call receiving the options. */
   optionsCall: Node
+  /** How many references the factory's import has. */
+  factoryReferences: number
   options: OptionsResolution
   /** The unit holding the options object (the route declarator or a module-level constant). */
   optionsUnit: Unit
@@ -362,9 +364,10 @@ export function recognizeRoute(
         ? 'file'
         : 'root'
   // J2.11: a second factory call in the module
-  const calls = t1.refs
-    .refsOf(factory.sym)
-    .filter((r) => r.ctx === 'callee' && r.kind === 'value')
+  const factoryRefs = t1.refs.refsOf(factory.sym)
+  const calls = factoryRefs.filter(
+    (r) => r.ctx === 'callee' && r.kind === 'value',
+  )
   if (calls.length > 1) {
     const other = calls.find((c) => c.range.start !== factoryNode.start)
     warn(
@@ -422,6 +425,7 @@ export function recognizeRoute(
       routeSym,
       routeUnit,
       optionsCall: outer,
+      factoryReferences: factoryRefs.length,
       options,
       optionsUnit,
       props,
@@ -503,9 +507,25 @@ function foreignFactoryDiagnostic(
 export function unownedRouteOptions(
   ctx: PlanContext,
   cfg: RouterPlannerConfig,
-  own: Node | null,
+  route: RouteModuleInfo | null,
 ): Array<Diagnostic> {
   if (cfg.deleteNodes.length === 0) {
+    return []
+  }
+  const factories: ModuleAnalysis['imports'][number]['specifiers'] = []
+  for (const imp of ctx.analysis.imports) {
+    for (const spec of imp.specifiers) {
+      if (
+        spec.local >= 0 &&
+        (spec.imported === '*' || FACTORIES.has(spec.imported)) &&
+        ROUTER_PACKAGE_RE.test(imp.specifier)
+      ) {
+        factories.push(spec)
+      }
+    }
+  }
+  // the usual route file holds one call, its own
+  if (route && factories.length === 1 && route.factoryReferences === 1) {
     return []
   }
   const file = ctx.analysis.file
@@ -521,7 +541,7 @@ export function unownedRouteOptions(
     return p?.type === 'CallExpression' && p.callee === outer ? p : null
   }
   const judge = (call: Node | null) => {
-    if (call?.type !== 'CallExpression' || call === own) {
+    if (call?.type !== 'CallExpression' || call === route?.optionsCall) {
       return
     }
     let options = call.arguments[0] && unwrapExpression(call.arguments[0])
@@ -559,25 +579,17 @@ export function unownedRouteOptions(
       }
     }
   }
-  for (const imp of ctx.analysis.imports) {
-    if (!ROUTER_PACKAGE_RE.test(imp.specifier)) {
-      continue
-    }
-    for (const spec of imp.specifiers) {
-      const named = FACTORIES.has(spec.imported)
-      if (spec.local < 0 || !(named || spec.imported === '*')) {
-        continue
-      }
-      for (const ref of file.bindings[spec.local]?.references ?? []) {
-        const member = named ? ref.node : file.parentOf(ref.node)
-        if (
-          named ||
-          (member?.type === 'MemberExpression' &&
-            member.property.type === 'Identifier' &&
-            FACTORIES.has(member.property.name))
-        ) {
-          judgeCalls(member!)
-        }
+  for (const spec of factories) {
+    const named = spec.imported !== '*'
+    for (const ref of file.bindings[spec.local]?.references ?? []) {
+      const member = named ? ref.node : file.parentOf(ref.node)
+      if (
+        named ||
+        (member?.type === 'MemberExpression' &&
+          member.property.type === 'Identifier' &&
+          FACTORIES.has(member.property.name))
+      ) {
+        judgeCalls(member!)
       }
     }
   }
