@@ -514,6 +514,97 @@ export const fn = console.log(createServerFn())
   },
 )
 
+compiled.push(
+  {
+    name: 'a client-only middleware in a `const` list',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const logging = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+const common = [logging]
+export const fn = createServerFn().middleware(common).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a client-only middleware in a conditional list',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const dev = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+export const fn = createServerFn().middleware(import.meta.env.DEV ? [dev] : []).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a composition-only middleware in a `const` list, spread',
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const a = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+const combo = createMiddleware({ type: 'function' }).middleware([a])
+const common = [combo]
+const more = [...common]
+export const fn = createServerFn().middleware(more).handler(async () => 'MARK_SERVER_SECRET')
+export const other = createServerFn().middleware(common).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+)
+
+refused.push(
+  {
+    name: 'a client-only middleware in a `const` list read elsewhere',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createMiddleware } from '@tanstack/react-start'
+const logging = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+const common = [logging]
+export const m = common[0]!.server(async ({ next }) => {
+  console.log('MARK_SERVER_SECRET')
+  return next()
+})
+`,
+    },
+  },
+  {
+    name: 'a client-only middleware in an exported list',
+    file: 'src/list.ts',
+    line: 3,
+    files: {
+      'src/list.ts': `import { createMiddleware } from '@tanstack/react-start'
+const logging = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+export const common = [logging]
+`,
+      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
+import { common } from './list'
+export const fn = createServerFn().middleware(common).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a client-only middleware in a `let` list',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const logging = createMiddleware({ type: 'function' }).client(async ({ next }) => next())
+let common = [logging]
+export const fn = createServerFn().middleware(common).handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
+  {
+    name: 'a client-only isomorphic fn as a callback',
+    file: 'src/entry.ts',
+    line: 3,
+    files: {
+      'src/entry.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+const getTheme = createIsomorphicFn().client(() => 'dark')
+export const call = () => setTimeout(getTheme)
+`,
+    },
+  },
+)
+
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(compiled)(
     '$name compiles',

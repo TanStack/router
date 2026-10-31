@@ -241,11 +241,12 @@ export function startAnalysisOf(
   }
 
   /**
-   * Whether a value inside array and object literals (and the function
-   * returning them) reaches a Start call's argument: `.middleware([mw])`,
+   * Whether a value inside array and object literals, a join of them (and
+   * the function returning them, or a `const` list only such uses read)
+   * reaches a Start call's argument: `.middleware([mw])`, `.middleware(common)`,
    * `createStart(() => ({ functionMiddleware: [mw] }))`.
    */
-  const reachesStartSink = (from: Node): boolean => {
+  const reachesStartSink = (from: Node, seen = new Set<Node>()): boolean => {
     let n: Node = from
     for (let p = parentOf(n); p; p = parentOf(n)) {
       if (
@@ -253,6 +254,8 @@ export function startAnalysisOf(
         p.type === 'ArrayExpression' ||
         p.type === 'ObjectExpression' ||
         p.type === 'SpreadElement' ||
+        p.type === 'LogicalExpression' ||
+        (p.type === 'ConditionalExpression' && p.test !== n) ||
         (p.type === 'Property' && p.value === n && p.kind === 'init') ||
         (p.type === 'ArrowFunctionExpression' && p.body === n)
       ) {
@@ -263,11 +266,36 @@ export function startAnalysisOf(
           return false
         }
         n = fn
+      } else if (p.type === 'VariableDeclarator') {
+        return constListReachesSink(p, seen)
       } else {
         return p.type === 'CallExpression' && p.callee !== n && isStartSink(p)
       }
     }
     return false
+  }
+
+  /** Whether every read of the unexported `const` that `declarator` declares reaches a Start call's argument. */
+  const constListReachesSink = (
+    declarator: Extract<Node, { type: 'VariableDeclarator' }>,
+    seen: Set<Node>,
+  ): boolean => {
+    const declaration = parentOf(declarator)
+    const b =
+      declarator.id.type === 'Identifier' ? file.bindingOf(declarator.id) : null
+    if (
+      !b ||
+      seen.has(declarator) ||
+      declaration?.type !== 'VariableDeclaration' ||
+      declaration.kind !== 'const' ||
+      parentOf(declaration)?.type === 'ExportNamedDeclaration'
+    ) {
+      return false
+    }
+    seen.add(declarator)
+    return b.references.every(
+      (r) => r.inTypePosition || reachesStartSink(r.node, seen),
+    )
   }
 
   const jsxCandidate = (opening: Node) => {
