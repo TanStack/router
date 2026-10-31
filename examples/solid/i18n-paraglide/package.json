@@ -13,7 +13,7 @@
     "@solidjs/web": "^2.0.0-rc.20",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "^1.168.30",
-    "@tanstack/solid-router": "^2.0.0-rc.9",
+    "@tanstack/solid-router": "^2.0.0-rc.10",
     "solid-js": "^2.0.0-rc.20",
     "tailwindcss": "^4.2.2"
   },
