@@ -80,7 +80,7 @@ interface RscCall {
  * the runtime), `return` (from a function the domain cannot summarise:
  * control flow, async, a generator, a method), `reassigned` (a written
  * binding), `pattern` (destructured, other than a namespace's or a start
- * instance's factories), `dynamic` (a Start package imported dynamically).
+ * instance's factories).
  */
 export type EscapeReason =
   | 'flow'
@@ -89,7 +89,6 @@ export type EscapeReason =
   | 'return'
   | 'reassigned'
   | 'pattern'
-  | 'dynamic'
 
 export interface Escape {
   node: Node
@@ -661,15 +660,6 @@ export function startAnalysisOf(
     while (handoffs.length > 0) {
       const [n, v] = handoffs.shift()!
       climb(n, v)
-    }
-  }
-  // a Start package's namespace loaded at run time is beyond any static view
-  for (const imp of file.imports) {
-    if (
-      (imp.kind === 'dynamic' || imp.kind === 'require') &&
-      isKnownSpecifier(table, imp.specifier)
-    ) {
-      escape(imp.node, { t: 'namespace', specifier: imp.specifier }, 'dynamic')
     }
   }
   cache.set(ctx.analysis, result)

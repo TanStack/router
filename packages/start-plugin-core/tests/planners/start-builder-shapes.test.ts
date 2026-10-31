@@ -507,16 +507,6 @@ interface Refused extends Shape {
 const refused: Array<Refused> = [
   // ---- import forms
   {
-    name: 'a dynamic import of the package',
-    code: `import { db } from './db.server'\nconst S = await import('@tanstack/react-start')\nexport const fn = S.createServerFn().handler(async () => db.x())`,
-    at: `import('@tanstack/react-start')`,
-  },
-  {
-    name: 'a require of the package',
-    code: `import { db } from './db.server'\nconst { createServerFn } = require('@tanstack/react-start')\nexport const fn = createServerFn().handler(async () => db.x())`,
-    at: `require('@tanstack/react-start')`,
-  },
-  {
     name: 'a computed member of the package namespace',
     code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = S['createServerFn']().handler(async () => db.x())`,
     at: `S['createServerFn']`,

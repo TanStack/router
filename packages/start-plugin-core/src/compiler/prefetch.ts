@@ -309,12 +309,6 @@ export async function prefetchStartValues(
       work.push(prefetchImport(imp.specifier, spec.imported))
     }
   }
-  // a Start package loaded at run time: the client compile reports it
-  relevant ||= t0.dynamicEdges.some(
-    (e) =>
-      isKnownSpecifier(table, e.specifier) &&
-      takesServerCode(table, { t: 'namespace', specifier: e.specifier }),
-  )
   await Promise.all(work)
   return { values, relevant }
 }

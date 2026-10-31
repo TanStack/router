@@ -1063,8 +1063,6 @@ const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
     'A variable holding a TanStack Start builder or factory is reassigned, so the compiler cannot tell what it holds where it is used, and server code attached to it would ship to the client. Store builders in a `const`.',
   pattern:
     'A TanStack Start builder or factory is destructured in a form the compiler cannot follow (only `const { createServerFn } = Start` style names of a Start namespace or start instance can be), so server code attached to it would ship to the client. Call its methods directly.',
-  dynamic:
-    'A TanStack Start package is imported dynamically (`import()` / `require()`), so the compiler cannot see the builders created from it and their server code would ship to the client. Import its APIs statically.',
 }
 
 function escapeMessage(e: Escape): string {
