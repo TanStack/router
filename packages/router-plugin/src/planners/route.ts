@@ -524,7 +524,12 @@ export function unownedRouteOptions(
     if (call?.type !== 'CallExpression' || call === own) {
       return
     }
-    const options = call.arguments[0] && unwrapExpression(call.arguments[0])
+    let options = call.arguments[0] && unwrapExpression(call.arguments[0])
+    if (options?.type === 'Identifier') {
+      const b = file.referenceOf(options)?.binding
+      const decl = b && declaratorOf(ctx, ctx.symbols.ofBinding(b))
+      options = decl ? unwrapExpression(decl.init) : options
+    }
     const deleted =
       options?.type === 'ObjectExpression'
         ? options.properties.flatMap((prop) => {
@@ -537,7 +542,7 @@ export function unownedRouteOptions(
         severity: 'error',
         code: 'route-unowned-options',
         by: ROUTER_PLANNER,
-        message: `[tanstack-router] "${ctx.identity.path}" holds \`${deleted.join('`, `')}\` in a route factory call that is not the one bound to its \`Route\` export, so they cannot be removed from this build. The generator takes one \`Route\` export per file: make this call that export, or move it to its own route file.`,
+        message: `[tanstack-router] "${ctx.identity.path}" holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so they cannot be removed from this build. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
         range: { start: call.start, end: call.end },
       })
     }
