@@ -141,7 +141,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 | The router plugin registered more than once in one app                                                                                                   | unsupported; no test                                                                                                                    |
 | Import protection in environments the user adds outside Start                                                                                            | undefined; no test; "left alone" if a choice is ever forced                                                                             |
 | `renderToReadableStream(x, options)` and plain-data models `{ card: <Card /> }` (type errors under the default types)                                    | must not break: the call works and its arguments reach the runtime unchanged; CSS injection and warnings neither required nor forbidden |
-| `createFileRoute('/')(makeOptions(...))` (factory-built options)                                                                                         | as J2.8 says (Start: removed, or a build error); in dev a full reload on every edit is acceptable, the edit must take effect            |
+| `createFileRoute('/')(makeOptions(...))` (factory-built options)                                                                                         | as J2.8 says (Start: builds and warns)                                                                                                  |
 | Dynamic `import()` of a server-function module                                                                                                           | discouraged by the docs; the compiled module must still be correct (J4.7)                                                               |
 | `const Deferred = Hydrate` then `<Deferred>`; `<Hydrate>` behind a plain wrapper component                                                               | not analysed for splitting; still defers hydration at runtime                                                                           |
 | Dynamic `split={shouldSplit}` on `<Hydrate>`                                                                                                             | treated as split                                                                                                                        |
@@ -406,8 +406,10 @@ dir)` is not a conflict by itself.
   and the run warns once naming the file, in every mode. If our analysis is the obstacle, that is a bug (a goal pin).
   Options the compiler cannot read statically (an options object imported from another module, factory-built
   options, a cast it does not unwrap) fall under this clause: split correctly or report once naming the file (the dev
-  full-reload allowance for factory-built options stands). Under Start the client build never ships their
-  `ssr`/`server`/`headers` silently: they are removed, or the build reports or fails clearly (J2.14, J4.12).
+  full-reload allowance for factory-built options stands). Under Start, the client build never ships their
+  `ssr`/`server`/`headers` silently: a spread, options from a call or an import and a computed key build and warn once,
+  saying what isn't split or removed, that server code in it ships, and what to write instead (J2.14, J4.12). The
+  server code they hold is the user's responsibility.
 - **J2.9 Best-effort shapes.** Method-shorthand options split (and refresh) like any other. Spread or computed
   option keys: best effort, safe fallback (J1.9), never a silent wrong split. Initialiser timing of shared bindings
   is free: run once, same value everywhere.
@@ -421,9 +423,11 @@ dir)` is not a conflict by itself.
   call) reads; the route module stays valid (G1, G8).
 - **J2.13 Dev mode.** Splitting also happens in dev; virtual chunk modules resolve in every bundler's dev server;
   removing a split option the page had loaded does not break the page.
-- **J2.14 `deleteNodes`.** Options named in `codeSplittingOptions.deleteNodes` are removed from that env's route
-  module with the code only they use; Start sets `['ssr','server','headers']` on the client, so the `ssr` function,
-  server handlers and `headers` never reach the client.
+- **J2.14 `deleteNodes`.** Options named in `codeSplittingOptions.deleteNodes` and written as properties of the options
+  are removed from that env's route module with the code only they use; Start sets `['ssr','server','headers']` on the
+  client, so the `ssr` function, server handlers and `headers` never reach the client. One written after a spread or a
+  computed key becomes `undefined` instead, keeping its place: it still wins over what they hold. What the compiler
+  can't read isn't removed (J2.8).
 - **J2.15 Client route tree pruning (Start).** Routes whose only `createFileRoute` prop is `server`, with only such
   descendants, are removed from the client route tree, on Vite and Rsbuild alike. Every route with a client-visible
   prop survives, and so does every ancestor a surviving route needs (including a server-only ancestor of a

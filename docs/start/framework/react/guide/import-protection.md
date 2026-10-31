@@ -280,6 +280,7 @@ The compiler reads your code statically, which limits this guarantee:
 - Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either.
 - A `.server` file behind a neutral module outside the protected scope (`srcDirectory`, `include`) isn't caught: the scope is about importers.
 - Only the route factory call bound to a file's `Route` export has its `server`, `ssr` and `headers` removed. Another call holding them fails the build. Code-based `createRoute` isn't supported by Start, and nothing removes its `server`.
+- Route options the compiler can't read build with a warning: a spread (`{ ...shared, component }`), options from a call or an import (`createFileRoute('/x')(makeOptions())`) and a computed key. What they hold isn't code-split or removed, so any server code in them ships to the client. Write `server`, `ssr` and `headers` as properties of the options object in the route file.
 
 Everything else is ordinary code. A plain call in a declaration that client code also reads ships to the client, with its import:
 

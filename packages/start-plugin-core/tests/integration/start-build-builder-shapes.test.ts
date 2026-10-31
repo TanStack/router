@@ -1065,20 +1065,18 @@ export const out = [clerk].map((get) => get().server(async ({ next }: any) => { 
   },
 )
 
-refused.push(
-  {
-    name: 'a marker imported dynamically in a function the client keeps',
-    file: 'src/entry.ts',
-    line: 2,
-    files: {
-      'src/entry.ts': `export const load = async () => {
+refused.push({
+  name: 'a marker imported dynamically in a function the client keeps',
+  file: 'src/entry.ts',
+  line: 2,
+  files: {
+    'src/entry.ts': `export const load = async () => {
   await import('@tanstack/react-start/server-only')
   return 'MARK_SERVER_SECRET'
 }
 `,
-    },
   },
-)
+})
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test(
