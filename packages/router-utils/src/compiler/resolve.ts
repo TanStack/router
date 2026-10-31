@@ -84,8 +84,9 @@ export class ExportResolver {
     if (hit) {
       return hit
     }
-    // a module met again on the path is a cycle, whatever name it is asked for
-    const inner = path.enter(canonicalId)
+    // (the module and the name, as the spec's ResolveExport: a star cycle may
+    // pass a module again for another name)
+    const inner = path.enter(key)
     if (!inner) {
       return { k: 'cycleUnknown' }
     }
