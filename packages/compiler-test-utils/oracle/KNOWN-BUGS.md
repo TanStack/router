@@ -345,8 +345,9 @@ SPLITTING.md`): a chunk never imports the extracted module of a pure export the 
 - **The user's own `import './Page'` is removed with the split component's import.** SPEC G3, J2.12.
   `pages/known-bugs-code-splitter-server.test.ts`: "a side-effect import of the split component's module runs when the
   route module loads".
-- **`deleteNodes` removes only options written as `key: value`**: methods, spreads, computed keys and options in a cast
-  or `satisfies` keep their server code on the client. SPEC J2.14, J4.12.
+- **`deleteNodes` removes only options written as `key: value`**: methods, literal computed keys and options in a cast
+  or `satisfies` keep their server code on the client. SPEC J2.14, J4.12. (A spread and options from a call stay and
+  warn, J2.8: "a server-only option given through $name stays, and the user is told so (J2.8)".)
   `pages/known-bugs-code-splitter-server.test.ts`: "a server-only option written as a method is removed with its
   imports (%s)"; "a server-only option given through $name is removed, or the route is refused"; "a server-only option
   of options wrapped in `%s` is removed with its imports"; `integration/known-bugs-code-splitter-client-output.test.ts`:

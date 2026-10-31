@@ -764,6 +764,8 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // What the compiler can't read builds and warns: the server code is the
+  // user's responsibility.
   test.each([
     {
       name: 'a spread',
@@ -784,36 +786,27 @@ export const Route = createFileRoute('/')(
 )`,
     },
   ])(
-    'a server-only option given through $name is removed, or the route is refused',
+    'a server-only option given through $name stays, and the user is told so (J2.8)',
     async ({ code }) => {
       const route = await loadForClient(
         `${head}import { db } from './secret-db'\n${code}`,
       )
-      let result
-      try {
-        result = await clientRoute(route)
-      } catch (error) {
-        // A refusal names the route file and the server-only option, on any
-        // channel (the compile error the dev server serves, what it logged)
-        const compiled = await route.transform().then(
-          () => [],
-          (compileError: unknown) => diagnosticsOf(compileError),
-        )
-        expectDiagnostic(
-          [
-            ...diagnosticsOf(error),
-            ...compiled,
-            ...problems(await route.diagnostics()),
-          ],
-          {
-            severity: 'error',
-            file: 'route.tsx',
-            root: route.host.root,
-          },
-        )
-        return
-      }
-      expect(result).toEqual(stripped)
+      expect(await clientRoute(route)).toEqual({
+        serverRequested: true,
+        serverOptions: ['server'],
+        rendered: '<p>x</p>',
+      })
+      expect(
+        findDiagnostics(await route.diagnostics(), {
+          severity: 'warning',
+          file: route.url.slice(1),
+          root: route.host.root,
+        }).map((d) => d.text),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('ships to the client'),
+        ]),
+      )
     },
   )
 
