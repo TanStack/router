@@ -609,6 +609,18 @@ export class ModuleAnalysis {
       if (!specNode) {
         continue
       }
+      // (loaded when the module evaluates: in a function, it may be code an output erases)
+      if (
+        markers[imp.specifier] !== undefined &&
+        ![...file.ancestors(node)].some(
+          (a) =>
+            a.type === 'ArrowFunctionExpression' ||
+            a.type === 'FunctionExpression' ||
+            a.type === 'FunctionDeclaration',
+        )
+      ) {
+        noteMarker(imp.specifier)
+      }
       dynamicEdges.push({
         specifier: imp.specifier,
         specifierRange: { start: specNode.start, end: specNode.end },
