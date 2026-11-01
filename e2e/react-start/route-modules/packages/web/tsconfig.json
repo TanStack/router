@@ -9,6 +9,7 @@
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
   "include": ["src", "vite.config.ts", "rsbuild.config.ts", "route-modules.ts"]
