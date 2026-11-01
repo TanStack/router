@@ -4,8 +4,8 @@
  * different origins are ambiguous; results computed across a cut cycle edge
  * are tainted and not memoised; untainted results are memoised per resolver.
  */
-import type { ModuleSummary } from './summary'
 import { ownEntry } from './strings'
+import type { ModuleSummary } from './summary'
 import type { AbstractValue } from './values'
 
 /**
