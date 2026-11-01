@@ -116,7 +116,7 @@ export function assignHomes(
     const derived = needers.filter((o) => outputs.get(o)?.kind !== 'provider')
     if (
       seeds.deadClusters.has(cl.id) ||
-      (orphaned.has(cl.id) && derived.length === 0)
+      (orphaned.has(cl.id) && needers.length === 0)
     ) {
       // orphaned by an env erasure and needed by no derived output: gone;
       // still needed by a chunk (an erased option value named it): homed below

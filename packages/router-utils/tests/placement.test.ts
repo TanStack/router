@@ -1347,6 +1347,64 @@ describe('extracted-export outputs', () => {
   // reader of state and what the route module's own roots keep alive are
   // one instance by construction, so they do not stop the copy.
   describe('what a copy does not carry', () => {
+    /** A provider output whose generated wrapper reads the exported `fn` (the shape of the J4.14 tests). */
+    const toyProviderPlanner = (): Planner => ({
+      name: 'toy-provider',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const fn = ctx.analysis.exports.find(
+          (e) => e.kind === 'local' && e.name === 'fn',
+        )
+        const sym = (fn?.kind === 'local' ? fn.local : null) as never
+        const wrapper = ctx.names.alloc('fn_handler')
+        ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-provider',
+        })
+      },
+    })
+    /** The handler leaves the env module for the provider output (Start's `providerOut`): a placeholder argument in the env module, the body in the provider. */
+    const providerOutEnvPlanner = (): Planner => ({
+      name: 'toy-env-provider-out',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const { analysis, t1 } = ctx
+        const imp = analysis.imports.find((i) => i.specifier === 'toy-start')!
+        for (const sp of imp.specifiers) {
+          for (const ref of t1.refs.refsOf(sp.local)) {
+            const node = t1.nodeAt(ref.range.start)
+            const call = node ? t1.parentOf(node) : null
+            const arg =
+              call?.type === 'CallExpression' ? call.arguments[0] : undefined
+            if (arg) {
+              ctx.rewrites.add({
+                range: { start: arg.start, end: arg.end },
+                body: [{ k: 'text', parts: ['0'] }],
+                scope: ['env'],
+                by: 'toy-env-provider-out',
+              })
+            }
+          }
+        }
+      },
+    })
+
     it('copies an exported component that reads the route', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1534,6 +1592,37 @@ describe('extracted-export outputs', () => {
       expect(e?.code).not.toContain('let count')
     })
 
+    // An import only a server fn's handler reads is orphaned in the env
+    // module (the handler is a stub there) and needed by the provider output
+    // alone: it goes with the provider, not nowhere (the Start planner tests
+    // caught a homes change that dropped it).
+    it('keeps an import only a provider output needs for the provider', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrapServer } from 'toy-start'
+        import { db } from './db'
+        export const fn = wrapServer(() => db.q())
+        export const Route = createFileRoute('/')({ component: () => 1 })
+      `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const planners = [
+        providerOutEnvPlanner(),
+        toyProviderPlanner(),
+        toySplitPlanner({ keys: ['component'], extractExports: true }),
+      ]
+      const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+      const main = await host.compile('/app/route.tsx', planners, { env })
+      expect(main?.code).toContain('export const fn = wrapServer(0)')
+      expect(main?.code).not.toContain("from './db'")
+      const prov = await host.compile(
+        '/app/route.tsx?tss-serverfn-split',
+        planners,
+        { env },
+      )
+      expect(prov?.code).toContain("import { db } from './db'")
+      expect(prov?.code).toContain('() => db.q()')
+    })
+
     // A provider output copies what it reaches (another layer's instance):
     // it is no needer the identity rule counts, and no reason to keep a
     // cluster in the env module (the dev-time self-check threw here).
@@ -1548,66 +1637,9 @@ describe('extracted-export outputs', () => {
         export const Route = createFileRoute('/')({ component: Page })
       `)
       const host = new MemoryHost({ files: { '/app/route.tsx': code } })
-      const provider: Planner = {
-        name: 'toy-provider',
-        tier: 1,
-        gate: () => true,
-        plan(ctx) {
-          const out = ctx.declareOutput({
-            kind: 'provider',
-            key: 'provider',
-            derived: { kind: 'provider', value: '' },
-          })
-          const fn = ctx.analysis.exports.find(
-            (e) => e.kind === 'local' && e.name === 'fn',
-          )
-          const sym = (fn?.kind === 'local' ? fn.local : null) as never
-          const wrapper = ctx.names.alloc('fn_handler')
-          ctx.rewrites.addGenerated({
-            body: [
-              {
-                k: 'text',
-                parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
-              },
-            ],
-            declares: [wrapper.sym],
-            effectful: false,
-            anchor: { k: 'end' },
-            home: out,
-            by: 'toy-provider',
-          })
-        },
-      }
-      // the handler leaves the env module for the provider output (Start's
-      // `providerOut`): a stub in the env module, the body in the provider
-      const envPlanner: Planner = {
-        name: 'toy-env-provider-out',
-        tier: 1,
-        gate: () => true,
-        plan(ctx) {
-          const { analysis, t1 } = ctx
-          const imp = analysis.imports.find((i) => i.specifier === 'toy-start')!
-          for (const sp of imp.specifiers) {
-            for (const ref of t1.refs.refsOf(sp.local)) {
-              const node = t1.nodeAt(ref.range.start)
-              const call = node ? t1.parentOf(node) : null
-              const arg =
-                call?.type === 'CallExpression' ? call.arguments[0] : undefined
-              if (arg) {
-                ctx.rewrites.add({
-                  range: { start: arg.start, end: arg.end },
-                  body: [{ k: 'text', parts: ['0'] }],
-                  scope: ['env'],
-                  by: 'toy-env-provider-out',
-                })
-              }
-            }
-          }
-        },
-      }
       const planners = [
-        envPlanner,
-        provider,
+        providerOutEnvPlanner(),
+        toyProviderPlanner(),
         toySplitPlanner({ keys: ['component'], extractExports: true }),
       ]
       const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
