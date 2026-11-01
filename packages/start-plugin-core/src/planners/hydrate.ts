@@ -24,6 +24,7 @@ import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
   listEnd,
+  ownEntry,
   removeListItems,
   siblingSpecifier,
   unwrapExpression,
@@ -110,7 +111,7 @@ function gate(t0: ModuleAnalysis): boolean {
     t0.imports.some(
       (imp) =>
         !imp.typeOnly &&
-        PACKAGES[imp.specifier] !== undefined &&
+        ownEntry(PACKAGES, imp.specifier) !== undefined &&
         imp.specifiers.some(
           (s) =>
             !s.typeOnly &&
@@ -183,7 +184,7 @@ function findBoundaries(
       : null
   }
   for (const imp of analysis.imports) {
-    const fw = PACKAGES[imp.specifier]
+    const fw = ownEntry(PACKAGES, imp.specifier)
     if (fw === undefined || imp.typeOnly) {
       continue
     }

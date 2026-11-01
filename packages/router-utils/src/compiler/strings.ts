@@ -121,3 +121,14 @@ export function identifierBase(raw: string): string {
   const cleaned = raw.replace(/[^\p{ID_Continue}$_]/gu, '_')
   return /^[\p{ID_Start}$_]/u.test(cleaned) ? cleaned : `_${cleaned}`
 }
+
+/**
+ * A table's entry for a name user code chose (a specifier, an export, a
+ * member): `constructor` or `__proto__` must not find `Object.prototype`.
+ */
+export function ownEntry<T>(
+  table: Readonly<Record<string, T>>,
+  key: string,
+): T | undefined {
+  return Object.hasOwn(table, key) ? table[key] : undefined
+}

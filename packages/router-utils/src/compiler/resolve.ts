@@ -5,6 +5,7 @@
  * are tainted and not memoised; untainted results are memoised per resolver.
  */
 import type { ModuleSummary } from './summary'
+import { ownEntry } from './strings'
 import type { AbstractValue } from './values'
 
 /**
@@ -94,7 +95,7 @@ export class ExportResolver {
     if (!summary) {
       return { k: 'absent' }
     }
-    const fact = summary.exports[name]
+    const fact = ownEntry(summary.exports, name)
     if (fact) {
       if (fact.kind === 'local') {
         return this.settle(key, inner, {

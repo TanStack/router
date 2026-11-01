@@ -11,6 +11,7 @@
  * transfer function on already-known values; `stampSites` gives links from
  * another module their owner).
  */
+import { ownEntry } from './strings'
 import { unwrapExpression } from './source'
 import type { Node, SourceFile } from 'yuku'
 import type { Range } from './header'
@@ -99,7 +100,8 @@ export function recognizeImport(
   specifier: string,
   name: string,
 ): AbstractValue {
-  const kind = table.factories[specifier]?.[name]
+  const exports = ownEntry(table.factories, specifier)
+  const kind = exports && ownEntry(exports, name)
   if (kind === undefined) {
     return UNKNOWN
   }
@@ -144,7 +146,7 @@ export function applyMember(
         : { t: 'importRef', specifier: obj.specifier, name }
     }
     case 'startInstance': {
-      const kind = table.startMembers?.[name]
+      const kind = table.startMembers && ownEntry(table.startMembers, name)
       return kind ? { t: 'factory', kind } : UNKNOWN
     }
     case 'factory':

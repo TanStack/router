@@ -21,6 +21,7 @@ import type { SymbolId } from './symbols'
 import type { RegionId, RegionTable, TopLevelItem, Unit, UnitId } from './units'
 import type { Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
+import { ownEntry } from './strings'
 import type { RecognizerTable } from './values'
 
 export type { Range } from './header'
@@ -323,7 +324,7 @@ export class ModuleAnalysis {
     const reexports: Array<ReexportEntry> = []
     let marker: Marker = null
     const noteMarker = (specifier: string) => {
-      const m = markers[specifier]
+      const m = ownEntry(markers, specifier)
       if (m) {
         marker = marker === null || marker === m ? m : 'conflict'
       }
@@ -345,7 +346,7 @@ export class ModuleAnalysis {
         }
         // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
-        const pure = pureCalls?.[record.specifier]
+        const pure = pureCalls && ownEntry(pureCalls, record.specifier)
         if (pure && !record.typeOnly) {
           if (record.kind === 'namespace') {
             pureNamespaces.set(local.id, pure)
@@ -584,7 +585,7 @@ export class ModuleAnalysis {
       const loads = loadsModule(stmt)
       const isMarkerImport =
         stmt.type === 'ImportDeclaration' &&
-        markers[stmt.source.value] !== undefined
+        ownEntry(markers, stmt.source.value) !== undefined
       if (
         !isMarkerImport &&
         (loads ? !ownEffects : !codeEffects) &&
@@ -611,7 +612,7 @@ export class ModuleAnalysis {
       }
       // (loaded when the module evaluates: in a function, it may be code an output erases)
       if (
-        markers[imp.specifier] !== undefined &&
+        ownEntry(markers, imp.specifier) !== undefined &&
         ![...file.ancestors(node)].some(
           (a) =>
             a.type === 'ArrowFunctionExpression' ||

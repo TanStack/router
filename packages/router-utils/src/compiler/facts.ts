@@ -9,6 +9,7 @@ import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
+import { ownEntry } from './strings'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
 import type { ModuleSummary } from './summary'
@@ -442,9 +443,9 @@ export class RawFactsCache {
   /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */
   private knownFacts(specifier: string): RawFacts {
     const table = this.opts.recognizer ?? EMPTY_RECOGNIZER
-    const exportFacts: ModuleSummary['exports'] = {}
+    const exportFacts: ModuleSummary['exports'] = Object.create(null)
     for (const [name, kind] of Object.entries(
-      table.factories[specifier] ?? {},
+      ownEntry(table.factories, specifier) ?? {},
     )) {
       const value: AbstractValue = { t: 'factory', kind }
       exportFacts[name] = { kind: 'local', value, noSideEffects: true }
@@ -558,7 +559,7 @@ export class RawFactsCache {
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
-    const isMarker = (spec: string) => markers[spec] !== undefined
+    const isMarker = (spec: string) => ownEntry(markers, spec) !== undefined
     const evaluated = new Set<string>()
     for (const i of analysis.imports) {
       if (!i.typeOnly && (i.bare || i.specifiers.some((s) => !s.typeOnly))) {
