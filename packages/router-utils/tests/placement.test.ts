@@ -871,7 +871,9 @@ describe('extracted-export outputs', () => {
     `)
       const r = await extract(code)
       expect(r.env).not.toContain('function Page')
-      expect(r.env).toMatch(/export \{ Page as default \} from '.*export~default'/)
+      expect(r.env).toMatch(
+        /export \{ Page as default \} from '.*export~default'/,
+      )
     },
   )
 
@@ -884,7 +886,9 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).not.toContain('function Page')
-    expect(r.env).toMatch(/export \{ Page as default \} from '.*export~default'/)
+    expect(r.env).toMatch(
+      /export \{ Page as default \} from '.*export~default'/,
+    )
   })
 
   // `export * from …` may export any name: the glue export names are the
