@@ -218,7 +218,11 @@ function eagerExportWarning(
   const head = `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk:`
   switch (cause) {
     case 'chunk':
-      return `${head} the route's split code imports it (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy) and the bundler's chunk configuration placed its module with the entry. Keep the routes directory out of chunk groups that load with the entry, or move the export to its own module and import it from there.`
+      // split code imports the module (the export is not copied); it landed
+      // with the entry through an importer of the route file (which the
+      // extracted module's own importers do not show) or the bundler's chunk
+      // configuration: both fixes are named
+      return `${head} the route's split code imports it (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy), and another module imports it through the route file or the bundler's chunk configuration placed its module with the entry. Move the export to its own module and import it from there, so every importer and the route's chunk share one instance, or keep the routes directory out of chunk groups that load with the entry.`
     case 'importer':
       return `${head} another module imports it through the route file, so the bundler keeps it with the route module instead of leaving it to the split code that needs it. ${share}`
     default:
