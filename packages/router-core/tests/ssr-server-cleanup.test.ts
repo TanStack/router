@@ -758,6 +758,243 @@ describe('serverSsr.cleanup', () => {
     }
   })
 
+  test.each([
+    ['dehydrate: false', false as const, Object.prototype],
+    [
+      'a codec that drops the deferred fields',
+      ({ data }: any) => data.id,
+      Object.prototype,
+    ],
+    [
+      'a codec that throws',
+      () => {
+        throw new Error('codec failed')
+      },
+      Object.prototype,
+    ],
+    ['dehydrate: false, null-prototype result', false as const, null],
+  ])(
+    'loader data the stream never received is aborted by cleanup and never rejects unhandled (%s)',
+    async (_, dehydrate, prototype) => {
+      const unhandled = vi.fn()
+      process.on('unhandledRejection', unhandled)
+      let loaderSignal: AbortSignal | undefined
+      let fail!: (cause: Error) => void
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader: {
+          handler: ({
+            abortController,
+          }: {
+            abortController: AbortController
+          }) => {
+            const signal = (loaderSignal = abortController.signal)
+            return Object.assign(Object.create(prototype), {
+              id: 1,
+              pending: new Promise<string>((_resolve, reject) => {
+                signal.addEventListener('abort', () => reject(signal.reason))
+              }),
+              failing: new Promise<string>((_resolve, reject) => {
+                fail = reject
+              }),
+            })
+          },
+          dehydrate,
+          hydrate: ({ data }: any) => data,
+        } as any,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: true,
+      })
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      const serverSsr = router.serverSsr!
+      const onCleanup = vi.fn()
+      serverSsr.onCleanup(onCleanup)
+
+      try {
+        await router.load()
+        await serverSsr.dehydrate()
+        serverSsr.takeInitialHydrationScriptTags()
+        const output = serverSsr.hydrationScripts.claimOutput()
+
+        // A deferred fails while the response is still rendering.
+        fail(new Error('fetch failed'))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(unhandled).not.toHaveBeenCalled()
+
+        serverSsr.setRenderFinished()
+        drainHydrationOutput(output)
+        expect(output.state).toBe(HydrationScriptOutputState.Done)
+
+        serverSsr.cleanup()
+
+        // The stream completed, but the loader's deferred values never
+        // reached it, so nothing consumes the work that is still running.
+        expect(onCleanup).toHaveBeenCalledExactlyOnceWith(true)
+        expect(loaderSignal?.aborted).toBe(true)
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(unhandled).not.toHaveBeenCalled()
+      } finally {
+        serverSsr.cleanup()
+        process.off('unhandledRejection', unhandled)
+      }
+    },
+  )
+
+  test.each([
+    ['dehydrate: false', false as const],
+    ['a codec that reads one field', ({ data }: any) => data.id],
+  ])(
+    'a throwing getter in loader data the stream never received does not fail the request (%s)',
+    async (_, dehydrate) => {
+      const unhandled = vi.fn()
+      process.on('unhandledRejection', unhandled)
+      const prototypeRead = vi.fn()
+      let fail!: (cause: Error) => void
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader: {
+          handler: () => {
+            // Seroval reads own enumerable fields only.
+            const data = Object.create({
+              get fromPrototype() {
+                return prototypeRead()
+              },
+            })
+            Object.defineProperty(data, 'clientOnly', {
+              enumerable: true,
+              get() {
+                throw new Error('window is not defined')
+              },
+            })
+            data.id = 1
+            data.failing = new Promise<string>((_resolve, reject) => {
+              fail = reject
+            })
+            return data
+          },
+          dehydrate,
+          hydrate: ({ data }: any) => data,
+        } as any,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: true,
+      })
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      const serverSsr = router.serverSsr!
+
+      try {
+        await router.load()
+        expect(router.state.matches.at(-1)?.status).toBe('success')
+        await serverSsr.dehydrate()
+
+        // The field after the throwing getter still has a handler.
+        fail(new Error('fetch failed'))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(unhandled).not.toHaveBeenCalled()
+        expect(prototypeRead).not.toHaveBeenCalled()
+      } finally {
+        serverSsr.cleanup()
+        process.off('unhandledRejection', unhandled)
+      }
+    },
+  )
+
+  test.each([
+    ['dehydrate: false', false as const],
+    ['a codec that drops the other fields', ({ data }: any) => data.id],
+  ])(
+    'Router does not call `then` on a non-Promise thenable in loader data the stream never received (%s)',
+    async (_, dehydrate) => {
+      const then = vi.fn()
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader: {
+          // A lazy query builder runs its query when `then` is called.
+          handler: () => ({ id: 1, query: { then } }),
+          dehydrate,
+          hydrate: ({ data }: any) => data,
+        } as any,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: true,
+      })
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      const serverSsr = router.serverSsr!
+
+      try {
+        await router.load()
+        expect(router.state.matches.at(-1)?.status).toBe('success')
+        await serverSsr.dehydrate()
+        serverSsr.takeInitialHydrationScriptTags()
+        const output = serverSsr.hydrationScripts.claimOutput()
+        serverSsr.setRenderFinished()
+        drainHydrationOutput(output)
+
+        serverSsr.cleanup()
+
+        expect(then).not.toHaveBeenCalled()
+      } finally {
+        serverSsr.cleanup()
+      }
+    },
+  )
+
+  test('loader work the completed stream carried is not aborted during cleanup', async () => {
+    const value = deferred<string>()
+    let loaderSignal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: ({ abortController }) => {
+        loaderSignal = abortController.signal
+        return { id: 1, value: value.promise }
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer: true,
+    })
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    const serverSsr = router.serverSsr!
+    const onCleanup = vi.fn()
+    serverSsr.onCleanup(onCleanup)
+
+    try {
+      await router.load()
+      await serverSsr.dehydrate()
+      serverSsr.takeInitialHydrationScriptTags()
+      const output = serverSsr.hydrationScripts.claimOutput()
+      serverSsr.hydrationScripts.liftBarrier()
+      serverSsr.setRenderFinished()
+      value.resolve('done')
+      await waitFor(() => output.state === HydrationScriptOutputState.Ready)
+      expect(drainHydrationOutput(output)).toContain('done')
+      expect(output.state).toBe(HydrationScriptOutputState.Done)
+
+      serverSsr.cleanup()
+
+      expect(onCleanup).toHaveBeenCalledExactlyOnceWith(true)
+      expect(loaderSignal?.aborted).toBe(false)
+    } finally {
+      serverSsr.cleanup()
+    }
+  })
+
   test('the hydration channel permits only one subscriber', () => {
     const router = buildRouter()
     attachRouterServerSsrUtils({ router, manifest: undefined })

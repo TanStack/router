@@ -5,7 +5,7 @@ title: Selective Server-Side Rendering (SSR)
 
 ## What is Selective SSR?
 
-In TanStack Start, routes matching the initial request are rendered on the server by default. This means `beforeLoad` and `loader` are executed on the server, followed by rendering the route components. The resulting HTML is sent to the client, which hydrates the markup into a fully interactive application.
+In TanStack Start, routes matching the initial request are rendered on the server by default. This means `context`, `beforeLoad` and `loader` are executed on the server, followed by rendering the route components. The resulting HTML is sent to the client, which hydrates the markup into a fully interactive application.
 
 However, there are cases where you might want to disable SSR for certain routes or all routes, such as:
 
@@ -14,7 +14,7 @@ However, there are cases where you might want to disable SSR for certain routes 
 
 TanStack Start's Selective SSR feature lets you configure:
 
-- Which routes should execute `beforeLoad` or `loader` on the server.
+- Which routes should execute `context`, `beforeLoad` or `loader` on the server.
 - Which route components should be rendered on the server.
 
 ## How does this compare to SPA mode?
@@ -39,6 +39,7 @@ export const startInstance = createStart(() => ({
 
 This is the default behavior unless otherwise configured. On the initial request, it will:
 
+- Run `context` on the server. Its result stays on the server unless the route sets `dehydrate: true`; the client runs `context` again during hydration.
 - Run `beforeLoad` on the server and send the resulting context to the client.
 - Run `loader` on the server and send the loader data to the client.
 - Render the component on the server and send the HTML markup to the client.
@@ -63,7 +64,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 This disables server-side:
 
-- Execution of the route's `beforeLoad` and `loader`.
+- Execution of the route's `context`, `beforeLoad` and `loader`.
 - Rendering of the route component.
 
 ```tsx
@@ -71,10 +72,10 @@ This disables server-side:
 export const Route = createFileRoute('/posts/$postId')({
   ssr: false,
   beforeLoad: () => {
-    console.log('Executes on the client during hydration')
+    console.log('Executes on the client')
   },
   loader: () => {
-    console.log('Executes on the client during hydration')
+    console.log('Executes on the client')
   },
   component: () => <div>This component is rendered on the client</div>,
 })
@@ -84,6 +85,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 This hybrid option will:
 
+- Run `context` on the server. Its result stays on the server unless the route sets `dehydrate: true`; the client runs `context` again during hydration.
 - Run `beforeLoad` on the server and send the resulting context to the client.
 - Run `loader` on the server and send the loader data to the client.
 - Disable server-side rendering of the route component.
@@ -156,7 +158,7 @@ root { ssr: undefined }
 ```
 
 - `root` defaults to `ssr: true`.
-- `posts` explicitly sets `ssr: false`, so neither `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server.
+- `posts` explicitly sets `ssr: false`, so neither `context`, `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server.
 - `$postId` sets `ssr: true`, but inherits `ssr: false` from its parent. Because the inherited value can only be changed to be more restrictive, `ssr: true` has no effect and the inherited `ssr: false` will remain.
 
 Another example:
@@ -169,9 +171,20 @@ root { ssr: undefined }
 ```
 
 - `root` defaults to `ssr: true`.
-- `posts` sets `ssr: 'data-only'`, so `beforeLoad` and `loader` run on the server, but the route component isn't rendered on the server.
+- `posts` sets `ssr: 'data-only'`, so `context`, `beforeLoad` and `loader` run on the server, but the route component isn't rendered on the server.
 - `$postId` sets `ssr: true`, but inherits `ssr: 'data-only'` from its parent.
-- `details` sets `ssr: false`, so neither `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server. Here the inherited value is changed to be more restrictive, and therefore, the `ssr: false` will override the inherited value.
+- `details` sets `ssr: false`, so neither `context`, `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server. Here the inherited value is changed to be more restrictive, and therefore, the `ssr: false` will override the inherited value.
+
+## Selective SSR and data transport
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+`ssr` decides what runs on the server. `dehydrate` on a lifecycle decides whether its result is sent to the client; see [SSR Data Transport](./ssr-data-transport.md). The two combine like this:
+
+- `ssr: false`: nothing runs on the server, `context` included, so there is nothing to send and `dehydrate`/`hydrate` have no effect. The client may prepare `context` during hydration, so asynchronous context can delay hydration. `beforeLoad` and `loader` run when the client loads the route.
+- `ssr: 'data-only'`: the lifecycles run on the server and their results are sent as configured; only rendering moves to the client. Pair it with `dehydrate: false` when the client's value differs from the server's.
+- `ssr: true` with `dehydrate: false`: the server renders with its value and the client recomputes the value during hydration. The two must be equal, otherwise the first client render differs from the server HTML.
+- `ssr: true` with a `hydrate` transform: the first client render uses what `hydrate` returns, so it must render the same as the server's value. When `hydrate` adds client-only data or returns another shape, use `ssr: 'data-only'`.
 
 ## Fallback Rendering
 

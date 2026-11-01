@@ -4,8 +4,11 @@ import type { MakeRouteMatch } from '../Matches'
 export interface DehydratedMatch {
   i: MakeRouteMatch['id']
   /** @internal */
-  b?: MakeRouteMatch['__beforeLoadContext']
-  l?: MakeRouteMatch['loaderData']
+  b?: unknown
+  /** The loader data, or what a custom loader `dehydrate` returned. */
+  l?: unknown
+  /** @internal */
+  m?: unknown
   e?: MakeRouteMatch['error']
   u: MakeRouteMatch['updatedAt']
   s: MakeRouteMatch['status']

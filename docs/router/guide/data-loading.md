@@ -17,6 +17,7 @@ Every time a URL/history update is detected, the router executes the following s
   - `route.params.parse`
   - `route.validateSearch`
 - Route Pre-Loading (Serial)
+  - `route.context`
   - `route.beforeLoad`
   - `route.onError`
     - `route.errorComponent` / `parentRoute.errorComponent` / `router.defaultErrorComponent`
@@ -27,6 +28,8 @@ Every time a URL/history update is detected, the router executes the following s
     - `route.component`
   - `route.onError`
     - `route.errorComponent` / `parentRoute.errorComponent` / `router.defaultErrorComponent`
+
+The serial phase goes route by route, parent first: the first match runs `context` and then `beforeLoad`, then the second match runs its `context` and `beforeLoad`, and so on. Each `context` sees the parent's full context, including the parent's `beforeLoad` result. `context` runs once per match and is cached; `beforeLoad` runs on every load. Loaders start when the serial phase is done. The `context` option is experimental and subject to change; it is described in the [Router Context](./router-context.md#the-route-context-option) guide.
 
 ## To Router Cache or not to Router Cache?
 
@@ -75,7 +78,11 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-Use the object form when you want to configure loader-specific behavior such as `staleReloadMode`.
+Use the object form to configure loader-specific behavior:
+
+- `handler` is the loader function. It receives the same parameters as the function form.
+- `staleReloadMode` chooses between `'background'` and `'blocking'` reloads of stale data; see [Choosing background vs blocking stale reloads](#choosing-background-vs-blocking-stale-reloads).
+- `dehydrate` and `hydrate` (experimental) control what the server sends to the client during SSR. They are described in [What crosses the wire](./ssr.md#what-crosses-the-wire) and, for TanStack Start, in [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport).
 
 ## `loader` Parameters
 
@@ -88,8 +95,9 @@ The `loader` function receives a single object with the following properties:
   - `stay` - When the route is matched and loaded after being matched in the previous location.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
+  - This route's context as provided by the `context` option
   - This route's context as provided by the `beforeLoad` option
-- `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
+- `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, `deps` is an empty string (`''`).
 - `location` - The current location
 - `params` - The route's path params
 - `parentMatchPromise` - `Promise<RouteMatch>` (`undefined` for the root route)
@@ -99,6 +107,8 @@ The `loader` function receives a single object with the following properties:
 Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control it and when the `loader` function is called.
 
 ## Consuming data from `loader`s
+
+A route component can read loader data from its own route or an ancestor. A parent route component must not read a child's loader data. The parent can render while the child is still pending.
 
 To consume data from a `loader`, use the `useLoaderData` hook defined on your Route object.
 
@@ -346,9 +356,10 @@ a loader call.
 The `context` argument passed to the `loader` function is an object containing a merged union of:
 
 - Parent route context
+- This route's context as provided by the `context` option
 - This route's context as provided by the `beforeLoad` option
 
-Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all the route's child routes. The resulting context will be available to the route's `loader` function.
+Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `context` or `beforeLoad` option. This context will be available to all the route's child routes. The resulting context will be available to the route's `loader` function.
 
 In this example, we'll create a function in our route context to fetch posts, then use it in our `loader` function.
 
@@ -432,7 +443,11 @@ export const Route = createFileRoute('/posts/$postId')({
 
 ## Using Route Context
 
-Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same parameters as `loader`. Beyond its ability to redirect potential matches, block loader requests, etc, it can also return an object that will be merged into the route's context. Let's take a look at an example where we inject some data into our route context via the `beforeLoad` option:
+Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same parameters as `loader`. Beyond its ability to redirect potential matches, block loader requests, etc, it can also return an object that will be merged into the route's context.
+
+A route can also contribute context with the `context` option. It runs before `beforeLoad`, is computed once per match and cached, and receives `deps` instead of `search`. Use it for values that should not be rebuilt on every navigation, such as query options derived from `params`. The [Router Context](./router-context.md#the-route-context-option) guide covers the difference.
+
+Let's take a look at an example where we inject some data into our route context via the `beforeLoad` option:
 
 ```tsx
 // src/routes/posts.tsx

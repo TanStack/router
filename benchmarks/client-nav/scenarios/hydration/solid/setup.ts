@@ -51,6 +51,10 @@ export function setup({ countUpdates = false } = {}) {
         ReadableStream,
         WritableStream,
         TransformStream,
+        // Browsers have Response; jsdom does not. The Router detects redirects
+        // with `instanceof Response` on beforeLoad and loader results, including
+        // context restored during hydration.
+        Response,
         setImmediate(
           callback: (...args: Array<unknown>) => void,
           ...args: Array<unknown>

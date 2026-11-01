@@ -60,6 +60,10 @@ export function setup({ countRenders = false } = {}) {
         ReadableStream,
         WritableStream,
         TransformStream,
+        // Browsers have Response; jsdom does not. The Router detects redirects
+        // with `instanceof Response` on beforeLoad and loader results, including
+        // context restored during hydration.
+        Response,
         // Let React's production scheduler use the same task-turn primitive as
         // the existing Node client benchmarks, without a real-delay timer.
         setImmediate(

@@ -1,0 +1,14 @@
+const $$splitComponentImporter = () =>
+  import('object-form-loader-const-read-elsewhere.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent')
+import { lazyRouteComponent } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
+import { fetchPost } from '../posts'
+const postLoader = {
+  handler: ({ params }) => fetchPost(params.postId),
+  staleReloadMode: 'background',
+}
+export const Route = createFileRoute('/posts/$postId')({
+  loader: postLoader,
+  head: (ctx) => ({ meta: [{ title: postLoader.handler(ctx).title }] }),
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
+})

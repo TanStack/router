@@ -62,7 +62,16 @@ export type CodeSplittingOptions = {
   defaultBehavior?: CodeSplitGroupings
 
   /**
-   * The nodes that shall be deleted from the route.
+   * Route options to remove from the route options object literal: a key
+   * (`'ssr'`) or a dot path into an option written as an object literal
+   * (`'loader.dehydrate'`). Visited: the options of `createFileRoute`,
+   * `createRootRoute` and `createRootRouteWithContext` written inline or
+   * held in a variable of the same file, and object-form values written
+   * inline, also behind `satisfies`, `as`, `!` or parentheses. Lifecycle
+   * objects stored in variables, imports, calls, spreads and computed keys
+   * are left as they are. Functions and variables that the removed code
+   * alone referenced are removed with it, and so are their imports; a class
+   * declaration stays. Applies to every build this plugin instance compiles.
    * @default undefined
    */
   deleteNodes?: Array<DeletableNodes>
@@ -106,7 +115,18 @@ const codeSplittingOptionsSchema = z.object({
 type FileRouteKeys = keyof (Parameters<
   CreateFileRoute<any, any, any, any, any>
 >[0] & {})
-export type DeletableNodes = FileRouteKeys | (string & {})
+/**
+ * Dot paths into the object form of `context`, `beforeLoad` and `loader`
+ * (`{ handler, dehydrate, hydrate, ... }`): the keys one environment never
+ * reads. `loader.staleReloadMode` is read on both sides and is not listed.
+ */
+type LifecycleOptionPaths =
+  | `${'context' | 'beforeLoad' | 'loader'}.${'dehydrate' | 'hydrate'}`
+  | 'context.revalidate'
+export type DeletableNodes =
+  | FileRouteKeys
+  | LifecycleOptionPaths
+  | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
   codeSplittingOptions: z

@@ -26,6 +26,7 @@ Object.assign(plugin.configs, {
     plugins: ['@tanstack/eslint-plugin-router'],
     rules: {
       '@tanstack/router/create-route-property-order': 'warn',
+      '@tanstack/router/no-lifecycle-codec-param-annotations': 'error',
       '@tanstack/router/route-param-names': 'error',
     },
   },
@@ -36,6 +37,7 @@ Object.assign(plugin.configs, {
       },
       rules: {
         '@tanstack/router/create-route-property-order': 'warn',
+        '@tanstack/router/no-lifecycle-codec-param-annotations': 'error',
         '@tanstack/router/route-param-names': 'error',
       },
     },

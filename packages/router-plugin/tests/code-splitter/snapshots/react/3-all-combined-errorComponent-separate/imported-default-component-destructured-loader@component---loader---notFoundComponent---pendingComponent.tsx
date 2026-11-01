@@ -1,5 +1,3 @@
-import importedComponent, { importedLoader } from '../../shared/imported'
-const SplitLoader = importedLoader
-export { SplitLoader as loader }
+import importedComponent from '../../shared/imported'
 const SplitComponent = importedComponent
 export { SplitComponent as component }
