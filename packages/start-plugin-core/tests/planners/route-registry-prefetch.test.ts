@@ -6,7 +6,7 @@
  * route the registry calls foreign is read, and a registry change re-plans
  * the importer.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { invalidate } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
@@ -120,4 +120,41 @@ describe('a route file the registry vouches for', () => {
     )
     expect(t.reads).toContain(OWN)
   })
+})
+
+describe('TSR_COMPILER_NO_CACHE', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  const compile = async (t: ReturnType<typeof setup>) => {
+    const { compileModule } = await import('@tanstack/router-utils/compiler')
+    return compileModule(
+      {
+        id: TREE,
+        code: files[TREE],
+        env: clientEnv,
+        planners: t.planners,
+        config,
+        wantMap: false,
+      },
+      t.host,
+      t.memory.caches,
+    )
+  }
+
+  it.each(['all', 'registry'])(
+    '%s reads the route file the registry vouches for, with the same output',
+    async (knob) => {
+      const reference = await compile(setup({ [OWN]: true, [FOREIGN]: false }))
+      vi.stubEnv('TSR_COMPILER_NO_CACHE', knob)
+      const t = setup({ [OWN]: true, [FOREIGN]: false })
+      const out = await compile(t)
+      expect(t.reads).toContain(OWN)
+      expect(out!.code).toBe(reference!.code)
+      expect(
+        out!.persisted?.dependencies.some((d) => d.kind === 'route-registry'),
+      ).not.toBe(true)
+    },
+  )
 })

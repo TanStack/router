@@ -304,7 +304,8 @@ nothing per compile.
 
 - `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is published, every request
   compiles again), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
-  imported modules are rebuilt on every read), or `all`. Output must be identical with any combination; only speed
+  imported modules are rebuilt on every read), `registry` (a route file's `Route` is read from the file instead of
+  answered from the route registry's `routerConstructor`), or `all`. Output must be identical with any combination; only speed
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
   changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
   names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
