@@ -62,8 +62,6 @@ export type EdgeForm =
   | 'dynamic'
   | 'require'
 
-type EdgeLocation = { range: Range } | { segment: number }
-
 export interface EdgeRecord {
   /** The output's own canonical id. */
   importerId: string
@@ -71,7 +69,8 @@ export interface EdgeRecord {
   form: EdgeForm
   kind: 'binding' | 'evaluation'
   specifier: string
-  locations: Array<EdgeLocation>
+  /** The source literals of this specifier; a generated specifier has none. */
+  locations: Array<{ range: Range }>
   typeOnly: boolean
   names: Array<string>
   provenance: EdgeProvenance

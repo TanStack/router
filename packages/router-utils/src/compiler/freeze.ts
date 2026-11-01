@@ -1034,7 +1034,7 @@ class Renderer {
             form: f.form ?? 'static',
             kind: f.form === 'dynamic' ? 'evaluation' : 'binding',
             specifier: f.specifier,
-            locations: [{ segment: out.length - 1 }],
+            locations: [],
             typeOnly: false,
             names: [...(f.names ?? [])],
             provenance: f.provenance ?? { origin: 'runtime' },

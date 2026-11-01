@@ -63,9 +63,6 @@ export function substituteSpecifier(
     }
   }
   for (const loc of edge.locations) {
-    if (!('range' in loc)) {
-      continue
-    }
     const { start, end } = loc.range
     const i = segments.findIndex(
       (s) => s.k === 'slice' && s.start <= start && s.end >= end,
