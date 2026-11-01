@@ -326,8 +326,12 @@ liveness mechanism, not a license to abandon cleanup.
 Commit and cache handoff install the accepted semantic/cache recipients before
 releasing replaced resources. Releasing the last flight lease aborts a public
 signal and can synchronously reenter user code, so an old generation must never
-be released while it still appears to be the accepted owner. The committed lane
+be aborted while it still appears to be the accepted owner. The committed lane
 is also removed from the transaction's private ownership before publication.
+A commit detaches departing owners before publishing, so a navigation started
+by a publication observer cannot adopt their settled work as same-ID work, and
+again afterwards for cache entries an observer evicted; their controllers abort
+only after publication.
 
 Every asynchronous navigation or presentation publication checks `_tx`
 immediately before the write. Background publication additionally checks the
@@ -494,27 +498,28 @@ removes a successful generation only if it is still the current registry entry,
 then aborts its controller. Every copied semantic match that retains a flight
 must acquire a lease, and every discarded match must release one exactly once.
 
-There is one short exception to normal zero-lease cleanup. When one navigation
-replaces another with the same match ID, the predecessor's loader flight can
-reach zero leases before the successor finishes `beforeLoad` and decides whether
-to reuse it. While the current transaction is visibly running `beforeLoad` for
-that same-ID successor, the flight remains discoverable. The same grace period
-applies if any other same-ID flight loses its final lease during that phase.
-Outside this phase, merely having a current `_tx` is not enough to retain a
-zero-lease flight.
+There is one short exception to normal zero-lease cleanup. A navigation decides
+whether to reuse same-ID loader work only during loader planning, after its
+`beforeLoad` chain. Until the current transaction has planned, a same-ID flight
+that loses its final lease to another owner remains discoverable instead of
+being aborted, whether that owner was the superseded navigation's lane or
+background candidates, a preload, or any other consumer. Releases by the
+transaction's own matches are its own decisions and retire normally. Outside
+this window, merely having a current `_tx` is not enough to retain a zero-lease
+flight.
 
-Loader planning ends the grace period synchronously. The successor either
-acquires the discoverable flight or one sweep removes and aborts it. A lane with
-no `beforeLoad` reaches loader planning before contextualization yields; an
-asynchronous `beforeLoad` keeps the grace period visible until it settles.
-Preloads neither create nor sweep this navigation-only reservation. An explicit
-`shouldReload: false` declines the flight, while invalidation removes discovery
-for selected IDs before starting the replacement load. No extra flag, counter,
-or completion promise represents the grace period.
+Loader planning ends the window synchronously: it marks its transaction
+`planned`, and one sweep removes and aborts every zero-lease flight the
+navigation did not acquire. A transaction superseded before planning leaves
+retained flights to its successor, whose own planning sweeps them. Preloads
+neither mark nor sweep. An explicit `shouldReload: false` declines the flight,
+while invalidation removes discovery for selected IDs before starting the
+replacement load. The `planned` slot is the only state representing the window;
+no counter or completion promise does.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
-match drops its `_flight` lease and every zero-owner generation not reserved by
-the current transaction is removed from the discovery registry. Only after the
+match drops its `_flight` lease and every zero-owner generation outside the
+same-ID planning window is removed from the discovery registry. Only after the
 entire outgoing set is detached are the collected flight controllers aborted.
 Do not interleave one flight abort with detaching later matches in the same
 replacement: an abort listener can synchronously reenter, and that load must

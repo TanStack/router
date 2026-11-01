@@ -8,6 +8,8 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
+import type { ReadonlyAtom } from '@tanstack/store'
+import type { AnyRouteMatch } from '../src'
 
 test.each([
   ['error', () => new Error('parent failed')],
@@ -504,6 +506,346 @@ test('a superseding navigation reuses a pending background loader after async be
   expect(generation).toBe(2)
   expect(signals[1]?.aborted).toBe(false)
   expect(router.state.matches.at(-1)?.preload).toBe(false)
+})
+
+test('a navigation in async beforeLoad adopts a pending flight released by a redirecting preload', async () => {
+  const parentResult = createControlledPromise<string>()
+  const childGate = createControlledPromise<void>()
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      tab: Number(search.tab ?? 0),
+    }),
+    beforeLoad: async ({ search, preload }) => {
+      if (!preload && search.tab === 2) {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return parentResult
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => pageRoute,
+    path: '/child',
+    loader: async () => {
+      await childGate
+      throw redirect({ to: '/other' })
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      pageRoute.addChildren([childRoute]),
+      otherRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  const preload = router.preloadRoute({ to: '/page/child', search: { tab: 1 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(signals).toHaveLength(1)
+
+  const first = router.navigate({ to: '/page', search: { tab: 1 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  const second = router.navigate({ to: '/page', search: { tab: 2 } })
+  await beforeLoadStarted
+
+  childGate.resolve()
+  await preload
+  beforeLoadGate.resolve()
+  parentResult.resolve('parent')
+  await Promise.all([first, second])
+
+  expect(router.state.location.search).toEqual({ tab: 2 })
+  expect(router.state.matches.at(-1)?.loaderData).toBe('parent')
+  expect(signals).toHaveLength(1)
+  expect(signals[0]?.aborted).toBe(false)
+})
+
+test('leaving before loader planning aborts same-ID work kept for a superseded navigation', async () => {
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      phase: String(search.phase ?? ''),
+    }),
+    beforeLoad: async ({ search }) => {
+      if (search.phase === 'second') {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return createControlledPromise<string>()
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([pageRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  router.navigate({ to: '/page', search: { phase: 'first' } })
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+  router.navigate({ to: '/page', search: { phase: 'second' } })
+  await beforeLoadStarted
+  expect(signals[0]?.aborted).toBe(false)
+
+  await router.navigate({ to: '/other' })
+  beforeLoadGate.resolve()
+  // Let the superseded beforeLoad finish so a late loader start is observable.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(router.state.location.pathname).toBe('/other')
+  expect(signals[0]?.aborted).toBe(true)
+  expect(signals).toHaveLength(1)
+})
+
+test('same-ID work released after a navigation planned without adopting it is aborted', async () => {
+  const preloadResult = createControlledPromise<number>()
+  const preloadGate = createControlledPromise<void>()
+  const navigationGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      reload: Number(search.reload ?? 0),
+    }),
+    shouldReload: ({ location }) =>
+      (location.search as { reload: number }).reload === 1,
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return signals.length === 1 ? 1 : preloadResult
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => pageRoute,
+    path: '/child',
+    loader: async () => {
+      await preloadGate
+      throw redirect({ to: '/other' })
+    },
+  })
+  const siblingRoute = new BaseRoute({
+    getParentRoute: () => pageRoute,
+    path: '/sibling',
+    loader: () => navigationGate,
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      pageRoute.addChildren([childRoute, siblingRoute]),
+      otherRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/page'] }),
+  })
+  await router.load()
+
+  const preload = router.preloadRoute({
+    to: '/page/child',
+    search: { reload: 1 },
+  })
+  await vi.waitFor(() => expect(signals).toHaveLength(2))
+
+  // The navigation declines the preload's pending reload while it plans, then
+  // waits on its own child loader.
+  const navigation = router.navigate({
+    to: '/page/sibling',
+    search: { reload: 2 },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(signals[1]?.aborted).toBe(false)
+
+  // The redirecting preload drops the last lease after that decision.
+  preloadGate.resolve()
+  await preload
+  expect(signals[1]?.aborted).toBe(true)
+
+  navigationGate.resolve()
+  await navigation
+  expect(router.state.location.pathname).toBe('/page/sibling')
+  expect(router.state.matches[1]?.loaderData).toBe(1)
+  expect(signals).toHaveLength(2)
+})
+
+// https://github.com/TanStack/router/issues/8644
+test.each([
+  ['sync loader', (n: number) => `v${n}`, undefined],
+  ['immediately async loader', async (n: number) => `v${n}`, undefined],
+  ['sync loader with sync beforeLoad', (n: number) => `v${n}`, () => ({})],
+] as const)(
+  'a same-href background revalidation survives an immediately following child navigation (%s)',
+  async (_, loader, beforeLoad) => {
+    let calls = 0
+    const rootRoute = new BaseRootRoute({})
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: 'layout',
+      beforeLoad,
+      loader: () => loader(++calls),
+    })
+    const aRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/a',
+    })
+    const bRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/b',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        layoutRoute.addChildren([aRoute, bRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/a'] }),
+    })
+    await router.load()
+
+    await router.navigate({ to: '/a' })
+    await router.navigate({ to: '/b' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(calls).toBe(2)
+    expect(
+      router.state.matches.find((match) => match.routeId === layoutRoute.id)
+        ?.loaderData,
+    ).toBe('v2')
+  },
+)
+
+test('a preload started during navigation beforeLoad hands its released same-ID loader to that navigation', async () => {
+  const parentResult = createControlledPromise<string>()
+  const childGate = createControlledPromise<void>()
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    beforeLoad: async ({ preload }) => {
+      if (!preload) {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return parentResult
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => pageRoute,
+    path: '/child',
+    loader: async () => {
+      await childGate
+      throw redirect({ to: '/other' })
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      pageRoute.addChildren([childRoute]),
+      otherRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  const navigation = router.navigate({ to: '/page' })
+  await beforeLoadStarted
+  const preload = router.preloadRoute({ to: '/page/child' })
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+  childGate.resolve()
+  await preload
+  expect(signals[0]?.aborted).toBe(false)
+
+  beforeLoadGate.resolve()
+  parentResult.resolve('parent')
+  await navigation
+
+  expect(router.state.matches.at(-1)).toMatchObject({
+    loaderData: 'parent',
+    preload: false,
+  })
+  expect(signals).toHaveLength(1)
+  expect(signals[0]?.aborted).toBe(false)
+})
+
+test('a navigation started while a commit publishes reloads the departing stale data', async () => {
+  let loads = 0
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const aRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/a',
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return ++loads
+    },
+  })
+  const bRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/b',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([aRoute, bRoute]),
+    history: createMemoryHistory({ initialEntries: ['/a'] }),
+  })
+  await router.load()
+
+  // Test stores are atoms whose observers run synchronously during publication,
+  // like framework bindings.
+  let reentrant: Promise<void> | undefined
+  const subscription = (
+    router.stores.matches as unknown as ReadonlyAtom<Array<AnyRouteMatch>>
+  ).subscribe(() => {
+    if (
+      !reentrant &&
+      router.stores.matches.get().at(-1)?.routeId === bRoute.id
+    ) {
+      reentrant = router.navigate({ to: '/a' })
+    }
+  })
+  await router.navigate({ to: '/b' })
+  subscription.unsubscribe()
+  await reentrant
+
+  await vi.waitFor(() => expect(loads).toBe(2))
+  expect(signals[0]?.aborted).toBe(true)
+  await vi.waitFor(() =>
+    expect(router.state.matches.at(-1)?.loaderData).toBe(2),
+  )
 })
 
 test('an ancestor beforeLoad failure releases an unconsumed background loader', async () => {
