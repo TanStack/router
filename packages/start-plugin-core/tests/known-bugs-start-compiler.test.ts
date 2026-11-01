@@ -434,7 +434,8 @@ export const fn = applyStep(
   // not followed), and no server code ships.
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
-  // a function"), on the client and on the server.
+  // a function"), on the client and on the server. A build error at the
+  // helper is a fix too (R92).
   test.fails(
     'each output keeps its implementation of an isomorphic fn whose chain passes through a helper function',
     async () => {
@@ -447,6 +448,9 @@ export const getEnv = withBuilder(
   createIsomorphicFn().server(() => 'server'),
 ).client(() => 'client')`,
       })
+      if ((await compileError(startCase)) !== undefined) {
+        return
+      }
       expect({
         client: await clientValue(startCase, 'module.getEnv()'),
         ssr: settle((await startCase.ssr()).getEnv),

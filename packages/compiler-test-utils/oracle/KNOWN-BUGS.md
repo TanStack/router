@@ -63,6 +63,12 @@ code.test.ts`: "a root route's %s loads lazily".
   query (no language, no marker read); a marked file that does not parse with an asset query. Rsbuild, the same: a plain
   `import.meta.webpackContext` of a non-code file (`*.server.json`). SPEC J6.1.
   `start-plugin-core/tests/integration/importProtection/known-bugs-asset-forms.test.ts`.
+- **An isomorphic fn whose chain passes through a helper throws when its module loads**
+  (`withBuilder(createIsomorphicFn().server(f)).client(g)`): the inner `.server(f)` compiles on its own into a plain
+  function, so `.client` isn't there to call, on the client and on the server. No server code ships: `.server()` finished
+  the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/known-bugs-start-compiler.test.ts`:
+  "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
+  output keeps its implementation, or the build fails at the helper.
 
 ## Known incorrect rejections (accepted, R89)
 

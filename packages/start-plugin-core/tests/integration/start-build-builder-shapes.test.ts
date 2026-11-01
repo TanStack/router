@@ -330,6 +330,21 @@ export const fn = reg.base.handler(async () => 'MARK_SERVER_SECRET')
 )
 
 refused.push(
+  // (R84 amendment: the build is the guarantee; a dev server may serve the
+  // consumer before the wrapper's module fails)
+  {
+    name: 'a wrapper of another module passing its parameter to `createServerOnlyFn`',
+    file: 'src/wrap.ts',
+    line: 2,
+    files: {
+      'src/wrap.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn(fn)
+`,
+      'src/entry.ts': `import { serverOnly } from './wrap'
+export const read = serverOnly(() => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
   {
     name: 'a parameter passed to `.validator()`',
     file: 'src/entry.ts',
