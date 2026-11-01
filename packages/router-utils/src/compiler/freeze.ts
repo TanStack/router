@@ -487,11 +487,14 @@ function reexportGlue(
       const exported = exportNameOf.get(e.output)?.get(s) ?? plan.nameOf(s)
       for (const x of plan.analysis.exports) {
         if (x.kind === 'local' && x.local === s && !x.typeOnly) {
-          parts.push(
+          const part =
             exported === x.name
               ? exported
-              : `${exported} as ${specifierName(x.name)}`,
-          )
+              : `${exported} as ${specifierName(x.name)}`
+          // (merged declarations are one export row each)
+          if (!parts.includes(part)) {
+            parts.push(part)
+          }
         }
       }
     }

@@ -1533,6 +1533,29 @@ describe('extracted-export outputs', () => {
       },
     )
 
+    it.each([
+      [
+        'a function and a namespace',
+        'export function Label() { return 1 }\nexport namespace Label { export const size = 1 }',
+      ],
+      [
+        'an enum in two declarations',
+        'export enum Label { A = 1 }\nexport enum Label { B = 2 }',
+      ],
+    ])(
+      'the route module re-exports a binding of %s once',
+      async (_, declarations) => {
+        const code = dedent(`
+          import { createFileRoute } from 'toy-router'
+          ${declarations.replaceAll('\n', '\n          ')}
+          function Page() { return Label }
+          export const Route = createFileRoute('/')({ component: Page })
+        `)
+        const r = await extract(code)
+        expect(r.env).toContain('export { Label } from')
+      },
+    )
+
     // Reading a function is not calling it: only an evaluation that calls
     // something can run the function's body at load.
     it('extracts an export that holds a function reading what the route module keeps, without calling anything', async () => {
