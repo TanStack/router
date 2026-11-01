@@ -4,12 +4,7 @@
     "jsx": "react-jsx",
     "types": ["node"]
   },
-  "include": [
-    "src",
-    "vite.config.ts",
-    "tests",
-    "tests/generator/**/*.test-d.ts"
-  ],
+  "include": ["src", "vite.config.ts", "tests"],
   "exclude": [
     "tests/generator/**/*.tsx",
     "tests/generator/**/routeTree.gen.js",
