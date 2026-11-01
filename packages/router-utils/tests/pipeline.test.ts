@@ -1368,3 +1368,54 @@ describe('planning rounds', () => {
     expect(out!.code).not.toContain('moved')
   })
 })
+
+describe('input-text-differs', () => {
+  const route = (mark: string) =>
+    `import { createFileRoute } from 'toy-router'\nexport const Route = createFileRoute('/')({ component: () => '${mark}' })\n`
+  const wait = () => new Promise((resolve) => setTimeout(resolve, 5))
+
+  it('takes no save during a compile for a plugin: the time that counts is when the text was read', async () => {
+    const path = '/app/route.tsx'
+    const host = new MemoryHost({ files: { [path]: route('v1') } })
+    let savedAt = Date.now() - 3_600_000
+    Object.assign(host, { modifiedAt: () => Promise.resolve(savedAt) })
+    let suspend = true
+    let arrived!: () => void
+    let release!: () => void
+    const atPrefetch = new Promise<void>((resolve) => (arrived = resolve))
+    const released = new Promise<void>((resolve) => (release = resolve))
+    const suspending: Planner = {
+      name: 'suspending',
+      tier: 0,
+      gate: () => true,
+      plan() {},
+      async prefetch() {
+        if (suspend) {
+          suspend = false
+          arrived()
+          await released
+        }
+      },
+    }
+    const planners = [suspending, toySplitPlanner({ keys: ['component'] })]
+    const build = { env: envInfo({ mode: 'build' }) }
+
+    const compiling = host.compile(path, planners, build)
+    await atPrefetch
+    await wait()
+    host.write(path, route('v2'))
+    savedAt = Date.now()
+    await wait()
+    await invalidate(host.caches, { path, kind: 'change' }, host)
+    release()
+    await compiling
+
+    const chunk = await host.compile(`${path}?tsr-split=component`, planners, {
+      ...build,
+      code: route('v2'),
+    })
+    expect(chunk?.diagnostics.map((d) => d.code)).not.toContain(
+      'input-text-differs',
+    )
+  })
+})

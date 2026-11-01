@@ -245,10 +245,11 @@ async function settle(
   cache.begin(key)
   try {
     let overtaken!: CacheEntry
+    // every attempt compiles the text this compile was given
+    const compiledAt = Date.now()
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
-      const compiledAt = Date.now()
       const ledger = new DependencyLedger(key, generation, cache.dependents)
       const result = await runAttempt(
         input,
