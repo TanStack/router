@@ -15,6 +15,7 @@ import {
   compileModule,
   createCompilerCaches,
   digestOf,
+  fileModifiedAt,
   identify,
   registerCompilerStats,
   releaseEnvironment,
@@ -328,6 +329,7 @@ export class StartCompilerSession {
       resolve,
       rawFacts: this.rawFacts,
       routes: this.opts.routes,
+      modifiedAt: fileModifiedAt,
       ...(services && { services }),
     }
   }

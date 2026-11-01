@@ -5,6 +5,7 @@
  */
 import { identify, planKeyString } from './identity'
 import { approxBytes, cacheDisabled } from './stats'
+import type { OutputId } from './rewrite'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
 import type { TargetFacts } from './facts'
@@ -327,6 +328,9 @@ export interface CacheEntry {
   plan: EmitPlan
   /** The `fileSetVersion` the plan's resolutions were last validated at. */
   resolvedAt: number
+  /** The output whose request compiled it, and when that compile started (`Date.now()`): see `textDiffers`. */
+  compiledFor: OutputId
+  compiledAt: number
 }
 
 /**
@@ -376,10 +380,11 @@ export class PlanCache {
    * answer (settling, or the settled canonical id; unresolved pairs are not
    * kept), shared by every compile and validation of the environment. The
    * keys are the importer and specifier strings the compiles already hold.
-   * Nothing a resolver answers changes
-   * without a file appearing or disappearing, so the memo is good for one
-   * `fileSetVersion` and dropped as one at the next (`resolutionsAt`): the
-   * plans' resolution fingerprints have the same authority and no other.
+   * The memo is good for one `fileSetVersion` (a file appearing or
+   * disappearing, a `package.json` changing) and dropped as one at the next
+   * (`resolutionsAt`): the plans' resolution fingerprints have the same
+   * authority and no other. A `tsconfig` `paths` edit moves neither: the
+   * bundler's resolver keeps its old answer until a restart too.
    */
   private readonly resolutions = new Map<string, ResolutionMemo>()
   private resolvedAt = -1

@@ -199,14 +199,22 @@ export function createRouterCompilerWebpackPlugin(
         routerPluginContext,
         (next, previous) => {
           for (const file of changedRoutePaths(next, previous)) {
-            void session.invalidate(file, 'registry').then((res) => {
-              if (compiled) {
-                invalidateFiles(compiler, [
-                  file,
-                  ...pathsOf([...res.evicted, ...res.dependents], envName),
-                ])
-              }
-            })
+            void session
+              .invalidate(file, 'registry')
+              .then((res) => {
+                if (compiled) {
+                  invalidateFiles(compiler, [
+                    file,
+                    ...pathsOf([...res.evicted, ...res.dependents], envName),
+                  ])
+                }
+              })
+              .catch((error: unknown) => {
+                console.error(
+                  `[tanstack-router] invalidating ${file} after a route change failed:`,
+                  error,
+                )
+              })
           }
         },
       )

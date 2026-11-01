@@ -227,6 +227,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       const isKnown = (file: string) => !knownFiles || knownFiles.has(file)
+      /** Re-resolves what it may redirect: asked once Rspack's resolver forgot the old file (at `make`). */
+      const isManifest = (file: string) => file.endsWith('/package.json')
       // edits and removals of files the last compilation read, invalidated before this
       // compilation starts: the modules of their stale dependents are built with them (a
       // file's facts need no resolver, and a resolution that found a removed file is stale)
@@ -238,7 +240,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         try {
           await session.invalidateFileEvents([
             ...modified
-              .filter(isKnown)
+              .filter((file) => isKnown(file) && !isManifest(file))
               .map((file) => ({ file, kind: 'change' as const })),
             ...removed.map((file) => ({ file, kind: 'unlink' as const })),
           ])
@@ -259,8 +261,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.forgetMisses()
         await session.invalidateFileEvents(
           [...(compiler.modifiedFiles ?? [])]
-            .filter((file) => !isKnown(file))
-            .map((file) => ({ file, kind: 'add' as const })),
+            .filter((file) => !isKnown(file) || isManifest(file))
+            .map((file) => ({
+              file,
+              kind: isManifest(file) ? ('change' as const) : ('add' as const),
+            })),
         )
       })
       // a registry change (the generator published new route ids): Rspack sees
@@ -269,11 +274,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // stale (the first publication lists every route; the modules are
       // built with it).
       opts.generator.onRoutesChanged((files) => {
-        void session.registryChanged(files).then((paths) => {
-          if (session.compiledOnce) {
-            invalidateFiles(compiler, paths)
-          }
-        })
+        void session
+          .registryChanged(files)
+          .then((paths) => {
+            if (session.compiledOnce) {
+              invalidateFiles(compiler, paths)
+            }
+          })
+          .catch((error: unknown) => {
+            console.error(
+              `[tanstack-start] invalidating after a route change failed:`,
+              error,
+            )
+          })
       })
 
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
