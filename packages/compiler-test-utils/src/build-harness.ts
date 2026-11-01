@@ -1129,6 +1129,11 @@ export async function describeBuild(
       root: input.root,
       parsedModules: input.parsedModules,
     })
+    // The evidence ends with the check, and the recording plugin may outlive
+    // the build (Vite 8 keeps every plugin it was given)
+    input.parsedModules?.modules.clear()
+    input.parsedModules?.transformed.clear()
+    input.parsedModules?.rendered?.clear()
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {

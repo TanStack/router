@@ -297,7 +297,8 @@ nothing per compile.
   the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
-  approximate bytes in a process-global registry, held through a `WeakRef` so it retains nothing. Read it in the same
+  approximate bytes in a process-global registry, held through a `WeakRef` and read by a function outside the owner's
+  scope, so it retains nothing. Read it in the same
   process with `compilerStats()` from `@tanstack/router-utils/compiler` (e.g. a temporary
   `setInterval(() => console.log(compilerStats()), 10_000)` in the bundler config); the raw registry is
   `globalThis[Symbol.for('tanstack.compiler.stats')]` when the package is not importable from the app. Use it on a

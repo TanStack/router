@@ -5,6 +5,9 @@
  * order and scoped, and "nothing reported" reads them all: a warning on any
  * one channel fails it, while info output does not.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import { describe, expect, test } from 'vitest'
 import {
   captureDiagnostics,
@@ -23,7 +26,35 @@ import type {
   DiagnosticChannel,
 } from '../src/diagnostic-channel'
 
+/**
+ * A closed channel, and what a bundler's native callback keeps of it: the
+ * async context the callback was created in, for as long as it stays alive
+ * itself. `work` is what a listener of the channel closed over.
+ */
+function closedChannel() {
+  const work = { name: 'the work of the build' }
+  const channel = openDiagnosticChannel()
+  channel.onDiagnostic(() => {
+    expect(work.name).toBeDefined()
+  })
+  const snapshot = channel.run(() => AsyncLocalStorage.snapshot())
+  channel.close()
+  return { work: new WeakRef(work), keptContext: snapshot }
+}
+
 describe('diagnostic channel', () => {
+  test('a closed channel keeps nothing alive through an async context of its scope that outlives it', async () => {
+    const { work, keptContext } = closedChannel()
+    setFlagsFromString('--expose-gc')
+    const gc = runInNewContext('gc') as () => void
+    for (let round = 0; round < 3; round++) {
+      await new Promise((resolve) => setImmediate(resolve))
+      gc()
+    }
+    expect(work.deref()).toBeUndefined()
+    keptContext(() => {})
+  })
+
   test('merges console, process streams, Vite logger and compilation reports in order, with their source', async () => {
     const { diagnostics } = await captureDiagnostics((channel) => {
       console.warn('console warning in src/a.ts')

@@ -123,8 +123,10 @@ export class RouterCompiler {
       `router-plugin:${opts.bundler}`,
     )
     this.registry = new RouteRegistryView(opts.context)
-    registerCompilerStats(`router-plugin:${opts.bundler}:session`, this, (o) =>
-      collectionSizes({ warnings: o.warnings, registry: o.registry }, 3),
+    registerCompilerStats(
+      `router-plugin:${opts.bundler}:session`,
+      this,
+      RouterCompiler.readStats,
     )
     this.host = {
       // the router planner resolves nothing: route options are read from the module itself
@@ -132,6 +134,10 @@ export class RouterCompiler {
       rawFacts,
       routes: this.registry,
     }
+  }
+
+  private static readStats(o: RouterCompiler) {
+    return collectionSizes({ warnings: o.warnings, registry: o.registry }, 3)
   }
 
   /** The registry entry of a file (the scanned path or the real path of a symlink). */

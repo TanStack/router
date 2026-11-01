@@ -16,16 +16,27 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { onTestFinished as onCurrentTestFinished } from 'vitest'
 import type { TestContext } from 'vitest'
 
-const scope = new AsyncLocalStorage<TestContext>()
+/**
+ * The scope's value holds the test only until it finished: native code keeps
+ * the async contexts it was called from (a Vite build's Rolldown callbacks
+ * keep theirs for good), and with them what a test holds, in a process that
+ * runs many more files.
+ */
+const scope = new AsyncLocalStorage<{ test: TestContext | undefined }>()
 
 /** Runs `run` (a test) as the work of `context` (see `./test-scope-setup`). */
 export function runInTestScope<T>(context: TestContext, run: () => T): T {
-  return scope.run(context, run)
+  const scoped = { test: context as TestContext | undefined }
+  // (cleanups run last registered first: this one after all of the test's)
+  context.onTestFinished(() => {
+    scoped.test = undefined
+  })
+  return scope.run(scoped, run)
 }
 
 /** The context of the test this work belongs to, if any. */
 export function currentTest(): TestContext | undefined {
-  return scope.getStore()
+  return scope.getStore()?.test
 }
 
 /**

@@ -9,6 +9,8 @@
  * the build's process by a plugin of the app); this file runs in a process
  * of its own (project `integration-alone`), so the counts are this build's.
  */
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
 import { buildStart, startBundlers } from '../build-harness'
@@ -115,4 +117,37 @@ describe.each(startBundlers)(
       timeout,
     )
   },
+)
+
+/**
+ * The stats knob reads what is alive and keeps nothing alive itself: a
+ * finished build's session is gone once nothing else holds it (the knob is
+ * how a report of memory growth is diagnosed). Rsbuild only: a Vite 8 build's
+ * plugins are never released (Rolldown's native plugins hold Vite's callbacks
+ * strongly, and those reach the plugins again).
+ */
+test(
+  'the stats registry keeps no finished Rsbuild build alive',
+  async () => {
+    vi.stubEnv('TSR_COMPILER_STATS', '1')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    const builds = 3
+    for (let build = 0; build < builds; build++) {
+      await buildStart({ bundler: 'rsbuild', files })
+    }
+    setFlagsFromString('--expose-gc')
+    const gc = runInNewContext('gc') as () => void
+    for (let round = 0; round < 5; round++) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      gc()
+    }
+    // (at most one is left: the schema library memoises the last value it
+    // parsed, here the last build's options)
+    expect(
+      compilerStats()['start:rsbuild:session']?.instances ?? 0,
+    ).toBeLessThan(builds)
+  },
+  timeout,
 )

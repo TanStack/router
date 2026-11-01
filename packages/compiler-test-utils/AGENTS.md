@@ -68,7 +68,13 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
   across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads
   process-global state (`compilerStats()`) runs in a process of its own (start-plugin-core `integration-alone`):
-  Rspack keeps a closed compiler's last compilation alive.
+  Vite 8 keeps the plugins of every finished build and closed server alive.
+- Those files share one heap, and it only grows: everything a Vite plugin reaches stays for the rest of the process, and
+  native bundler callbacks keep the async contexts they were created in. So what a harness scope or plugin holds is
+  released when its work ends (a stopped sink, a closed channel, a finished test, a checked recording), however the
+  plugin itself lives on. To measure the slow tier's heap, give the worker the limit through `test.execArgv` in the
+  config (Vitest's `--execArgv` flag did not reach the workers) and read `v8.getHeapStatistics().heap_size_limit` in
+  the worker.
 
 ## Budgets
 

@@ -62,20 +62,19 @@ export function createCompilerCaches(
     rawFacts,
     fileSetVersion: 0,
   }
-  registerCompilerStats(label, caches, (c) => {
-    const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
-    const out: Record<string, number> = c.rawFacts.stats(withBytes)
-    const add = (counts: Record<string, number>) => {
-      for (const [k, v] of Object.entries(counts)) {
-        out[k] = (out[k] ?? 0) + v
-      }
-    }
-    for (const plans of c.plans.values()) {
-      add(plans.stats(withBytes))
-    }
-    return out
-  })
+  registerCompilerStats(label, caches, readCacheStats)
   return caches
+}
+
+function readCacheStats(c: CompilerCaches) {
+  const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
+  const out: Record<string, number> = c.rawFacts.stats(withBytes)
+  for (const plans of c.plans.values()) {
+    for (const [k, v] of Object.entries(plans.stats(withBytes))) {
+      out[k] = (out[k] ?? 0) + v
+    }
+  }
+  return out
 }
 
 type AttemptResult =

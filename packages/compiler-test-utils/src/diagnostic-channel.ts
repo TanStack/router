@@ -307,6 +307,9 @@ export function openDiagnosticChannel(): DiagnosticChannel {
       if (!closed) {
         closed = true
         stop()
+        // A plugin holding the channel's logger may outlive the build (Vite 8
+        // keeps every plugin it was given): it keeps no listener's scope
+        listeners.length = 0
       }
     },
   }
