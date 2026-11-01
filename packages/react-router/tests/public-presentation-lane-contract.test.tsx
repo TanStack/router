@@ -243,6 +243,105 @@ describe('public presentation lane contracts', () => {
     expect(screen.queryByText('Loading page')).not.toBeInTheDocument()
   })
 
+  test.each(['same', 'different'])(
+    '%s-boundary takeover uses the correct reveal deadline before pending UI is painted',
+    async (boundary) => {
+      const firstGate = createControlledPromise<void>()
+      const secondGate = createControlledPromise<void>()
+      const rootRoute = createRootRoute({ component: Outlet })
+      const homeRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div>Home</div>,
+      })
+      const pageRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/page/$id',
+        validateSearch: (search: Record<string, unknown>) => ({
+          revision: Number(search.revision),
+        }),
+        pendingMs: 100,
+        pendingMinMs: 0,
+        pendingComponent: () => <div>Loading page</div>,
+        beforeLoad: ({ search }) =>
+          search.revision === 1 ? firstGate : secondGate,
+        component: () => (
+          <div>Page revision {pageRoute.useSearch().revision}</div>
+        ),
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([homeRoute, pageRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+      render(<RouterProvider router={router} />)
+      expect(await screen.findByText('Home')).toBeInTheDocument()
+      await waitFor(() => expect(router.state.status).toBe('idle'))
+      vi.useFakeTimers()
+      vi.setSystemTime(0)
+
+      let successor!: Promise<void>
+      try {
+        await act(async () => {
+          void router.navigate({
+            to: '/page/$id',
+            params: { id: 'first' },
+            search: { revision: 1 },
+          })
+          await vi.advanceTimersByTimeAsync(25)
+        })
+        await act(async () => {
+          successor = router.navigate({
+            to: '/page/$id',
+            params: { id: boundary === 'same' ? 'first' : 'second' },
+            search: { revision: 2 },
+          })
+          await vi.advanceTimersByTimeAsync(74)
+        })
+        expect(screen.getByText('Home')).toBeInTheDocument()
+        expect(screen.queryByText('Loading page')).not.toBeInTheDocument()
+
+        if (boundary === 'different') {
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(25)
+          })
+          expect(screen.getByText('Home')).toBeInTheDocument()
+          expect(screen.queryByText('Loading page')).not.toBeInTheDocument()
+        }
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1)
+        })
+        expect(screen.getByText('Loading page')).toBeInTheDocument()
+        expect(router.state.matches.at(-1)?.search).toMatchObject({
+          revision: 2,
+        })
+
+        await act(async () => {
+          firstGate.resolve()
+          await vi.advanceTimersByTimeAsync(0)
+        })
+        expect(screen.getByText('Loading page')).toBeInTheDocument()
+        expect(router.state.matches.at(-1)?.search).toMatchObject({
+          revision: 2,
+        })
+
+        await act(async () => {
+          secondGate.resolve()
+          await vi.advanceTimersByTimeAsync(0)
+          await successor
+        })
+        expect(screen.getByText('Page revision 2')).toBeInTheDocument()
+        expect(screen.queryByText('Loading page')).not.toBeInTheDocument()
+      } finally {
+        firstGate.resolve()
+        secondGate.resolve()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1_000)
+        })
+      }
+    },
+  )
+
   test('an earlier pending-ineligible boundary retires a deeper pending minimum', async () => {
     const childReloadStarted = createControlledPromise<void>()
     const childReload = createControlledPromise<void>()
