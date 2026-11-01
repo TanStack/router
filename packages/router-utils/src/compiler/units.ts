@@ -79,6 +79,8 @@ export interface Unit {
    * destructuring and every other unit kind: false.
    */
   identityFree: boolean
+  /** Its evaluation calls something, however pure (a call or a `new` in what the unit evaluates at load). */
+  callsAtLoad: boolean
   /** Import entries (Tier 0 index) for import units. */
   importIndex: number | null
   /** For import specifiers: the imported name ('default', '*' or a name). */
@@ -495,13 +497,22 @@ export function buildUnits(
     const b = file.referenceOf(local)?.binding ?? null
     return b !== null && !hasRuntimeValue(b)
   }
+  let callsSeen = purity.calls
   const add = (
     item: TopLevelItem,
-    u: Omit<Unit, 'id' | 'item' | 'region'>,
+    u: Omit<Unit, 'id' | 'item' | 'region' | 'callsAtLoad'>,
   ): Unit => {
     const id = units.length
     const region = regions.addUnitRegion(id, u.range)
-    const unit: Unit = { ...u, id, item: item.index, region }
+    const unit: Unit = {
+      ...u,
+      id,
+      item: item.index,
+      region,
+      // what the purity check of this unit, just done, visited
+      callsAtLoad: purity.calls > callsSeen,
+    }
+    callsSeen = purity.calls
     units.push(unit)
     item.units.push(id)
     for (const s of unit.declares) {
@@ -518,7 +529,7 @@ export function buildUnits(
     node: Node,
     kind: UnitKind,
     range: Range,
-  ): Omit<Unit, 'id' | 'item' | 'region'> => ({
+  ): Omit<Unit, 'id' | 'item' | 'region' | 'callsAtLoad'> => ({
     kind,
     range,
     declares: [],

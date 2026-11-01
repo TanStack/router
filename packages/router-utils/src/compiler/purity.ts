@@ -34,6 +34,8 @@ export interface PurityContext {
   pureNamespaces: ReadonlyMap<number, ReadonlySet<string>>
   /** Value namespace imports (binding ids): `import * as ns from '…'`. */
   namespaceImports: ReadonlySet<number>
+  /** How many calls the purity checks visited: what a unit's check added says it calls something at load (`Unit.callsAtLoad`). */
+  calls: number
 }
 
 const PURE_RE = /[@#]__PURE__/
@@ -264,6 +266,7 @@ export function isPureExpression(
       return node.expressions.every((e) => isPureExpression(ctx, e))
     case 'CallExpression':
     case 'NewExpression': {
+      ctx.calls++
       if (hasPureAnnotation(ctx, node) || hasPureAnnotation(ctx, expr)) {
         return node.arguments.every((a) =>
           a.type === 'SpreadElement' ? false : isPureExpression(ctx, a),

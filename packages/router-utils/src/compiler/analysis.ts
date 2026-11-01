@@ -378,6 +378,7 @@ export class ModuleAnalysis {
       noSideEffectCallees,
       pureNamespaces,
       namespaceImports: namespaceImports ?? NO_NAMESPACES,
+      calls: 0,
     }
     const exportLocals = new Map<number, SymbolId>()
     for (const record of file.exports) {
@@ -1467,34 +1468,47 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
 
 /**
  * Which references run when the module loads: the eager ones, and every
- * reference inside a module-level function or class that an eager
- * reference calls (`calls`), transitively. A static module that evaluates
- * `const config = build()` runs `build`'s body before the route module's
- * own body, whatever `build` reads; the position of a read says nothing
- * about when it happens once a call is involved.
+ * reference inside a module-level function or class that the load may run.
+ * The load runs what an eager reference calls, and a unit whose evaluation
+ * calls anything may run whatever it reads: its callee can be an alias, a
+ * method of an object it reads (`o.m()`, `read.call()`), a function it returns,
+ * or take the function as an argument (`apply(read)`). What such a body
+ * reads may run too, transitively. A static module that evaluates
+ * `const config = build()` runs `build`'s body before the route module's own
+ * body, whatever `build` reads; the position of a read says nothing about
+ * when it happens once a call is involved. Holding a function runs nothing
+ * (`const config = { read }`). `live`: a reference in code the output keeps.
  */
 export function runsAtLoad(
   t1: Pick<Tier1, 'refs' | 'units' | 'regions' | 'declaringUnits' | 'ownerOf'>,
+  live: (ref: ClassifiedRef) => boolean = () => true,
 ): (ref: ClassifiedRef) => boolean {
   const marked = new Set<UnitId>()
   const work: Array<ClassifiedRef> = []
+  const mark = (unit: Unit) => {
+    marked.add(unit.id)
+    for (const inner of t1.refs.refsIn(unit.range)) {
+      if (live(inner)) {
+        work.push(inner)
+      }
+    }
+  }
   for (const r of t1.refs.all) {
-    if (r.eager && callsValue(r)) {
+    if (r.eager && callsValue(r) && live(r)) {
       work.push(r)
+    }
+  }
+  for (const unit of t1.units) {
+    if (unit.callsAtLoad && !unit.effectful) {
+      mark(unit)
     }
   }
   while (work.length > 0) {
     const r = work.pop()!
     for (const u of t1.declaringUnits.get(r.sym) ?? []) {
       const unit = t1.units[u]!
-      if (unit.kind !== 'declaration' || marked.has(u)) {
-        continue
-      }
-      marked.add(u)
-      for (const inner of t1.refs.refsIn(unit.range)) {
-        if (callsValue(inner)) {
-          work.push(inner)
-        }
+      if (unit.kind === 'declaration' && !marked.has(u)) {
+        mark(unit)
       }
     }
   }

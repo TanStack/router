@@ -1469,11 +1469,52 @@ describe('extracted-export outputs', () => {
         'a copied helper called in a property',
         'const fmt = () => theme.dark\nexport const config = { dark: /* @__PURE__ */ fmt() }',
       ],
+      [
+        'a call through an alias',
+        'function read() { return { t: theme } }\nconst alias = read\nexport const config = /* @__PURE__ */ alias()',
+      ],
+      [
+        'a method of a local object',
+        'const o = { m() { return { t: theme } } }\nexport const config = /* @__PURE__ */ o.m()',
+      ],
+      [
+        'a function held in a local object',
+        'function read() { return { t: theme } }\nconst o = { m: read }\nexport const config = /* @__PURE__ */ o.m()',
+      ],
+      [
+        'a static method',
+        'class B { static m() { return { t: theme } } }\nexport const config = /* @__PURE__ */ B.m()',
+      ],
+      [
+        'call()',
+        'function read() { return { t: theme } }\nexport const config = /* @__PURE__ */ read.call(null)',
+      ],
+      [
+        'a sequence callee',
+        'function read() { return { t: theme } }\nexport const config = /* @__PURE__ */ (0, read)()',
+      ],
+      [
+        'a returned function',
+        'function read() { return { t: theme } }\nfunction get() { return read }\nexport const config = /* @__PURE__ */ get()()',
+      ],
+      [
+        'a function passed as an argument',
+        'function read() { return { t: theme } }\nexport const config = /* @__PURE__ */ apply(read)',
+      ],
+      [
+        'an arrow passed as an argument',
+        'export const config = /* @__PURE__ */ apply(() => ({ t: theme }))',
+      ],
+      [
+        'a constructor calling its parent',
+        'class A { t = theme }\nclass B extends A { constructor() { super() } }\nexport const config = /* @__PURE__ */ new B()',
+      ],
     ])(
       'keeps an export whose evaluation calls a function reading what the route module keeps (no TDZ): %s',
       async (_, declarations) => {
         const code = dedent(`
           import { createFileRoute } from 'toy-router'
+          import { apply } from './rt'
           const theme = { dark: true }
           ${declarations.replaceAll('\n', '\n          ')}
           function Page() { return [config, theme.dark] }
@@ -1491,6 +1532,36 @@ describe('extracted-export outputs', () => {
         ])
       },
     )
+
+    // Reading a function is not calling it: only an evaluation that calls
+    // something can run the function's body at load.
+    it('extracts an export that holds a function reading what the route module keeps, without calling anything', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const theme = { dark: true }
+        const read = () => theme.dark
+        export const config = { read }
+        function Page() { return [config, theme.dark] }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain('export~config')
+    })
+
+    it('keeps an export that holds a function reading an effectful enum, read through a method at load', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { track } from './rt'
+        enum T { A = track('T') }
+        const o = { m() { return T } }
+        export const R = /* @__PURE__ */ o.m()
+        function Page() { return R }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain('export const R')
+      expect(r.env).not.toContain('export~')
+    })
 
     it.each([
       [

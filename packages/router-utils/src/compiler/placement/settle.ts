@@ -4,7 +4,6 @@
  * needer (the movable test) and the extracted exports are one monotone
  * fixed point over the final placement; nothing is rooted after it.
  */
-import { callsValue } from '../analysis'
 import { READ_KINDS, isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
@@ -71,8 +70,8 @@ export function derivedNeeds(
  * static dependency that evaluates with its imports before the env
  * module's body: such a read there would run before the binding's
  * initialisation, a TDZ the user never wrote. A read inside a function the
- * evaluation calls (`const config = build()`) happens then too
- * (`graph.atLoad`). A copyable cluster is duplicated into the reading
+ * evaluation may call (`const config = build()`, `o.m()`, `apply(read)`)
+ * happens then too (`graph.atLoad`). A copyable cluster is duplicated into the reading
  * output instead and is no such read.
  */
 export function readsKeptEagerly(
@@ -85,8 +84,9 @@ export function readsKeptEagerly(
   const { clusters, clusterOfSym } = graph
   const kept = (d: ClusterId) =>
     roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned
-  // the reads of `c`'s own text that run at load, then those of every
-  // module-level function (or class) such a read calls, transitively
+  // the reads of `c`'s own text that run at load, then those of what they
+  // read that run at load (`graph.atLoad`: the body of what the load may
+  // call), transitively
   const seen = new Set<ClusterId>([c])
   const work: Array<ClusterId> = [c]
   while (work.length > 0) {
@@ -107,7 +107,7 @@ export function readsKeptEagerly(
         if (kept(d)) {
           return true
         }
-        if (callsValue(ref) && clusters[d]!.kind === 'declaration') {
+        if (clusters[d]!.kind === 'declaration') {
           seen.add(d)
           work.push(d)
         }
