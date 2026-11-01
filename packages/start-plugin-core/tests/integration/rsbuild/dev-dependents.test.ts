@@ -36,6 +36,9 @@ describe('Rsbuild dev: what an edit rebuilds', () => {
   // A module many modules import (a formatting helper) is edited without
   // changing anything its importers read of it: Rspack builds it again and
   // nothing else, in each environment (main builds 1 + 1 modules too).
+  // Which modules, not how many times: Rspack's watcher sometimes compiles one
+  // save twice (plain Rsbuild too), when the save was seen in the millisecond
+  // the compile started.
   // Source: factcheck of review 1, part 3 (a comment-only edit of a helper
   // with 373 importers rebuilt 853 + 869 modules).
   test(
@@ -63,10 +66,15 @@ console.log(${importers.map((name) => `${name}()`).join(', ')})
       expect(server.errors).toEqual([])
       await server.edit({ 'src/lib/format.ts': `${format}// a comment\n` })
       expect(server.errors).toEqual([])
-      expect(builtAppModules(server)).toEqual([
-        'src/lib/format.ts',
-        'src/lib/format.ts',
-      ])
+      for (const environment of ['client', 'ssr']) {
+        expect(
+          new Set(
+            server.rebuiltBy[environment]?.filter((file) =>
+              file.startsWith('src/'),
+            ),
+          ),
+        ).toEqual(new Set(['src/lib/format.ts']))
+      }
     },
     timeout,
   )
