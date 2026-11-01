@@ -37,7 +37,9 @@ const REGISTRY = Symbol.for('tanstack.compiler.stats')
 
 /**
  * Registers a reader of `owner`'s cache sizes when `TSR_COMPILER_STATS=1`.
- * `read` receives the owner and must not capture it.
+ * `read` receives the owner and must not capture it: pass a module-level
+ * function or a static method. A closure written next to other closures holds
+ * their whole scope, the owner included, and the owner would never be released.
  */
 export function registerCompilerStats<T extends object>(
   label: string,

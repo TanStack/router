@@ -156,6 +156,11 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ASSET_QUERY_RE,
 ]
 
+const readAwaitingAdd = (awaitingAdd: Map<string, Set<string>>) =>
+  collectionSizes({ awaitingAdd })
+
+const readEntries = (entries: Set<string>) => ({ size: entries.size })
+
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
 function toDevSpecifier(id: string, root: string): string {
   const normalizedRoot = normalizePath(root).replace(/\/$/, '')
@@ -276,9 +281,7 @@ export function startCompilerPlugin(
    * re-transform when a file appears (see `applyInvalidation`).
    */
   const awaitingAdd = new Map<string, Set<string>>()
-  registerCompilerStats('start:vite:awaitingAdd', awaitingAdd, (m) =>
-    collectionSizes({ awaitingAdd: m }),
-  )
+  registerCompilerStats('start:vite:awaitingAdd', awaitingAdd, readAwaitingAdd)
 
   const requireSession = (): Session => {
     if (!session) {
@@ -327,9 +330,7 @@ export function startCompilerPlugin(
       bundledDev: config.bundledDev,
       entries: new Set(),
     }
-    registerCompilerStats('start:vite:entries', s.entries, (e) => ({
-      size: e.size,
-    }))
+    registerCompilerStats('start:vite:entries', s.entries, readEntries)
     return s
   }
 

@@ -172,9 +172,15 @@ export class StartRsbuildCompilerSession {
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
     })
-    registerCompilerStats('start:rsbuild:host', this, (o) =>
-      collectionSizes({ envs: o.envs, missing: o.missing }, 4),
+    registerCompilerStats(
+      'start:rsbuild:host',
+      this,
+      StartRsbuildCompilerSession.readStats,
     )
+  }
+
+  private static readStats(o: StartRsbuildCompilerSession) {
+    return collectionSizes({ envs: o.envs, missing: o.missing }, 4)
   }
 
   env(name: string): EnvState {

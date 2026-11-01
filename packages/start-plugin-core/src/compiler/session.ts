@@ -178,16 +178,22 @@ export class StartCompilerSession {
         (opts.opaque?.(path) ?? false) || packageModule(path, text),
     })
     this.caches = createCompilerCaches(this.rawFacts, opts.label)
-    registerCompilerStats(`${opts.label}:session`, this, (o) =>
-      collectionSizes(
-        {
-          registry: o.registry,
-          warnings: o.warnings,
-          ip: o.ip,
-          routes: o.opts.routes,
-        },
-        4,
-      ),
+    registerCompilerStats(
+      `${opts.label}:session`,
+      this,
+      StartCompilerSession.readStats,
+    )
+  }
+
+  private static readStats(o: StartCompilerSession) {
+    return collectionSizes(
+      {
+        registry: o.registry,
+        warnings: o.warnings,
+        ip: o.ip,
+        routes: o.opts.routes,
+      },
+      4,
     )
   }
 
