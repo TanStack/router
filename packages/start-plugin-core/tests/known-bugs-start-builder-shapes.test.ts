@@ -103,26 +103,6 @@ export const read = serverOnly(() => db.secret())`,
   ])('$name', async (shape) => {
     await expectNoSilentLeak(shape)
   })
-
-  // .fails: the client build fails where the wrapper passes its parameter, in `wrap.ts`;
-  // a dev server serves the module calling it, argument included, before
-  // the wrapper's module fails (the build is the guarantee).
-  test.fails.each<Shape>([
-    {
-      name: 'a wrapper of another module that passes its argument to createServerOnlyFn',
-      code: `import { serverOnly } from './wrap'
-import { db } from './db.server'
-export const read = serverOnly(() => db.secret())`,
-      body: 'db.secret()',
-      files: {
-        'wrap.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
-export const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn(fn)
-`,
-      },
-    },
-  ])('$name', async (shape) => {
-    await expectNoSilentLeak(shape)
-  })
 })
 
 describe('a method called on a server fn where it is created', () => {

@@ -20,8 +20,18 @@ import { afterAll, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { Generator, createGeneratorSession, getConfig } from '../src'
+import {
+  Generator,
+  createGeneratorSession,
+  getConfig,
+  replaceBackslash,
+} from '../src'
 import { recordInputs } from './consumer-inputs'
+
+/** The route files the generator knows: `/`-separated on every platform. */
+function routeFiles(generator: Generator) {
+  return [...generator.getRoutesByFileMap().keys()]
+}
 
 const roots: Array<string> = []
 afterAll(async () => {
@@ -105,7 +115,7 @@ export const Route = createFileRoute('/posts')({})
     root,
     position: { line: 1 },
   })
-  expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
+  expect(routeFiles(generator)).toContain(replaceBackslash(posts))
   expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
 })
 
@@ -178,8 +188,9 @@ export const Route = createRootRoute()
     generator: () => generator,
     report: (error) => reports.push(error),
   }).build()
+  // (the error names files in the platform's own spelling)
   expect(reports.map(String)).toEqual([
-    expect.stringContaining('_auth/index.tsx'),
+    expect.stringContaining(path.join('_auth', 'index.tsx')),
   ])
 })
 
@@ -274,7 +285,7 @@ test('a build after a watch run that kept the route of a broken file fails, nami
   await session.run()
   await writeFile(posts, 'export const Route = (')
   await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
-  expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
+  expect(routeFiles(generator)).toContain(replaceBackslash(posts))
   await expect(session.build()).rejects.toThrow('posts.tsx')
 })
 
@@ -348,7 +359,7 @@ test('a build resolves when an event arriving while it generates fixes the route
   await writeFile(posts, postsRoute)
   await generator.run({ type: 'update', path: posts })
   await built
-  expect([...generator.getRoutesByFileMap().keys()]).toContain(posts)
+  expect(routeFiles(generator)).toContain(replaceBackslash(posts))
 })
 
 // A build batch that fails before publishing still read what changed: the
