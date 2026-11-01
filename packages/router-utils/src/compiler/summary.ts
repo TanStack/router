@@ -27,7 +27,8 @@ export function buildSummary(
   const file = analysis.file
   const { declarations } = analysis
   const values = new ValueAnalysis(file, { table, declarations })
-  const exportFacts: Record<string, ExportFact> = {}
+  // (an export may be named `__proto__`)
+  const exportFacts: Record<string, ExportFact> = Object.create(null)
   const stars: Array<string> = []
   for (const e of analysis.exports) {
     switch (e.kind) {

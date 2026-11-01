@@ -2,6 +2,7 @@
  * Host contract (see README.md, "Hosts") and the one invalidation
  * operation.
  */
+import { stat } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
 import { posix } from 'node:path'
 import {
@@ -99,6 +100,14 @@ export interface CompileOutput {
   output: OutputId
 }
 
+/** `HostServices.modifiedAt` for a host whose modules are files on disk. */
+export function fileModifiedAt(path: string): Promise<number | null> {
+  return stat(path).then(
+    (s) => s.mtimeMs,
+    () => null,
+  )
+}
+
 /** The route registry: the router planner reads a file's entry, plans record its digest. */
 export interface RouteRegistry {
   lookup: (path: string) => { routeId: string } | null
@@ -113,6 +122,14 @@ export interface HostServices {
   ) => Promise<{ id: string; external?: boolean } | null>
   rawFacts: RawFactsCache
   routes?: RouteRegistry
+  /** When a file last changed on disk (`mtimeMs`), null when it isn't known; without it, differing input texts of one file go unreported. */
+  modifiedAt?: (path: string) => Promise<number | null>
+  /**
+   * An invalidation could not re-validate a fingerprint (a resolver threw).
+   * The plan counts as stale, so the error comes back from its next compile;
+   * this is for a module nothing requests again.
+   */
+  onInvalidationError?: (error: unknown) => void
   /** Planner-specific services (onViolation, ipBuild, serverFns, refreshRuntime, …). */
   services?: Record<string, unknown>
 }
@@ -198,8 +215,10 @@ export interface CompilerCaches {
    * Bumped when a file appeared or disappeared (`invalidate` add/unlink).
    * A plan's recorded resolutions and an environment's
    * resolution memo are current while the version they were validated or
-   * filled at is the current one: nothing a resolver answers changes
-   * without a file appearing or disappearing.
+   * filled at is the current one. It moves when a file appears or disappears
+   * and when a `package.json` changes (`imports`, `exports`), which is what a
+   * resolver's answers depend on for the life of a server: `tsconfig` `paths`
+   * and the bundler's aliases need a restart of the bundler's own resolver.
    */
   fileSetVersion: number
 }
@@ -266,7 +285,7 @@ type InvalidationHosts = HostServices | ((env: string) => HostServices)
  * watching compiler: `invalidateFiles`). File `add`/`unlink` events
  * also re-resolve every failed resolution of every env: a plan whose
  * unresolved specifier now resolves is a dependent; an `add` also
- * re-resolves the resolutions the new file may take (`mayShadow`). Restored
+ * re-resolves the resolutions the new file may take (`shadowTest`). Restored
  * plans (`restorePlans`) are checked like published ones. Each environment's
  * fingerprints are checked with that environment's host (its own resolver).
  */
@@ -291,7 +310,14 @@ export async function invalidate(
   } else {
     caches.rawFacts.markStale(change.path)
   }
-  if (change.kind === 'add' || change.kind === 'unlink') {
+  // `imports` and `exports` decide what specifiers resolve to, as files
+  // appearing do. (A resolution from a package to a target outside its
+  // directory stays until its importer compiles again.)
+  const manifest =
+    change.kind === 'change' && change.path.endsWith('/package.json')
+  const fileSetMoved =
+    change.kind === 'add' || change.kind === 'unlink' || manifest
+  if (fileSetMoved) {
     caches.fileSetVersion++
   }
   const revalidate = async (
@@ -300,7 +326,8 @@ export async function invalidate(
     relevant: (fp: DependencyFingerprint) => boolean,
   ): Promise<void> => {
     const seen = new Set<string>()
-    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env)
+    const host = hostOf(cache.env)
+    const src = fingerprintSourceFor(caches, host, cache.env)
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
@@ -323,7 +350,13 @@ export async function invalidate(
           (change.kind === 'unlink' &&
             fp.kind === 'resolution' &&
             fingerprintPath(fp) === change.path) ||
-          !(await fingerprintCurrent(fp, src))
+          // what can't be checked isn't known to be current. This operation
+          // runs from file events and registry publications, where a
+          // rejection would have nobody to answer to
+          !(await fingerprintCurrent(fp, src).catch((error: unknown) => {
+            host.onInvalidationError?.(error)
+            return false
+          }))
         ) {
           stale = true
           break
@@ -336,6 +369,8 @@ export async function invalidate(
       }
     }
   }
+  const shadows =
+    change.kind === 'add' || manifest ? shadowTest(change.path) : null
   for (const cache of caches.plans.values()) {
     await revalidate(
       cache,
@@ -347,7 +382,7 @@ export async function invalidate(
         fingerprintPath(fp) === change.path &&
         !(change.kind === 'change' && fp.kind === 'resolution'),
     )
-    if (change.kind === 'add' || change.kind === 'unlink') {
+    if (fileSetMoved) {
       // failed resolutions have no path; re-resolve them all (the memo asks the host once per distinct entry)
       await revalidate(
         cache,
@@ -355,13 +390,17 @@ export async function invalidate(
         (fp) => fp.kind === 'resolution' && fp.resolved === null,
       )
     }
-    if (change.kind === 'add') {
+    if (shadows) {
       // a new file may take a resolution that found another file of its
       // name (`./x` found `x/index.ts`, and `x.ts` appeared)
-      for (const path of [...cache.dependents.paths()]) {
-        if (path !== change.path && mayShadow(change.path, path)) {
-          await revalidate(cache, path, (fp) => fp.kind === 'resolution')
+      const shadowed: Array<string> = []
+      for (const path of cache.dependents.paths()) {
+        if (path !== change.path && shadows(path)) {
+          shadowed.push(path)
         }
+      }
+      for (const path of shadowed) {
+        await revalidate(cache, path, (fp) => fp.kind === 'resolution')
       }
     }
   }
@@ -426,18 +465,25 @@ export function planDependencyFiles(
  * other candidates (alias targets elsewhere, a nearer `node_modules`) are not
  * looked at.
  */
-function mayShadow(added: string, resolved: string): boolean {
+function shadowTest(added: string): (resolved: string) => boolean {
   const slash = added.lastIndexOf('/')
   const dir = added.slice(0, slash + 1)
   const base = added.slice(slash + 1)
   if (base === 'package.json') {
-    return resolved.startsWith(dir)
+    return (resolved) => resolved.startsWith(dir)
   }
   const stem = dir + base.split('.')[0]!
-  return (
-    resolved.startsWith(`${stem}/`) ||
-    (resolved.startsWith(`${stem}.`) && !resolved.includes('/', stem.length))
-  )
+  const end = stem.length
+  // the character after the stem rules out almost every path of an app without
+  // comparing their long common prefix: an `add` asks this of every dependency
+  return (resolved) => {
+    const next = resolved.charCodeAt(end)
+    return (
+      (next === 47 /* / */ ||
+        (next === 46 /* . */ && !resolved.includes('/', end))) &&
+      resolved.startsWith(stem)
+    )
+  }
 }
 
 /**

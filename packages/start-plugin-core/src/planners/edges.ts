@@ -35,7 +35,11 @@
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
-import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
+import {
+  ASSET_QUERY_RE,
+  identify,
+  ownEntry,
+} from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
@@ -213,7 +217,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         // entry): its marker import is the violating edge, located at the
         // marker. A marked non-entry module is judged through its importers
         // (an exempt importer gets it, J6.7).
-        const ownMarker = ip.markerSpecifiers[raw]
+        const ownMarker = ownEntry(ip.markerSpecifiers, raw)
         if (
           rule === null &&
           ownMarker !== undefined &&
@@ -365,7 +369,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     // the module's own marker: the marker module is empty, but the edge must
     // survive with the module (its witness tells whether the marked module is
     // in the bundle), so the mock keeps the effect witness
-    const ownMarker = ip.markerSpecifiers[j.raw] !== undefined
+    const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
     const target =
       j.resolved !== null && !ownMarker
         ? await describeTarget(j.resolved, ctx)

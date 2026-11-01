@@ -382,11 +382,17 @@ export function startCompilerPlugin(
   const invalidationHost = (
     s: Session,
     environment: DevEnvironment,
-  ): HostServices =>
-    hostFor(s, environment, async (specifier, importer) => {
+  ): HostServices => ({
+    ...hostFor(s, environment, async (specifier, importer) => {
       const r = await environment.pluginContainer.resolveId(specifier, importer)
       return r ? { id: r.id, external: r.external === true } : null
-    })
+    }),
+    onInvalidationError: (error) => {
+      environment.logger.warnOnce(
+        `[tanstack-start] a resolver failed while re-checking a module after a file change: ${String(error)}`,
+      )
+    },
+  })
 
   /**
    * The hosts of one invalidation, per environment: each environment's
@@ -437,16 +443,14 @@ export function startCompilerPlugin(
   }
 
   /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
-  const outputDigests = new Map<string, string>()
+  const outputDigests = new Map<string, Map<string, string>>()
+  const digestOf = (id: string, key: string): string | undefined =>
+    outputDigests.get(identify(id).path)?.get(key)
 
   /** Forgets what the session and the host hold of a deleted file (`file`: its normalized path). */
   const forgetFile = (s: Session, file: string): void => {
     s.start.forget(file)
-    for (const key of outputDigests.keys()) {
-      if (identify(key.slice(key.indexOf('\0') + 1)).path === file) {
-        outputDigests.delete(key)
-      }
-    }
+    outputDigests.delete(file)
   }
 
   /**
@@ -470,10 +474,10 @@ export function startCompilerPlugin(
         // node's transform result already; the compiler's last output is
         // what the page holds
         const key = `${environment.name}\0${node.id}`
-        const previous = outputDigests.get(key)
+        const previous = digestOf(node.id, key)
         if (previous !== undefined) {
           await environment.transformRequest(node.url).catch(() => null)
-          if (outputDigests.get(key) === previous) {
+          if (digestOf(node.id, key) === previous) {
             continue
           }
         }
@@ -693,7 +697,12 @@ export function startCompilerPlugin(
         mock = await mock
       }
       if (s.start.opts.mode === 'dev') {
-        outputDigests.set(
+        let digests = outputDigests.get(identity.path)
+        if (!digests) {
+          digests = new Map()
+          outputDigests.set(identity.path, digests)
+        }
+        digests.set(
           `${environment.name}\0${id}`,
           revision(mock?.code ?? out.code),
         )
@@ -733,7 +742,11 @@ export function startCompilerPlugin(
             opts.routerPluginContext,
             (next, previous) => {
               for (const file of changedRoutePaths(next, previous)) {
-                void invalidateRegistry(file)
+                void invalidateRegistry(file).catch((error: unknown) => {
+                  server?.config.logger.error(
+                    `[tanstack-start] invalidating ${file} after a route change failed: ${String(error)}`,
+                  )
+                })
               }
             },
           )

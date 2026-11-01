@@ -17,7 +17,7 @@ import {
   mockRuntimeCode,
   viteEdgeModuleIds,
 } from './edge-modules'
-import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
+import { EdgeIndex, IdsByFile, buildTrace, traceFile } from './graph-trace'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
 import { fileOrMarkerRule, importerInScope } from './rules'
@@ -404,6 +404,7 @@ class ImportProtectionEnv {
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
   private readonly byImporter = new Map<string, Set<string>>()
+  private readonly importersByFile = new IdsByFile()
   private readonly onceVerdicts = new Map<string, Promise<boolean | void>>()
   /** Dev: logical edges `onViolation` vetoed (`devVerdict`: their edge modules serve the real module). */
   private readonly allowed = new Set<string>()
@@ -783,6 +784,9 @@ class ImportProtectionEnv {
       )
     }
     const previous = this.byImporter.get(importerId)
+    if (!previous) {
+      this.importersByFile.add(importerId)
+    }
     this.byImporter.set(importerId, keys)
     if (previous && this.ip.config.mode === 'dev') {
       for (const key of previous) {
@@ -914,13 +918,11 @@ class ImportProtectionEnv {
   /** Forgets the importer records of every path `keep` rejects. */
   retain(keep: (path: string) => boolean): void {
     const gone = new Set<string>()
-    for (const importerId of [
-      ...this.byImporter.keys(),
-      ...this.edges.importerIds(),
-    ]) {
-      const path = traceFile(importerId)
-      if (!keep(path)) {
-        gone.add(path)
+    for (const files of [this.importersByFile.files(), this.edges.files()]) {
+      for (const path of files) {
+        if (!keep(path)) {
+          gone.add(path)
+        }
       }
     }
     for (const path of gone) {
@@ -931,12 +933,11 @@ class ImportProtectionEnv {
   /** Forgets a deleted file's importer records (edges, violations of its ids). */
   forget(path: string): void {
     this.edges.forget(path)
-    for (const [importerId, keys] of [...this.byImporter]) {
-      if (traceFile(importerId) === path) {
-        this.byImporter.delete(importerId)
-        for (const key of keys) {
-          this.release(importerId, key)
-        }
+    for (const importerId of this.importersByFile.take(path)) {
+      const keys = this.byImporter.get(importerId)
+      this.byImporter.delete(importerId)
+      for (const key of keys ?? []) {
+        this.release(importerId, key)
       }
     }
   }

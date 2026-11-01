@@ -6,7 +6,7 @@
  * (decided later, with the env roots), and provenance: what erased text
  * read, from which "orphaned by us" is decided once env liveness is final.
  */
-import { NEED_KINDS, ownAugmentation } from './clusters'
+import { NEED_KINDS, describeCluster, ownAugmentation } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Node } from 'yuku'
@@ -170,7 +170,7 @@ export function seedRoots(
     const prev = pinned.get(c)
     if (prev !== undefined && prev !== g.home) {
       throw new Error(
-        `generated units ${g.by} pin one cluster to two outputs (${prev}, ${g.home})`,
+        `generated units ${g.by} pin ${describeCluster(input, graph.clusters[c]!)} to two outputs (${prev}, ${g.home})`,
       )
     }
     pinned.set(c, g.home)

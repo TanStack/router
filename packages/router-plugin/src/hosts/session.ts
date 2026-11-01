@@ -13,6 +13,7 @@ import {
   compileModule,
   createCompilerCaches,
   digestOf,
+  fileModifiedAt,
   identify,
   invalidate,
   registerCompilerStats,
@@ -133,6 +134,7 @@ export class RouterCompiler {
       resolve: () => Promise.resolve(null),
       rawFacts,
       routes: this.registry,
+      modifiedAt: fileModifiedAt,
     }
   }
 

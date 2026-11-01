@@ -163,6 +163,13 @@ export const READ_KINDS = new Set([
  */
 export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
+/** A cluster as a person knows it: the bindings it declares and where (for the dev-only invariants' messages). */
+export function describeCluster(input: PlacementInput, cl: Cluster): string {
+  const names = [...cl.declares].map((s) => input.t1.symbols.name(s))
+  const line = input.code.slice(0, cl.start).split('\n').length
+  return `${names.length > 0 ? names.join(', ') : 'the statement'} (${input.canonicalId}:${line})`
+}
+
 /** The symbols generated text reads (its `SymRef`s and reference rewrites). */
 export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
   const out: Array<SymbolId> = []

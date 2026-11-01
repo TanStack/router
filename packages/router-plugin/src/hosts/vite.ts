@@ -169,7 +169,11 @@ export function createRouterCompilerVitePlugin(
       unsubscribe?.()
       unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {
         for (const file of changedRoutePaths(next, previous)) {
-          void invalidatePath(file, 'registry')
+          void invalidatePath(file, 'registry').catch((error: unknown) => {
+            server?.config.logger.error(
+              `[tanstack-router] invalidating ${file} after a route change failed: ${String(error)}`,
+            )
+          })
         }
       })
 

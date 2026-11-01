@@ -30,6 +30,7 @@ import {
 import { registerCompilerStats } from './stats'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
 import type { CacheEntry, Settled } from './cache'
+import type { Diagnostic } from './diagnostics'
 import type {
   EmitPlan,
   EnvInfo,
@@ -108,10 +109,18 @@ export async function compileModule(
     configKey: input.config.configKey,
   }
   const rev = revision(input.code)
-  const requested: OutputId = identity.derived
-    ? `derived:${deriveId(identity.canonicalId, identity.derived)}`
-    : 'env'
+  const requested = outputOf(identity)
   const keyString = planKeyString(key)
+  const note = await textDiffers(
+    cache.get(key),
+    rev,
+    requested,
+    identity,
+    env,
+    host,
+  )
+  const noted = <T extends CompileOutput | null>(out: T): T =>
+    note && out ? { ...out, diagnostics: [...out.diagnostics, note] } : out
 
   for (;;) {
     cache.noteRevision(key, rev)
@@ -134,7 +143,7 @@ export async function compileModule(
         if (valid) {
           hit.resolvedAt = fileSetVersion
           cache.counters.planHits++
-          return emitFrom(hit, requested, input, caches)
+          return noted(emitFrom(hit, requested, input, caches))
         }
         cache.delete(key)
         cache.bump(key)
@@ -147,7 +156,7 @@ export async function compileModule(
       // another request of this text is compiling it: its outcome answers this request too
       const settled = await flight.settled.catch(() => null)
       if (settled) {
-        return emitSettled(settled, requested, input, caches)
+        return noted(emitSettled(settled, requested, input, caches))
       }
       // it threw: its request reports the error, this one compiles on its own
       continue
@@ -158,12 +167,61 @@ export async function compileModule(
     }
     cache.inFlight.set(keyString, record)
     try {
-      return emitSettled(await record.settled, requested, input, caches)
+      return noted(emitSettled(await record.settled, requested, input, caches))
     } finally {
       if (cache.inFlight.get(keyString) === record) {
         cache.inFlight.delete(keyString)
       }
     }
+  }
+}
+
+function outputOf(identity: SourceIdentity): OutputId {
+  return identity.derived
+    ? `derived:${deriveId(identity.canonicalId, identity.derived)}`
+    : 'env'
+}
+
+/** How long before a dev compile a file must have been saved for that compile to have read it. */
+const DEV_READ_WINDOW_MS = 2_000
+
+/**
+ * The warning when another output of this file was compiled from another text
+ * while the file stayed as it was: a plugin before the compiler handled the
+ * ids differently, typically an id filter anchored with `$` that skips the
+ * query of a derived id. Each id compiles from its own text, so their plans
+ * can place one binding differently. A save between the two explains a
+ * difference too, and that is what the file's modification time rules out; in
+ * dev the window leaves room for a text read just before a save. A plan
+ * compiled for this output says nothing (no other id's text), and the cost is
+ * one comparison per compile, plus a `stat` when the texts differ.
+ */
+async function textDiffers(
+  previous: CacheEntry | null,
+  rev: string,
+  requested: OutputId,
+  identity: SourceIdentity,
+  env: CompileInput['env'],
+  host: HostServices,
+): Promise<Diagnostic | null> {
+  if (
+    !previous ||
+    previous.revision === rev ||
+    previous.compiledFor === requested ||
+    !host.modifiedAt
+  ) {
+    return null
+  }
+  const modifiedAt = await host.modifiedAt(identity.path)
+  const settled = env.mode === 'dev' ? DEV_READ_WINDOW_MS : 0
+  if (modifiedAt === null || modifiedAt + settled > previous.compiledAt) {
+    return null
+  }
+  return {
+    severity: 'warning',
+    by: 'core',
+    code: 'input-text-differs',
+    message: `The code of "${identity.path}" that reaches the compiler differs between its module ids: a plugin that runs before the compiler handles them differently (an id filter ending in \`$\` skips ids with a query, such as the route's split chunks). They are compiled from different code and can disagree at runtime. Let the plugin's filter accept queries, or run it after the compiler.`,
   }
 }
 
@@ -190,6 +248,7 @@ async function settle(
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
+      const compiledAt = Date.now()
       const ledger = new DependencyLedger(key, generation, cache.dependents)
       const result = await runAttempt(
         input,
@@ -209,6 +268,8 @@ async function settle(
         generation,
         plan: result.plan,
         resolvedAt: fileSetVersion,
+        compiledFor: outputOf(identity),
+        compiledAt,
       }
       entry.plan.dependencies = [...ledger.entries]
       const src = fingerprintSourceFor(caches, host, key.env)
@@ -531,7 +592,11 @@ async function runAttempt(
       verifyPlan(plan, emitPlan, input.code, identity)
     }
   }
-  // summary publication under the domain rule (no extra read: only when the raw revision is known and equal)
+  // A summary's domain is the raw text, and an importer's prefetch normally
+  // reads the target before the target's own transform runs, so a compiled
+  // module is parsed twice: once here, once for its raw facts. This publication
+  // doesn't save that parse; it only completes an entry a marker scan left
+  // without facts (no extra read: only when the raw revision is known and equal)
   const known = host.rawFacts.peekRevision(identity.canonicalId)
   if (known && !known.stale && known.revision === rev) {
     host.rawFacts.publish(identity.canonicalId, rev, t0)

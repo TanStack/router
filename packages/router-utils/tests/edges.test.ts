@@ -490,6 +490,66 @@ describe('unresolved resolutions (J6.13)', () => {
     configKey: 'cfg',
   })
 
+  // A file event or a registry publication runs the invalidation, with nobody
+  // to answer a rejection: what can't be checked counts as stale, and the next
+  // compile asks the resolver again and reports what it says.
+  it('counts a plan stale when its resolution throws during an invalidation', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': importer,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const planners = [denyServer([])]
+    await host.compile('/app/a.ts', planners)
+    host.write('/app/other.ts', `export {}\n`)
+    await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
+    const errors: Array<unknown> = []
+    const failing = {
+      rawFacts: host.rawFacts,
+      resolve: () => Promise.reject(new Error('resolver failed')),
+      onInvalidationError: (error: unknown) => errors.push(error),
+    }
+    const res = await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'registry' },
+      failing,
+    )
+    expect(res.dependents).toEqual([key('/app/a.ts')])
+    expect(errors).toEqual([new Error('resolver failed')])
+    expect(host.caches.plans.get('client')!.get(key('/app/a.ts'))).toBeNull()
+  })
+
+  // `imports` and `exports` decide what a specifier resolves to: the answers
+  // of the memo and the plans' resolutions don't outlive a package.json edit.
+  it.each([
+    ['change', '/app/package.json', true],
+    ['add', '/app/package.json', true],
+    ['change', '/app/other.ts', false],
+    ['change', '/app/my-package.json', false],
+  ] as const)(
+    'a %s of %s re-asks the resolver: %s',
+    async (kind, path, again) => {
+      let target = '/app/one.server.ts'
+      const host = new MemoryHost({
+        files: {
+          '/app/a.ts': `import { s } from '#lib'\nexport const x = s\n`,
+          '/app/one.server.ts': `export const s = 1\n`,
+          '/app/two.ts': `export const s = 2\n`,
+          '/app/other.ts': `export {}\n`,
+        },
+        resolve: () => target,
+      })
+      const planners = [denyServer([])]
+      const before = await host.compile('/app/a.ts', planners)
+      expect(before!.code).toContain(`mock:#lib`)
+      target = '/app/two.ts'
+      await invalidate(host.caches, { path, kind }, host)
+      const after = await host.compile('/app/a.ts', planners)
+      expect(after!.code.includes('mock:#lib')).toBe(!again)
+    },
+  )
+
   it('re-plans an importer when its denied target is deleted and recreated', async () => {
     const host = new MemoryHost({
       files: {

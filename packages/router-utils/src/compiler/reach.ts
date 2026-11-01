@@ -4,8 +4,8 @@
  * "Reachability = splitting = dead-code removal"). A generic service:
  * planners supply roots and derived outputs; the core decides what each
  * output contains and what it imports. `computePlacement` composes the
- * stages in `placement/`, each a function of the data the previous ones
- * produced.
+ * stages in `placement/` in an order that carries meaning: two of them change
+ * what earlier stages produced, in place (see there).
  */
 import { buildClusters } from './placement/clusters'
 import { readIndex } from './placement/reads'
@@ -83,6 +83,8 @@ export interface PlacementInput {
   rewrites: RewriteSet
   outputs: Map<OutputId, OutputDecl>
   canonicalId: string
+  /** The module's text, for the dev-only invariants' messages. */
+  code: string
   routeModule: boolean
   /** Whether an effect unit is a recognised framework call known not to touch user state (asked only when a cluster could move past it). */
   isBenign: (unit: UnitId) => boolean
@@ -165,6 +167,15 @@ export interface Placement {
   droppedTypeUnits: Set<UnitId>
 }
 
+/**
+ * The stages' order is load-bearing, and a reorder still compiles:
+ * - `keptDeclarations` reads the settled `roots`, so it precedes
+ *   `foldExtractions`, which rewrites them (dev folds extracted exports back
+ *   into the route module: the "kept" reasons describe the build's placement);
+ * - `extractedExports` adds to `seeds.deadClusters`, and `assignHomes` reads
+ *   them, so it runs after `foldExtractions` and before `assignHomes`;
+ * - `includeAndImport` reads the final `roots` and homes.
+ */
 export function computePlacement(input: PlacementInput): Placement {
   // 1. clusters, the write table, ordered evaluation
   const graph = buildClusters(input)

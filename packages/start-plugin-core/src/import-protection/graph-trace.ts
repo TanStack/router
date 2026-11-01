@@ -46,6 +46,36 @@ function readSourceFile(path: string): string | null {
 }
 
 /**
+ * The module ids of each file (one file has an id per query), so that
+ * forgetting a deleted file touches that file's records only: a checkout
+ * deleting many files would otherwise pay for every module of the app per file.
+ */
+export class IdsByFile {
+  private readonly ids = new Map<string, Set<string>>()
+
+  add(id: string): void {
+    const file = traceFile(id)
+    let set = this.ids.get(file)
+    if (!set) {
+      set = new Set()
+      this.ids.set(file, set)
+    }
+    set.add(id)
+  }
+
+  /** The ids of `file`, forgotten here. */
+  take(file: string): Iterable<string> {
+    const set = this.ids.get(file)
+    this.ids.delete(file)
+    return set ?? []
+  }
+
+  files(): Iterable<string> {
+    return this.ids.keys()
+  }
+}
+
+/**
  * Per environment: the resolved edges of every module our compiles judged
  * (importer id → its edges, with the revision of the input they were judged
  * in), replaced when the importer is judged again. Bounded by the live
@@ -57,6 +87,7 @@ export class EdgeIndex {
     { byTarget: Map<string, IndexedEdge>; revision: string | null }
   >()
   private readonly reverse = new Map<string, Set<string>>()
+  private readonly idsByFile = new IdsByFile()
 
   constructor(private readonly readSource: SourceReader = readSourceFile) {}
 
@@ -65,7 +96,11 @@ export class EdgeIndex {
     edges: ReadonlyArray<IndexedEdge>,
     revision: string | null = null,
   ): void {
-    this.delete(importerId)
+    if (this.forward.has(importerId)) {
+      this.delete(importerId)
+    } else {
+      this.idsByFile.add(importerId)
+    }
     const byTarget = new Map<string, IndexedEdge>()
     for (const e of edges) {
       if (!byTarget.has(e.resolved)) {
@@ -127,16 +162,15 @@ export class EdgeIndex {
     return [...(this.forward.get(importerId)?.byTarget.values() ?? [])]
   }
 
-  importerIds(): Iterable<string> {
-    return this.forward.keys()
+  /** The files of the importers (a file whose importer was deleted may stay listed; forgetting it is a no-op). */
+  files(): Iterable<string> {
+    return this.idsByFile.files()
   }
 
   /** Forgets the edges of every importer id of a deleted file. */
   forget(path: string): void {
-    for (const importerId of [...this.forward.keys()]) {
-      if (traceFile(importerId) === path) {
-        this.delete(importerId)
-      }
+    for (const importerId of this.idsByFile.take(path)) {
+      this.delete(importerId)
     }
   }
 

@@ -37,6 +37,8 @@ describe('plan keys by path', () => {
           generation: cache.generation(k),
           plan: { dependencies: [] } as any,
           resolvedAt: 0,
+          compiledFor: 'env',
+          compiledAt: 0,
         }),
       ).toBe(true)
       cache.end(k)

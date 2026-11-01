@@ -5,7 +5,7 @@
  * imports what it reads from the cluster's home, which exports it; the
  * TypeScript-only specifiers follow their statement's value specifiers.
  */
-import { READ_KINDS } from './clusters'
+import { READ_KINDS, describeCluster } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Roots } from './settle'
@@ -185,7 +185,7 @@ export function includeAndImport(
               home.get(d) === 'env'
             ) {
               throw new Error(
-                `placement: cluster ${c} in static output ${o} reads cluster ${d} of the env module at its evaluation`,
+                `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
               )
             }
           }

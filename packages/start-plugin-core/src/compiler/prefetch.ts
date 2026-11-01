@@ -16,6 +16,7 @@ import {
   isExpressionWrapper,
   isKnownSpecifier,
   joinValues,
+  ownEntry,
   recognizeImport,
   stampSites,
   staticPropertyKey,
@@ -108,7 +109,7 @@ export function takesServerCode(
         (v.returns !== undefined && takesServerCode(table, v.returns))
       )
     case 'namespace': {
-      const exports = table.factories[v.specifier]
+      const exports = ownEntry(table.factories, v.specifier)
       return exports !== undefined
         ? Object.values(exports).some((kind) =>
             takesServerCode(table, { t: 'factory', kind }),
@@ -415,7 +416,7 @@ export async function prefetchStartValues(
       (v.t === 'namespace' &&
         (await openExport(v.specifier, new Set())) !== null)
     for (const e of t0.exports) {
-      const fact = 'name' in e ? summary.exports[e.name] : undefined
+      const fact = 'name' in e ? ownEntry(summary.exports, e.name) : undefined
       const start = LookupPath.start()
       const v =
         fact?.kind === 'local'
