@@ -19,12 +19,13 @@
  *
  * Identity: importers of the route file share one instance (two routes'
  * split components import the same `Card`); the route's own chunk renders
- * its copy (two instances by rule). When another module imports a
- * copied export through the route file and the bundler keeps the extracted
- * module with the entry (every bundler when the entry itself imports it;
- * webpack, Rspack and Rsbuild without `"sideEffects": false` for any
- * importer), the build warns once, naming the route file; otherwise it does
- * not.
+ * its copy of a function (two instances by rule), and imports a class
+ * (`Tag`: one instance for the importers and the chunk, from the extracted
+ * module). When another module imports an export through the route file
+ * and the bundler keeps the extracted module with the entry (every bundler
+ * when the entry itself imports it; webpack, Rspack and Rsbuild without
+ * `"sideEffects": false` for any importer), the build warns once, naming
+ * the route file; otherwise it does not.
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import {
@@ -81,11 +82,18 @@ export async function renderEach(paths: Array<string>) {
   }
   return rendered
 }
-/** What each route renders, and whether the two importers got one Card. */
+/** What each route renders, whether the two importers got one Card, and whether the importers and the route's own chunk got one Tag. */
 export async function probe(paths: Array<string>) {
   const rendered = await renderEach(paths)
   const cards: Array<unknown> = (globalThis as any).cards ?? []
-  return { rendered, importers: cards.length, oneInstance: cards[0] === cards[1] }
+  const tags: Array<unknown> = (globalThis as any).tags ?? []
+  return {
+    rendered,
+    importers: cards.length,
+    oneInstance: cards[0] === cards[1],
+    tags: tags.length,
+    oneTag: tags.every((t) => t === tags[0]),
+  }
 }
 `
 
@@ -169,8 +177,10 @@ export const Route = createFileRoute('$PATH')({ component: Page })`,
   'routes/importer-a.tsx': route(
     'importer-a',
     `import { Card } from './exported-shared'
+import { Tag } from './exported-class'
 function Page() {
   ;((globalThis as any).cards ??= []).push(Card)
+  ;((globalThis as any).tags ??= []).push(Tag)
   return <Card />
 }
 export const Route = createFileRoute('$PATH')({ component: Page })`,
@@ -178,9 +188,24 @@ export const Route = createFileRoute('$PATH')({ component: Page })`,
   'routes/importer-b.tsx': route(
     'importer-b',
     `import { Card } from './exported-shared'
+import { Tag } from './exported-class'
 function Page() {
   ;((globalThis as any).cards ??= []).push(Card)
+  ;((globalThis as any).tags ??= []).push(Tag)
   return <Card />
+}
+export const Route = createFileRoute('$PATH')({ component: Page })`,
+  ),
+  // an exported class the route's own split component and two other routes'
+  // split components use: one instance, from the extracted module
+  'routes/exported-class.tsx': route(
+    'exported-class',
+    `export class Tag {
+  static label = 'MARK_tag_END'
+}
+function Page() {
+  ;((globalThis as any).tags ??= []).push(Tag)
+  return <b>{new Tag() instanceof Tag ? Tag.label : 'other'}</b>
 }
 export const Route = createFileRoute('$PATH')({ component: Page })`,
   ),
@@ -204,6 +229,7 @@ const paths = [
   '/destructured-props',
   '/exported-component',
   '/exported-shared',
+  '/exported-class',
   '/importer-a',
   '/importer-b',
   '/entry-imported',
@@ -337,6 +363,8 @@ describe.each(configs)('$name', ({ lazyImporterStaysLazy, app: create }) => {
     rendered: Record<string, string>
     importers: number
     oneInstance: boolean
+    tags: number
+    oneTag: boolean
   }
   let probed: Promise<Probe> | undefined
   const probe = () =>
@@ -385,6 +413,27 @@ describe.each(configs)('$name', ({ lazyImporterStaysLazy, app: create }) => {
       const warned = findDiagnostics(result.warnings, {
         severity: 'warning',
         file: 'routes/exported-shared.tsx',
+        root: result.root,
+      })
+      expect(warned.length > 0).toBe(!lazyImporterStaysLazy)
+    },
+    timeout,
+  )
+
+  test(
+    'an exported class the route and other routes use is one instance for all of them, imported from its module',
+    async () => {
+      const result = await app()
+      expect(await page('/exported-class')).toContain('MARK_tag_END')
+      expect(await probe()).toMatchObject({ tags: 3, oneTag: true })
+      // the route's own chunk imports the same module the importers reach
+      // through the route file: one copy, lazy where the bundler bypasses the
+      // route module's re-export, else with the entry (and reported)
+      const expected: Placement = lazyImporterStaysLazy ? 'lazy' : 'eager'
+      expect(result.where('MARK_tag_END')).toBe(expected)
+      const warned = findDiagnostics(result.warnings, {
+        severity: 'warning',
+        file: 'routes/exported-class.tsx',
         root: result.root,
       })
       expect(warned.length > 0).toBe(!lazyImporterStaysLazy)

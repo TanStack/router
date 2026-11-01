@@ -7,7 +7,7 @@
  * instead of emitting a module that breaks at run time.
  */
 import { isDeepStrictEqual } from 'node:util'
-import { ModuleAnalysis } from './analysis'
+import { ModuleAnalysis, runsAtLoad } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { parseModule } from './source'
@@ -132,11 +132,15 @@ export function verifyPlan(
       }
       // (e) an extracted export's module (evaluated before the env
       // module's body) never reads a binding of the env module at its
-      // evaluation (a TDZ through the re-export cycle)
+      // evaluation (a TDZ through the re-export cycle), in its own text or
+      // in a function it calls then
       if (recipe.kind === 'export' && target === 'env') {
+        const atLoad = runsAtLoad(out)
         for (const s of imp.specifiers) {
           if (
-            out.refs.refsOf(s.local).some((r) => r.eager && r.kind !== 'write')
+            out.refs
+              .refsOf(s.local)
+              .some((r) => atLoad(r) && r.kind !== 'write')
           ) {
             problems.push(
               `${id}: reads ${s.localName} of the env module at its evaluation`,

@@ -268,6 +268,7 @@ export function createRouterCompilerVitePlugin(
         'rollup',
         compiler.warnings,
         (m) => this.warn(m),
+        (id) => this.getModuleInfo(id)?.importers ?? [],
       )
     },
 

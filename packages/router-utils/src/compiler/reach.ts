@@ -109,6 +109,9 @@ export interface PlacementInput {
  * outside its declaration when the module loads, `at`), `state`
  * (it reads, at its evaluation, `read`, which something writes), `reads`
  * (it reads `read`, an effectful or `let` binding the env module keeps).
+ * An unexported value with an identity, or a written one, that an
+ * extracted export's module and other split code both need: `shared`
+ * (one instance, in the env module).
  */
 export type KeptReason =
   | 'effects'
@@ -119,6 +122,7 @@ export type KeptReason =
   | 'needers'
   | 'written'
   | 'state'
+  | 'shared'
 
 export interface KeptDeclaration {
   /** The declared symbols (one, an export's, for an exported declaration). */
@@ -171,9 +175,14 @@ export interface Placement {
  * The stages' order is load-bearing, and a reorder still compiles:
  * - `keptDeclarations` reads the settled `roots`, so it precedes
  *   `foldExtractions`, which rewrites them (dev folds extracted exports back
- *   into the route module: the "kept" reasons describe the build's placement);
+ *   into the route module: the "kept" reasons describe the build's placement;
+ *   it leaves `copied`, so dev's chunks copy or import as a build's do);
  * - `extractedExports` adds to `seeds.deadClusters`, and `assignHomes` reads
  *   them, so it runs after `foldExtractions` and before `assignHomes`;
+ * - `assignHomes` roots nothing: what it homes in the env module (an effect,
+ *   an identity an extracted module and another output share) `settleRoots`
+ *   rooted, inside its fixed point, so that a candidate reading it at load
+ *   was cancelled;
  * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {

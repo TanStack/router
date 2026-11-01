@@ -9,8 +9,9 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
-import { describeCluster, symRefsOf } from './clusters'
+import { describeCluster, isDuplicable, symRefsOf } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
+import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
@@ -39,6 +40,13 @@ export function assignHomes(
   const { clusters, clusterOfRegion, clusterOfGen, clusterOfSym } = graph
   const { liveEnv, derivedReach, movable, pinned, copied } = roots
   const pure = (c: ClusterId) => !clusters[c]!.effectful
+  const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
+  const providers = new Set<OutputId>()
+  for (const [id, decl] of outputs) {
+    if (decl.kind === 'provider') {
+      providers.add(id)
+    }
+  }
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------
   // (after the extraction decision: a cancelled candidate is an env root again,
@@ -108,10 +116,14 @@ export function assignHomes(
   const sharedByKey = new Map<string, OutputId>()
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
   for (const cl of clusters) {
-    const derived = derivedNeeders[cl.id]!
+    const needers = derivedNeeders[cl.id]!
+    // a provider output copies what it reaches whatever its home: it counts
+    // only when nothing else needs the cluster
+    const derived =
+      providers.size === 0 ? needers : needers.filter((o) => !providers.has(o))
     if (
       seeds.deadClusters.has(cl.id) ||
-      (orphaned.has(cl.id) && derived.length === 0)
+      (orphaned.has(cl.id) && needers.length === 0)
     ) {
       // orphaned by an env erasure and needed by no derived output: gone;
       // still needed by a chunk (an erased option value named it): homed below
@@ -134,15 +146,12 @@ export function assignHomes(
       continue
     }
     if (liveEnv.has(cl.id)) {
-      home.set(cl.id, cl.copyable && derived.length > 0 ? 'duplicate' : 'env')
+      home.set(cl.id, cl.copyable && needers.length > 0 ? 'duplicate' : 'env')
       continue
     }
-    if (
-      derived.length > 0 &&
-      derived.every((o) => outputs.get(o)?.kind === 'provider')
-    ) {
+    if (needers.length > 0 && derived.length === 0) {
       // only the module's own instance in another layer needs it: it lives there
-      home.set(cl.id, derived[0]!)
+      home.set(cl.id, needers[0]!)
       continue
     }
     if (derived.length === 0) {
@@ -179,10 +188,13 @@ export function assignHomes(
       continue
     }
     if (derived.some((o) => outputs.get(o)?.kind === 'export')) {
-      // a pure cluster an extracted module and a chunk both need is copied
-      // into each: a shared module the extracted module imported would be a
-      // static dependency of the route module, which no chunk may import
-      home.set(cl.id, 'duplicate')
+      // a pure cluster an extracted module and another output both need is
+      // copied into each when a copy is indistinguishable (a function, a
+      // primitive, nothing writes it): a shared module the extracted module
+      // imported would be a static dependency of the route module, which no
+      // chunk may import. One with an identity, or written, is one instance
+      // in the env module (an env root since the roots settled)
+      home.set(cl.id, isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env')
       continue
     }
     const key = derived.map(keyOf).sort().join('+')

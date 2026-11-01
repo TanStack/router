@@ -2,10 +2,12 @@
  * An exported component of a route file only its split component renders
  * loads with the route's chunk in a Start client build (the chunk carries
  * its copy; the module the route module re-exports it from is dropped,
- * by rule). When a module loaded with the entry imports it through the route
- * file (here the app's router module), the bundler keeps that module with
- * the entry: the build warns once, naming the route file, on Vite and on
- * Rsbuild (SPEC J2.8; the router plugin's hosts do the same).
+ * by rule). An exported class only the split component uses loads with
+ * the chunk too, imported from that module (one instance: a class has an
+ * identity). When a module loaded with the entry imports either through
+ * the route file (here the app's router module), the bundler keeps that
+ * module with the entry: the build warns once, naming the route file, on
+ * Vite and on Rsbuild (SPEC J2.8; the router plugin's hosts do the same).
  *
  * An unexported declaration only the split component reads that a later
  * effect pins in the route module (an inline
@@ -39,15 +41,26 @@ function Page() {
 export const Route = createFileRoute('/card')({ component: Page })
 `
 
-/** The app's own router module (the client entry loads it), importing `Card` through the route file or not. */
+const classRoute = `import { createFileRoute } from '@tanstack/react-router'
+export class Tag {
+  static label = 'MARK_TAG'
+}
+function Page() {
+  return <b>{new Tag() instanceof Tag ? Tag.label : 'other'}</b>
+}
+export const Route = createFileRoute('/tag')({ component: Page })
+`
+
+/** The app's own router module (the client entry loads it), importing `Card` and `Tag` through their route files or not. */
 const router = (importsCard: boolean) =>
   `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-${importsCard ? "import { Card } from './routes/card'\n;(globalThis as any).Card = Card\n" : ''}export const getRouter = () => createRouter({ routeTree })
+${importsCard ? "import { Card } from './routes/card'\nimport { Tag } from './routes/tag'\n;(globalThis as any).Card = Card\n;(globalThis as any).Tag = Tag\n" : ''}export const getRouter = () => createRouter({ routeTree })
 `
 
 const files = {
   'src/routes/card.tsx': route,
+  'src/routes/tag.tsx': classRoute,
   'src/router.tsx': router(false),
   'entry.ts': 'export const ok = true\n',
 }
@@ -69,6 +82,21 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
   )
 
   test(
+    'an exported class only the split component uses loads with its chunk, imported from its module, unreported',
+    async () => {
+      const build = await buildStart({ bundler, files })
+      expect(build.client.where('MARK_TAG')).toBe('lazy')
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/routes/tag.tsx',
+          root: build.root,
+        }),
+      ).toEqual([])
+    },
+    timeout,
+  )
+
+  test(
     'an exported component the router module imports through the route file loads with the entry, and the build says so once',
     async () => {
       const build = await buildStart({
@@ -79,6 +107,15 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
       expectDiagnostic(build.client.warnings, {
         severity: 'warning',
         file: 'src/routes/card.tsx',
+        root: build.root,
+        times: 1,
+      })
+      // the class is one instance: the chunk imports the module the entry
+      // keeps, so it is eager, not copied into the chunk as well
+      expect(build.client.where('MARK_TAG')).toBe('eager')
+      expectDiagnostic(build.client.warnings, {
+        severity: 'warning',
+        file: 'src/routes/tag.tsx',
         root: build.root,
         times: 1,
       })

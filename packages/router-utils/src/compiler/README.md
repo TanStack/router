@@ -63,27 +63,37 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   are duplicated. An exported binding only split code needs leaves the route module for a side-effect-free extracted
   module (`?tsr-split=export~Name`) that the route module re-exports, so other modules importing it from the route
   file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
-  chunks: when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
-  carries its own copy, with the pure declarations and imports only they share, and never imports the extracted
-  module; what has effects or state (an effectful initialiser, an assigned `let`, a reader of mutable state, an
-  augmented binding) is one instance that the chunk imports, from the extracted module when only it needs it, else
-  from the route module. Writes inside code the environment erases impose nothing (the mutation model is read
-  through the env output's liveness). Nothing but
-  importers of the route file reach the extracted module, so a bundler drops it when unused; the route's chunks
-  never depend on where a bundler places it (Rolldown < 1.1.5 and a user `manualChunks` group that merges into the
-  entry placed it with the entry). In dev nothing is bundled and the static re-export would only load the extracted
-  module one request level deeper: the same clusters stay in the route module as written, and chunks copy or
-  import them exactly as in a build. An exported declaration a chunk needs that stays in the route module
+  chunks: when a copy would be indistinguishable from the original, the chunk carries its own copy and never
+  imports the extracted module. A copy carries the binding and what it reaches that no output keeps once, and
+  every piece carried must be a function or a primitive constant nothing writes (`isDuplicable`: types and imports
+  are free; another export is imported from its module or copied under its own decision; an effectful cluster
+  stays in the route module or moves, one instance). Anything with an identity in that closure (an object or array
+  literal, a class, a `new`, a call result however pure, a regex, an enum) or any written binding (a `listeners`
+  array behind `subscribe`/`emit`, a `let`) makes the export non-copyable: the chunk imports its extracted module,
+  one instance, as an export with effects or state always did (an effectful initialiser, an assigned `let`, a
+  reader of mutable state, an augmented binding: imported from the extracted module when only it needs it, else
+  from the route module). A pure cluster with an identity, or a written one, that an extracted module and another
+  output both need stays in the route module (one instance every output imports); a function or primitive in that
+  position is copied into each. Writes inside code the environment erases impose nothing (the mutation model is
+  read through the env output's liveness). Nothing but importers of the route file reach the extracted module of
+  a copied export, so a bundler drops it when unused; a non-copied export's module is imported by the route's
+  chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
+  merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
+  bundled and the static re-export would only load the extracted module one request level deeper: the same
+  clusters stay in the route module as written, and chunks copy or import them exactly as in a build, so state and
+  identity agree between dev and a build. An exported declaration a chunk needs that stays in the route module
   (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
   with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
-  binding the module keeps), once at the cause (a cluster kept only because another kept one reads it is not
+  binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
+  split code both read, one instance), once at the cause (a cluster kept only because another kept one reads it is not
   reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
   modules, deduped per file and wording by the hosts' ledgers); every
   host also warns after a client build when an extracted module landed in an entry chunk (another module imports
-  the binding through the route file);
+  the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
+  the entry);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a

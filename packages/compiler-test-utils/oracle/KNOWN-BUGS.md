@@ -295,19 +295,22 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   split chunk holds only what its option needs, not the other exports of the route file"; "split chunks do not
   re-export or declare the re-exports and default class of the route file". Fix: a chunk carries only what its group
   needs.
-- **The split chunk copies a pure exported binding** (two instances: the route module's or its extracted module's,
+- **The split chunk copies a pure exported function** (two instances: the route module's or its extracted module's,
   which importers of the route file get, and the chunk's own copy). By rule (`router-plugin/ARCHITECTURE-CODE-
-SPLITTING.md`): a chunk never imports the extracted module of a pure export the route module
+SPLITTING.md`): a chunk never imports the extracted module of a copyable export the route module
   re-exports, so the export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks`
-  group), at the price of a second instance of a stateless function, class or component; state, effects and augmented
-  bindings are never copied (one instance, imported). SPEC J2.4 (amended). No pins: the identity rows were deleted with
-  the decision (a by-rule outcome is not a bug); the rendering rows next to them remain
+  group), at the price of a second instance of a function or component whose closure holds only functions and
+  primitive constants nothing writes; a class, an object, a call result, a regex, a written binding, state, effects
+  and augmented bindings are never copied (one instance, imported from the extracted module or the route module).
+  SPEC J2.4 (amended). No pins: the identity rows were deleted with the decision (a by-rule outcome is not a bug); the
+  rendering rows next to them remain
   (`react-refresh-route-components.test.ts` "keep a $name component exported as the route option value"; `pages/known-bugs-code-splitter-bindings.test.ts` "an exported errorComponent written as `%s`
-  renders, split or reported"). Fix: none planned; a bundler-independent way to share one instance lazily would reopen
-  the decision.
-- **Bindings that read `Route` are never shared**, so chunks copy them. SPEC J2.4.
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported function that reads Route is the one the split
-  component calls"; "a destructuring whose sibling reads Route keeps one cache for the loader and the component".
+  renders, split or reported"); `integration/code-splitter-copied-exports-state.test.ts` and its dev twin prove the
+  identity and state cases that are one instance. Fix: none planned; a bundler-independent way to share one instance
+  lazily would reopen the decision.
+- **Bindings that read `Route` are never shared**, so chunks copy them (a function reading `Route` is a function
+  closure: copied by rule). SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a destructuring whose
+  sibling reads Route keeps one cache for the loader and the component".
 - **A split component reading `Route` declared with `const` and exported later (`export { Route }`) recreates the
   route.** SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component reads the route the route
   module exports through export { Route }".

@@ -574,6 +574,10 @@ export const Route = createFileRoute('/')({
     ).toEqual([1, '<p>1x</p>'])
   })
 
+  // The exported classes are read by the split component alone (the loader
+  // reads only the local one), so they are what the splitter may move for
+  // the component: a class has an identity, it exists once, and the
+  // component, the loader and an importer of the route file all get it.
   it('keeps exported classes next to it importable, with one identity', async () => {
     const route = await loadRoute(
       `${head}import { see } from './see'
@@ -585,9 +589,10 @@ class Local {
   value = 'local'
 }
 export const Route = createFileRoute('/')({
-  loader: () => ({ AppError, cached: new Cache().value, local: new Local().value }),
+  loader: () => ({ local: new Local().value }),
   component: () => {
     see(AppError)
+    see(new Cache())
     return <p>component</p>
   },
 })
@@ -607,16 +612,16 @@ const html = await render('component')
 const { seen } = await app('see.ts')
 return {
   html,
-  sameInLoader: loaded.AppError === imported.AppError,
-  sameInComponent: seen.length === 1 && seen[0] === imported.AppError,
-  cached: loaded.cached,
+  sameInComponent: seen.length === 2 && seen[0] === imported.AppError,
+  cacheInstance: seen[1] instanceof imported.Cache,
+  cached: seen[1].value,
   local: loaded.local,
   cache: new imported.Cache().value,
 }`),
     ).toEqual({
       html: '<p>component</p>',
-      sameInLoader: true,
       sameInComponent: true,
+      cacheInstance: true,
       cached: 'cached',
       local: 'local',
       cache: 'cached',

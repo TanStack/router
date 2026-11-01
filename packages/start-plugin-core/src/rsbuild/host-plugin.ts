@@ -18,6 +18,7 @@ import {
   normalizePath,
   rebuildModules,
   warnEagerExports,
+  webpackImporters,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
@@ -347,6 +348,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               'webpack',
               session.start.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
+              webpackImporters(compilation as never, canonicalResource),
             )
           })
         }

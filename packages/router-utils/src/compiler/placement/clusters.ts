@@ -7,8 +7,9 @@
  * the module's write table and the one mutation predicate every later rule
  * asks (`mutatedOutside`).
  */
+import { observesIdentity, runsAtLoad } from '../analysis'
 import { writeKind } from '../mutation'
-import type { ClassifiedRef } from '../analysis'
+import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { RegionId, Unit, UnitId } from '../units'
 import type { Frag, GenUnitId, OutputId, RenderTree } from '../rewrite'
@@ -50,6 +51,12 @@ export interface Cluster {
     | 'gen'
     | 'region'
   copyable: boolean
+  /**
+   * Every declaration of the cluster is a function or a primitive and
+   * nothing else is in it (no augmentation, no generated unit): a copy of
+   * the cluster has no identity of its own to observe (`isDuplicable`).
+   */
+  identityFree: boolean
   envPinned: boolean
 }
 
@@ -107,6 +114,8 @@ export interface ClusterGraph {
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
+  /** Whether a reference runs when the module loads: eager, or inside a function an eager reference calls (`runsAtLoad`). */
+  atLoad: (ref: ClassifiedRef) => boolean
   /**
    * The one mutation predicate: whether a read of `sym` evaluated at
    * `readAt` by cluster `by` observes state something else writes. A
@@ -168,6 +177,42 @@ export function describeCluster(input: PlacementInput, cl: Cluster): string {
   const names = [...cl.declares].map((s) => input.t1.symbols.name(s))
   const line = input.code.slice(0, cl.start).split('\n').length
   return `${names.length > 0 ? names.join(', ') : 'the statement'} (${input.canonicalId}:${line})`
+}
+
+/**
+ * Whether an output may hold its own copy of the cluster without anyone
+ * noticing: its declarations are functions or primitives (`identityFree`),
+ * pure, nothing writes them and nothing observes their identity (`new`,
+ * `instanceof`, `===`, `.prototype`; `live`: in code an output keeps). An
+ * object, array, class, call result or regex has an identity (`instanceof`,
+ * a sentinel, a context, a registry); a function used as a constructor or
+ * a sentinel has one too; a written binding is state. Either exists once:
+ * in the env module, or in one derived output. The one predicate behind
+ * the copy of an extracted export, the duplicate home and placement's
+ * self-check. A primitive constant (`copyable`) has nothing to observe.
+ */
+export function isDuplicable(
+  cl: Cluster,
+  t1: Pick<Tier1, 'mutation' | 'refs'>,
+  live?: (ref: ClassifiedRef) => boolean,
+): boolean {
+  if (cl.copyable) {
+    return true
+  }
+  if (!cl.identityFree || cl.effectful) {
+    return false
+  }
+  for (const s of cl.declares) {
+    if (t1.mutation.isMutated(s, live)) {
+      return false
+    }
+    for (const r of t1.refs.refsOf(s)) {
+      if (observesIdentity(r) && (live === undefined || live(r))) {
+        return false
+      }
+    }
+  }
+  return true
 }
 
 /** The symbols generated text reads (its `SymRef`s and reference rewrites). */
@@ -431,6 +476,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         lastEffect: -Infinity,
         kind: 'region',
         copyable: false,
+        identityFree: false,
         envPinned: false,
       })
     }
@@ -496,6 +542,15 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       cl.gens.length === 0 &&
       (units[cl.units[0]!]!.copyable ||
         units[cl.units[0]!]!.kind === 'import-specifier')
+    cl.identityFree =
+      cl.kind === 'declaration' &&
+      cl.gens.length === 0 &&
+      cl.units.every((u) => {
+        const unit = units[u]!
+        return unit.kind === 'declaration'
+          ? unit.identityFree
+          : unit.kind === 'type'
+      })
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
@@ -517,6 +572,8 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   for (const [d, writers] of writersOfMember) {
     subRegionWriters.push({ cluster: clusterOfMember(d), writers })
   }
+
+  let atLoad: ((ref: ClassifiedRef) => boolean) | null = null
 
   // ---- readers of mutable state ----------------------------------------------
   // (a claimed region is in its owner's cluster: a write there is the owner's)
@@ -582,6 +639,8 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     treeOf,
     isLive,
     unitSurvives,
+    // built on first use: most modules never ask (candidates, static outputs)
+    atLoad: (ref) => (atLoad ??= runsAtLoad(t1))(ref),
     mutatedOutside,
   }
 }

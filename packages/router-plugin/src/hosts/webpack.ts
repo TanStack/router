@@ -15,6 +15,7 @@ import {
   normalizePath,
   pathsOf,
   warnEagerExports,
+  webpackImporters,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -236,6 +237,7 @@ export function createRouterCompilerWebpackPlugin(
               'webpack',
               session.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
+              webpackImporters(compilation as never, webpackResourceId),
             )
           })
         })

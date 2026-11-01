@@ -4,7 +4,8 @@
  * needer (the movable test) and the extracted exports are one monotone
  * fixed point over the final placement; nothing is rooted after it.
  */
-import { READ_KINDS } from './clusters'
+import { callsValue } from '../analysis'
+import { READ_KINDS, isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Candidate, Seeds } from './roots'
@@ -69,8 +70,10 @@ export function derivedNeeds(
  * re-exports an extracted export's module (`export { X } from …`), a
  * static dependency that evaluates with its imports before the env
  * module's body: such a read there would run before the binding's
- * initialisation, a TDZ the user never wrote. A copyable cluster is
- * duplicated into the reading output instead and is no such read.
+ * initialisation, a TDZ the user never wrote. A read inside a function the
+ * evaluation calls (`const config = build()`) happens then too
+ * (`graph.atLoad`). A copyable cluster is duplicated into the reading
+ * output instead and is no such read.
  */
 export function readsKeptEagerly(
   input: PlacementInput,
@@ -80,25 +83,34 @@ export function readsKeptEagerly(
 ): boolean {
   const { symbols } = input.t1
   const { clusters, clusterOfSym } = graph
-  for (const r of clusters[c]!.regions) {
-    for (const ref of graph.ownedRefs.get(r) ?? []) {
-      if (
-        !ref.eager ||
-        !READ_KINDS.has(ref.kind) ||
-        !symbols.isModuleLevel(ref.sym)
-      ) {
-        continue
-      }
-      const d = clusterOfSym.get(ref.sym)
-      if (d === undefined || d === c || clusters[d]!.copyable) {
-        continue
-      }
-      if (
-        roots.liveEnv.has(d) ||
-        roots.envRoots.has(d) ||
-        clusters[d]!.envPinned
-      ) {
-        return true
+  const kept = (d: ClusterId) =>
+    roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned
+  // the reads of `c`'s own text that run at load, then those of every
+  // module-level function (or class) such a read calls, transitively
+  const seen = new Set<ClusterId>([c])
+  const work: Array<ClusterId> = [c]
+  while (work.length > 0) {
+    const from = work.pop()!
+    for (const r of clusters[from]!.regions) {
+      for (const ref of graph.ownedRefs.get(r) ?? []) {
+        if (
+          !graph.atLoad(ref) ||
+          !READ_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym)
+        ) {
+          continue
+        }
+        const d = clusterOfSym.get(ref.sym)
+        if (d === undefined || seen.has(d) || clusters[d]!.copyable) {
+          continue
+        }
+        if (kept(d)) {
+          return true
+        }
+        if (callsValue(ref) && clusters[d]!.kind === 'declaration') {
+          seen.add(d)
+          work.push(d)
+        }
       }
     }
   }
@@ -351,6 +363,16 @@ export function settleRoots(
     }
   }
 
+  /** How many derived outputs reach `c` (a provider output copies, it does not count). */
+  const needers = (c: ClusterId): number => {
+    let n = 0
+    for (const [id, set] of derivedReach) {
+      if (set.has(c) && outputs.get(id)?.kind !== 'provider') {
+        n++
+      }
+    }
+    return n
+  }
   /** Whether an extracted-export output (evaluated before the env module's body) reaches `c`. */
   const neededByStaticOutput = (c: ClusterId): boolean => {
     for (const [id, set] of derivedReach) {
@@ -362,17 +384,26 @@ export function settleRoots(
   }
 
   // ---- extracted exports: what may leave ------------------------------------
-  // A chunk copies a pure extracted export instead of importing its module.
-  // The extracted module is re-exported by the route module (statically, for
-  // other importers) and would be imported by the lazy chunk: reachable from
-  // the entry and from a chunk at once, Rolldown < 1.1.5 and any Rolldown
-  // under a user chunk group that merges into the entry place it with the
-  // entry, and the export is eager again (tanstack.com, Vite 8.0.x). With the
-  // copy nobody imports the module unless another file imports the binding,
-  // and an unused side-effect-free module is tree-shaken, not placed. Only
-  // pure clusters nothing assigns or mutates are copied: state or an effect
-  // would run twice, and a mutated object would be two objects.
-  // Importers (rare) then get the extracted instance and the chunk its copy.
+  // A chunk copies an extracted export instead of importing its module when
+  // the copy is indistinguishable from the original. The extracted module is
+  // re-exported by the route module (statically, for other importers) and
+  // would be imported by the lazy chunk: reachable from the entry and from a
+  // chunk at once, Rolldown < 1.1.5 and any Rolldown under a user chunk
+  // group that merges into the entry place it with the entry, and the export
+  // is eager again (tanstack.com, Vite 8.0.x). With the copy nobody imports
+  // the module unless another file imports the binding, and an unused
+  // side-effect-free module is tree-shaken, not placed. The copy carries the
+  // candidate and what it reaches that no output keeps once (another
+  // candidate is imported from its module or copied under its own decision;
+  // an effectful cluster stays in the env module or moves, one instance);
+  // every cluster carried must be a function or a primitive nothing writes
+  // (`isDuplicable`): a copied object, class, call result or regex would
+  // be a second identity (`instanceof` across chunks, a context's Provider
+  // and its consumer, a sentinel), and a copied written binding a second
+  // state (a `listeners` array behind `subscribe`/`emit`). Otherwise the
+  // chunk imports the extracted module, one instance, as a stateful export
+  // always did. Importers (rare) of a copied export then get the extracted
+  // instance and the chunk its copy: two instances of a function.
   // In dev nothing is bundled: extraction exists only so a bundler can
   // tree-shake the module when nothing imports the binding, while the route
   // module's static re-export loads the extracted module (and its imports)
@@ -390,12 +421,64 @@ export function settleRoots(
       claimHolders.add(clusterOfRegion.get(parent)!)
     }
   }
-  /** A candidate a chunk copies (pure, observing no mutable state, declaring nothing anything assigns or mutates, holding no claimed region). */
-  const copies = (c: ClusterId): boolean =>
-    !clusters[c]!.effectful &&
-    !graph.mutableReaders.has(c) &&
-    !claimHolders.has(c) &&
-    ![...clusters[c]!.declares].some((s) => t1.mutation.isMutated(s, liveInEnv))
+  const duplicable = (c: ClusterId) => isDuplicable(clusters[c]!, t1, liveInEnv)
+  /**
+   * The clusters a copy never carries, so the walk stops at them: every
+   * output keeps them once by construction. Another candidate is imported
+   * from its module or copied under its own decision; an effectful cluster
+   * and an eager reader of state stay in the env module or move with one
+   * needer (several needers root them); a cluster the env module's seeds
+   * keep alive stays there (roots only grow); a type unit stays. Computed
+   * once: it reads nothing the fixed point changes.
+   */
+  let carriedStop: Set<ClusterId> | null = null
+  const stopSet = (): Set<ClusterId> => {
+    if (carriedStop === null) {
+      carriedStop = new Set(candidates.keys())
+      for (const cl of clusters) {
+        if (cl.effectful || cl.envPinned || graph.mutableReaders.has(cl.id)) {
+          carriedStop.add(cl.id)
+        }
+      }
+      for (const d of reach('env', envRoots)) {
+        carriedStop.add(d)
+      }
+    }
+    return carriedStop
+  }
+  /** A candidate a chunk copies: pure, observing no mutable state, holding no claimed region, and nothing the copy carries (`stopSet`) has an identity or is written. A function of the candidate alone, decided once. */
+  const copyDecisions = new Map<ClusterId, boolean>()
+  const copies = (c: ClusterId): boolean => {
+    let hit = copyDecisions.get(c)
+    if (hit !== undefined) {
+      return hit
+    }
+    hit = false
+    if (
+      !clusters[c]!.effectful &&
+      !graph.mutableReaders.has(c) &&
+      !claimHolders.has(c)
+    ) {
+      const stop = new Set(stopSet())
+      stop.delete(c)
+      hit = true
+      for (const d of reach('env', [c], stop)) {
+        const cl = clusters[d]!
+        if (
+          d !== c &&
+          (stop.has(d) || cl.kind === 'import' || cl.kind === 'type')
+        ) {
+          continue
+        }
+        if (!duplicable(d)) {
+          hit = false
+          break
+        }
+      }
+    }
+    copyDecisions.set(c, hit)
+    return hit
+  }
 
   // ---- derived reach before any decision; pre-existing dead code ----------
   for (const [id, from] of derivedRoots) {
@@ -555,7 +638,12 @@ export function settleRoots(
     // companions). The "chunk loads after the route module" argument of the
     // movable test holds for lazily imported outputs only; a cluster with
     // observable effects never moves to a static output (`movableTo`), an
-    // augmented one only under the order rule (`effectStays`).
+    // augmented one only under the order rule (`effectStays`). And a pure
+    // cluster with an identity, or a written one, that an extracted module
+    // and another output need: a copy per output would be two objects, a
+    // lazy shared module cannot serve a static output, so it stays in the
+    // env module too, one instance every output imports (decided here, not
+    // at homing, so that a candidate reading it eagerly is cancelled).
     for (const cl of remaining.size > 0 ? clusters : []) {
       if (
         cl.kind !== 'declaration' ||
@@ -563,12 +651,19 @@ export function settleRoots(
         liveEnv.has(cl.id) ||
         envRoots.has(cl.id) ||
         remaining.has(cl.id) ||
-        !neededByStaticOutput(cl.id) ||
-        !keepsEagerly(cl.id)
+        !neededByStaticOutput(cl.id)
       ) {
         continue
       }
-      envRoots.add(cl.id)
+      if (keepsEagerly(cl.id)) {
+        envRoots.add(cl.id)
+      } else if (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2) {
+        continue
+      } else {
+        // reported as what only split code needs that stays (`kept`)
+        envRoots.add(cl.id)
+        pinnedNeeded.set(cl.id, { reason: 'shared' })
+      }
       derivedStale = true
       changed = true
     }
