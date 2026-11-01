@@ -7,9 +7,9 @@
  * the module's write table and the one mutation predicate every later rule
  * asks (`mutatedOutside`).
  */
+import { runsAtLoad } from '../analysis'
 import { writeKind } from '../mutation'
-import type { MutationModel } from '../mutation'
-import type { ClassifiedRef } from '../analysis'
+import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { RegionId, Unit, UnitId } from '../units'
 import type { Frag, GenUnitId, OutputId, RenderTree } from '../rewrite'
@@ -114,6 +114,8 @@ export interface ClusterGraph {
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
+  /** Whether a reference runs when the module loads: eager, or inside a function an eager reference calls (`runsAtLoad`). */
+  atLoad: (ref: ClassifiedRef) => boolean
   /**
    * The one mutation predicate: whether a read of `sym` evaluated at
    * `readAt` by cluster `by` observes state something else writes. A
@@ -172,25 +174,35 @@ export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
 /**
  * Whether an output may hold its own copy of the cluster without anyone
- * noticing: its declarations are functions or primitives (`identityFree`)
- * and nothing writes them (`live`: in code an output keeps). An object,
- * array, class, call result or regex has an identity (`instanceof`, a
- * sentinel, a context, a registry); a written binding is state. Either
- * exists once: in the env module, or in one derived output. The one
- * predicate behind the copy of an extracted export, the duplicate home and
- * the verifier's count.
+ * noticing: its declarations are functions or primitives (`identityFree`),
+ * pure, nothing writes them and nothing observes their identity (`new`,
+ * `instanceof`, `===`, `.prototype`; `live`: in code an output keeps). An
+ * object, array, class, call result or regex has an identity (`instanceof`,
+ * a sentinel, a context, a registry); a function used as a constructor or
+ * a sentinel has one too; a written binding is state. Either exists once:
+ * in the env module, or in one derived output. The one predicate behind
+ * the copy of an extracted export, the duplicate home and placement's
+ * self-check. A primitive constant (`copyable`) has nothing to observe.
  */
 export function isDuplicable(
   cl: Cluster,
-  mutation: MutationModel,
+  t1: Pick<Tier1, 'mutation' | 'refs'>,
   live?: (ref: ClassifiedRef) => boolean,
 ): boolean {
-  if (!cl.identityFree) {
+  if (cl.copyable) {
+    return true
+  }
+  if (!cl.identityFree || cl.effectful) {
     return false
   }
   for (const s of cl.declares) {
-    if (mutation.isMutated(s, live)) {
+    if (t1.mutation.isMutated(s, live)) {
       return false
+    }
+    for (const r of t1.refs.refsOf(s)) {
+      if (r.identityUse && (live === undefined || live(r))) {
+        return false
+      }
     }
   }
   return true
@@ -618,6 +630,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     treeOf,
     isLive,
     unitSurvives,
+    atLoad: runsAtLoad(t1),
     mutatedOutside,
   }
 }

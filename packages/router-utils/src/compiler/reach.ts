@@ -107,6 +107,9 @@ export interface PlacementInput {
  * outside its declaration when the module loads, `at`), `state`
  * (it reads, at its evaluation, `read`, which something writes), `reads`
  * (it reads `read`, an effectful or `let` binding the env module keeps).
+ * An unexported value with an identity, or a written one, that an
+ * extracted export's module and other split code both need: `shared`
+ * (one instance, in the env module).
  */
 export type KeptReason =
   | 'effects'
@@ -117,6 +120,7 @@ export type KeptReason =
   | 'needers'
   | 'written'
   | 'state'
+  | 'shared'
 
 export interface KeptDeclaration {
   /** The declared symbols (one, an export's, for an exported declaration). */

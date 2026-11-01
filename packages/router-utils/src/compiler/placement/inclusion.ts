@@ -5,7 +5,7 @@
  * imports what it reads from the cluster's home, which exports it; the
  * TypeScript-only specifiers follow their statement's value specifiers.
  */
-import { READ_KINDS } from './clusters'
+import { READ_KINDS, isDuplicable } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Roots } from './settle'
@@ -37,8 +37,16 @@ export function includeAndImport(
   const { t1, outputs, routeModule } = input
   const { units, items, refs, symbols } = t1
   const { clusters, clusterOfRegion, clusterOfSym } = graph
-  const { envRoots, derivedRoots, derivedReach } = roots
+  const { envRoots, derivedRoots, derivedReach, copied, pinned } = roots
   const { home, created, derivedNeeders } = homes
+  /** The extracted module a copied export is imported from by another static output (a chunk copies it). */
+  const staticHomeOf = (d: ClusterId, o: OutputId): OutputId | undefined => {
+    if (!copied.has(d) || outputs.get(o)?.kind !== 'export') {
+      return undefined
+    }
+    const own = pinned.get(d)
+    return own === undefined || own === o ? undefined : own
+  }
 
   const allOutputs: Array<OutputId> = [
     'env',
@@ -93,7 +101,12 @@ export function includeAndImport(
         const { syms } = reads.clusterReads(c, o, true)
         for (const s of syms) {
           const d = clusterOfSym.get(s)
-          if (d !== undefined && !inc.has(d) && home.get(d) === 'duplicate') {
+          if (
+            d !== undefined &&
+            !inc.has(d) &&
+            home.get(d) === 'duplicate' &&
+            staticHomeOf(d, o) === undefined
+          ) {
             inc.add(d)
             changed = true
           }
@@ -158,9 +171,35 @@ export function includeAndImport(
     }
   })
   if (process.env.NODE_ENV !== 'production') {
+    // a declaration with an identity (an object, array, class, call result,
+    // regex, a function used as a constructor or sentinel) or a written one
+    // exists once: in at most one output that imports from the env module (a
+    // provider output copies). Whatever placement duplicates is functions
+    // and primitives nothing writes (`isDuplicable`): the copy of an
+    // extracted export, the duplicate home and the copies following readers
+    // all decide with it; this counts the result.
+    const liveInEnv = (ref: { range: { start: number } }) =>
+      !graph.treeOf('env').isErasedAt(ref.range.start)
+    for (const cl of clusters) {
+      if (cl.kind !== 'declaration' || isDuplicable(cl, t1, liveInEnv)) {
+        continue
+      }
+      const holders: Array<OutputId> = []
+      for (const [o, set] of included) {
+        if (set.has(cl.id) && outputs.get(o)?.kind !== 'provider') {
+          holders.push(o)
+        }
+      }
+      if (holders.length > 1) {
+        throw new Error(
+          `placement: ${[...cl.declares].map((s) => symbols.name(s)).join(', ')} (an identity or state) is declared in ${holders.length} outputs: ${holders.join(', ')}`,
+        )
+      }
+    }
     // a static output (an extracted export's module) never reads, at its
-    // evaluation, a non-copyable binding the env module keeps: the roots
-    // settled with such readers rooted in the env module (`readsKeptEagerly`)
+    // evaluation (its own text, or a function it calls then), a non-copyable
+    // binding the env module keeps: the roots settled with such readers
+    // rooted in the env module (`readsKeptEagerly`)
     for (const [o, decl] of outputs) {
       if (decl.kind !== 'export') {
         continue
@@ -169,7 +208,7 @@ export function includeAndImport(
         for (const r of clusters[c]!.regions) {
           for (const ref of graph.ownedRefs.get(r) ?? []) {
             if (
-              !ref.eager ||
+              !graph.atLoad(ref) ||
               !READ_KINDS.has(ref.kind) ||
               !symbols.isModuleLevel(ref.sym) ||
               !graph.isLive(ref, o)
@@ -231,8 +270,12 @@ export function includeAndImport(
       if (d === undefined || inc.has(d)) {
         continue
       }
-      const h = home.get(d)
-      if (h === undefined || h === 'removed' || h === 'duplicate' || h === o) {
+      // a copied export another extracted module reads is imported from its
+      // own module there (static to static, one instance for importers); the
+      // chunks copy it
+      const homed = home.get(d)
+      const h = homed === 'duplicate' ? staticHomeOf(d, o) : homed
+      if (h === undefined || h === 'removed' || h === o) {
         continue
       }
       let set = map.get(h)

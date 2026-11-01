@@ -613,6 +613,27 @@ export const Page = () => <Hydrate><Card /></Hydrate>
     expect(dev.code).not.toContain('export~')
   })
 
+  // An exported class the children use has an identity: one instance, which
+  // the chunk imports from the extracted module (in dev from the parent)
+  it('imports an exported class the children use from its extracted module instead of copying it', async () => {
+    const code = `${REACT}export class Tag { static label = 'tag' }
+export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''}</b></Hydrate>
+`
+    const built = await compile(code, { env: buildClientEnv })
+    const [b] = built.extracted
+    expect(built.chunks[b!.id]).toContain(
+      "import { Tag } from './page.tsx?tsr-split=export~Tag'",
+    )
+    expect(built.chunks[b!.id]).not.toContain('class Tag')
+    expect(built.code).toContain(
+      "export { Tag } from './page.tsx?tsr-split=export~Tag'",
+    )
+    const dev = await compile(code)
+    expect(dev.chunks[b!.id]).toContain("import { Tag } from './page.tsx'")
+    expect(dev.chunks[b!.id]).not.toContain('class Tag')
+    expect(dev.code).toContain("export class Tag { static label = 'tag' }")
+  })
+
   // A component holding a boundary is one instance its chunk imports (a copy
   // in the chunk would carry the boundary's region next to the chunk's own
   // declaration of it): the self-recursive tree of the page tests

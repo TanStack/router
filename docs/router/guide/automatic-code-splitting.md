@@ -80,14 +80,15 @@ For automatic code splitting to work, there are some rules in place to make sure
 
 #### Exported route properties
 
-A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a pure function, class or component, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle.
+A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a function or component that uses only functions and constants, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle. A class, an object, or a value a call returns exists once: the chunk and other modules importing it from the route file share that small module.
 
-Two cases keep an exported binding in the main bundle, and the build (and the dev server) warns once, naming the file:
+Three cases keep an exported binding in the main bundle, and the build warns once, naming the file (the dev server warns for the first):
 
 - the binding has state or effects (an initialiser with side effects, a `let` the module reassigns, a value read from mutable state when the module loads, a component the file augments with `Page.displayName = …`), so one instance must exist and the route module keeps it;
-- another module loaded with the entry imports the binding through the route file, so the bundler keeps it with the route module.
+- another module loaded with the entry imports the binding through the route file, so the bundler keeps it with the route module;
+- the binding is a class, an object or a call result the chunk must share, and the bundler's chunk configuration (a `manualChunks` or `cacheGroups` group that lands in the entry, Rolldown < 1.1.5) placed its module with the entry.
 
-In both cases, move the binding to its own module and import it from there.
+In every case, move the binding to its own module and import it from there.
 
 ```tsx
 export const Route = createRoute('/posts')({

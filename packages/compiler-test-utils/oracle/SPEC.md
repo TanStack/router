@@ -372,9 +372,9 @@ dir)` is not a conflict by itself.
   `scripts`, `staticData`, `ssr`, `server`, `headers`, …) stays eager in the route module.
 - **J2.4 One instance.** Shared identity, state and once-only effects hold across the route, its importers and its
   chunks: `Route`, module state, and every exported function, class or constant (importers of a route-module export
-  and the route itself get the same object; a copy of an exported declaration in a chunk is a bug, even a
-  "stateless" one such as an exported function that reads `Route`). Pure helpers with unobservable identity may be
-  copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts. Amended:
+  and the route itself get the same object; before the amendment below, a copy of an exported declaration in a
+  chunk was a bug, even a "stateless" one such as an exported function that reads `Route`). Pure helpers with
+  unobservable identity may be copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts. Amended:
   today's compiler copies an exported binding into the chunk by rule, so that the chunk never imports the module the
   route module re-exports it from, only when the copy is a closure of functions and primitive constants nothing
   writes (one instance for every importer of the route file, a second one of the function in the chunk; KNOWN-BUGS
@@ -771,7 +771,8 @@ A compiler may do any of these and still be correct; tests must not fail on them
   of one project at different roots are not required.
 - **§5.3 Module layout**: virtual-module ids and query strings (`?tsr-split=`, `?tss-hydrate=`,
   `?server-fn-module-lookup`), chunk count and shape, shared-dependency chunks, where shared bindings live (shared
-  module, chunk re-import, entry re-export), copying _pure, unexported, identity-unobservable_ helpers into a chunk or
+  module, chunk re-import, entry re-export), copying _pure, unexported, identity-unobservable_ helpers (and, by the
+  J2.4 amendment, exported functions whose closure is functions and primitives) into a chunk or
   importing them (J2.4), as long as group semantics hold: a group is available together (J2.2; forwarding modules
   allowed), separately configured groups are neither made eager nor loaded together when one is needed, and no chunk
   carries unrelated code (J2.5). Whether the SSR build splits route options like the client: not required (it should

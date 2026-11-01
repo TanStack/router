@@ -87,11 +87,13 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
   with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
-  binding the module keeps), once at the cause (a cluster kept only because another kept one reads it is not
+  binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
+  split code both read, one instance), once at the cause (a cluster kept only because another kept one reads it is not
   reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
   modules, deduped per file and wording by the hosts' ledgers); every
   host also warns after a client build when an extracted module landed in an entry chunk (another module imports
-  the binding through the route file);
+  the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
+  the entry);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a

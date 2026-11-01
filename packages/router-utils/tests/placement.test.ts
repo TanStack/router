@@ -1283,7 +1283,16 @@ describe('extracted-export outputs', () => {
         'function subscribe(fn: () => void) { listeners.push(fn) }',
       )
       expect(e?.code).not.toContain('const listeners')
-      expect(r.diagnostics).toEqual([])
+      // what only split code needs and stays is reported (J2.8)
+      expect(r.diagnostics).toMatchObject([
+        {
+          code: 'eager-split:shared',
+          range: { start: code.indexOf('listeners') },
+        },
+      ])
+      expect(r.diagnostics[0]!.message).toContain(
+        'the module of the export `subscribe`',
+      )
     })
 
     it('keeps a value with an identity an extracted module and a chunk both read in the route module, one instance', async () => {
@@ -1306,6 +1315,7 @@ describe('extracted-export outputs', () => {
       const e = await r.extracted('Card')
       expect(e?.code).toContain("import { styles } from './route.tsx'")
       expect(e?.code).toContain('function Card() { return styles.card }')
+      expect(r.diagnostics).toMatchObject([{ code: 'eager-split:shared' }])
     })
 
     it('in dev keeps a non-copied export in the route module and the chunk imports it, as in a build', async () => {
@@ -1329,6 +1339,298 @@ describe('extracted-export outputs', () => {
       )
       expect(r.chunk).not.toContain('class Model')
       expect(r.chunk).not.toContain('listeners')
+    })
+  })
+
+  // What the copy never carries: another export (imported from its module
+  // or copied under its own decision), an effectful cluster, an eager
+  // reader of state and what the route module's own roots keep alive are
+  // one instance by construction, so they do not stop the copy.
+  describe('what a copy does not carry', () => {
+    it('copies an exported component that reads the route', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        export function Page() { return Route.useLoaderData() }
+        export const Route = createFileRoute('/')({ loader: () => 1, component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.chunk).not.toContain('export~Page')
+      expect(r.chunk).toContain("import { Route } from './route.tsx'")
+      expect(r.chunk).toContain(
+        'function Page() { return Route.useLoaderData() }',
+      )
+    })
+
+    it('copies an exported function reading an effectful binding whose initialiser reads an object', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { createTheme } from './theme'
+        const cfg = { dark: true }
+        const theme = createTheme(cfg)
+        export function Card() { return theme.card }
+        export const Route = createFileRoute('/')({ component: () => Card() })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain('const cfg = { dark: true }')
+      expect(r.env).toContain('const theme = createTheme(cfg)')
+      expect(r.chunk).not.toContain('export~Card')
+      expect(r.chunk).toContain("import { theme } from './route.tsx'")
+      expect(r.chunk).toContain('function Card() { return theme.card }')
+    })
+
+    it('copies an exported function reading an object the route module keeps', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const styles = { card: 'c' }
+        export function Card() { return styles.card }
+        export const Route = createFileRoute('/')({
+          loader: () => styles.card,
+          component: () => Card(),
+        })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain("const styles = { card: 'c' }")
+      expect(r.chunk).not.toContain('export~Card')
+      expect(r.chunk).toContain("import { styles } from './route.tsx'")
+      expect(r.chunk).toContain('function Card() { return styles.card }')
+      expect(r.diagnostics).toEqual([])
+    })
+
+    // The extracted module evaluates before the route module's body: a
+    // function it calls then reads what the route module keeps too early.
+    it.each([
+      [
+        'a pure call',
+        'function build() { return { t: theme } }\nexport const config = /* @__PURE__ */ build()',
+      ],
+      [
+        'a call of a function marked without side effects',
+        '/* #__NO_SIDE_EFFECTS__ */ function build() { return { t: theme } }\nexport const config = build()',
+      ],
+      [
+        'a copied helper called in a property',
+        'const fmt = () => theme.dark\nexport const config = { dark: /* @__PURE__ */ fmt() }',
+      ],
+    ])(
+      'keeps an export whose evaluation calls a function reading what the route module keeps (no TDZ): %s',
+      async (_, declarations) => {
+        const code = dedent(`
+          import { createFileRoute } from 'toy-router'
+          const theme = { dark: true }
+          ${declarations.replaceAll('\n', '\n          ')}
+          function Page() { return [config, theme.dark] }
+          export const Route = createFileRoute('/')({ component: Page })
+        `)
+        const r = await extract(code)
+        expect(r.env).toContain('export const config')
+        expect(r.env).not.toContain('export~')
+        expect(r.chunk).toContain("from './route.tsx'")
+        expect(r.diagnostics).toMatchObject([
+          {
+            code: 'eager-export:reads',
+            range: { start: code.indexOf('config = ') },
+          },
+        ])
+      },
+    )
+
+    it.each([
+      [
+        'a constructor',
+        'export function Model(this: any, x: number) { this.x = x }\nexport function isModel(v: unknown) { return v instanceof Model }',
+        'isModel(new Model(1))',
+      ],
+      [
+        'a sentinel',
+        'export const Model = () => {}\nexport function isModel(v: unknown) { return v === Model }',
+        'isModel(Model)',
+      ],
+      [
+        'a prototype',
+        'export function Model() {}\nexport function isModel(v: unknown) { return Object.getPrototypeOf(v) === Model.prototype }',
+        'isModel(Model)',
+      ],
+    ])(
+      'imports an exported function whose identity is observed instead of copying it: %s',
+      async (_, declarations, read) => {
+        const code = dedent(`
+          import { createFileRoute } from 'toy-router'
+          ${declarations.replaceAll('\n', '\n          ')}
+          function Page() { return ${read} }
+          export const Route = createFileRoute('/')({ component: Page })
+        `)
+        const r = await extract(code)
+        expect(r.chunk).toContain(
+          "import { Model } from './route.tsx?tsr-split=export~Model'",
+        )
+        expect(r.chunk).not.toMatch(/(function|const) Model\b/)
+        const e = await r.extracted('isModel')
+        expect(e?.code).toContain(
+          "import { Model } from './route.tsx?tsr-split=export~Model'",
+        )
+        expect(e?.code).not.toMatch(/(function|const) Model\b/)
+      },
+    )
+
+    it('imports a copied export from its module in another extracted module, and copies it into the chunk', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        export function helper() { return 1 }
+        export const config = { helper }
+        function Page() { return config.helper() + helper() }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.chunk).toContain('function helper() { return 1 }')
+      expect(r.chunk).toContain(
+        "import { config } from './route.tsx?tsr-split=export~config'",
+      )
+      const e = await r.extracted('config')
+      expect(e?.code).toContain(
+        "import { helper } from './route.tsx?tsr-split=export~helper'",
+      )
+      expect(e?.code).not.toContain('function helper')
+      expect(e?.code).toContain('const config = { helper }')
+    })
+
+    it('duplicates a primitive constant whatever writes a member of it (nothing to observe)', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const N = 1
+        function Page() { (N as any).x = 2; return N }
+        export const Route = createFileRoute('/')({
+          loader: () => N,
+          component: Page,
+          errorComponent: () => N,
+        })
+      `)
+      const r = await extract(code, ['component', 'errorComponent'])
+      expect(r.env).toContain('const N = 1')
+      expect(r.chunk).toContain('const N = 1')
+      expect(r.chunk).not.toContain("from './route.tsx'")
+    })
+
+    it('keeps a written binding an extracted export reads and a split option writes in the route module', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let count = 0
+        export function read() { return count }
+        export const Route = createFileRoute('/')({
+          component: () => read(),
+          errorComponent: () => { count++; return count },
+        })
+      `)
+      const r = await extract(code, ['component', 'errorComponent'])
+      expect(r.env).toContain('let count = 0')
+      expect(r.env).toContain('count++')
+      expect(r.env).toContain('export { count }')
+      // the chunk reads the one `count` of the route module (through its
+      // copy of `read`, a function closure)
+      expect(r.chunk).toContain("import { count } from './route.tsx'")
+      expect(r.chunk).not.toContain('let count')
+      expect(r.chunk).not.toContain('count++')
+      const e = await r.extracted('read')
+      expect(e?.code).toContain("import { count } from './route.tsx'")
+      expect(e?.code).not.toContain('let count')
+    })
+
+    // A provider output copies what it reaches (another layer's instance):
+    // it is no needer the identity rule counts, and no reason to keep a
+    // cluster in the env module (the dev-time self-check threw here).
+    it('homes a value an extracted export and a provider output share in the export module', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrapServer } from 'toy-start'
+        const config = { a: 1 }
+        export const wrapped = { config }
+        export const fn = wrapServer(() => config)
+        function Page() { return wrapped.config.a }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const provider: Planner = {
+        name: 'toy-provider',
+        tier: 1,
+        gate: () => true,
+        plan(ctx) {
+          const out = ctx.declareOutput({
+            kind: 'provider',
+            key: 'provider',
+            derived: { kind: 'provider', value: '' },
+          })
+          const fn = ctx.analysis.exports.find(
+            (e) => e.kind === 'local' && e.name === 'fn',
+          )
+          const sym = (fn?.kind === 'local' ? fn.local : null) as never
+          const wrapper = ctx.names.alloc('fn_handler')
+          ctx.rewrites.addGenerated({
+            body: [
+              {
+                k: 'text',
+                parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
+              },
+            ],
+            declares: [wrapper.sym],
+            effectful: false,
+            anchor: { k: 'end' },
+            home: out,
+            by: 'toy-provider',
+          })
+        },
+      }
+      // the handler leaves the env module for the provider output (Start's
+      // `providerOut`): a stub in the env module, the body in the provider
+      const envPlanner: Planner = {
+        name: 'toy-env-provider-out',
+        tier: 1,
+        gate: () => true,
+        plan(ctx) {
+          const { analysis, t1 } = ctx
+          const imp = analysis.imports.find((i) => i.specifier === 'toy-start')!
+          for (const sp of imp.specifiers) {
+            for (const ref of t1.refs.refsOf(sp.local)) {
+              const node = t1.nodeAt(ref.range.start)
+              const call = node ? t1.parentOf(node) : null
+              const arg =
+                call?.type === 'CallExpression' ? call.arguments[0] : undefined
+              if (arg) {
+                ctx.rewrites.add({
+                  range: { start: arg.start, end: arg.end },
+                  body: [{ k: 'text', parts: ['0'] }],
+                  scope: ['env'],
+                  by: 'toy-env-provider-out',
+                })
+              }
+            }
+          }
+        },
+      }
+      const planners = [
+        envPlanner,
+        provider,
+        toySplitPlanner({ keys: ['component'], extractExports: true }),
+      ]
+      const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+      const main = await host.compile('/app/route.tsx', planners, { env })
+      expect(main?.code).toContain('export const fn = wrapServer(0)')
+      expect(main?.code).not.toContain('const config')
+      expect(main?.code).toContain(
+        "export { wrapped } from './route.tsx?tsr-split=export~wrapped'",
+      )
+      const wrapped = await host.compile(
+        '/app/route.tsx?tsr-split=export~wrapped',
+        planners,
+        { env },
+      )
+      expect(wrapped?.code).toContain('const config = { a: 1 }')
+      expect(wrapped?.code).not.toContain("from './route.tsx'")
+      const prov = await host.compile(
+        '/app/route.tsx?tss-serverfn-split',
+        planners,
+        { env },
+      )
+      expect(prov?.code).toContain('const config = { a: 1 }')
+      expect(main?.diagnostics).toEqual([])
     })
   })
 

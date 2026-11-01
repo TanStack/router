@@ -110,7 +110,10 @@ export function assignHomes(
   const sharedByKey = new Map<string, OutputId>()
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
   for (const cl of clusters) {
-    const derived = derivedNeeders[cl.id]!
+    const needers = derivedNeeders[cl.id]!
+    // a provider output copies what it reaches whatever its home: it counts
+    // only when nothing else needs the cluster
+    const derived = needers.filter((o) => outputs.get(o)?.kind !== 'provider')
     if (
       seeds.deadClusters.has(cl.id) ||
       (orphaned.has(cl.id) && derived.length === 0)
@@ -136,15 +139,12 @@ export function assignHomes(
       continue
     }
     if (liveEnv.has(cl.id)) {
-      home.set(cl.id, cl.copyable && derived.length > 0 ? 'duplicate' : 'env')
+      home.set(cl.id, cl.copyable && needers.length > 0 ? 'duplicate' : 'env')
       continue
     }
-    if (
-      derived.length > 0 &&
-      derived.every((o) => outputs.get(o)?.kind === 'provider')
-    ) {
+    if (needers.length > 0 && derived.length === 0) {
       // only the module's own instance in another layer needs it: it lives there
-      home.set(cl.id, derived[0]!)
+      home.set(cl.id, needers[0]!)
       continue
     }
     if (derived.length === 0) {
@@ -187,10 +187,7 @@ export function assignHomes(
       // imported would be a static dependency of the route module, which no
       // chunk may import. One with an identity, or written, is one instance
       // in the env module (an env root since the roots settled)
-      home.set(
-        cl.id,
-        isDuplicable(cl, t1.mutation, liveInEnv) ? 'duplicate' : 'env',
-      )
+      home.set(cl.id, isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env')
       continue
     }
     const key = derived.map(keyOf).sort().join('+')

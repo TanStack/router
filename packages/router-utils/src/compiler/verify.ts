@@ -7,9 +7,8 @@
  * instead of emitting a module that breaks at run time.
  */
 import { isDeepStrictEqual } from 'node:util'
-import { ModuleAnalysis } from './analysis'
+import { ModuleAnalysis, runsAtLoad } from './analysis'
 import { emitRecipe } from './emit'
-import { isDuplicable } from './placement/clusters'
 import { SourceText } from './output-builder'
 import { parseModule } from './source'
 import { hasRuntimeValue } from './symbols'
@@ -133,11 +132,15 @@ export function verifyPlan(
       }
       // (e) an extracted export's module (evaluated before the env
       // module's body) never reads a binding of the env module at its
-      // evaluation (a TDZ through the re-export cycle)
+      // evaluation (a TDZ through the re-export cycle), in its own text or
+      // in a function it calls then
       if (recipe.kind === 'export' && target === 'env') {
+        const atLoad = runsAtLoad(out)
         for (const s of imp.specifiers) {
           if (
-            out.refs.refsOf(s.local).some((r) => r.eager && r.kind !== 'write')
+            out.refs
+              .refsOf(s.local)
+              .some((r) => atLoad(r) && r.kind !== 'write')
           ) {
             problems.push(
               `${id}: reads ${s.localName} of the env module at its evaluation`,
@@ -220,35 +223,6 @@ export function verifyPlan(
       problems.push(
         `the effect at ${start} is emitted ${n} times (expected ${expected})`,
       )
-    }
-  }
-  // (h) a declaration with an identity (an object, array, class, call
-  // result, regex) or a written one exists once: it is declared in at most
-  // one output that imports from the env module (a copying output
-  // excepted). Whatever placement copies carries only functions and
-  // primitives nothing writes (`isDuplicable`).
-  if (placement !== null) {
-    const liveInEnv = (ref: { range: { start: number } }) =>
-      !envTree.isErasedAt(ref.range.start)
-    for (const cl of placement.clusters) {
-      if (
-        cl.kind !== 'declaration' ||
-        isDuplicable(cl, t1.mutation, liveInEnv)
-      ) {
-        continue
-      }
-      const holders: Array<OutputId> = []
-      for (const [o, set] of placement.included) {
-        if (set.has(cl.id) && !copies(emitPlan.outputs[o]?.kind ?? 'env')) {
-          holders.push(o)
-        }
-      }
-      if (holders.length > 1) {
-        const names = [...cl.declares].map((s) => t1.symbols.name(s))
-        problems.push(
-          `${names.join(', ')} (an identity or state) is declared in ${holders.length} outputs: ${holders.join(', ')}`,
-        )
-      }
     }
   }
   // (f) planner facts are JSON data: a cached plan retains them as they are

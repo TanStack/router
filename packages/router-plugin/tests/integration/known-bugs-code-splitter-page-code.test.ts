@@ -53,10 +53,13 @@ describe('page code in client builds', () => {
 
   // Page code that loads with its chunk: code the route file does not
   // export, and exported functions and classes (the chunk declares its own
-  // copy of a pure one by rule; state stays one instance, pinned in
-  // "module state shared with split chunks" and "exported bindings"; the
-  // bundler drops the unused extracted module of the route file). A fix
-  // must keep them out of the entry chunk.
+  // copy of a function whose closure is functions and primitives, by rule;
+  // a class and state are one instance the chunk imports from the extracted
+  // module, pinned in "module state shared with split chunks" and "exported
+  // bindings"; the bundler drops an unused extracted module of the route
+  // file, and the hosts' `sideEffects: false` rule for `tsr-split=export~`
+  // keeps an imported one lazy without `"sideEffects": false`). A fix must
+  // keep them out of the entry chunk.
   const controls: Array<Case> = [
     routeCase(
       'a const only a split component renders',

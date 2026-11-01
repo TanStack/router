@@ -21,6 +21,8 @@ interface EagerExtractedExport {
   file: string
   /** The export's name. */
   name: string
+  /** The extracted module's id, as the bundler names it. */
+  id: string
 }
 
 const EXTRACTED_EXPORT_RE = /[?&]tsr-split=export~([^&#]+)/
@@ -47,7 +49,7 @@ function eagerExtractedExports(
       continue
     }
     seen.add(key)
-    out.push({ file, name })
+    out.push({ file, name, id })
   }
   return out
 }
@@ -126,19 +128,73 @@ export function initialChunkResources(
   return out
 }
 
+/** A module id of split code (a split chunk, a Hydrate chunk): an importer of an extracted module the chunk imports instead of copying. */
+const SPLIT_IMPORTER_RE = /[?&](tsr-split=(?!export~)|tss-hydrate=)/
+
+/** The parts of a webpack/Rspack compilation the importer lookup reads. */
+export interface WebpackModuleGraphLike {
+  modules: Iterable<ModuleLike>
+  moduleGraph: {
+    getIncomingConnections: (
+      module: ModuleLike,
+    ) => Iterable<{ originModule?: ModuleLike | null }>
+  }
+}
+
+/**
+ * The importers of each extracted-export module of a webpack/Rspack
+ * compilation (`idOf` names a module's resource the way `moduleIds` are
+ * named), for `warnEagerExports`.
+ */
+export function webpackImporters(
+  compilation: WebpackModuleGraphLike,
+  idOf: (resource: string) => string,
+): (id: string) => Array<string> {
+  const importers = new Map<string, Array<string>>()
+  const resourceOf = (m: ModuleLike) => m.resource ?? m.identifier?.() ?? ''
+  for (const m of compilation.modules) {
+    for (const inner of [m, ...(m.modules ?? [])]) {
+      const resource = resourceOf(inner)
+      if (!EXTRACTED_EXPORT_RE.test(resource)) {
+        continue
+      }
+      const list: Array<string> = []
+      for (const c of compilation.moduleGraph.getIncomingConnections(inner)) {
+        const origin = c.originModule ? resourceOf(c.originModule) : ''
+        if (origin !== '') {
+          list.push(idOf(origin))
+        }
+      }
+      importers.set(idOf(resource), list)
+    }
+  }
+  return (id) => importers.get(id) ?? []
+}
+
 /**
  * Warns once per (route file, export) per run (`ledger`) of each extracted
  * export among `moduleIds`: the module ids of what a client build loads
  * with its entries (`rollupEntryModuleIds`, `initialChunkResources`).
+ * `importersOf` (the bundler's module graph) tells the two causes apart:
+ * split code importing the module (the export is not copied) under a chunk
+ * configuration that placed it with the entry, or another module importing
+ * the binding through the route file.
  */
 export function warnEagerExports(
   moduleIds: Iterable<string>,
   bundler: 'rollup' | 'webpack',
   ledger: WarningLedger,
   warn: (message: string) => void,
+  importersOf?: (id: string) => Iterable<string>,
 ): void {
   for (const e of eagerExtractedExports(moduleIds)) {
-    const message = eagerExportWarning(e, bundler)
+    const cause =
+      importersOf === undefined
+        ? 'unknown'
+        : [...importersOf(e.id)].some((i) => SPLIT_IMPORTER_RE.test(i))
+          ? 'chunk'
+          : 'importer'
+    const message = eagerExportWarning(e, bundler, cause)
     if (ledger.once(e.file, { code: 'eager-export', message })) {
       warn(message)
     }
@@ -153,10 +209,19 @@ export function warnEagerExports(
 function eagerExportWarning(
   e: EagerExtractedExport,
   bundler: 'rollup' | 'webpack',
+  cause: 'chunk' | 'importer' | 'unknown',
 ): string {
   const share =
     bundler === 'webpack'
       ? 'Move it to its own module and import it from there, or declare "sideEffects": false in package.json so the bundler can bypass the route file, so the importer and the route share one instance.'
       : 'Move it to its own module and import it from there, so the importer and the route share one instance.'
-  return `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk: another module imports it through the route file, or the bundler's chunk assignment put the route file's module for it with the entry (the route's split code imports that module when the export reaches a value with an identity or state, such as an object, class, call result or written binding, which it cannot copy), so it is not left to the split code that needs it. ${share}`
+  const head = `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk:`
+  switch (cause) {
+    case 'chunk':
+      return `${head} the route's split code imports it (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy) and the bundler's chunk configuration placed its module with the entry. Keep the routes directory out of chunk groups that load with the entry, or move the export to its own module and import it from there.`
+    case 'importer':
+      return `${head} another module imports it through the route file, so the bundler keeps it with the route module instead of leaving it to the split code that needs it. ${share}`
+    default:
+      return `${head} another module imports it through the route file, or the bundler's chunk configuration placed the module the route's split code imports with the entry (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy). ${share}`
+  }
 }

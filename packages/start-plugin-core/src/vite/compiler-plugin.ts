@@ -1044,6 +1044,7 @@ export function startCompilerPlugin(
             'rollup',
             s.start.warnings,
             (m) => this.warn(m),
+            (id) => this.getModuleInfo(id)?.importers ?? [],
           )
         }
         if (!s.start.ip) {

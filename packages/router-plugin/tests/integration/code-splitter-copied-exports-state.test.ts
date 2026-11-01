@@ -109,7 +109,7 @@ try {
   caught = error
 }`
 
-// ---- private mutable state behind exported functions ---------------------------
+// ---- private mutable state behind exported functions the chunk imports ----------
 // `listeners` is written only through member calls, so it never joins the
 // functions' cluster; it is in their reach, so neither function is copied
 // and the one array lives in the route module: each chunk and each
@@ -143,7 +143,7 @@ return globalThis.__fired ?? 0`,
   },
 ]
 
-// ---- identity of exported classes, contexts and objects -----------------------
+// ---- identity of exported classes, contexts and objects the chunk imports -----
 // A class, an annotated call and a literal have an identity: the chunk
 // imports them from the extracted module, which also serves importers of
 // the route file, so `instanceof`, a Provider's value and a sentinel hold
@@ -231,6 +231,60 @@ export const Route = createFileRoute('/')({ component: Page })
     script: `const html = ${renderComponent}
 return [html, entry.pick([]) === entry.EMPTY]`,
     expected: ['<p>true</p>', true],
+  },
+  {
+    // a function used as a constructor has an identity (its prototype)
+    name: 'an exported constructor function is recognised by instanceof in an importer of the route file',
+    route: `export function Point(this: any, x: number) {
+  this.x = x
+}
+export function isPoint(v: unknown) {
+  return v instanceof Point
+}
+function Page() {
+  return <p>{String(isPoint(new (Point as any)(1)))}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    reexports: 'Point, isPoint',
+    script: `const html = ${renderComponent}
+return [html, entry.isPoint(new entry.Point(1))]`,
+    expected: ['<p>true</p>', true],
+  },
+  {
+    // a function compared by identity is a sentinel
+    name: 'an exported function sentinel compares equal through two exports of the route file',
+    route: `export const DEFAULT = () => {}
+export function isDefault(cb: unknown) {
+  return cb === DEFAULT
+}
+function Page() {
+  return <p>{String(isDefault(DEFAULT))}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    reexports: 'DEFAULT, isDefault',
+    script: `const html = ${renderComponent}
+return [html, entry.isDefault(entry.DEFAULT)]`,
+    expected: ['<p>true</p>', true],
+  },
+  {
+    // a copied function another export of the route file holds is the
+    // importer's instance of it
+    name: "a copied exported function held by an exported object is the importer's instance",
+    route: `export function helper() {
+  return 1
+}
+export const config = { helper }
+function Page() {
+  return <p>{config.helper() + helper()}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    reexports: 'helper, config',
+    script: `const html = ${renderComponent}
+return [html, entry.config.helper === entry.helper]`,
+    expected: ['<p>2</p>', true],
   },
   {
     // control: a Map something `set`s is state, one instance
@@ -474,13 +528,13 @@ const suite = (
     }
   })
 
-describe('private module state behind copied exported functions', () => {
+describe('private module state behind exported functions the chunk imports', () => {
   for (const { name, run } of runners) {
     suite(name, moduleState, run)
   }
 })
 
-describe('identity of copied exported bindings', () => {
+describe('identity of exported bindings the chunk imports', () => {
   for (const { name, run } of runners) {
     suite(name, identity, run)
   }

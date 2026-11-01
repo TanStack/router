@@ -158,6 +158,62 @@ return [html, imported.pick([]) === imported.EMPTY]`,
   },
 ]
 
+identity.push(
+  {
+    name: 'an exported constructor function is recognised by instanceof in an importer of the route file',
+    route: `${head}export function Point(this: any, x: number) {
+  this.x = x
+}
+export function isPoint(v: unknown) {
+  return v instanceof Point
+}
+function Page() {
+  return <p>{String(isPoint(new (Point as any)(1)))}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    files: importer,
+    script: `const imported = await app('importer.ts')
+const html = await render('component')
+return [html, imported.isPoint(new imported.Point(1))]`,
+    expected: ['<p>true</p>', true],
+  },
+  {
+    name: 'an exported function sentinel compares equal through two exports of the route file',
+    route: `${head}export const DEFAULT = () => {}
+export function isDefault(cb: unknown) {
+  return cb === DEFAULT
+}
+function Page() {
+  return <p>{String(isDefault(DEFAULT))}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    files: importer,
+    script: `const imported = await app('importer.ts')
+const html = await render('component')
+return [html, imported.isDefault(imported.DEFAULT)]`,
+    expected: ['<p>true</p>', true],
+  },
+  {
+    name: "a copied exported function held by an exported object is the importer's instance",
+    route: `${head}export function helper() {
+  return 1
+}
+export const config = { helper }
+function Page() {
+  return <p>{config.helper() + helper()}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    files: importer,
+    script: `const imported = await app('importer.ts')
+const html = await render('component')
+return [html, imported.config.helper === imported.helper]`,
+    expected: ['<p>2</p>', true],
+  },
+)
+
 const mutated = (
   name: string,
   decl: string,
@@ -275,10 +331,10 @@ const suite = (title: string, cases: Array<Case>) =>
   })
 
 suite(
-  'in dev, private module state behind copied exported functions',
+  'in dev, private module state behind exported functions the chunk imports',
   moduleState,
 )
-suite('in dev, identity of copied exported bindings', identity)
+suite('in dev, identity of exported bindings the chunk imports', identity)
 suite(
   'in dev, forms of mutation of module state the split component reaches',
   mutations,

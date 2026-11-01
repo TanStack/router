@@ -127,7 +127,12 @@ export function keptDeclarations(
     for (const [id, set] of derivedReach) {
       if (set.has(c)) {
         const kind = outputs.get(id)?.kind
-        other ||= kind !== 'split' && kind !== 'hydrate'
+        // `shared`: an extracted export's module is split code's own
+        // dependency here (the export the chunk imports reads the cluster)
+        other ||=
+          kind !== 'split' &&
+          kind !== 'hydrate' &&
+          !(pin.reason === 'shared' && kind === 'export')
         needers.push(id)
       }
     }

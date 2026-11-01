@@ -84,6 +84,9 @@ export function keptDiagnostic(
   const split = k.needers
     .map((o) => {
       const decl = plan.outputs.get(o)!
+      if (decl.kind === 'export') {
+        return `the module of the export \`${decl.key.slice('export~'.length)}\``
+      }
       return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
     })
     .join(', ')
@@ -132,6 +135,12 @@ export function keptDiagnostic(
     case 'written':
       because = `the module changes ${it} outside ${own} declaration when it loads (${line(k.at!)})`
       fix = `move ${subject} and what writes ${it} to their own module, or mark ${own} initialiser \`/* @__PURE__ */\` if it has no side effects`
+      break
+    case 'shared':
+      // an exported binding's extracted module and other split code both
+      // read a value with an identity (or state): one instance, in the module
+      because = `an exported binding's split module and other split options (${split}) read ${it}, and ${it} ${names.length === 1 ? 'has' : 'have'} an identity or state (an object, array, class, call result or written binding), which exists once`
+      fix = `declare ${subject} in the module that uses ${it}, or read ${it} through a function`
       break
     case 'state':
       because =

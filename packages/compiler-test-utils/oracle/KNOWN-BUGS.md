@@ -302,9 +302,9 @@ SPLITTING.md`): a chunk never imports the extracted module of a copyable export 
   renders, split or reported"); `integration/code-splitter-copied-exports-state.test.ts` and its dev twin prove the
   identity and state cases that are one instance. Fix: none planned; a bundler-independent way to share one instance
   lazily would reopen the decision.
-- **Bindings that read `Route` are never shared**, so chunks copy them. SPEC J2.4.
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported function that reads Route is the one the split
-  component calls"; "a destructuring whose sibling reads Route keeps one cache for the loader and the component".
+- **Bindings that read `Route` are never shared**, so chunks copy them (a function reading `Route` is a function
+  closure: copied by rule). SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a destructuring whose
+  sibling reads Route keeps one cache for the loader and the component".
 - **A split component reading `Route` declared with `const` and exported later (`export { Route }`) recreates the
   route.** SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component reads the route the route
   module exports through export { Route }".

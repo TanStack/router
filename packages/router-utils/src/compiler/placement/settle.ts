@@ -69,8 +69,10 @@ export function derivedNeeds(
  * re-exports an extracted export's module (`export { X } from …`), a
  * static dependency that evaluates with its imports before the env
  * module's body: such a read there would run before the binding's
- * initialisation, a TDZ the user never wrote. A copyable cluster is
- * duplicated into the reading output instead and is no such read.
+ * initialisation, a TDZ the user never wrote. A read inside a function the
+ * evaluation calls (`const config = build()`) happens then too
+ * (`graph.atLoad`). A copyable cluster is duplicated into the reading
+ * output instead and is no such read.
  */
 export function readsKeptEagerly(
   input: PlacementInput,
@@ -80,25 +82,34 @@ export function readsKeptEagerly(
 ): boolean {
   const { symbols } = input.t1
   const { clusters, clusterOfSym } = graph
-  for (const r of clusters[c]!.regions) {
-    for (const ref of graph.ownedRefs.get(r) ?? []) {
-      if (
-        !ref.eager ||
-        !READ_KINDS.has(ref.kind) ||
-        !symbols.isModuleLevel(ref.sym)
-      ) {
-        continue
-      }
-      const d = clusterOfSym.get(ref.sym)
-      if (d === undefined || d === c || clusters[d]!.copyable) {
-        continue
-      }
-      if (
-        roots.liveEnv.has(d) ||
-        roots.envRoots.has(d) ||
-        clusters[d]!.envPinned
-      ) {
-        return true
+  const kept = (d: ClusterId) =>
+    roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned
+  // the reads of `c`'s own text that run at load, then those of every
+  // module-level function (or class) such a read calls, transitively
+  const seen = new Set<ClusterId>([c])
+  const work: Array<ClusterId> = [c]
+  while (work.length > 0) {
+    const from = work.pop()!
+    for (const r of clusters[from]!.regions) {
+      for (const ref of graph.ownedRefs.get(r) ?? []) {
+        if (
+          !graph.atLoad(ref) ||
+          !READ_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym)
+        ) {
+          continue
+        }
+        const d = clusterOfSym.get(ref.sym)
+        if (d === undefined || seen.has(d) || clusters[d]!.copyable) {
+          continue
+        }
+        if (kept(d)) {
+          return true
+        }
+        if (ref.calls && clusters[d]!.kind === 'declaration') {
+          seen.add(d)
+          work.push(d)
+        }
       }
     }
   }
@@ -409,9 +420,32 @@ export function settleRoots(
       claimHolders.add(clusterOfRegion.get(parent)!)
     }
   }
-  const duplicable = (c: ClusterId) =>
-    isDuplicable(clusters[c]!, t1.mutation, liveInEnv)
-  /** A candidate a chunk copies: pure, observing no mutable state, holding no claimed region, and nothing the copy carries has an identity or is written. A function of the candidate alone, decided once. */
+  const duplicable = (c: ClusterId) => isDuplicable(clusters[c]!, t1, liveInEnv)
+  /**
+   * The clusters a copy never carries, so the walk stops at them: every
+   * output keeps them once by construction. Another candidate is imported
+   * from its module or copied under its own decision; an effectful cluster
+   * and an eager reader of state stay in the env module or move with one
+   * needer (several needers root them); a cluster the env module's seeds
+   * keep alive stays there (roots only grow); a type unit stays. Computed
+   * once: it reads nothing the fixed point changes.
+   */
+  let carriedStop: Set<ClusterId> | null = null
+  const stopSet = (): Set<ClusterId> => {
+    if (carriedStop === null) {
+      carriedStop = new Set(candidates.keys())
+      for (const cl of clusters) {
+        if (cl.effectful || cl.envPinned || graph.mutableReaders.has(cl.id)) {
+          carriedStop.add(cl.id)
+        }
+      }
+      for (const d of reach('env', envRoots)) {
+        carriedStop.add(d)
+      }
+    }
+    return carriedStop
+  }
+  /** A candidate a chunk copies: pure, observing no mutable state, holding no claimed region, and nothing the copy carries (`stopSet`) has an identity or is written. A function of the candidate alone, decided once. */
   const copyDecisions = new Map<ClusterId, boolean>()
   const copies = (c: ClusterId): boolean => {
     let hit = copyDecisions.get(c)
@@ -424,17 +458,14 @@ export function settleRoots(
       !graph.mutableReaders.has(c) &&
       !claimHolders.has(c)
     ) {
-      const others = new Set(candidates.keys())
-      others.delete(c)
+      const stop = new Set(stopSet())
+      stop.delete(c)
       hit = true
-      for (const d of reach('env', [c], others)) {
+      for (const d of reach('env', [c], stop)) {
         const cl = clusters[d]!
         if (
           d !== c &&
-          (candidates.has(d) ||
-            cl.effectful ||
-            cl.kind === 'import' ||
-            cl.kind === 'type')
+          (stop.has(d) || cl.kind === 'import' || cl.kind === 'type')
         ) {
           continue
         }
@@ -623,13 +654,15 @@ export function settleRoots(
       ) {
         continue
       }
-      if (
-        !keepsEagerly(cl.id) &&
-        (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2)
-      ) {
+      if (keepsEagerly(cl.id)) {
+        envRoots.add(cl.id)
+      } else if (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2) {
         continue
+      } else {
+        // reported as what only split code needs that stays (`kept`)
+        envRoots.add(cl.id)
+        pinnedNeeded.set(cl.id, { reason: 'shared' })
       }
-      envRoots.add(cl.id)
       derivedStale = true
       changed = true
     }
