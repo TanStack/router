@@ -181,3 +181,45 @@ return [html, globalThis.tagInChunk === entry.Tag]`,
     timeout,
   )
 })
+
+// The warning names what the module exports, not the binding behind it.
+describe.each(['vite', 'rspack', 'webpack'] as const)(
+  'an export with another name than its binding on %s',
+  (bundler) => {
+    test(
+      'the eager-export warning names the export',
+      async () => {
+        const app = await build({
+          bundler,
+          env: 'client',
+          files: {
+            'routes/__root.tsx': rootRoute,
+            'routes/index.tsx': `${head}class Internal {
+  static label = 'MARK_ALIASED_END'
+}
+export { Internal as Public }
+export const Route = createFileRoute('/')({
+  component: () => <p>{new Internal() instanceof Internal ? Internal.label : ''}</p>,
+})
+`,
+            'entry.ts': `export { Route, Public } from './routes/index'\n`,
+          },
+        })
+        try {
+          expect(app.where('MARK_ALIASED_END')).toBe('eager')
+          const [warning, ...others] = findDiagnostics(app.warnings, {
+            severity: 'warning',
+            file: 'routes/index.tsx',
+            root: app.root,
+          })
+          expect(others).toEqual([])
+          expect(warning!.text).toContain('`Public`')
+          expect(warning!.text).not.toContain('Internal')
+        } finally {
+          await app.dispose()
+        }
+      },
+      timeout,
+    )
+  },
+)

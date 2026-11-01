@@ -97,6 +97,17 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
   return null
 }
 
+/**
+ * An export name may be any string (`export { x as 'a.css' }`), and a bundler
+ * reads an id's end as its language, a `/` as a directory and a `!` as a loader
+ * separator: anything else than word characters is percent-encoded.
+ */
+function encodeExportName(name: string): string {
+  return name.replace(/[^\w$~+-]/gu, (c) =>
+    Buffer.from(c).toString('hex').replace(/../g, '%$&'),
+  )
+}
+
 function ownedQueryPair(q: DerivedQuery): string {
   switch (q.kind) {
     case 'split':
@@ -104,7 +115,7 @@ function ownedQueryPair(q: DerivedQuery): string {
     case 'shared':
       return `${OWNED_QUERY_KEYS.split}=shared~${q.value}`
     case 'export':
-      return `${OWNED_QUERY_KEYS.split}=export~${q.value}`
+      return `${OWNED_QUERY_KEYS.split}=export~${encodeExportName(q.value)}`
     case 'hydrate':
       return `${OWNED_QUERY_KEYS.hydrate}=${q.value}`
     case 'provider':

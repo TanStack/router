@@ -476,7 +476,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from './file?tsr-split=export~x'` for every extracted cluster. */
+/** `export { x as name, … } from './file?tsr-split=export~name'` for every extracted cluster. */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,

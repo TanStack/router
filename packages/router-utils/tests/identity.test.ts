@@ -52,6 +52,18 @@ describe('identity', () => {
     expect(deriveId('/app/page.tsx', { kind: 'export', value: 'x' })).toBe(
       '/app/page.tsx?tsr-split=export~x',
     )
+    expect(
+      identify(deriveId('/app/page.tsx', { kind: 'export', value: 'a&b%?#c' }))
+        .derived,
+    ).toEqual({ kind: 'export', value: 'a&b%?#c' })
+    expect(
+      deriveId('/app/page.tsx', { kind: 'export', value: 'a/b.css!é' }),
+    ).toBe('/app/page.tsx?tsr-split=export~a%2fb%2ecss%21%c3%a9')
+    expect(
+      identify(
+        deriveId('/app/page.tsx', { kind: 'export', value: 'a/b.css!é' }),
+      ).derived,
+    ).toEqual({ kind: 'export', value: 'a/b.css!é' })
     expect(deriveId('/app/page.tsx', { kind: 'hydrate', value: 'h1' })).toBe(
       '/app/page.tsx?tss-hydrate=h1',
     )

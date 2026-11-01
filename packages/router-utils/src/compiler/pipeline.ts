@@ -708,7 +708,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     declareOutput: (spec) => plan.declareOutput(spec),
     addRoot: (output, root) => plan.addRoot(output, root),
     markBenignEffect: (unit) => plan.markBenignEffect(unit),
-    extract: (sym, output) => plan.extract(sym, output),
+    extractExport: (sym, exportName) => plan.extractExport(sym, exportName),
     keep: (sym) => plan.keep(sym),
     setRouteModule: () => plan.setRouteModule(),
     describeModule: (words) => plan.describeModule(words),

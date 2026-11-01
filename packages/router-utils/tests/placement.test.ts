@@ -728,7 +728,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('export { Card as View }')
     expect(r.env).not.toContain('export default Card')
     expect(r.env).toContain(
-      "export { Card as View, Card as default } from './route.tsx?tsr-split=export~Card'",
+      "export { Card as View, Card as default } from './route.tsx?tsr-split=export~View'",
     )
   })
 
@@ -871,7 +871,7 @@ describe('extracted-export outputs', () => {
     `)
       const r = await extract(code)
       expect(r.env).not.toContain('function Page')
-      expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+      expect(r.env).toMatch(/export \{ Page as default \} from '.*export~default'/)
     },
   )
 
@@ -884,7 +884,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).not.toContain('function Page')
-    expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+    expect(r.env).toMatch(/export \{ Page as default \} from '.*export~default'/)
   })
 
   // `export * from …` may export any name: the glue export names are the
@@ -953,7 +953,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~Card'",
+      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~card-view'",
     )
   })
 

@@ -156,11 +156,13 @@ export interface PlanContext {
    */
   markBenignEffect: (unit: UnitId) => void
   /**
-   * Allows an exported, pure, unwritten declaration into `output` (an
-   * extracted-export output): the core moves it there when only
-   * derived outputs need it, and the env module re-exports it.
+   * Allows an exported, pure, unwritten declaration into its extracted-export
+   * output: the core moves it there when only derived outputs need it, and the
+   * env module re-exports it. The output takes the first name the module
+   * exports the binding under (`export { x as Public }`: the id and the
+   * diagnostics say `Public`).
    */
-  extract: (sym: SymbolId, output: OutputId) => void
+  extractExport: (sym: SymbolId, exportName: string) => void
   /** Keeps an exported binding in the env module whatever another planner offered (the route itself). */
   keep: (sym: SymbolId) => void
   setRouteModule: () => void
@@ -324,13 +326,19 @@ export class AnalysisPlan implements PlanContext {
     this.benignEffects.add(unit)
   }
 
-  extract(sym: SymbolId, output: OutputId): void {
-    if (!this.outputs.has(output)) {
-      throw new Error(`extract: unknown output ${output}`)
+  extractExport(sym: SymbolId, exportName: string): void {
+    if (this.extractions.has(sym) || this.keptSyms.has(sym)) {
+      return
     }
-    if (!this.keptSyms.has(sym)) {
-      this.extractions.set(sym, output)
-    }
+    this.extractions.set(
+      sym,
+      this.declareOutput({
+        kind: 'export',
+        key: `export~${exportName}`,
+        derived: { kind: 'export', value: exportName },
+        sideEffectFree: true,
+      }),
+    )
   }
 
   keep(sym: SymbolId): void {
