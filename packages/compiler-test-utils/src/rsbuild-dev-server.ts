@@ -179,9 +179,12 @@ export interface RsbuildDevServer {
    * `edit()` began built (since the server started before the first), in
    * every environment: a module once per compile that built it. An edit may
    * take more than one compile (a plugin may tell the compiler that more
-   * files changed), and each one's modules count.
+   * files changed, or Rspack's watcher report the same save again), and each
+   * one's modules count.
    */
   rebuilt: Array<string>
+  /** `rebuilt`, by environment name. */
+  rebuiltBy: Record<string, Array<string>>
   /** Errors of the last compile (`diagnostics` keeps every compile's). */
   errors: Array<string>
   /** Warnings of the last compile (`diagnostics` keeps every compile's). */
@@ -278,6 +281,7 @@ async function startServer(
   }
 
   const rebuilt: Array<string> = []
+  const rebuiltBy: Record<string, Array<string>> = {}
   const errors: Array<string> = []
   const warnings: Array<string> = []
   /** Every channel the server's work may report on (see the module comment). */
@@ -416,7 +420,11 @@ async function startServer(
               for (const module of compilation.builtModules) {
                 const resource = (module as { resource?: string }).resource
                 if (resource) {
-                  rebuilt.push(path.relative(root, resource))
+                  const relative = path.relative(root, resource)
+                  rebuilt.push(relative)
+                  ;(rebuiltBy[environmentCompiler.name ?? ''] ??= []).push(
+                    relative,
+                  )
                 }
               }
             },
@@ -679,6 +687,9 @@ async function startServer(
     settle,
     edit: (files, editOptions = {}) => {
       rebuilt.length = 0
+      for (const environment of Object.keys(rebuiltBy)) {
+        delete rebuiltBy[environment]
+      }
       for (const chunks of hotUpdateChunks.values()) {
         for (const file of Object.keys(chunks)) {
           delete chunks[file]
@@ -700,6 +711,7 @@ async function startServer(
       })
     },
     rebuilt,
+    rebuiltBy,
     errors,
     warnings,
     diagnostics,
