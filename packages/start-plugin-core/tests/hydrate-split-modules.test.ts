@@ -4,6 +4,7 @@ import {
   compileCode,
   compileFirstChunk,
   compileHydrate,
+  createStartCompiler,
   evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
@@ -148,6 +149,65 @@ export function Page() { return <Hydrate {...opts}><p>child</p></Hydrate> }`,
     },
   )
 
+  test('server: a split={false} boundary loses a fallback passed through a spread too', async () => {
+    const { parent } = await compileHydrate(
+      'server',
+      `${head}export function Page() {
+  return <Hydrate split={false} {...{ fallback: <p>server-fallback</p> }}><p>child</p></Hydrate>
+}`,
+    )
+    expect(await getModuleErrors(parent)).toEqual([])
+    expect(parent).not.toContain('server-fallback')
+    expect(parent).toContain('<p>child</p>')
+  })
+
+  test('server: a computed spread key read from a binding named fallback is kept', async () => {
+    const { parent } = await compileHydrate(
+      'server',
+      `${head}const fallback = 'title'
+export function Page() {
+  return <Hydrate {...{ [fallback]: 'kept-title', fallback: <p>server-fallback</p> }}><p>child</p></Hydrate>
+}`,
+    )
+    expect(parent).toContain('kept-title')
+    expect(parent).not.toContain('server-fallback')
+  })
+
+  // The parent passes the chunk's preload function (`p`) to boundaries that
+  // may receive a `prefetch` prop, also when it comes from a spread.
+  test.each([
+    {
+      name: 'an object literal with prefetch',
+      setup: '',
+      spread: '{...{ when: idle(), prefetch: idle() }}',
+    },
+    {
+      name: 'a single-use object with prefetch',
+      setup: 'const opts = { prefetch: idle() }\n',
+      spread: '{...opts}',
+    },
+    {
+      name: 'a computed key',
+      setup: '',
+      spread: '{...{ [props.key]: idle() }}',
+    },
+    { name: 'a nested spread', setup: '', spread: '{...{ ...props.rest }}' },
+  ])(
+    'client: a spread with $name gives the boundary its preload',
+    async ({ setup, spread }) => {
+      const { parent } = await compileHydrate(
+        'client',
+        `${head}import { idle } from '@tanstack/react-start/hydration'
+export function Page(props) {
+  ${setup}return <Hydrate ${spread}><p>child</p></Hydrate>
+}`,
+      )
+      expect(await getModuleErrors(parent)).toEqual([])
+      expect(parent).toMatch(/\sp=\{[\w$]+\}/)
+      expect(parent).toMatch(/=\s*[\w$]+\.preload\b/)
+    },
+  )
+
   // Source: Qwik optimizer example_functional_component_capture_props
   test('server: params used only by the fallback keep later params in place', async () => {
     const { parent } = await compileHydrate(
@@ -230,6 +290,52 @@ export function Other({ early }) {
       '<p>early</p>',
       '<p>late</p>',
     ])
+  })
+
+  // The route code splitter compiles a route's split component under the
+  // route file's id with its own query (`?tsr-split=component`): the
+  // boundaries keep the ids the server renders, and their chunks load.
+  test('client: a module compiled under an id with another query keeps the server boundary ids', async () => {
+    const code = `${head}export function Page() {
+  return <div><Hydrate><p>one</p></Hydrate><Hydrate><p>two</p></Hydrate></div>
+}`
+    const server = await compileHydrate('server', code)
+    const plugin = createHydrateCompilerPlugin()
+    const { compile } = createStartCompiler({
+      env: 'client',
+      compilerPlugins: [plugin],
+    })
+    const parent = (await compile(
+      code,
+      '/test/src/module.tsx?tsr-split=component',
+    ))!
+    expect(getBoundaryIds(parent)).toEqual(getBoundaryIds(server.parent))
+    const rendered: Array<unknown> = []
+    for (const chunkId of getChunkIds(parent)) {
+      rendered.push(await renderChunk(loadChunk(plugin, 'client', chunkId)!))
+    }
+    expect(rendered.sort()).toEqual(['<p>one</p>', '<p>two</p>'])
+  })
+
+  test('client: a split={false} boundary nested in another does not shift the ids of later boundaries', async () => {
+    const code = `${head}export function Page() {
+  return <div><Hydrate><section><Hydrate split={false}><b>inline</b></Hydrate></section></Hydrate><Hydrate><p>second</p></Hydrate></div>
+}`
+    const server = await compileHydrate('server', code)
+    const { parent, chunks } = await compileHydrate('client', code)
+    expect(getBoundaryIds(parent)).toEqual(getBoundaryIds(server.parent))
+    expect(await renderChunk(chunks[1]!)).toBe('<p>second</p>')
+  })
+
+  test('client: a call whose name only contains "use" is split', async () => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `${head}import { houseNumber } from './format'
+export function Page() {
+  return <Hydrate><p>{houseNumber()}</p></Hydrate>
+}`,
+    )
+    expect(chunks[0]).toContain('houseNumber()')
   })
 
   // Source: Qwik optimizer example_strip_exports_used
@@ -340,6 +446,56 @@ export function Page() {
     expect(
       loadChunk(plugin, 'client', '/test/src/module.tsx?other=1'),
     ).toBeNull()
+  })
+
+  test('client: the chunks of a module stay loadable after another module is compiled', async () => {
+    const plugin = createHydrateCompilerPlugin()
+    const { compile } = createStartCompiler({
+      env: 'client',
+      compilerPlugins: [plugin],
+    })
+    const first = (await compile(
+      `${head}export function A() { return <Hydrate><p>first</p></Hydrate> }`,
+      '/test/src/first.tsx',
+    ))!
+    const second = (await compile(
+      `${head}export function B() { return <Hydrate><p>second</p></Hydrate> }`,
+      '/test/src/second.tsx',
+    ))!
+    expect(loadChunk(plugin, 'client', getChunkIds(first)[0]!)).toContain(
+      '<p>first</p>',
+    )
+    expect(loadChunk(plugin, 'client', getChunkIds(second)[0]!)).toContain(
+      '<p>second</p>',
+    )
+  })
+
+  test('client: invalidating a module in an environment without Hydrate sources is a no-op', () => {
+    const { compiler } = createStartCompiler({
+      env: 'client',
+      compilerPlugins: [createHydrateCompilerPlugin()],
+    })
+    expect(compiler.invalidateModule('/test/src/other.tsx')).toBe(false)
+  })
+
+  // The bundler may load a chunk with the source module's code before the
+  // plugin compiled that module (e.g. in a fresh build worker); the framework
+  // is then read from the code.
+  test('client: a Solid chunk loads from the code the bundler supplies', async () => {
+    const { parent } = await compileHydrate(
+      'client',
+      `${head}export function Page() { return <Hydrate><p>react</p></Hydrate> }`,
+    )
+    const id = getChunkIds(parent)[0]!
+    const chunk = createHydrateCompilerPlugin().loadVirtualModule?.({
+      id,
+      code: `import { Hydrate } from '@tanstack/solid-start'
+export function Page() { return <Hydrate><p>solid</p></Hydrate> }`,
+      root: '/test',
+      env: 'client',
+      envName: 'client',
+    })
+    expect(chunk?.code).toContain('<p>solid</p>')
   })
 
   // Source: Qwik optimizer example_capture_imports,
