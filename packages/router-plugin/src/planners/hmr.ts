@@ -318,14 +318,15 @@ export function planHmrBlock(
  * React: each component a split chunk exports carries the route-HMR identity
  * marker (`$$tsrRefreshId`), compared by the runtime when the re-imported
  * chunk arrives: the same identity is kept for React Refresh to patch in
- * place, another one is swapped in.
+ * place, another one is swapped in. Start's Hydrate planner marks its chunks'
+ * components in the same format (`<chunk id> <name>`).
  */
 function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
   for (const c of round.splitComponents) {
     if (c.valueSym !== null && ctx.symbols.isImport(c.valueSym)) {
-      // a foreign module's export (an imported binding or a member of one)
-      // is not this module's to mark: React Refresh registers it where it
-      // is declared, and the object may be frozen
+      // a foreign module's export is not this module's to mark: React Refresh
+      // registers it where it is declared, and the object may be frozen (a
+      // member of an import, `C.NotFound`, isn't listed for the same reason)
       continue
     }
     // identity = the module React Refresh registers the binding in (where

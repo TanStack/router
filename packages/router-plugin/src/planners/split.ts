@@ -15,7 +15,7 @@ import {
   siblingSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
-import { identifierSymbol, pascal } from './route'
+import { identifierSymbol, isMemberOfImport, pascal } from './route'
 import { COMPONENT_KEYS } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
@@ -243,7 +243,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       home: g.output,
       by: ROUTER_PLANNER,
     })
-    if (isComponent) {
+    if (isComponent && !isMemberOfImport(ctx, d.valueNode)) {
       round.splitComponents.push({ output: g.output, exported, valueSym })
     }
 

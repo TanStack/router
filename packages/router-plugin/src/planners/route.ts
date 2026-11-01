@@ -736,6 +736,19 @@ export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
 }
 
 /** The module-level symbol an identifier value denotes, or null. */
+/** Whether a value is a member of an imported binding (`C.NotFound` of `import * as C`). */
+export function isMemberOfImport(ctx: PlanContext, value: Node): boolean {
+  let v = unwrapExpression(value)
+  if (v.type !== 'MemberExpression') {
+    return false
+  }
+  while (v.type === 'MemberExpression') {
+    v = unwrapExpression(v.object)
+  }
+  const sym = identifierSymbol(ctx, v)
+  return sym !== null && ctx.symbols.isImport(sym)
+}
+
 export function identifierSymbol(
   ctx: PlanContext,
   value: Node,

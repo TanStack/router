@@ -269,3 +269,27 @@ export const Route = createFileRoute('/')({ component: page${options} })
     ).toEqual(inPlace)
   })
 })
+
+// A frozen foreign component a split option reads through a namespace: the
+// chunk doesn't mark it, as it doesn't mark one imported by name. The mark
+// would throw as the chunk evaluates.
+test.for([
+  ['a named import', `import { Page } from '../page'`, 'Page'],
+  ['a namespace member', `import * as Pages from '../page'`, 'Pages.Page'],
+] as const)(
+  'vite: a frozen component given as %s renders',
+  { timeout: 60_000 },
+  async ([, imports, value], { onTestFinished }: TestContext) => {
+    await openRouteHmrPage({
+      onTestFinished,
+      files: {
+        'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
+        'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${imports}
+export const Route = createFileRoute('/')({ component: ${value} })
+`,
+      },
+      ready: 'frozen page',
+    })
+  },
+)
