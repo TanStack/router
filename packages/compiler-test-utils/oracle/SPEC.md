@@ -377,7 +377,7 @@ dir)` is not a conflict by itself.
   unobservable identity may be copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts. Amended:
   today's compiler copies an exported binding into the chunk by rule, so that the chunk never imports the module the
   route module re-exports it from, only when the copy is a closure of functions and primitive constants nothing
-  writes (one instance for every importer of the route file, a second one of the function in the chunk; KNOWN-BUGS
+  writes and whose identity nothing observes (`new`, `instanceof`, `===`, `.prototype`) (one instance for every importer of the route file, a second one of the function in the chunk; KNOWN-BUGS
   "The split chunk copies a pure exported function"). Everything with an identity or state (a class, an object or
   array, a call result, a regex, a written binding, an effect, an augmented binding) exists once: `instanceof`, a
   context's Provider and consumer, a sentinel, a registry and a subscriber list hold across the route's chunks and

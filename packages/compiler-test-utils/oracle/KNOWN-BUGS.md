@@ -300,7 +300,7 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
 SPLITTING.md`): a chunk never imports the extracted module of a copyable export the route module
   re-exports, so the export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks`
   group), at the price of a second instance of a function or component whose closure holds only functions and
-  primitive constants nothing writes; a class, an object, a call result, a regex, a written binding, state, effects
+  primitive constants nothing writes and whose identity nothing observes; a class, an object, a call result, a regex, a written binding, state, effects
   and augmented bindings are never copied (one instance, imported from the extracted module or the route module).
   SPEC J2.4 (amended). No pins: the identity rows were deleted with the decision (a by-rule outcome is not a bug); the
   rendering rows next to them remain

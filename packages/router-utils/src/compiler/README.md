@@ -65,7 +65,8 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
   chunks: when a copy would be indistinguishable from the original, the chunk carries its own copy and never
   imports the extracted module. A copy carries the binding and what it reaches that no output keeps once, and
-  every piece carried must be a function or a primitive constant nothing writes (`isDuplicable`: types and imports
+  every piece carried must be a function or a primitive constant nothing writes and whose identity nothing observes
+  (`new`, `instanceof`, `===`, `.prototype`; `isDuplicable`: types and imports
   are free; another export is imported from its module or copied under its own decision; an effectful cluster
   stays in the route module or moves, one instance). Anything with an identity in that closure (an object or array
   literal, a class, a `new`, a call result however pure, a regex, an enum) or any written binding (a `listeners`

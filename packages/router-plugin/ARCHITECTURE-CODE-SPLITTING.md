@@ -40,7 +40,7 @@ a copy is indistinguishable from the original: its extracted module serves other
 is dropped when nobody imports it, while each chunk copies the binding, so the chunk never depends on where the
 bundler places a module the route module re-exports (Rolldown < 1.1.5 and a user `manualChunks` group merging into
 the entry made it eager). The copy carries the binding and what it reaches that exists nowhere else, and every piece
-must be a function or a primitive nothing writes: an object, array, class, call result or regex in that closure, or
+must be a function or a primitive nothing writes and whose identity nothing observes: an object, array, class, call result or regex in that closure, or
 a written binding, has an identity or state, so such an export is not copied and the chunk imports its extracted
 module (one instance, lazy wherever the bundler leaves the module to the chunk; the build warns when the module
 lands in the entry). Importers of the route file and the chunk then hold two instances of a function at most. In
