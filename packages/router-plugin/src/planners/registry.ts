@@ -17,7 +17,9 @@ export class RouteRegistryView implements RouteRegistry {
   /** The registry entry of a file, by its normalized path (scanned or real). */
   lookup(path: string): RouteEntryFacts | null {
     const entry = this.context.routesByFile.get(normalizePath(path))
-    return entry ? { routeId: entry.routeId } : null
+    return entry
+      ? { routeId: entry.routeId, routerConstructor: entry.routerConstructor }
+      : null
   }
 
   /** The route-registry fingerprint of a file (`HostServices.routes`). */

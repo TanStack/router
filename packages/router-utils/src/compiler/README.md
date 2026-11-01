@@ -158,7 +158,11 @@ directives, never license comments.
 - Across modules, **summaries**: the export table and the abstract values of exports, computed from the module's
   _raw_ text (filesystem read or exact-id virtual load, never the bundler's transform pipeline), environment-
   independent, holding no AST. `ExportResolver` follows re-export chains over summaries. Known TanStack packages are
-  recognised by specifier and never resolved.
+  recognised by specifier and never resolved. A module is therefore parsed once for its summary (when an importer's
+  prefetch asks) and once by its own transform; a transform's parse is never reused as a summary (the importer always
+  asks first). The one import answered without a read is a route file's `Route` when the route registry says the
+  router package's constructor made it (`RouteRegistry.lookup().routerConstructor`): the Start prefetch takes it as a
+  value it knows and records a `route-registry` dependency, so the route tree's imports read no route file.
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).

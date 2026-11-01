@@ -35,6 +35,14 @@ export type RouteFileAnalysis =
       kind: 'route'
       output: string | null
       props: RouteProps
+      /**
+       * Whether `Route` is made by something other than the router package's
+       * `createFileRoute`/`createLazyFileRoute` (checked by binding): the
+       * app's own constructor or factory, a re-export, an import. A compiler
+       * may take the router's own route as a value it knows (no Start value)
+       * without reading the file; a foreign one it must read.
+       */
+      foreign: boolean
       diagnostics: Array<FileDiagnostic>
     }
 
@@ -334,6 +342,7 @@ export function analyzeRouteFile(
       kind: 'route',
       output: null,
       props: unknownProps,
+      foreign: true,
       diagnostics,
     }) as const
 
@@ -452,6 +461,7 @@ export function analyzeRouteFile(
         kind: 'route',
         output: null,
         props,
+        foreign: false,
         diagnostics: [
           diagnosticAt(
             file,
@@ -494,6 +504,7 @@ export function analyzeRouteFile(
     kind: 'route',
     output: splices.length ? applySplices(source, splices) : null,
     props,
+    foreign: false,
     diagnostics: [],
   }
 }

@@ -13,6 +13,7 @@ import {
   applyCall,
   applyMember,
   buildSummary,
+  identify,
   isExpressionWrapper,
   isKnownSpecifier,
   joinValues,
@@ -207,6 +208,24 @@ export async function prefetchStartValues(
     const hit = memo.get(key)
     if (hit) {
       return hit
+    }
+    // The `Route` of a route file the registry lists as made by the router
+    // package's constructor (the generator checked the callee's binding) is
+    // a route, never a Start value: answered from the registry entry, a
+    // dependency of this plan, instead of the file's summary (the route tree
+    // imports every route; reading them all gave it nothing but this).
+    if (name === 'Route') {
+      const routes = ctx.host.routes
+      const filePath = identify(canonicalId).path
+      if (routes?.lookup(filePath)?.routerConstructor) {
+        ctx.ledger.record({
+          kind: 'route-registry',
+          path: filePath,
+          digest: routes.digestFor(filePath),
+        })
+        memo.set(key, UNKNOWN)
+        return UNKNOWN
+      }
     }
     const inner = path.enter(key)
     if (!inner) {

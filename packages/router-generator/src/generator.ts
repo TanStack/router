@@ -51,7 +51,12 @@ export type GeneratorEvent = FileEvent | { type: 'rerun' } | { type: 'build' }
  */
 type FileFacts =
   | { included: false }
-  | { included: true; props: RouteProps | undefined }
+  | {
+      included: true
+      props: RouteProps | undefined
+      /** `Route` is the router package's `createFileRoute`/`createLazyFileRoute` call (`RouteFileAnalysis.foreign` false). */
+      routerConstructor: boolean
+    }
 
 /** A file's modification time and size, to tell it unchanged without reading it. */
 interface FileStamp {
@@ -432,17 +437,18 @@ export class Generator {
 
     // What the re-read files changed: the tree's routes, or only the
     // recorded options of some
-    const changes = { routes: false, props: false }
+    const changes = { routes: false, props: false, registry: false }
     const consider = (key: string, before: FileState | undefined) => {
       const after = this.files.get(key)
       if (after?.facts.included !== before?.facts.included) {
         changes.routes = true
-      } else if (
-        after?.facts.included &&
-        before?.facts.included &&
-        !sameProps(after.facts.props, before.facts.props)
-      ) {
-        changes.props = true
+      } else if (after?.facts.included && before?.facts.included) {
+        if (!sameProps(after.facts.props, before.facts.props)) {
+          changes.props = true
+        }
+        if (after.facts.routerConstructor !== before.facts.routerConstructor) {
+          changes.registry = true
+        }
       }
     }
 
@@ -503,6 +509,10 @@ export class Generator {
       if (changes.props) {
         this.rebuildModel()
         this.notifyPlugins()
+      }
+      if (changes.registry) {
+        // the tree is as before, but what the registry says of a file is not
+        this.routesByFile = this.computeRoutesByFile()
       }
       await this.writePending()
       return
@@ -705,7 +715,14 @@ export class Generator {
         const errors = isVue ? [] : routeFileErrors(content, file)
         return errors.length > 0
           ? this.unparsableFacts(file, content, errors, previous)
-          : { content, facts: { included: true, props: undefined } }
+          : {
+              content,
+              facts: {
+                included: true,
+                props: undefined,
+                routerConstructor: false,
+              },
+            }
       }
       const scaffold = scaffoldRouteFile({
         target: this.config.target,
@@ -717,7 +734,7 @@ export class Generator {
       return {
         content,
         pending: scaffold,
-        facts: { included: true, props: undefined },
+        facts: { included: true, props: undefined, routerConstructor: false },
       }
     }
 
@@ -727,7 +744,10 @@ export class Generator {
     }
     if (isVue) {
       // Single-file components are pieces the generator never edits
-      return { content, facts: { included: true, props: undefined } }
+      return {
+        content,
+        facts: { included: true, props: undefined, routerConstructor: false },
+      }
     }
 
     if (node.routePath) {
@@ -777,7 +797,11 @@ export class Generator {
     return {
       content,
       pending: output !== content ? output : undefined,
-      facts: { included: true, props: analysis.props },
+      facts: {
+        included: true,
+        props: analysis.props,
+        routerConstructor: !analysis.foreign,
+      },
     }
   }
 
@@ -836,7 +860,10 @@ export class Generator {
       if (!state?.facts.included) {
         continue
       }
-      const value = { routeId: node.routePath ?? `/${rootPathId}` }
+      const value: GetRoutesByFileMapResultValue = {
+        routeId: node.routePath ?? `/${rootPathId}`,
+        routerConstructor: state.facts.routerConstructor,
+      }
       map.set(node.fullPath, value)
       if (state.realPath) {
         real.push([state.realPath, value])

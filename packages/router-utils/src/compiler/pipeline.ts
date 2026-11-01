@@ -532,12 +532,6 @@ async function runAttempt(
       verifyPlan(plan, emitPlan, input.code, identity)
     }
   }
-  // summary publication under the domain rule (no extra read: only when the raw revision is known and equal)
-  const known = host.rawFacts.peekRevision(identity.canonicalId)
-  if (known && !known.stale && known.revision === rev) {
-    host.rawFacts.publish(identity.canonicalId, rev, t0)
-  }
-
   // ---- C: per-output edge policy (async) ----------------------------------------
   let inputMap: InputSourceMap | null | undefined
   const readInputMap = (): InputSourceMap | null => {
