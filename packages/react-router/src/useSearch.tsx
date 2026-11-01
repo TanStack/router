@@ -5,7 +5,9 @@ import type {
 } from './structuralSharing'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseSearch,
   StrictOrFrom,
   ThrowConstraint,
@@ -45,8 +47,8 @@ export type UseSearchOptions<
   > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
-export type UseSearchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseSearchRoute<out TFrom, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
   TThrow extends boolean = true,
@@ -61,6 +63,31 @@ export type UseSearchRoute<out TFrom> = <
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => ThrowOrOptional<UseSearchResult<TRouter, TFrom, true, TSelected>, TThrow>
+
+/**
+ * The signature of `useSearch`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useSearch` of this type.
+ */
+export type UseSearchFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TThrow extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseSearchOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected,
+    TStructuralSharing
+  >,
+) => ThrowOrOptional<
+  UseSearchResult<TRouter, TFrom, TStrict, TSelected>,
+  TThrow
+>
 
 /**
  * Read and select the current route's search parameters with type-safety.

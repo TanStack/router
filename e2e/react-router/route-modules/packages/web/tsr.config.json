@@ -1,0 +1,36 @@
+{
+  "routesDirectory": "./src/routes",
+  "generatedRouteTree": "./src/routeTree.gen.ts",
+  "routeModules": {
+    "includes": [
+      { "module": "@route-modules/storefront", "at": "/shop" },
+      {
+        "module": "@route-modules/account",
+        "parent": "/_authenticated",
+        "at": "/account"
+      },
+      {
+        "module": "@route-modules/team",
+        "parent": "/orgs/$orgId",
+        "at": "/team"
+      },
+      {
+        "module": "@route-modules/billing",
+        "parent": "/orgs/$orgId",
+        "at": "/billing"
+      },
+      {
+        "module": "@route-modules/settings",
+        "parent": "/orgs/$orgId",
+        "at": "/settings",
+        "as": "orgSettings"
+      },
+      {
+        "module": "@route-modules/settings",
+        "parent": "/people/$personId",
+        "at": "/settings",
+        "as": "personSettings"
+      }
+    ]
+  }
+}

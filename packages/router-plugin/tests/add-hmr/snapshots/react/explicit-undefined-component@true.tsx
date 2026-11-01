@@ -27,17 +27,24 @@ if (import.meta.hot) {
   const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
     const router = window.__TSR_ROUTER__
     const oldRoute = router.routesById[routeId]
-    if (!oldRoute) {
-      return
+    const liveRoutes = oldRoute
+      ? [oldRoute]
+      : Object.values(router.routesById).filter(
+          (route) =>
+            route._template && route.id.replace(/#[^:]*:/, ':') === routeId,
+        )
+    const previousRoute = oldRoute ?? liveRoutes[0]?._template
+    if (!previousRoute || previousRoute === newRoute) {
+      return false
     }
-    const generatedRouteOptionKeys = new Set(['id', 'path', 'getParentRoute'])
-    const generatedRouteOptions = {}
-    generatedRouteOptionKeys.forEach((key) => {
-      if (key in oldRoute.options) {
-        generatedRouteOptions[key] = oldRoute.options[key]
-      }
-    })
-    const oldHasShellComponent = 'shellComponent' in oldRoute.options
+    const generatedRouteOptionKeys = [
+      'id',
+      'path',
+      'getParentRoute',
+      '_module',
+      '_uses',
+    ]
+    const oldHasShellComponent = 'shellComponent' in previousRoute.options
     const newHasShellComponent = 'shellComponent' in newRoute.options
     const preserveComponentIdentity =
       oldHasShellComponent === newHasShellComponent
@@ -50,19 +57,38 @@ if (import.meta.hot) {
     ]
     if (preserveComponentIdentity) {
       componentKeys.forEach((key) => {
-        if (key in oldRoute.options && key in newRoute.options) {
-          newRoute.options[key] = oldRoute.options[key]
+        if (key in previousRoute.options && key in newRoute.options) {
+          newRoute.options[key] = previousRoute.options[key]
         }
       })
     }
-    const nextOptions = { ...newRoute.options, ...generatedRouteOptions }
-    oldRoute.options = nextOptions
-    oldRoute.update(nextOptions)
-    router._replaceRouteChunk(oldRoute, newRoute.lazyFn)
+    const updateRoute = (route) => {
+      const nextOptions = { ...newRoute.options }
+      generatedRouteOptionKeys.forEach((key) => {
+        if (key in route.options) {
+          nextOptions[key] = route.options[key]
+        }
+      })
+      route.options = nextOptions
+      route.update(nextOptions)
+    }
+    liveRoutes.forEach((liveRoute) => {
+      updateRoute(liveRoute)
+      router._replaceRouteChunk(liveRoute, newRoute.lazyFn)
+    })
+    if (!oldRoute) {
+      updateRoute(previousRoute)
+    }
     router.setRoutes(router.buildRouteTree())
-    syncHotRouteExport(oldRoute)
+    syncHotRouteExport(previousRoute)
+    if (!oldRoute) {
+      liveRoutes.forEach((liveRoute) => {
+        liveRoute._template = newRoute
+      })
+    }
     router.resolvePathCache.clear()
     void router._refreshRoute?.()
+    return true
     function syncHotRouteExport(liveRoute) {
       newRoute.options = liveRoute.options
       newRoute.parentRoute = liveRoute.parentRoute
@@ -76,12 +102,12 @@ if (import.meta.hot) {
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
-      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
-      : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
+  if (
+    initialRouteId &&
+    typeof window !== 'undefined' &&
+    window.__TSR_ROUTER__ &&
     handleRouteUpdate(initialRouteId, Route)
+  ) {
     hotData['tsr-route-update-handled'] = Route
   }
   hot.accept((newModule) => {

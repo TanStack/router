@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
@@ -11,6 +12,8 @@ import type {
   AnyRouter,
   ParseRoute,
   RegisteredRouter,
+  RegisteredRouterOf,
+  RouteScopeMarker,
 } from '@tanstack/router-core'
 
 type ShouldBlockFnLocation<
@@ -30,14 +33,21 @@ type AnyShouldBlockFnLocation = ShouldBlockFnLocation<any, any, any, any>
 type MakeShouldBlockFnLocationUnion<
   TRouter extends AnyRouter = RegisteredRouter,
   TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
-> = TRoute extends any
+> = TRouter['routeTree'] extends RouteScopeMarker
   ? ShouldBlockFnLocation<
-      TRoute['id'],
-      TRoute['fullPath'],
-      TRoute['types']['allParams'],
-      TRoute['types']['fullSearchSchema']
+      string,
+      string,
+      Record<string, string | undefined>,
+      Record<string, unknown>
     >
-  : never
+  : TRoute extends any
+    ? ShouldBlockFnLocation<
+        TRoute['id'],
+        TRoute['fullPath'],
+        TRoute['types']['allParams'],
+        TRoute['types']['fullSearchSchema']
+      >
+    : never
 
 type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
   | {
@@ -134,6 +144,16 @@ function _resolveBlockerOpts(
   }
 }
 
+/** The generated module hook observes navigation across the entire application. */
+export type UseBlockerFn<TDefaultRegister> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TWithResolver extends boolean = false,
+>(
+  opts: UseBlockerOpts<TRouter, TWithResolver>,
+) => TWithResolver extends true
+  ? Solid.Accessor<BlockerResolver<TRouter>>
+  : void
+
 export function useBlocker<
   TRouter extends AnyRouter = RegisteredRouter,
   TWithResolver extends boolean = false,
@@ -171,14 +191,19 @@ export function useBlocker(
 
   const router = useRouter()
 
-  const [resolver, setResolver] = Solid.createSignal<BlockerResolver>({
+  const idle: BlockerResolver = {
     status: 'idle',
     current: undefined,
     next: undefined,
     action: undefined,
     proceed: undefined,
     reset: undefined,
-  })
+  }
+  if (isServer ?? router.isServer) {
+    return () => idle
+  }
+
+  const [resolver, setResolver] = Solid.createSignal<BlockerResolver>(idle)
 
   Solid.createEffect(() => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {

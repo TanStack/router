@@ -1,0 +1,486 @@
+/*
+ * Acme Store: the route-module fixtures drawn as a floor plan. Every route
+ * module is a room: a wall line, a zoning tint and a room tag with its package
+ * and mount path. Violet marks the active route and nothing else.
+ */
+
+:root {
+  color-scheme: light;
+
+  --ground: #f4f6f9;
+  --sheet: #ffffff;
+  --ink: #1f2328;
+  --ink-2: #4b535c;
+  --ink-3: #59616b;
+  --line: #d3d7db;
+  --wall: #2a3036;
+  --route: #5b3fd1;
+  --route-wash: #e9e5fb;
+  /* Link underlines: 3:1 or better on the ground and on every zone. */
+  --underline: color-mix(in srgb, var(--wall) 55%, transparent);
+  --zone: #eef0f2;
+
+  --font:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  /* Plan lettering: a local condensed face where there is one. */
+  --font-lettering:
+    'Avenir Next Condensed', 'Roboto Condensed', 'Arial Narrow', ui-sans-serif,
+    system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+
+  /* A drafted wall: two lines with the wall's thickness between them. */
+  --wall-line: 6px double var(--wall);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Zoning: one tint per module, as on a zoning plan. */
+[data-route-module='@start-route-modules/catalog'] {
+  --zone: #e1ebdd;
+}
+[data-route-module='@start-route-modules/notes'] {
+  --zone: #e7e9e4;
+}
+[data-route-module='@start-route-modules/team'] {
+  --zone: #d9eeeb;
+}
+[data-route-module='@start-route-modules/settings'] {
+  --zone: #efecd2;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  scrollbar-color: var(--line) transparent;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 400 15px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--route-wash);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--wall);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--s3);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+h1 {
+  font-size: 30px;
+}
+h2 {
+  font-size: 22px;
+}
+h3 {
+  font-size: 18px;
+}
+
+p {
+  margin: 0 0 var(--s3);
+  max-width: 68ch;
+}
+
+code {
+  font: 500 0.92em var(--mono);
+}
+
+a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--underline);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 160ms var(--ease-out);
+}
+a:hover {
+  text-decoration-color: var(--ink);
+}
+
+button {
+  font: inherit;
+}
+
+/* Shell */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--s8);
+  min-height: 52px;
+  padding: 0 var(--s6);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand-mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--wall);
+}
+.brand small {
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s5);
+  font-size: 14px;
+}
+.nav a {
+  position: relative;
+  margin: 0 calc(-1 * var(--s1));
+  padding: var(--s3) var(--s1);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.nav a:hover {
+  color: var(--ink);
+}
+.nav a[data-status='active'] {
+  color: var(--route);
+}
+.nav a[data-status='active']::after {
+  content: '';
+  position: absolute;
+  inset: auto var(--s1) 0;
+  height: 2px;
+  background: var(--route);
+}
+.nav-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s4);
+  padding-left: var(--s5);
+  border-left: 1px solid var(--line);
+}
+
+/* Whether the page has hydrated: a hollow plan dot until then. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 0 auto;
+  color: var(--ink-3);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ink-3);
+  border-radius: 50%;
+}
+.status.hydrated {
+  color: var(--ink);
+}
+.status.hydrated::before {
+  background: var(--wall);
+  border-color: var(--wall);
+}
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--s10) var(--s6) 120px;
+}
+
+.lead {
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+/* Rooms: the signature. A module's region is a room with a wall line, its
+   zoning tint, and a tag on the wall naming the package and its mount. */
+
+.room {
+  margin-top: var(--s5);
+  padding: 0 var(--s6) var(--s6);
+  background: var(--zone) padding-box;
+  border: var(--wall-line);
+  animation: room-in 420ms var(--ease-out);
+}
+.room .room {
+  margin-top: var(--s8);
+}
+.room > :last-child {
+  margin-bottom: 0;
+}
+/* A room's title has one size whatever its level. */
+.room h1 {
+  font-size: 22px;
+}
+
+/* The tag sits on the wall: pulled up onto its center line, it wraps on
+   narrow screens instead of clipping the resolved path. Names and paths keep
+   their source case: they are identifiers maintainers copy. */
+.room-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s2);
+  width: fit-content;
+  max-width: 100%;
+  margin: -14px 0 var(--s5) calc(var(--s4) - var(--s6));
+  padding: 2px var(--s2);
+  background: var(--sheet);
+  border: 1px solid var(--wall);
+  font: 600 12px/16px var(--font-lettering);
+  font-stretch: condensed;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.room-tag code {
+  font: 500 11px/16px var(--mono);
+  color: var(--ink-2);
+}
+.room-tag .resolved {
+  color: var(--route);
+}
+
+@keyframes room-in {
+  from {
+    background-color: var(--sheet);
+  }
+}
+
+/* Lists, facts and controls inside rooms */
+
+.rows {
+  margin: 0 0 var(--s4);
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid color-mix(in srgb, var(--wall) 22%, transparent);
+}
+.rows > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--wall) 22%, transparent);
+}
+
+.rows .meta {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: baseline;
+  gap: var(--s2) var(--s6);
+  margin: 0 0 var(--s5);
+  font-variant-numeric: tabular-nums;
+}
+.facts dt {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.facts dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s5);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--s4);
+  color: var(--sheet);
+  background: var(--wall);
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+.button:hover {
+  background: var(--ink);
+}
+.button:active {
+  transform: translateY(1px);
+}
+.button[aria-busy='true'] {
+  background: var(--ink-3);
+  cursor: progress;
+}
+
+.price {
+  margin: 0 0 var(--s4);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.server-state {
+  margin: 0 0 var(--s5);
+  padding: var(--s3) 0;
+  border-block: 1px solid color-mix(in srgb, var(--wall) 22%, transparent);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.server-state p {
+  margin: 0;
+}
+
+.data {
+  font: 500 13px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+/* A value the server just sent again: one pass of a highlighter. */
+.fresh {
+  animation: fresh 1600ms var(--ease-out);
+}
+@keyframes fresh {
+  from {
+    background-color: #f7e7a1;
+  }
+}
+
+/* Key plan on the home page: every room where the application mounts it.
+   A host route that is not a module is a plot boundary around its rooms. */
+
+.plan {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--s8) var(--s6);
+  margin-top: var(--s10);
+}
+.plan .room {
+  margin-top: 0;
+}
+.plan .room .room {
+  margin-top: var(--s6);
+}
+.plan .room > p:not(.room-tag) {
+  color: var(--ink-2);
+}
+.plot {
+  grid-column: 1 / -1;
+  padding: 0 var(--s6) var(--s6);
+  border: 1.5px dashed var(--ink-3);
+}
+.plot-rooms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: start;
+  gap: var(--s8) var(--s6);
+  padding-top: var(--s3);
+}
+.plot > .room-tag {
+  margin-top: -12px;
+  margin-bottom: var(--s4);
+  border-style: dashed;
+  border-color: var(--ink-3);
+  font-weight: 500;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    position: static;
+    flex-wrap: wrap;
+    gap: 0 var(--s4);
+    padding: var(--s2) var(--s4) 0;
+  }
+  /* One scrolling row below the brand. */
+  .nav {
+    order: 1;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    gap: var(--s2);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav a,
+  .nav-group {
+    flex: none;
+  }
+  .nav-group {
+    gap: var(--s2);
+    padding-left: var(--s2);
+  }
+  .page {
+    padding: var(--s6) var(--s4) 120px;
+  }
+  .room {
+    padding: 0 var(--s4) var(--s4);
+  }
+  .room-tag {
+    margin-left: 0;
+  }
+  .plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .plot {
+    padding: 0 var(--s4) var(--s4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room,
+  .fresh {
+    animation: none;
+  }
+}

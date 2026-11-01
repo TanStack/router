@@ -1,0 +1,19 @@
+{
+  "target": "solid",
+  "routeModules": {
+    "includes": [
+      {
+        "module": "@route-modules/solid-settings",
+        "parent": "/orgs/$orgId",
+        "at": "/settings",
+        "as": "orgSettings"
+      },
+      {
+        "module": "@route-modules/solid-settings",
+        "parent": "/users/$userId",
+        "at": "/settings",
+        "as": "userSettings"
+      }
+    ]
+  }
+}

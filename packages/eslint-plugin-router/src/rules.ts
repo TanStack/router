@@ -1,5 +1,6 @@
 import * as createRoutePropertyOrder from './rules/create-route-property-order/create-route-property-order.rule'
 import * as routeParamNames from './rules/route-param-names/route-param-names.rule'
+import * as routeModuleImports from './rules/route-module-imports/route-module-imports.rule'
 import type { ESLintUtils } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from './types'
 
@@ -14,4 +15,5 @@ export const rules: Record<
 > = {
   [createRoutePropertyOrder.name]: createRoutePropertyOrder.rule,
   [routeParamNames.name]: routeParamNames.rule,
+  [routeModuleImports.name]: routeModuleImports.rule,
 }

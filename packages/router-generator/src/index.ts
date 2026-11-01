@@ -46,3 +46,29 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 export { rootPathId } from './filesystem/physical/rootPathId'
 
 export type { TransformContext, TransformOptions } from './transform/types'
+
+export {
+  getManifestPath as getRouteModuleManifestPath,
+  readManifest as readRouteModuleManifest,
+} from './route-module/manifest'
+export type {
+  ManifestInstalledModule,
+  ManifestRoute,
+  RouteModuleManifest,
+} from './route-module/manifest'
+export {
+  getInstalledRouteModuleDirectories,
+  resolveRouteModuleContext,
+} from './route-module/context'
+export type {
+  ResolvedMount,
+  RouteModuleContext,
+  ScopeModule,
+} from './route-module/context'
+export type {
+  ModuleDeclaration,
+  RouteModuleDeclaration,
+  RouteModulesOption,
+} from './route-module/declaration'
+
+export { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'

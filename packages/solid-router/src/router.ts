@@ -14,7 +14,7 @@ import type {
 } from './route'
 import type { JSX } from 'solid-js'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface RouterOptionsExtensions {
     /**
      * The default `component` a route should use if no component is provided.

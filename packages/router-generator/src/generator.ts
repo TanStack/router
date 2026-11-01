@@ -1,8 +1,12 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, realpathSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { rootRouteId } from '@tanstack/router-core'
+import {
+  getParamNames,
+  parseSegments,
+} from '@tanstack/router-core/_internal/route-module'
 import { logging } from './logger'
 import {
   isVirtualConfigFile,
@@ -29,6 +33,7 @@ import {
   getImportForRouteNode,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
+  inferFullPath,
   isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
@@ -42,8 +47,48 @@ import {
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
+import {
+  getHostPath,
+  getInstallationRouteId,
+  resolveRouteModuleContext,
+} from './route-module/context'
+import {
+  ROUTE_CONTRACT_FILE,
+  ROUTE_MODULE_FILE,
+  ROUTE_SCOPE_FILE,
+  START_MODULES_FILE,
+  buildRouteContractSource,
+  buildRouteModuleSource,
+  buildRouteNamespaceSource,
+  buildRouteScopeSource,
+  buildStartModulesSource,
+  getModuleIdentifier,
+  getMountVariableName,
+  getRouteNamespaceFile,
+} from './route-module/emit'
+import {
+  ROUTE_MODULE_MANIFEST_VERSION,
+  computeTopologyToken,
+  writeManifest,
+} from './route-module/manifest'
+import { findPackageRoot } from './route-module/declaration'
+import { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
+import { isPrerenderableRoute } from './routeClassification'
 import { transform } from './transform/transform'
 import { validateRouteParams } from './validate-route-params'
+import {
+  allocateGeneratedNames,
+  generatedPublicNames,
+  moduleBindingSuffixes,
+  routeBindingSuffixes,
+} from './generated-names'
+import { DEFAULT_ROUTE_TREE_FILE_HEADER } from './config'
+import type { RouteModuleContext } from './route-module/context'
+import type {
+  ManifestInstalledModule,
+  ManifestRoute,
+  RouteModuleManifest,
+} from './route-module/manifest'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -219,6 +264,11 @@ export class Generator {
   private plugins: Array<GeneratorPlugin> = []
   private static routeGroupPatternRegex = /\(.+\)/
   private physicalDirectories: Array<string> = []
+  /** Route-module role of this package, refreshed on every run. */
+  private routeModuleContext: RouteModuleContext | undefined
+  private originalRouteNames = new WeakMap<RouteNode, string>()
+  /** Files that change the route-module context (package.json, manifests). */
+  private routeModuleFiles: Array<string> = []
 
   /**
    * Token regexes are pre-compiled once here and reused throughout route processing.
@@ -295,13 +345,134 @@ export class Generator {
       : path.resolve(this.root, this.config.routesDirectory)
   }
 
+  /**
+   * The route files of the route tree by path, with their route ids: the
+   * package's own files and the files of the route modules it mounts.
+   */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
-    return new Map(
+    const moduleId =
+      this.routeModuleContext?.declaration.mode === 'module'
+        ? this.routeModuleContext.declaration.moduleId
+        : undefined
+    const map: GetRoutesByFileMapResult = new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
         filePath,
-        { routeId: cacheEntry.routeId },
+        {
+          routeId:
+            moduleId === undefined
+              ? cacheEntry.routeId
+              : cacheEntry.routeId === `/${rootPathId}`
+                ? `${moduleId}:`
+                : `${moduleId}:${cacheEntry.routeId}`,
+        },
       ]),
     )
+    for (const mount of this.routeModuleContext?.mounts ?? []) {
+      for (const { file, routeId } of mount.routeFiles) {
+        map.set(file, { routeId })
+      }
+    }
+    return map
+  }
+
+  /**
+   * The routes of the route modules mounted by this package, with their files
+   * and parent ids in this package's route tree (for integrations that index
+   * routes by id, such as Start's asset manifest).
+   */
+  public getMountedRouteModuleRoutes(): Array<{
+    id: string
+    parent: string
+    filePath: string | undefined
+    fullPath: string
+    prerender?: boolean
+  }> {
+    const context = this.routeModuleContext
+    const crawlingResult = this.crawlingResult
+    if (!context || !crawlingResult) {
+      return []
+    }
+    const ownModuleId =
+      context.declaration.mode === 'module'
+        ? context.declaration.moduleId
+        : undefined
+    const hostId = (node: RouteNode | undefined) =>
+      ownModuleId === undefined
+        ? (node?.routePath ?? rootRouteId)
+        : node
+          ? `${ownModuleId}:${node.routePath ?? ''}`
+          : `${ownModuleId}:`
+    const routes: Array<{
+      id: string
+      parent: string
+      filePath: string | undefined
+      fullPath: string
+      prerender?: boolean
+    }> = []
+    for (const mount of context.mounts) {
+      const mountNode = this.findMountNode(crawlingResult.acc, mount.key)
+      const files = new Map(
+        mount.routeFiles.map(({ file, routeId }) => [routeId, file]),
+      )
+      for (const route of mount.manifest.routes) {
+        routes.push({
+          id: getInstallationRouteId(mount, route.id),
+          parent: route.parent
+            ? getInstallationRouteId(mount, route.parent)
+            : hostId(mountNode.parent),
+          filePath: files.get(route.id),
+          fullPath:
+            `${mountNode.parent ? inferFullPath(mountNode.parent).replace(/\/$/, '') : ''}${mount.at ?? ''}${route.fullPath}` ||
+            '/',
+          prerender: route.prerender,
+        })
+      }
+    }
+    return routes
+  }
+
+  /**
+   * Files outside the routes directory that change the generated route tree:
+   * the package.json and the manifests of mounted and used route modules.
+   * Bundler integrations add them to their watchers.
+   */
+  /** Current provider tree paths used by client-only bundler resolution. */
+  public getRouteModuleClientTrees(): Array<{
+    filePath: string
+    clientFilePath: string
+  }> {
+    return [
+      ...new Map(
+        (this.routeModuleContext?.mounts ?? []).flatMap((mount) =>
+          mount.clientTrees.map((entry) => [entry.filePath, entry] as const),
+        ),
+      ).values(),
+    ]
+  }
+
+  /** Same page predicate for ordinary routes and installed module routes. */
+  public getPrerenderableRoutePaths(): Array<string> {
+    const own =
+      this.crawlingResult?.acc.routeNodes
+        .filter(isPrerenderableRoute)
+        .map(inferFullPath) ?? []
+    const mounted = this.getMountedRouteModuleRoutes()
+      .filter((route) => route.prerender)
+      .map((route) => route.fullPath)
+    return [
+      ...new Set(
+        [...own, ...mounted].filter((fullPath) => !fullPath.includes('$')),
+      ),
+    ]
+  }
+
+  private getClientRouteTreePath() {
+    const parsed = path.parse(this.generatedRouteTreePath)
+    return path.join(parsed.dir, `${parsed.name}.client${parsed.ext}`)
+  }
+
+  public getRouteModuleWatchFiles(): Array<string> {
+    return [...this.routeModuleFiles]
   }
 
   public async run(event?: GeneratorEvent): Promise<void> {
@@ -384,6 +555,54 @@ export class Generator {
 
   private async generatorInternal() {
     let writeRouteTreeFile: boolean | 'force' = false
+
+    // The route-module context depends on package.json and on the manifests
+    // of other packages: a change there regenerates the outputs even when no
+    // route file changed.
+    const previousRouteModuleHash = this.routeModuleContext?.hash
+    const packageRoot = findPackageRoot(this.root)
+    const candidateWatchFiles = new Set(
+      packageRoot ? [path.join(packageRoot, 'package.json')] : [],
+    )
+    this.routeModuleFiles = [...candidateWatchFiles]
+    this.routeModuleContext = resolveRouteModuleContext({
+      root: this.root,
+      routeModules: this.config.routeModules,
+      onWatchFile: (file) => {
+        candidateWatchFiles.add(file)
+        this.routeModuleFiles = [...candidateWatchFiles]
+      },
+      start: {
+        package: `@tanstack/${this.config.target}-start`,
+        generatedDirectory: path.dirname(this.generatedRouteTreePath),
+      },
+    })
+    if (this.routeModuleContext) {
+      if (this.config.disableTypes) {
+        throw new Error(
+          `[route modules] ${this.routeModuleContext.declaration.packageName}: route modules require TypeScript; "disableTypes" is not supported.`,
+        )
+      }
+      this.routeModuleFiles = [
+        ...new Set([
+          ...candidateWatchFiles,
+          path.join(
+            this.routeModuleContext.declaration.packageRoot,
+            'package.json',
+          ),
+          ...this.routeModuleContext.dependencyFiles,
+          ...this.routeModuleContext.watchFiles,
+        ]),
+      ]
+    } else {
+      const packageRoot = findPackageRoot(this.root)
+      this.routeModuleFiles = packageRoot
+        ? [path.join(packageRoot, 'package.json')]
+        : []
+    }
+    if (this.routeModuleContext?.hash !== previousRouteModuleHash) {
+      writeRouteTreeFile = true
+    }
 
     let getRouteNodesResult: GetRouteNodesResult
 
@@ -485,6 +704,8 @@ export class Generator {
       Generator.handleNode(node, acc, prefixMap, this.config)
     }
 
+    this.addRouteModuleMounts(acc)
+
     this.crawlingResult = { rootRouteNode, routeFileResult, acc }
 
     // this is the first time the generator runs, so read in the route tree file if it exists yet
@@ -585,6 +806,8 @@ export class Generator {
       }
     }
 
+    await this.writeRouteModuleFiles(rootRouteNode, acc)
+
     this.plugins.map((plugin) => {
       return plugin.onRouteTreeChanged?.({
         routeTree: buildResult.routeTree,
@@ -594,6 +817,316 @@ export class Generator {
       })
     })
     this.swapCaches()
+  }
+
+  /**
+   * Writes the generated files of route modules (scope, contract, runtime
+   * entry) and applications that mount them (scope), and the module manifest.
+   */
+  private async writeRouteModuleFiles(
+    rootRouteNode: RouteNode,
+    acc: HandleNodeAccumulator,
+  ) {
+    const context = this.routeModuleContext
+    if (!context) {
+      return
+    }
+    const header = this.getGeneratedFileHeader(this.config)
+    const importFrom = (from: string, baseName: string) =>
+      this.getRouteModuleImport(this.getRouteModuleFilePath(from), baseName)
+    const routeTreeImport = replaceBackslash(
+      removeExt(
+        `./${path.basename(this.generatedRouteTreePath)}`,
+        this.config.addExtensions,
+      ),
+    )
+
+    // Generated files live next to the Start file.
+    const startImport = replaceBackslash(
+      removeExt(
+        `./${path.basename(context.start?.file ?? 'start.ts')}`,
+        this.config.addExtensions,
+      ),
+    )
+
+    const files: Array<[string, string]> = [
+      [
+        ROUTE_SCOPE_FILE,
+        buildRouteScopeSource({
+          context,
+          frameworkPackage: this.targetTemplate.fullPkg,
+          routeTreeImport,
+          startImport,
+          header,
+          ownRouteIds:
+            context.declaration.mode === 'module'
+              ? [
+                  `${context.declaration.moduleId}:`,
+                  ...acc.routeNodes.map(
+                    (node) =>
+                      `${context.declaration.moduleId}:${node.routePath ?? ''}`,
+                  ),
+                  ...context.mounts.flatMap((mount) =>
+                    mount.manifest.routes.map((route) =>
+                      getInstallationRouteId(mount, route.id),
+                    ),
+                  ),
+                ]
+              : [],
+          namespaceImport: (module) =>
+            importFrom(
+              ROUTE_SCOPE_FILE,
+              getRouteNamespaceFile(module, context),
+            ),
+        }),
+      ],
+      ...context.scope.map((module): [string, string] => [
+        getRouteNamespaceFile(module, context),
+        buildRouteNamespaceSource({
+          context,
+          module,
+          frameworkPackage: this.targetTemplate.fullPkg,
+          routeTreeImport,
+          header,
+        }),
+      ]),
+    ]
+    if (context.declaration.mode === 'module') {
+      files.push(
+        [
+          ROUTE_CONTRACT_FILE,
+          buildRouteContractSource({
+            context,
+            frameworkPackage: this.targetTemplate.fullPkg,
+            routeTreeImport,
+            routeScopeImport: importFrom(ROUTE_CONTRACT_FILE, ROUTE_SCOPE_FILE),
+            header,
+          }),
+        ],
+        [
+          ROUTE_MODULE_FILE,
+          buildRouteModuleSource({
+            context,
+            routeTreeImport,
+            startImport,
+            header,
+          }),
+        ],
+      )
+    } else {
+      const startModulesFile = this.getRouteModuleFilePath(START_MODULES_FILE)
+      if (context.start && context.mounts.length > 0) {
+        files.push([
+          START_MODULES_FILE,
+          buildStartModulesSource({ context, startImport, header }),
+        ])
+      } else if (existsSync(startModulesFile)) {
+        await fsp.rm(startModulesFile, { force: true })
+      }
+    }
+
+    if (context.declaration.mode === 'module') {
+      const pruned = pruneServerOnlySubtrees({ rootRouteNode, acc })
+      const client = this.buildRouteTree({
+        rootRouteNode,
+        routeFileResult: this.crawlingResult!.routeFileResult,
+        acc: { ...acc, ...pruned },
+        config: {
+          ...this.config,
+          disableTypes: true,
+          // This runtime view omits the full tree's declarations and assertions.
+          // Keep it in ordinary TypeScript builds so they emit its JavaScript.
+          routeTreeFileHeader: [
+            ...this.config.routeTreeFileHeader.filter(
+              (line) => line !== '// @ts-nocheck',
+            ),
+            '// @ts-nocheck',
+          ],
+        },
+      })
+      const filePath = this.getClientRouteTreePath()
+      // This runtime-only view has no public route contract. Give its incidental
+      // declaration a portable name instead of inferring dependency internals.
+      const source = /\.(?:[cm]?ts|tsx)$/.test(filePath)
+        ? client.routeTreeContent.replace(
+            /^export const routeTree = /m,
+            `export const routeTree: import('${this.targetTemplate.fullPkg}').AnyRoute = `,
+          )
+        : client.routeTreeContent
+      const content = this.config.enableRouteTreeFormatting
+        ? await format(source, this.config)
+        : source
+      const existing = await this.fs.readFile(filePath)
+      if (
+        existing === 'file-not-existing' ||
+        existing.fileContent !== content
+      ) {
+        await this.safeFileWrite({
+          filePath,
+          newContent: content,
+          strategy:
+            existing === 'file-not-existing'
+              ? { type: 'new-file' }
+              : { type: 'mtime', expectedMtimeMs: existing.stat.mtimeMs },
+        })
+      }
+    }
+    const namespaceNames = new Set(
+      context.scope.map((module) =>
+        path.basename(
+          this.getRouteModuleFilePath(getRouteNamespaceFile(module, context)),
+        ),
+      ),
+    )
+    for (const entry of await fsp.readdir(
+      path.dirname(this.generatedRouteTreePath),
+    )) {
+      if (
+        /^routeScope\.gen\.namespace\d+\.ts$/.test(entry) &&
+        !namespaceNames.has(entry)
+      ) {
+        await fsp.rm(
+          path.join(path.dirname(this.generatedRouteTreePath), entry),
+        )
+      }
+    }
+
+    for (const [baseName, source] of files) {
+      const content = this.config.enableRouteTreeFormatting
+        ? await format(source, this.config)
+        : source
+      const filePath = this.getRouteModuleFilePath(baseName)
+      const existing = await this.fs.readFile(filePath)
+      if (
+        existing === 'file-not-existing' ||
+        existing.fileContent !== content
+      ) {
+        await this.fs.writeFile(filePath, content)
+      }
+    }
+
+    if (context.declaration.mode === 'module') {
+      await writeManifest(
+        context.declaration.packageRoot,
+        this.buildRouteModuleManifest(context, rootRouteNode, acc),
+      )
+    }
+  }
+
+  private buildRouteModuleManifest(
+    context: RouteModuleContext,
+    rootRouteNode: RouteNode,
+    acc: HandleNodeAccumulator,
+  ): RouteModuleManifest {
+    const { declaration } = context
+    const moduleId = declaration.moduleId!
+    const joinPath = (prefix: string, local: string) =>
+      prefix === '' ? local : local === '/' ? `${prefix}/` : `${prefix}${local}`
+    const routeId = (node: RouteNode | undefined) =>
+      node ? `${moduleId}:${node.routePath ?? ''}` : `${moduleId}:`
+    const routes: Array<ManifestRoute> = [
+      { id: `${moduleId}:`, parent: null, fullPath: '/', leaf: false },
+      ...acc.routeNodes.map((node) => ({
+        id: routeId(node),
+        parent: routeId(node.parent),
+        fullPath: inferFullPath(node),
+        leaf: !node.children?.length,
+        ...(isPrerenderableRoute(node) ? { prerender: true } : {}),
+      })),
+    ]
+    const routeFiles = [rootRouteNode, ...acc.routeNodes]
+      .filter((node) => node.fullPath && !node.isVirtual)
+      .map((node) => ({
+        owner: [] as Array<string>,
+        file: replaceBackslash(
+          path.relative(declaration.packageRoot, realpathSync(node.fullPath)),
+        ),
+        routeId:
+          node === rootRouteNode
+            ? `${moduleId}:`
+            : `${moduleId}:${node.routePath ?? ''}`,
+      }))
+    const modules: Array<ManifestInstalledModule> = [
+      {
+        id: moduleId,
+        key: moduleId,
+        uses: context.scope
+          .filter(
+            (module) =>
+              module.source.installedBy === null &&
+              !context.mounts.some(
+                (mount) => mount.moduleId === module.moduleId,
+              ),
+          )
+          .map((module) => module.moduleId),
+        mountPath: '/',
+        includedBy: null,
+      },
+    ]
+
+    for (const mount of context.mounts) {
+      const mountNode = this.findMountNode(acc, mount.key)
+      const parentPath = mountNode.parent
+        ? inferFullPath(mountNode.parent).replace(/\/$/, '')
+        : ''
+      const prefix = `${parentPath}${mount.at ?? ''}`
+      routes.push(
+        ...mount.manifest.routes.map((route) => ({
+          ...route,
+          id: getInstallationRouteId(mount, route.id),
+          parent: route.parent
+            ? getInstallationRouteId(mount, route.parent)
+            : routeId(mountNode.parent),
+          fullPath: joinPath(prefix, route.fullPath),
+        })),
+      )
+      routeFiles.push(
+        ...mount.manifest.routeFiles.map((entry) => ({
+          ...entry,
+          owner: [mount.moduleId, ...entry.owner],
+          routeId: getInstallationRouteId(mount, entry.routeId),
+        })),
+      )
+      modules.push(
+        ...mount.manifest.modules.map((installed) => ({
+          ...installed,
+          key: installed.key === mount.moduleId ? mount.key : installed.key,
+          mountPath: joinPath(prefix, installed.mountPath),
+          includedBy: installed.includedBy ?? declaration.packageName,
+        })),
+      )
+    }
+
+    const topology: Omit<RouteModuleManifest, 'topologyToken'> = {
+      version: ROUTE_MODULE_MANIFEST_VERSION,
+      id: moduleId,
+      packageName: declaration.packageName,
+      routes,
+      routeFiles,
+      clientTrees: [
+        {
+          owner: [],
+          file: replaceBackslash(
+            path.relative(declaration.packageRoot, this.generatedRouteTreePath),
+          ),
+          clientFile: replaceBackslash(
+            path.relative(
+              declaration.packageRoot,
+              this.getClientRouteTreePath(),
+            ),
+          ),
+        },
+        ...context.mounts.flatMap((mount) =>
+          mount.manifest.clientTrees.map((entry) => ({
+            ...entry,
+            owner: [mount.moduleId, ...entry.owner],
+          })),
+        ),
+      ],
+      modules,
+      startModules: context.exportsStartModules,
+    }
+    return { ...topology, topologyToken: computeTopologyToken(topology) }
   }
 
   private swapCaches() {
@@ -609,7 +1142,70 @@ export class Generator {
   }) {
     const config = { ...this.config, ...(opts.config || {}) }
 
-    const { rootRouteNode, acc } = opts
+    const { rootRouteNode } = opts
+    // Mounted module roots only appear as children; integrations that rebuild
+    // the node list from the tree (e.g. Start's server-only pruning) may
+    // collect them, so they never count as route nodes of this package.
+    const acc: HandleNodeAccumulator = {
+      ...opts.acc,
+      routeNodes: opts.acc.routeNodes.filter((node) => !node._routeModuleMount),
+    }
+
+    // Reserve names from the complete crawl even when Start rebuilds a pruned
+    // client tree. Repeated builds must not rename the surviving routes.
+    const namingNodes = this.crawlingResult?.acc.routeNodes ?? acc.routeNodes
+    const context = this.routeModuleContext
+    const moduleIds = new Set([
+      ...(context?.visibleContracts ?? []),
+      ...(context?.mounts.flatMap((mount) => [mount.moduleId, mount.key]) ??
+        []),
+      ...(context?.scope.flatMap((module) => [
+        module.key,
+        module.source.contractPackage,
+        ...(module.hostedThrough ? [module.hostedThrough] : []),
+      ]) ?? []),
+    ])
+    const nodeKey = (node: RouteNode) =>
+      `route:${node.routePath ?? ''}:${node.filePath}:${node._fsRouteType}`
+    const names = allocateGeneratedNames(
+      [
+        ...namingNodes.map((node) => {
+          let preferred = this.originalRouteNames.get(node)
+          if (preferred === undefined) {
+            preferred = node.variableName
+            this.originalRouteNames.set(node, preferred)
+          }
+          return {
+            key: nodeKey(node),
+            preferred,
+            suffixes: routeBindingSuffixes,
+          }
+        }),
+        ...[...moduleIds].map((id) => ({
+          key: `module:${id}`,
+          preferred: getModuleIdentifier(id),
+          suffixes: moduleBindingSuffixes,
+        })),
+      ],
+      [
+        ...generatedPublicNames,
+        ...(context?.scope.map((module) => module.namespace) ?? []),
+      ],
+    )
+    for (const node of namingNodes) {
+      node.variableName = names.get(nodeKey(node))!
+    }
+    if (context) {
+      context.identifiers = new Map(
+        [...moduleIds].map((id) => [id, names.get(`module:${id}`)!]),
+      )
+      for (const mount of context.mounts) {
+        this.findMountNode(acc, mount.key).variableName = getMountVariableName(
+          mount.key,
+          context.identifiers,
+        )
+      }
+    }
 
     // Use pre-compiled regex if config hasn't been overridden, otherwise create new one
     const indexTokenSegmentRegex =
@@ -622,13 +1218,23 @@ export class Generator {
       indexTokenSegmentRegex,
     )
 
+    const routeModule = this.routeModuleContext
+    const moduleId =
+      routeModule?.declaration.mode === 'module'
+        ? routeModule.declaration.moduleId!
+        : undefined
+    // Route modules qualify their route ids with the module id.
+    const qualifyId = (id: string) =>
+      moduleId === undefined ? id : `${moduleId}:${id}`
+    const rootId = moduleId === undefined ? rootRouteId : `${moduleId}:`
+
     const routeImports: Array<ImportDeclaration> = []
     const virtualRouteNodes: Array<string> = []
 
     for (const node of sortedRouteNodes) {
       if (node.isVirtual) {
         virtualRouteNodes.push(
-          `const ${node.variableName}RouteImport = createFileRoute('${node.routePath}')()`,
+          `const ${node.variableName}RouteImport = createFileRoute('${qualifyId(node.routePath ?? '')}')()`,
         )
       } else {
         routeImports.push(
@@ -646,8 +1252,93 @@ export class Generator {
     if (virtualRouteNodes.length > 0) {
       imports.push({
         specifiers: [{ imported: 'createFileRoute' }],
-        source: this.targetTemplate.fullPkg,
+        source:
+          moduleId === undefined
+            ? this.targetTemplate.fullPkg
+            : this.getRouteModuleImport(
+                this.generatedRouteTreePath,
+                ROUTE_SCOPE_FILE,
+              ),
       })
+    }
+    // Mounted modules are validated before their mounts are emitted: the
+    // installations used modules link into assume valid host params.
+    this.checkRouteModuleFullPaths(acc)
+    this.checkRouteModuleHostParams(acc)
+    const mountStatements: Array<string> = []
+    const mountHostParams: Array<string> = []
+    if (routeModule && routeModule.mounts.length > 0) {
+      imports.push({
+        specifiers: [{ imported: 'mountRouteModule' }],
+        source: `${this.targetTemplate.fullPkg}/_internal/route-module`,
+      })
+      const moduleUses = this.getRouteModuleUses(acc)
+      const importedModules = new Set<string>()
+      for (const mount of routeModule.mounts) {
+        const importName = `${getModuleIdentifier(mount.moduleId, routeModule.identifiers)}RouteModule`
+        if (!importedModules.has(mount.moduleId)) {
+          importedModules.add(mount.moduleId)
+          imports.push({
+            specifiers: [{ imported: 'routeModule', local: importName }],
+            source: `${mount.moduleId}/route-module`,
+          })
+        }
+        const mountNode = this.findMountNode(acc, mount.key)
+        const parentVariable = mountNode.parent
+          ? `${mountNode.parent.variableName}Route`
+          : 'rootRouteImport'
+        const uses = moduleUses.get(mount.key)
+        mountStatements.push(
+          `const ${getMountVariableName(mount.key, routeModule.identifiers)}Route${config.disableTypes ? '' : `: typeof ${importName}`} = mountRouteModule(${importName}, {
+  parent: () => ${parentVariable},${mount.at === undefined ? '' : `\n  at: '${mount.at}',`}${mount.as === undefined ? '' : `\n  as: '${mount.as}',`}${
+    uses
+      ? `\n  uses: { ${Object.entries(uses)
+          .map(([used, installation]) => `'${used}': '${installation}'`)
+          .join(', ')} },`
+      : ''
+  }
+})`,
+        )
+        mountHostParams.push(
+          `  '${mount.key}': (typeof ${parentVariable})['types']['allParams']`,
+        )
+      }
+      if (!config.disableTypes) {
+        mountStatements.push(
+          `/** The path params of the routes above each mounted route module. */
+export interface MountedModuleHostParams {
+${mountHostParams.join('\n')}
+}`,
+        )
+      }
+    }
+    if (routeModule && !config.disableTypes) {
+      if (routeModule.visibleContracts.length > 0) {
+        imports.push({
+          specifiers: [{ imported: 'MountedRoutesById' }],
+          source: this.targetTemplate.fullPkg,
+          importKind: 'type',
+        })
+      }
+      if (routeModule.mounts.some((mount) => mount.as !== undefined)) {
+        imports.push({
+          specifiers: [{ imported: 'InstallationRoutesById' }],
+          source: this.targetTemplate.fullPkg,
+          importKind: 'type',
+        })
+      }
+      for (const contractPackage of routeModule.visibleContracts) {
+        imports.push({
+          specifiers: [
+            {
+              imported: 'InstalledRoutesById',
+              local: `${getModuleIdentifier(contractPackage, routeModule.identifiers)}InstalledRoutesById`,
+            },
+          ],
+          source: `${contractPackage}/route-types`,
+          importKind: 'type',
+        })
+      }
     }
     // Add lazyRouteComponent import if there are component pieces
     let hasComponentPieces = false
@@ -884,11 +1575,36 @@ ${[...routeNodesByTo.entries()]
   })}
 }`,
         `export interface FileRoutesById {
-'${rootRouteId}': typeof rootRouteImport,
+'${rootId}': typeof rootRouteImport,
 ${[...routeNodesById.entries()].map(([id, routeNode]) => {
-  return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  return `'${qualifyId(id)}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
 })}
 }`,
+        // Route modules see the routes of the modules in their scope by id;
+        // the interface references their declarations instead of copying them.
+        ...(routeModule
+          ? [
+              `interface RouteModuleRoutesById extends FileRoutesById${routeModule.visibleContracts
+                .flatMap((contractPackage) => {
+                  const installedRoutes = `${getModuleIdentifier(contractPackage, routeModule.identifiers)}InstalledRoutesById`
+                  // A module installed several times has the routes of each
+                  // installation, by `<moduleId>#<as>:/…` ids.
+                  return routeModule.mounts.some(
+                    (mount) =>
+                      mount.moduleId === contractPackage &&
+                      mount.as !== undefined,
+                  )
+                    ? routeModule.mounts
+                        .filter((mount) => mount.moduleId === contractPackage)
+                        .map(
+                          (mount) =>
+                            `, MountedRoutesById<InstallationRoutesById<${installedRoutes}, '${mount.moduleId}', '${mount.as}'>>`,
+                        )
+                    : [`, MountedRoutesById<${installedRoutes}>`]
+                })
+                .join('')} {}`,
+            ]
+          : []),
         `export interface FileRouteTypes {
 fileRoutesByFullPath: FileRoutesByFullPath
 fullPaths: ${
@@ -908,8 +1624,15 @@ to: ${
                 .join('|')
             : 'never'
         }
-id: ${[`'${rootRouteId}'`, ...[...routeNodesById.keys()].map((id) => `'${id}'`)].join('|')}
-fileRoutesById: FileRoutesById
+id: ${
+          routeModule
+            ? 'keyof RouteModuleRoutesById'
+            : [
+                `'${rootRouteId}'`,
+                ...[...routeNodesById.keys()].map((id) => `'${id}'`),
+              ].join('|')
+        }
+fileRoutesById: ${routeModule ? 'RouteModuleRoutesById' : 'FileRoutesById'}
 }`,
         `export interface RootRouteChildren {
 ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
@@ -917,10 +1640,13 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       ].join('\n')
 
       fileRoutesByPathInterface = buildFileRoutesByPathInterface({
-        module: this.targetTemplate.fullPkg,
+        // Route modules keep their file routes local: no global augmentation.
+        module:
+          moduleId === undefined ? this.targetTemplate.fullPkg : undefined,
         interfaceName: 'FileRoutesByPath',
         routeNodes: sortedRouteNodes,
         config,
+        qualifyId,
       })
     }
 
@@ -972,7 +1698,15 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
     }
     const routeTreeContent = [
-      ...config.routeTreeFileHeader,
+      ...this.getGeneratedFileHeader(config),
+      ...(routeModule?.declaration.mode === 'host' &&
+      routeModule.start &&
+      routeModule.mounts.length > 0 &&
+      !config.disableTypes
+        ? [
+            `export type { StartModulesCheck } from '${this.getRouteModuleImport(this.generatedRouteTreePath, START_MODULES_FILE)}'`,
+          ]
+        : []),
       `// This file was automatically generated by TanStack Router.
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
@@ -980,6 +1714,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       mergeImportDeclarations(routeImports).map(buildImportString).join('\n'),
       virtualRouteNodes.join('\n'),
       createUpdateRoutes.join('\n'),
+      mountStatements.join('\n\n'),
       fileRoutesByFullPath,
       fileRoutesByPathInterface,
       routeTreeConfig.join('\n'),
@@ -1028,7 +1763,15 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       node,
     }
 
-    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
+    const routeModule = this.getRouteFileModuleScope(node)
+    if (routeModule && node._fsRouteType === 'lazy') {
+      throw new Error(
+        `[route modules] ${node.fullPath}: lazy route files (".lazy" files and createLazyFileRoute) are not supported in route modules. Use automatic code splitting instead.`,
+      )
+    }
+    const escapedRoutePath = routeModule
+      ? routeModule.routeId
+      : (node.routePath?.replaceAll('$', '$$') ?? '')
 
     let shouldWriteRouteFile = false
     let shouldWriteTree = false
@@ -1075,7 +1818,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           this.config.customScaffolding?.routeTemplate ??
             tRouteTemplate.template(),
           {
-            tsrImports: tRouteTemplate.imports.tsrImports(),
+            tsrImports: routeModule
+              ? `import { createFileRoute } from '${routeModule.importSource}';`
+              : tRouteTemplate.imports.tsrImports(),
             tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
@@ -1100,6 +1845,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           target: this.config.target,
           routeId: escapedRoutePath,
           lazy: node._fsRouteType === 'lazy',
+          routeImportSource: routeModule?.importSource,
         },
         node,
       })
@@ -1134,6 +1880,14 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
     }
 
+    const previousProps = previousCacheEntry?.node.createFileRouteProps
+    const props = node.createFileRouteProps
+    if (
+      previousProps?.size !== props?.size ||
+      [...(props ?? [])].some((prop) => !previousProps?.has(prop))
+    ) {
+      shouldWriteTree = true
+    }
     for (const plugin of this.plugins) {
       plugin.afterTransform?.({ node, prevNode: previousCacheEntry?.node })
     }
@@ -1370,15 +2124,25 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     // scaffold the root route
     if (!rootNodeFile.fileContent) {
       const rootTemplate = this.targetTemplate.rootRoute
+      const routeModule = this.getRouteFileModuleScope(node)
       const rootRouteContent = await fillTemplate(
         this.config,
         rootTemplate.template(),
-        {
-          tsrImports: rootTemplate.imports.tsrImports(),
-          tsrPath: rootPathId,
-          tsrExportStart: rootTemplate.imports.tsrExportStart(),
-          tsrExportEnd: rootTemplate.imports.tsrExportEnd(),
-        },
+        routeModule
+          ? {
+              // A route module's root declares the router context it
+              // requires: `createModuleRoot<{ queryClient: QueryClient }>()`.
+              tsrImports: `import { Outlet } from '${this.targetTemplate.fullPkg}';\nimport { createModuleRoot } from '${routeModule.importSource}';`,
+              tsrPath: routeModule.routeId,
+              tsrExportStart: 'export const Route = createModuleRoot()(',
+              tsrExportEnd: rootTemplate.imports.tsrExportEnd(),
+            }
+          : {
+              tsrImports: rootTemplate.imports.tsrImports(),
+              tsrPath: rootPathId,
+              tsrExportStart: rootTemplate.imports.tsrExportStart(),
+              tsrExportEnd: rootTemplate.imports.tsrExportEnd(),
+            },
       )
 
       this.logger.log(`🟡 Creating ${node.fullPath}`)
@@ -1396,6 +2160,322 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     }
 
     this.routeNodeShadowCache.set(node.fullPath, updatedCacheEntry)
+  }
+
+  /**
+   * Adds the roots of mounted route modules as children of their host routes.
+   * They appear only in the children of the route tree; their routes are
+   * described by the modules' own declarations.
+   */
+  private addRouteModuleMounts(acc: HandleNodeAccumulator) {
+    const context = this.routeModuleContext
+    if (!context) {
+      return
+    }
+    const moduleId = context.declaration.moduleId
+    for (const mount of context.mounts) {
+      let parentId = mount.include.parent
+      if (moduleId && parentId?.startsWith(`${moduleId}:`)) {
+        parentId = parentId.slice(moduleId.length + 1)
+      }
+      const parent =
+        parentId === undefined || parentId === rootRouteId
+          ? undefined
+          : acc.routeNodesByPath.get(parentId)
+      if (parentId !== undefined && parentId !== rootRouteId && !parent) {
+        throw new Error(
+          `[route modules] ${context.declaration.packageName}: the parent route "${mount.include.parent}" of "${mount.moduleId}" does not exist.`,
+        )
+      }
+      const mountNode: RouteNode = {
+        filePath: '',
+        fullPath: '',
+        variableName: getMountVariableName(mount.key),
+        _fsRouteType: 'static',
+        parent,
+        _routeModuleMount: {
+          moduleId: mount.moduleId,
+          installation: mount.key,
+          at: mount.at,
+        },
+      }
+      if (parent) {
+        parent.children = parent.children ?? []
+        parent.children.push(mountNode)
+      } else {
+        acc.routeTree.push(mountNode)
+      }
+    }
+  }
+
+  /**
+   * Rejects mounted module routes whose final full paths collide with routes
+   * of this package or of other mounted modules.
+   */
+  private checkRouteModuleFullPaths(acc: HandleNodeAccumulator) {
+    const context = this.routeModuleContext
+    if (!context || context.mounts.length === 0) {
+      return
+    }
+    const owners = new Map<string, string>()
+    const claim = (fullPath: string, owner: string) => {
+      const key = fullPath === '/' ? '/' : fullPath.replace(/\/$/, '')
+      const previous = owners.get(key)
+      if (previous !== undefined && previous !== owner) {
+        throw new Error(
+          `[route modules] ${context.declaration.packageName}: the full path "${fullPath}" is used by both ${previous} and ${owner}. Mount the module at another path.`,
+        )
+      }
+      owners.set(key, owner)
+    }
+    for (const node of acc.routeNodes) {
+      if (!node.children?.length && node._fsRouteType !== 'lazy') {
+        claim(inferFullPath(node), `"${node.filePath}"`)
+      }
+    }
+    for (const mount of context.mounts) {
+      const mountNode = this.findMountNode(acc, mount.key)
+      const parentPath = mountNode.parent
+        ? inferFullPath(mountNode.parent).replace(/\/$/, '')
+        : ''
+      const prefix = `${parentPath}${mount.at ?? ''}`
+      for (const route of mount.manifest.routes) {
+        if (!route.leaf) {
+          continue
+        }
+        const local = route.fullPath
+        claim(
+          prefix === ''
+            ? local
+            : local === '/'
+              ? `${prefix}/`
+              : `${prefix}${local}`,
+          `"${getInstallationRouteId(mount, route.id)}" (module "${mount.key}")`,
+        )
+      }
+    }
+  }
+
+  /**
+   * A module that uses another one without mounting it links into it through
+   * a namespace typed without the path params above it: they are filled from
+   * the current location. That always works only when the routes declaring
+   * them are above the using module too.
+   */
+  private checkRouteModuleHostParams(acc: HandleNodeAccumulator) {
+    const context = this.routeModuleContext
+    if (!context || context.mounts.length === 0) {
+      return
+    }
+    const mountPaths = this.getRouteModuleMountPaths(acc)
+    for (const mount of context.mounts) {
+      const host = this.findMountNode(acc, mount.key).parent
+      const hostParams = new Set(
+        getParamNames(
+          parseSegments(false, { from: host ? inferFullPath(host) : '' }, 0),
+        ),
+      )
+      for (const route of mount.manifest.routes) {
+        const overlap = getParamNames(
+          parseSegments(false, { from: route.fullPath }, 0),
+        ).find((param) => hostParams.has(param))
+        if (overlap) {
+          throw new Error(
+            `[route modules] ${context.declaration.packageName}: parameter "${overlap}" appears both above "${mount.key}" and in its route "${route.id}". Choose distinct host and module parameter names.`,
+          )
+        }
+      }
+      for (const installed of mount.manifest.modules) {
+        const own = mountPaths.get(
+          installed.id === mount.moduleId ? mount.key : installed.key,
+        )!
+        for (const used of installed.uses) {
+          if (
+            context.mounts.some(
+              (candidate) =>
+                candidate.moduleId === used && candidate.as !== undefined,
+            )
+          ) {
+            // Links into one of several installations: see
+            // `getRouteModuleUses`.
+            if (installed.id !== mount.moduleId) {
+              throw new Error(
+                `[route modules] ${context.declaration.packageName}: "${installed.id}" links into "${used}", which this application installs several times, but "${installed.id}" is installed by "${mount.moduleId}", which cannot choose an installation. Install "${installed.id}" in this application.`,
+              )
+            }
+            continue
+          }
+          const target = mountPaths.get(used)
+          if (target === undefined) {
+            continue
+          }
+          const host = getHostPath(target)
+          if (host === undefined) {
+            continue
+          }
+          if (own !== host && !own.startsWith(`${host}/`)) {
+            throw new Error(
+              `[route modules] ${context.declaration.packageName}: "${installed.id}" links into "${used}", which is mounted below "${host}", but "${installed.id}" is mounted at "${own}" and cannot fill those path params. Mount "${installed.id}" below "${host}", or link into "${used}" from the package that mounts it.`,
+            )
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Full paths of every installed module root in this route tree, by module
+   * id, and by `<moduleId>#<as>` for the installations of a module installed
+   * several times.
+   */
+  private getRouteModuleMountPaths(acc: HandleNodeAccumulator) {
+    const mountPaths = new Map<string, string>()
+    for (const mount of this.routeModuleContext?.mounts ?? []) {
+      const mountNode = this.findMountNode(acc, mount.key)
+      const parentPath = mountNode.parent
+        ? inferFullPath(mountNode.parent).replace(/\/$/, '')
+        : ''
+      const prefix = `${parentPath}${mount.at ?? ''}`
+      for (const installed of mount.manifest.modules) {
+        const local = installed.mountPath.replace(/\/$/, '')
+        mountPaths.set(
+          installed.id === mount.moduleId ? mount.key : installed.key,
+          `${prefix}${local}` || '/',
+        )
+      }
+    }
+    return mountPaths
+  }
+
+  /**
+   * The installation a mounted module links into for every module it uses
+   * that this application installs several times: the one whose host routes
+   * are above the module, so that links fill their path params from the
+   * current location. None or several such installations are errors.
+   */
+  private getRouteModuleUses(acc: HandleNodeAccumulator) {
+    const context = this.routeModuleContext
+    const uses = new Map<string, Record<string, string>>()
+    if (!context || !context.mounts.some((mount) => mount.as !== undefined)) {
+      return uses
+    }
+    const mountPaths = this.getRouteModuleMountPaths(acc)
+    for (const mount of context.mounts) {
+      const own = mountPaths.get(mount.key)!
+      const root = mount.manifest.modules.find(
+        (installed) => installed.id === mount.moduleId,
+      )
+      for (const used of root?.uses ?? []) {
+        if (
+          !context.mounts.some(
+            (candidate) =>
+              candidate.moduleId === used && candidate.as !== undefined,
+          )
+        ) {
+          continue
+        }
+        const installations = context.mounts.filter((candidate) => {
+          if (candidate.moduleId !== used) {
+            return false
+          }
+          const host = getHostPath(mountPaths.get(candidate.key)!)
+          return (
+            host === undefined || own === host || own.startsWith(`${host}/`)
+          )
+        })
+        if (installations.length !== 1) {
+          throw new Error(
+            `[route modules] ${context.declaration.packageName}: "${mount.key}" links into "${used}", which is installed several times, but ${
+              installations.length === 0
+                ? 'no installation'
+                : `the installations ${installations.map((installation) => `"${installation.as}"`).join(' and ')}`
+            } can take path params from "${own}". Mount "${mount.key}" below the routes with the path params of exactly one installation.`,
+          )
+        }
+        uses.set(mount.key, {
+          ...uses.get(mount.key),
+          [used]: installations[0]!.key,
+        })
+      }
+    }
+    return uses
+  }
+
+  private findMountNode(acc: HandleNodeAccumulator, installation: string) {
+    const find = (nodes: Array<RouteNode>): RouteNode | undefined => {
+      for (const node of nodes) {
+        if (node._routeModuleMount?.installation === installation) {
+          return node
+        }
+        const found = node.children && find(node.children)
+        if (found) {
+          return found
+        }
+      }
+      return undefined
+    }
+    return find(acc.routeTree)!
+  }
+
+  /**
+   * Generated files of route modules and of applications that mount them are
+   * type-checked (mount assertions, declaration emit), so the default header
+   * leaves out `@ts-nocheck`. A custom header is used as is.
+   */
+  private getGeneratedFileHeader(config: Config): Array<string> {
+    const header = config.routeTreeFileHeader
+    if (
+      !this.routeModuleContext ||
+      config.disableTypes ||
+      header.length !== DEFAULT_ROUTE_TREE_FILE_HEADER.length ||
+      header.some((line, i) => line !== DEFAULT_ROUTE_TREE_FILE_HEADER[i])
+    ) {
+      return header
+    }
+    return header.filter((line) => line !== '// @ts-nocheck')
+  }
+
+  /** Path of a generated route-module file next to the route tree. */
+  private getRouteModuleFilePath(baseName: string) {
+    return path.join(
+      path.dirname(this.generatedRouteTreePath),
+      `${baseName}.ts`,
+    )
+  }
+
+  /** Import specifier of a generated route-module file from `fromFile`. */
+  private getRouteModuleImport(fromFile: string, baseName: string) {
+    const relative = replaceBackslash(
+      removeExt(
+        path.relative(
+          path.dirname(fromFile),
+          this.getRouteModuleFilePath(baseName),
+        ),
+        this.config.addExtensions,
+      ),
+    )
+    return relative.startsWith('.') ? relative : `./${relative}`
+  }
+
+  /**
+   * In a route module, route files get qualified ids and import their route
+   * factories from the module's scope.
+   */
+  private getRouteFileModuleScope(
+    node: RouteNode,
+  ): { routeId: string; importSource: string } | undefined {
+    const context = this.routeModuleContext
+    if (context?.declaration.mode !== 'module') {
+      return undefined
+    }
+    const moduleId = context.declaration.moduleId!
+    return {
+      routeId:
+        node._fsRouteType === '__root'
+          ? `${moduleId}:`
+          : `${moduleId}:${node.routePath ?? ''}`,
+      importSource: this.getRouteModuleImport(node.fullPath, ROUTE_SCOPE_FILE),
+    }
   }
 
   public async getCrawlingResult(): Promise<CrawlingResult | undefined> {
@@ -1632,6 +2712,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     // files inside the routes folder
     if (filePath.startsWith(this.routesDirectoryPath)) {
+      return true
+    }
+
+    // package.json and the manifests of route modules this package mounts or
+    // uses: they change the generated route-module files
+    if (this.routeModuleFiles.includes(filePath)) {
       return true
     }
 

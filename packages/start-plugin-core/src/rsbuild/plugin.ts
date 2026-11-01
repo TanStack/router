@@ -89,14 +89,36 @@ export function tanStackStartRsbuild(
   // RSC plugin instances — created lazily when rspack namespace is available
   let rscPlugins: RscPluginPair | undefined
 
-  // Reference to the dev server for RSC HMR socket writes
+  // Shared dev server owner for topology reloads and RSC HMR socket writes.
   let devServerRef: Pick<RsbuildDevServer, 'sockWrite'> | null = null
+  let pendingRouteTreeReload = false
   const serverFnsById: Record<string, ServerFn> = {}
   let updateServerFnResolver: (() => void) | undefined
 
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
+      if (api.context.action === 'dev') {
+        api.onBeforeStartDevServer(({ server }) => {
+          devServerRef = server
+        })
+        api.onAfterDevCompile(({ isFirstCompile, stats }) => {
+          if (!pendingRouteTreeReload || stats.hasErrors()) {
+            return
+          }
+          // Wait for all environments to publish their new assets. Route HMR
+          // preserves the live router, so topology changes need a fresh tree.
+          pendingRouteTreeReload = false
+          if (!isFirstCompile) {
+            devServerRef?.sockWrite('full-reload')
+          }
+        })
+        api.onCloseDevServer(() => {
+          devServerRef = null
+          pendingRouteTreeReload = false
+        })
+      }
+
       const startCompilerEnvironments = [
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
@@ -419,6 +441,12 @@ export function tanStackStartRsbuild(
         getConfig,
         corePluginOpts,
         startPluginOpts,
+        onClientTreeInvalidated:
+          api.context.action === 'dev'
+            ? () => {
+                pendingRouteTreeReload = true
+              }
+            : undefined,
       })
 
       // ---------------------------------------------------------------
@@ -609,13 +637,6 @@ export function tanStackStartRsbuild(
             enableSwcReactServerComponents(config, 'all')
           }
         })
-
-        // Capture dev server reference for RSC HMR socket writes
-        if (api.context.action === 'dev') {
-          api.onBeforeStartDevServer(({ server }) => {
-            devServerRef = server
-          })
-        }
       }
 
       // ---------------------------------------------------------------

@@ -1,3 +1,4 @@
+import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
 import * as Vue from 'vue'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -92,7 +93,10 @@ export const Match = Vue.defineComponent({
             fallback: (error: any) => {
               error.routeId ??= routeId
 
-              if (error.routeId !== routeId) {
+              if (
+                (resolveRouteId?.(router, error.routeId, routeId) ??
+                  error.routeId) !== routeId
+              ) {
                 throw error
               }
 

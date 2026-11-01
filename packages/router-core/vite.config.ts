@@ -42,6 +42,8 @@ export default mergeConfig(
   tanstackViteConfig({
     entry: [
       './src/index.ts',
+      './src/route-module-internal.ts',
+      './src/extensions.ts',
       './src/ssr/client.ts',
       './src/ssr/server.ts',
       './src/scroll-restoration-script/client.ts',

@@ -78,7 +78,13 @@
         "default": "./dist/esm/hydration/runtime.js"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./_internal/route-module": {
+      "import": {
+        "types": "./dist/esm/route-module-internal.d.ts",
+        "default": "./dist/esm/route-module-internal.js"
+      }
+    }
   },
   "imports": {
     "#tanstack-start-entry": {

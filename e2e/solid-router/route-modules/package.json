@@ -1,0 +1,29 @@
+{
+  "name": "tanstack-router-e2e-solid-route-modules",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/prepare.mjs",
+    "build": "node scripts/prepare.mjs && vite build && tsc --noEmit && tsc -p packages/settings/tsconfig.json --noEmit",
+    "preview": "vite preview",
+    "dev:e2e": "node scripts/prepare.mjs && vite",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@route-modules/solid-settings": "workspace:*",
+    "@tanstack/solid-router": "workspace:^",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@tanstack/router-cli": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@types/node": "catalog:",
+    "vite": "^8.0.14",
+    "vitest": "catalog:",
+    "vite-plugin-solid": "^2.11.11"
+  }
+}

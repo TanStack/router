@@ -27,6 +27,16 @@ export type RouteNode = {
   _virtualParentRoutePath?: string
   /** Internal routePath segment metadata for escaped or explicit literal syntax. */
   _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
+  /**
+   * Internal: this node is the root of a mounted route module. It has no file
+   * and only appears in the children of its host route.
+   */
+  _routeModuleMount?: {
+    moduleId: string
+    /** The module id, or `<moduleId>#<as>` for one of several installations. */
+    installation: string
+    at: string | undefined
+  }
 }
 
 export interface GetRouteNodesResult {

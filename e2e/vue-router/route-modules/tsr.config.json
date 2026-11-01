@@ -1,0 +1,19 @@
+{
+  "target": "vue",
+  "routeModules": {
+    "includes": [
+      {
+        "module": "@route-modules/vue-settings",
+        "parent": "/orgs/$orgId",
+        "at": "/settings",
+        "as": "orgSettings"
+      },
+      {
+        "module": "@route-modules/vue-settings",
+        "parent": "/users/$userId",
+        "at": "/settings",
+        "as": "userSettings"
+      }
+    ]
+  }
+}

@@ -17,6 +17,11 @@ export interface ImportProtectionEnvRules {
 export interface ImportProtectionAdapterConfig {
   root: string
   srcDirectory: string
+  /**
+   * Package roots of installed route modules: their files are application
+   * source as much as `srcDirectory`.
+   */
+  routeModuleDirectories: Array<string>
   compiledRules: {
     client: ImportProtectionEnvRules
     server: ImportProtectionEnvRules
@@ -55,6 +60,7 @@ export function shouldCheckImportProtectionImporter(
     ImportProtectionAdapterConfig,
     | 'root'
     | 'srcDirectory'
+    | 'routeModuleDirectories'
     | 'includeMatchers'
     | 'excludeMatchers'
     | 'ignoreImporterMatchers'
@@ -84,7 +90,11 @@ export function shouldCheckImportProtectionImporter(
   } else if (config.includeMatchers.length > 0) {
     result = !!matchesAny(relativePath, config.includeMatchers)
   } else if (config.srcDirectory) {
-    result = isInsideDirectory(normalizedImporter, config.srcDirectory)
+    result =
+      isInsideDirectory(normalizedImporter, config.srcDirectory) ||
+      config.routeModuleDirectories.some((directory) =>
+        isInsideDirectory(normalizedImporter, directory),
+      )
   } else {
     result = true
   }

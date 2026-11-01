@@ -2,7 +2,9 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseLoaderData,
   StrictOrFrom,
   UseLoaderDataResult,
@@ -25,12 +27,25 @@ export type UseLoaderDataOptions<
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
   UseLoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>
 
-export type UseLoaderDataRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseLoaderDataRoute<out TId, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
 >(
   opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
 ) => Vue.Ref<UseLoaderDataResult<TRouter, TId, true, TSelected>>
+
+/**
+ * The signature of `useLoaderData`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLoaderData` of this type.
+ */
+export type UseLoaderDataFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TSelected = unknown,
+>(
+  opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
+) => Vue.Ref<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>>
 
 export function useLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,

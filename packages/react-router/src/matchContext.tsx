@@ -4,7 +4,7 @@ import * as React from 'react'
 import { _isRouteDeparting } from '@tanstack/router-core'
 import type { AnyRoute, AnyRouter, ParsedLocation } from '@tanstack/router-core'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   // Declaration merging requires the original type parameters.
   // eslint-disable-next-line unused-imports/no-unused-vars
   interface RouterStores<in out TRouteTree extends AnyRoute> {

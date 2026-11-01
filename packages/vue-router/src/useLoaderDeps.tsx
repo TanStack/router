@@ -2,7 +2,9 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,
@@ -23,12 +25,24 @@ export type UseLoaderDepsOptions<
 > = StrictOrFrom<TRouter, TFrom> &
   UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected>
 
-export type UseLoaderDepsRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseLoaderDepsRoute<out TId, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
 >(
   opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected>,
 ) => Vue.Ref<UseLoaderDepsResult<TRouter, TId, TSelected>>
+
+/**
+ * The signature of `useLoaderDeps`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLoaderDeps` of this type.
+ */
+export type UseLoaderDepsFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TSelected = unknown,
+>(
+  opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected>,
+) => Vue.Ref<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
 
 export function useLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,

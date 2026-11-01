@@ -4,6 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import { getRouteNavigationScope } from '@tanstack/router-core/_internal/route-module'
 import React from 'react'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
@@ -24,6 +25,7 @@ import type {
   NotFoundRouteProps,
   Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveFullPath,
   ResolveId,
   ResolveParams,
@@ -48,7 +50,7 @@ import type { UseSearchRoute } from './useSearch'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
     errorComponent?: false | null | undefined | ErrorRouteComponent
@@ -67,17 +69,30 @@ declare module '@tanstack/router-core' {
   export interface RouteExtensions<
     in out TId extends string,
     in out TFullPath extends string,
+    in out TRegister,
   > {
-    useMatch: UseMatchRoute<TId>
-    useRouteContext: UseRouteContextRoute<TId>
-    useSearch: UseSearchRoute<TId>
-    useParams: UseParamsRoute<TId>
-    useLoaderDeps: UseLoaderDepsRoute<TId>
-    useLoaderData: UseLoaderDataRoute<TId>
-    useNavigate: () => UseNavigateResult<TFullPath>
-    Link: LinkComponentRoute<TFullPath>
+    useMatch: UseMatchRoute<TId, TRegister>
+    useRouteContext: UseRouteContextRoute<TId, TRegister>
+    useSearch: UseSearchRoute<TId, TRegister>
+    useParams: UseParamsRoute<TId, TRegister>
+    useLoaderDeps: UseLoaderDepsRoute<TId, TRegister>
+    useLoaderData: UseLoaderDataRoute<TId, TRegister>
+    useNavigate: () => UseNavigateResult<TFullPath, TRegister>
+    Link: LinkComponentRoute<TFullPath, TRegister>
   }
 }
+
+/**
+ * The signature of `getRouteApi`, typed against the router of `TDefaultRegister` unless a
+ * router type is passed explicitly. Route modules export a `getRouteApi` of
+ * this type.
+ */
+export type GetRouteApiFn<TDefaultRegister = Register> = <
+  const TId,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>(
+  id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>,
+) => RouteApi<TId, TRouter>
 
 /**
  * Returns a route-specific API that exposes type-safe hooks pre-bound
@@ -106,49 +121,64 @@ export class RouteApi<
     super({ id })
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
+  useMatch: UseMatchRoute<TId, { router: TRouter }> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<TId> = (opts) => {
+  useRouteContext: UseRouteContextRoute<TId, { router: TRouter }> = (opts) => {
     return useRouteContext({ ...(opts as any), from: this.id })
   }
 
-  useSearch: UseSearchRoute<TId> = (opts) => {
+  useSearch: UseSearchRoute<TId, { router: TRouter }> = (opts) => {
     return useSearch({ ...opts, from: this.id } as any)
   }
 
-  useParams: UseParamsRoute<TId> = (opts) => {
+  useParams: UseParamsRoute<TId, { router: TRouter }> = (opts) => {
     return useParams({ ...opts, from: this.id } as any)
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<TId, { router: TRouter }> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<TId, { router: TRouter }> = (opts) => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
   useNavigate = (): UseNavigateResult<
-    RouteTypesById<TRouter, TId>['fullPath']
+    RouteTypesById<TRouter, TId>['fullPath'],
+    { router: TRouter }
   > => {
     const router = useRouter()
-    return useNavigate({ from: router.routesById[this.id as string].fullPath })
+    return useNavigate(
+      getRouteNavigationScope(
+        this.id as string,
+        router.routesById[this.id as string]?.fullPath,
+      ) as any,
+    ) as any
   }
 
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
 
-  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> =
-    React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      const router = useRouter()
-      const fullPath = router.routesById[this.id as string].fullPath
-      return <Link ref={ref} from={fullPath as never} {...props} />
-    }) as unknown as LinkComponentRoute<
-      RouteTypesById<TRouter, TId>['fullPath']
-    >
+  Link: LinkComponentRoute<
+    RouteTypesById<TRouter, TId>['fullPath'],
+    { router: TRouter }
+  > = React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string]?.fullPath
+    return (
+      <Link
+        ref={ref}
+        {...(getRouteNavigationScope(this.id as string, fullPath) as any)}
+        {...props}
+      />
+    )
+  }) as unknown as LinkComponentRoute<
+    RouteTypesById<TRouter, TId>['fullPath'],
+    { router: TRouter }
+  >
 }
 
 export class Route<
@@ -246,39 +276,47 @@ export class Route<
     super(options)
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
+  useMatch: UseMatchRoute<TId, TRegister> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
+  useRouteContext: UseRouteContextRoute<TId, TRegister> = (opts?) => {
     return useRouteContext({ ...(opts as any), from: this.id })
   }
 
-  useSearch: UseSearchRoute<TId> = (opts) => {
+  useSearch: UseSearchRoute<TId, TRegister> = (opts) => {
     return useSearch({ ...opts, from: this.id } as any)
   }
 
-  useParams: UseParamsRoute<TId> = (opts) => {
+  useParams: UseParamsRoute<TId, TRegister> = (opts) => {
     return useParams({ ...opts, from: this.id } as any)
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<TId, TRegister> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<TId, TRegister> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<TFullPath> => {
-    return useNavigate({ from: this.fullPath })
+  useNavigate = (): UseNavigateResult<TFullPath, TRegister> => {
+    return useNavigate(
+      getRouteNavigationScope(this.id, this.fullPath) as any,
+    ) as any
   }
 
-  Link: LinkComponentRoute<TFullPath> = React.forwardRef(
+  Link: LinkComponentRoute<TFullPath, TRegister> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath as never} {...props} />
+      return (
+        <Link
+          ref={ref}
+          {...(getRouteNavigationScope(this.id, this.fullPath) as any)}
+          {...props}
+        />
+      )
     },
-  ) as unknown as LinkComponentRoute<TFullPath>
+  ) as unknown as LinkComponentRoute<TFullPath, TRegister>
 }
 
 /**
@@ -503,39 +541,39 @@ export class RootRoute<
     super(options)
   }
 
-  useMatch: UseMatchRoute<RootRouteId> = (opts) => {
+  useMatch: UseMatchRoute<RootRouteId, TRegister> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
+  useRouteContext: UseRouteContextRoute<RootRouteId, TRegister> = (opts) => {
     return useRouteContext({ ...(opts as any), from: this.id })
   }
 
-  useSearch: UseSearchRoute<RootRouteId> = (opts) => {
+  useSearch: UseSearchRoute<RootRouteId, TRegister> = (opts) => {
     return useSearch({ ...opts, from: this.id } as any)
   }
 
-  useParams: UseParamsRoute<RootRouteId> = (opts) => {
+  useParams: UseParamsRoute<RootRouteId, TRegister> = (opts) => {
     return useParams({ ...opts, from: this.id } as any)
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<RootRouteId, TRegister> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<RootRouteId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<RootRouteId, TRegister> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<'/'> => {
-    return useNavigate({ from: this.fullPath })
+  useNavigate = (): UseNavigateResult<'/', TRegister> => {
+    return useNavigate({ from: this.fullPath }) as any
   }
 
-  Link: LinkComponentRoute<'/'> = React.forwardRef(
+  Link: LinkComponentRoute<'/', TRegister> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       return <Link ref={ref} from={this.fullPath} {...props} />
     },
-  ) as unknown as LinkComponentRoute<'/'>
+  ) as unknown as LinkComponentRoute<'/', TRegister>
 }
 
 /**

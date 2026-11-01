@@ -29,6 +29,7 @@ import type {
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
+import type { ValidateModuleMiddlewareConsumer } from './createStartModule'
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
 
@@ -723,7 +724,8 @@ export interface ServerFnHandler<
       TInputValidator,
       TNewResponse,
       TStrict
-    >,
+    > &
+      ValidateModuleMiddlewareConsumer<TRegister, TMiddlewares, 'function'>,
   ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
