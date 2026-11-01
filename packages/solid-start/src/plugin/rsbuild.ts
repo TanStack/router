@@ -1,7 +1,4 @@
-import {
-  RSBUILD_ENVIRONMENT_NAMES,
-  tanStackStartRsbuild,
-} from '@tanstack/start-plugin-core/rsbuild'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { solidStartDefaultEntryPaths } from './shared'
 import type {
   TanStackStartRsbuildInputConfig,
@@ -15,7 +12,6 @@ export function tanstackStart(
   const corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'solid',
     defaultEntryPaths: solidStartDefaultEntryPaths,
-    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     ssrIsProvider: true,
     rsbuild: {
       environments: {

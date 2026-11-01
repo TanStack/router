@@ -1,8 +1,9 @@
 import { createRequire } from 'node:module'
 import { join } from 'pathe'
 import { mergeRsbuildConfig } from '@rsbuild/core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { ENTRY_POINTS } from '../constants'
-import type { EnvironmentConfig } from '@rsbuild/core'
+import type { EnvironmentConfig, Rspack } from '@rsbuild/core'
 import type { ResolvedStartEntryPlan } from '../planning'
 import type { RsbuildEnvironmentOverrides } from './types'
 import type { ScriptFormat } from '@tanstack/router-core'
@@ -55,6 +56,76 @@ function createClientAssetDistPath(root: string): RsbuildDistPathObject {
   }
 }
 
+/** The file of a virtual module (VirtualModulesPlugin resolves it relative to the root). */
+export function virtualPath(root: string, moduleId: string): string {
+  // Use a recognizable prefix to avoid collisions with real files.
+  const sanitized = moduleId.replace(/[:#]/g, '_')
+  return `${root}/node_modules/.virtual/${sanitized}.js`
+}
+
+/**
+ * Chunk splitting of a non-RSC server environment. Rsbuild's server default
+ * is no splitting at all, which makes Rspack copy every module two async
+ * chunks share into both: the server-fn resolver `import()`s the modules
+ * that define server functions, which the router's chunk holds too. The
+ * router's chunk and the resolver's provider chunks become one chunk (the
+ * router is always loaded before a server function runs, so a separate
+ * shared chunk only costs a file and chunk boundaries); a module two other
+ * async chunks share goes to one shared chunk instead (Rspack's default
+ * groups are off: nothing else moves). The dev server keeps the shared
+ * chunk only: one instance of each module is all it needs, and the router
+ * group's test would run on every rebuild for bytes nobody ships.
+ */
+function serverSplitChunks(root: string, dev: boolean) {
+  const resolver = virtualPath(root, VIRTUAL_MODULES.serverFnResolver)
+  const importedBy = (group: Rspack.ChunkGroup, path: string) =>
+    group.origins.some((origin) => origin.module?.nameForCondition() === path)
+  // The router's chunk and the provider chunks, when the resolver imports
+  // providers (without them the router's chunk keeps its numeric id: a
+  // name costs the runtime an id → file-name entry).
+  const routerOrProvider = (chunk: Rspack.Chunk) => {
+    for (const group of chunk.groupsIterable) {
+      if (importedBy(group, resolver)) {
+        return true
+      }
+      if (
+        group.origins.some(
+          (origin) => origin.request === ENTRY_POINTS.router,
+        ) &&
+        group
+          .getParents()
+          .some((parent) =>
+            parent.childrenIterable.some((sibling) =>
+              importedBy(sibling, resolver),
+            ),
+          )
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+  return {
+    preset: 'none',
+    chunks: 'async',
+    cacheGroups: {
+      default: false,
+      defaultVendors: false,
+      ...(!dev && {
+        // (a cache group, not `webpackChunkName` on the resolver's imports: that
+        // triggers rspack#16289)
+        router: {
+          name: 'tanstack-start-router',
+          chunks: routerOrProvider,
+          minSize: 0,
+          priority: 1,
+        },
+      }),
+      shared: { minChunks: 2, minSize: 0, reuseExistingChunk: true },
+    },
+  } as const satisfies EnvironmentConfig['splitChunks']
+}
+
 export interface RsbuildResolvedEntryAliases {
   client: string
   server: string
@@ -96,7 +167,6 @@ export function createRsbuildEnvironmentPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   publicBase: string
-  serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
   scriptFormat?: ScriptFormat
   rsc?: boolean | undefined
@@ -184,50 +254,13 @@ export function createRsbuildEnvironmentPlan(opts: {
           resolve: {
             alias,
           },
-          ...(opts.rsc
-            ? {
-                splitChunks: {
-                  preset: 'single-vendor',
-                },
-              }
-            : {}),
+          splitChunks: opts.rsc
+            ? { preset: 'single-vendor' }
+            : serverSplitChunks(opts.root, opts.dev === true),
         },
         environmentOverrides.all,
         environmentOverrides.server,
       ),
-      // When provider is a separate environment (not layered RSC),
-      // create a third environment. With the layered RSC setup this branch
-      // is not taken because provider maps to the same `ssr` environment.
-      ...(opts.serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
-      !opts.rsc
-        ? {
-            [opts.serverFnProviderEnv]: mergeRsbuildConfig(
-              {
-                source: {
-                  entry: {
-                    index: {
-                      import: opts.entryAliases.server,
-                      html: false,
-                    },
-                  },
-                },
-                output: {
-                  target: 'node',
-                  ...(opts.dev ? { module: false } : {}),
-                  distPath: createPublicAssetDistPath(
-                    `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
-                  ),
-                  assetPrefix: opts.publicBase,
-                },
-                resolve: {
-                  alias,
-                },
-              },
-              environmentOverrides.all,
-              environmentOverrides.provider,
-            ),
-          }
-        : {}),
     },
     alias,
   }

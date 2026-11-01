@@ -12,9 +12,6 @@ const defaultConfig: PoolConfig = {
 
 export class Queue<T> {
   private onSettles: Array<(res: any, error: any) => void> = []
-  private onErrors: Array<(error: any, task: () => Promise<any>) => void> = []
-  private onSuccesses: Array<(result: any, task: () => Promise<any>) => void> =
-    []
   private running: boolean
   private active: Array<() => Promise<any>> = []
   private pending: Array<() => Promise<any>>
@@ -44,21 +41,14 @@ export class Queue<T> {
       }
       this.active.push(nextFn)
       ;(async () => {
-        let success = false
         let res!: T
         let error: any
         try {
           res = await nextFn()
-          success = true
         } catch (e) {
           error = e
         }
         this.active = this.active.filter((d) => d !== nextFn)
-        if (success) {
-          this.onSuccesses.forEach((d) => d(res, nextFn))
-        } else {
-          this.onErrors.forEach((d) => d(error, nextFn))
-        }
         this.onSettles.forEach((d) => d(res, error))
         this.tick()
       })()
@@ -86,33 +76,11 @@ export class Queue<T> {
     })
   }
 
-  throttle(n: number) {
-    this.currentConcurrency = n
-  }
-
   onSettled(cb: () => void) {
     this.onSettles.push(cb)
     return () => {
       this.onSettles = this.onSettles.filter((d) => d !== cb)
     }
-  }
-
-  onError(cb: (error: any, task: () => Promise<any>) => void) {
-    this.onErrors.push(cb)
-    return () => {
-      this.onErrors = this.onErrors.filter((d) => d !== cb)
-    }
-  }
-
-  onSuccess(cb: (result: any, task: () => Promise<any>) => void) {
-    this.onSuccesses.push(cb)
-    return () => {
-      this.onSuccesses = this.onSuccesses.filter((d) => d !== cb)
-    }
-  }
-
-  stop() {
-    this.running = false
   }
 
   start() {
@@ -125,26 +93,6 @@ export class Queue<T> {
         }
       })
     })
-  }
-
-  clear() {
-    this.pending = []
-  }
-
-  getActive() {
-    return this.active
-  }
-
-  getPending() {
-    return this.pending
-  }
-
-  getAll() {
-    return [...this.active, ...this.pending]
-  }
-
-  isRunning() {
-    return this.running
   }
 
   isSettled() {

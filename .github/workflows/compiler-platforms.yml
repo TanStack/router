@@ -2,8 +2,17 @@ name: Compiler Platforms
 
 # The main PR workflow only runs on Linux x64 (glibc). The compilers load a
 # native Yuku binary per platform and handle platform-specific paths, so run
-# their unit tests and a Vite and Rsbuild production build on the other
-# platforms we ship to.
+# their fast test tier (test:unit, the compiler core's included; its client
+# checks run in pages of a headless Chromium), a small integration smoke set
+# (test:integration:smoke: real Vite, Rspack, webpack and Rsbuild builds,
+# including apps under paths with `#`, `%`, spaces and non-ASCII characters,
+# and modules the compiler cannot parse) and a Vite and Rsbuild production
+# build on the other platforms we ship to. The rest of the slow tier
+# (test:integration) runs on Linux x64 in the main PR workflow.
+#
+# Chromium: Playwright's own build on the glibc platforms; Alpine (musl) has
+# no Playwright build, so the job installs the distribution's Chromium and
+# names it to the test browser helper (TANSTACK_COMPILER_TESTS_CHROMIUM).
 
 on:
   pull_request:
@@ -12,6 +21,8 @@ on:
       - 'packages/router-generator/**'
       - 'packages/router-plugin/**'
       - 'packages/start-plugin-core/**'
+      - 'packages/compiler-test-utils/**'
+      - 'packages/react-start-rsc/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/compiler-platforms.yml'
   schedule:
@@ -57,7 +68,9 @@ jobs:
       - name: Install system packages
         if: ${{ matrix.container }}
         shell: sh
-        run: apk add --no-cache bash git
+        # Chromium and its fonts for the browser-backed tests (Playwright has
+        # no musl build; the helper launches this executable instead)
+        run: apk add --no-cache bash git chromium font-noto
       - name: Keep LF line endings
         # Snapshots are stored with LF. Windows runners check out CRLF by default,
         # and with `* text=auto` disabling autocrlf alone still uses the native eol
@@ -81,6 +94,8 @@ jobs:
         if: ${{ matrix.container }}
         run: npm install --global "$(node -p "require('./package.json').packageManager")"
       - name: Install dependencies
+        # The compiler packages, what their tests build (the start-plugin-core
+        # tiers depend on the React, Solid and Vue Start builds) and the e2e app
         run: >-
           pnpm install --frozen-lockfile
           --filter .
@@ -88,11 +103,38 @@ jobs:
           --filter "@tanstack/router-generator..."
           --filter "@tanstack/router-plugin..."
           --filter "@tanstack/start-plugin-core..."
+          --filter "@tanstack/react-start-rsc..."
+          --filter "@tanstack/react-start..."
+          --filter "@tanstack/solid-start..."
+          --filter "@tanstack/vue-start..."
           --filter "tanstack-react-start-e2e-basic..."
-      - name: Unit tests
+      - name: Install Chromium (Playwright)
+        if: ${{ !matrix.container }}
+        # `--with-deps` installs the shared libraries Chromium needs on Linux
+        # (a no-op where they are present); the macOS and Windows images need none
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            pnpm exec playwright install --with-deps chromium
+          else
+            pnpm exec playwright install chromium
+          fi
+      - name: Use the system Chromium (container)
+        if: ${{ matrix.container }}
+        run: echo "TANSTACK_COMPILER_TESTS_CHROMIUM=$(command -v chromium-browser || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Unit tests (fast tier)
         run: >-
           pnpm nx run-many --targets=test:unit
           --projects=@tanstack/router-utils,@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core
+          --skip-nx-cache --outputStyle=static
+      - name: Noncompiler tests (runtime and build plumbing)
+        run: >-
+          pnpm nx run-many --targets=test:noncompiler
+          --projects=@tanstack/start-plugin-core,@tanstack/react-start-rsc
+          --skip-nx-cache --outputStyle=static
+      - name: Integration smoke (no browser)
+        run: >-
+          pnpm nx run-many --targets=test:integration:smoke
+          --projects=@tanstack/router-plugin,@tanstack/start-plugin-core
           --skip-nx-cache --outputStyle=static
       - name: Production builds
         run: >-

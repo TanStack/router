@@ -188,7 +188,7 @@ By default, this value is set to `false`.
 
 ### `autoCodeSplitting`
 
-This feature is only available if you are using the TanStack Router Bundler Plugin.
+This feature is only available if you are using the TanStack Router Bundler Plugin with Vite, Rspack/Rsbuild or Webpack. With Esbuild, setting it to `true` is an error.
 
 This option is used to enable automatic code-splitting for non-critical route configuration items. See the "Automatic Code-Splitting" guide for more information.
 
@@ -257,9 +257,9 @@ By default, this value is set to:
 
 ### `enableRouteTreeFormatting`
 
-This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
+The generated route tree file is always printed in the configured `quoteStyle` and `semicolons`. Set this option to `true` to also format it with Prettier (loaded only then), which can be time-consuming for large projects.
 
-By default, this value is set to `true`.
+By default, this value is set to `false`.
 
 ### `tmpDir`
 

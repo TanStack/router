@@ -26,7 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "clean:snapshots": "rimraf **/*snapshot* --glob",
-    "test:eslint": "eslint ./src",
+    "test:eslint": "eslint ./src ./tests",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js -p tsconfig.legacy.json",
@@ -34,7 +34,8 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts60": "tsc6 -p tsconfig.legacy.json",
     "test:types:ts70": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest --typecheck false && vitest run --typecheck.only",
+    "test:unit": "vitest --project unit",
+    "test:integration": "vitest --project integration",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
@@ -62,39 +63,36 @@
     "src"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
+    "chokidar": "catalog:",
     "jiti": "^2.7.0",
-    "magic-string": "^0.30.21",
     "prettier": "^3.9.6",
+    "yuku": "0.26.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/react-router": "workspace:*",
+    "@tanstack/vue-router": "workspace:*",
     "@types/node": ">=20",
     "@types/react": "catalog:",
+    "@vitejs/plugin-vue": "^6.0.5",
     "react": "catalog:",
     "vite": "catalog:",
+    "vue": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
-  },
-  "nx": {
-    "targets": {
-      "test:unit": {
-        "outputs": [
-          "...",
-          "{projectRoot}/tests/generator/*/routeTree.gen.{ts,js}",
-          "{projectRoot}/tests/generator/file-modification/routes/*/*.tsx"
-        ]
-      }
-    }
+    "rimraf": "catalog:",
+    "@tanstack/solid-router": "workspace:*",
+    "react-dom": "catalog:",
+    "solid-js": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "@types/react-dom": "catalog:"
   }
 }

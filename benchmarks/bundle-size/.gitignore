@@ -9,3 +9,5 @@ results/*.js
 results/*.log
 results/runs/
 !results/.gitkeep
+dist-server
+dist-server-maps

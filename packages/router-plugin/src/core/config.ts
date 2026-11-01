@@ -9,7 +9,6 @@ import type {
   RouteIds,
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
-import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
 
 export const splitGroupingsSchema = z
   .array(
@@ -57,7 +56,7 @@ export type CodeSplittingOptions = {
 
   /**
    * The default/global configuration to control your code splitting behavior per route.
-   * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
+   * @default [['component'],['errorComponent'],['notFoundComponent']]
    */
   defaultBehavior?: CodeSplitGroupings
 
@@ -71,25 +70,6 @@ export type CodeSplittingOptions = {
    * @default true
    */
   addHmr?: boolean
-
-  /**
-   * Internal compiler plugins used by framework integrations.
-   * @internal
-   */
-  compilerPlugins?: Array<CodeSplitCompilerPlugin>
-}
-
-export type HmrStyle = 'vite' | 'webpack'
-
-export type HmrOptions = {
-  /**
-   * Selects the HMR runtime style to emit code for.
-   * - `'vite'` (default): ESM `import.meta.hot` with Vite accept-callback semantics.
-   * - `'webpack'`: `import.meta.webpackHot` with webpack / Rspack `module.hot` re-execution semantics.
-   *
-   * Bundler-specific plugin entries (e.g. `rspack.ts`, `webpack.ts`) set this explicitly.
-   */
-  style?: HmrStyle
 }
 
 const codeSplittingOptionsSchema = z.object({
@@ -116,11 +96,6 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
   plugin: z
     .object({
-      hmr: z
-        .object({
-          style: z.enum(['vite', 'webpack']).optional(),
-        })
-        .optional(),
       vite: z
         .object({
           environmentName: z.string().optional(),
@@ -139,3 +114,20 @@ export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
 export type Config = z.infer<typeof configSchema>
 export type ConfigInput = z.input<typeof configSchema>
 export type ConfigOutput = z.output<typeof configSchema>
+
+/**
+ * The options of a code-splitter plugin used alone
+ * (`tanStackRouterCodeSplitter`, `TanStackRouterCodeSplitter{Rspack,Webpack}`):
+ * it always splits, as it did before `autoCodeSplitting` reached the
+ * compiler (`autoCodeSplitting` selects the splitter in `tanstackRouter`).
+ */
+export function splitterOptions<T>(options: T): T {
+  if (typeof options === 'function') {
+    const read = options as () => Partial<Config>
+    return (() => ({ ...read(), autoCodeSplitting: true })) as T
+  }
+  return {
+    ...(options as Partial<Config> | undefined),
+    autoCodeSplitting: true,
+  } as T
+}

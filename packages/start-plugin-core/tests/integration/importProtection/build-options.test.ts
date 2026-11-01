@@ -1,0 +1,664 @@
+/**
+ * Start's `importProtection` options, by their effect on a real Start build
+ * (Vite and Rsbuild), as guide/import-protection.md documents them. Without
+ * options, a build fails on a violation (build.test.ts).
+ * Source: review (options that were parsed but never exercised for
+ * effect).
+ */
+import { describe, expect, test } from 'vitest'
+import { buildStart, startBundlers } from '../../build-harness'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import {
+  distinct,
+  expectMarkerViolation,
+  expectViolationsAt,
+  inEnvironment,
+  locationIn,
+  rejection,
+  relevantViolations,
+  reportedImporters,
+  reportedViolations,
+  violationLabel,
+  violationsOf,
+} from '../../importProtection/start-apps'
+import type { ExpectedViolation } from '../../importProtection/start-apps'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
+
+const timeout = 60_000
+
+/** A server-only module, denied to the client by Start's default rules. */
+const secretServer = {
+  'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+}
+
+/** A module at `path` (under `src/`) that uses `secret` of `from`. */
+const userOf = (from: string) => `import { secret } from '${from}'
+export const read = () => secret()
+`
+
+/** A dependency `name` whose entry is `file`, exporting `secret`. */
+const dependency = (name: string, file = 'index.js') => ({
+  [`node_modules/${name}/package.json`]: JSON.stringify({
+    name,
+    type: 'module',
+    exports: { '.': `./${file}` },
+  }),
+  [`node_modules/${name}/${file}`]: `export const secret = () => 'MARK_SECRET'\n`,
+})
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  /**
+   * Builds `files` (client entry `src/entry.ts`, or `entry`) with
+   * `importProtection`; the violations reported (through `onViolation`), as
+   * `<environment> <importer file>`, or `built` when the build succeeds
+   * without any.
+   */
+  async function outcome(
+    files: Record<string, string>,
+    importProtection: ImportProtectionOptions,
+    entry: string | { client: string; ssr: string } = 'src/entry.ts',
+  ): Promise<string | Array<string>> {
+    const built = buildStart({
+      bundler,
+      files,
+      entry,
+      start: { importProtection },
+    })
+    // What the build or its failure reported
+    const toList = reportedImporters
+    try {
+      const warned = toList(await built)
+      return warned.length ? warned : 'built'
+    } catch {
+      return toList(await rejection(built))
+    }
+  }
+
+  describe('behavior', () => {
+    const app = { ...secretServer, 'src/entry.ts': userOf('./secret.server') }
+
+    test(
+      "{ build: 'mock' }: the build mocks the import and warns",
+      async () => {
+        const build = await buildStart({
+          bundler,
+          files: app,
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: { behavior: { dev: 'error', build: 'mock' } },
+          },
+        })
+        const { client } = build
+        const reports = inEnvironment(build, 'client')
+        expect(reportedViolations(reports)).toHaveLength(1)
+        expectViolationsAt(reports, [
+          {
+            environment: 'client',
+            use: locationIn('src/entry.ts', app['src/entry.ts'], 2, 'secret()'),
+            also: ['src/entry.ts:1'],
+          },
+        ])
+        expect(client.where('MARK_SECRET')).toBe('nowhere')
+      },
+      timeout,
+    )
+
+    test(
+      "{ dev: 'mock' }: the build keeps its default and fails",
+      async () => {
+        expect(await outcome(app, { behavior: { dev: 'mock' } })).toEqual([
+          'client src/entry.ts',
+        ])
+      },
+      timeout,
+    )
+  })
+
+  // Scope: which importers are checked.
+  describe('include, exclude and ignoreImporters', () => {
+    test(
+      'include: an importer outside the patterns is not checked',
+      async () => {
+        expect(
+          await outcome(
+            {
+              ...secretServer,
+              'src/other/a.ts': userOf('../secret.server'),
+              'src/entry.ts': `export { read } from './other/a'\n`,
+            },
+            { include: ['src/app/**'] },
+          ),
+        ).toBe('built')
+      },
+      timeout,
+    )
+
+    test(
+      'include: an importer matching the patterns is checked',
+      async () => {
+        expect(
+          await outcome(
+            {
+              ...secretServer,
+              'src/app/a.ts': userOf('../secret.server'),
+              'src/entry.ts': `export { read } from './app/a'\n`,
+            },
+            { include: ['src/app/**'] },
+          ),
+        ).toEqual(['client src/app/a.ts'])
+      },
+      timeout,
+    )
+
+    // These rows check that nothing is reported; what the excluded or
+    // ignored importer then gets for the denied file (the real module) is
+    // pinned in exemptions.test.ts.
+    test.each([
+      {
+        option: 'exclude',
+        importProtection: { exclude: ['src/generated/**'] },
+      },
+      {
+        option: 'ignoreImporters',
+        importProtection: { ignoreImporters: ['**/generated/*.ts'] },
+      },
+    ])(
+      '$option: a matching importer is not reported, others are',
+      async ({ importProtection }) => {
+        expect(
+          await outcome(
+            {
+              ...secretServer,
+              'src/generated/a.ts': userOf('../secret.server'),
+              'src/entry.ts': `export { read } from './generated/a'\n`,
+            },
+            importProtection,
+          ),
+        ).toBe('built')
+        expect(
+          await outcome(
+            {
+              ...secretServer,
+              'src/generated/a.ts': userOf('../secret.server'),
+              'src/b.ts': `import { secret } from './secret.server'
+export const other = () => secret()
+`,
+              'src/entry.ts': `export { read } from './generated/a'
+export { other } from './b'
+`,
+            },
+            importProtection,
+          ),
+        ).toEqual(['client src/b.ts'])
+      },
+      timeout,
+    )
+  })
+
+  describe('specifiers', () => {
+    test(
+      'client.specifiers adds to the defaults: both are denied to the client',
+      async () => {
+        const importProtection = { client: { specifiers: ['db-lib'] } }
+        expect(
+          await outcome(
+            { ...dependency('db-lib'), 'src/entry.ts': userOf('db-lib') },
+            importProtection,
+          ),
+        ).toEqual(['client src/entry.ts'])
+        expect(
+          await outcome(
+            {
+              'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+            },
+            importProtection,
+          ),
+        ).toEqual(['client src/entry.ts'])
+      },
+      timeout,
+    )
+
+    test(
+      'server.specifiers are denied to the server build',
+      async () => {
+        expect(
+          await outcome(
+            {
+              ...dependency('browser-lib'),
+              'src/client.ts': `export const read = () => 'client'\n`,
+              'src/server.ts': userOf('browser-lib'),
+            },
+            { server: { specifiers: ['browser-lib'] } },
+            { client: 'src/client.ts', ssr: 'src/server.ts' },
+          ),
+        ).toEqual(['server src/server.ts'])
+      },
+      timeout,
+    )
+
+    // Source: mutation testing (Rsbuild host, the pattern of a specifier
+    // violation).
+    test(
+      'a RegExp pattern is reported as the rule that matched',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...dependency('db-lib'),
+              'src/entry.ts': userOf('db-lib'),
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: { client: { specifiers: [/^db-lib$/] } },
+            },
+          }),
+        )
+        expect(error.violations).not.toEqual([])
+        for (const info of error.violations) {
+          // The rule that matched is the one `onViolation` gets
+          expect(String(info.pattern)).toContain('^db-lib$')
+        }
+      },
+      timeout,
+    )
+  })
+
+  // `excludeFiles`: resolved files the file and marker rules skip; a value
+  // replaces the default (`**/node_modules/**`).
+  describe('excludeFiles', () => {
+    /** A dependency whose entry is a `*.server.*` file, used by the client. */
+    const serverFileDependency = {
+      ...dependency('server-pkg', 'secret.server.js'),
+      'src/entry.ts': userOf('server-pkg'),
+    }
+
+    test.each<{
+      name: string
+      importProtection: ImportProtectionOptions
+      expected: string | Array<string>
+    }>([
+      {
+        name: 'by default, a *.server.* file of a dependency is not denied',
+        importProtection: {},
+        expected: 'built',
+      },
+      {
+        name: '[] checks dependencies: their *.server.* files are denied',
+        importProtection: { client: { excludeFiles: [] } },
+        expected: ['client src/entry.ts'],
+      },
+      {
+        name: 'other patterns replace the default: dependencies are checked',
+        importProtection: { client: { excludeFiles: ['**/vendor/**'] } },
+        expected: ['client src/entry.ts'],
+      },
+      {
+        name: 'a file matching any one of several patterns is not denied',
+        importProtection: {
+          client: { excludeFiles: ['**/vendor/**', '**/node_modules/**'] },
+        },
+        expected: 'built',
+      },
+    ])(
+      '$name',
+      async ({ importProtection, expected }) => {
+        expect(await outcome(serverFileDependency, importProtection)).toEqual(
+          expected,
+        )
+      },
+      timeout,
+    )
+
+    test(
+      'a file matching the patterns is not denied',
+      async () => {
+        expect(
+          await outcome(
+            {
+              'src/vendor/secret.server.ts':
+                secretServer['src/secret.server.ts'],
+              'src/entry.ts': userOf('./vendor/secret.server'),
+            },
+            { client: { excludeFiles: ['**/vendor/**'] } },
+          ),
+        ).toBe('built')
+      },
+      timeout,
+    )
+
+    /** A dependency whose entry is marked server-only, used by the client. */
+    const markedDependency = {
+      ...dependency('db-lib'),
+      'node_modules/db-lib/index.js': `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`,
+      'src/entry.ts': userOf('db-lib'),
+    }
+
+    // Replaces the Rsbuild unit test of getRsbuildResolvedImportProtectionCheck
+    // ("skips file and marker checks for excluded resolved files").
+    // NEW bug (Vite): the Vite adapter checks a server-only marker when it
+    // resolves the marker import, for any importer, and never applies
+    // `excludeFiles` to the marked module (vite/import-protection-plugin/
+    // plugin.ts, marker handling in `resolveId`), so the build fails with a
+    // marker violation of `node_modules/db-lib/index.js`. The docs: "By
+    // default, resolved files inside `node_modules` are excluded from
+    // resolved-target deny checks (file-pattern and marker checks)"
+    // (guide/import-protection.md). Rsbuild follows them.
+    // Impact: on Vite, a client import of a dependency that marks itself
+    // server-only fails the build although the defaults exclude it (and
+    // `excludeFiles` cannot exempt it).
+    // Source: review (replaces a row of rsbuild/import-protection.test.ts).
+    // (Was a Vite pin: main's Vite adapter never applied `excludeFiles` to a
+    // marked module.)
+    test(
+      'by default, the server-only marker of a dependency is not checked',
+      async () => {
+        expect(await outcome(markedDependency, {})).toBe('built')
+      },
+      timeout,
+    )
+
+    // Bug (Rsbuild): with `excludeFiles: []`, the Rsbuild adapter still
+    // skips the marker check of files under `node_modules` (the build
+    // succeeds without any report); `excludeFiles` is documented as the
+    // files the file-pattern and marker checks skip (guide/import-protection.md),
+    // and Vite checks them.
+    // Impact: on Rsbuild, a project cannot opt in to checking the
+    // server-only markers of its dependencies.
+    // Source: review (this row ran on Vite only; the docs decide).
+    test(
+      '[] checks the markers of dependencies: a server-only-marked dependency fails the build',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: markedDependency,
+            entry: 'src/entry.ts',
+            start: { importProtection: { client: { excludeFiles: [] } } },
+          }),
+        )
+        const [report, ...others] = violationsOf(error)
+        expect(others).toEqual([])
+        expect(report!.environment).toBe('client')
+        expectMarkerViolation(report!, {
+          marker: 'node_modules/db-lib/index.js:1',
+          use: 'src/entry.ts:2:27',
+          imports: ['src/entry.ts:1'],
+        })
+      },
+      timeout,
+    )
+  })
+
+  describe('onViolation', () => {
+    // Only `false` allows an import: a callback that returns nothing (one
+    // that logs, say) leaves the import denied.
+    // Each report is at the importer's use of the import (`use`), its import
+    // on line 1 (SPEC J6.5), or one of `others`.
+    test.each<{
+      name: string
+      files: Record<string, string>
+      /** The importer's genuine use, `file:line:column`. */
+      use: string
+      others?: Array<string>
+      type: Violation['type']
+    }>([
+      {
+        name: 'a denied file',
+        files: { ...secretServer, 'src/entry.ts': userOf('./secret.server') },
+        use: 'src/entry.ts:2:27',
+        type: 'file',
+      },
+      {
+        name: 'a server-only-marked module',
+        files: {
+          'src/marked.ts': `export const before = 1
+import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`,
+          'src/entry.ts': userOf('./marked'),
+        },
+        use: 'src/entry.ts:2:27',
+        // Or at the marker import (SPEC J6.5).
+        others: ['src/marked.ts:2'],
+        type: 'marker',
+      },
+      // Source: mutation testing (Rsbuild host, the type of a specifier
+      // violation).
+      {
+        name: 'a denied specifier',
+        files: {
+          'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+        },
+        use: 'src/entry.ts:2:27',
+        type: 'specifier',
+      },
+    ])(
+      'a callback that returns nothing does not allow $name: the build fails, and the callback gets a $type violation',
+      async ({ files, use, others = [], type }) => {
+        const seen: Array<Violation> = []
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files,
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: (info) => {
+                  seen.push(info as Violation)
+                },
+              },
+            },
+          }),
+        )
+        expect(reportedViolations(error)).toHaveLength(1)
+        expectViolationsAt(error, [
+          { environment: 'client', use, also: ['src/entry.ts:1', ...others] },
+        ])
+        expect(distinct(seen.map((info) => info.type))).toEqual([type])
+      },
+      timeout,
+    )
+
+    // Source: mutation testing (the `specifier` type of the table above).
+    test(
+      'the callback gets a specifier violation for an import of a denied specifier',
+      async () => {
+        const seen: Array<Violation> = []
+        await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: (info) => {
+                  seen.push(info as Violation)
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          distinct(seen.map((info) => `${info.type} ${info.specifier}`)),
+        ).toEqual(['specifier @tanstack/react-start/server'])
+      },
+      timeout,
+    )
+
+    // `resolved` is optional (SPEC J6.5, §5.14: a compiler that denies by
+    // the raw specifier need not resolve it); when given, it is the file the
+    // specifier resolves to.
+    test(
+      'in mock mode, it gets each import of a denied specifier, with the file the specifier resolves to when it gives one; the mocks are safe (and silent with mockAccess off)',
+      async () => {
+        const seen: Array<Violation> = []
+        const { client } = await buildStart({
+          bundler,
+          files: {
+            ...dependency('db-lib'),
+            ...dependency('mail-lib'),
+            'src/a.ts': `import { secret } from 'db-lib'
+import { secret as mail } from 'mail-lib'
+import { b } from './b'
+export const a = () => [secret(), mail(), b()]
+`,
+            'src/b.ts': `import { secret } from 'db-lib'
+export const b = () => secret()
+`,
+            'src/entry.ts': `import { a } from './a'
+export const read = () => a()
+`,
+          },
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              behavior: 'mock',
+              mockAccess: 'off',
+              client: { specifiers: ['db-lib', 'mail-lib'] },
+              onViolation: (info) => {
+                seen.push(info as Violation)
+              },
+            },
+          },
+        })
+        const fromRoot = (file: string) =>
+          file.replace(/^.*?\/(src|node_modules)\//, '$1/')
+        const inClient = seen.filter((info) => info.envType === 'client')
+        expect(
+          distinct(
+            inClient.map(
+              (info) => `${fromRoot(info.importer)} ${info.specifier}`,
+            ),
+          ).sort(),
+        ).toEqual(['src/a.ts db-lib', 'src/a.ts mail-lib', 'src/b.ts db-lib'])
+        for (const info of inClient) {
+          if (info.resolved !== undefined) {
+            expect(fromRoot(info.resolved)).toBe(
+              `node_modules/${info.specifier}/index.js`,
+            )
+          }
+        }
+        expect(
+          await client.run(`${describeValuePrelude}
+return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`),
+        ).toMatchObject({
+          result: ['a safe mock', 'a safe mock', 'a safe mock'],
+          logs: [],
+        })
+      },
+      timeout,
+    )
+  })
+
+  describe('log', () => {
+    test(
+      "'always' reports each violation of a build once",
+      async () => {
+        const entry = `import { secret, other } from './secret.server'
+export const read = () => secret() + other() + secret()
+export { a } from './a'
+export { b } from './b'
+`
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/secret.server.ts': `export const secret = () => 'secret'
+export const other = () => 'other'
+`,
+              'src/marked.ts': `import '@tanstack/react-start/server-only'
+export const m = () => 'MARK_SECRET'
+`,
+              'src/a.ts': `import { m } from './marked'\nexport const a = () => m()\n`,
+              'src/b.ts': `import { m } from './marked'\nexport const b = () => m() + m()\n`,
+              'src/entry.ts': entry,
+            },
+            entry: 'src/entry.ts',
+            start: { importProtection: { log: 'always' } },
+          }),
+        )
+        const reported = reportedViolations(error).map(
+          ({ importer }) => importer,
+        )
+        const use: ExpectedViolation = {
+          environment: 'client',
+          use: 'src/entry.ts:2:27',
+          also: ['src/entry.ts:1'],
+        }
+        expect(relevantViolations(error, [use])).toContain(violationLabel(use))
+        expect(reported).toEqual(distinct(reported))
+      },
+      timeout,
+    )
+  })
+
+  describe('maxTraceDepth', () => {
+    /** The client imports `src/secret.server.ts` through a chain of modules. */
+    const chain = {
+      ...secretServer,
+      'src/b.ts': userOf('./secret.server'),
+      'src/a.ts': `import { read } from './b'\nexport const page = () => read()\n`,
+      'src/entry.ts': `export * from './a'\n`,
+    }
+
+    /** The modules of the trace of the violation the build reports. */
+    async function traceOf(importProtection: ImportProtectionOptions) {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: chain,
+          entry: 'src/entry.ts',
+          start: { importProtection },
+        }),
+      )
+      const [report, ...others] = violationsOf(error)
+      expect(others).toEqual([])
+      return report!.trace.map(({ at }) => at.replace(/(?::\d+)+$/, ''))
+    }
+
+    test(
+      'cuts a deeper trace, keeping the importer',
+      async () => {
+        // (which steps a cut keeps, besides the importer, is not specified)
+        const trace = await traceOf({ maxTraceDepth: 1 })
+        expect(trace.length).toBeGreaterThan(0)
+        expect(trace.length).toBeLessThanOrEqual(1 + 1)
+        expect(trace.at(-1)).toBe('src/b.ts')
+      },
+      timeout,
+    )
+
+    test(
+      'keeps a trace that is not deeper complete',
+      async () => {
+        expect((await traceOf({ maxTraceDepth: 3 })).slice(-3)).toEqual([
+          'src/entry.ts',
+          'src/a.ts',
+          'src/b.ts',
+        ])
+      },
+      timeout,
+    )
+  })
+})
+
+/** What `onViolation` gets (guide/import-protection.md). */
+interface Violation {
+  envType: 'client' | 'server'
+  type: 'specifier' | 'file' | 'marker'
+  specifier: string
+  importer: string
+  resolved?: string
+  pattern?: string | RegExp
+}

@@ -1,4 +1,5 @@
 import { crawlFrameworkPkgs } from 'vitefu'
+import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -10,11 +11,11 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
-import { importProtectionPlugin } from './import-protection-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
   buildStartViteEnvironments,
+  composeOnwarn,
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
@@ -35,6 +36,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -54,6 +56,8 @@ export function tanStackStartVite(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
+  // the generator's registry, read by the compiler's router planner
+  const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
 
@@ -140,7 +144,7 @@ export function tanStackStartVite(
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
-          root: process.cwd(),
+          root: viteConfig.root || process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
             const peerDependencies = pkgJson['peerDependencies']
@@ -176,6 +180,16 @@ export function tanStackStartVite(
           appType: viteConfig.appType ?? 'custom',
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
+          build: {
+            rolldownOptions: {
+              // the server-fn resolver's lazy imports are no chunking mistake
+              onwarn: composeOnwarn(
+                viteConfig.build?.rolldownOptions?.onwarn as
+                  | OnwarnLike
+                  | undefined,
+              ),
+            },
+          },
           define: createViteDefineConfig({
             command,
             mode: viteConfig.mode,
@@ -209,29 +223,26 @@ export function tanStackStartVite(
       getConfig,
       postServerBuild,
     }),
-    // Server function plugin handles:
-    // 1. Identifying createServerFn().handler() calls
-    // 2. Extracting server functions to separate modules
-    // 3. Replacing call sites with RPC stubs
-    // 4. Generating the server function manifest
-    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
+    // The compiler: one compile per (environment, module) running Start's
+    // environment separation, server functions, <Hydrate>, RSC CSS, the
+    // router's splitting and HMR, and import protection
     startCompilerPlugin({
       framework: corePluginOpts.framework,
       environments,
       generateFunctionId:
         normalizedStartPluginOpts.serverFns?.generateFunctionId,
-      compilerTransforms: corePluginOpts.compilerTransforms,
-      serverFnProviderModuleDirectives:
-        corePluginOpts.serverFnProviderModuleDirectives,
+      rsc: corePluginOpts.rsc,
       providerEnvName: serverFnProviderEnv,
-    }),
-    importProtectionPlugin({
       getConfig,
-      framework: corePluginOpts.framework,
-      environments,
-      providerEnvName: serverFnProviderEnv,
+      routerPluginContext,
+      resolveEntries: () => configContext.resolveEntries(),
     }),
-    tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
+    tanStackStartRouter(
+      normalizedStartPluginOpts,
+      getConfig,
+      corePluginOpts,
+      routerPluginContext,
+    ),
     loadEnvPlugin(),
     createDevClientEntryPlugin({
       framework: corePluginOpts.framework,

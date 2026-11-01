@@ -1,0 +1,74 @@
+{
+  "name": "@tanstack/compiler-test-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test infrastructure shared by the compiler test suites: a public in-process plugin host (Vite, Rsbuild) driving the plugins a user configures, a real-build harness, dev-server harnesses (Vite, Rsbuild), a real browser page, one merged diagnostic channel, and the free names of a module (Yuku)",
+  "type": "module",
+  "exports": {
+    "./app-directory": "./src/app-directory.ts",
+    "./browser": "./src/browser.ts",
+    "./budget-reporter": "./src/budget-reporter.ts",
+    "./build-harness": "./src/build-harness.ts",
+    "./dead-code-shapes": "./src/dead-code-shapes.ts",
+    "./determinism": "./src/determinism.ts",
+    "./dev-server": "./src/dev-server.ts",
+    "./diagnostic-channel": "./src/diagnostic-channel.ts",
+    "./diagnostics": "./src/diagnostics.ts",
+    "./free-names": "./src/free-names.ts",
+    "./global-trap": "./src/global-trap.ts",
+    "./hmr-sync": "./src/hmr-sync.ts",
+    "./importers": "./src/importers.ts",
+    "./known-globals": "./src/known-globals.ts",
+    "./outcome": "./src/outcome.ts",
+    "./pins": "./src/pins.ts",
+    "./pins-setup": "./src/pins-setup.ts",
+    "./plugin-host": "./src/plugin-host.ts",
+    "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
+    "./rsbuild-plugin-host": "./src/rsbuild-plugin-host.ts",
+    "./run-directory": "./src/run-directory.ts",
+    "./run-node": "./src/run-node.ts",
+    "./source-maps": "./src/source-maps.ts",
+    "./test-scope": "./src/test-scope.ts",
+    "./test-scope-setup": "./src/test-scope-setup.ts",
+    "./workspace-packages": "./src/workspace-packages.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test:unit": "vitest --project unit",
+    "test:integration": "vitest --project integration",
+    "test:types": "tsc",
+    "test:eslint": "eslint ./src ./tests"
+  },
+  "nx": {
+    "targets": {
+      "test:integration": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/history"
+            ],
+            "target": "build"
+          }
+        ]
+      }
+    }
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@playwright/test": "catalog:",
+    "@rsbuild/core": "catalog:",
+    "esbuild": "^0.28.2",
+    "globals": "^16.2.0",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "webpack": "^5.104.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "yuku": "0.26.0"
+  }
+}

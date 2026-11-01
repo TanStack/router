@@ -1,6 +1,7 @@
 import { normalizePath } from 'vite'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
   DEV_CLIENT_ENTRY,
   ENTRY_POINTS,
@@ -69,6 +70,15 @@ export function createViteConfigPlan(opts: {
         },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
+          // The compiler's dev-only route HMR block imports
+          // `@tanstack/<framework>-router/hmr`. The framework plugins exclude
+          // the router package from optimization, so the subpath is served
+          // from source with the rest of the package (one instance of the
+          // HMR state); it must not be pre-bundled on its own: route modules
+          // import an optimized chunk late in the client entry's graph, and
+          // a post-scan re-optimization invalidates its URL before the
+          // browser fetches it (504, the graph never evaluates, the dev
+          // client never connects, the buffered reload is lost).
           entries: escapeEntries([
             opts.entryAliases.client,
             opts.entryAliases.router,
@@ -191,7 +201,10 @@ export async function buildStartViteEnvironments(opts: {
   )
 
   if (!client.isBuilt) {
-    await opts.builder.build(client)
+    // `build --watch`: the build returns the client's watcher at once; the
+    // server's resolver lists the functions the client compiled, so the
+    // server builds once the client's first build ended
+    await firstBuildEnd(await opts.builder.build(client))
   }
 
   if (!server.isBuilt) {
@@ -211,6 +224,24 @@ export async function buildStartViteEnvironments(opts: {
   if (!providerEnv.isBuilt) {
     await opts.builder.build(providerEnv)
   }
+}
+
+/** Resolves once a watch mode build's first build ended (an output: at once). */
+function firstBuildEnd(
+  output: Awaited<ReturnType<vite.ViteBuilder['build']>>,
+): Promise<void> {
+  if (!('on' in output)) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => {
+    const ended = (event: vite.Rolldown.RolldownWatcherEvent) => {
+      if (event.code === 'END' || event.code === 'ERROR') {
+        output.off('event', ended)
+        resolve()
+      }
+    }
+    output.on('event', ended)
+  })
 }
 
 function escapeEntries(entries: Array<string>) {
@@ -239,4 +270,49 @@ function getRequiredBuilderEnvironment(
   }
 
   return environment
+}
+
+/** A Rolldown warning as `build.rolldownOptions.onwarn` receives it (structural). */
+interface RolldownWarningLike {
+  code?: string
+  message: string
+}
+
+/** `build.rolldownOptions.onwarn`: the warning and Rolldown's default handler. */
+export type OnwarnLike = (
+  warning: RolldownWarningLike,
+  defaultHandler: (warning: RolldownWarningLike) => void,
+) => void
+
+/**
+ * Rolldown's chunking hint for the server-fn resolver: the resolver imports
+ * every provider module lazily (`import()`), and a server bundle usually
+ * imports the same module statically, so Rolldown notes that the dynamic
+ * import "will not move module into another chunk". That is the intended
+ * shape (one instance of the module, loaded when first called or imported);
+ * the hint names nothing the app can fix.
+ */
+export function isResolverChunkingHint(warning: RolldownWarningLike): boolean {
+  // (the message prints the id URL-encoded: `\0%23tanstack-start-…`)
+  return (
+    warning.code === 'INEFFECTIVE_DYNAMIC_IMPORT' &&
+    warning.message.includes(VIRTUAL_MODULES.serverFnResolver.replace(/^#/, ''))
+  )
+}
+
+/**
+ * The app's `onwarn` with the resolver's chunking hint dropped; every other
+ * warning goes to the app's own handler, else to Rolldown's default.
+ */
+export function composeOnwarn(appOnwarn: OnwarnLike | undefined): OnwarnLike {
+  return (warning, defaultHandler) => {
+    if (isResolverChunkingHint(warning)) {
+      return
+    }
+    if (appOnwarn) {
+      appOnwarn(warning, defaultHandler)
+    } else {
+      defaultHandler(warning)
+    }
+  }
 }

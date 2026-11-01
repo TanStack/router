@@ -26,10 +26,12 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "clean:snapshots": "rimraf **/*snapshot* --glob",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest",
-    "test:unit:dev": "vitest --watch",
-    "test:eslint": "eslint ./src",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration",
+    "test:unit": "vitest --project unit",
+    "test:unit:dev": "vitest --project unit --watch",
+    "test:integration": "vitest --project integration --project integration-pages",
+    "test:integration:smoke": "vitest --project integration integration/build-production.test.ts integration/code-splitter-project-path.test.ts integration/code-splitter-unparsed-route.test.ts integration/code-splitter-robustness.test.ts -t \"vite.*a production react client bundle has no dev-only code|autoCodeSplitting: true. has no dev-only code|project-path|unparsed|is generated, split and rendered\"",
+    "test:eslint": "eslint ./src ./tests",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
@@ -103,52 +105,79 @@
         "default": "./dist/cjs/esbuild.cjs"
       }
     },
+    "./planners": {
+      "import": {
+        "types": "./dist/esm/planners/index.d.ts",
+        "default": "./dist/esm/planners/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/planners/index.d.cts",
+        "default": "./dist/cjs/planners/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "files": [
     "dist",
     "src",
+    "loader",
     "skills",
     "bin",
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
-    "@babel/core": "catalog:",
-    "@babel/template": "^7.29.7",
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "chokidar": "catalog:",
     "unplugin": "^3.3.0",
+    "yuku": "0.26.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@babel/core": "catalog:",
+    "@babel/preset-typescript": "^7.28.5",
+    "@emotion/react": "^11.14.0",
+    "@rolldown/plugin-babel": "^0.2.0",
     "@rsbuild/core": "catalog:",
-    "@types/babel__core": "^7.20.5",
-    "@types/babel__template": "^7.4.4",
-    "@types/node": ">=20",
+    "@rsbuild/plugin-babel": "^1.1.2",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@rsbuild/plugin-solid": "^1.2.2",
+    "@rsbuild/plugin-vue": "^1.2.7",
+    "@rsbuild/plugin-vue-jsx": "^2.0.0",
+    "@tanstack/compiler-test-utils": "workspace:*",
+    "@tanstack/compiler-vite-versions": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:",
-    "jsdom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
+    "@tanstack/vue-router": "workspace:*",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": ">=20",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "prettier": "^3.9.6",
-    "@arethetypeswrong/cli": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "babel-loader": "^10.0.0",
+    "babel-preset-solid": "^1.9.10",
     "publint": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-error-boundary": "^6.1.6",
     "rimraf": "catalog:",
-    "webpack": "^5.104.1"
+    "solid-js": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "vitest": "catalog:",
+    "vue": "catalog:",
+    "webpack": "^5.104.1",
+    "webpack-dev-server": "^5.2.4"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
     "@tanstack/react-router": "workspace:^",
-    "vite": ">=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0",
+    "vite": ">=6.0.0",
     "vite-plugin-solid": "^2.11.10 || ^3.0.0-0",
     "webpack": ">=5.92.0"
   },
@@ -167,6 +196,19 @@
     },
     "webpack": {
       "optional": true
+    }
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "parallelism": false
+      },
+      "test:integration": {
+        "parallelism": false
+      },
+      "test:integration:smoke": {
+        "parallelism": false
+      }
     }
   }
 }

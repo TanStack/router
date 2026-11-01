@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
-import * as fsp from 'node:fs/promises'
-import path from 'node:path'
-import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import type { Config, TokenMatcher } from './config'
-import type {
-  ImportDeclaration,
-  RouteNode,
-  RoutePathSegmentMetadata,
-} from './types'
+import type { TokenMatcher } from './config'
+import type { RouteNode, RoutePathSegmentMetadata } from './types'
 
 /**
  * Prefix map for O(1) parent route lookups.
@@ -61,24 +54,10 @@ export class RoutePrefixMap {
     }
     return null
   }
-
-  /**
-   * Check if a route exists at the given path.
-   */
-  has(routePath: string): boolean {
-    return this.prefixToRoute.has(routePath)
-  }
-
-  /**
-   * Get a route by exact path.
-   */
-  get(routePath: string): RouteNode | undefined {
-    return this.prefixToRoute.get(routePath)
-  }
 }
 
 export function multiSortBy<T>(
-  arr: Array<T>,
+  arr: ReadonlyArray<T>,
   accessors: Array<(item: T) => any> = [(d) => d],
 ): Array<T> {
   const len = arr.length
@@ -203,12 +182,11 @@ function determineInitialRoutePathFromParts(
       const character = match[1]
       if (character === undefined) continue
       if (DISALLOWED_ESCAPE_CHARS.has(character)) {
-        console.error(
-          `Error: Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
+        throw new Error(
+          `Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
             DISALLOWED_ESCAPE_CHARS,
           ).join(', ')}\nPlease remove and/or replace them.`,
         )
-        process.exit(1)
       }
     }
 
@@ -536,35 +514,6 @@ function removeUnderscoresFromSegment(
   return result
 }
 
-/**
- * Removes underscores from a path, but preserves underscores that were escaped
- * in the original path (indicated by [_] syntax).
- *
- * @param routePath - The path with brackets removed
- * @param originalPath - The original path that may contain [_] escape sequences
- * @returns The path with non-escaped underscores removed
- */
-export function removeUnderscoresWithEscape(
-  routePath?: string,
-  originalPath?: string,
-): string {
-  if (!routePath) return ''
-  if (!originalPath) return removeUnderscores(routePath) ?? ''
-
-  const routeSegments = routePath.split('/')
-  const metadata = createRoutePathSegmentMetadata(routePath, originalPath)
-  const newSegments = new Array<string>(routeSegments.length)
-
-  for (let i = 0; i < routeSegments.length; i++) {
-    newSegments[i] = removeUnderscoresFromSegment(
-      routeSegments[i]!,
-      metadata?.[i],
-    )
-  }
-
-  return newSegments.join('/')
-}
-
 export function removeLayoutSegmentsAndUnderscoresWithEscape(
   routePath: string = '/',
   originalPath?: string,
@@ -596,32 +545,6 @@ export function removeLayoutSegmentsAndUnderscoresWithEscape(
 
     newSegments.push(removeUnderscoresFromSegment(segment, segmentMetadata))
   }
-
-  return newSegments.join('/')
-}
-
-/**
- * Removes layout segments (segments starting with underscore) from a path,
- * but preserves segments where the underscore was escaped.
- *
- * @param routePath - The path with brackets removed
- * @param originalPath - The original path that may contain [_] escape sequences
- * @returns The path with non-escaped layout segments removed
- */
-export function removeLayoutSegmentsWithEscape(
-  routePath: string = '/',
-  originalPath?: string,
-): string {
-  if (!originalPath) return removeLayoutSegments(routePath)
-
-  const routeSegments = routePath.split('/')
-  const originalSegments = originalPath.split('/')
-
-  // Keep segments that are NOT pathless (i.e., don't start with unescaped underscore)
-  const newSegments = routeSegments.filter((segment, i) => {
-    const originalSegment = originalSegments[i] || ''
-    return !isSegmentPathless(segment, originalSegment)
-  })
 
   return newSegments.join('/')
 }
@@ -718,42 +641,6 @@ export function unwrapBracketWrappedSegment(segment: string): string {
   return isBracketWrappedSegment(segment) ? segment.slice(1, -1) : segment
 }
 
-export function removeLeadingUnderscores(s: string, routeToken: string) {
-  if (!s) return s
-
-  const hasLeadingUnderscore = routeToken[0] === '_'
-
-  const routeTokenToExclude = hasLeadingUnderscore
-    ? routeToken.slice(1)
-    : routeToken
-
-  const escapedRouteToken = escapeRegExp(routeTokenToExclude)
-
-  const leadingUnderscoreRegex = hasLeadingUnderscore
-    ? new RegExp(`(?<=^|\\/)_(?!${escapedRouteToken})`, 'g')
-    : new RegExp(`(?<=^|\\/)_`, 'g')
-
-  return s.replaceAll(leadingUnderscoreRegex, '')
-}
-
-export function removeTrailingUnderscores(s: string, routeToken: string) {
-  if (!s) return s
-
-  const hasTrailingUnderscore = routeToken.slice(-1) === '_'
-
-  const routeTokenToExclude = hasTrailingUnderscore
-    ? routeToken.slice(0, -1)
-    : routeToken
-
-  const escapedRouteToken = escapeRegExp(routeTokenToExclude)
-
-  const trailingUnderscoreRegex = hasTrailingUnderscore
-    ? new RegExp(`(?<!${escapedRouteToken})_(?=\\/|$)`, 'g')
-    : new RegExp(`_(?=\\/)|_$`, 'g')
-
-  return s.replaceAll(trailingUnderscoreRegex, '')
-}
-
 export function capitalize(s: string) {
   if (typeof s !== 'string') return ''
   return s.charAt(0).toUpperCase() + s.slice(1)
@@ -769,52 +656,6 @@ export function removeExt(d: string, addExtensions: boolean | string = false) {
 }
 
 /**
- * This function writes to a file if the content is different.
- *
- * @param filepath The path to the file
- * @param content Original content
- * @param incomingContent New content
- * @param callbacks Callbacks to run before and after writing
- * @returns Whether the file was written
- */
-export async function writeIfDifferent(
-  filepath: string,
-  content: string,
-  incomingContent: string,
-  callbacks?: { beforeWrite?: () => void; afterWrite?: () => void },
-): Promise<boolean> {
-  if (content !== incomingContent) {
-    callbacks?.beforeWrite?.()
-    await fsp.writeFile(filepath, incomingContent)
-    callbacks?.afterWrite?.()
-    return true
-  }
-  return false
-}
-
-/**
- * This function formats the source code using the default formatter (Prettier).
- *
- * @param source The content to format
- * @param config The configuration object
- * @returns The formatted content
- */
-export async function format(
-  source: string,
-  config: {
-    quoteStyle: 'single' | 'double'
-    semicolons: boolean
-  },
-): Promise<string> {
-  const prettierOptions: prettier.Config = {
-    semi: config.semicolons,
-    singleQuote: config.quoteStyle === 'single',
-    parser: 'typescript',
-  }
-  return prettier.format(source, prettierOptions)
-}
-
-/**
  * This function resets the regex index to 0 so that it can be reused
  * without having to create a new regex object or worry about the last
  * state when using the global flag.
@@ -825,21 +666,6 @@ export async function format(
 export function resetRegex(regex: RegExp) {
   regex.lastIndex = 0
   return
-}
-
-/**
- * This function checks if a file exists.
- *
- * @param file The path to the file
- * @returns Whether the file exists
- */
-export async function checkFileExists(file: string) {
-  try {
-    await fsp.access(file, fsp.constants.F_OK)
-    return true
-  } catch {
-    return false
-  }
 }
 
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -885,428 +711,4 @@ export function removeLastSegmentFromPath(routePath: string = '/'): string {
   const segments = routePath.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
-}
-
-/**
- * Find parent route using RoutePrefixMap for O(k) lookups instead of O(n).
- */
-export function hasParentRoute(
-  prefixMap: RoutePrefixMap,
-  node: RouteNode,
-  routePathToCheck: string | undefined,
-): RouteNode | null {
-  if (!routePathToCheck || routePathToCheck === '/') {
-    return null
-  }
-
-  return prefixMap.findParent(routePathToCheck)
-}
-
-/**
- * Gets the final variable name for a route
- */
-export const getResolvedRouteNodeVariableName = (
-  routeNode: RouteNode,
-): string => {
-  return routeNode.children?.length
-    ? `${routeNode.variableName}RouteWithChildren`
-    : `${routeNode.variableName}Route`
-}
-
-/**
- * Infers the path for use by TS
- */
-const inferPath = (routeNode: RouteNode): string => {
-  if (routeNode.cleanedPath === '/') {
-    return routeNode.cleanedPath ?? ''
-  }
-  return routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
-}
-
-/**
- * Infers the full path for use by TS
- */
-export const inferFullPath = (routeNode: RouteNode): string => {
-  const fullPath = removeGroups(
-    removeLayoutSegmentsAndUnderscoresWithEscape(
-      routeNode.routePath,
-      routeNode.originalRoutePath,
-      routeNode._routePathSegmentMetadata,
-    ),
-  )
-
-  if (fullPath === '') {
-    return '/'
-  }
-
-  // Preserve trailing slash for index routes (routePath ends with '/')
-  // This ensures types match runtime behavior
-  const isIndexRoute = routeNode.routePath?.endsWith('/')
-  if (isIndexRoute) {
-    return fullPath
-  }
-
-  return fullPath.replace(/\/$/, '')
-}
-
-const shouldPreferIndexRoute = (
-  current: RouteNode,
-  existing: RouteNode,
-): boolean => {
-  return existing.cleanedPath === '/' && current.cleanedPath !== '/'
-}
-
-const isIndexRouteNode = (routeNode: RouteNode): boolean => {
-  return routeNode.routePath?.endsWith('/') ?? false
-}
-
-const isPathlessRouteNode = (routeNode: RouteNode): boolean => {
-  return routeNode._fsRouteType === 'pathless_layout'
-}
-
-const shouldReplaceRouteNodeForTo = (
-  current: RouteNode,
-  existing: RouteNode,
-): boolean => {
-  const currentIsIndex = isIndexRouteNode(current)
-  const existingIsIndex = isIndexRouteNode(existing)
-  if (currentIsIndex !== existingIsIndex) {
-    return currentIsIndex
-  }
-
-  const currentIsPathless = isPathlessRouteNode(current)
-  const existingIsPathless = isPathlessRouteNode(existing)
-  if (currentIsPathless !== existingIsPathless) {
-    return !currentIsPathless
-  }
-
-  return true
-}
-
-const shouldReplaceRouteNodeForFullPath = (
-  current: RouteNode,
-  existing: RouteNode,
-): boolean => {
-  const currentIsPathless = isPathlessRouteNode(current)
-  const existingIsPathless = isPathlessRouteNode(existing)
-  if (currentIsPathless !== existingIsPathless) {
-    return !currentIsPathless
-  }
-
-  return true
-}
-
-/**
- * Creates a map from fullPath to routeNode
- */
-export const createRouteNodesByFullPath = (
-  routeNodes: Array<RouteNode>,
-): Map<string, RouteNode> => {
-  const map = new Map<string, RouteNode>()
-
-  for (const routeNode of routeNodes) {
-    const fullPath = inferFullPath(routeNode)
-
-    if (fullPath === '/' && map.has('/')) {
-      const existing = map.get('/')!
-      if (shouldPreferIndexRoute(routeNode, existing)) {
-        continue
-      }
-    }
-
-    const existing = map.get(fullPath)
-    if (existing && !shouldReplaceRouteNodeForFullPath(routeNode, existing)) {
-      continue
-    }
-
-    map.set(fullPath, routeNode)
-  }
-
-  return map
-}
-
-/**
- * Create a map from 'to' to a routeNode
- */
-export const createRouteNodesByTo = (
-  routeNodes: Array<RouteNode>,
-): Map<string, RouteNode> => {
-  const map = new Map<string, RouteNode>()
-
-  for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
-    const to = inferTo(routeNode)
-
-    const existing = map.get(to)
-    if (existing && !shouldReplaceRouteNodeForTo(routeNode, existing)) {
-      continue
-    }
-
-    map.set(to, routeNode)
-  }
-
-  return map
-}
-
-/**
- * Create a map from 'id' to a routeNode
- */
-export const createRouteNodesById = (
-  routeNodes: Array<RouteNode>,
-): Map<string, RouteNode> => {
-  return new Map(
-    routeNodes.map((routeNode) => {
-      const id = routeNode.routePath ?? ''
-      return [id, routeNode]
-    }),
-  )
-}
-
-/**
- * Infers to path
- */
-const inferTo = (routeNode: RouteNode): string => {
-  const fullPath = inferFullPath(routeNode)
-
-  if (fullPath === '/') return fullPath
-
-  return fullPath.replace(/\/$/, '')
-}
-
-/**
- * Dedupes branches and index routes
- */
-const dedupeBranchesAndIndexRoutes = (
-  routes: Array<RouteNode>,
-): Array<RouteNode> => {
-  return routes.filter((route) => {
-    if (route.children?.find((child) => child.cleanedPath === '/')) return false
-    return true
-  })
-}
-
-function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
-  // Check no two routes have the same `key`
-  // if they do, throw an error with the conflicting filePaths
-  const keys = routes.map((d) => d[key])
-  const uniqueKeys = new Set(keys)
-  if (keys.length !== uniqueKeys.size) {
-    const duplicateKeys = keys.filter((d, i) => keys.indexOf(d) !== i)
-    const conflictingFiles = routes.filter((d) =>
-      duplicateKeys.includes(d[key]),
-    )
-    return conflictingFiles
-  }
-  return undefined
-}
-
-export function checkRouteFullPathUniqueness(
-  _routes: Array<RouteNode>,
-  config: Config,
-) {
-  const emptyPathRoutes = _routes.filter((d) => d.routePath === '')
-  if (emptyPathRoutes.length) {
-    const errorMessage = `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
-Conflicting files: \n ${emptyPathRoutes
-      .map((d) => path.resolve(config.routesDirectory, d.filePath))
-      .join('\n ')}\n`
-    throw new Error(errorMessage)
-  }
-
-  const routes = _routes.map((d) => {
-    const inferredFullPath = inferFullPath(d)
-    return { ...d, inferredFullPath }
-  })
-
-  const conflictingFiles = checkUnique(routes, 'inferredFullPath')
-
-  if (conflictingFiles !== undefined) {
-    const errorMessage = `Conflicting configuration paths were found for the following route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
-      .map((p) => `"${p.inferredFullPath}"`)
-      .join(', ')}.
-Please ensure each Route has a unique full path.
-Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
-    throw new Error(errorMessage)
-  }
-}
-
-export function buildRouteTreeConfig(
-  nodes: Array<RouteNode>,
-  disableTypes: boolean,
-  depth = 1,
-): Array<string> {
-  const children = nodes.map((node) => {
-    if (node._fsRouteType === '__root') {
-      return
-    }
-
-    if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
-      return
-    }
-
-    const route = `${node.variableName}`
-
-    if (node.children?.length) {
-      const childConfigs = buildRouteTreeConfig(
-        node.children,
-        disableTypes,
-        depth + 1,
-      )
-
-      const childrenDeclaration = disableTypes
-        ? ''
-        : `interface ${route}RouteChildren {
-  ${node.children
-    .map(
-      (child) =>
-        `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`,
-    )
-    .join(',')}
-}`
-
-      const children = `const ${route}RouteChildren${disableTypes ? '' : `: ${route}RouteChildren`} = {
-  ${node.children
-    .map(
-      (child) =>
-        `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`,
-    )
-    .join(',')}
-}`
-
-      const routeWithChildren = `const ${route}RouteWithChildren = ${route}Route._addFileChildren(${route}RouteChildren)`
-
-      return [
-        childConfigs.join('\n'),
-        childrenDeclaration,
-        children,
-        routeWithChildren,
-      ].join('\n\n')
-    }
-
-    return undefined
-  })
-
-  return children.filter((x) => x !== undefined)
-}
-
-export function buildImportString(
-  importDeclaration: ImportDeclaration,
-): string {
-  const { source, specifiers, importKind } = importDeclaration
-  return specifiers.length
-    ? `import ${importKind === 'type' ? 'type ' : ''}{ ${specifiers.map((s) => (s.local ? `${s.imported} as ${s.local}` : s.imported)).join(', ')} } from '${source}'`
-    : ''
-}
-
-export function mergeImportDeclarations(
-  imports: Array<ImportDeclaration>,
-): Array<ImportDeclaration> {
-  const merged = new Map<string, ImportDeclaration>()
-
-  for (const imp of imports) {
-    const key = `${imp.source}-${imp.importKind ?? ''}`
-    let existing = merged.get(key)
-    if (!existing) {
-      existing = { ...imp, specifiers: [] }
-      merged.set(key, existing)
-    }
-
-    const existingSpecs = existing.specifiers
-    for (const specifier of imp.specifiers) {
-      let found = false
-      for (let i = 0; i < existingSpecs.length; i++) {
-        const e = existingSpecs[i]!
-        if (e.imported === specifier.imported && e.local === specifier.local) {
-          found = true
-          break
-        }
-      }
-      if (!found) {
-        existingSpecs.push(specifier)
-      }
-    }
-  }
-
-  return [...merged.values()]
-}
-
-export const findParent = (node: RouteNode | undefined): string => {
-  if (!node) {
-    return `rootRouteImport`
-  }
-  if (node.parent) {
-    return `${node.parent.variableName}Route`
-  }
-  return findParent(node.parent)
-}
-
-export function buildFileRoutesByPathInterface(opts: {
-  routeNodes: Array<RouteNode>
-  module: string
-  interfaceName: string
-  config?: Pick<Config, 'routeToken'>
-}): string {
-  return `declare module '${opts.module}' {
-  interface ${opts.interfaceName} {
-    ${opts.routeNodes
-      .map((routeNode) => {
-        const filePathId = routeNode.routePath
-        const preloaderRoute = `typeof ${routeNode.variableName}RouteImport`
-
-        const parent = findParent(routeNode)
-
-        return `'${filePathId}': {
-          id: '${filePathId}'
-          path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: ${preloaderRoute}
-          parentRoute: typeof ${parent}
-        }`
-      })
-      .join('\n')}
-  }
-}`
-}
-
-function getImportPath(
-  node: RouteNode,
-  config: Config,
-  generatedRouteTreePath: string,
-): string {
-  return replaceBackslash(
-    removeExt(
-      path.relative(
-        path.dirname(generatedRouteTreePath),
-        path.resolve(config.routesDirectory, node.filePath),
-      ),
-      config.addExtensions,
-    ),
-  )
-}
-
-export function getImportForRouteNode(
-  node: RouteNode,
-  config: Config,
-  generatedRouteTreePath: string,
-  root: string,
-): ImportDeclaration {
-  let source = ''
-  if (config.importRoutesUsingAbsolutePaths) {
-    source = replaceBackslash(
-      removeExt(
-        path.resolve(root, config.routesDirectory, node.filePath),
-        config.addExtensions,
-      ),
-    )
-  } else {
-    source = `./${getImportPath(node, config, generatedRouteTreePath)}`
-  }
-  return {
-    source,
-    specifiers: [
-      {
-        imported: 'Route',
-        local: `${node.variableName}RouteImport`,
-      },
-    ],
-  } satisfies ImportDeclaration
 }

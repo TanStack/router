@@ -40,6 +40,19 @@ By default, files inside `node_modules` are excluded from resolved-target deny c
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
+## Pattern Imports
+
+Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
+
+On the client, a file rule judges the denied file itself, wherever it lives in your project: a pattern that reaches `../lib/*.server.ts`, or a file `exclude` matches, gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. On Vite this covers non-code files too (`./*.server.json`); on Rsbuild, `new URL` of a non-code file and asset queries. A package's own files in `node_modules` are not judged this way.
+
+Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
+
+```ts
+// src/routes/admin.tsx: reported, and the client gets a mock of db.server.ts
+const modules = import.meta.glob('../lib/*.ts')
+```
+
 ## Type-Only Imports
 
 Type-only imports and re-exports are ignored by import protection because they are erased from the runtime bundle and cannot leak environment-specific code.
@@ -56,6 +69,14 @@ Mixed imports still count when they include at least one runtime value. Split th
 ```ts
 // This is still checked because `getUsers` is a runtime value.
 import { type User, getUsers } from './db.server'
+```
+
+A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never reported. Write `import type` when only the type should cross the boundary.
+
+```ts
+// Reported only if the bundler keeps the import (verbatimModuleSyntax).
+import { User } from './db.server'
+export type Props = { user: User }
 ```
 
 ## File Markers
@@ -241,6 +262,82 @@ importProtection: {
   ignoreImporters: ['**/*.test.ts', '**/*.spec.ts'],
 }
 ```
+
+## What the Compiler Guarantees
+
+Server code stays out of the client when it is written with these primitives:
+
+- **Server functions** (`createServerFn`): the client gets a call to the server, never the handler.
+- **`createServerOnlyFn`** and the `.server()` of `createIsomorphicFn` and `createMiddleware`: the client never gets the implementation.
+- **`.server` files and `server-only` markers**, through import protection: the client build fails, or gets a mock.
+- **A route's `server` option**: removed from the client.
+
+A use of these the compiler cannot follow (a builder passed to another function, stored in an object, a namespace object holding one passed around) fails the client build.
+
+The compiler reads your code statically, which limits this guarantee:
+
+- `import()`, `require()` and `import.meta.glob` of a builder are not followed, and nothing reports them. Attach server code to a builder you imported statically.
+- Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either.
+- A `.server` file behind a neutral module outside the protected scope (`srcDirectory`, `include`) isn't caught: the scope is about importers.
+- Only the route factory call bound to a file's `Route` export has its `server`, `ssr` and `headers` removed. Another call with them written in its options fails the build, including one through another name (`const f = createFileRoute`); another call with options the compiler can't read warns. Code-based `createRoute` isn't supported by Start, and nothing removes its `server`.
+- Route options the compiler can't read build with a warning: a spread (`{ ...shared, component }`), options from a call or an import (`createFileRoute('/x')(makeOptions())`) or written to after their declaration, and a computed key. What they hold isn't code-split or removed, so any server code in them ships to the client. Write `server`, `ssr` and `headers` as properties of the options object in the route file, outside the spread. No warning: a spread of a local object literal only that spread reads, naming none of them, and a computed key naming a local string const (it stays unsplit). An edit of a route with options from a call or an import reloads the page.
+
+Everything else is ordinary code. A plain call in a declaration that client code also reads ships to the client, with its import:
+
+```ts
+import { readSecret } from './secrets' // not a .server file, so not denied
+
+const config = { name: 'app', secret: readSecret() }
+
+export const appName = () => config.name // the client reads config, so readSecret() ships
+```
+
+Arguments ship too. A parameter only server code reads gets a build warning, because its calls keep their arguments on the client:
+
+```ts
+// warns: 'admin' still ships to the client
+const requireRole = (role: string) =>
+  createMiddleware().server(({ next }) => check(role, next))
+
+export const adminOnly = requireRole('admin')
+```
+
+A parameter passed directly as the server code, as in `(fn) => createServerOnlyFn(fn)` or `(schema) => createServerFn().validator(schema)`, fails the build: the wrapper's argument would ship.
+
+To write safe code:
+
+- Call server-only code inside a server function, `createServerOnlyFn` or `.server()`.
+- Keep modules that hold secrets in `.server` files, so import protection catches any import that survives.
+- Read secrets inside the server code, not through parameters.
+
+## Limitations
+
+A denied file is judged when it is compiled, from the imports import protection has read so far. Some imports are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
+
+An exempt importer that reaches a denied file only through a pattern import:
+
+```ts
+// src/generated/registry.ts, with exclude: ['src/generated/**']
+// the client gets mocks of the matched *.server.ts files
+const modules = import.meta.glob('../lib/*.server.ts', { eager: true })
+```
+
+An importer outside the scope (`srcDirectory` or `include`) that imports a denied file inside it:
+
+```ts
+// lib/env.ts, outside srcDirectory: the client gets a mock of db.server.ts
+import { db } from '../src/lib/db.server'
+```
+
+An importer outside the scope, or a package in `node_modules`, that reaches a denied file outside the scope only through a pattern import, or a `new URL` from an exempt or out-of-scope module on Rsbuild. A plain `import` from a module outside the scope keeps the real module of a denied file outside the scope.
+
+To get the real module, write the import statically (a plain `import`), in a module inside the scope that `exclude` or `ignoreImporters` exempts.
+
+A real module an unchecked importer keeps is one module: a pattern import from a checked importer that reaches the same file is reported, and under `behavior: 'mock'` may then get that real module too. Under `behavior: 'error'` the build fails either way.
+
+Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
+
+A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
 
 ## Reading Violation Traces
 
@@ -508,6 +605,8 @@ importProtection: {
   },
 }
 ```
+
+In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is asked once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
 
 ## Disabling Import Protection
 

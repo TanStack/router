@@ -1,8 +1,4 @@
-import {
-  RSBUILD_ENVIRONMENT_NAMES,
-  tanStackStartRsbuild,
-} from '@tanstack/start-plugin-core/rsbuild'
-import { createRscCssCompilerTransforms } from '@tanstack/react-start-rsc/plugin/rscCssTransform'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { reactStartDefaultEntryPaths } from './shared'
 import type {
   TanStackStartRsbuildInputConfig,
@@ -18,7 +14,6 @@ export function tanstackStart(
   let corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'react',
     defaultEntryPaths: reactStartDefaultEntryPaths,
-    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     ssrIsProvider: true,
   }
 
@@ -26,13 +21,9 @@ export function tanstackStart(
     const rscConfig = configureRscRsbuild()
     corePluginOpts = {
       ...corePluginOpts,
-      providerEnvironmentName: rscConfig.providerEnvironmentName,
       ssrIsProvider: false,
       serializationAdapters: rscConfig.serializationAdapters,
-      compilerTransforms: rscConfig.compilerTransforms,
-      serverFnProviderModuleDirectives:
-        rscConfig.serverFnProviderModuleDirectives,
-      rsc: true,
+      rsc: rscConfig.rsc,
     }
   }
 
@@ -42,20 +33,17 @@ export function tanstackStart(
 /**
  * Configure RSC options for the rsbuild adapter.
  *
- * Returns provider env, serialization adapters, and core RSC options.
+ * Returns serialization adapters and core RSC options.
  *
  * The SSR resolver strategy is intentionally NOT changed from 'default' —
  * in the rspack layered model, SSR and RSC live in the same
  * compilation so they share the same resolver file. No forwarding needed.
  */
 function configureRscRsbuild(): {
-  providerEnvironmentName: TanStackStartRsbuildPluginCoreOptions['providerEnvironmentName']
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
-  compilerTransforms: TanStackStartRsbuildPluginCoreOptions['compilerTransforms']
-  serverFnProviderModuleDirectives: TanStackStartRsbuildPluginCoreOptions['serverFnProviderModuleDirectives']
+  rsc: NonNullable<TanStackStartRsbuildPluginCoreOptions['rsc']>
 } {
   return {
-    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     serializationAdapters: [
       {
         client: {
@@ -70,10 +58,9 @@ function configureRscRsbuild(): {
         },
       },
     ],
-    compilerTransforms: createRscCssCompilerTransforms({
+    rsc: {
       loadCssExpression: 'import.meta.rspackRsc.loadCss()',
-      serverFnProviderOnly: true,
-    }),
-    serverFnProviderModuleDirectives: ['use server-entry'],
+      providerDirective: 'use server-entry',
+    },
   }
 }

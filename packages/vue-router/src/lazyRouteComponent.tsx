@@ -1,7 +1,15 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
+
+type VueLazyRouteComponentHot = LazyRouteComponentHot & {
+  version: Vue.ShallowRef<number>
+  read: () => any
+}
 
 // If the load fails due to module not found, it may mean a new version of
 // the build was deployed and the user's browser is still using an old version.
@@ -45,8 +53,15 @@ export function lazyRouteComponent<
     // Use existing promise or create new one
     if (!loadPromise) {
       error = undefined
-      loadPromise = importer()
-        .then((res) => {
+      const promise = (loadPromise = importer()
+        .then((res): any => {
+          // A hot update replaced this load: settle with the newer one.
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           if (typeof document !== 'undefined') {
             loadPromise = undefined
             ;(lazyComp as any).preload = undefined
@@ -54,7 +69,13 @@ export function lazyRouteComponent<
           comp = res[exportName ?? 'default']
           return comp
         })
-        .catch((err) => {
+        .catch((err): any => {
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           error = err
           loadPromise = undefined
 
@@ -64,7 +85,7 @@ export function lazyRouteComponent<
           }
 
           throw err
-        })
+        }))
     }
 
     return loadPromise
@@ -123,6 +144,17 @@ export function lazyRouteComponent<
         throw errorState.value
       }
 
+      if (process.env.NODE_ENV !== 'production') {
+        const hot: VueLazyRouteComponentHot | undefined = (lazyComp as any)
+          .__tsrHot
+        if (hot) {
+          // A hot swap replaces the component of every instance.
+          Vue.watch(hot.version, () => {
+            component.value = hot.read()
+          })
+        }
+      }
+
       // Return a render function
       return () => {
         // If we're still loading or don't have a component yet, use a suspense pattern
@@ -151,6 +183,45 @@ export function lazyRouteComponent<
 
   // Add preload method
   lazyComp.preload = load
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    !(isServer ?? typeof document === 'undefined')
+  ) {
+    // One ref per wrapper, shared by all of its instances.
+    const version = Vue.shallowRef(0)
+    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
+      importer,
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== null || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          version.value++
+        },
+      },
+      {
+        version,
+        // A failed hot import renders as a component that throws it.
+        read: () =>
+          error
+            ? Vue.markRaw(() => {
+                throw error
+              })
+            : comp && Vue.markRaw(comp),
+      },
+    )
+  }
 
   return lazyComp as any
 }

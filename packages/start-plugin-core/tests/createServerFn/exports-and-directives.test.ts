@@ -1,70 +1,64 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 import {
-  callProvider,
-  compileAll,
-  compileCode,
-  compileFor,
-  evaluateModule,
-  importSources,
+  callFromClient,
+  callOnServer,
+  callServerFnThroughCallers,
+  directivePrologue,
+  inPage,
+  serveCase,
+  serverFnUrls,
+  useStartHost,
 } from '../regression-helpers'
 
-// Callers keep the module's exports, with each server fn replaced by an RPC;
-// the provider module only exports the extracted handlers. Module directives,
-// ids and module formats must survive both rewrites.
+// Callers keep the module's exports: the client gets each server fn as an
+// RPC, and calling one from server code runs its handler; a client call
+// reaches the handler by id through Start's server entry, wherever the
+// handler lives on the server (SPEC J4.2, §5.4). Module directives, ids and
+// module formats must survive these rewrites.
+//
+// Moved to integration/start-compiler-build-ids.test.ts (production builds):
+// "build providers have no dev HMR code", the build row of "ids are
+// repeatable for unchanged input ...", "build ids do not ship source names"
+// and the two build rows of "a provider for a module ending in a line
+// comment without a newline".
+
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
-
-/** `functionName -> functionId` of the server fns a compilation reported. */
-function idsByName(serverFns: Record<string, { functionName: string }>) {
-  return Object.fromEntries(
-    Object.entries(serverFns).map(([id, fn]) => [fn.functionName, id]),
-  )
-}
 
 describe('export forms', () => {
   // Source: Next.js server-actions fixtures server-graph/9, /12, /13, /29,
   // /66, /69, client-graph/4, /15
-  test('callers keep every export form and the provider exports only the handlers', async () => {
-    const compiled =
-      await compileAll(`${head}const a = createServerFn().handler(async () => 'a')
+  test('callers keep every export form, each server fn running its own handler', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}const a = createServerFn().handler(async () => 'a')
 const b = createServerFn().handler(async () => 'b')
 const c = createServerFn().handler(async () => 'c')
 export const d = createServerFn().handler(async () => 'd'),
   notAServerFn = 1
 export let e = createServerFn().handler(async () => 'e')
 export var f = createServerFn().handler(async () => 'f')
-export { a as default, b as '📙', c as as }`)
-    const ids = idsByName(compiled.serverFns)
+export { a as default, b as named, c as as }`,
+    })
     const exported = {
       default: 'a',
-      '📙': 'b',
+      named: 'b',
       as: 'c',
       d: 'd',
       e: 'e',
       f: 'f',
     }
-    for (const [output, rpc] of [
-      ['client', 'client'],
-      ['ssr', 'ssr'],
-    ] as const) {
-      const module = await evaluateModule(compiled[output])
-      expect({ ...module }).toEqual({
-        notAServerFn: 1,
-        ...Object.fromEntries(
-          Object.entries(exported).map(([name, local]) => [
-            name,
-            { rpc: { [rpc]: ids[`${local}_createServerFn_handler`] } },
-          ]),
-        ),
-      })
+    expect(await inPage(served, 'return module.notAServerFn')).toBe(1)
+    // Six server fns, each its own RPC.
+    expect(await serverFnUrls(served)).toHaveLength(6)
+    for (const [name, local] of Object.entries(exported)) {
+      expect(await callFromClient(served, `module.${name}`), name).toBe(local)
     }
-    const provider = await evaluateModule(compiled.provider)
-    const locals = ['a', 'b', 'c', 'd', 'e', 'f']
-    expect(Object.keys(provider).sort()).toEqual(
-      locals.map((local) => `${local}_createServerFn_handler`),
-    )
-    for (const local of locals) {
-      expect(await callProvider(provider, local)).toBe(local)
+    expect((await served.ssr()).notAServerFn).toBe(1)
+    for (const [name, local] of Object.entries(exported)) {
+      expect(await callOnServer(served, `module.${name}`), name).toBe(local)
     }
   })
 
@@ -73,93 +67,104 @@ export { a as default, b as '📙', c as as }`)
     `export default async function () {\n  return fn()\n}`,
     `export default class {\n  call() {\n    return fn()\n  }\n}`,
   ])('an anonymous default export next to a server fn: %s', async (code) => {
-    const { client, provider } = await compileAll(
-      `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
+    })
+    expect(await inPage(served, 'return typeof module.default')).toBe(
+      'function',
     )
-    expect((await evaluateModule(client)).default).toBeTypeOf('function')
-    expect(await callProvider(provider, 'fn')).toBe(1)
+    expect(await callFromClient(served, 'module.fn')).toBe(1)
   })
+
+  // E.g. a Vue options-API component or a config object.
+  test.each([
+    { code: 'export default { a: 1, b: 2 }', value: { a: 1, b: 2 } },
+    { code: 'export default 42', value: 42 },
+  ])(
+    'a default-exported expression next to a server fn: $code',
+    async ({ code, value }) => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
+      })
+      expect(await inPage(served, 'return module.default')).toEqual(value)
+      expect(await callFromClient(served, 'module.fn')).toBe(1)
+    },
+  )
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/local-export-before-declaration.js
   test('an export list before the server fn declaration', async () => {
-    const compiled = await compileAll(`${head}export { fn, fn as alias }
-const fn = createServerFn().handler(async () => 'fn')`)
-    const client = await evaluateModule(compiled.client)
-    expect(client.alias).toBe(client.fn)
-    expect(client.fn.rpc).toHaveProperty('client')
-    expect(await callProvider(compiled.provider, 'fn')).toBe('fn')
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export { fn, fn as alias }
+const fn = createServerFn().handler(async () => 'fn')`,
+    })
+    expect(
+      await inPage(
+        served,
+        'return [module.alias === module.fn, typeof module.fn.url]',
+      ),
+    ).toEqual([true, 'string'])
+    expect(await callFromClient(served, 'module.fn')).toBe('fn')
   })
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/dependent-declarators.js
   test('a server fn built from a sibling declarator', async () => {
-    const compiled = await compileAll(`${head}import { db } from './db.server'
-export const base = createServerFn(), fn = base.handler(async () => db.x())`)
-    expect(importSources(compiled.client)).toEqual([])
-    expect(
-      await callProvider(compiled.provider, 'fn', {
-        './db.server': `export const db = { x: () => 'x' }`,
-      }),
-    ).toBe('x')
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { db } from './db.server'
+export const base = createServerFn(), fn = base.handler(async () => db.x())`,
+      'db.server.ts': `export const db = { x: () => 'x' }\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await callFromClient(served, 'module.fn')).toBe('x')
   })
 
   // Source: @vitejs/plugin-rsc wrap-export.test.ts "re-export simple",
   // "re-export rename", "re-export all simple", "re-export all rename"
   test('re-exports stay in the callers', async () => {
-    const compiled = await compileAll(`${head}export { x } from './dep'
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export { x } from './dep'
 export { x as y } from './dep'
 export * from './star'
 export * as ns from './dep'
-export const fn = createServerFn().handler(async () => 'fn')`)
-    const stubs = {
-      './dep': `export const x = 'x'`,
-      './star': `export const starred = 'starred'`,
-    }
-    for (const caller of [compiled.client, compiled.ssr]) {
-      const module = await evaluateModule(caller, stubs)
-      expect(Object.keys(module).sort()).toEqual([
-        'fn',
-        'ns',
-        'starred',
-        'x',
-        'y',
-      ])
-      expect([module.x, module.y, module.starred, module.ns.x]).toEqual([
-        'x',
-        'x',
-        'starred',
-        'x',
-      ])
-    }
-    expect(await callProvider(compiled.provider, 'fn', stubs)).toBe('fn')
+export const fn = createServerFn().handler(async () => 'fn')`,
+      'dep.ts': `export const x = 'x'\n`,
+      'star.ts': `export const starred = 'starred'\n`,
+    })
+    const read = '[module.x, module.y, module.starred, module.ns.x]'
+    const expected = ['x', 'x', 'starred', 'x']
+    expect(await inPage(served, `return ${read}`)).toEqual(expected)
+    const ssr = await served.ssr()
+    expect([ssr.x, ssr.y, ssr.starred, ssr.ns.x]).toEqual(expected)
+    expect(await callFromClient(served, 'module.fn')).toBe('fn')
   })
 
   // JSON modules only load with their `type: 'json'` attribute.
   // Source: @vitejs/plugin-rsc source-map/wrap-export/reexport-attributes.js;
   // Turbopack tree-shaker analyzer/import-with-clause
   test('import attributes are kept on the imports and re-exports each output keeps', async () => {
-    const compiled =
-      await compileAll(`${head}import config from './config.json' with { type: 'json' }
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import config from './config.json' with { type: 'json' }
 import secrets from './secrets.json' with { type: 'json' }
 export { default as data } from './data.json' with { type: 'json' }
 export const theme = config.theme
-export const fn = createServerFn().handler(async () => secrets.key)`)
-    const stubs = {
-      './config.json': `{ "theme": "dark" }`,
-      './data.json': `{ "data": true }`,
-      './secrets.json': `{ "key": "s3cret" }`,
-    }
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual(['./config.json', './data.json'])
-      const module = await evaluateModule(caller, stubs)
-      expect([module.theme, module.data]).toEqual(['dark', { data: true }])
-    }
-    expect(await callProvider(compiled.provider, 'fn', stubs)).toBe('s3cret')
+export const fn = createServerFn().handler(async () => secrets.key)`,
+      'config.json': `{ "theme": "dark" }\n`,
+      'data.json': `{ "data": true }\n`,
+      'secrets.json': `{ "key": "s3cret" }\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./secrets.json'])
+    expect(await inPage(served, 'return [module.theme, module.data]')).toEqual([
+      'dark',
+      { data: true },
+    ])
+    const ssr = await served.ssr()
+    expect([ssr.theme, ssr.data]).toEqual(['dark', { data: true }])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('s3cret')
   })
 
   // Source: Next.js server-actions fixtures server-graph/60, /62, /68, /72
   test('TypeScript-only exports and an enum next to a server fn', async () => {
-    const { provider } =
-      await compileAll(`${head}import type { Stuff } from './stuff'
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import type { Stuff } from './stuff'
 export type X = string
 export { type A } from './a'
 export type { B } from './b'
@@ -172,46 +177,89 @@ export enum E {
 }
 export declare const declared: number
 export default interface D {}
-export const fn = createServerFn().handler(async (): Promise<Stuff | string> => E.A)`)
-    expect(await callProvider(provider, 'fn')).toBe('a')
+export const fn = createServerFn().handler(async (): Promise<Stuff | string> => E.A)`,
+      'stuff.ts': 'export type Stuff = number\n',
+      'a.ts': 'export type A = string\n',
+      'b.ts': 'export type B = string\n',
+      'c.ts': 'export type C = string\n',
+    })
+    expect(await callFromClient(served, 'module.fn')).toBe('a')
   })
 
+  // Source: TanStack/router#6480 (an exported type that reads a schema built
+  // from an imported enum kept the enum's server module in the client);
+  // replaces router-utils stripTypeExports "handles the issue #6480
+  // scenario", which never checked the symptom. The real `zod`.
+  test('an exported type reading a schema the handler uses keeps its imports out of the client', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { z } from 'zod'
+import { PostCategory } from './PostService'
+const postSchema = z.object({ category: z.nativeEnum(PostCategory) })
+export type CreatePostInput = z.infer<typeof postSchema>
+export const createPost = createServerFn().handler(async () =>
+  postSchema.parse({ category: 'news' }),
+)`,
+      'PostService.ts': `export const PostCategory = { News: 'news' } as const\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./PostService'])
+    expect(await callFromClient(served, 'module.createPost')).toEqual({
+      category: 'news',
+    })
+  })
+
+  // The server may repeat the module's top-level code or run the handler in
+  // the module itself; it runs once is the goal pinned in
+  // known-bugs-start-compiler.test.ts ("SSR: a server fn module is
+  // initialised once ...").
   // Source: Next.js server-actions fixtures client-graph/2
-  test('side-effect imports and top-level statements stay in every output', async () => {
-    const compiled = await compileAll(`${head}import './polyfill'
+  test('side-effect imports and top-level statements stay in the callers, and the handler runs next to them', async () => {
+    const startCase = await (
+      await host()
+    ).case({
+      'module.tsx': `${head}import './polyfill'
 console.log('side-effect-marker')
-export const fn = createServerFn().handler(async () => 'fn')`)
-    for (const output of [compiled.client, compiled.ssr, compiled.provider]) {
-      expect(importSources(output)).toEqual(['./polyfill'])
-      expect(output).toContain('side-effect-marker')
+export const fn = createServerFn().handler(async () => 'fn')`,
+      'polyfill.ts': `console.log('polyfill')\nexport {}\n`,
+    })
+    const ran: Array<string> = []
+    vi.spyOn(console, 'log').mockImplementation((marker: string) => {
+      ran.push(marker)
+    })
+    try {
+      // The SSR environment evaluates the module (its first evaluation).
+      await startCase.ssr()
+      expect(ran, 'ssr').toEqual(['polyfill', 'side-effect-marker'])
+      // A page importing the module runs the same code.
+      const run = await startCase.client('return true')
+      expect(
+        run.console.filter((message) => message.startsWith('log: ')),
+        'client',
+      ).toEqual(['log: polyfill', 'log: side-effect-marker'])
+      // The handler runs on a server that ran the module's imports.
+      expect(await callFromClient(startCase, 'module.fn')).toBe('fn')
+      expect(ran).toContain('polyfill')
+    } finally {
+      vi.restoreAllMocks()
     }
-  })
-
-  test('redeclared var server fns get distinct versioned handler names', async () => {
-    const code = `${head}var fn = createServerFn().handler(async () => 1)
-var fn = createServerFn().handler(async () => 2)
-export { fn }`
-    const { serverFns } = await compileFor('client', code)
-    const names = ['fn_createServerFn_handler', 'fn_createServerFn_handler_1']
-    expect(Object.keys(idsByName(serverFns)).sort()).toEqual(names)
-    const provider = await evaluateModule(
-      (await compileCode('provider', code))!,
-    )
-    expect(Object.keys(provider).sort()).toEqual(names)
   })
 })
 
 describe('directives', () => {
+  // A handler with a directive prologue is a working server fn. Where its
+  // directives end up on the server (they have no effect in a module, which
+  // is always strict, and outside RSC) is not observable, so the former
+  // check of the provider's printed function prologues is dropped (SPEC
+  // §5.4, §5.5).
   // Source: Next.js server-actions fixtures server-graph/8
   test('handler directives stay in the provider', async () => {
-    const { provider } =
-      await compileAll(`${head}export const fn = createServerFn().handler(async function () {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const fn = createServerFn().handler(async function () {
   'use strict'
   'use server'
   return 1
-})`)
-    expect(provider).toMatch(/(["'])use strict\1;?\s*(["'])use server\2/)
-    expect(await callProvider(provider, 'fn')).toBe(1)
+})`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(1)
   })
 
   // Source: Next.js server-actions fixtures server-graph/3, /4;
@@ -227,117 +275,65 @@ describe('directives', () => {
     'module directives stay first in the callers: $directives',
     async ({ prologue, directives }) => {
       const code = `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`
-      const prologuePattern = new RegExp(
-        String.raw`^(?:\s*//[^\n]*\n)*` +
-          directives
-            .map((directive) => String.raw`\s*['"]${directive}['"];?`)
-            .join(''),
+      const startCase = await (await host()).case({ 'module.tsx': code })
+      // Each directive still leads the module the client environment
+      // serves, read from the parsed module (their order within the
+      // prologue is free, SPEC §5.5; G12 keeps each user directive, it does
+      // not forbid another).
+      expect(directivePrologue(await startCase.served())).toEqual(
+        expect.arrayContaining(directives),
       )
-      for (const output of ['client', 'ssr'] as const) {
-        expect(await compileCode(output, code)).toMatch(prologuePattern)
-      }
-    },
-  )
-
-  // `serverFnProviderModuleDirectives` start the provider's prologue once,
-  // ahead of the generated imports.
-  // Source: @vitejs/plugin-rsc utils.test.ts "recognizes directive prologues"
-  test.each([`'use server'\n`, `'use strict'\n'use server'\n`])(
-    'a provider whose prologue already has the configured directive keeps one: %j',
-    async (prologue) => {
-      const provider = await compileCode(
-        'provider',
-        `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
-        { directives: ['use server', '', 'use server'] },
-      )
-      expect(provider).toMatch(
-        /^(?:\s*(["'])use strict\1;?)?\s*(["'])use server\2/,
-      )
-      expect(provider!.match(/["']use server["']/g)).toHaveLength(1)
-    },
-  )
-
-  test.each([`import './setup'\n'use server'\n`, `('use server')\n`])(
-    'a "use server" string outside the prologue is not the configured directive: %j',
-    async (prologue) => {
-      const provider = await compileCode(
-        'provider',
-        `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
-        { directives: ['use server'] },
-      )
-      expect(provider).toMatch(/^\s*(["'])use server\1/)
+      expect(await callFromClient(startCase, 'module.fn')).toBe(1)
     },
   )
 })
 
 describe('server function ids', () => {
-  const decodeDevId = (id: string) =>
-    JSON.parse(Buffer.from(id, 'base64url').toString('utf8'))
-
-  test('dev ids encode the provider module and the handler export', async () => {
-    const { serverFns } = await compileFor(
-      'client',
-      `${head}export const getPosts = createServerFn().handler(async () => [])`,
-      { mode: 'dev' },
+  test('dev providers export the handler', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.getPosts')).toBe(
+      'posts',
     )
-    expect(Object.keys(serverFns).map(decodeDevId)).toEqual([
-      {
-        file: '/@id/src/module.tsx?tss-serverfn-split',
-        export: 'getPosts_createServerFn_handler',
-      },
-    ])
   })
 
-  test('dev providers export the handler and accept HMR updates', async () => {
-    const provider = await compileCode(
-      'provider',
-      `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
-      { mode: 'dev' },
-    )
-    expect(provider).toContain('import.meta.hot.accept(')
-    expect(provider).toContain('import.meta.webpackHot.accept(')
-    expect(await callProvider(provider!, 'getPosts')).toBe('posts')
-  })
-
-  /** `functionName -> functionId` of the server fns in `code`. */
-  async function idsOf(
-    code: string,
-    options: Parameters<typeof compileFor>[2] = {},
-  ) {
-    return idsByName(
-      (await compileFor('client', `${head}${code}`, options)).serverFns,
-    )
-  }
-
+  // Ids are repeatable for unchanged input, and within each version of a
+  // module the client and the server agree on them (SPEC J4.4, G4). Editing
+  // the module (here: adding a server fn above the others) changes the
+  // effective input, so ids need not survive the edit. Ids are observed as
+  // the public `url` of the server fns the client and server code get.
   // Source: SolidStart compile.spec.ts "keeps ids of existing functions when a
   // function is added above them", "keeps production ids stable ..."
-  test.each(['build', 'dev'] as const)(
-    '%s: ids of existing server fns survive adding one above them',
-    async (mode) => {
-      const existing = `export const load = createServerFn().handler(async () => 1)
-export const save = createServerFn().handler(async () => 2)`
-      const before = await idsOf(existing, { mode })
-      const after = await idsOf(
-        `export const added = createServerFn().handler(async () => 0)\n${existing}`,
-        { mode },
+  // (their edit-stability is not required).
+  test('dev: ids are repeatable for unchanged input, and each version of a module runs its own handlers by id', async () => {
+    const existing = `export const load = createServerFn().handler(async () => 'load')
+export const save = createServerFn().handler(async () => 'save')`
+    const versions = [
+      existing,
+      `export const added = createServerFn().handler(async () => 'added')\n${existing}`,
+    ]
+    for (const version of versions) {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}${version}`,
+      })
+      const names =
+        version === existing ? ['load', 'save'] : ['load', 'save', 'added']
+      const read = `Object.fromEntries(${JSON.stringify(names)}.map((name) => [name, module[name].url]))`
+      const [clientUrls] = await expectDeterministic([1, 2, 3], () =>
+        inPage(served, `return ${read}`),
       )
-      expect(Object.keys(after)).toHaveLength(3)
-      expect(after).toMatchObject(before)
-    },
-  )
-
-  // Source: SolidStart compile.spec.ts "does not ship source names in production ids"
-  test('build ids do not ship source names', async () => {
-    const [id] = Object.values(
-      await idsOf(
-        `export const loadSecretReport = createServerFn().handler(async () => 1)`,
-      ),
-    )
-    for (const text of [
-      id!,
-      Buffer.from(id!, 'base64url').toString('latin1'),
-    ]) {
-      expect(text).not.toMatch(/loadSecretReport|module|src/)
+      const ssr = await served.ssr()
+      expect(
+        Object.fromEntries(names.map((name) => [name, ssr[name].url])),
+        'the ids server code gets',
+      ).toEqual(clientUrls)
+      for (const name of names) {
+        expect(
+          await callServerFnThroughCallers(served, `module.${name}`),
+          name,
+        ).toBe(name)
+      }
     }
   })
 
@@ -345,77 +341,85 @@ export const save = createServerFn().handler(async () => 2)`
   // name", "keeps client and server ids aligned"
   test('server fns that share a name in different files get distinct ids the provider uses', async () => {
     const code = `${head}export const load = createServerFn().handler(async () => 1)`
-    const ids: Array<string> = []
-    for (const id of ['/test/src/a.tsx', '/test/src/b/a.tsx']) {
-      const [functionId] = Object.keys(
-        (await compileFor('client', code, { id })).serverFns,
-      )
-      const provider = await evaluateModule(
-        (await compileCode('provider', code, { id }))!,
-      )
-      expect(provider.load_createServerFn_handler.meta.id).toBe(functionId)
-      ids.push(functionId!)
-    }
-    expect(new Set(ids).size).toBe(2)
+    const served = await serveCase(await host(), {
+      'a.tsx': code,
+      'b/a.tsx': code,
+      'module.tsx': `export { load as first } from './a'
+export { load as second } from './b/a'
+`,
+    })
+    expect(await serverFnUrls(served)).toHaveLength(2)
+    expect([
+      await callFromClient(served, 'module.first'),
+      await callFromClient(served, 'module.second'),
+    ]).toEqual([1, 1])
   })
 
   // Source: Next.js server-actions fixtures server-graph/66, client-graph/15
   test('non-ASCII and symbol-like server fn names', async () => {
     const names = ['ñandú', '𝑓', 'ᾩ', '$', '_', '$fn']
-    const compiled = await compileAll(
-      head +
+    const served = await serveCase(await host(), {
+      'module.tsx':
+        head +
         names
           .map(
             (name) =>
               `export const ${name} = createServerFn().handler(async () => '${name}')`,
           )
           .join('\n'),
-    )
-    expect(Object.keys(idsByName(compiled.serverFns)).sort()).toEqual(
-      names.map((name) => `${name}_createServerFn_handler`).sort(),
-    )
-    const provider = await evaluateModule(compiled.provider)
+    })
+    expect(await serverFnUrls(served)).toHaveLength(names.length)
     for (const name of names) {
-      expect(provider[`${name}_createServerFn_handler`].meta.name).toBe(name)
-      expect(await callProvider(provider, name)).toBe(name)
+      expect(
+        await callServerFnThroughCallers(
+          served,
+          `module[${JSON.stringify(name)}]`,
+        ),
+      ).toBe(name)
     }
   })
 })
 
 describe('module formats', () => {
-  // The provider appends its exports after the last statement.
+  // The compiler may append code after the module's last statement.
   // Source: Waku vite-plugin-allow-server.test.ts "transforms with trailing
   // comment without new lines"
-  test.each([
-    { end: '\n// trailing', mode: 'build' },
-    { end: '\r\n// trailing', mode: 'build' },
-    { end: '\n// trailing', mode: 'dev' },
-  ] as const)(
-    '$mode: a provider for a module ending in a line comment without a newline: $end',
-    async ({ end, mode }) => {
-      const provider = await compileCode(
-        'provider',
-        `${head}export const fn = createServerFn().handler(async () => 'handler')${end}`,
-        { mode },
-      )
-      expect(await callProvider(provider!, 'fn')).toBe('handler')
-    },
-  )
+  test('dev: a provider for a module ending in a line comment without a newline: \n// trailing', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const fn = createServerFn().handler(async () => 'handler')\n// trailing`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+      'handler',
+    )
+  })
 
-  // .cts/.mts sources are TypeScript without JSX.
+  // .mts sources are TypeScript without JSX.
+  // No `.cts` row: Vite's TypeScript transform skips `.cts` by default
+  // (`vite:oxc` includes `.ts`, `.mts`, `.tsx`, `.jsx`), so a plain Vite app
+  // without Start cannot run a `.cts` module with TypeScript syntax in dev
+  // either (SSR: "Parse failure: Unexpected JSX expression"; the client gets
+  // the TypeScript as is), and its build fails the same way for any query
+  // import of a `.cts` module (`./fn.cts?x`). Not a compiler outcome
+  // (Vite's own default).
   // Source: @vitejs/plugin-rsc cjs.test.ts (fixtures/cjs)
-  test.each(['/test/src/fn.cts', '/test/src/fn.mts'])(
-    '%s may use angle-bracket type assertions',
-    async (id) => {
-      const { code, serverFns } = await compileFor(
-        'client',
-        `${head}import { db } from './db.server'
+  for (const file of ['fn.mts']) {
+    test(`${file} may use angle-bracket type assertions`, async () => {
+      const served = await serveCase(
+        await host(),
+        {
+          [file]: `${head}import { db } from './db.server'
 const n = <number>(1 as unknown)
 export const fn = createServerFn().handler(async () => [n, db.x()])`,
-        { id },
+          'db.server.ts': `export const db = { x: () => 'x' }\n`,
+        },
+        { file },
       )
-      expect(Object.keys(serverFns)).toHaveLength(1)
-      expect(importSources(code!)).toEqual([])
-    },
-  )
+      expectNotLoaded(await served.loads(file), ['./db.server'])
+      expect(
+        await callServerFnThroughCallers(served, 'module.fn', undefined, {
+          file,
+        }),
+      ).toEqual([1, 'x'])
+    })
+  }
 })
