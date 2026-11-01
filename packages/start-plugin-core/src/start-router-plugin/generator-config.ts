@@ -12,7 +12,7 @@ import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
  * them, the framework's target, Start's route tree footer (the router and
  * Start config types, then the app's own lines; computed at every print, as
  * a router app's function-form `routeTreeFileFooter` is), and the generator
- * plugins: the client route tree (Vite), the routes manifest, prerendering
+ * plugins: the client route tree, the routes manifest, prerendering
  * when enabled, and the app's own (#7768).
  */
 export function startGeneratorConfig(opts: {

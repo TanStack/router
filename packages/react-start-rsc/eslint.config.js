@@ -2,7 +2,7 @@
 
 import pluginReact from '@eslint-react/eslint-plugin'
 import pluginReactHooks from 'eslint-plugin-react-hooks'
-import rootConfig from '../../eslint.config.js'
+import rootConfig, { routerCoreAugmentation } from '../../eslint.config.js'
 
 export default [
   ...rootConfig,
@@ -46,6 +46,7 @@ export default [
           message:
             'Dynamically import a dedicated @tanstack/start-server-core subpath instead of the root barrel.',
         },
+        routerCoreAugmentation,
       ],
     },
   },

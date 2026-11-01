@@ -1,4 +1,24 @@
 export * from './global'
+// Exported through `./extensions` so that loading router-core loads that entry
+// too: TypeScript does not load a module just because something augments it,
+// and it ignores augmentations of modules it has not loaded.
+export type {
+  BeforeLoadContextOptions,
+  ErrorBoundaryTypes,
+  FilebaseRouteOptionsInterface,
+  LazyRoute,
+  LoaderFnContext,
+  RootRouteOptionsExtensions,
+  RouteExtensions,
+  RouteMatchExtensions,
+  RouteTypes,
+  RouterOptionsExtensions,
+  RouterReadableStore,
+  RouterStores,
+  SerializableExtensions,
+  SerializerExtensions,
+  UpdatableRouteOptionsExtensions,
+} from './extensions'
 
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
@@ -62,7 +82,6 @@ export type {
   FileRouteTypes,
   FileRoutesByPath,
   CreateFileRoute,
-  LazyRoute,
   LazyRouteOptions,
   CreateLazyFileRoute,
 } from './fileRoute'
@@ -121,8 +140,9 @@ export type {
   IsMatchParse,
   IsMatch,
   RouteMatch,
-  RouteMatchExtensions,
   MakeRouteMatchUnion,
+  KnownRouteMatchUnion,
+  ForeignRouteMatch,
   MakeRouteMatch,
   AnyRouteMatch,
   MakeRouteMatchFromRoute,
@@ -171,7 +191,6 @@ export type {
   ErrorRouteProps,
   ErrorComponentProps,
   DefaultErrorBoundaryTypes,
-  ErrorBoundaryTypes,
   NotFoundRouteProps,
   ResolveParams,
   ParseParamsFn,
@@ -198,7 +217,6 @@ export type {
   ResolveAllParamsFromParent,
   AnyRoute,
   Route,
-  RouteTypes,
   FullSearchSchemaOption,
   RemountDepsOptions,
   MakeRemountDepsOptionsUnion,
@@ -211,19 +229,14 @@ export type {
   LoaderStaleReloadMode,
   RouteLoaderFn,
   RouteLoaderEntry,
-  LoaderFnContext,
   RouteContextFn,
   ContextOptions,
   RouteContextOptions,
   SsrContextOptions,
-  BeforeLoadContextOptions,
   RootRouteOptions,
-  RootRouteOptionsExtensions,
-  UpdatableRouteOptionsExtensions,
   RouteConstraints,
   RouteTypesById,
   RouteMask,
-  RouteExtensions,
   RouteLazyFn,
   RouteAddChildrenFn,
   RouteAddFileChildrenFn,
@@ -231,7 +244,6 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   RootRoute,
-  FilebaseRouteOptionsInterface,
 } from './route'
 export {
   createNonReactiveMutableStore,
@@ -239,9 +251,7 @@ export {
 } from './stores'
 export type {
   RouterBatchFn,
-  RouterReadableStore,
   GetStoreConfig,
-  RouterStores,
   RouterWritableStore,
 } from './stores'
 export {
@@ -269,7 +279,6 @@ export type {
   ListenerFn,
   RouterEvents,
   MatchRoutesOpts,
-  RouterOptionsExtensions,
   DefaultRemountDepsFn,
   PreloadRouteFn,
   MatchRouteFn,
@@ -412,12 +421,32 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type {
   Redirect,
+  RedirectFn,
   RedirectOptions,
   RedirectOptionsRoute,
   RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'
+
+export type {
+  HostedRouter,
+  InstallationRoutesById,
+  MountedRoutesById,
+  ModuleRootRoute,
+  ModuleRootRouteOptions,
+  MountRouteModuleOptions,
+  RegisteredRouterOf,
+  ScopeRouter,
+  ScopedRouter,
+  CompatibleRouteScope,
+  ScopedRouteOptions,
+  RouteScopeMarker,
+  RouteModuleScope,
+  ScopedRouterView,
+  ValidateRouteModuleMount,
+  ValidateRouteModuleMountPath,
+} from './route-module'
 
 export {
   redirect,
@@ -466,10 +495,8 @@ export type {
   AnySerializationAdapter,
   SerializationAdapter,
   ValidateSerializableInput,
-  SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
-  SerializableExtensions,
   DefaultSerializable,
   Serializable,
   TSR_SERIALIZABLE,

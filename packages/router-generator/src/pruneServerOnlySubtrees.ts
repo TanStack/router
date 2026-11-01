@@ -1,8 +1,4 @@
-import { SERVER_PROP } from './constants'
-import type {
-  HandleNodeAccumulator,
-  RouteNode,
-} from '@tanstack/router-generator'
+import type { HandleNodeAccumulator, RouteNode } from './types'
 
 export function pruneServerOnlySubtrees({
   rootRouteNode,
@@ -39,7 +35,7 @@ function prune(
   }
 
   const allServerOnly =
-    node.createFileRouteProps?.has(SERVER_PROP) &&
+    node.createFileRouteProps?.has('server') &&
     node.createFileRouteProps.size === 1 &&
     allChildrenServerOnly
   // prune this subtree

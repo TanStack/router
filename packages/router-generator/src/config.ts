@@ -2,7 +2,14 @@ import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
+import { routeModulesOptionSchema } from './route-module/declaration'
 import type { GeneratorPlugin } from './plugin/types'
+
+export const DEFAULT_ROUTE_TREE_FILE_HEADER = [
+  '/* eslint-disable */',
+  '// @ts-nocheck',
+  '// noinspection JSUnusedGlobalSymbols',
+] as const
 
 const tokenJsonRegexSchema = z.object({
   regex: z.string(),
@@ -32,11 +39,7 @@ export const baseConfigSchema = z.object({
   routeTreeFileHeader: z
     .array(z.string())
     .optional()
-    .default([
-      '/* eslint-disable */',
-      '// @ts-nocheck',
-      '// noinspection JSUnusedGlobalSymbols',
-    ]),
+    .default([...DEFAULT_ROUTE_TREE_FILE_HEADER]),
   indexToken: tokenMatcherSchema.optional().default('index'),
   routeToken: tokenMatcherSchema.optional().default('route'),
   pathParamsAllowedCharacters: z
@@ -79,6 +82,12 @@ export const configSchema = baseConfigSchema.extend({
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
   tmpDir: z.string().optional().default(''),
   importRoutesUsingAbsolutePaths: z.boolean().optional().default(false),
+  /**
+   * Route modules this application installs (`includes`) or references
+   * (`uses`). Route modules themselves declare these in their package.json
+   * (`tanstack.router.module`).
+   */
+  routeModules: routeModulesOptionSchema.optional(),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -175,6 +184,12 @@ export function getConfig(
 }
 
 function validateConfig(config: Config) {
+  if (config.disableTypes && config.routeModules) {
+    throw new Error(
+      `Route modules require TypeScript: "routeModules" cannot be used with "disableTypes".`,
+    )
+  }
+
   if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
     const message = `
 ------

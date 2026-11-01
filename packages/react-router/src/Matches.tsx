@@ -25,12 +25,14 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveRoute,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface RouteMatchExtensions {
     meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
@@ -135,6 +137,21 @@ export type UseMatchRouteOptions<
   MatchRouteOptions
 
 /**
+ * The signature of `useMatchRoute`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useMatchRoute` of this type.
+ */
+export type UseMatchRouteFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>() => <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
+
+/**
  * Create a matcher function for testing locations against route definitions.
  *
  * The returned function accepts standard navigation options (`to`, `params`,
@@ -214,6 +231,20 @@ export type MakeMatchRouteOptions<
 }
 
 /**
+ * The signature of `MatchRoute`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `MatchRoute` of this type.
+ */
+export type MatchRouteFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => any
+
+/**
  * Component that conditionally renders its children based on whether a route
  * matches the provided `from`/`to` options. If `children` is a function, it
  * receives the matched params object.
@@ -252,6 +283,19 @@ export type UseMatchesResult<
   TSelected,
 > = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
 
+/**
+ * The signature of `useMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useMatches` of this type.
+ */
+export type UseMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseMatchesResult<TRouter, TSelected>
+
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -281,6 +325,19 @@ export function useMatches<
 }
 
 /**
+ * The signature of `useParentMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useParentMatches` of this type.
+ */
+export type UseParentMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseMatchesResult<TRouter, TSelected>
+
+/**
  * Read the presented route matches above the current match, or select a
  * derived value from them.
  */
@@ -305,6 +362,19 @@ export function useParentMatches<
     structuralSharing: opts?.structuralSharing,
   } as any)
 }
+
+/**
+ * The signature of `useChildMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useChildMatches` of this type.
+ */
+export type UseChildMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseMatchesResult<TRouter, TSelected>
 
 /**
  * Read the presented route matches below the current match, or select a

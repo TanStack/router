@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
+import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
 import { isServer } from '@tanstack/router-core/isServer'
 import { dummyMatchContext, matchContext } from './matchContext'
 import { useRouter } from './useRouter'
@@ -14,7 +15,10 @@ import type {
   AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
+  RouteScopeMarker,
   StrictOrFrom,
   ThrowConstraint,
   ThrowOrOptional,
@@ -70,13 +74,17 @@ export interface UseMatchBaseOptions<
   TStructuralSharing extends boolean,
 > {
   select?: (
-    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
+    match: TRouter['routeTree'] extends RouteScopeMarker
+      ? TStrict extends true
+        ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+        : MakeRouteMatchUnion<TRouter>
+      : MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
   shouldThrow?: TThrow
 }
 
-export type UseMatchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseMatchRoute<out TFrom, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
   TThrow extends boolean = true,
@@ -122,6 +130,28 @@ export type UseMatchResult<
   : TSelected
 
 /**
+ * The signature of `useMatch`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useMatch` of this type.
+ */
+export type UseMatchFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TThrow extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseMatchOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected,
+    TStructuralSharing
+  >,
+) => ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+
+/**
  * Read and select the nearest or targeted route match.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchHook
  */
@@ -143,11 +173,20 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const nearestRouteId = React.useContext(
-    opts.from ? dummyMatchContext : matchContext,
+  // `from` that is not a route of the router can be the module-local id of a
+  // module installed several times: it resolves through the nearest match.
+  const moduleFrom =
+    resolveRouteId && opts.from && !router.routesById[opts.from]
+      ? opts.from
+      : undefined
+  const nearestRouteId: string | undefined = React.useContext(
+    opts.from && !moduleFrom ? dummyMatchContext : matchContext,
   )
 
-  const routeId = opts.from ?? nearestRouteId
+  const routeId =
+    resolveRouteId && moduleFrom
+      ? resolveRouteId(router, moduleFrom, nearestRouteId)
+      : (opts.from ?? nearestRouteId)
   const matchStore = router.stores.getMatchStore(routeId!)
 
   if (isServer ?? router.isServer) {

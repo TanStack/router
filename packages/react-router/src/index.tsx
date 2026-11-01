@@ -185,6 +185,8 @@ export type {
   ResolvedRedirect,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  KnownRouteMatchUnion,
+  ForeignRouteMatch,
   RouteMatch,
   AnyRouteMatch,
   RouteContextFn,
@@ -269,8 +271,53 @@ export type {
   DefaultRouteTypes,
   RouteTypes,
 } from './route'
+// `createFileRoute` returns router-core's `Route`, and `Route` above is this
+// package's class: declarations name the type of file routes through this
+// export, so they need no import of `@tanstack/router-core`.
+export type { Route as RouteCore } from '@tanstack/router-core'
 
 export { createRouter, Router } from './router'
+
+export type {
+  FileRoutesByPathEntry,
+  FileRouteScope,
+  RouteScope,
+} from './routeModule'
+export type { FileRouteFactory } from './fileRoute'
+export type {
+  HostedRouter,
+  InstallationRoutesById,
+  MountedRoutesById,
+  ModuleRootRoute,
+  ModuleRootRouteOptions,
+  MountRouteModuleOptions,
+  RedirectFn,
+  RegisteredRouterOf,
+  ScopeRouter,
+  ScopedRouter,
+  ScopedRouterView,
+  ValidateRouteModuleMount,
+  ValidateRouteModuleMountPath,
+} from '@tanstack/router-core'
+export type { GetRouteApiFn } from './route'
+export type { CreateLinkFn, LinkOptionsFn } from './link'
+export type { NavigateComponentFn, UseNavigateFn } from './useNavigate'
+export type {
+  MatchRouteFn,
+  UseChildMatchesFn,
+  UseMatchRouteFn,
+  UseMatchesFn,
+  UseParentMatchesFn,
+} from './Matches'
+export type { UseRouterFn } from './useRouter'
+export type { UseMatchFn } from './useMatch'
+export type { UseLoaderDataFn } from './useLoaderData'
+export type { UseLoaderDepsFn } from './useLoaderDeps'
+export type { UseSearchFn } from './useSearch'
+export type { UseParamsFn } from './useParams'
+export type { UseRouteContextFn } from './useRouteContext'
+export type { UseLocationFn } from './useLocation'
+export type { UseRouterStateFn } from './useRouterState'
 
 export { lazyFn, SearchParamError } from '@tanstack/router-core'
 

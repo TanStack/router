@@ -73,12 +73,12 @@ if (import.meta.webpackHot) {
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && routeId
-      ? window.__TSR_ROUTER__?.routesById?.[routeId]
-      : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
+  if (
+    routeId &&
+    typeof window !== 'undefined' &&
+    window.__TSR_ROUTER__ &&
+    (${handleRouteUpdateCode})(routeId, Route)
+  ) {${reactRefreshCall}
   }
   hot.dispose((data) => {
     if (routeId) {

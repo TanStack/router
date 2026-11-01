@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, extname, resolve as resolvePath } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getRouteModuleDirectories } from '../start-router-plugin/route-module-directories'
 
 import {
   getDefaultImportProtectionRules,
@@ -100,7 +101,15 @@ type ImportProtectionRsbuildPluginAPI = {
   processAssets: RsbuildPluginAPI['processAssets']
 }
 type ImportProtectionGetConfigFn = () => {
-  startConfig: Pick<ReturnType<GetConfigFn>['startConfig'], 'importProtection'>
+  startConfig: Pick<
+    ReturnType<GetConfigFn>['startConfig'],
+    'importProtection'
+  > & {
+    router?: Pick<
+      ReturnType<GetConfigFn>['startConfig']['router'],
+      'routeModules'
+    >
+  }
   resolvedStartConfig: Pick<
     ReturnType<GetConfigFn>['resolvedStartConfig'],
     'root' | 'srcDirectory'
@@ -207,6 +216,8 @@ export interface PluginConfig {
   root: string
   command: 'build' | 'serve'
   srcDirectory: string
+  /** Package roots of installed route modules (application source too). */
+  routeModuleDirectories: Array<string>
   framework: CompileStartFrameworkOptions
   effectiveBehavior: ImportProtectionBehavior
   mockAccess: 'error' | 'warn' | 'off'
@@ -1348,6 +1359,7 @@ export function registerImportProtection(
     root: '',
     command: api.context.action === 'dev' ? 'serve' : 'build',
     srcDirectory: '',
+    routeModuleDirectories: [],
     framework: opts.framework,
     effectiveBehavior: 'error',
     mockAccess: 'error',
@@ -1389,6 +1401,10 @@ export function registerImportProtection(
 
     config.root = resolvedStartConfig.root
     config.srcDirectory = resolvedStartConfig.srcDirectory
+    config.routeModuleDirectories = getRouteModuleDirectories(
+      resolvedStartConfig.root,
+      startConfig.router?.routeModules,
+    )
     shared.root = resolvedStartConfig.root
 
     const userOpts: ImportProtectionOptions | undefined =

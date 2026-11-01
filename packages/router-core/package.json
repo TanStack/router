@@ -48,6 +48,16 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./extensions": {
+      "import": {
+        "types": "./dist/esm/extensions.d.ts",
+        "default": "./dist/esm/extensions.js"
+      },
+      "require": {
+        "types": "./dist/cjs/extensions.d.cts",
+        "default": "./dist/cjs/extensions.cjs"
+      }
+    },
     "./ssr/server": {
       "import": {
         "types": "./dist/esm/ssr/server.d.ts",
@@ -168,7 +178,17 @@
         "default": "./dist/cjs/scroll-restoration-script/server.cjs"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./_internal/route-module": {
+      "import": {
+        "types": "./dist/esm/route-module-internal.d.ts",
+        "default": "./dist/esm/route-module-internal.js"
+      },
+      "require": {
+        "types": "./dist/cjs/route-module-internal.d.cts",
+        "default": "./dist/cjs/route-module-internal.cjs"
+      }
+    }
   },
   "sideEffects": false,
   "files": [

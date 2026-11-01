@@ -28,4 +28,9 @@ export interface TransformContext {
   target: Config['target']
   routeId: string
   lazy: boolean
+  /**
+   * Module that route constructors are imported from. Defaults to the
+   * framework package; route modules import them from their scope module.
+   */
+  routeImportSource?: string
 }

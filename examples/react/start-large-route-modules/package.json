@@ -1,0 +1,49 @@
+{
+  "name": "tanstack-start-example-large-route-modules",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "nx": {
+    "targets": {
+      "build": {
+        "cache": false
+      },
+      "build:rsbuild": {
+        "cache": false
+      }
+    }
+  },
+  "scripts": {
+    "gen": "node scripts/gen.mjs",
+    "dev": "node scripts/gen.mjs --if-missing && cd app && vite dev",
+    "dev:rsbuild": "node scripts/gen.mjs --if-missing && cd app && rsbuild dev",
+    "build": "node scripts/gen.mjs --if-missing && cd app && vite build && tsc --noEmit",
+    "build:rsbuild": "node scripts/gen.mjs --if-missing && cd app && rsbuild build && tsc --noEmit",
+    "start": "cd app && node server.js",
+    "measure": "node scripts/measure.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/react-start": "^1.169.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@tanstack/router-core": "^1.171.39",
+    "@tanstack/router-generator": "^1.167.46",
+    "@tanstack/start-client-core": "^1.170.39",
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.0.1",
+    "srvx": "^1.0.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

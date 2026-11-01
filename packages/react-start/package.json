@@ -146,7 +146,13 @@
         "default": "./dist/esm/client-only.js"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./_internal/route-module": {
+      "import": {
+        "types": "./dist/esm/route-module-internal.d.ts",
+        "default": "./dist/esm/route-module-internal.js"
+      }
+    }
   },
   "sideEffects": false,
   "files": [
@@ -157,7 +163,7 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",

@@ -2,7 +2,22 @@
 
 import * as React from 'react'
 import { routerContext } from './routerContext'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  Register,
+  RegisteredRouter,
+  RegisteredRouterOf,
+} from '@tanstack/router-core'
+
+/**
+ * The signature of `useRouter`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useRouter` of this type.
+ */
+export type UseRouterFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>(opts?: {
+  warn?: boolean
+}) => TRouter
 
 /**
  * Access the current TanStack Router instance from React context.

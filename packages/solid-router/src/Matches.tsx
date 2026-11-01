@@ -18,12 +18,14 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveRoute,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface RouteMatchExtensions {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
@@ -127,6 +129,24 @@ export type UseMatchRouteOptions<
   MaskOptions<TRouter, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
+/**
+ * The signature of `useMatchRoute`, typed against the router of `TDefaultRegister` unless a
+ * router type is passed explicitly. Route modules export a `useMatchRoute` of
+ * this type.
+ */
+export type UseMatchRouteFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>() => <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Solid.Accessor<
+  false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
+>
+
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
@@ -173,6 +193,20 @@ export type MakeMatchRouteOptions<
     | Solid.JSX.Element
 }
 
+/**
+ * The signature of `MatchRoute`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `MatchRoute` of this type.
+ */
+export type MatchRouteFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => any
+
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -206,6 +240,17 @@ export type UseMatchesResult<
   TSelected,
 > = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
 
+/**
+ * The signature of `useMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useMatches` of this type.
+ */
+export type UseMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
+
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -222,6 +267,17 @@ export function useMatches<
     return replaceEqualDeep(prev, res) as any
   }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
+
+/**
+ * The signature of `useParentMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useParentMatches` of this type.
+ */
+export type UseParentMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -241,6 +297,17 @@ export function useParentMatches<
     },
   } as any)
 }
+
+/**
+ * The signature of `useChildMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useChildMatches` of this type.
+ */
+export type UseChildMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,

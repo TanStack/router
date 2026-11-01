@@ -91,6 +91,10 @@
               "to": "framework/react/guide/import-protection"
             },
             {
+              "label": "Route Modules (Experimental)",
+              "to": "framework/react/guide/route-modules"
+            },
+            {
               "label": "Path Aliases",
               "to": "framework/react/guide/path-aliases"
             },
