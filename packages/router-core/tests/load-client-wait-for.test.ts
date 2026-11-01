@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { waitForReason } from '../src/await-signal'
-import { waitFor } from '../src/load-client'
+import { RouterAbortController, waitFor } from '../src/load-client'
 import { waitForRequest } from '../src/ssr/server'
 
 test('waitForRequest aliases waitForReason through the server barrel', () => {
@@ -11,12 +11,12 @@ describe('waitFor', () => {
   test.each(['resolve', 'reject'] as const)(
     'removes its abort listener after the value %ss',
     async (outcome) => {
-      const controller = new AbortController()
+      const controller = new RouterAbortController()
       const add = vi.spyOn(controller.signal, 'addEventListener')
       const remove = vi.spyOn(controller.signal, 'removeEventListener')
       const value =
         outcome === 'resolve' ? Promise.resolve(42) : Promise.reject(42)
-      const result = waitFor(value, controller.signal)
+      const result = waitFor(value, controller)
       if (outcome === 'resolve') {
         await expect(result).resolves.toBe(42)
       } else {
@@ -31,15 +31,15 @@ describe('waitFor', () => {
   )
 
   test('observes a late rejection and cleans up after an active wait is aborted', async () => {
-    const controller = new AbortController()
+    const controller = new RouterAbortController()
     const add = vi.spyOn(controller.signal, 'addEventListener')
     const remove = vi.spyOn(controller.signal, 'removeEventListener')
     let rejectValue!: (error: Error) => void
     const value = new Promise<never>((_, reject) => {
       rejectValue = reject
     })
-    const result = waitFor(value, controller.signal)
-    const canceled = expect(result).rejects.toBe(controller.signal)
+    const result = waitFor(value, controller)
+    const canceled = expect(result).rejects.toBe(controller)
 
     controller.abort()
     await canceled
@@ -54,7 +54,7 @@ describe('waitFor', () => {
   })
 
   test('removes its abort listener when reading a thenable throws', async () => {
-    const controller = new AbortController()
+    const controller = new RouterAbortController()
     const add = vi.spyOn(controller.signal, 'addEventListener')
     const remove = vi.spyOn(controller.signal, 'removeEventListener')
     const error = new Error('then getter failed')
@@ -64,7 +64,7 @@ describe('waitFor', () => {
       },
     }
 
-    await expect(waitFor(value, controller.signal)).rejects.toBe(error)
+    await expect(waitFor(value, controller)).rejects.toBe(error)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(add).toHaveBeenCalledOnce()
@@ -75,18 +75,56 @@ describe('waitFor', () => {
   })
 
   test('observes a rejected value when the signal is already aborted', async () => {
-    const controller = new AbortController()
+    const controller = new RouterAbortController()
     const error = new Error('late failure')
     controller.abort()
 
-    await expect(waitFor(undefined, controller.signal)).rejects.toBe(
-      controller.signal,
+    await expect(waitFor(undefined, controller)).rejects.toBe(controller)
+    await expect(waitFor(Promise.reject(error), controller)).rejects.toBe(
+      controller,
     )
-    await expect(
-      waitFor(Promise.reject(error), controller.signal),
-    ).rejects.toBe(controller.signal)
 
     await Promise.resolve()
+  })
+
+  test('cancels waits on an unread controller before later public listeners', async () => {
+    const nativeAbort = vi.spyOn(AbortController.prototype, 'abort')
+    try {
+      const controller = new RouterAbortController()
+      const events: Array<string> = []
+      const unreadWait = waitFor(new Promise(() => {}), controller).catch(
+        (cause) => {
+          expect(cause).toBe(controller)
+          events.push('unread wait')
+        },
+      )
+      controller.abort()
+      expect(nativeAbort).not.toHaveBeenCalled()
+      await unreadWait
+
+      const readController = new RouterAbortController()
+      const earlyWait = waitFor(new Promise(() => {}), readController).catch(
+        () => events.push('early wait'),
+      )
+      readController.signal.addEventListener('abort', () =>
+        events.push('listener'),
+      )
+      const lateWait = waitFor(new Promise(() => {}), readController).catch(
+        () => events.push('late wait'),
+      )
+      readController.abort()
+      expect(nativeAbort).toHaveBeenCalledOnce()
+      expect(events).toEqual(['unread wait', 'listener'])
+      await Promise.all([earlyWait, lateWait])
+      expect(events).toEqual([
+        'unread wait',
+        'listener',
+        'early wait',
+        'late wait',
+      ])
+    } finally {
+      nativeAbort.mockRestore()
+    }
   })
 
   test('preserves reason-based cancellation and observes a late value', async () => {
