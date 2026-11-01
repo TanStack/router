@@ -93,6 +93,26 @@ import { useEffect, useState } from 'react'`,
 ]
 
 /**
+ * A route whose unexported server function only the loader calls: the route
+ * module keeps it, its handler replaced by the stub, and the split component
+ * reads `Route`. What only the handler reads (`Card` and its CSS module) stays
+ * out of the component's SSR chunk: there, Rsbuild's RSC plugin would hand the
+ * CSS to the entry's stylesheet (every page loads it, the control row sees it)
+ * and a Flight stream would get no stylesheet link.
+ */
+export const unexportedRow = {
+  path: '/unexported',
+  file: route(
+    '/unexported',
+    `import { renderServerComponent } from '@tanstack/react-start/rsc'`,
+    `  return renderServerComponent(<Card />)`,
+    `function Page() {
+  return <main>{Route.useLoaderData()}</main>
+}`,
+  ).replace('export const render', 'const render'),
+}
+
+/**
  * A route whose server function calls a helper module that renders a local
  * server component with its own CSS module through `renderServerComponent`.
  */
@@ -142,6 +162,7 @@ function Control() {
     rows.map((row) => [`src/routes${row.path}.tsx`, row.file]),
   ),
   ...helperRow.files,
+  [`src/routes${unexportedRow.path}.tsx`]: unexportedRow.file,
 }
 
 /** Opens `path` and waits for the server component (`marker`) and hydration. */
@@ -225,6 +246,19 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
         expect(page.errors).toEqual([])
       },
     )
+
+    test('an unexported server function the loader calls styles the server component (the control row above: not through the entry)', async () => {
+      expect(server.errors).toEqual([])
+      const page = await show(server, unexportedRow.path)
+      await waitForStyle(
+        page,
+        '[data-testid=card]',
+        'background-color',
+        CARD_BACKGROUND,
+        5_000,
+      )
+      expect(page.errors).toEqual([])
+    })
 
     // Bug on main: on Rsbuild, the RSC CSS transform only rewrote server function
     // provider modules (`serverFnProviderOnly: true`, react-start

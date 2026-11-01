@@ -1361,7 +1361,12 @@ describe('extracted-export outputs', () => {
         const fn = ctx.analysis.exports.find(
           (e) => e.kind === 'local' && e.name === 'fn',
         )
-        const sym = (fn?.kind === 'local' ? fn.local : null) as never
+        // (unexported: found through a read of it)
+        const sym = (
+          fn?.kind === 'local'
+            ? fn.local
+            : ctx.t1.refs.all.find((r) => ctx.symbols.name(r.sym) === 'fn')?.sym
+        ) as never
         const wrapper = ctx.names.alloc('fn_handler')
         ctx.rewrites.addGenerated({
           body: [
@@ -1715,6 +1720,50 @@ describe('extracted-export outputs', () => {
       )
       expect(prov?.code).toContain("import { db } from './db'")
       expect(prov?.code).toContain('() => db.q()')
+    })
+
+    // A chunk imports what the env module evaluates, so it reads what the env
+    // module's tree keeps there: the handler the env output erased (reached
+    // through `Route`'s loader) is no read of the chunk, and what only that
+    // handler reads stays with the provider output.
+    it('keeps what only an erased handler reads out of a chunk that reaches the server fn through the route', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrapServer } from 'toy-start'
+        import { db } from './db'
+        function helper() { return db.q() }
+        const fn = wrapServer(() => helper())
+        export const Route = createFileRoute('/')({
+          loader: () => fn(),
+          component: Page,
+        })
+        function Page() { return Route.useLoaderData() }
+      `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const planners = [
+        providerOutEnvPlanner(),
+        toyProviderPlanner(),
+        toySplitPlanner({ keys: ['component'] }),
+      ]
+      const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+      const main = await host.compile('/app/route.tsx', planners, { env })
+      expect(main?.code).toContain('const fn = wrapServer(0)')
+      expect(main?.code).not.toContain('helper')
+      const chunk = await host.compile(
+        '/app/route.tsx?tsr-split=component',
+        planners,
+        { env },
+      )
+      expect(chunk?.code).toContain('function Page()')
+      expect(chunk?.code).not.toContain('helper')
+      expect(chunk?.code).not.toContain("from './db'")
+      const prov = await host.compile(
+        '/app/route.tsx?tss-serverfn-split',
+        planners,
+        { env },
+      )
+      expect(prov?.code).toContain('function helper()')
+      expect(prov?.code).toContain("import { db } from './db'")
     })
 
     // A provider output copies what it reaches (another layer's instance):
