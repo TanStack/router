@@ -214,6 +214,35 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
   )
 })
 
+describe('a route that stops being the router constructor while the generator fails', () => {
+  const route = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/a')({ component: () => null })
+`
+  const foreign = `import { createServerFn } from '@tanstack/react-start'
+export const Route = () => createServerFn()
+`
+  const consumer = `import { Route } from './routes/a'
+export const via = (Route as any)().handler(async () => 'MARK_VIA')
+`
+  test(
+    'Vite: an importer of its Route is compiled from what the file now holds',
+    async () => {
+      const server = await startDevServer({
+        files: { 'src/routes/a.tsx': route, 'src/consumer.ts': consumer },
+      })
+      expect(await server.transform('/src/consumer.ts')).toContain('MARK_VIA')
+      await server.write({ 'src/routes/broken.tsx': 'export const Route = (' })
+      await server.settle()
+      await server.write({ 'src/routes/a.tsx': foreign })
+      await server.settle()
+      expect(await server.transform('/src/consumer.ts')).not.toContain(
+        'MARK_VIA',
+      )
+    },
+    timeout,
+  )
+})
+
 describe('claim 5: differing input texts in dev', () => {
   const route = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>MARK_V1</p> })

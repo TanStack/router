@@ -151,6 +151,26 @@ return globalThis.__fired ?? 0`,
 // sentinel reaches it and is not copied either.
 const identity: Array<Case> = [
   {
+    // the extracted module evaluates before the route module's body: called
+    // through an alias, the function reads what the route module keeps
+    name: 'an export evaluated through an alias of a function reads the route module once it is initialised',
+    route: `const theme = { dark: true }
+function read() {
+  return theme
+}
+const alias = read
+export const config = /* @__PURE__ */ alias()
+function Page() {
+  return <p>{String(config === theme)}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    reexports: 'config',
+    script: `const html = ${renderComponent}
+return [html, entry.config.dark]`,
+    expected: ['<p>true</p>', true],
+  },
+  {
     name: 'a thrown exported class is recognised by instanceof in the errorComponent chunk',
     route: thrownClass,
     script: `${catchComponent}
