@@ -83,6 +83,8 @@ export function verifyPlan(
   for (const f of t1.freeRefs) {
     moduleNames.delete(f.name)
   }
+  /** What each extracted export's module imports of the others (check (h)). */
+  const extractedImports = new Map<OutputId, Set<OutputId>>()
   for (const [id, { analysis, recipe }] of outputs) {
     const out = analysis.t1()
     // (a) no output assigns a binding it imports
@@ -102,6 +104,13 @@ export function verifyPlan(
       const home = target === undefined ? undefined : outputs.get(target)
       if (home === undefined) {
         continue
+      }
+      if (recipe.kind === 'export' && home.recipe.kind === 'export') {
+        let set = extractedImports.get(id)
+        if (!set) {
+          extractedImports.set(id, (set = new Set()))
+        }
+        set.add(target!)
       }
       // (b) a glue import names an export of its home output that has a
       // runtime value (an `export { X }` of a type-only binding is erased
@@ -174,6 +183,23 @@ export function verifyPlan(
       problems.push(
         `${id}: reads ${name}, which it neither declares nor imports`,
       )
+    }
+  }
+  // (h) no two extracted modules import each other: which evaluates first
+  // would depend on the bundler, and a read at evaluation can crash
+  for (const start of extractedImports.keys()) {
+    const seen = new Set<OutputId>()
+    const work = [...extractedImports.get(start)!]
+    while (work.length > 0) {
+      const o = work.pop()!
+      if (o === start) {
+        problems.push(`${start}: is in an import cycle of extracted modules`)
+        break
+      }
+      if (!seen.has(o)) {
+        seen.add(o)
+        work.push(...(extractedImports.get(o) ?? []))
+      }
     }
   }
   // (d) every surviving effect unit is emitted exactly once across the

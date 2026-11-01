@@ -76,7 +76,9 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   from the route module). A pure cluster with an identity, or a written one, that an extracted module and another
   output both need stays in the route module (one instance every output imports); a function or primitive in that
   position is copied into each. Writes inside code the environment erases impose nothing (the mutation model is
-  read through the env output's liveness). Nothing but importers of the route file reach the extracted module of
+  read through the env output's liveness). Exports that read each other (`class Z { o() { return A } }` and `class A
+extends Z`, directly or through what they carry) share the module of the first in the source: in two modules importing each other
+  the one evaluated first depends on the bundler, and a read at evaluation can find the other uninitialised. Nothing but importers of the route file reach the extracted module of
   a copied export, so a bundler drops it when unused; a non-copied export's module is imported by the route's
   chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
   merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
@@ -314,7 +316,7 @@ nothing per compile.
   output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
   the outputs that import from the env module, an extracted export's module never reads a binding of the env
   module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
-  nor imports. A violation fails the compile. Every test run sets it (the shared run-directory setup and
+  nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and

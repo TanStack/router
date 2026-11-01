@@ -480,6 +480,50 @@ export function settleRoots(
     return hit
   }
 
+  // ---- candidates that reference each other share a module ----------------
+  // In two extracted modules importing each other, which evaluates first
+  // depends on who imports what and how the bundler orders them, and a read at
+  // evaluation (`class A extends Z`) can then find the other uninitialised.
+  // Every candidate of a read cycle, direct or through what it carries, goes to
+  // the output of the first one in the source; its module evaluates them in
+  // source order.
+  if (candidates.size > 1) {
+    const readers = new Map<ClusterId, Set<ClusterId>>()
+    for (const c of candidates.keys()) {
+      const stop = new Set(candidates.keys())
+      stop.delete(c)
+      readers.set(
+        c,
+        new Set([...reach('env', [c], stop)].filter((d) => stop.has(d))),
+      )
+    }
+    const reachable = (from: ClusterId): Set<ClusterId> => {
+      const seen = new Set<ClusterId>()
+      const work = [from]
+      while (work.length > 0) {
+        for (const d of readers.get(work.pop()!)!) {
+          if (!seen.has(d)) {
+            seen.add(d)
+            work.push(d)
+          }
+        }
+      }
+      return seen
+    }
+    const closure = new Map(
+      [...candidates.keys()].map((c) => [c, reachable(c)]),
+    )
+    const inSourceOrder = [...candidates.keys()].sort(
+      (a, b) => clusters[a]!.start - clusters[b]!.start,
+    )
+    for (const c of inSourceOrder) {
+      const first = inSourceOrder.find(
+        (d) => d === c || (closure.get(c)!.has(d) && closure.get(d)!.has(c)),
+      )!
+      candidates.get(c)!.output = candidates.get(first)!.output
+    }
+  }
+
   // ---- derived reach before any decision; pre-existing dead code ----------
   for (const [id, from] of derivedRoots) {
     derivedReach.set(id, reach(id, from))
@@ -588,24 +632,28 @@ export function settleRoots(
       // instance of state and effects); an extracted module's reach
       // stops at every other candidate (it imports them)
       const chunkStop = new Set([...stop].filter((c) => !copies(c)))
+      for (const e of candidates.values()) {
+        derivedRoots.set(e.output, new Set())
+      }
       for (const [c, e] of candidates) {
         if (remaining.has(c)) {
           pinned.set(c, e.output)
-          derivedRoots.set(e.output, new Set([c]))
+          derivedRoots.get(e.output)!.add(c)
         } else {
           pinned.delete(c)
-          derivedRoots.set(e.output, new Set())
         }
       }
       for (const [id, from] of derivedRoots) {
-        const own = [...from].find((c) => remaining.get(c)?.output === id)
+        const own = [...from].some((c) => remaining.get(c)?.output === id)
         derivedReach.set(
           id,
           reach(
             id,
             from,
-            own !== undefined
-              ? new Set([...stop].filter((c) => c !== own))
+            own
+              ? new Set(
+                  [...stop].filter((c) => remaining.get(c)!.output !== id),
+                )
               : outputs.get(id)?.kind === 'export'
                 ? stop
                 : chunkStop,
@@ -762,7 +810,12 @@ export function extractedExports(
         }
       }
     }
-    extracted.push({ output: e.output, syms: [...syms] })
+    const shared = extracted.find((x) => x.output === e.output)
+    if (shared) {
+      shared.syms.push(...syms)
+    } else {
+      extracted.push({ output: e.output, syms: [...syms] })
+    }
   }
   return extracted
 }

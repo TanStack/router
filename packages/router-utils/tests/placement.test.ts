@@ -947,6 +947,32 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  it('puts exports that read each other in one module and keeps a one-way read apart', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export class Z { o() { return A } }
+      export class A extends Z {}
+      export class Other extends A {}
+      function Page() { return [new A(), new Other()] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { Z, A } from './route.tsx?tsr-split=export~Z'",
+    )
+    expect(r.env).toContain(
+      "export { Other } from './route.tsx?tsr-split=export~Other'",
+    )
+    const z = (await r.extracted('Z'))!.code
+    expect(z.indexOf('class Z')).toBeGreaterThan(-1)
+    expect(z.indexOf('class A')).toBeGreaterThan(z.indexOf('class Z'))
+    expect(z).not.toContain('import ')
+    const other = (await r.extracted('Other'))!.code
+    expect(other).toContain(
+      "import { A } from './route.tsx?tsr-split=export~Z'",
+    )
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
