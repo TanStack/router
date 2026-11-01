@@ -212,6 +212,33 @@ button {
   font-size: 13px;
 }
 
+/* Secondary bar: switches between the settings installations. */
+.subbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s5);
+  padding: var(--s2) var(--s6);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.subbar a {
+  color: var(--ink-2);
+}
+.subbar a[data-status='active'] {
+  color: var(--route);
+}
+.subbar-state {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+.subbar-state output {
+  margin-left: var(--s1);
+  color: var(--ink);
+  font: 500 12px var(--mono);
+}
+
 .page {
   max-width: 1080px;
   margin: 0 auto;
@@ -313,6 +340,54 @@ button {
 }
 .facts dd {
   margin: 0;
+}
+
+/* Fixture probes: the module APIs a page exercises, kept apart from its
+   content. */
+.probes {
+  margin-top: var(--s8);
+  padding-top: var(--s5);
+  border-top: 1px solid color-mix(in srgb, var(--wall) 22%, transparent);
+}
+.probes h4 {
+  margin: 0 0 var(--s2);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.probes h4:not(:first-child) {
+  margin-top: var(--s5);
+}
+.probes .facts {
+  margin-bottom: 0;
+}
+.probes output,
+.probes .facts dd > span {
+  font: 500 13px var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s5);
+  margin: 0;
+}
+.actions button {
+  min-height: 32px;
+  padding: 0 var(--s3);
+  color: var(--ink);
+  background: var(--sheet);
+  border: 1px solid var(--wall);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.actions button:hover {
+  background: var(--ground);
 }
 
 .tabs {
@@ -425,6 +500,13 @@ button {
   }
   .nav-label {
     display: none;
+  }
+  .subbar {
+    padding: var(--s2) var(--s4);
+  }
+  .subbar-state {
+    margin-left: 0;
+    flex-basis: 100%;
   }
   .page {
     padding: var(--s6) var(--s4) 120px;

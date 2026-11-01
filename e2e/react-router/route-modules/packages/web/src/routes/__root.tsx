@@ -58,16 +58,22 @@ function AppShell() {
           </span>
         </nav>
       </header>
-      <nav aria-label="Installations">
+      {/* The settings module is installed twice: switch between them, and
+          watch whether the organization installation's profile matches. */}
+      <nav className="subbar" aria-label="Installations">
+        <span className="nav-label">Settings</span>
         <orgSettings.Link to="/profile" params={{ orgId: 'globex' }}>
           Switch to organization
         </orgSettings.Link>
         <personSettings.Link to="/profile" params={{ personId: 'ada' }}>
           Switch to person
         </personSettings.Link>
-        <output data-testid="organization-profile">
-          {organizationProfile?.routeId ?? 'none'}
-        </output>
+        <span className="subbar-state">
+          Organization profile{' '}
+          <output data-testid="organization-profile">
+            {organizationProfile?.routeId ?? 'none'}
+          </output>
+        </span>
       </nav>
       <main className="page">
         <Outlet />

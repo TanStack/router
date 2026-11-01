@@ -63,8 +63,8 @@ export const Route = createFileRoute('@route-modules/settings:/members/$memberId
   }
   ws.edit('web', 'src/profile-links.tsx', (source) =>
     source.replace(
-      "params: { orgId: '7' }",
-      "params: { orgId: '7', organizationMemberId: 'host-member' }",
+      "params: { orgId: 'acme' }",
+      "params: { orgId: 'acme', organizationMemberId: 'host-member' }",
     ),
   )
   const valid = await ws.check('web')

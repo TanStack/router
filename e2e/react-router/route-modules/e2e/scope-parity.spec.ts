@@ -132,24 +132,24 @@ for (const base of ['/orgs/globex/settings', '/people/ada/settings']) {
     page,
   }) => {
     await page.goto(`${base}/profile`)
-    const host = page.getByRole('link', { name: 'Application host' })
-    await expect(host).toHaveAttribute('href', '/orgs/9')
-    await host.click()
-    await expect(page).toHaveURL('/orgs/9')
+    const home = page.getByRole('link', { name: 'Application home' })
+    await expect(home).toHaveAttribute('href', '/')
+    await home.click()
+    await expect(page).toHaveURL('/')
   })
 }
 
 test('a local Link resolves options already wrapped by the same local scope', async ({
   page,
 }) => {
-  await page.goto('/orgs/7/settings/profile')
+  await page.goto('/orgs/globex/settings/profile')
   const members = page.getByRole('link', {
-    name: 'Deferred members',
+    name: 'Acme members',
     exact: true,
   })
-  await expect(members).toHaveAttribute('href', '/orgs/7/settings/members')
+  await expect(members).toHaveAttribute('href', '/orgs/acme/settings/members')
   await members.click()
-  await expect(page).toHaveURL('/orgs/7/settings/members')
+  await expect(page).toHaveURL('/orgs/acme/settings/members')
   await expect(page.getByText('MEMBERS_PAGE')).toBeVisible()
 })
 
