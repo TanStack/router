@@ -38,9 +38,9 @@ export interface GeneratorSession {
 /**
  * One generator session of a bundler plugin or the CLI: when the generator
  * runs and what it hands over. A run's failure is reported (`report`,
- * default `console.error`); `publish` gets the registry after every run (it
- * changes only when a batch published its route tree: a failed one leaves
- * the previous registry).
+ * default `console.error`); `publish` gets the registry after every run (its
+ * routes change only when a batch published its route tree: a failed one
+ * leaves the previous routes, with the constructor facts it read).
  */
 export function createGeneratorSession(opts: {
   /** The current generator (a host replaces it when its config file changes). */

@@ -395,6 +395,7 @@ export class Generator {
           failure = undefined
         } catch (error) {
           failure = { error }
+          this.keepRegistryFactsCurrent()
         }
       }
       const waiters = this.waiters.splice(0)
@@ -407,6 +408,37 @@ export class Generator {
         }
       }
     })()
+  }
+
+  /**
+   * A failed batch publishes no tree, and the registry keeps its routes. What
+   * it read of a route's constructor still holds: a consumer answers `Route`
+   * from the registry instead of reading the file, so it can't wait for a tree
+   * that may not come (a route that does not parse fails every later batch).
+   */
+  private keepRegistryFactsCurrent() {
+    let next: Map<string, GetRoutesByFileMapResultValue> | undefined
+    for (const [file, state] of this.files) {
+      const entry = this.routesByFile.get(file)
+      if (
+        entry &&
+        state.facts.included &&
+        entry.routerConstructor !== state.facts.routerConstructor
+      ) {
+        const value = {
+          ...entry,
+          routerConstructor: state.facts.routerConstructor,
+        }
+        next ??= new Map(this.routesByFile)
+        next.set(file, value)
+        if (state.realPath) {
+          next.set(state.realPath, value)
+        }
+      }
+    }
+    if (next) {
+      this.routesByFile = next
+    }
   }
 
   private async processBatch(batch: Array<GeneratorEvent>, build: boolean) {

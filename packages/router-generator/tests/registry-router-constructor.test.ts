@@ -16,6 +16,32 @@ const foreignRoute = (
 export const Route = makeRoute('${id}')({})
 `
 
+test('a batch that fails keeps the routes but not a constructor fact the file no longer holds', async () => {
+  const root = await createApp({
+    'src/lib/make-route.ts': `export const makeRoute = (id: string) => (options: object) => ({ id, options })\n`,
+    'src/routes/__root.tsx': rootRoute(),
+    'src/routes/about.tsx': fileRoute('/about'),
+  })
+  const generator = new Generator({ config: configOf(root), root })
+  await generator.run({ type: 'build' })
+
+  const broken = await save(root, 'src/routes/broken.tsx', 'export const Route = (')
+  await expect(generator.run({ type: 'create', path: broken })).rejects.toThrow()
+  const entry = () =>
+    [...generator.getRoutesByFileMap().values()].find(
+      (v) => v.routeId === '/about',
+    )
+  expect(entry()?.routerConstructor).toBe(true)
+
+  const about = await save(root, 'src/routes/about.tsx', foreignRoute('/about'))
+  await expect(generator.run({ type: 'update', path: about })).rejects.toThrow()
+  expect(entry()?.routerConstructor).toBe(false)
+  // the failed tree publishes no route
+  expect(
+    [...generator.getRoutesByFileMap().values()].map((v) => v.routeId),
+  ).not.toContain('/broken')
+})
+
 test('a route made by the router package is listed with routerConstructor, a foreign one without', async () => {
   const root = await createApp({
     'src/lib/make-route.ts': `export const makeRoute = (id: string) => (options: object) => ({ id, options })\n`,
