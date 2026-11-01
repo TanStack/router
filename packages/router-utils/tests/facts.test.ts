@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
 
 describe('RawFactsCache', () => {
+  it('counts no entry stale once a marker scan has read the file again', async () => {
+    const cache = new RawFactsCache({
+      readFile: () => Promise.resolve('export const a = 1\n'),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.marker('/app/a.ts', 'client')
+    cache.markStale('/app/a.ts')
+    await cache.marker('/app/a.ts', 'client')
+    expect(cache.stats(false)).toMatchObject({
+      rawFactsMarkerless: 1,
+      rawFactsStale: 0,
+    })
+  })
+
   it('does not publish a read in flight when the file changes meanwhile', async () => {
     let text = 'export const a = 1\n'
     let release: (() => void) | null = null

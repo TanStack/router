@@ -378,7 +378,8 @@ export class RawFactsCache {
     let opaque = 0
     let bytes = 0
     for (const e of this.entries.values()) {
-      stale += e.stale ? 1 : 0
+      // (an entry without facts holds no stale answer: its scan is current)
+      stale += e.stale && e.facts ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
       markerless += !e.facts && e.markerless !== null ? 1 : 0
