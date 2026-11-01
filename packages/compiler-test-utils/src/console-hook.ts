@@ -276,6 +276,10 @@ export function listen(sink: Sink): Listening {
   install()
   const stop = () => {
     sinks.delete(sink)
+    // Native code keeps the async contexts it was called from (a Vite build's
+    // Rolldown callbacks keep theirs for good), and so the set of sinks in
+    // them: a stopped sink holds nothing of the work it captured.
+    sink.receive = () => {}
     if (sinks.size === 0) {
       uninstall()
     }
