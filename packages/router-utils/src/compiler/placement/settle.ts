@@ -4,6 +4,7 @@
  * needer (the movable test) and the extracted exports are one monotone
  * fixed point over the final placement; nothing is rooted after it.
  */
+import { callsValue } from '../analysis'
 import { READ_KINDS, isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
@@ -106,7 +107,7 @@ export function readsKeptEagerly(
         if (kept(d)) {
           return true
         }
-        if (ref.calls && clusters[d]!.kind === 'declaration') {
+        if (callsValue(ref) && clusters[d]!.kind === 'declaration') {
           seen.add(d)
           work.push(d)
         }

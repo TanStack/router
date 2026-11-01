@@ -125,6 +125,10 @@ export type RefContext =
   | 'jsxTag'
   | 'assignTarget'
   | 'updateTarget'
+  /** The callee of `new`: called at the reference, and its identity observed (a constructor). */
+  | 'newCallee'
+  /** An operand of `instanceof`, `===`, `!==`, `==` or `!=`, or the object of a `.prototype` read: the value's identity is observed. */
+  | 'identity'
   | 'declName'
 
 export interface ClassifiedRef {
@@ -138,15 +142,15 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /**
-   * The value's identity is observed: the callee of `new`, an operand of
-   * `instanceof`, `===`, `!==`, `==` or `!=`, the object of a `.prototype`
-   * read. A copy of a function used so is a second constructor or sentinel.
-   */
-  identityUse: boolean
-  /** The reference calls its value (the callee of a call, a `new` or a tagged template): the callee's body runs where the reference evaluates. */
-  calls: boolean
 }
+
+/** Whether the reference calls its value (the callee of a call, a `new` or a tagged template): the callee's body runs where the reference evaluates. */
+export const callsValue = (ref: ClassifiedRef): boolean =>
+  ref.ctx === 'callee' || ref.ctx === 'newCallee'
+
+/** Whether the reference observes its value's identity (`newCallee`, `identity`): a copy of a function used so is a second constructor or sentinel. */
+export const observesIdentity = (ref: ClassifiedRef): boolean =>
+  ref.ctx === 'newCallee' || ref.ctx === 'identity'
 
 interface FreeRef {
   name: string
@@ -980,8 +984,6 @@ export class ModuleAnalysis {
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
         memberWrite: c.kind === 'value' && writesMember(file, node),
-        identityUse: c.kind === 'value' && usesIdentity(file, node),
-        calls: c.kind === 'value' && callsValue(file, node),
       })
     }
 
@@ -1015,8 +1017,6 @@ export class ModuleAnalysis {
             ...classify(file, { node: id, isWrite: true }),
             eager: !isLazyAt(id.start),
             memberWrite: false,
-            identityUse: false,
-            calls: false,
           })
         }
       })
@@ -1035,8 +1035,6 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
-            identityUse: false,
-            calls: false,
           })
         },
         JSXFragment: (n) => {
@@ -1047,8 +1045,6 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
-            identityUse: false,
-            calls: false,
           })
         },
       })
@@ -1076,8 +1072,6 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
-            identityUse: false,
-            calls: false,
           })
         },
       })
@@ -1470,77 +1464,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   return true
 }
 
-/** Whether the reference at `node` observes its value's identity (`ClassifiedRef.identityUse`). */
-function usesIdentity(file: SourceFile, node: Node): boolean {
-  let child: Node = node
-  let parent = file.parentOf(node)
-  // through the wrappers that keep the value (`(X)`, `X as T`, `X!`)
-  while (
-    parent !== null &&
-    (parent.type === 'ParenthesizedExpression' ||
-      parent.type === 'TSAsExpression' ||
-      parent.type === 'TSSatisfiesExpression' ||
-      parent.type === 'TSNonNullExpression' ||
-      parent.type === 'TSTypeAssertion')
-  ) {
-    child = parent
-    parent = file.parentOf(parent)
-  }
-  if (parent === null) {
-    return false
-  }
-  switch (parent.type) {
-    case 'NewExpression':
-      return parent.callee === child
-    case 'BinaryExpression':
-      return (
-        parent.operator === '===' ||
-        parent.operator === '!==' ||
-        parent.operator === '==' ||
-        parent.operator === '!=' ||
-        (parent.operator === 'instanceof' && parent.right === child)
-      )
-    case 'MemberExpression':
-      return (
-        parent.object === child &&
-        !parent.computed &&
-        parent.property.type === 'Identifier' &&
-        parent.property.name === 'prototype'
-      )
-    default:
-      return false
-  }
-}
-
-/** Whether the reference at `node` calls its value (`ClassifiedRef.calls`). */
-function callsValue(file: SourceFile, node: Node): boolean {
-  let child: Node = node
-  let parent = file.parentOf(node)
-  while (
-    parent !== null &&
-    (parent.type === 'ParenthesizedExpression' ||
-      parent.type === 'TSAsExpression' ||
-      parent.type === 'TSSatisfiesExpression' ||
-      parent.type === 'TSNonNullExpression' ||
-      parent.type === 'TSTypeAssertion')
-  ) {
-    child = parent
-    parent = file.parentOf(parent)
-  }
-  if (parent === null) {
-    return false
-  }
-  switch (parent.type) {
-    case 'CallExpression':
-    case 'NewExpression':
-      return parent.callee === child
-    case 'TaggedTemplateExpression':
-      return parent.tag === child
-    default:
-      return false
-  }
-}
-
 /**
  * Which references run when the module loads: the eager ones, and every
  * reference inside a module-level function or class that an eager
@@ -1555,7 +1478,7 @@ export function runsAtLoad(
   const marked = new Set<UnitId>()
   const work: Array<ClassifiedRef> = []
   for (const r of t1.refs.all) {
-    if (r.eager && r.calls) {
+    if (r.eager && callsValue(r)) {
       work.push(r)
     }
   }
@@ -1568,7 +1491,7 @@ export function runsAtLoad(
       }
       marked.add(u)
       for (const inner of t1.refs.refsIn(unit.range)) {
-        if (inner.calls) {
+        if (callsValue(inner)) {
           work.push(inner)
         }
       }
@@ -1586,10 +1509,71 @@ export function runsAtLoad(
   }
 }
 
+/** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
+const VALUE_WRAPPERS = new Set([
+  'ParenthesizedExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+])
+
+/**
+ * How the value a reference reads is used by its parent, looking through
+ * the value wrappers: `callee` (a call, a tagged template), `newCallee`
+ * (constructed: called, identity observed), `identity` (an operand of
+ * `instanceof`, `===`, `!==`, `==`, `!=`, the object of a `.prototype`
+ * read), else null.
+ */
+function valueUse(
+  file: SourceFile,
+  node: Node,
+  parent: Node,
+): RefContext | null {
+  let child = node
+  let p: Node | null = parent
+  while (p !== null && VALUE_WRAPPERS.has(p.type)) {
+    child = p
+    p = file.parentOf(p)
+  }
+  if (p === null) {
+    return null
+  }
+  switch (p.type) {
+    case 'CallExpression':
+      return p.callee === child ? 'callee' : null
+    case 'NewExpression':
+      return p.callee === child ? 'newCallee' : null
+    case 'TaggedTemplateExpression':
+      return p.tag === child ? 'callee' : null
+    case 'BinaryExpression':
+      return p.operator === '===' ||
+        p.operator === '!==' ||
+        p.operator === '==' ||
+        p.operator === '!=' ||
+        (p.operator === 'instanceof' && p.right === child)
+        ? 'identity'
+        : null
+    case 'MemberExpression':
+      return p.object === child &&
+        !p.computed &&
+        p.property.type === 'Identifier' &&
+        p.property.name === 'prototype'
+        ? 'identity'
+        : null
+    default:
+      return null
+  }
+}
+
 function classify(
   file: SourceFile,
   ref: { node: Node; isWrite: boolean },
-): { kind: RefKind; ctx: RefContext; exportShorthand?: boolean } {
+): {
+  kind: RefKind
+  ctx: RefContext
+  exportShorthand?: boolean
+} {
   const node = ref.node
   const parent = file.parentOf(node)
   if (node.type === 'JSXIdentifier') {
@@ -1631,6 +1615,48 @@ function classify(
         : { kind: 'value', ctx: 'plain' }
     case 'UpdateExpression':
       return { kind: 'write', ctx: 'updateTarget' }
+    // the identity uses, inline for the common parents (a member read is
+    // the most frequent parent of a reference): `valueUse` only walks the
+    // value wrappers
+    case 'MemberExpression':
+      return {
+        kind: ref.isWrite ? 'write' : 'value',
+        ctx: ref.isWrite
+          ? 'assignTarget'
+          : parent.object === node &&
+              !parent.computed &&
+              parent.property.type === 'Identifier' &&
+              parent.property.name === 'prototype'
+            ? 'identity'
+            : 'plain',
+      }
+    case 'NewExpression':
+      return {
+        kind: 'value',
+        ctx: parent.callee === node ? 'newCallee' : 'plain',
+      }
+    case 'BinaryExpression':
+      return {
+        kind: 'value',
+        ctx:
+          parent.operator === '===' ||
+          parent.operator === '!==' ||
+          parent.operator === '==' ||
+          parent.operator === '!=' ||
+          (parent.operator === 'instanceof' && parent.right === node)
+            ? 'identity'
+            : 'plain',
+      }
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+    case 'TSTypeAssertion': {
+      if (ref.isWrite) {
+        return { kind: 'write', ctx: 'assignTarget' }
+      }
+      return { kind: 'value', ctx: valueUse(file, node, parent) ?? 'plain' }
+    }
     default:
       return {
         kind: ref.isWrite ? 'write' : 'value',

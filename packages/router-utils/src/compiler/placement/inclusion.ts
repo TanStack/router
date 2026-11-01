@@ -180,7 +180,14 @@ export function includeAndImport(
     // all decide with it; this counts the result.
     const liveInEnv = (ref: { range: { start: number } }) =>
       !graph.treeOf('env').isErasedAt(ref.range.start)
-    for (const cl of clusters) {
+    let duplicates = false
+    for (const h of home.values()) {
+      if (h === 'duplicate') {
+        duplicates = true
+        break
+      }
+    }
+    for (const cl of duplicates ? clusters : []) {
       if (cl.kind !== 'declaration' || isDuplicable(cl, t1, liveInEnv)) {
         continue
       }

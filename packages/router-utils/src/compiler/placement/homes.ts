@@ -41,6 +41,12 @@ export function assignHomes(
   const { liveEnv, derivedReach, movable, pinned, copied } = roots
   const pure = (c: ClusterId) => !clusters[c]!.effectful
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
+  const providers = new Set<OutputId>()
+  for (const [id, decl] of outputs) {
+    if (decl.kind === 'provider') {
+      providers.add(id)
+    }
+  }
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------
   // (after the extraction decision: a cancelled candidate is an env root again,
@@ -113,7 +119,8 @@ export function assignHomes(
     const needers = derivedNeeders[cl.id]!
     // a provider output copies what it reaches whatever its home: it counts
     // only when nothing else needs the cluster
-    const derived = needers.filter((o) => outputs.get(o)?.kind !== 'provider')
+    const derived =
+      providers.size === 0 ? needers : needers.filter((o) => !providers.has(o))
     if (
       seeds.deadClusters.has(cl.id) ||
       (orphaned.has(cl.id) && needers.length === 0)

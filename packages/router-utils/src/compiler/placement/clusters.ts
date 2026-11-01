@@ -7,7 +7,7 @@
  * the module's write table and the one mutation predicate every later rule
  * asks (`mutatedOutside`).
  */
-import { runsAtLoad } from '../analysis'
+import { observesIdentity, runsAtLoad } from '../analysis'
 import { writeKind } from '../mutation'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -200,7 +200,7 @@ export function isDuplicable(
       return false
     }
     for (const r of t1.refs.refsOf(s)) {
-      if (r.identityUse && (live === undefined || live(r))) {
+      if (observesIdentity(r) && (live === undefined || live(r))) {
         return false
       }
     }
@@ -566,6 +566,8 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     subRegionWriters.push({ cluster: clusterOfMember(d), writers })
   }
 
+  let atLoad: ((ref: ClassifiedRef) => boolean) | null = null
+
   // ---- readers of mutable state ----------------------------------------------
   // (a claimed region is in its owner's cluster: a write there is the owner's)
   const mutatedOutside = (
@@ -630,7 +632,8 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     treeOf,
     isLive,
     unitSurvives,
-    atLoad: runsAtLoad(t1),
+    // built on first use: most modules never ask (candidates, static outputs)
+    atLoad: (ref) => (atLoad ??= runsAtLoad(t1))(ref),
     mutatedOutside,
   }
 }
