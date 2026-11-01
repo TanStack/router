@@ -223,3 +223,64 @@ export const Route = createFileRoute('/')({
     )
   },
 )
+
+// Only a query carries the compiler's keys: this file's name has none.
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'a module named like an extracted export builds and is no extracted export on %s',
+  async (bundler) => {
+    const name = 'a&tsr-split=export~%'
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: {
+        'routes/__root.tsx': rootRoute,
+        'routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => <p /> })\n`,
+        [`${name}.ts`]: `export const named = 'MARK_NAMED_FILE'\n`,
+        'entry.ts': `export { Route } from './routes/index'
+export { named } from './${name}'
+`,
+      },
+    })
+    try {
+      expect(app.where('MARK_NAMED_FILE')).toBe('eager')
+      expect(
+        findDiagnostics(app.warnings, { severity: 'warning' }).filter(
+          ({ text }) => text.includes('loads with the entry chunk'),
+        ),
+      ).toEqual([])
+    } finally {
+      await app.dispose()
+    }
+  },
+  timeout,
+)
+
+// A hand-written owned key with a bad escape is no output of ours.
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'an owned query key with a bad escape on an asset builds on %s',
+  async (bundler) => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: {
+        'routes/__root.tsx': rootRoute,
+        'routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => <p /> })\n`,
+        'a.png': 'png',
+        'entry.ts': `export { Route } from './routes/index'
+import './a.png?tsr-split=%'
+`,
+      },
+      configure:
+        bundler === 'vite'
+          ? undefined
+          : (options) => {
+              ;(options.module as any).rules.push({
+                test: /\.png$/,
+                type: 'asset/resource',
+              })
+            },
+    })
+    await app.dispose()
+  },
+  timeout,
+)

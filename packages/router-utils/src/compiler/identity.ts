@@ -132,6 +132,15 @@ export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/')
 }
 
+/** The value of an owned key; a hand-written one with a bad escape stays as written (no output has that name). */
+function decodeOwnedValue(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 /** Maps a host id to its canonical identity. Never canonicalises virtual ids beyond their owned keys. */
 export function identify(hostId: string): SourceIdentity {
   const { base, query, hash } = splitQuery(hostId)
@@ -147,7 +156,7 @@ export function identify(hostId: string): SourceIdentity {
       const value = eq === -1 ? '' : part.slice(eq + 1)
       if (OWNED_KEY_SET.has(key)) {
         // Several owned keys on one id: the last one wins; earlier ones are dropped.
-        derived = parseDerived(key, decodeURIComponent(value))
+        derived = parseDerived(key, decodeOwnedValue(value))
       } else {
         foreign.push(part)
       }

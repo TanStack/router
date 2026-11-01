@@ -25,8 +25,6 @@ interface EagerExtractedExport {
   id: string
 }
 
-const EXTRACTED_EXPORT_RE = /[?&]tsr-split=export~([^&#]+)/
-
 /**
  * The extracted exports among `moduleIds` (the module ids of the chunks a
  * build loads with its entries), once each, in first-seen order. Ids are
@@ -38,12 +36,12 @@ function eagerExtractedExports(
   const seen = new Set<string>()
   const out: Array<EagerExtractedExport> = []
   for (const id of moduleIds) {
-    const match = EXTRACTED_EXPORT_RE.exec(id)
-    if (!match) {
+    const { path, derived } = identify(id)
+    if (derived?.kind !== 'export') {
       continue
     }
-    const file = normalizePath(identify(id).path)
-    const name = decodeURIComponent(match[1]!)
+    const file = normalizePath(path)
+    const name = derived.value
     const key = `${file}\0${name}`
     if (seen.has(key)) {
       continue
@@ -129,7 +127,10 @@ export function initialChunkResources(
 }
 
 /** A module id of split code (a split chunk, a Hydrate chunk): an importer of an extracted module the chunk imports instead of copying. */
-const SPLIT_IMPORTER_RE = /[?&](tsr-split=(?!export~)|tss-hydrate=)/
+function isSplitCode(id: string): boolean {
+  const kind = identify(id).derived?.kind
+  return kind === 'split' || kind === 'shared' || kind === 'hydrate'
+}
 
 /** The parts of a webpack/Rspack compilation the importer lookup reads. */
 export interface WebpackModuleGraphLike {
@@ -155,7 +156,7 @@ export function webpackImporters(
   for (const m of compilation.modules) {
     for (const inner of [m, ...(m.modules ?? [])]) {
       const resource = resourceOf(inner)
-      if (!EXTRACTED_EXPORT_RE.test(resource)) {
+      if (identify(resource).derived?.kind !== 'export') {
         continue
       }
       const list: Array<string> = []
@@ -191,7 +192,7 @@ export function warnEagerExports(
     const cause =
       importersOf === undefined
         ? 'unknown'
-        : [...importersOf(e.id)].some((i) => SPLIT_IMPORTER_RE.test(i))
+        : [...importersOf(e.id)].some(isSplitCode)
           ? 'chunk'
           : 'importer'
     const message = eagerExportWarning(e, bundler, cause)

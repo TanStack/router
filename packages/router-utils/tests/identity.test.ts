@@ -64,6 +64,10 @@ describe('identity', () => {
         deriveId('/app/page.tsx', { kind: 'export', value: 'a/b.css!é' }),
       ).derived,
     ).toEqual({ kind: 'export', value: 'a/b.css!é' })
+    expect(identify('/app/page.tsx?tsr-split=%').derived).toEqual({
+      kind: 'split',
+      value: '%',
+    })
     expect(deriveId('/app/page.tsx', { kind: 'hydrate', value: 'h1' })).toBe(
       '/app/page.tsx?tss-hydrate=h1',
     )
