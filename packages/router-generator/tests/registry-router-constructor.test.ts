@@ -25,8 +25,14 @@ test('a batch that fails keeps the routes but not a constructor fact the file no
   const generator = new Generator({ config: configOf(root), root })
   await generator.run({ type: 'build' })
 
-  const broken = await save(root, 'src/routes/broken.tsx', 'export const Route = (')
-  await expect(generator.run({ type: 'create', path: broken })).rejects.toThrow()
+  const broken = await save(
+    root,
+    'src/routes/broken.tsx',
+    'export const Route = (',
+  )
+  await expect(
+    generator.run({ type: 'create', path: broken }),
+  ).rejects.toThrow()
   const entry = () =>
     [...generator.getRoutesByFileMap().values()].find(
       (v) => v.routeId === '/about',

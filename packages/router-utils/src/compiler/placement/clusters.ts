@@ -640,8 +640,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     isLive,
     unitSurvives,
     // built on first use: most modules never ask (candidates, static outputs)
-    atLoad: (ref) =>
-      (atLoad ??= runsAtLoad(t1, (r) => isLive(r, 'env')))(ref),
+    atLoad: (ref) => (atLoad ??= runsAtLoad(t1, (r) => isLive(r, 'env')))(ref),
     mutatedOutside,
   }
 }
