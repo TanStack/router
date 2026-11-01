@@ -1,6 +1,10 @@
 import { Dynamic } from 'solid-js/web'
 import { lazy } from 'solid-js'
-import { isModuleNotFoundError } from '@tanstack/router-core'
+import {
+  isModuleNotFoundError,
+  waitForPageToStay,
+  watchPageUnload,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
 
@@ -16,12 +20,16 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default']
   let error: any
+  let cancelledByUnload = false
 
   const load = () => {
     if (!loadPromise) {
       error = undefined
+      cancelledByUnload = false
+      const stopWatchingUnload = watchPageUnload()
       loadPromise = importer()
         .then((res) => {
+          stopWatchingUnload()
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
@@ -32,6 +40,7 @@ export function lazyRouteComponent<
         })
         .catch((err) => {
           loadPromise = undefined
+          cancelledByUnload = stopWatchingUnload() && isModuleNotFoundError(err)
           error = err
         })
     }
@@ -48,6 +57,18 @@ export function lazyRouteComponent<
 
   // Both preload and lazy resolution end here without starting another load.
   function render(props: any) {
+    // The browser cancelled the import because the page is unloading, so a
+    // reload would replace the navigation the user started. If the page stays
+    // after all, retry the import instead.
+    if (error && cancelledByUnload) {
+      const Retry = lazy(async () => {
+        await waitForPageToStay()
+        await load()
+        return { default: render }
+      })
+      return <Retry {...props} />
+    }
+
     // Now that we're out of preload and into actual render path,
     // throw the error if it was a module not found error during preload
     if (error) {
