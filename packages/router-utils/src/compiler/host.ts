@@ -333,8 +333,8 @@ export async function invalidate(
     cache: PlanCache,
     indexKey: string,
     relevant: (fp: DependencyFingerprint) => boolean,
+    seen = new Set<string>(),
   ): Promise<void> => {
-    const seen = new Set<string>()
     const host = hostOf(cache.env)
     const src = fingerprintSourceFor(caches, host, cache.env)
     for (const entry of cache.dependents.get(indexKey)) {
@@ -408,8 +408,10 @@ export async function invalidate(
           shadowed.push(path)
         }
       }
+      // (a plan under many of those paths: its resolutions are asked once)
+      const seen = new Set<string>()
       for (const path of shadowed) {
-        await revalidate(cache, path, (fp) => fp.kind === 'resolution')
+        await revalidate(cache, path, (fp) => fp.kind === 'resolution', seen)
       }
     }
   }

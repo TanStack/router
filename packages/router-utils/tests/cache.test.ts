@@ -3,11 +3,12 @@
  * dependents index) is bounded by the live plans: it does not grow with
  * edits that change import targets, nor with unique files that come and go.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { invalidate, releaseEnvironment, restorePlans } from '../src/compiler'
 import { PlanCache } from '../src/compiler/cache'
 import { planKeyString } from '../src/compiler/identity'
 import { MemoryHost, envInfo, toySummaryPlanner } from './helpers'
+import type { Planner } from '../src/compiler'
 import type { PlanKey } from '../src/compiler/identity'
 
 const planners = () => [toySummaryPlanner()]
@@ -132,6 +133,42 @@ describe('a changed dependency', () => {
       '/app/consumer.ts',
     ])
     expect(host.resolveCalls).toEqual([])
+  })
+})
+
+describe('a package.json change', () => {
+  it('checks the resolutions of a plan once, however many of its files lie under the manifest', async () => {
+    const names = Array.from({ length: 50 }, (_, i) => `m${i}`)
+    const host = new MemoryHost({
+      files: {
+        '/app/package.json': '{}',
+        '/app/src/tree.ts':
+          names.map((n) => `import './${n}'`).join('\n') + '\n',
+        ...Object.fromEntries(
+          names.map((n) => [`/app/src/${n}.ts`, `export const ${n} = 1\n`]),
+        ),
+      },
+    })
+    const resolving: Planner = {
+      name: 'resolving',
+      tier: 0,
+      gate: () => true,
+      plan() {},
+      async prefetch(t0, ctx) {
+        for (const i of t0.imports) {
+          await ctx.resolve(i.specifier)
+        }
+      },
+    }
+    await host.compile('/app/src/tree.ts', [resolving], { env })
+    const cache = host.caches.plans.get(env.name)!
+    const checks = vi.spyOn(cache, 'dependenciesOf')
+    await invalidate(
+      host.caches,
+      { path: '/app/package.json', kind: 'change' },
+      host,
+    )
+    expect(checks.mock.calls.length).toBeLessThanOrEqual(1)
   })
 })
 
