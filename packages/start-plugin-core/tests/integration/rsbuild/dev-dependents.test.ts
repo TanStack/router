@@ -234,6 +234,46 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
     timeout,
   )
 
+  // `base` stopped being a server fn builder while the server was down:
+  // compiling a restored importer again removes its handler module, which was
+  // on the list of what to compile again too. Whether a handler comes after
+  // its importer on that list depends on the hash of its id: eight importers
+  // so that one does (Rspack panicked on a module that had left its graph).
+  // Source: review of the integration of review 2, on a directory name that
+  // hashed that way.
+  test(
+    'starts when compiling a restored module again removes another one it was to compile',
+    async () => {
+      const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
+      const first = await startRsbuildStartDevServer({
+        compileTimeout,
+        config,
+        files: {
+          'src/lib/base.ts': builderBase,
+          ...Object.fromEntries(
+            names.map((name) => [
+              `src/${name}.ts`,
+              handlerModule(name, './lib/base'),
+            ]),
+          ),
+          'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
+console.log(${names.join(', ')})
+`,
+        },
+      })
+      expect(first.errors).toEqual([])
+      await first.stop()
+      await writeFile(path.join(first.root, 'src/lib/base.ts'), plainBase)
+      const server = await first.restart()
+      expect(server.errors).toEqual([])
+      const client = Object.values(await server.outputs('client')).join('\n')
+      for (const name of names) {
+        expect(client).toContain(`MARK_${name.toUpperCase()}`)
+      }
+    },
+    timeout,
+  )
+
   // Restored without a compile, the importer is still compiled again when
   // an edit of the new session changes what it read.
   // Source: R87 (the restored dependencies join the session's invalidation).
