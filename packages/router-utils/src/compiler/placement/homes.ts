@@ -9,7 +9,7 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
-import { symRefsOf } from './clusters'
+import { describeCluster, symRefsOf } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
@@ -208,7 +208,7 @@ export function assignHomes(
     for (const cl of clusters) {
       if (home.get(cl.id) === 'env' && cl.effectful && !liveEnv.has(cl.id)) {
         throw new Error(
-          `placement: effectful cluster ${cl.id} homed in the env module is not live there`,
+          `placement: ${describeCluster(input, cl)}, which has effects, is homed in the env module and is not live there`,
         )
       }
     }

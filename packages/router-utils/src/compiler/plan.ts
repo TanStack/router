@@ -508,6 +508,7 @@ export class AnalysisPlan implements PlanContext {
       rewrites: this.rewrites,
       outputs: this.outputs,
       canonicalId: this.identity.canonicalId,
+      code: this.analysis.source.code,
       routeModule: this.routeModule,
       isBenign: (u) => {
         if (!this.benignEffects.has(u)) {

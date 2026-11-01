@@ -499,8 +499,8 @@ export function tanStackStartRsbuild(
             // All modules imported from the RSC layer inherit
             // the react-server condition (transitive propagation), except
             // route split virtual modules. Those remain ordinary SSR/client
-            // route code; only `?tsr-shared=1` modules may be shared with the
-            // provider subtree.
+            // route code, split and shared alike: no provider module imports
+            // them.
             moduleRules.push({
               issuerLayer: RSBUILD_RSC_LAYERS.rsc,
               resourceQuery: {

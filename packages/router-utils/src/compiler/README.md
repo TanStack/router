@@ -11,8 +11,8 @@ This file is the map. The contract the compilers must satisfy is the oracle's
 
 ## The model
 
-**One analysis per (environment, module, input text), one plan, many outputs.** A module is parsed once with
-Yuku's semantic model. Every job is a _planner_ that reads that analysis and adds to one shared plan; no job
+**One analysis per (environment, module, input text), one plan, many outputs.** A compile parses its module once with
+Yuku's semantic model (summaries are a separate read of the raw text: see "Values and summaries"). Every job is a _planner_ that reads that analysis and adds to one shared plan; no job
 re-parses, re-prints or reads another job's output. The plan yields:
 
 - the env module (the code returned for the requested id),
@@ -157,8 +157,9 @@ directives, never license comments.
   pluggable `RecognizerTable` (Start supplies its kinds; the core ships none).
 - Across modules, **summaries**: the export table and the abstract values of exports, computed from the module's
   _raw_ text (filesystem read or exact-id virtual load, never the bundler's transform pipeline), environment-
-  independent, holding no AST. `ExportResolver` follows re-export chains over summaries. Known TanStack packages are
-  recognised by specifier and never resolved.
+  independent, holding no AST. An importer's prefetch normally asks for them before the target's own transform runs,
+  so a compiled module is parsed twice: once for its compile, once for its raw facts. `ExportResolver` follows
+  re-export chains over summaries. Known TanStack packages are recognised by specifier and never resolved.
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).
@@ -185,7 +186,7 @@ text compiles waits for it and emits its own output from the result.
 
 ## Caches and invalidation (`cache.ts`, `host.ts`)
 
-- `PlanCache`: one plan per (env, file), the latest revision only. A hit is _validated_ (same canonical identity,
+- `PlanCache`: one plan per (env, canonical id, config key; the late pass is a second config key of a file), the latest revision only. A hit is _validated_ (same canonical identity,
   input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, summary digests, target facts,
@@ -193,7 +194,8 @@ text compiles waits for it and emits its own output from the result.
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
-  environment's own resolver (add/unlink also retry failed resolutions; an add also re-asks the resolutions it may
+  environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
+  add/unlink also retry failed resolutions, and they or a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
   take: a file of the same name with another extension, or of a directory a resolution went into; a resolution that
   found an unlinked file is stale without asking) and returns
   `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates importers

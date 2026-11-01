@@ -112,6 +112,8 @@ function serverSplitChunks(root: string, dev: boolean) {
       default: false,
       defaultVendors: false,
       ...(!dev && {
+        // (a cache group, not `webpackChunkName` on the resolver's imports: that
+        // triggers rspack#16289)
         router: {
           name: 'tanstack-start-router',
           chunks: routerOrProvider,
