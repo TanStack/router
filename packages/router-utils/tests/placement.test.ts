@@ -2571,6 +2571,50 @@ function Page() {
   })
 })
 
+describe('generated units after the imports of a derived output', () => {
+  it('render after the last included import, before the statement it ends at', async () => {
+    const code = dedent(`
+      const before = 'B'
+      import { x } from './x'
+      const after = 'A'
+      export const read = () => [before, x, after]
+    `)
+    const host = new MemoryHost({
+      files: { '/app/m.ts': code, '/app/x.ts': 'export const x = 1\n' },
+    })
+    const planner: Planner = {
+      name: 'toy-derived',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const read = ctx.t1.units.find((u) => u.exported.includes('read'))!
+        ctx.addRoot(out, { t: 'unit', id: read.id })
+        ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts: ['const generated = 1\n'] }],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'after-header' },
+          home: out,
+          by: 'toy-derived',
+        })
+      },
+    }
+    const env = envInfo({ name: 'rsc', type: 'server' })
+    const out = await host.compile('/app/m.ts?tss-serverfn-split', [planner], {
+      env,
+    })
+    const at = (text: string) => out!.code.indexOf(text)
+    expect(at("from './x'")).toBeGreaterThan(-1)
+    expect(at('const generated')).toBeGreaterThan(at("from './x'"))
+    expect(at("const after = 'A'")).toBeGreaterThan(at('const generated'))
+  })
+})
+
 describe('provenance-based orphans', () => {
   it('keeps a pre-existing disconnected effectful cycle', async () => {
     const code = ROUTE(
