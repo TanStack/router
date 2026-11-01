@@ -9,6 +9,7 @@
 import { isDeepStrictEqual } from 'node:util'
 import { ModuleAnalysis } from './analysis'
 import { emitRecipe } from './emit'
+import { isDuplicable } from './placement/clusters'
 import { SourceText } from './output-builder'
 import { parseModule } from './source'
 import { hasRuntimeValue } from './symbols'
@@ -219,6 +220,35 @@ export function verifyPlan(
       problems.push(
         `the effect at ${start} is emitted ${n} times (expected ${expected})`,
       )
+    }
+  }
+  // (h) a declaration with an identity (an object, array, class, call
+  // result, regex) or a written one exists once: it is declared in at most
+  // one output that imports from the env module (a copying output
+  // excepted). Whatever placement copies carries only functions and
+  // primitives nothing writes (`isDuplicable`).
+  if (placement !== null) {
+    const liveInEnv = (ref: { range: { start: number } }) =>
+      !envTree.isErasedAt(ref.range.start)
+    for (const cl of placement.clusters) {
+      if (
+        cl.kind !== 'declaration' ||
+        isDuplicable(cl, t1.mutation, liveInEnv)
+      ) {
+        continue
+      }
+      const holders: Array<OutputId> = []
+      for (const [o, set] of placement.included) {
+        if (set.has(cl.id) && !copies(emitPlan.outputs[o]?.kind ?? 'env')) {
+          holders.push(o)
+        }
+      }
+      if (holders.length > 1) {
+        const names = [...cl.declares].map((s) => t1.symbols.name(s))
+        problems.push(
+          `${names.join(', ')} (an identity or state) is declared in ${holders.length} outputs: ${holders.join(', ')}`,
+        )
+      }
     }
   }
   // (f) planner facts are JSON data: a cached plan retains them as they are

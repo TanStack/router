@@ -9,8 +9,9 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
-import { symRefsOf } from './clusters'
+import { isDuplicable, symRefsOf } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
+import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
@@ -39,6 +40,7 @@ export function assignHomes(
   const { clusters, clusterOfRegion, clusterOfGen, clusterOfSym } = graph
   const { liveEnv, derivedReach, movable, pinned, copied } = roots
   const pure = (c: ClusterId) => !clusters[c]!.effectful
+  const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------
   // (after the extraction decision: a cancelled candidate is an env root again,
@@ -179,10 +181,16 @@ export function assignHomes(
       continue
     }
     if (derived.some((o) => outputs.get(o)?.kind === 'export')) {
-      // a pure cluster an extracted module and a chunk both need is copied
-      // into each: a shared module the extracted module imported would be a
-      // static dependency of the route module, which no chunk may import
-      home.set(cl.id, 'duplicate')
+      // a pure cluster an extracted module and another output both need is
+      // copied into each when a copy is indistinguishable (a function, a
+      // primitive, nothing writes it): a shared module the extracted module
+      // imported would be a static dependency of the route module, which no
+      // chunk may import. One with an identity, or written, is one instance
+      // in the env module (an env root since the roots settled)
+      home.set(
+        cl.id,
+        isDuplicable(cl, t1.mutation, liveInEnv) ? 'duplicate' : 'env',
+      )
       continue
     }
     const key = derived.map(keyOf).sort().join('+')

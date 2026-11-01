@@ -1173,6 +1173,165 @@ describe('extracted-export outputs', () => {
     expect(r.diagnostics).toEqual([])
   })
 
+  // What a chunk copies (SPEC J2.4): the export and what it reaches that
+  // exists nowhere else, every piece a function or a primitive nothing
+  // writes. A value with an identity (a class, an object, a call result, a
+  // regex) or a written binding in that closure makes the export
+  // non-copyable: the chunk imports the extracted module, and the value
+  // exists once.
+  describe('what a chunk copies', () => {
+    it('copies an exported function whose closure is functions, primitives and imports', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { heavy } from './heavy'
+        const LIMIT = 3
+        const label = (v: number) => v + LIMIT
+        export function Card() { return label(heavy()) }
+        function Page() { return Card() }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.env).not.toContain('function Card')
+      expect(r.env).not.toContain('const label')
+      expect(r.chunk).not.toContain('export~Card')
+      expect(r.chunk).toContain("import { heavy } from './heavy'")
+      expect(r.chunk).toContain('const LIMIT = 3')
+      expect(r.chunk).toContain('const label = (v: number) => v + LIMIT')
+      expect(r.chunk).toContain('function Card() { return label(heavy()) }')
+    })
+
+    it.each([
+      ['a class', 'export class Model { static kind = 1 }', 'Model.kind'],
+      ['an object literal', 'export const Model = { kind: 1 }', 'Model.kind'],
+      ['an array literal', 'export const Model = [1]', 'Model.length'],
+      [
+        'an annotated call',
+        "import { make } from './make'\nexport const Model = /* @__PURE__ */ make()",
+        'Model.kind',
+      ],
+      ['a regex', 'export const Model = /m/', 'Model.source'],
+      ['an enum', 'export enum Model { kind = 1 }', 'Model.kind'],
+    ])(
+      'imports an exported value with an identity from its extracted module instead of copying it: %s',
+      async (_, declaration, read) => {
+        const code = dedent(`
+          import { createFileRoute } from 'toy-router'
+          ${declaration.replaceAll('\n', '\n          ')}
+          function Page() { return ${read} }
+          export const Route = createFileRoute('/')({ component: Page })
+        `)
+        const r = await extract(code)
+        expect(r.env).toContain(
+          "export { Model } from './route.tsx?tsr-split=export~Model'",
+        )
+        expect(r.chunk).toContain(
+          "import { Model } from './route.tsx?tsr-split=export~Model'",
+        )
+        expect(r.chunk).not.toMatch(/(class|const|enum) Model\b/)
+        const e = await r.extracted('Model')
+        expect(e?.code).toMatch(/(class|const|enum) Model\b/)
+        expect(e?.code).toContain('export { Model }')
+        expect(r.diagnostics).toEqual([])
+      },
+    )
+
+    it('imports an exported function that reaches a written value instead of copying it; the value moves with it', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const state = { n: 0 }
+        export function bump() { state.n++ }
+        function Page() { bump(); return 'page' }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+      const r = await extract(code)
+      expect(r.env).not.toContain('const state')
+      expect(r.env).not.toContain('function bump')
+      expect(r.chunk).toContain(
+        "import { bump } from './route.tsx?tsr-split=export~bump'",
+      )
+      expect(r.chunk).not.toContain('state.n++')
+      const e = await r.extracted('bump')
+      expect(e?.code).toContain('const state = { n: 0 }')
+      expect(e?.code).toContain('function bump() { state.n++ }')
+      expect(r.diagnostics).toEqual([])
+    })
+
+    it('keeps a written value two extracted exports reach in the route module, one instance', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const listeners: Array<() => void> = []
+        export function subscribe(fn: () => void) { listeners.push(fn) }
+        export function emit() { listeners.forEach((fn) => fn()) }
+        export const Route = createFileRoute('/')({
+          component: () => subscribe(() => 1),
+          errorComponent: () => emit(),
+        })
+      `)
+      const r = await extract(code, ['component', 'errorComponent'])
+      expect(r.env).toContain('const listeners: Array<() => void> = []')
+      expect(r.env).toContain('export { listeners }')
+      expect(r.env).toContain(
+        "export { subscribe } from './route.tsx?tsr-split=export~subscribe'",
+      )
+      expect(r.chunk).toContain(
+        "import { subscribe } from './route.tsx?tsr-split=export~subscribe'",
+      )
+      expect(r.chunk).not.toContain('listeners')
+      const e = await r.extracted('subscribe')
+      expect(e?.code).toContain("import { listeners } from './route.tsx'")
+      expect(e?.code).toContain(
+        'function subscribe(fn: () => void) { listeners.push(fn) }',
+      )
+      expect(e?.code).not.toContain('const listeners')
+      expect(r.diagnostics).toEqual([])
+    })
+
+    it('keeps a value with an identity an extracted module and a chunk both read in the route module, one instance', async () => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const styles = { card: 'c' }
+        export function Card() { return styles.card }
+        export const Route = createFileRoute('/')({
+          component: () => Card() + styles.card,
+        })
+      `)
+      const r = await extract(code)
+      expect(r.env).toContain("const styles = { card: 'c' }")
+      expect(r.env).toContain('export { styles }')
+      expect(r.chunk).toContain("import { styles } from './route.tsx'")
+      expect(r.chunk).toContain(
+        "import { Card } from './route.tsx?tsr-split=export~Card'",
+      )
+      expect(r.chunk).not.toContain('function Card')
+      const e = await r.extracted('Card')
+      expect(e?.code).toContain("import { styles } from './route.tsx'")
+      expect(e?.code).toContain('function Card() { return styles.card }')
+    })
+
+    it('in dev keeps a non-copied export in the route module and the chunk imports it, as in a build', async () => {
+      const dev = { env: envInfo({ mode: 'dev' }) }
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const listeners: Array<() => void> = []
+        export class Model {}
+        export function subscribe(fn: () => void) { listeners.push(fn) }
+        export const Route = createFileRoute('/')({
+          component: () => subscribe(() => new Model()),
+        })
+      `)
+      const r = await extract(code, ['component'], dev)
+      expect(r.env).toContain('export class Model {}')
+      expect(r.env).toContain('const listeners')
+      expect(r.env).toContain('export function subscribe')
+      expect(r.env).not.toContain('export~')
+      expect(r.chunk).toContain(
+        "import { Model, subscribe } from './route.tsx'",
+      )
+      expect(r.chunk).not.toContain('class Model')
+      expect(r.chunk).not.toContain('listeners')
+    })
+  })
+
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
   // declaration; a route file exporting only `Route` reports nothing

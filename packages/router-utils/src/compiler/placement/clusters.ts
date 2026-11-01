@@ -8,6 +8,7 @@
  * asks (`mutatedOutside`).
  */
 import { writeKind } from '../mutation'
+import type { MutationModel } from '../mutation'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { RegionId, Unit, UnitId } from '../units'
@@ -50,6 +51,12 @@ export interface Cluster {
     | 'gen'
     | 'region'
   copyable: boolean
+  /**
+   * Every declaration of the cluster is a function or a primitive and
+   * nothing else is in it (no augmentation, no generated unit): a copy of
+   * the cluster has no identity of its own to observe (`isDuplicable`).
+   */
+  identityFree: boolean
   envPinned: boolean
 }
 
@@ -162,6 +169,32 @@ export const READ_KINDS = new Set([
  * `x++` alone make a region depend on `x`).
  */
 export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
+
+/**
+ * Whether an output may hold its own copy of the cluster without anyone
+ * noticing: its declarations are functions or primitives (`identityFree`)
+ * and nothing writes them (`live`: in code an output keeps). An object,
+ * array, class, call result or regex has an identity (`instanceof`, a
+ * sentinel, a context, a registry); a written binding is state. Either
+ * exists once: in the env module, or in one derived output. The one
+ * predicate behind the copy of an extracted export, the duplicate home and
+ * the verifier's count.
+ */
+export function isDuplicable(
+  cl: Cluster,
+  mutation: MutationModel,
+  live?: (ref: ClassifiedRef) => boolean,
+): boolean {
+  if (!cl.identityFree) {
+    return false
+  }
+  for (const s of cl.declares) {
+    if (mutation.isMutated(s, live)) {
+      return false
+    }
+  }
+  return true
+}
 
 /** The symbols generated text reads (its `SymRef`s and reference rewrites). */
 export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
@@ -424,6 +457,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         lastEffect: -Infinity,
         kind: 'region',
         copyable: false,
+        identityFree: false,
         envPinned: false,
       })
     }
@@ -489,6 +523,15 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       cl.gens.length === 0 &&
       (units[cl.units[0]!]!.copyable ||
         units[cl.units[0]!]!.kind === 'import-specifier')
+    cl.identityFree =
+      cl.kind === 'declaration' &&
+      cl.gens.length === 0 &&
+      cl.units.every((u) => {
+        const unit = units[u]!
+        return unit.kind === 'declaration'
+          ? unit.identityFree
+          : unit.kind === 'type'
+      })
     if (cl.kind === 'type') {
       cl.envPinned = true
     }

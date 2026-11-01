@@ -1,16 +1,18 @@
 /**
  * Module state and identity behind exported bindings a split chunk copies
- * (SPEC J2.4 "One instance", amended for R77: a chunk copies a pure,
- * never-assigned exported binding; state, effects and augmented bindings
- * stay one instance). Real production builds, output executed: the split
- * options of one route, an importer of the route file, or both, drive the
- * exported bindings and the test observes what their shared state does
- * (a subscriber fires, a counter counts, `instanceof` holds, a Provider's
- * value reaches a consumer, a sentinel compares equal). Dev folds the
- * extraction of exports back into the route module, so only a build shows
- * where an extracted module and a chunk each get their own copy of what
- * the copied export reads. Source: external review 2 of the compiler
- * rewrite, findings 1–3 (fact-check).
+ * or imports (SPEC J2.4 "One instance": a chunk copies an exported binding
+ * only when the copy is a closure of functions and primitive constants
+ * nothing writes; a class, an object, a call result, a regex, a written
+ * binding, state, effects and augmented bindings exist once). Real
+ * production builds, output executed: the split options of one route, an
+ * importer of the route file, or both, drive the exported bindings and the
+ * test observes what their shared state does (a subscriber fires, a
+ * counter counts, `instanceof` holds, a Provider's value reaches a
+ * consumer, a sentinel compares equal). Dev folds the extraction of
+ * exports back into the route module, so only a build shows where an
+ * extracted module and a chunk would each get their own copy of what a
+ * copied export reads: the dev twin (`pages/`) runs the same routes.
+ * Source: external review 2 of the compiler rewrite, findings 1–3.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -49,8 +51,6 @@ type Case = {
   /** Async function body; `entry` holds the entry's exports. */
   script: string
   expected: unknown
-  /** Pinned: why today's compiler fails the case (KNOWN-BUGS). */
-  fails?: string
 }
 
 const filesOf = (c: Case) => ({
@@ -109,22 +109,14 @@ try {
   caught = error
 }`
 
-// ---- finding 1: private mutable state behind copied exported functions --------
-// Bug: a chunk copies a pure exported function whatever it reaches; the
-// private state the function closes over (`listeners`, written only through
-// member calls, so it never joins the function's cluster) is then homed as a
-// copy in every output that reaches it: each chunk and each extracted module
-// gets its own `listeners`. In dev the extraction folds back into the route
-// module, so dev shows one instance. Main keeps one instance for all three.
-// Impact: subscribers never fire, registries and caches diverge between a
-// route's split options, and between two importers of the route file.
-// Source: external review 2, finding 1.
-const privateStateCopied =
-  'the private state behind a copied exported function is copied with it in a build'
+// ---- private mutable state behind exported functions ---------------------------
+// `listeners` is written only through member calls, so it never joins the
+// functions' cluster; it is in their reach, so neither function is copied
+// and the one array lives in the route module: each chunk and each
+// importer of the route file subscribes to and emits on the same list.
 const moduleState: Array<Case> = [
   {
     name: 'two split options share the private state their exported accessors close over',
-    fails: privateStateCopied,
     route: listeners,
     script: `const a = ${renderComponent}
 const b = ${renderError}
@@ -133,7 +125,6 @@ return [a, b, globalThis.__fired ?? 0]`,
   },
   {
     name: 'an importer of the route file and a split option share it',
-    fails: privateStateCopied,
     route: listeners,
     reexports: 'subscribe',
     script: `entry.subscribe(${fire})
@@ -143,7 +134,6 @@ return [b, globalThis.__fired ?? 0]`,
   },
   {
     name: 'two importer-side calls through the route file share it',
-    fails: privateStateCopied,
     route: listeners,
     reexports: 'subscribe, emit',
     script: `entry.subscribe(${fire})
@@ -153,27 +143,15 @@ return globalThis.__fired ?? 0`,
   },
 ]
 
-// ---- finding 2: identity of copied classes, contexts and objects --------------
-// By rule (R77, SPEC J2.4 amended, KNOWN-BUGS "The split chunk copies a pure
-// exported binding"): a pure, never-assigned exported binding is copied into
-// each chunk that reaches it, classes, annotated calls and object literals
-// included, and importers of the route file get the extracted module's
-// instance. The ruling's "as on main" does not hold for these shapes: main
-// shares one instance between the route's chunks and with importers.
-// Impact: `instanceof` across a route's split options or an importer is
-// false; a `/* @__PURE__ */ createContext()` Provider in the route component
-// does not reach a consumer that imports the context from the route file;
-// an exported sentinel returned by an exported function is a different
-// object for an importer. Dev shows the class and context cases (the chunk
-// copies in dev too) but not the sentinel (dev keeps `pick` and `EMPTY`
-// together in the route module).
-// Source: external review 2, finding 2.
-const copiedByRule =
-  'a pure exported class, annotated call or literal is copied by rule (R77)'
+// ---- identity of exported classes, contexts and objects -----------------------
+// A class, an annotated call and a literal have an identity: the chunk
+// imports them from the extracted module, which also serves importers of
+// the route file, so `instanceof`, a Provider's value and a sentinel hold
+// across the route's chunks and its importers. A function returning the
+// sentinel reaches it and is not copied either.
 const identity: Array<Case> = [
   {
     name: 'a thrown exported class is recognised by instanceof in the errorComponent chunk',
-    fails: copiedByRule,
     route: thrownClass,
     script: `${catchComponent}
 return await entry.render(entry.Route.options.errorComponent, { error: caught })`,
@@ -181,7 +159,6 @@ return await entry.render(entry.Route.options.errorComponent, { error: caught })
   },
   {
     name: 'a thrown exported class is recognised by instanceof in an importer of the route file',
-    fails: copiedByRule,
     route: thrownClass,
     reexports: 'NotAllowed',
     script: `${catchComponent}
@@ -190,7 +167,6 @@ return caught instanceof entry.NotAllowed`,
   },
   {
     name: 'a @__PURE__ context the route component provides reaches a consumer importing it from the route file',
-    fails: copiedByRule,
     route: `import { createContext } from 'react'
 import { Child } from '../child'
 export const Ctx = /* @__PURE__ */ createContext('default')
@@ -242,7 +218,6 @@ export function Child() {
   },
   {
     name: 'an exported sentinel an exported function returns compares equal through the route file',
-    fails: copiedByRule,
     route: `export const EMPTY: ReadonlyArray<string> = []
 export function pick(list: ReadonlyArray<string>) {
   return list.length === 0 ? EMPTY : list
@@ -289,10 +264,8 @@ const mutated = (
   decl: string,
   mutation: string,
   read: string,
-  fails?: string,
 ): Case => ({
   name: `the importer reads what the split component wrote through ${name}`,
-  fails,
   route: `${decl}
 export function bump() {
   ${mutation}
@@ -312,20 +285,11 @@ return [html, entry.read()]`,
   expected: ['<p>1</p>', 1],
 })
 
-// Bug (two causes). Private state: whatever form the write takes, even one
-// the mutation model names (`state.n++`, `Object.assign`), the state behind
-// a copied exported function is copied with it in a build (finding 1); only
-// an assignment to the binding itself (`n++`) joins the writer's cluster and
-// stops the copy, and an effectful initialiser (`new Map()`) is never
-// copied. Exported values: the mutation model is syntactic, so `this.n++`
-// inside a method of an exported object or class does not count as a write
-// of the binding, and the object or class is copied (in dev too). Main
-// copies the private state behind a copied exported function as well
-// (its known limitation), but shares an exported object the chunk reads.
-// Impact: an importer reads state the split component never wrote.
-// Source: external review 2, finding 3.
-const exportedValueCopied =
-  'a write through `this` is not a write of the exported binding, which is copied'
+// The mutation model is syntactic (`this.n++` in a method, an alias, a
+// call, `Reflect.set` are no writes of the binding), and it need not be
+// complete here: the state is an object, an array, a class or a Map in
+// every form, so the function reaching it is not copied and the state
+// exists once, whatever form the write takes.
 const obj = `const state = { n: 0 }`
 const arr = `const x: Array<number> = []`
 const mutations: Array<Case> = [
@@ -334,7 +298,6 @@ const mutations: Array<Case> = [
     `export const counter = { n: 0, inc() { this.n++ } }`,
     `counter.inc()`,
     `counter.n`,
-    exportedValueCopied,
   ),
   mutated(
     'a static method writing this',
@@ -346,15 +309,8 @@ const mutations: Array<Case> = [
 }`,
     `S.inc()`,
     `S.n`,
-    exportedValueCopied,
   ),
-  mutated(
-    'an alias',
-    obj,
-    `const s = state\n  s.n++`,
-    `state.n`,
-    privateStateCopied,
-  ),
+  mutated('an alias', obj, `const s = state\n  s.n++`, `state.n`),
   mutated(
     'a function it is passed to',
     `${obj}
@@ -363,65 +319,46 @@ function mutate(o: { n: number }) {
 }`,
     `mutate(state)`,
     `state.n`,
-    privateStateCopied,
   ),
   mutated(
     'Reflect.set',
     obj,
     `Reflect.set(state, 'n', state.n + 1)`,
     `state.n`,
-    privateStateCopied,
   ),
-  mutated(
-    'push.apply',
-    arr,
-    `x.push.apply(x, [1])`,
-    `x.length`,
-    privateStateCopied,
-  ),
+  mutated('push.apply', arr, `x.push.apply(x, [1])`, `x.length`),
   mutated(
     'a nested member',
     `const state = { list: [] as Array<number> }`,
     `state.list.push(1)`,
     `state.list.length`,
-    privateStateCopied,
   ),
   mutated(
     'Array.prototype.push.call',
     arr,
     `Array.prototype.push.call(x, 1)`,
     `x.length`,
-    privateStateCopied,
   ),
-  mutated(
-    'a computed method name',
-    arr,
-    `x['push'](1)`,
-    `x.length`,
-    privateStateCopied,
-  ),
+  mutated('a computed method name', arr, `x['push'](1)`, `x.length`),
   mutated(
     'a method of the literal naming the binding',
     `const store = { items: [] as Array<number>, add() { store.items.push(1) } }`,
     `store.add()`,
     `store.items.length`,
-    privateStateCopied,
   ),
-  // forms the mutation model names: the private state is copied all the same
-  mutated('a member write', obj, `state.n++`, `state.n`, privateStateCopied),
+  // forms the mutation model names
+  mutated('a member write', obj, `state.n++`, `state.n`),
   mutated(
     'Object.assign',
     obj,
     `Object.assign(state, { n: state.n + 1 })`,
     `state.n`,
-    privateStateCopied,
   ),
   mutated(
     'a computed member write',
     obj,
     `for (const k of ['n'] as const) {\n    state[k]++\n  }`,
     `state.n`,
-    privateStateCopied,
   ),
   mutated('a reassigned let', `let n = 0`, `n++`, `n`),
   mutated(
@@ -519,7 +456,7 @@ const runners: Array<Runner> = [
   { name: 'rsbuild', run: rsbuild },
 ]
 
-/** One test per case; `.fails` pins the cases today's compiler fails. */
+/** One test per case. */
 const suite = (
   title: string,
   cases: Array<Case>,
@@ -527,7 +464,7 @@ const suite = (
 ) =>
   describe(title, () => {
     for (const c of cases) {
-      ;(c.fails ? test.fails : test)(
+      test(
         c.name,
         async () => {
           expect(await run(c)).toEqual(c.expected)

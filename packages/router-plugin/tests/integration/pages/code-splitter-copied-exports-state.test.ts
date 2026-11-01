@@ -2,11 +2,11 @@
  * Dev twin of ../code-splitter-copied-exports-state.test.ts (SPEC J2.4,
  * G13 dev/build parity): the same route files on a real dev server, in a
  * real browser page (`../../route-app`). In dev an extracted export stays
- * in the route module, so what a copied export reads is live there and
- * every chunk imports it: one instance. A build is where the extracted
- * module and the chunks each get their own copy of it. The build file
- * holds the verdicts; this file shows which of them dev alone cannot
- * show. Source: external review 2 of the compiler rewrite, finding 4.
+ * in the route module and the chunk copies or imports it exactly as in a
+ * build, so state and identity agree between the two modes; a build is
+ * where an extracted module and a chunk would each get their own copy of
+ * what a copied export reads, which is why the build file exists.
+ * Source: external review 2 of the compiler rewrite, finding 4.
  */
 import { describe, expect, it } from 'vitest'
 import { expectValidModules, head, loadRoute } from '../../route-app'
@@ -64,20 +64,7 @@ type Case = {
   files?: Record<string, string>
   script: string
   expected: unknown
-  /** Pinned: why today's compiler fails the case in dev too (see the build file). */
-  fails?: string
 }
-
-// By rule (R77) the chunk copies a pure exported class, annotated call or
-// literal in dev as in a build, and dev's importer gets the route module's
-// instance: `instanceof` and a `@__PURE__` context fail in dev too. The
-// private state behind a copied function is one instance in dev (the
-// extraction folds back into the route module), so those cases pass here
-// and fail only in the build file.
-const copiedByRule =
-  'a pure exported class, annotated call or literal is copied by rule (R77)'
-const exportedValueCopied =
-  'a write through `this` is not a write of the exported binding, which is copied'
 
 const moduleState: Array<Case> = [
   {
@@ -113,7 +100,6 @@ return globalThis.__fired ?? 0`,
 const identity: Array<Case> = [
   {
     name: 'a thrown exported class is recognised by instanceof in the errorComponent chunk',
-    fails: copiedByRule,
     route: thrownClass,
     script: `${catchComponent}
 return await render('errorComponent', { error: caught })`,
@@ -121,7 +107,6 @@ return await render('errorComponent', { error: caught })`,
   },
   {
     name: 'a thrown exported class is recognised by instanceof in an importer of the route file',
-    fails: copiedByRule,
     route: thrownClass,
     files: importer,
     script: `const imported = await app('importer.ts')
@@ -131,7 +116,6 @@ return caught instanceof imported.NotAllowed`,
   },
   {
     name: 'a @__PURE__ context the route component provides reaches a consumer importing it from the route file',
-    fails: copiedByRule,
     route: `${head}import { createContext } from 'react'
 import { Child } from './child'
 export const Ctx = /* @__PURE__ */ createContext('default')
@@ -179,10 +163,8 @@ const mutated = (
   decl: string,
   mutation: string,
   read: string,
-  fails?: string,
 ): Case => ({
   name: `the importer reads what the split component wrote through ${name}`,
-  fails,
   route: `${head}${decl}
 export function bump() {
   ${mutation}
@@ -211,7 +193,6 @@ const mutations: Array<Case> = [
     `export const counter = { n: 0, inc() { this.n++ } }`,
     `counter.inc()`,
     `counter.n`,
-    exportedValueCopied,
   ),
   mutated(
     'a static method writing this',
@@ -223,7 +204,6 @@ const mutations: Array<Case> = [
 }`,
     `S.inc()`,
     `S.n`,
-    exportedValueCopied,
   ),
   mutated('an alias', obj, `const s = state\n  s.n++`, `state.n`),
   mutated(
@@ -286,7 +266,7 @@ function mutate(o: { n: number }) {
 const suite = (title: string, cases: Array<Case>) =>
   describe(title, () => {
     for (const c of cases) {
-      ;(c.fails ? it.fails : it)(c.name, async () => {
+      it(c.name, async () => {
         const route = await loadRoute(c.route, { files: c.files })
         await expectValidModules(route)
         expect(await route.run(c.script)).toEqual(c.expected)

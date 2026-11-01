@@ -11,6 +11,7 @@ import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import { patternIdentifiers, unwrapExpression } from './source'
 import {
+  isIdentityFreeValue,
   isPrimitiveLiteral,
   isPureClass,
   isPureDeclarator,
@@ -70,6 +71,14 @@ export interface Unit {
   augmentEffects: boolean
   /** Single unexported unwritten `const` with a primitive initialiser: may be duplicated. */
   copyable: boolean
+  /**
+   * A declaration whose value is a function or a primitive (`isIdentityFreeValue`;
+   * a function declaration, a declarator of one identifier with such an
+   * initialiser): a copy of it is indistinguishable from the original
+   * unless something writes it. A class, an enum, a namespace, a
+   * destructuring and every other unit kind: false.
+   */
+  identityFree: boolean
   /** Import entries (Tier 0 index) for import units. */
   importIndex: number | null
   /** For import specifiers: the imported name ('default', '*' or a name). */
@@ -518,6 +527,7 @@ export function buildUnits(
     augments: [],
     augmentEffects: false,
     copyable: false,
+    identityFree: false,
     importIndex: null,
     importedName: null,
     declNameRanges: [],
@@ -739,6 +749,11 @@ export function buildUnits(
             decl.kind === 'using' || decl.kind === 'await using'
               ? true
               : !isPureDeclarator(purity, d)
+          u.identityFree =
+            d.id.type === 'Identifier' &&
+            decl.kind !== 'using' &&
+            decl.kind !== 'await using' &&
+            isIdentityFreeValue(d.init)
           if (
             single &&
             !exported &&
@@ -757,6 +772,7 @@ export function buildUnits(
       case 'FunctionDeclaration':
       case 'TSDeclareFunction': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
+        u.identityFree = u.kind === 'declaration'
         if (decl.id) {
           const s = symOf(decl.id)
           if (s !== null) {

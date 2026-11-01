@@ -155,6 +155,46 @@ export function isPrimitiveLiteral(node: Node): boolean {
   }
 }
 
+/**
+ * Whether an initialiser's value is a function or a primitive, whatever it
+ * costs to compute: nothing can observe the identity of a copy of it. An
+ * object or array literal, a class, a `new`, a call (annotated or not), a
+ * regex, a tagged template, a member read, JSX: a value with an identity,
+ * or one that may be. An identifier is an alias: the binding it names is
+ * judged on its own (placement follows the read). A binary or unary
+ * expression and a template literal always evaluate to a primitive.
+ */
+export function isIdentityFreeValue(expr: Node | null): boolean {
+  if (expr === null) {
+    return true
+  }
+  const node = unwrapExpression(expr)
+  switch (node.type) {
+    case 'ArrowFunctionExpression':
+    case 'FunctionExpression':
+    case 'Identifier':
+    case 'TemplateLiteral':
+    case 'BinaryExpression':
+    case 'UpdateExpression':
+      return true
+    case 'Literal':
+      return !('regex' in node)
+    case 'UnaryExpression':
+      return node.operator !== 'delete'
+    case 'ConditionalExpression':
+      return (
+        isIdentityFreeValue(node.consequent) &&
+        isIdentityFreeValue(node.alternate)
+      )
+    case 'LogicalExpression':
+      return isIdentityFreeValue(node.left) && isIdentityFreeValue(node.right)
+    case 'SequenceExpression':
+      return isIdentityFreeValue(node.expressions.at(-1) ?? null)
+    default:
+      return false
+  }
+}
+
 export function isPureExpression(
   ctx: PurityContext,
   expr: Node | null,
