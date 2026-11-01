@@ -36,37 +36,6 @@ function Profile() {
   return (
     <article>
       <h3>Profile</h3>
-      <output data-testid="final-route-id">{match?.routeId}</output>
-      <output data-testid="local-route-id">{match?.localRouteId}</output>
-      <output data-testid="runtime-params">
-        {JSON.stringify(match?.params)}
-      </output>
-      <api.Link to="/members">API members</api.Link>
-      {ProfileLinks ? <ProfileLinks /> : null}
-      <button onClick={() => navigate({ to: '/members' })}>
-        Navigate members
-      </button>
-      <a {...anchor}>Custom members</a>
-      <MatchRoute to="/profile">
-        <span>PROFILE_MATCH</span>
-      </MatchRoute>
-      <MatchRoute to="/members">
-        <span>MEMBERS_MATCH</span>
-      </MatchRoute>
-      <output data-testid="scoped-href">
-        {scopedRouter.buildLocation({ to: '/members' }).href}
-      </output>
-      <button onClick={() => scopedRouter.navigate({ to: '/members' })}>
-        Router members
-      </button>
-      <button onClick={() => routeNavigate({ to: '..' })}>Route up</button>
-      <button onClick={() => relativeNavigate({ to: '..' })}>
-        Explicit from home
-      </button>
-      <Route.Link to="/">Route home</Route.Link>
-      <ApplicationLink to="/orgs/$orgId" params={{ orgId: '9' }}>
-        Application host
-      </ApplicationLink>
       <dl className="facts">
         <dt>Kind</dt>
         <dd data-testid="profile-kind">{profile.kind}</dd>
@@ -76,6 +45,66 @@ function Profile() {
         </dd>
       </dl>
       <Route.Link to="/">All settings</Route.Link>
+
+      {/* Every module-relative API, each resolved inside this installation. */}
+      <section className="probes" aria-label="Route module APIs">
+        <h4>Match</h4>
+        <dl className="facts">
+          <dt>Route id</dt>
+          <dd>
+            <output data-testid="final-route-id">{match?.routeId}</output>
+          </dd>
+          <dt>Local id</dt>
+          <dd>
+            <output data-testid="local-route-id">{match?.localRouteId}</output>
+          </dd>
+          <dt>Params</dt>
+          <dd>
+            <output data-testid="runtime-params">
+              {JSON.stringify(match?.params)}
+            </output>
+          </dd>
+          <dt>Router href</dt>
+          <dd>
+            <output data-testid="scoped-href">
+              {scopedRouter.buildLocation({ to: '/members' }).href}
+            </output>
+          </dd>
+          <dt>MatchRoute</dt>
+          <dd>
+            <MatchRoute to="/profile">
+              <span>PROFILE_MATCH</span>
+            </MatchRoute>
+            <MatchRoute to="/members">
+              <span>MEMBERS_MATCH</span>
+            </MatchRoute>
+          </dd>
+        </dl>
+
+        <h4>Links</h4>
+        <p className="actions">
+          <api.Link to="/members">API members</api.Link>
+          <a {...anchor}>Custom members</a>
+          <Route.Link to="/">Route home</Route.Link>
+          {ProfileLinks ? <ProfileLinks /> : null}
+          {/* The framework's own Link keeps application coordinates. */}
+          <ApplicationLink to="/">Application home</ApplicationLink>
+        </p>
+
+        <h4>Navigation</h4>
+        <p className="actions">
+          <button onClick={() => navigate({ to: '/members' })}>
+            Navigate members
+          </button>
+          <button onClick={() => scopedRouter.navigate({ to: '/members' })}>
+            Router members
+          </button>
+          <button onClick={() => routeNavigate({ to: '..' })}>Route up</button>
+          <button onClick={() => relativeNavigate({ to: '..' })}>
+            Explicit from home
+          </button>
+        </p>
+      </section>
     </article>
   )
 }

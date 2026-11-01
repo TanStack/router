@@ -126,10 +126,10 @@ for (const base of ['/orgs/7/settings', '/users/u1/settings']) {
     page,
   }) => {
     await page.goto(`${base}/profile`)
-    const host = page.getByRole('link', { name: 'Application host' })
-    await expect(host).toHaveAttribute('href', '/orgs/9')
+    const host = page.getByRole('link', { name: 'Organization host' })
+    await expect(host).toHaveAttribute('href', '/orgs/7')
     await host.click()
-    await expect(page).toHaveURL('/orgs/9')
+    await expect(page).toHaveURL('/orgs/7')
   })
 }
 
