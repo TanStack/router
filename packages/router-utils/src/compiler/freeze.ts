@@ -10,6 +10,7 @@ import { siblingSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
+import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { EditBand, compareEditOrder } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
@@ -822,7 +823,7 @@ function isAmbientValueDeclaration(node: Node): boolean {
     case 'TSDeclareFunction':
       return node.declare
     case 'TSModuleDeclaration':
-      return node.declare === true && node.id.type === 'Identifier'
+      return node.declare === true && namespaceName(node) !== null
     default:
       return false
   }

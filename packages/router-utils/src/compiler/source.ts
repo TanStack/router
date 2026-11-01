@@ -118,3 +118,14 @@ export function patternIdentifiers(
       return []
   }
 }
+
+/** The name a namespace declares: `A` of `namespace A` and of `namespace A.B.C`; a `declare module 'x'` has none. */
+export function namespaceName(decl: {
+  id: Node
+}): Extract<Node, { type: 'Identifier' }> | null {
+  let id = decl.id
+  while (id.type === 'TSQualifiedName') {
+    id = id.left
+  }
+  return id.type === 'Identifier' ? id : null
+}

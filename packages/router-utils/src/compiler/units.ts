@@ -9,7 +9,7 @@
 import { BindingFlags } from 'yuku'
 import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
-import { patternIdentifiers, unwrapExpression } from './source'
+import { namespaceName, patternIdentifiers, unwrapExpression } from './source'
 import {
   isIdentityFreeValue,
   isPrimitiveLiteral,
@@ -591,21 +591,6 @@ export function buildUnits(
         }
         break
       }
-      case 'TSImportEqualsDeclaration': {
-        const u = base(
-          node,
-          node.importKind === 'type' ? 'type' : 'declaration',
-          itemRange,
-        )
-        const s = symOf(node.id)
-        if (s !== null) {
-          u.declares.push(s)
-        }
-        u.effectful = node.moduleReference.type === 'TSExternalModuleReference'
-        u.declNameRanges.push({ start: node.id.start, end: node.id.end })
-        add(item, u)
-        break
-      }
       case 'ExportAllDeclaration': {
         const u = base(
           node,
@@ -698,6 +683,7 @@ export function buildUnits(
       case 'ClassDeclaration':
       case 'TSEnumDeclaration':
       case 'TSModuleDeclaration':
+      case 'TSImportEqualsDeclaration':
         declarationUnits(item, node, false)
         break
       case 'ExpressionStatement': {
@@ -828,7 +814,8 @@ export function buildUnits(
         break
       }
       case 'TSModuleDeclaration': {
-        const b = decl.id.type === 'Identifier' ? file.bindingOf(decl.id) : null
+        const id = namespaceName(decl)
+        const b = id === null ? null : file.bindingOf(id)
         const runtime =
           b !== null && b.has(BindingFlags.ValueModule) && !decl.declare
         const u = base(decl, runtime ? 'declaration' : 'type', itemRange)
@@ -837,9 +824,29 @@ export function buildUnits(
           if (exported && runtime) {
             u.exported.push(b.name)
           }
-          u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
+          u.declNameRanges.push({ start: id!.start, end: id!.end })
         }
         u.effectful = runtime && statementHasEffects(purity, decl)
+        out.push(add(item, u))
+        break
+      }
+      case 'TSImportEqualsDeclaration': {
+        const u = base(
+          decl,
+          decl.importKind === 'type' ? 'type' : 'declaration',
+          itemRange,
+        )
+        const s = symOf(decl.id)
+        if (s !== null) {
+          u.declares.push(s)
+          if (exported && u.kind === 'declaration') {
+            u.exported.push(decl.id.name)
+          }
+        }
+        u.effectful =
+          u.kind === 'declaration' &&
+          decl.moduleReference.type === 'TSExternalModuleReference'
+        u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
         out.push(add(item, u))
         break
       }
