@@ -3,6 +3,7 @@ import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_WILDCARD,
+  parseSegments,
 } from './new-process-route-tree'
 import type { SieveCache } from './sieve-cache'
 import type { DynamicPathSegment } from './new-process-route-tree'
@@ -211,7 +212,9 @@ export type RouteInterpolation = Array<InterpolationSegment> & {
 }
 
 export function getRouteSegments(route: AnyRoute) {
-  return route._interpolation
+  return (route._interpolation ??= route.fullPath?.includes('$')
+    ? parseSegments(false, route, 0)
+    : undefined)
 }
 
 /** A splat is missing when it has no value; `0` and `false` are stringified like any other param. */
