@@ -592,16 +592,6 @@ async function runAttempt(
       verifyPlan(plan, emitPlan, input.code, identity)
     }
   }
-  // A summary's domain is the raw text, and an importer's prefetch normally
-  // reads the target before the target's own transform runs, so a compiled
-  // module is parsed twice: once here, once for its raw facts. This publication
-  // doesn't save that parse; it only completes an entry a marker scan left
-  // without facts (no extra read: only when the raw revision is known and equal)
-  const known = host.rawFacts.peekRevision(identity.canonicalId)
-  if (known && !known.stale && known.revision === rev) {
-    host.rawFacts.publish(identity.canonicalId, rev, t0)
-  }
-
   // ---- C: per-output edge policy (async) ----------------------------------------
   let inputMap: InputSourceMap | null | undefined
   const readInputMap = (): InputSourceMap | null => {

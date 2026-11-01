@@ -141,6 +141,8 @@ export type RouteRecognition =
 /** The router planner's phase A result: the route registry entry. */
 export interface RouteEntryFacts {
   routeId: string
+  /** `Route` is the router package's constructor call (`GetRoutesByFileMapResultValue.routerConstructor`; absent: not vouched for). */
+  routerConstructor?: boolean
 }
 
 export function propertyKeyName(prop: Node): string | null {
@@ -699,9 +701,11 @@ export function routerRouteId(routeId: string): string {
   return routeId === '/__root' ? '__root__' : routeId
 }
 
-/** The route-registry dependency fingerprint of a file: its route id (the entry's only fact). */
+/** The route-registry dependency fingerprint of a file: its route id and whether the router's constructor made its Route. */
 export function routeEntryDigest(entry: RouteEntryFacts | null): string | null {
-  return entry ? entry.routeId : null
+  return entry
+    ? `${entry.routeId}\u0000${entry.routerConstructor ? 'router' : 'foreign'}`
+    : null
 }
 
 /** Whether `value` means "fall back to the parent" (`undefined`, `null`, a boolean): kept as written. */

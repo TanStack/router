@@ -108,9 +108,18 @@ export function fileModifiedAt(path: string): Promise<number | null> {
   )
 }
 
-/** The route registry: the router planner reads a file's entry, plans record its digest. */
+/**
+ * The route registry: the router planner reads a file's entry, plans record
+ * its digest (`route-registry` fingerprint). `routerConstructor`: the file's
+ * `Route` export is the router package's route constructor call, so a
+ * consumer that only needs to know whether that export carries a value it
+ * recognises may answer from the entry (and its digest) instead of reading
+ * the file.
+ */
 export interface RouteRegistry {
-  lookup: (path: string) => { routeId: string } | null
+  lookup: (
+    path: string,
+  ) => { routeId: string; routerConstructor?: boolean } | null
   digestFor: (path: string) => string | null
 }
 

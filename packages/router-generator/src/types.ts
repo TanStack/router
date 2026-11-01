@@ -121,7 +121,16 @@ export interface TreeModel {
   readonly attachOrder: ReadonlyArray<ModelRoute>
 }
 
-export type GetRoutesByFileMapResultValue = { routeId: string }
+export type GetRoutesByFileMapResultValue = {
+  routeId: string
+  /**
+   * The file's `Route` is the router package's `createFileRoute` /
+   * `createLazyFileRoute` call, found by binding (not the app's own
+   * constructor, a re-export or an import): a consumer may take the value of
+   * that export as a route it knows without reading the file.
+   */
+  routerConstructor: boolean
+}
 /**
  * The route files of the tree (scanned and real paths) and their route ids:
  * a snapshot. The generator replaces it (a new object) only when a

@@ -157,9 +157,13 @@ directives, never license comments.
   pluggable `RecognizerTable` (Start supplies its kinds; the core ships none).
 - Across modules, **summaries**: the export table and the abstract values of exports, computed from the module's
   _raw_ text (filesystem read or exact-id virtual load, never the bundler's transform pipeline), environment-
-  independent, holding no AST. An importer's prefetch normally asks for them before the target's own transform runs,
-  so a compiled module is parsed twice: once for its compile, once for its raw facts. `ExportResolver` follows
-  re-export chains over summaries. Known TanStack packages are recognised by specifier and never resolved.
+  independent, holding no AST. `ExportResolver` follows re-export chains over summaries. Known TanStack packages are
+  recognised by specifier and never resolved. An importer's prefetch normally asks for a module's summary before the
+  module's own transform runs, so a compiled module is parsed twice: once for its raw facts, once for its compile; a
+  transform's parse is never reused as a summary. The one import answered without a read is a route file's `Route` when
+  the route registry says the router package's constructor made it (`RouteRegistry.lookup().routerConstructor`): the
+  Start prefetch takes it as a value it knows and records a `route-registry` dependency, so the route tree's imports
+  read no route file.
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).

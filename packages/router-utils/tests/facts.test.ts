@@ -25,8 +25,11 @@ describe('RawFactsCache', () => {
     const facts = (await second) as { rawRevision: string }
     const superseded = (await first) as { rawRevision: string }
     expect(facts.rawRevision).not.toBe(superseded.rawRevision)
-    expect(cache.peekRevision('/app/a.ts')?.revision).toBe(facts.rawRevision)
-    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
+    // the cache holds the second read's facts, current
+    expect((await cache.get('/app/a.ts', 'client')).rawRevision).toBe(
+      facts.rawRevision,
+    )
+    expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
   })
 
   it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
@@ -47,8 +50,6 @@ describe('RawFactsCache', () => {
       rawFactsMarkerless: 1,
       factsReads: 2,
     })
-    // the scan knew the revision: a compile of the same text publishes its analysis
-    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
     // the literal is there: parsed, and an import of the marker is the marker
     expect(await cache.marker('/app/s.ts', 'client')).toBe('server-only')
     expect(await cache.marker('/app/n.ts', 'client')).toBe('client-only')
@@ -141,13 +142,14 @@ describe('RawFactsCache', () => {
     await cache.get('/app/b.ts', 'client')
     expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactPaths: 2 })
     cache.markStale('/app/a.ts')
-    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(true)
-    expect(cache.peekRevision('/app/a.ts?flavour=b')?.stale).toBe(true)
-    expect(cache.peekRevision('/app/b.ts')?.stale).toBe(false)
+    // both identities at the path are stale, b is not
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactsStale: 2 })
     cache.forget('/app/a.ts')
-    expect(cache.peekRevision('/app/a.ts')).toBeNull()
-    expect(cache.peekRevision('/app/a.ts?flavour=b')).toBeNull()
-    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 1,
+      rawFactPaths: 1,
+      rawFactsStale: 0,
+    })
     // a missing file's facts are not kept either
     await cache.get('/app/missing.ts', 'client')
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
@@ -322,7 +324,7 @@ describe('facts of a file that stops parsing', () => {
     const broken = await cache.get('/app/a.ts', 'client')
     expect(broken.targetFacts.digest).toBe(parsed.targetFacts.digest)
     expect(broken.summary?.digest).toBe(parsed.summary?.digest)
-    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
+    expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
     // parsing again with other exports: the facts follow the file
     files['/app/a.ts'] = 'export const b = 1\n'
     cache.markStale('/app/a.ts')

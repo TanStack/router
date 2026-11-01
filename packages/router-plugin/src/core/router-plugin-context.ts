@@ -82,7 +82,11 @@ export function changedRoutePaths(
 ): Array<string> {
   const out: Array<string> = []
   for (const [path, entry] of next) {
-    if (previous.get(path)?.routeId !== entry.routeId) {
+    const before = previous.get(path)
+    if (
+      before?.routeId !== entry.routeId ||
+      before.routerConstructor !== entry.routerConstructor
+    ) {
       out.push(path)
     }
   }

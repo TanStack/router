@@ -133,23 +133,6 @@ export class RawFactsCache {
     return this.opts.recognizer?.pureCalls
   }
 
-  /** The known (possibly stale-marked) revision, without reading. */
-  peekRevision(
-    canonicalId: string,
-  ): { revision: string | null; stale: boolean } | null {
-    const e = this.entries.get(canonicalId)
-    if (!e) {
-      return null
-    }
-    if (e.facts && !e.stale) {
-      return { revision: e.facts.rawRevision, stale: false }
-    }
-    if (e.markerless !== null) {
-      return { revision: e.markerless, stale: false }
-    }
-    return e.facts ? { revision: e.facts.rawRevision, stale: true } : null
-  }
-
   markStale(path: string): void {
     for (const id of this.byPath.get(path) ?? []) {
       const e = this.entries.get(id)!
@@ -273,29 +256,6 @@ export class RawFactsCache {
     })()
     entry.pending = holder.p
     return holder.p
-  }
-
-  /** Publishes facts from a transform's own parse (only when its input equals the raw text: a summary describes the module as importers load it, not as an upstream plugin rewrote it). */
-  publish(
-    canonicalId: string,
-    rawRevision: string,
-    analysis: ModuleAnalysis,
-  ): RawFacts | null {
-    const e = this.entries.get(canonicalId)
-    if (
-      e &&
-      e.facts &&
-      !e.facts.opaque &&
-      !e.stale &&
-      e.facts.rawRevision === rawRevision
-    ) {
-      return e.facts
-    }
-    const facts = this.fromAnalysis(rawRevision, analysis)
-    if (!this.noFacts) {
-      this.setEntry(canonicalId, this.entryOf(facts))
-    }
-    return facts
   }
 
   private entryOf(facts: RawFacts | null): FactsEntry {
