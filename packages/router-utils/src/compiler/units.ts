@@ -788,6 +788,7 @@ export function buildUnits(
       }
       case 'TSEnumDeclaration': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
+        u.effectful = statementHasEffects(purity, decl)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)

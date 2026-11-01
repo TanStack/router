@@ -428,7 +428,13 @@ export function statementHasEffects(
     case 'ArrowFunctionExpression':
       return false
     case 'TSEnumDeclaration':
-      return false
+      // the members' initializers run as the module evaluates
+      return (
+        !stmt.declare &&
+        stmt.body.members.some(
+          (m) => m.initializer && !isPureExpression(ctx, m.initializer),
+        )
+      )
     case 'ClassDeclaration':
     case 'ClassExpression':
       return !isPureClass(ctx, stmt)
