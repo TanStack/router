@@ -2,6 +2,8 @@
  * Fact-check of external review 2 (claims 6 and 7), on running dev servers.
  * Each pin asserts the correct behaviour and fails on the current compiler.
  */
+import { utimes, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { startDevServer } from '../dev-server'
@@ -253,19 +255,27 @@ export const Route = createRootRoute({})
     timeout,
   )
 
-  test(
-    'an edit between a route module and its chunk is not reported',
-    async () => {
+  // The window is what tells a save from a plugin: no file event reaches the
+  // compiler here (it would evict the plan and end the question), so the
+  // chunk's compile sees the route module's plan with another text.
+  test.each([
+    ['just saved: not reported', false, 0],
+    ['saved long before the route module was read: reported', true, 1],
+  ])(
+    'a chunk compiled from another text than its route module, the file %s',
+    async (_, backdated, expected) => {
       const server = await startDevServer({ files: app })
       await readWindow()
+      const file = path.join(server.root, 'src/routes/index.tsx')
       await server.transform('/src/routes/index.tsx')
-      await server.write({
-        'src/routes/index.tsx': route.replace('MARK_V1', 'MARK_V2'),
-      })
+      await server.vite.watcher.unwatch(file)
+      await writeFile(file, route.replace('MARK_V1', 'MARK_V2'))
+      if (backdated) {
+        const old = new Date(Date.now() - 60_000)
+        await utimes(file, old, old)
+      }
       await server.load('/src/routes/index.tsx')
-      await server.settle()
-      await server.load('/src/routes/index.tsx')
-      expect(warnings(server.diagnostics)).toEqual([])
+      expect(warnings(server.diagnostics)).toHaveLength(expected)
     },
     timeout,
   )
