@@ -133,6 +133,29 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         options,
       ) => session.compile(ctx, source, inputMap, options)) satisfies LoaderImpl
 
+      // the session reads files through the compiler's input file system (virtual modules included)
+      const inputFs = compiler.inputFileSystem
+      if (inputFs) {
+        session.inputFileSystems.set(
+          environment.name,
+          (file) =>
+            new Promise((resolve) => {
+              try {
+                inputFs.readFile(file, (error, data) => {
+                  resolve(
+                    error || data == null
+                      ? null
+                      : Buffer.isBuffer(data)
+                        ? data.toString('utf8')
+                        : String(data),
+                  )
+                })
+              } catch {
+                resolve(null)
+              }
+            }),
+        )
+      }
       // a loader's `getResolve()` resolver, without the resolve context that
       // records what it looks at as dependencies of the module compiling. Got
       // (`esm`: the resolver of the imports it analyses, with their `exports` conditions)

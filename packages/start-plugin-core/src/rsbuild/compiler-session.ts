@@ -126,6 +126,11 @@ export class StartRsbuildCompilerSession {
   /** The bundler-free Start session (caches, import protection, registry, warnings, compiles). */
   readonly start: StartCompilerSession
   readonly envs = new Map<string, EnvState>()
+  /** Readers of files through the compilers' input file systems (virtual modules included), by environment. */
+  readonly inputFileSystems = new Map<
+    string,
+    (file: string) => Promise<string | null>
+  >()
   /**
    * The resolver of each environment, for its compiles and its
    * invalidations: the one a loader's `getResolve()` gives, asked outside
@@ -163,7 +168,7 @@ export class StartRsbuildCompilerSession {
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       readFile: (file) => this.readFile(file),
-      // our virtual modules are unread (`readFile`)
+      // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
     })
@@ -187,14 +192,25 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * Reads a file from the disk. At `watchRun` a compiler's input file system
-   * holds a file it watches as fresh, keeps an unwatched one it has read stale
-   * until its 60 s TTL, and cannot read Rspack's `VirtualModulesPlugin` files:
-   * our own virtual modules (`node_modules/.virtual/`) are missing to the raw
-   * facts. Only a file system a user replaced (`webpack-virtual-modules` with
-   * `useInputFileSystem`) would know more, and it isn't asked.
+   * Reads a file: our virtual modules (`node_modules/.virtual/`) through the
+   * compilers' input file systems, real files from the disk. At `watchRun` a
+   * compiler's input file system holds a file it watches as fresh, keeps an
+   * unwatched one it has read stale until its 60 s TTL (the disk is the truth of
+   * an edited dependency), and cannot read Rspack's `VirtualModulesPlugin`
+   * files: those reads miss and our virtual modules are missing to the raw
+   * facts, unless a user replaced the file system (`webpack-virtual-modules`
+   * with `useInputFileSystem`).
    */
   async readFile(file: string): Promise<string | null> {
+    if (file.includes('/node_modules/.virtual/')) {
+      for (const read of this.inputFileSystems.values()) {
+        const text = await read(file)
+        if (text !== null) {
+          return text
+        }
+      }
+      return null
+    }
     try {
       return await fs.promises.readFile(file, 'utf8')
     } catch {

@@ -253,11 +253,8 @@ invalidation and live modules of a hot update, a webpack-family loader's map and
 rebuilds and invalidated files, eager extracted exports, emitted maps' text, the key of a persistent cache) live in
 `hosts/`, exported apart from the core model, which uses none of them.
 
-A virtual module's raw text: the dev plugin container's `load`; in a Vite build, the text at the start of its transforms
-(`start-plugin-core/src/vite/virtual-text.ts`: `this.load` settles after them, and a compile among them may ask for it).
-Rsbuild's raw reads are the disk's (`rsbuild/compiler-session.ts`). A persistent bundler cache restores modules without
-compiling them, so its version holds `compilerCacheKey` (the compiler packages' manifests, and their built scripts
-outside `node_modules`).
+A persistent bundler cache restores modules without compiling them, so its version holds `compilerCacheKey` (the
+compiler packages' manifests, and their built scripts outside `node_modules`).
 
 Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
 a language (an asset, or an asset query: `ASSET_QUERY_RE`) is never compiled, and its facts are never read from its

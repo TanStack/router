@@ -69,6 +69,9 @@ code.test.ts`: "a root route's %s loads lazily".
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/known-bugs-start-compiler.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **A Vite build can hang on `virtual:` modules that import each other, or on one with a server-only marker**: the
+  compiler reads a virtual module's raw text through `this.load`, which settles after the module's transforms, and a
+  compile among them waits for that text. Code in virtual modules isn't supported (R36). SPEC G5. No pin.
 
 ## Known incorrect rejections (accepted, R89)
 

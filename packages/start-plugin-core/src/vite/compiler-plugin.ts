@@ -18,7 +18,6 @@ import {
   OWNED_QUERY_RE,
   OutputBuilder,
   SourceText,
-  VIRTUAL_ID_RE,
   applyViteInvalidation,
   collectionSizes,
   identify,
@@ -65,8 +64,6 @@ import {
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import { buildVirtualText } from './virtual-text'
-import type { BuildVirtualText } from './virtual-text'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -249,7 +246,7 @@ export function startCompilerPlugin(
   )
   /**
    * Per-env loaders of genuinely virtual ids (the dev plugin container, or
-   * `buildVirtualText` in a build): an id is loaded by the environment that
+   * `this.load` in a build): an id is loaded by the environment that
    * resolved it, never asked of another one (in `vite build --watch` the
    * environments build at once, and an id a build cannot load fails it).
    */
@@ -257,7 +254,6 @@ export function startCompilerPlugin(
     string,
     (id: string) => Promise<string | null>
   >()
-  const buildVirtualTexts = new Map<string, BuildVirtualText>()
   let session: Session | null = null
   let server: ViteDevServer | null = null
   let unsubscribeRoutes: (() => void) | null = null
@@ -806,27 +802,17 @@ export function startCompilerPlugin(
           )
         }
         const environment = this.environment
-        if (environment.mode === 'dev') {
-          virtualLoaders.set(env.name, async (id) => {
+        virtualLoaders.set(env.name, async (id) => {
+          if (environment.mode === 'dev') {
             const loaded = await environment.pluginContainer.load(id)
             if (loaded === null || loaded === undefined) {
               return null
             }
             return typeof loaded === 'string' ? loaded : loaded.code
-          })
-        } else {
-          // a rebuild: what a plugin answers for a virtual id may have
-          // changed with any file it reads, and no event names the id
-          for (const id of buildVirtualTexts.get(env.name)?.ids() ?? []) {
-            s.start.rawFacts.markStale(id)
           }
-          const texts = buildVirtualText(async (id) => {
-            const info = await this.load({ id })
-            return info.code
-          })
-          buildVirtualTexts.set(env.name, texts)
-          virtualLoaders.set(env.name, texts.read)
-        }
+          const info = await this.load({ id })
+          return info.code
+        })
       },
       buildEnd() {
         if (
@@ -859,10 +845,6 @@ export function startCompilerPlugin(
         if (this.environment.mode === 'build') {
           unsubscribeRoutes?.()
           unsubscribeRoutes = null
-          virtualLoaders.delete(env.name)
-          if (!this.meta.watchMode) {
-            buildVirtualTexts.delete(env.name)
-          }
         }
       },
       resolveId: {
@@ -1112,24 +1094,6 @@ export function startCompilerPlugin(
           return e.name === env.name
         },
         transform: { filter: dependencyFilter, handler: compileTransform },
-      },
-      {
-        name: `tanstack-start:compiler:${env.name}:virtual-text`,
-        apply: 'build',
-        enforce: 'pre',
-        applyToEnvironment(e) {
-          return e.name === env.name
-        },
-        transform: {
-          order: 'pre',
-          filter: { id: VIRTUAL_ID_RE },
-          handler(code, id) {
-            if (identify(id).canonicalId === id) {
-              buildVirtualTexts.get(env.name)?.loaded(id, code)
-            }
-            return null
-          },
-        },
       },
     ]
   }
