@@ -66,33 +66,35 @@ describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
     timeout,
   )
 
-  test.each(
+  test.each([
+    ['after the route', `${route}namespace Route { export type T = string }\n`],
     [
-      ['after the route', `${route}namespace Route { export type T = string }\n`],
-      [
-        'an options variable merged with a type namespace',
-        `namespace opts { export type T = string }
+      'an options variable merged with a type namespace',
+      `namespace opts { export type T = string }
 const opts = { component: () => <p>MARK_PAGE_END</p> }
 export const Route = createFileRoute('/')(opts)
 `,
-      ],
-    ] as const,
-  )('%s splits, unreported', async (_, body) => {
-    const app = await build({
-      bundler,
-      env: 'client',
-      minify: false,
-      files: files(`${head}${body}`),
-    })
-    try {
-      expect({
-        where: app.where('MARK_PAGE_END'),
-        warnings: reportedIn(app),
-      }).toEqual({ where: 'lazy', warnings: 0 })
-    } finally {
-      await app.dispose()
-    }
-  }, timeout)
+    ],
+  ] as const)(
+    '%s splits, unreported',
+    async (_, body) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        minify: false,
+        files: files(`${head}${body}`),
+      })
+      try {
+        expect({
+          where: app.where('MARK_PAGE_END'),
+          warnings: reportedIn(app),
+        }).toEqual({ where: 'lazy', warnings: 0 })
+      } finally {
+        await app.dispose()
+      }
+    },
+    timeout,
+  )
 
   test(
     'a `Route` declared twice stays unsplit and warns once',
