@@ -200,14 +200,14 @@ export function createHistory(opts: {
     push: (path, state, navigateOpts) => {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex + 1, state)
-      tryNavigation({
-        task: () => {   
-        opts.pushState(path, {
-          ...state,
-          [stateIndexKey]: location.state[stateIndexKey] + 1,
-        })
-          notify({ type: 'PUSH' })
-        },
+      tryNavigation({     
+task: () => {
+  opts.pushState(path, {
+    ...state,
+    [stateIndexKey]: location.state[stateIndexKey] + 1,
+  })
+  notify({ type: 'PUSH' })
+},
         navigateOpts,
         type: 'PUSH',
         path,
@@ -218,13 +218,13 @@ export function createHistory(opts: {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex, state)
       tryNavigation({
-        task: () => {
-        opts.replaceState(path, {
-          ...state,
-          [stateIndexKey]: location.state[stateIndexKey],
-        })
-          notify({ type: 'REPLACE' })
-        },
+task: () => {
+  opts.replaceState(path, {
+    ...state,
+    [stateIndexKey]: location.state[stateIndexKey],
+  })
+  notify({ type: 'REPLACE' })
+},
         navigateOpts,
         type: 'REPLACE',
         path,
