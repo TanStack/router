@@ -1,6 +1,6 @@
 /**
  * Traces, dev report flushing, original positions and the build verdict
- * fixed point, on hand-made graphs.
+ * on hand-made graphs.
  */
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'

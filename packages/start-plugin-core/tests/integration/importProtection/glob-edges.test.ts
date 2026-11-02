@@ -8,7 +8,7 @@
  * denied file as it compiles it (nothing has recorded its importer yet).
  * Client environment, mock mode, builds and dev servers (Vite, Vite's
  * bundled dev, Rsbuild); builds with the `error` behaviour (the default)
- * fail; a veto gives the real module.
+ * fail; `allowImport` gives the real module.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'

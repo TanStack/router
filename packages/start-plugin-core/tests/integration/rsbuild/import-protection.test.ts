@@ -985,7 +985,7 @@ export const read = () => secret() + other
 // it built before from Rspack's persistent cache without compiling them
 // again: their imports of the per-edge modules that stand in for denied
 // imports must still resolve, and the build reports the
-// same violations, in every behaviour and after an `onViolation` veto
+// same violations, in every behaviour and with `allowImport`
 // (the additional pass).
 // Source: upstream #8798 (Rsbuild persistent cache: "Can't resolve" the
 // import-protection mock modules of restored importers).

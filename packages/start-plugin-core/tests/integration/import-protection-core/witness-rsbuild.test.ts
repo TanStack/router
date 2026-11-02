@@ -1,5 +1,5 @@
 /**
- * The Rspack (Rsbuild) survival witness and veto fixed point on real
+ * The Rspack (Rsbuild) survival witness and allowed imports on real
  * production builds (the matrix of `cases.ts`): an edge
  * is reported (and `onViolation` told) iff it survives tree-shaking; an allowed
  * import gets the real module.

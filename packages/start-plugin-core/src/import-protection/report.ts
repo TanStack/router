@@ -1,6 +1,6 @@
 /**
  * Dev reporting: a violation is decided when its
- * importer is compiled (`onViolation` already ran); the report is printed
+ * importer is compiled (`onViolation` was told); the report is printed
  * once the bundler's graph knows how the importer is reached, so its trace
  * is a real chain from an entry. No microtask polling: one yielding timer
  * for the whole queue (0, 10, 50, 100, 250, 500, 1000 ms…), a report whose
