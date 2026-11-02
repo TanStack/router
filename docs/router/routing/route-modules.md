@@ -345,12 +345,29 @@ Generated validation type aliases bind the module's router while retaining the c
 | `src/routeTree.gen.ts`               | Full route tree and type maps                                                |
 | `src/routeTree.gen.client.ts`        | Provider-owned client view used by Start's client bundlers                   |
 | `src/routeScope.gen.ts`              | Module-scoped exports and namespace re-exports                               |
-| `src/routeScope.gen.namespace<N>.ts` | Independent ESM exports for a referenced installation                        |
+| `src/routeScope.gen.namespace<N>.ts` | Independent ESM exports for a referenced installation (see below)            |
 | `src/routeContract.gen.ts`           | Public route contract, exposed as `./route-types` after declaration emission |
 | `src/routeModule.gen.ts`             | Runtime entry exposed as `./route-module`                                    |
 | `src/startModules.gen.ts`            | Start contributions and erased application contract checks                   |
 | `.tanstack/route-module.json`        | Portable route/source topology, installation metadata and client-view paths  |
 | `.tanstack/types/`                   | Example declaration output directory, owned by the package build             |
+
+Each namespace (`products.Link`) is a separate file, so a bundler keeps only the scope APIs an application uses. The `routeScopeNamespaceFiles` option places these files:
+
+| Value                                      | Files                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `'indexed'` (default)                      | `routeScope.gen.namespace0.ts`, `routeScope.gen.namespace1.ts`, …            |
+| `'named'`                                  | `routeScope.gen.products.ts`, `routeScope.gen.orgSettings.ts`, …             |
+| `'folder'`                                 | `routeScope.gen/products.ts`, `routeScope.gen/orgSettings.ts`, …             |
+| `({ name, moduleId, key, index }) => path` | The returned path, relative to the route tree's directory, without extension |
+
+```ts
+tanstackRouter({
+  routeScopeNamespaceFiles: ({ name }) => `scopes/${name}.gen`,
+})
+```
+
+Paths must stay inside the route tree's directory and outside the routes directory, and namespace files must differ in more than letter case. A function is only available in JavaScript configurations, such as plugin options; `tsr.config.json` accepts the string values. Changing the layout removes the files of the previous one.
 
 The generated files sit beside the configured route tree. Do not edit them. They can be committed or ignored; generation must precede any task that reads them. Add `.tanstack` to `.gitignore`.
 
