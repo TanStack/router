@@ -8,7 +8,7 @@ import {
   installRouteModules,
 } from '@tanstack/router-core/_internal/route-module'
 import { Route, getRouteApi } from './route'
-import { Link, useLinkProps } from './link'
+import { Link, addRouteModuleLinkOptions, useLinkProps } from './link'
 import { Navigate, useNavigate } from './useNavigate'
 import { MatchRoute, useMatchRoute } from './Matches'
 import { useRouter } from './useRouter'
@@ -158,13 +158,23 @@ export interface FileRouteScope<
   >
 }
 
+/**
+ * Installs the route-module behavior of the core and of this framework's
+ * links. Generated scopes and module roots call it when they are created,
+ * before an application renders.
+ */
+function installRouteModuleBindings() {
+  installRouteModules()
+  addRouteModuleLinkOptions()
+}
+
 /** Binds only the module-root factory used by generated route scopes. */
 export function bindCreateModuleRoot<TRegister, TModuleId extends string>(
   moduleId: TModuleId,
 ): FileRouteScope<never, TRegister, TModuleId>['createModuleRoot'] {
-  // Module routes resolve their route-bound APIs through the core's
-  // route-module behavior: install it with the first module root.
-  installRouteModules()
+  // Module routes resolve their route-bound APIs through the route-module
+  // behavior: install it with the first module root.
+  installRouteModuleBindings()
   return () => (options) =>
     new Route({ ...(options as any), _module: moduleId }) as any
 }
@@ -235,6 +245,7 @@ function bindIdHook(moduleId: string, hook: (options: any) => any) {
 export function bindRouteScopeLink<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['Link'] {
+  installRouteModuleBindings()
   const AnyLink = Link as React.ComponentType<any>
   return React.forwardRef<Element, any>((props, ref) => {
     const bind = useBoundOptions(moduleId)
@@ -245,6 +256,7 @@ export function bindRouteScopeLink<TRouter extends AnyRouter>(
 export function bindRouteScopeCreateLink<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['createLink'] {
+  installRouteModuleBindings()
   const AnyLink = Link as React.ComponentType<any>
   return ((Comp: unknown) =>
     React.forwardRef<Element, any>((props, ref) => {
@@ -277,6 +289,7 @@ export function bindRouteScopeMatchRoute<TRouter extends AnyRouter>(
 export function bindRouteScopeUseLinkProps<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useLinkProps'] {
+  installRouteModuleBindings()
   return function useScopedLinkProps(
     options: any,
     ref: React.ForwardedRef<Element>,
@@ -288,6 +301,7 @@ export function bindRouteScopeUseLinkProps<TRouter extends AnyRouter>(
 export function bindRouteScopeLinkOptions<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['linkOptions'] {
+  installRouteModuleBindings()
   return ((options: any) =>
     Array.isArray(options)
       ? options.map((option) => bindRouteScopeOptions(moduleId, option))

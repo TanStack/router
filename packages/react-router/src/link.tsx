@@ -10,6 +10,7 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
 import type {
@@ -187,9 +188,6 @@ export function useLinkProps<
   host?: 'a' | React.ElementType,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
-  // The route of the nearest match: it scopes the links of a route, and
-  // module destinations resolve to the installation it belongs to.
-  const routeId = React.useContext(matchContext)
 
   // ==========================================================================
   // SERVER EARLY RETURN
@@ -206,7 +204,14 @@ export function useLinkProps<
   // browser-build constant `isServer = false` and drop this server block,
   // together with `getServerLinkProps` and the key sets only it references.
   if (isServer ?? router.isServer) {
-    return getServerLinkProps(router, options, forwardedRef, host, routeId)
+    return getServerLinkProps(
+      router,
+      options,
+      forwardedRef,
+      host,
+      // eslint-disable-next-line react-hooks/rules-of-hooks -- the server condition is static
+      React.useContext(matchContext),
+    )
   }
 
   // ==========================================================================
@@ -257,13 +262,7 @@ export function useLinkProps<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-    // Route-module scope; spread link options can change it. The
-    // `_fromRoute` of a route's own `Link` is constant.
-    _module,
-  } = options as typeof options & {
-    to?: string
-    _module?: RouteModuleScope
-  }
+  } = options as typeof options & { to?: string }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
@@ -271,8 +270,12 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // The links of a route share its location source. Links outside every
-  // match share one that never departs.
+  // The route of the nearest match: it scopes the links of a route, and
+  // module destinations resolve to the installation it belongs to. The links
+  // of a route share its location source. Links outside every match share
+  // one that never departs.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const routeId = React.useContext(matchContext)
   const scope = ((router.stores._linkScopes ??= {})[routeId!] ??=
     createLinkScope(router, routeId))
 
@@ -292,9 +295,12 @@ export function useLinkProps<
       return [options, () => state] as const
     }
 
+    const dest = { ...options } as any
     // The nearest route resolves module destinations to the installation
-    // the link renders under; other destinations ignore it.
-    const dest = { ...options, _nearestRoute: routeId } as any
+    // the link renders under. Only the route-module translation reads it.
+    if (scopeLocationOptions) {
+      dest._nearestRoute = routeId
+    }
     let source: ParsedLocation | undefined
     let state: LinkState
     let hydrationState: LinkState | undefined
@@ -359,9 +365,14 @@ export function useLinkProps<
     options.state,
     options.mask,
     options.unsafeRelative,
-    _module,
     stableActiveOptions,
     disabled,
+    // Spread route-module link options can change the scope of the same
+    // destination. The `_fromRoute` of a route's own `Link` is constant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the condition is constant for an application
+    ...(scopeLocationOptions
+      ? [(options as { _module?: RouteModuleScope })._module]
+      : []),
   ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -478,11 +489,15 @@ export function useLinkProps<
       // contributes the location the link displays and the installation of a
       // module destination. Navigation builds again to run `validateSearch`
       // before committing.
-      router.navigate({
-        ...options,
-        _fromLocation: dest._fromLocation,
-        _nearestRoute: routeId,
-      })
+      router.navigate(
+        scopeLocationOptions
+          ? {
+              ...options,
+              _fromLocation: dest._fromLocation,
+              _nearestRoute: routeId,
+            }
+          : { ...options, _fromLocation: dest._fromLocation },
+      )
     }
   }
 
@@ -510,7 +525,8 @@ export function useLinkProps<
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 // Options the router consumes; they never reach the element. Every other
-// option is an element prop and passes through.
+// option is an element prop and passes through. Route-module code adds the
+// options of its scopes (`addRouteModuleLinkOptions`).
 const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'to',
   'params',
@@ -534,9 +550,12 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'inactiveProps',
   'activeOptions',
   '_asChild',
-  '_module',
-  '_fromRoute',
 ])
+
+/** Called by route-module code: its scopes pass these internal options. */
+export function addRouteModuleLinkOptions(): void {
+  ROUTER_OPTION_KEYS.add('_module').add('_fromRoute')
+}
 
 // Copies the element props. An object rest would test every key against the
 // whole exclusion list; the key set is much cheaper. `Link` hosts never render
