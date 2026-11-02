@@ -125,6 +125,8 @@ describe('hydrate', () => {
     { segment: '_authenticated', legacy: false },
     { segment: '(posts)😀', legacy: false },
     { segment: '(posts)😀', legacy: true },
+    { segment: 'reports#draft', legacy: false },
+    { segment: 'reports#draft', legacy: true },
   ])(
     'round-trips manifest assets and loader data for $segment (legacy: $legacy)',
     async ({ segment, legacy }) => {
