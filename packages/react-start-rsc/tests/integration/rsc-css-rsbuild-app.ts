@@ -113,6 +113,58 @@ export const unexportedRow = {
 }
 
 /**
+ * The same route with exports that read each other (one extracted module when
+ * split code needs them), read by the handler alone, by the handler and the
+ * split component, and by an exported server function the cycle reads back. The
+ * cycle changes nothing for what only the handler reads: `Card` and its CSS module
+ * stay out of the component's SSR chunk.
+ */
+const cycle = `export class Base { sub() { return Sub } }
+export class Sub extends Base { static label = 'MARK_CYCLE' }`
+export const cycleRows = [
+  {
+    name: 'read by the handler alone',
+    path: '/cycle-handler',
+    file: route(
+      '/cycle-handler',
+      `import { renderServerComponent } from '@tanstack/react-start/rsc'
+${cycle}`,
+      `  return renderServerComponent(<Card>{new Sub().sub().label}</Card>)`,
+      `function Page() {
+  return <main>{Route.useLoaderData()}</main>
+}`,
+    ).replace('export const render', 'const render'),
+  },
+  {
+    name: 'read by the handler and the split component',
+    path: '/cycle-both',
+    file: route(
+      '/cycle-both',
+      `import { renderServerComponent } from '@tanstack/react-start/rsc'
+${cycle}`,
+      `  return renderServerComponent(<Card>{new Sub().sub().label}</Card>)`,
+      `function Page() {
+  return <main>{new Sub().sub().label}{Route.useLoaderData()}</main>
+}`,
+    ).replace('export const render', 'const render'),
+  },
+  {
+    name: 'read back by the exported server function',
+    path: '/cycle-fn',
+    file: route(
+      '/cycle-fn',
+      `import { renderServerComponent } from '@tanstack/react-start/rsc'
+export class Base { sub() { return Sub } again() { return render } }
+export class Sub extends Base { static label = 'MARK_CYCLE' }`,
+      `  return renderServerComponent(<Card>{new Sub().sub().label}</Card>)`,
+      `function Page() {
+  return <main>{new Sub().again() === render ? new Sub().sub().label : 'WRONG'}{Route.useLoaderData()}</main>
+}`,
+    ),
+  },
+]
+
+/**
  * A route whose server function calls a helper module that renders a local
  * server component with its own CSS module through `renderServerComponent`.
  */
@@ -163,6 +215,9 @@ function Control() {
   ),
   ...helperRow.files,
   [`src/routes${unexportedRow.path}.tsx`]: unexportedRow.file,
+  ...Object.fromEntries(
+    cycleRows.map((row) => [`src/routes${row.path}.tsx`, row.file]),
+  ),
 }
 
 /** Opens `path` and waits for the server component (`marker`) and hydration. */
@@ -259,6 +314,22 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
       )
       expect(page.errors).toEqual([])
     })
+
+    test.each(cycleRows)(
+      'exports that read each other, $name, keep the server component styled',
+      async ({ path }) => {
+        expect(server.errors).toEqual([])
+        const page = await show(server, path, 'MARK_CYCLE')
+        await waitForStyle(
+          page,
+          '[data-testid=card]',
+          'background-color',
+          CARD_BACKGROUND,
+          5_000,
+        )
+        expect(page.errors).toEqual([])
+      },
+    )
 
     // Bug on main: on Rsbuild, the RSC CSS transform only rewrote server function
     // provider modules (`serverFnProviderOnly: true`, react-start

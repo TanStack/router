@@ -1796,6 +1796,75 @@ describe('extracted-export outputs', () => {
       expect(prov?.code).toContain("import { db } from './db'")
     })
 
+    // The two rules together: a cycle of exports only an erased handler reads
+    // is nobody's chunk's need, and a chunk that reads it too shares one module
+    // while the handler's own reads stay with the provider output.
+    describe('a read cycle of exports behind a server fn the loader calls', () => {
+      const code = (page: string) =>
+        dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { wrapServer } from 'toy-start'
+          import { db } from './db'
+          export class Z { o() { return A } }
+          export class A extends Z {}
+          function helper() { return db.q(new A()) }
+          const fn = wrapServer(() => helper())
+          export const Route = createFileRoute('/')({
+            loader: () => fn(),
+            component: Page,
+          })
+          function Page() { ${page} }
+        `)
+      const compileAll = async (source: string) => {
+        const host = new MemoryHost({ files: { '/app/route.tsx': source } })
+        const planners = [
+          providerOutEnvPlanner(),
+          toyProviderPlanner(),
+          toySplitPlanner({ keys: ['component'], extractExports: true }),
+        ]
+        const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+        const of = async (query: string) =>
+          (await host.compile(`/app/route.tsx${query}`, planners, { env }))
+            ?.code
+        return {
+          main: await of(''),
+          chunk: await of('?tsr-split=component'),
+          provider: await of('?tss-serverfn-split'),
+          extracted: await of('?tsr-split=export~Z'),
+        }
+      }
+
+      it('stays out of a chunk that only reaches the server fn', async () => {
+        const r = await compileAll(code('return Route.useLoaderData()'))
+        expect(r.main).toContain('const fn = wrapServer(0)')
+        expect(r.main).not.toContain('helper')
+        expect(r.chunk).not.toContain('helper')
+        expect(r.chunk).not.toContain('class A')
+        expect(r.chunk).not.toContain("from './db'")
+        expect(r.provider).toContain('function helper()')
+        expect(r.provider).toContain("import { db } from './db'")
+      })
+
+      it('shares one module when the chunk reads it too', async () => {
+        const r = await compileAll(
+          code('return [new A(), Route.useLoaderData()]'),
+        )
+        expect(r.main).toContain(
+          "export { Z, A } from './route.tsx?tsr-split=export~Z'",
+        )
+        expect(r.main).not.toContain('helper')
+        expect(r.extracted).toContain('class Z')
+        expect(r.extracted).toContain('class A')
+        expect(r.extracted).not.toContain('helper')
+        expect(r.chunk).toContain(
+          "import { A } from './route.tsx?tsr-split=export~Z'",
+        )
+        expect(r.chunk).not.toContain('helper')
+        expect(r.chunk).not.toContain("from './db'")
+        expect(r.provider).toContain('function helper()')
+      })
+    })
+
     // A provider output copies what it reaches (another layer's instance):
     // it is no needer the identity rule counts, and no reason to keep a
     // cluster in the env module (the dev-time self-check threw here).
