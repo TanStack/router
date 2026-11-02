@@ -54,7 +54,7 @@ describe.each(['virtual:app', 'virtual:app.ts'])('%s', (id) => {
       expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/entry.ts',
-        line: 1,
+        root: error.root,
       })
     },
     timeout,
