@@ -39,10 +39,6 @@ export function buildSummary(
         let value: AbstractValue = { t: 'unknown' }
         if (e.local !== null) {
           value = values.valueOfBinding(e.local)
-        } else if (e.name in exportFacts) {
-          // a row with no binding (`export namespace A.B` merged into `A`)
-          // says nothing about what another row of the name knows
-          break
         }
         exportFacts[e.name] = { kind: 'local', value }
         break
