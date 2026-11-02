@@ -113,7 +113,8 @@ export function createRouterCodeSplitterPlugin(
     )
   }
   // Map from normalized route file path → set of shared binding names.
-  // Populated by the reference compiler, consumed by virtual and shared compilers.
+  // Populated by the reference compiler, or by `getSharedBindings` when a
+  // split or shared module compiles first.
   const sharedBindingsMap = new Map<string, Set<string>>()
 
   const getGlobalCodeSplitGroupings = () => {
@@ -126,13 +127,11 @@ export function createRouterCodeSplitterPlugin(
     return userConfig.codeSplittingOptions?.splitBehavior
   }
 
-  const handleCompilingReferenceFile = (
+  const getSplitGroupings = (
     code: string,
     id: string,
-    generatorNodeInfo: GetRoutesByFileMapResultValue,
-  ): UnpluginTransformResult => {
-    if (debug) console.info('Compiling Route: ', id)
-
+    routeId: string,
+  ): CodeSplitGroupings => {
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       filename: id,
@@ -151,7 +150,7 @@ export function createRouterCodeSplitterPlugin(
     const userShouldSplitFn = getShouldSplitFn()
 
     const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: generatorNodeInfo.routeId,
+      routeId,
     }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
@@ -164,8 +163,50 @@ export function createRouterCodeSplitterPlugin(
       }
     }
 
-    const splitGroupings: CodeSplitGroupings =
+    return (
       fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
+    )
+  }
+
+  /**
+   * The bindings a route file shares with its split and `?tsr-shared=1`
+   * modules. A split or shared module compiled before its route file in this
+   * process (say the route file's output came from a cache) works them out
+   * from the same source, with the same groupings.
+   */
+  const getSharedBindings = (baseId: string, code: string) => {
+    let sharedBindings = sharedBindingsMap.get(baseId)
+    if (!sharedBindings) {
+      const generatorNodeInfo = routerPluginContext.routesByFile.get(baseId)
+      if (!generatorNodeInfo) {
+        return undefined
+      }
+      sharedBindings = computeSharedBindings({
+        code,
+        filename: baseId,
+        codeSplitGroupings: getSplitGroupings(
+          code,
+          baseId,
+          generatorNodeInfo.routeId,
+        ),
+      })
+      sharedBindingsMap.set(baseId, sharedBindings)
+    }
+    return sharedBindings.size > 0 ? sharedBindings : undefined
+  }
+
+  const handleCompilingReferenceFile = (
+    code: string,
+    id: string,
+    generatorNodeInfo: GetRoutesByFileMapResultValue,
+  ): UnpluginTransformResult => {
+    if (debug) console.info('Compiling Route: ', id)
+
+    const splitGroupings = getSplitGroupings(
+      code,
+      id,
+      generatorNodeInfo.routeId,
+    )
 
     // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({
@@ -173,11 +214,7 @@ export function createRouterCodeSplitterPlugin(
       filename: id,
       codeSplitGroupings: splitGroupings,
     })
-    if (sharedBindings.size > 0) {
-      sharedBindingsMap.set(id, sharedBindings)
-    } else {
-      sharedBindingsMap.delete(id)
-    }
+    sharedBindingsMap.set(id, sharedBindings)
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -234,7 +271,7 @@ export function createRouterCodeSplitterPlugin(
     ) as Array<SplitRouteIdentNodes>
 
     const baseId = id.split('?')[0]!
-    const resolvedSharedBindings = sharedBindingsMap.get(baseId)
+    const resolvedSharedBindings = getSharedBindings(baseId, code)
 
     const result = compileCodeSplitVirtualRoute({
       code,
@@ -382,8 +419,8 @@ export function createRouterCodeSplitterPlugin(
 
           if (!baseId) return null
 
-          const sharedBindings = sharedBindingsMap.get(baseId)
-          if (!sharedBindings || sharedBindings.size === 0) return null
+          const sharedBindings = getSharedBindings(baseId, code)
+          if (!sharedBindings) return null
 
           if (debug) console.info('Compiling Shared Module: ', id)
 
