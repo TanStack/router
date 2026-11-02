@@ -72,6 +72,7 @@ export type {
 } from './route-module/declaration'
 export type {
   RouteScopeNamespace,
+  RouteScopeNamespaceFile,
   RouteScopeNamespaceFiles,
 } from './route-module/emit'
 

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import { routeModulesOptionSchema } from './route-module/declaration'
 import type { GeneratorPlugin } from './plugin/types'
-import type { RouteScopeNamespaceFiles } from './route-module/emit'
+import type { RouteScopeNamespaceFile } from './route-module/emit'
 
 export const DEFAULT_ROUTE_TREE_FILE_HEADER = [
   '/* eslint-disable */',
@@ -101,9 +101,7 @@ export const configSchema = baseConfigSchema.extend({
   routeScopeNamespaceFiles: z
     .union([
       z.enum(['indexed', 'named', 'folder']),
-      z.custom<Extract<RouteScopeNamespaceFiles, Function>>(
-        (value) => typeof value === 'function',
-      ),
+      z.custom<RouteScopeNamespaceFile>((value) => typeof value === 'function'),
     ])
     .optional()
     .default('indexed'),
