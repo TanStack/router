@@ -4,19 +4,10 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 
 const outDir = process.env.BUNDLE_SIZE_DIST_DIR ?? 'dist-rsbuild'
 const clientOutput = process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
-const startOptions = clientOutput
-  ? {
-      rsbuild: {
-        client: {
-          output: clientOutput as 'module' | 'iife',
-        },
-      },
-    }
-  : undefined
 
 export default defineConfig({
   logLevel: 'silent',
-  plugins: [pluginReact(), tanstackStart(startOptions)],
+  plugins: [pluginReact(), tanstackStart()],
   output: {
     distPath: {
       root: outDir,
@@ -31,6 +22,8 @@ export default defineConfig({
   environments: {
     client: {
       output: {
+        module:
+          clientOutput === undefined ? undefined : clientOutput === 'module',
         manifest: {
           filename: 'manifest.json',
           prefix: false,
