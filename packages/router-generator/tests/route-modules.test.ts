@@ -1601,7 +1601,7 @@ export const Route = createRootRoute()
         .filter((file) => /^(?!routes\/).*\.ts$/.test(file))
         .map((file) => path.join(src, file))
       for (const file of files) {
-        for (const [, from] of read('/', file).matchAll(
+        for (const [, from] of readFileSync(file, 'utf8').matchAll(
           /from '(\.{1,2}\/[^']+)'/g,
         )) {
           expect(
