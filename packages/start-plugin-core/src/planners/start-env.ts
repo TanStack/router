@@ -834,11 +834,12 @@ function planStartEnv(
         // this env. The override is addressed to the env module: a chain
         // inside a function that moves into a split chunk renders the
         // placeholder there and the chunk imports the provider module. No
-        // environment loads such a chunk: a derived provider exists only in
-        // the Vite `rsc` environment, whose entry reaches route modules
-        // through their provider outputs alone (react-start-rsc
+        // environment loads such a chunk: a derived provider exists only where
+        // server components render (Vite's `rsc` environment, Rsbuild's RSC
+        // layer), which reaches route modules through their provider outputs
+        // alone and has no router planner (react-start-rsc
         // `rsc-start-build.test.ts`, "a server fn nested in a function only
-        // the split component calls").
+        // the split component calls"; `rsc-start-nested-class.test.ts`).
         const chain = rangeOf(site.chain.terminal)
         rewrites.add({
           range: chain,

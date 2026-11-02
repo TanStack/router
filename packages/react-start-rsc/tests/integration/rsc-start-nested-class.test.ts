@@ -79,6 +79,42 @@ const files = {
 `,
     'new K().make()',
   ),
+  // nothing keeps these in the route module: they move to the split component
+  // or to the class's extracted module, with the chain they hold
+  ...route(
+    'pure-class',
+    `export class K {
+  label() {
+    return 'MARK_HANDLER'
+  }
+  make() {
+    return createServerFn().handler(async () => new K().label())
+  }
+}
+`,
+    'new K().make()',
+  ),
+  ...route(
+    'plain-function',
+    `function make() {
+  return createServerFn().handler(async () => 'MARK_HANDLER')
+}
+`,
+    'make()',
+  ),
+  ...route(
+    'in-component',
+    '',
+    `createServerFn().handler(async () => 'MARK_HANDLER')`,
+  ),
+  ...route(
+    'in-object',
+    `const fns = {
+  make: () => createServerFn().handler(async () => 'MARK_HANDLER'),
+}
+`,
+    'fns.make()',
+  ),
   ...route(
     'two-classes',
     `export class Z {

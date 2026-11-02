@@ -79,7 +79,7 @@ export interface StartCompilerSessionOptions {
   /**
    * The environment whose compiles provide the server functions
    * (`EnvInfo.isProvider`): Vite's provider environment (SSR, or RSC's
-   * own), Rsbuild's server environment (both of its layers).
+   * own), Rsbuild's server environment (with RSC, its RSC layer only).
    */
   providerEnv: string
   /** RSC on: server components render, and provide the server functions, apart from SSR. */
@@ -237,7 +237,9 @@ export class StartCompilerSession {
     return {
       name: env.name,
       type: env.type,
-      isProvider: env.name === this.opts.providerEnv,
+      isProvider:
+        env.name === this.opts.providerEnv &&
+        (this.opts.rscLayer === undefined || layer === this.opts.rscLayer),
       mode: this.opts.mode,
       ...(layer ? { layer } : {}),
     }
