@@ -188,6 +188,18 @@ describe('an enum something can write out of sight', () => {
       `import { write } from '../write'\nconst y = E.A\nwrite(E)\n`,
     ],
     ['a built-in', `const y = E.A\nReflect.set(E, 'A', 'NEW')\n`],
+    [
+      'a method of its object',
+      `const y = E.A\n;(E as any).__defineGetter__('A', () => 'NEW')\n`,
+    ],
+    [
+      'a method of its object, without a cast',
+      `const y = E.A\n// @ts-ignore\nE.__defineGetter__('A', () => 'NEW')\n`,
+    ],
+    [
+      'a parenthesised method of its object',
+      `const y = E.A\n// @ts-ignore\n;(E.__defineGetter__)('A', () => 'NEW')\n`,
+    ],
     ['an import alias', `import F = E\nconst y = E.A\n;(F as any).A = 'NEW'\n`],
     [
       'a holder',

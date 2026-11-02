@@ -355,25 +355,51 @@ function isPlainMemberRead(ctx: PurityContext, node: Node): boolean {
  * An enum of this module whose object holds data, written only where the
  * mutation model sees it: not a declared one (whatever the global is), no
  * namespace merged in (its functions can write the object), and every value
- * use a member access or an export, so no alias or callee can write it or
- * define a getter on it unseen (`w(E)`, `const a = E`, `import F = E`).
+ * use a member it declares or an export, so no alias or callee can write it or
+ * define a getter on it unseen (`w(E)`, `const a = E`, `import F = E`,
+ * `E.__defineGetter__(…)`, `E[k]`).
  */
 function isPlainEnum(ctx: PurityContext, b: Binding): boolean {
-  return (
-    b.has(BindingFlags.RegularEnum | BindingFlags.ConstEnum) &&
-    !b.has(BindingFlags.Ambient | BindingFlags.ValueModule) &&
-    b.references.every((r) => {
-      if (r.inTypePosition) {
-        return true
+  if (
+    !b.has(BindingFlags.RegularEnum | BindingFlags.ConstEnum) ||
+    b.has(BindingFlags.Ambient | BindingFlags.ValueModule)
+  ) {
+    return false
+  }
+  const members = new Set<string>()
+  for (const id of b.declarations) {
+    const decl = ctx.file.parentOf(id)
+    if (decl?.type === 'TSEnumDeclaration') {
+      for (const m of decl.body.members) {
+        if (m.id.type !== 'TemplateLiteral') {
+          members.add(m.id.type === 'Identifier' ? m.id.name : m.id.value)
+        }
       }
-      const parent = ctx.file.parentOf(r.node)
-      return (
-        parent?.type === 'ExportSpecifier' ||
-        (parent?.type === 'MemberExpression' &&
-          parent.object.start === r.node.start)
-      )
-    })
-  )
+    }
+  }
+  return b.references.every((r) => {
+    if (r.inTypePosition) {
+      return true
+    }
+    const parent = ctx.file.parentOf(r.node)
+    if (parent?.type === 'ExportSpecifier') {
+      return true
+    }
+    if (
+      parent?.type !== 'MemberExpression' ||
+      parent.object.start !== r.node.start
+    ) {
+      return false
+    }
+    const name = parent.computed
+      ? parent.property.type === 'Literal'
+        ? parent.property.value
+        : null
+      : parent.property.type === 'Identifier'
+        ? parent.property.name
+        : null
+    return typeof name === 'string' && members.has(name)
+  })
 }
 
 /** Whether a callee's calls are pure when their arguments are (`noSideEffectCallees`, `pureNamespaces`). */
