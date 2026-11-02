@@ -90,19 +90,18 @@ export function routerLoaderPath(): string {
         fileURLToPath(import.meta.url)
   let dir = path.dirname(here)
   for (;;) {
-    const candidate = path.join(dir, 'package.json')
-    if (fs.existsSync(candidate)) {
-      try {
-        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8')) as {
-          name?: string
-        }
-        if (pkg.name === '@tanstack/router-plugin') {
-          loaderPath = path.join(dir, 'loader', 'index.cjs')
-          return loaderPath
-        }
-      } catch {
-        // keep looking
+    try {
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
+      ) as {
+        name?: string
       }
+      if (pkg.name === '@tanstack/router-plugin') {
+        loaderPath = path.join(dir, 'loader', 'index.cjs')
+        return loaderPath
+      }
+    } catch {
+      // no package.json here, or not a readable one: keep looking
     }
     const parent = path.dirname(dir)
     if (parent === dir) {
