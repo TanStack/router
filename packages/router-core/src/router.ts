@@ -2280,6 +2280,9 @@ export class RouterCore<
             __tempLocation: {
               ...nextHistory,
               search: nextHistory.searchStr,
+              hash: nextHistory.hash
+                ? encodePathLikeUrl(`#${nextHistory.hash}`)
+                : '',
               state: {
                 ...nextHistory.state,
                 __tempKey: undefined!,
