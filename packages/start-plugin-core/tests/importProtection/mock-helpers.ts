@@ -12,8 +12,7 @@
  * or an object has no member two levels deep, a primitive none at all.
  * `probeMockPrelude` defines the same probe in the scripts the build and
  * Rsbuild harnesses run in another process, a VM context or a browser page
- * (a mock cannot cross that boundary). Never `await` a mock: the mock runtime is a
- * thenable that resolves to itself.
+ * (a mock cannot cross that boundary).
  *
  * Pure: only the probe and the readers of the runtime diagnostics, no module
  * of the implementation.
