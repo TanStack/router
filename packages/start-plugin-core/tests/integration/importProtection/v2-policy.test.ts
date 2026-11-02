@@ -21,7 +21,6 @@ import {
 import { importersIn, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type {
   ImportProtectionOptions,
-  ViolationInfo,
 } from '../../importProtection/public-types'
 
 const timeout = 60_000

@@ -402,9 +402,9 @@ describe('dev decisions', () => {
     let asked = 0
     const a = app(files, {
       onViolation: rec.onViolation,
-      allowImport: async () => {
+      allowImport: () => {
         asked++
-        return true
+        return Promise.resolve(true)
       },
     })
     const { out, outcome } = await a.compile('src/a.ts', 'client')
