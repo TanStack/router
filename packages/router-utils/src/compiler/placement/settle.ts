@@ -142,11 +142,13 @@ export function settleRoots(
 
   /**
    * The output whose tree decides the live reads of cluster `c` reached from
-   * output `o`: an env root a derived output imports from the env module
-   * reads what it evaluates there (an identifier option value the splitter
-   * replaced in the env output only is no read of a chunk importing `Route`),
-   * a cluster pinned to another output what it evaluates in that output. A
-   * provider output copies every cluster it reaches: its own tree decides.
+   * output `o`: a cluster the env module evaluates (an env root, or what one
+   * reads: `liveEnv`), which a derived output imports from there, reads what
+   * it evaluates there (an identifier option value the splitter replaced in
+   * the env output only is no read of a chunk importing `Route`, nor is the
+   * erased handler of a server fn the route's loader calls), a cluster pinned
+   * to another output what it evaluates in that output. A provider output
+   * copies every cluster it reaches: its own tree decides.
    */
   const readsOutput = (c: ClusterId, o: OutputId): OutputId => {
     if (o === 'env' || outputs.get(o)?.kind === 'provider') {
@@ -156,7 +158,7 @@ export function settleRoots(
     if (pin !== undefined) {
       return pin
     }
-    return envRoots.has(c) ? 'env' : o
+    return envRoots.has(c) || liveEnv.has(c) ? 'env' : o
   }
   const reach = (
     o: OutputId,
@@ -481,6 +483,7 @@ export function settleRoots(
   }
 
   // ---- derived reach before any decision; pre-existing dead code ----------
+  liveEnv = reach('env', envRoots)
   for (const [id, from] of derivedRoots) {
     derivedReach.set(id, reach(id, from))
   }
@@ -582,6 +585,7 @@ export function settleRoots(
   for (;;) {
     if (derivedStale) {
       derivedStale = false
+      liveEnv = reach('env', envRoots)
       const stop = new Set(remaining.keys())
       // a chunk's reach passes through the candidates it copies and stops
       // at the others, which it imports from their extracted module (one
