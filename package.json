@@ -75,6 +75,7 @@
     "markdown-link-extractor": "^4.0.3",
     "nx": "24.0.0",
     "prettier": "^3.8.0",
+    "sass": "1.97.2",
     "tinyglobby": "^0.2.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "catalog:",

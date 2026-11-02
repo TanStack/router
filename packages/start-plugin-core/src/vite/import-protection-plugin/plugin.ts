@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
+import { getRouteModuleDirectories } from '../../start-router-plugin/route-module-directories'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
 import { SERVER_FN_LOOKUP, VITE_ENVIRONMENT_NAMES } from '../../constants'
@@ -280,6 +281,7 @@ export function importProtectionPlugin(
     command: 'build',
     bundledDev: false,
     srcDirectory: '',
+    routeModuleDirectories: [],
     framework: opts.framework,
     effectiveBehavior: 'error',
     mockAccess: 'error',
@@ -1209,7 +1211,9 @@ export function importProtectionPlugin(
             edgeSurvivalApplied ||
             (pv.info.type === 'file' &&
               !!pv.info.resolved &&
-              isInsideDirectory(pv.info.resolved, config.srcDirectory))
+              [config.srcDirectory, ...config.routeModuleDirectories].some(
+                (directory) => isInsideDirectory(pv.info.resolved!, directory),
+              ))
 
           if (shouldEmit) {
             emittedAny =
@@ -1423,6 +1427,10 @@ export function importProtectionPlugin(
 
         const { startConfig, resolvedStartConfig } = opts.getConfig()
         config.srcDirectory = resolvedStartConfig.srcDirectory
+        config.routeModuleDirectories = getRouteModuleDirectories(
+          viteConfig.root,
+          startConfig.router.routeModules,
+        )
 
         const userOpts: ImportProtectionOptions | undefined =
           startConfig.importProtection
@@ -1616,7 +1624,12 @@ export function importProtectionPlugin(
             const routesDirectory = normalizePath(
               `${config.srcDirectory}/routes`,
             )
-            if (isInsideDirectory(normalizedImporter, routesDirectory)) {
+            if (
+              isInsideDirectory(normalizedImporter, routesDirectory) ||
+              config.routeModuleDirectories.some((directory) =>
+                isInsideDirectory(normalizedImporter, directory),
+              )
+            ) {
               env.graph.addEntry(normalizedImporter)
             }
           }

@@ -21,6 +21,8 @@ export interface PluginConfig {
   command: 'build' | 'serve'
   bundledDev: boolean
   srcDirectory: string
+  /** Package roots of installed route modules (application source too). */
+  routeModuleDirectories: Array<string>
   framework: CompileStartFrameworkOptions
   effectiveBehavior: ImportProtectionBehavior
   mockAccess: 'error' | 'warn' | 'off'

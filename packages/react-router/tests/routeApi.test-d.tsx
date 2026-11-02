@@ -122,7 +122,7 @@ describe('getRouteApi', () => {
   test('Link', () => {
     const Link = invoiceRouteApi.Link
     expectTypeOf(Link).toEqualTypeOf<
-      LinkComponentRoute<'/invoices/$invoiceId'>
+      LinkComponentRoute<'/invoices/$invoiceId', { router: DefaultRouter }>
     >()
   })
 })

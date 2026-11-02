@@ -5,7 +5,9 @@ import type {
 } from './structuralSharing'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseParams,
   StrictOrFrom,
   ThrowConstraint,
@@ -45,8 +47,8 @@ export type UseParamsOptions<
   > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
-export type UseParamsRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseParamsRoute<out TFrom, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
   TThrow extends boolean = true,
@@ -61,6 +63,31 @@ export type UseParamsRoute<out TFrom> = <
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
+
+/**
+ * The signature of `useParams`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useParams` of this type.
+ */
+export type UseParamsFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TThrow extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseParamsOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected,
+    TStructuralSharing
+  >,
+) => ThrowOrOptional<
+  UseParamsResult<TRouter, TFrom, TStrict, TSelected>,
+  TThrow
+>
 
 /**
  * Access the current route's path parameters with type-safety.

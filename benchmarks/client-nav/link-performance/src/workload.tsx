@@ -238,6 +238,7 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
   }
   switch (caseId) {
     case 'relative':
+    case 'route-bound':
       return linkOptions({
         ...common,
         to: '/teams/$teamId/$itemId',
@@ -381,6 +382,15 @@ function measuredLink(
         <Link
           {...common}
           from="/teams/$teamId/$itemId"
+          to={index % 2 === 0 ? '..' : './details'}
+          params
+          search
+        />
+      )
+    case 'route-bound':
+      return (
+        <teamItemRoute.Link
+          {...common}
           to={index % 2 === 0 ? '..' : './details'}
           params
           search

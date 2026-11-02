@@ -3,7 +3,9 @@ import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RouterState,
 } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
@@ -18,6 +20,17 @@ export type UseLocationResult<
 > = unknown extends TSelected
   ? RouterState<TRouter['routeTree']>['location']
   : TSelected
+
+/**
+ * The signature of `useLocation`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLocation` of this type.
+ */
+export type UseLocationFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseLocationBaseOptions<TRouter, TSelected>,
+) => Accessor<UseLocationResult<TRouter, TSelected>>
 
 export function useLocation<
   TRouter extends AnyRouter = RegisteredRouter,

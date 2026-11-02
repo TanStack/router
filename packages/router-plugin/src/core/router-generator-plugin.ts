@@ -18,6 +18,9 @@ export function createRouterGeneratorPlugin(
   let ROOT: string = process.cwd()
   let userConfig: Config
   let generator: Generator
+  // Route modules: files outside the routes directory that change the route
+  // tree (package.json, manifests of mounted modules). Watchers add them.
+  let watchRouteModuleFiles: ((files: Array<string>) => void) | undefined
 
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
@@ -57,6 +60,7 @@ export function createRouterGeneratorPlugin(
     try {
       await generator.run(generatorEvent)
       routerPluginContext.routesByFile = generator.getRoutesByFileMap()
+      watchRouteModuleFiles?.(generator.getRouteModuleWatchFiles())
     } catch (e) {
       console.error(e)
     }
@@ -76,6 +80,14 @@ export function createRouterGeneratorPlugin(
         initConfigAndGenerator({ root: config.root })
         await generate()
       },
+      configureServer(server) {
+        watchRouteModuleFiles = (files) => {
+          if (files.length) {
+            server.watcher.add(files)
+          }
+        }
+        watchRouteModuleFiles(generator.getRouteModuleWatchFiles())
+      },
     },
     rspack(compiler) {
       initConfigAndGenerator()
@@ -92,9 +104,22 @@ export function createRouterGeneratorPlugin(
         // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        handle = chokidar
+        const watcher = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', (file) => generate({ file, event: 'create' }))
+          .on('change', (file) => {
+            if (generator.getRouteModuleWatchFiles().includes(file)) {
+              return generate({ file, event: 'update' })
+            }
+            return undefined
+          })
+        handle = watcher
+        watchRouteModuleFiles = (files) => {
+          if (files.length) {
+            watcher.add(files)
+          }
+        }
+        watchRouteModuleFiles(generator.getRouteModuleWatchFiles())
 
         await generate()
       })
@@ -120,9 +145,22 @@ export function createRouterGeneratorPlugin(
         // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        handle = chokidar
+        const watcher = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', (file) => generate({ file, event: 'create' }))
+          .on('change', (file) => {
+            if (generator.getRouteModuleWatchFiles().includes(file)) {
+              return generate({ file, event: 'update' })
+            }
+            return undefined
+          })
+        handle = watcher
+        watchRouteModuleFiles = (files) => {
+          if (files.length) {
+            watcher.add(files)
+          }
+        }
+        watchRouteModuleFiles(generator.getRouteModuleWatchFiles())
 
         await generate()
       })

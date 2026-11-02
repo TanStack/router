@@ -16,7 +16,9 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveRoute,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
@@ -24,7 +26,7 @@ import type {
 // Define a type for the error component function
 type ErrorRouteComponentType = (props: ErrorComponentProps) => Vue.VNode
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface RouteMatchExtensions {
     meta?: Array<Vue.ComponentOptions['meta'] | undefined>
     links?: Array<Vue.ComponentOptions['link'] | undefined>
@@ -135,6 +137,22 @@ export type UseMatchRouteOptions<
   MaskOptions<TRouter, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
+/**
+ * The signature of `useMatchRoute`, typed against the router of `TDefaultRegister` unless a
+ * router type is passed explicitly. Route modules export a `useMatchRoute` of
+ * this type.
+ */
+export type UseMatchRouteFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>() => <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Vue.Ref<false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
+
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
@@ -188,24 +206,14 @@ export type MakeMatchRouteOptions<
 }
 
 // Create a type for the MatchRoute component that includes the generics
-export interface MatchRouteComponentType {
+export interface MatchRouteComponentType<TDefaultRegister = Register> {
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
     TFrom extends string = string,
     TTo extends string | undefined = undefined,
   >(
     props: MakeMatchRouteOptions<TRouter, TFrom, TTo>,
   ): Vue.VNode
-  new (): {
-    $props: {
-      from?: string
-      to?: string
-      fuzzy?: boolean
-      caseSensitive?: boolean
-      includeSearch?: boolean
-      pending?: boolean
-    }
-  }
 }
 
 export const MatchRoute = Vue.defineComponent({
@@ -234,6 +242,15 @@ export const MatchRoute = Vue.defineComponent({
     },
     pending: {
       type: Boolean,
+      required: false,
+    },
+    // Internal route-module scope, set by the `MatchRoute` of a route module.
+    _module: {
+      type: String,
+      required: false,
+    },
+    _nearestRoute: {
+      type: String,
       required: false,
     },
   },
@@ -269,6 +286,17 @@ export type UseMatchesResult<
   TSelected,
 > = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
 
+/**
+ * The signature of `useMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useMatches` of this type.
+ */
+export type UseMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Vue.Ref<UseMatchesResult<TRouter, TSelected>>
+
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -282,6 +310,17 @@ export function useMatches<
       : (matches as any)
   })
 }
+
+/**
+ * The signature of `useParentMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useParentMatches` of this type.
+ */
+export type UseParentMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Vue.Ref<UseMatchesResult<TRouter, TSelected>>
 
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -301,6 +340,17 @@ export function useParentMatches<
     },
   } as any)
 }
+
+/**
+ * The signature of `useChildMatches`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useChildMatches` of this type.
+ */
+export type UseChildMatchesFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+) => Vue.Ref<UseMatchesResult<TRouter, TSelected>>
 
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,

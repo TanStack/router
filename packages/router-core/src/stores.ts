@@ -176,5 +176,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     })
   }
 
-  return store
+  // Internally every lane stores the same runtime match shape; the public
+  // router view projects the route-tree-specific match union over those values.
+  return store as unknown as RouterStores<TRouteTree>
 }

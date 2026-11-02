@@ -29,12 +29,17 @@ export async function prerender({
     let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
 
     if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
-      const pagesMap = new Map(pages.map((item) => [item.path, item]))
+      // Requests use a trailing slash. Use that same URL identity for merging
+      // parent/index discoveries and preserving explicit per-page overrides.
+      const pagesMap = new Map(
+        pages.map((item) => [withTrailingSlash(item.path), item]),
+      )
       const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
 
       for (const page of discoveredPages) {
-        if (!pagesMap.has(page.path)) {
-          pagesMap.set(page.path, page)
+        const key = withTrailingSlash(page.path)
+        if (!pagesMap.has(key)) {
+          pagesMap.set(key, page)
         }
       }
 

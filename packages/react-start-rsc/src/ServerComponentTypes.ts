@@ -203,7 +203,7 @@ export interface RenderableServerComponentAttributes<TNode> {
   [RENDERABLE_RSC]: true
 }
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface SerializableExtensions {
     CompositeComponent: AnyCompositeComponent
     RenderableServerComponent: AnyRenderableServerComponent

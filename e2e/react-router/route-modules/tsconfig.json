@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "tests",
+    "e2e",
+    "e2e-dev",
+    "scripts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "playwright.dev.config.ts"
+  ]
+}

@@ -1,3 +1,4 @@
+import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
 import * as Solid from 'solid-js'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -141,7 +142,13 @@ export const Match = (props: { routeId: string }) => {
 
                 notFoundError.routeId ??= currentMatch().routeId
 
-                if (notFoundError.routeId !== currentMatch().routeId) {
+                if (
+                  (resolveRouteId?.(
+                    router,
+                    notFoundError.routeId,
+                    currentMatch().routeId,
+                  ) ?? notFoundError.routeId) !== currentMatch().routeId
+                ) {
                   throw notFoundError
                 }
 

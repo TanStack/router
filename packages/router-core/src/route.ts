@@ -3,6 +3,7 @@ import { cleanPath, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
+import { getModuleRootId, getRouteNavigationScope } from './route-module-hooks'
 import type { LazyRoute } from './fileRoute'
 import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
@@ -506,7 +507,17 @@ export type ResolveFullPath<
   TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
-export interface RouteExtensions<in out TId, in out TFullPath> {
+/**
+ * Framework adapters augment this interface with route-bound hooks and
+ * components. `TRegister` is the route's scope: `RegisteredRouterOf<TRegister>`
+ * is the router those APIs are typed against (the registered router for
+ * application routes, the route module's router for module routes).
+ */
+export interface RouteExtensions<
+  in out TId,
+  in out TFullPath,
+  in out TRegister,
+> {
   id: TId
   fullPath: TFullPath
 }
@@ -658,7 +669,7 @@ export interface Route<
   in out TSSR,
   in out TServerMiddlewares,
   in out THandlers,
-> extends RouteExtensions<TId, TFullPath> {
+> extends RouteExtensions<TId, TFullPath, TRegister> {
   path: TPath
   parentRoute: TParentRoute
   children?: TChildren
@@ -834,7 +845,7 @@ export interface Route<
    * @returns A redirect Response that can be thrown from loaders/beforeLoad
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
    */
-  redirect: RedirectFnRoute<TFullPath>
+  redirect: RedirectFnRoute<TFullPath, TRegister>
 }
 
 export type AnyRoute = Route<
@@ -1267,6 +1278,18 @@ export interface UpdatableRouteOptions<
   in out TBeforeLoadFn,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
+  /**
+   * Internal: the id of the route module whose root this route is. Set by
+   * `createModuleRoot`; do not set it manually. The root of an installation
+   * of a module installed several times has `<moduleId>#<as>`.
+   */
+  _module?: string
+  /**
+   * Internal: the installations that this module root's module uses of
+   * modules installed several times, keyed by module id. Set by
+   * `mountRouteModule`.
+   */
+  _uses?: Record<string, string>
   /**
    * If true, this route will be matched as case-sensitive
    *
@@ -1797,7 +1820,10 @@ export class BaseRoute<
           RoutePathOptionsIntersection<TCustomId, TPath>)
       | undefined
 
-    const isRoot = !options?.path && !options?.id
+    // A route module's root is never the tree root: it is mounted under a
+    // host route, and its id qualifies the ids of its subtree.
+    const moduleRootId = getModuleRootId?.(options)
+    const isRoot = !moduleRootId && !options?.path && !options?.id
 
     this.parentRoute = this.options.getParentRoute?.()
 
@@ -1825,11 +1851,12 @@ export class BaseRoute<
     // Strip the parentId prefix from the first level of children
     const id = isRoot
       ? rootRouteId
-      : cleanPath(
+      : (moduleRootId ??
+        cleanPath(
           (this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id) +
             '/' +
             (customId ?? ''),
-        )
+        ))
 
     if (path === rootRouteId) {
       path = '/'
@@ -2011,8 +2038,12 @@ export class BaseRoute<
    * @returns A redirect Response that can be thrown from loaders/beforeLoad
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
    */
-  redirect: RedirectFnRoute<TFullPath> = (opts) =>
-    redirect({ from: this.fullPath, ...opts } as any)
+  redirect: RedirectFnRoute<TFullPath, TRegister> = (opts) =>
+    redirect({
+      from: this.fullPath,
+      ...getRouteNavigationScope?.(this.id),
+      ...opts,
+    } as any)
 }
 
 export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
@@ -2033,9 +2064,15 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
    * @returns A redirect Response that can be thrown from loaders/beforeLoad
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
    */
-  redirect: RedirectFnRoute<RouteTypesById<TRouter, TId>['fullPath']> = (
-    opts,
-  ) => redirect({ from: this.id as string, ...opts } as any)
+  redirect: RedirectFnRoute<
+    RouteTypesById<TRouter, TId>['fullPath'],
+    { router: TRouter }
+  > = (opts) =>
+    redirect({
+      from: this.id as string,
+      ...getRouteNavigationScope?.(this.id as string),
+      ...opts,
+    } as any)
 }
 
 export interface RootRoute<

@@ -1,0 +1,54 @@
+{
+  "name": "tanstack-react-start-e2e-route-modules",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "vitest run && pnpm test:e2e:dev",
+    "test:e2e:dev": "pnpm test:e2e:dev:vite && pnpm test:e2e:dev:rsbuild",
+    "test:e2e:dev:vite": "E2E_TOOLCHAIN=vite playwright test --config playwright.dev.config.ts --project=chromium",
+    "test:e2e:dev:rsbuild": "E2E_TOOLCHAIN=rsbuild playwright test --config playwright.dev.config.ts --project=chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@start-route-modules/web": "workspace:*",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-generator": "workspace:^",
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "build:vite:ssr": {
+        "options": {
+          "command": "node scripts/prepare.mjs && pnpm --filter @start-route-modules/web build:vite"
+        },
+        "outputs": [
+          "{projectRoot}/packages/web/dist-vite-ssr"
+        ]
+      },
+      "build:rsbuild:ssr": {
+        "options": {
+          "command": "node scripts/prepare.mjs && pnpm --filter @start-route-modules/web build:rsbuild"
+        },
+        "outputs": [
+          "{projectRoot}/packages/web/dist-rsbuild-ssr"
+        ]
+      }
+    },
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
+    }
+  }
+}

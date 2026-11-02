@@ -1,4 +1,8 @@
-import type { StartInstanceOptions } from './createStart'
+import type {
+  StartModuleIdOf,
+  StartModuleRequiredContext,
+  ValidateModuleMiddlewareConsumer,
+} from './createStartModule'
 import type {
   AnyServerFn,
   ConstrainValidator,
@@ -67,7 +71,7 @@ export type CreateMiddlewareResult<
 
 export interface FunctionMiddleware<
   TRegister,
-> extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
+> extends FunctionMiddlewareAfterMiddleware<TRegister, undefined> {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<
       TNewMiddlewares,
@@ -134,6 +138,7 @@ export interface FunctionMiddlewareTypes<
   in out TClientSendContext,
 > {
   type: 'function'
+  startModule: StartModuleIdOf<TRegister>
   middlewares: TMiddlewares
   input: ResolveValidatorInput<TInputValidator>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
@@ -303,11 +308,14 @@ export type GlobalFetchRequestContext = Register extends {
   ? TRequestContext
   : AnyContext
 
-export type GlobalServerRequestContext<TRegister> = TRegister extends {
-  config: StartInstanceOptions<any, any, infer TRequestMiddlewares, any>
-}
-  ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
-  : AnyContext
+export type GlobalServerRequestContext<TRegister> = Assign<
+  StartModuleRequiredContext<StartModuleIdOf<TRegister>, 'requestContext'>,
+  TRegister extends {
+    config: { '~types': { requestMiddleware: infer TRequestMiddlewares } }
+  }
+    ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
+    : AnyContext
+>
 
 type __AssignAllServerRequestContext<
   TMiddlewares,
@@ -340,11 +348,14 @@ export type AssignAllServerFnContext<
   >
 >
 
-type GlobalServerFnContext<TRegister> = TRegister extends {
-  config: StartInstanceOptions<any, any, any, infer TFunctionMiddlewares>
-}
-  ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
-  : AnyContext
+type GlobalServerFnContext<TRegister> = Assign<
+  StartModuleRequiredContext<StartModuleIdOf<TRegister>, 'functionContext'>,
+  TRegister extends {
+    config: { '~types': { functionMiddleware: infer TFunctionMiddlewares } }
+  }
+    ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
+    : AnyContext
+>
 
 type __AssignAllServerFnContext<
   TMiddlewares,
@@ -420,7 +431,8 @@ export interface FunctionMiddlewareServer<
       TServerSendContext,
       TNewServerContext,
       TSendContext
-    >,
+    > &
+      ValidateModuleMiddlewareConsumer<TRegister, TMiddlewares, 'function'>,
   ) => FunctionMiddlewareAfterServer<
     TRegister,
     TMiddlewares,
@@ -726,6 +738,7 @@ export interface RequestMiddlewareTypes<
   TServerContext,
 > {
   type: 'request'
+  startModule: StartModuleIdOf<TRegister>
   // this only exists so we can use request middlewares in server functions
   allInput: undefined
   // this only exists so we can use request middlewares in server functions
@@ -747,7 +760,8 @@ export interface RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
 
 export interface RequestMiddlewareServer<TRegister, TMiddlewares> {
   server: <TServerContext = undefined>(
-    fn: RequestServerFn<TRegister, TMiddlewares, TServerContext>,
+    fn: RequestServerFn<TRegister, TMiddlewares, TServerContext> &
+      ValidateModuleMiddlewareConsumer<TRegister, TMiddlewares, 'request'>,
   ) => RequestMiddlewareAfterServer<TRegister, TMiddlewares, TServerContext>
 }
 

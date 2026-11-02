@@ -1,0 +1,49 @@
+{
+  "name": "@route-modules/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsr generate",
+    "check": "tsc --noEmit",
+    "build": "vite build && tsc -p tsconfig.contracts.json --noEmit",
+    "dev": "vite",
+    "check:contracts": "tsc -p tsconfig.contracts.json --noEmit"
+  },
+  "dependencies": {
+    "@route-modules/account": "workspace:*",
+    "@route-modules/billing": "workspace:*",
+    "@route-modules/products": "workspace:*",
+    "@route-modules/settings": "workspace:*",
+    "@route-modules/storefront": "workspace:*",
+    "@route-modules/team": "workspace:*",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/router-cli": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.14",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          "^build",
+          "^emit-types"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "^build",
+          "^emit-types"
+        ]
+      }
+    }
+  }
+}

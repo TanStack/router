@@ -10,17 +10,20 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 
 import { useRouter } from './useRouter'
-import { linkLocationContext } from './matchContext'
+import { linkLocationContext, routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
-
 import type {
   AnyRouter,
   Constrain,
   LinkOptions,
   ParsedLocation,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RoutePaths,
+  ScopedRouteOptions,
 } from '@tanstack/router-core'
+
 import type { AnchorHTMLAttributes, ReservedProps } from '@vue/runtime-dom'
 import type {
   ValidateLinkOptions,
@@ -87,6 +90,16 @@ type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any> & {
 }
 type LinkEventOptions = AnyLinkPropsOptions & Partial<VueStyleLinkEventHandlers>
 
+export type UseLinkPropsFn<TDefaultRegister> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TFrom extends string = string,
+  TTo extends string = '',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Vue.Ref<LinkHTMLAttributes>
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -95,20 +108,21 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-): LinkHTMLAttributes {
+): Vue.Ref<LinkHTMLAttributes> {
   return useLinkPropsImpl(() => options as AnyLinkPropsOptions)
 }
 
-function useLinkPropsImpl(
+/** @internal Shared by the scoped hook, which supplies live scoped options. */
+export function useLinkPropsImpl(
   getOptions: () => AnyLinkPropsOptions,
-): LinkHTMLAttributes {
+): Vue.Ref<LinkHTMLAttributes> {
   const router = useRouter()
   let renderFetchedHref: string | undefined
 
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return {}
+    return Vue.shallowRef({})
   }
 
   // During SSR we render exactly once and do not need reactivity.
@@ -118,10 +132,17 @@ function useLinkPropsImpl(
     if (getUrlScheme(`${options.to}`)) {
       return Vue.shallowRef(
         getExternalLinkProps(options, router),
-      ) as unknown as LinkHTMLAttributes
+      ) as Vue.Ref<LinkHTMLAttributes>
     }
 
-    const next = router.buildLocation(options as any)
+    const next = router.buildLocation(
+      (options._module === undefined
+        ? options
+        : {
+            ...options,
+            _nearestRoute: Vue.inject(routeIdContext, undefined),
+          }) as any,
+    )
     const href = getHref(options, router, next)
 
     const isActive =
@@ -150,7 +171,7 @@ function useLinkPropsImpl(
 
     return Vue.shallowRef(
       result as LinkHTMLAttributes,
-    ) as unknown as LinkHTMLAttributes
+    ) as Vue.Ref<LinkHTMLAttributes>
   }
 
   const ref = Vue.ref<Element | null>(null)
@@ -172,6 +193,9 @@ function useLinkPropsImpl(
   // place, so a reactive option value (checked one level deep, not nested)
   // gets a fresh object per location instead, re-read at each navigation. A
   // mask holds destination options of its own, so its values are checked too.
+  // The nearest route resolves module destinations to the installation the
+  // Link renders under; other destinations ignore it.
+  const routeId = Vue.inject(routeIdContext, undefined)
   const dest = Vue.computed((prev?: Record<string, any>) => {
     const options = getOptions() as Record<string, any>
     const dest: Record<string, any> = {}
@@ -187,6 +211,7 @@ function useLinkPropsImpl(
       }
       same &&= prev![key] === value
     }
+    dest._nearestRoute = routeId
     return same ? prev! : dest
   })
 
@@ -424,7 +449,7 @@ function useLinkPropsImpl(
   })
 
   // Return the computed ref itself - callers should access .value
-  return computedProps as unknown as LinkHTMLAttributes
+  return computedProps
 }
 
 // [href, active] of an internal Link.
@@ -447,6 +472,9 @@ const NAVIGATION_KEYS = [
   'unsafeRelative',
   'from',
   'href',
+  // Internal route-module scope (see `scopeLocationOptions` in router-core).
+  '_module',
+  '_fromRoute',
 ] as const
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
@@ -811,8 +839,9 @@ export type CreateLinkProps = LinkProps<
 export type LinkComponent<
   in out TComp,
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
@@ -823,10 +852,11 @@ export type LinkComponent<
 
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > {
   defaultFrom: TDefaultFrom;
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
@@ -840,6 +870,14 @@ export interface LinkComponentRoute<
     >,
   ): Vue.VNode
 }
+
+/**
+ * The signature of `createLink`, creating links typed against the router of `TDefaultRegister`.
+ * Route modules export a `createLink` of this type.
+ */
+export type CreateLinkFn<TDefaultRegister = Register> = <const TComp>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
+) => LinkComponent<TComp, string, TDefaultRegister>
 
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
@@ -916,7 +954,7 @@ const LinkImpl = Vue.defineComponent({
       (isServer ?? useRouter()?.isServer)
         ? () => ({ ...props, ...attrs })
         : useLinkPropsSnapshot(props, attrs),
-    ) as LinkHTMLAttributes | Vue.ComputedRef<LinkHTMLAttributes>
+    )
 
     return () => {
       const Component = props._asChild || 'a'
@@ -968,12 +1006,12 @@ export type LinkOptionsFnOptions<
     ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
     : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
-export type LinkOptionsFn<TComp> = <
+export type LinkOptionsFn<TComp, TDefaultRegister = Register> = <
   const TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
 >(
   options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
-) => TOptions
+) => ScopedRouteOptions<TOptions, TRouter>
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any

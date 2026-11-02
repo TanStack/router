@@ -1,5 +1,6 @@
 import type { NavigateOptions } from './link'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, Register, RegisteredRouter } from './router'
+import type { RegisteredRouterOf } from './route-module'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -72,15 +73,32 @@ export type RedirectOptionsRoute<
  * This enables relative redirects like `Route.redirect({ to: './overview' })`.
  * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType)
  */
-export interface RedirectFnRoute<in out TDefaultFrom extends string = string> {
+export interface RedirectFnRoute<
+  in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
+> {
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
     opts: RedirectOptionsRoute<TDefaultFrom, TRouter, TTo, TMaskTo>,
   ): Redirect<TRouter, TDefaultFrom, TTo, TDefaultFrom, TMaskTo>
 }
+
+/**
+ * The signature of `redirect`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `redirect` of this type.
+ */
+export type RedirectFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TTo extends string | undefined = '.',
+  const TFrom extends string = string,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 /**
  * Create a redirect Response understood by TanStack Router.

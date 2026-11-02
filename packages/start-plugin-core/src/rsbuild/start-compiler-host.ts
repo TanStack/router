@@ -41,6 +41,7 @@ type WarnableRsbuildTransformContext = RsbuildTransformContext & {
   emitWarning?: (warning: Error) => void
 }
 type RsbuildInputFileSystem = NonNullable<Rspack.Compiler['inputFileSystem']>
+type RspackResolver = ReturnType<Rspack.Compiler['resolverFactory']['get']>
 type ServerFnMetadataById = Map<string, ServerFnBuildInfo>
 type StartCompilerEnvironment = {
   name: string
@@ -141,6 +142,11 @@ export function registerStartCompilerTransforms(
   // Serialize access to each StartCompiler's mutable per-environment caches.
   const compilerQueues = new Map<string, Promise<void>>()
   const inputFileSystems = new Map<string, RsbuildInputFileSystem>()
+  // The compiler follows the `import`s of a module (for example through a
+  // module that re-exports `createServerFn`). The transform context's
+  // `resolve` is the loader's base resolver, which applies no dependency
+  // type, so package exports that only list `import` would not resolve.
+  const esmResolvers = new Map<string, RspackResolver>()
   const transformContextStorage =
     new AsyncLocalStorage<RsbuildTransformContext>()
   const serverFnMetadataByEnvironment = new Map<string, ServerFnMetadataById>()
@@ -344,20 +350,37 @@ export function registerStartCompilerTransforms(
                   ? importer.replace(/[/\\][^/\\]*$/, '')
                   : getRoot()
 
+                const resolver = esmResolvers.get(env.name)
+                if (!resolver) {
+                  throw new Error(
+                    `could not resolve ${source}: missing rspack resolver for ${env.name}`,
+                  )
+                }
+
                 return await new Promise((resolve, reject) => {
-                  activeCtx.resolve(context, source, (error, resolved) => {
-                    if (error) {
-                      reject(error)
-                      return
-                    }
+                  resolver.resolve(
+                    {},
+                    context,
+                    source,
+                    {
+                      fileDependencies: {
+                        add: (file: string) => activeCtx.addDependency(file),
+                      },
+                    },
+                    (error, resolved) => {
+                      if (error) {
+                        reject(error)
+                        return
+                      }
 
-                    if (!resolved) {
-                      resolve(null)
-                      return
-                    }
+                      if (!resolved) {
+                        resolve(null)
+                        return
+                      }
 
-                    resolve(cleanId(resolved))
-                  })
+                      resolve(cleanId(resolved))
+                    },
+                  )
                 })
               },
             })
@@ -411,10 +434,16 @@ export function registerStartCompilerTransforms(
         if (compiler.inputFileSystem) {
           inputFileSystems.set(utils.environment.name, compiler.inputFileSystem)
         }
-
         compiler.hooks.compilation.tap(
           'TanStackStartCompilerMetadataLoaderContext',
           (compilation) => {
+            // Rspack applies dependency conditions before compilation. Creating
+            // this resolver in apply would cache the unexpanded conditions.
+            esmResolvers.set(
+              utils.environment.name,
+              compiler.resolverFactory.get('normal', { dependencyType: 'esm' }),
+            )
+
             utils.rspack.NormalModule.getCompilationHooks(
               compilation,
             ).loader.tap(
