@@ -34,6 +34,10 @@ code.test.ts`: "a root route's %s loads lazily".
   anything loads that chunk. Upstream, Rspack's HMR runtime (see "Upstream issues"); a plain Rsbuild app fails the
   same way. SPEC J3.3, G10. `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`: "an edit
   that adds a server fn to the component shows its result on the open page".
+- **Rsbuild: an edit of a binding the route module keeps and a split chunk imports does not reach the chunk**: the route
+  module self-accepts and the chunk's text is unchanged, so the chunk keeps reading the exports of the route module's
+  first evaluation, with no error, until a reload. SPEC J3.3. `router-plugin/tests/integration/known-bugs-route-hmr-kept-binding.test.ts`:
+  "rsbuild $target: $shape (the loader reads it: $loaderReads) shows". Fix: the edit shows, by a hot update or a reload.
 - **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
