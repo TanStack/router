@@ -5,6 +5,7 @@
  * finish or fail, whatever the virtual modules import (SPEC G5). A marked one
  * is denied at its importer, as a marked file is.
  */
+import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
@@ -115,6 +116,60 @@ export const base = createServerFn()
     timeout,
   )
 })
+
+test(
+  'a virtual id only a plugin answers with its query builds',
+  async () => {
+    const b = await build(
+      `import data from 'virtual:data?inline'\nconsole.log(data)\nexport const value = 1\n`,
+      { 'virtual:data?inline': `export default 'MARK_DATA'\n` },
+    )
+    expect(b.client.where('MARK_DATA')).not.toBe('nowhere')
+  },
+  timeout,
+)
+
+test(
+  'a rebuild reads again a virtual module a plugin answers from a watched file',
+  async () => {
+    const text = (root: string) => readFileSync(`${root}/data.txt`, 'utf8')
+    const { client } = await buildStart({
+      bundler: 'vite',
+      files: {
+        'data.txt': `export const base = { handler: (f: any) => f }\n`,
+        'client-entry.ts': `import { base } from 'virtual:base.ts'
+export const fn = base.handler(async () => 'MARK_SERVER_HANDLER')
+console.log(fn)
+`,
+        'ssr-entry.ts': `export { fn } from './client-entry'\n`,
+      },
+      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      watchEdits: {
+        'data.txt': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+      },
+      viteConfig: {
+        plugins: [
+          {
+            name: 'test:virtual-from-file',
+            resolveId: (id) => (id === 'virtual:base.ts' ? id : null),
+            load(id) {
+              if (id !== 'virtual:base.ts') {
+                return null
+              }
+              const { root } = this.environment.config
+              this.addWatchFile(`${root}/data.txt`)
+              return text(root)
+            },
+          },
+        ],
+      },
+    })
+    expect(client.where('MARK_SERVER_HANDLER')).toBe('nowhere')
+  },
+  timeout,
+)
 
 test(
   'a virtual module whose load fails fails the build',

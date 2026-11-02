@@ -815,6 +815,11 @@ export function startCompilerPlugin(
             return typeof loaded === 'string' ? loaded : loaded.code
           })
         } else {
+          // a rebuild: what a plugin answers for a virtual id may have
+          // changed with any file it reads, and no event names the id
+          for (const id of buildVirtualTexts.get(env.name)?.ids() ?? []) {
+            s.start.rawFacts.markStale(id)
+          }
           const texts = buildVirtualText(async (id) => {
             const info = await this.load({ id })
             return info.code
@@ -854,8 +859,10 @@ export function startCompilerPlugin(
         if (this.environment.mode === 'build') {
           unsubscribeRoutes?.()
           unsubscribeRoutes = null
-          buildVirtualTexts.delete(env.name)
           virtualLoaders.delete(env.name)
+          if (!this.meta.watchMode) {
+            buildVirtualTexts.delete(env.name)
+          }
         }
       },
       resolveId: {

@@ -37,6 +37,7 @@
  */
 import {
   ASSET_QUERY_RE,
+  VIRTUAL_ID_RE,
   identify,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
@@ -109,13 +110,14 @@ interface TargetDescription {
 
 /**
  * The module whose marker a target's is. An asset query of a file (`x.ts?raw`)
- * has no language, so no marker of its own: on a client, the file's. A server
+ * has no language, so no marker of its own: on a client, the file's (a virtual
+ * id has no file; a plugin may answer only the id with its query). A server
  * gets the text or URL of a client-only file: that runs nothing of it there.
  */
 function markerIdOf(envType: EnvType, target: string): string {
   return envType === 'client' &&
     ASSET_QUERY_RE.test(target) &&
-    !target.startsWith('\0')
+    !VIRTUAL_ID_RE.test(target)
     ? identify(target).path
     : target
 }

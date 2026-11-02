@@ -2,6 +2,8 @@ export interface BuildVirtualText {
   /** A module's text as its transforms start: what `read` answers from then on. */
   loaded: (id: string, text: string) => void
   read: (id: string) => Promise<string | null>
+  /** The ids whose text this build saw. */
+  ids: () => Iterable<string>
 }
 
 /**
@@ -29,6 +31,7 @@ export function buildVirtualText(
     reads.delete(id)
   }
   return {
+    ids: () => texts.keys(),
     loaded(id, text) {
       texts.set(id, text)
       answer(id, text)
