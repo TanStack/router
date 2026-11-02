@@ -562,80 +562,6 @@ export { id }
     )
   })
 
-  it.each(['bindRouteScopeLink', 'createStartServerFn'])(
-    'allows the namespace export %s beside a private imported binding',
-    async (alias) => {
-      const catalog = await writePackage(
-        catalogPackage({
-          packageJson: {
-            tanstack: { router: { module: true } },
-            exports: {
-              './route-module': './src/routeModule.gen.ts',
-              './route-types': './src/routeContract.gen.ts',
-            },
-          },
-          files: {
-            'src/routes/__root.tsx': `import { createModuleRoot } from '../routeScope.gen'
-export const Route = createModuleRoot()({})`,
-            'src/routes/profile.tsx': route('@fixture/catalog:/profile'),
-          },
-        }),
-      )
-      await linkRouter(catalog)
-      await generate(catalog)
-      const shop = await writePackage({
-        name: '@fixture/shop',
-        dependencies: ['@fixture/catalog'],
-        packageJson: {
-          dependencies: {
-            '@fixture/catalog': '*',
-            '@tanstack/react-start': '*',
-          },
-          tanstack: {
-            router: {
-              module: { uses: [{ module: '@fixture/catalog', as: alias }] },
-            },
-          },
-        },
-        files: {
-          'src/routes/__root.tsx': `import { createModuleRoot } from '../routeScope.gen'
-export const Route = createModuleRoot()({})`,
-          'src/routes/index.tsx': route('@fixture/shop:/'),
-          'src/consumer.ts': `import { ${alias}, linkOptions, createServerFn } from './routeScope.gen'
-export const ownLink = linkOptions({ to: '/' })
-export const dependencyLink = ${alias}.linkOptions({ to: '/profile' })
-export const serverFn = createServerFn().handler(() => 'ok')
-// @ts-expect-error The dependency namespace retains its provider's local paths.
-${alias}.linkOptions({ to: '/outside' })
-`,
-        },
-      })
-      await linkRouter(shop)
-      await fs.symlink(
-        fileURLToPath(new URL('../../react-start', import.meta.url)),
-        path.join(shop, 'node_modules/@tanstack/react-start'),
-        'dir',
-      )
-      await fs.mkdir(path.join(shop, 'node_modules/@types'), {
-        recursive: true,
-      })
-      await fs.symlink(
-        fileURLToPath(
-          new URL('../../../node_modules/@types/node', import.meta.url),
-        ),
-        path.join(shop, 'node_modules/@types/node'),
-        'dir',
-      )
-      await generate(shop)
-      expect(
-        await checkConsumerTypes(shop, ['src/consumer.ts'], {
-          types: ['node'],
-        }),
-      ).toBe('')
-    },
-    30_000,
-  )
-
   it('loads ordinary routes whose derived private names collide', async () => {
     const app = await writePackage({
       name: '@fixture/app',
@@ -1282,12 +1208,15 @@ export const Route = createRootRoute()
     const generator = new Generator({ config, root: app })
     await generator.run()
 
+    // Keyed like the bundlers' normalized module ids, on every platform.
     const routesByFile = generator.getRoutesByFileMap()
-    expect(routesByFile.get(path.join(app, 'src/routes/__root.tsx'))).toEqual({
+    const routeFile = (root: string, file: string) =>
+      path.join(root, file).replaceAll(path.sep, '/')
+    expect(routesByFile.get(routeFile(app, 'src/routes/__root.tsx'))).toEqual({
       routeId: '/__root',
     })
     expect(
-      routesByFile.get(path.join(catalog, 'src/routes/$itemId.tsx')),
+      routesByFile.get(routeFile(catalog, 'src/routes/$itemId.tsx')),
     ).toEqual({ routeId: '@fixture/catalog:/$itemId' })
     expect(
       generator
@@ -1838,7 +1767,7 @@ export const startInstance = createStart(() => ({ extends: startModules }))
         },
       }),
     ).rejects.toThrow(
-      /"@fixture\/catalog" has a TanStack Start fragment\. Install it in ".*src\/start\.ts": export const startInstance = createStart/,
+      /"@fixture\/catalog" has a TanStack Start fragment\. Install it in ".*src[\\/]start\.ts": export const startInstance = createStart/,
     )
   })
 

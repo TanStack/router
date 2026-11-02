@@ -347,7 +347,8 @@ export class Generator {
 
   /**
    * The route files of the route tree by path, with their route ids: the
-   * package's own files and the files of the route modules it mounts.
+   * package's own files and the files of the route modules it mounts. Paths
+   * use forward slashes on every platform.
    */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     const moduleId =
@@ -369,7 +370,7 @@ export class Generator {
     )
     for (const mount of this.routeModuleContext?.mounts ?? []) {
       for (const { file, routeId } of mount.routeFiles) {
-        map.set(file, { routeId })
+        map.set(replaceBackslash(file), { routeId })
       }
     }
     return map
