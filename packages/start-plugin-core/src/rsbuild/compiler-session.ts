@@ -126,11 +126,6 @@ export class StartRsbuildCompilerSession {
   /** The bundler-free Start session (caches, import protection, registry, warnings, compiles). */
   readonly start: StartCompilerSession
   readonly envs = new Map<string, EnvState>()
-  /** Readers of files through the compilers' input file systems (virtual modules included), by environment. */
-  readonly inputFileSystems = new Map<
-    string,
-    (file: string) => Promise<string | null>
-  >()
   /**
    * The resolver of each environment, for its compiles and its
    * invalidations: the one a loader's `getResolve()` gives, asked outside
@@ -192,21 +187,13 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * Reads a file: our virtual modules through the compilers' input file
-   * systems (Rspack's virtual files), real files from the disk (the input
-   * file system caches across a watch compilation; the disk is the truth
-   * of an edited dependency).
+   * Reads a file from the disk. The compilers' input file systems are no
+   * better source: a file the compiler watches is as fresh there at `watchRun`,
+   * an unwatched one stays stale until their 60 s TTL, and they cannot read
+   * Rspack's `VirtualModulesPlugin` files. Those stay unread: our own virtual
+   * modules (`node_modules/.virtual/`) are missing to the raw facts.
    */
   async readFile(file: string): Promise<string | null> {
-    if (file.includes('/node_modules/.virtual/')) {
-      for (const read of this.inputFileSystems.values()) {
-        const text = await read(file)
-        if (text !== null) {
-          return text
-        }
-      }
-      return null
-    }
     try {
       return await fs.promises.readFile(file, 'utf8')
     } catch {

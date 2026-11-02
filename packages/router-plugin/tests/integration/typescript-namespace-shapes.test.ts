@@ -134,8 +134,8 @@ export const read = () => (M as any).A.B.v
 // `export namespace A.B` (one for `export namespace A`), so the compiler doesn't
 // know that export names the binding. Another export of it (`export { A as Z }`,
 // `export default A`) offers the binding for extraction when only split code
-// reads it, and the route file re-exports only the names it knows (KNOWN-BUGS,
-// "Upstream issues").
+// reads it, and the route file re-exports only the names it knows
+// (yuku-toolchain/yuku#318).
 // Impact: in a build the route file loses `A`: importers of it fail to link on
 // Rolldown, Rspack and Rsbuild, and read undefined on webpack and through a
 // namespace import on Rolldown.
