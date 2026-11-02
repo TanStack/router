@@ -27,13 +27,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true # changesets/action pushes Release PR commits
-      - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          run-install: true
+          cache: false
       - name: Run Build
-        run: pnpm run build:all
+        run: vp run build:all
       - name: Enter Pre-Release Mode
         if: "contains(github.ref_name, '-pre') && !hashFiles('.changeset/pre.json')"
-        run: pnpm changeset pre enter pre
+        run: vp changeset pre enter pre
       - name: Determine dist-tag
         id: dist-tag
         run: |
@@ -49,16 +52,14 @@ jobs:
         id: changesets
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
-          version: pnpm run changeset:version
-          publish: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
+          version: vp run changeset:version
+          publish: vp run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
           title: 'ci: Version Packages'
           commit: 'ci: changeset release'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=8192
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
         run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.prerelease == 'true' && '--prerelease' }} ${{ steps.dist-tag.outputs.latest == 'true' && '--latest' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}

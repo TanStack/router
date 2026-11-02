@@ -93,7 +93,7 @@ jobs:
         if: steps.stale.outputs.has_review == 'true'
         env:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ github.event.release.tag_name || 'manual' }}
         run: |
           BRANCH="skills/review-${VERSION}"

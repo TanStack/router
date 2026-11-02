@@ -22,7 +22,7 @@ on:
       - '!packages/**/__tests__/**'
       - '!packages/**/*.test.*'
       - 'benchmarks/**'
-      - '.nvmrc'
+      - '.node-version'
   workflow_dispatch:
 
 concurrency:
@@ -70,14 +70,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          run-install: true
+          cache: false
 
       # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
       # (and then run the task itself with --excludeTaskDependencies)
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
         run: >-
-          pnpm nx run
+          vp nx run
           @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
@@ -87,6 +90,6 @@ jobs:
           mode: ${{ matrix.mode }}
           run: >-
             WITH_INSTRUMENTATION=1
-            pnpm nx run
+            vp nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies

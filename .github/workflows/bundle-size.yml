@@ -9,7 +9,7 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
       - 'scripts/benchmarks/bundle-size/**'
-      - '.nvmrc'
+      - '.node-version'
       - 'package.json'
       - 'pnpm-lock.yaml'
   push:
@@ -18,7 +18,7 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
       - 'scripts/benchmarks/bundle-size/**'
-      - '.nvmrc'
+      - '.node-version'
       - 'package.json'
       - 'pnpm-lock.yaml'
   workflow_dispatch:
@@ -47,11 +47,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          run-install: true
+          cache: false
 
       - name: Measure Bundle Size
-        run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
+        run: vp run benchmark:bundle-size --outputStyle=stream --skipRemoteCache
 
       - name: Capture Benchmark Outputs
         id: capture
@@ -112,7 +115,7 @@ jobs:
         # Fork PRs have a read-only GITHUB_TOKEN, so they cannot update comments.
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           node scripts/benchmarks/common/upsert-pr-comment.mjs \
             --pr "${{ github.event.pull_request.number }}" \
@@ -131,18 +134,21 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          run-install: true
+          cache: false
 
       - name: Measure Bundle Size
-        run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
+        run: vp run benchmark:bundle-size --outputStyle=stream --skipRemoteCache
       - name: Publish Benchmark Dashboard
         uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           tool: customSmallerIsBetter
           name: Bundle Size (gzip)
           output-file-path: benchmarks/bundle-size/results/benchmark-action.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           auto-push: true
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: benchmarks/bundle-size
