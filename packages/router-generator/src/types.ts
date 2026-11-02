@@ -33,6 +33,7 @@ export interface GetRouteNodesResult {
   rootRouteNode?: RouteNode
   routeNodes: Array<RouteNode>
   physicalDirectories: Array<string>
+  configFilePaths?: Array<string>
 }
 
 export type FsRouteType =

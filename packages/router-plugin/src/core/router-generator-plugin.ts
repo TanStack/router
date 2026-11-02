@@ -1,11 +1,22 @@
-import { isAbsolute, join, normalize } from 'node:path'
+import { realpathSync } from 'node:fs'
+import { readFile, readdir, realpath } from 'node:fs/promises'
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  normalize,
+  resolve,
+} from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
+import { normalizePath } from './utils'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
-import type { UnpluginFactory } from 'unplugin'
+import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 
@@ -14,6 +25,7 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  framework?: UnpluginContextMeta['framework'],
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -40,6 +52,24 @@ export function createRouterGeneratorPlugin(
     })
   }
 
+  const runGenerator = async (event?: GeneratorEvent) => {
+    await generator.run(event)
+    const routesByFile = generator.getRoutesByFileMap()
+    // Bun resolves symlinks before invoking its module hooks.
+    routerPluginContext.routesByFile =
+      framework === 'bun'
+        ? new Map(
+            await Promise.all(
+              Array.from(
+                routesByFile,
+                async ([file, route]) =>
+                  [normalizePath(await realpath(file)), route] as const,
+              ),
+            ),
+          )
+        : routesByFile
+  }
+
   const generate = async (opts?: {
     file: string
     event: 'create' | 'update' | 'delete'
@@ -55,8 +85,7 @@ export function createRouterGeneratorPlugin(
     }
 
     try {
-      await generator.run(generatorEvent)
-      routerPluginContext.routesByFile = generator.getRoutesByFileMap()
+      await runGenerator(generatorEvent)
     } catch (e) {
       console.error(e)
     }
@@ -70,6 +99,68 @@ export function createRouterGeneratorPlugin(
         file: id,
         event,
       })
+    },
+    bun: {
+      setup(build) {
+        initConfigAndGenerator()
+        // Reject generation errors instead of bundling a stale route tree.
+        build.onStart(() => runGenerator())
+        if (
+          'reactFastRefresh' in build.config &&
+          build.config.reactFastRefresh
+        ) {
+          const configuredRouteTree = resolve(
+            ROOT,
+            userConfig.generatedRouteTree,
+          )
+          const generatedRouteTree = join(
+            realpathSync.native(dirname(configuredRouteTree)),
+            basename(configuredRouteTree),
+          )
+          const extension = extname(generatedRouteTree)
+          build.onLoad(
+            {
+              filter: new RegExp(
+                `^${generatedRouteTree.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              ),
+            },
+            async () => {
+              const dependencies = generator.getWatchDependencies()
+              // Bun watches immediate directory entries. Include empty directories
+              // so a route added there also triggers generation before bundling.
+              const watchDirs = await Promise.all(
+                dependencies.directories.map(async (directory) => {
+                  const entries = await readdir(directory, {
+                    recursive: true,
+                    withFileTypes: true,
+                  })
+                  return [
+                    directory,
+                    ...entries
+                      .filter((entry) => entry.isDirectory())
+                      .map((entry) => join(entry.parentPath, entry.name)),
+                  ]
+                }),
+              )
+              return {
+                contents: await readFile(generatedRouteTree, 'utf8'),
+                loader:
+                  build.config.loader?.[extension] ??
+                  (extension === '.tsx'
+                    ? 'tsx'
+                    : extension === '.jsx'
+                      ? 'jsx'
+                      : /\.[cm]?ts$/.test(extension)
+                        ? 'ts'
+                        : 'js'),
+                resolveDir: dirname(generatedRouteTree),
+                watchDirs: watchDirs.flat(),
+                watchFiles: dependencies.files,
+              }
+            },
+          )
+        }
+      },
     },
     vite: {
       async configResolved(config) {
@@ -147,6 +238,10 @@ export function createRouterGeneratorPlugin(
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}) => {
-  return createRouterGeneratorPlugin(options, createRouterPluginContext())
+> = (options = {}, meta) => {
+  return createRouterGeneratorPlugin(
+    options,
+    createRouterPluginContext(),
+    meta.framework,
+  )
 }

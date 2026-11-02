@@ -103,6 +103,16 @@
         "default": "./dist/cjs/esbuild.cjs"
       }
     },
+    "./bun": {
+      "import": {
+        "types": "./dist/esm/bun.d.ts",
+        "default": "./dist/esm/bun.js"
+      },
+      "require": {
+        "types": "./dist/cjs/bun.d.cts",
+        "default": "./dist/cjs/bun.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -132,6 +142,7 @@
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
     "@types/node": ">=20",
+    "bun-types-no-globals": "^1.4.3",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
@@ -144,6 +155,15 @@
     "publint": "catalog:",
     "rimraf": "catalog:",
     "webpack": "^5.104.1"
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
