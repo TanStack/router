@@ -13,6 +13,7 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { nearestMatchContext } from './matchContext'
 
@@ -105,8 +106,10 @@ function createLinkProps(
       }
     }
     // The nearest route resolves module destinations to the installation the
-    // Link renders under; other destinations ignore it.
-    dest._nearestRoute = routeId
+    // Link renders under. Only the route-module translation reads it.
+    if (scopeLocationOptions) {
+      dest._nearestRoute = routeId
+    }
     return dest
   }
   const dest =
@@ -477,10 +480,7 @@ const NAVIGATION_KEYS = [
   'unsafeRelative',
   'from',
   'href',
-  // Internal route-module scope (see `scopeLocationOptions` in router-core).
-  '_module',
-  '_fromRoute',
-] as const
+]
 // Options the Link consumes; every other option is an element prop.
 const LINK_OPTION_KEYS = [
   ...NAVIGATION_KEYS,
@@ -505,6 +505,18 @@ const LINK_OPTION_KEYS = [
 ]
 // A Link also consumes its children and component, and drops `type`.
 const LINK_ELEMENT_KEYS = [...LINK_OPTION_KEYS, '_asChild', 'children', 'type']
+
+/**
+ * Called by route-module code: its scopes pass these internal options, which
+ * decide where a Link navigates (see `scopeLocationOptions` in router-core).
+ */
+export function addRouteModuleLinkOptions(): void {
+  if (!NAVIGATION_KEYS.includes('_module')) {
+    for (const keys of [NAVIGATION_KEYS, LINK_OPTION_KEYS, LINK_ELEMENT_KEYS]) {
+      keys.push('_module', '_fromRoute')
+    }
+  }
+}
 const STATIC_EVENT_PROPS = [
   'onClick',
   'onBlur',

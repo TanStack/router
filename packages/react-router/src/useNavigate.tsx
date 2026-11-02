@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { matchContext } from './matchContext'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
@@ -50,22 +51,33 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const router = useRouter()
-  const routeId = React.useContext(matchContext)
+  // Only the route-module translation reads the nearest route. Route modules
+  // install it when the route tree is created, before the first render, so
+  // the condition is the same in every render of an application.
+  const routeId = scopeLocationOptions
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks -- see above
+      React.useContext(matchContext)
+    : undefined
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
-        // Route-module APIs also pass their internal `_module`/`_fromRoute`
-        // scope, constant for a route or scoped API. It resolves to the
-        // installation of the nearest match.
-        ..._defaultOpts,
-        _nearestRoute: routeId,
-        ...options,
-        from: options.from ?? _defaultOpts?.from,
-      })
+      return router.navigate(
+        scopeLocationOptions
+          ? {
+              // Route-module APIs also pass their internal `_module` and
+              // `_fromRoute` scope, constant for a route or scoped API.
+              ..._defaultOpts,
+              _nearestRoute: routeId,
+              ...options,
+              from: options.from ?? _defaultOpts?.from,
+            }
+          : { ...options, from: options.from ?? _defaultOpts?.from },
+      )
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope of the defaults is constant
-    [_defaultOpts?.from, routeId, router],
+    scopeLocationOptions
+      ? [_defaultOpts?.from, routeId, router]
+      : [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
 

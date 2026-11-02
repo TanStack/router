@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -33,18 +34,26 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const router = useRouter()
-  // A live match never changes route, so read it once without tracking.
-  const routeId = Solid.useContext(nearestMatchContext)[0 /* routeId */]()
+  // Only the route-module translation reads the nearest route. A live match
+  // never changes route, so read it once without tracking.
+  const routeId = scopeLocationOptions
+    ? Solid.useContext(nearestMatchContext)[0 /* routeId */]()
+    : undefined
 
   return ((options: NavigateOptions) => {
-    return router.navigate({
-      // Route-module APIs also pass their internal `_module`/`_fromRoute`
-      // scope; it resolves to the installation of the nearest match.
-      ..._defaultOpts,
-      _nearestRoute: routeId,
-      ...options,
-      from: options.from ?? _defaultOpts?.from,
-    })
+    return router.navigate(
+      scopeLocationOptions
+        ? {
+            // Route-module APIs also pass their internal `_module` and
+            // `_fromRoute` scope; it resolves to the installation of the
+            // nearest match.
+            ..._defaultOpts,
+            _nearestRoute: routeId,
+            ...options,
+            from: options.from ?? _defaultOpts?.from,
+          }
+        : { ...options, from: options.from ?? _defaultOpts?.from },
+    )
   }) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
 

@@ -2211,17 +2211,19 @@ export class RouterCore<
     // Route-module APIs pass module-local destinations (`_fromRoute` always
     // comes with `_module`); translate them once so the destination, its mask
     // and route masks all see final paths. Route-module code installs the
-    // translation before it creates such options.
-    const dest =
-      scopeLocationOptions && opts._module !== undefined
-        ? scopeLocationOptions(this, opts)
-        : opts
-    const next = build(dest)
+    // translation before it creates such options. The caller's options stay
+    // the cache key.
+    let cacheKey: typeof opts | undefined
+    if (scopeLocationOptions && opts._module !== undefined) {
+      cacheKey = opts
+      opts = scopeLocationOptions(this, opts)
+    }
+    const next = build(opts)
 
-    if (dest.mask) {
+    if (opts.mask) {
       next.maskedLocation = build({
-        from: dest.from,
-        ...dest.mask,
+        from: opts.from,
+        ...opts.mask,
       })
     } else if (this.options.routeMasks) {
       const match = findFlatMatch<RouteMask<TRouteTree>>(
@@ -2237,7 +2239,7 @@ export class RouterCore<
         const nextParams = resolveNextParams(maskParams, params)
 
         next.maskedLocation = build({
-          from: dest.from,
+          from: opts.from,
           ...maskProps,
           params: nextParams,
         })
@@ -2248,7 +2250,7 @@ export class RouterCore<
     // `usedCurrent`. Route masks belong to the route tree and options, whose
     // updates replace the cache.
     if (!(isServer ?? this.isServer) && !usedCurrent && opts._fromLocation) {
-      this.staticLocations!.set(opts, next)
+      this.staticLocations!.set(cacheKey ?? opts, next)
     }
 
     return next

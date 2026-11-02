@@ -161,12 +161,15 @@ export class RouteApi<
   > = ((props) => {
     const router = useRouter()
     const fullPath = router.routesById[this.id as string]?.fullPath
-    return (
-      <Link
-        from={fullPath as never}
-        {...(getRouteNavigationScope?.(this.id as string) as any)}
-        {...props}
-      />
+    // A Solid spread keeps its getter even when it yields nothing: spread the
+    // route-module scope only when route modules installed it.
+    const scope =
+      getRouteNavigationScope && getRouteNavigationScope(this.id as string)
+    // The scope of a route-module route replaces `from`.
+    return scope ? (
+      <Link {...(scope as any)} {...props} />
+    ) : (
+      <Link from={fullPath as never} {...props} />
     )
   }) as LinkComponentRoute<
     RouteTypesById<TRouter, TId>['fullPath'],
@@ -301,12 +304,14 @@ export class Route<
   }
 
   Link: LinkComponentRoute<TFullPath, TRegister> = ((props) => {
-    return (
-      <Link
-        from={this.fullPath as never}
-        {...(getRouteNavigationScope?.(this.id) as any)}
-        {...props}
-      />
+    // A Solid spread keeps its getter even when it yields nothing: spread the
+    // route-module scope only when route modules installed it.
+    // The scope of a route-module route replaces `from`.
+    const scope = getRouteNavigationScope && getRouteNavigationScope(this.id)
+    return scope ? (
+      <Link {...(scope as any)} {...props} />
+    ) : (
+      <Link from={this.fullPath as never} {...props} />
     )
   }) as LinkComponentRoute<TFullPath, TRegister>
 }

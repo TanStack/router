@@ -9,6 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { linkLocationContext, routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
@@ -194,8 +195,11 @@ export function useLinkPropsImpl(
   // gets a fresh object per location instead, re-read at each navigation. A
   // mask holds destination options of its own, so its values are checked too.
   // The nearest route resolves module destinations to the installation the
-  // Link renders under; other destinations ignore it.
-  const routeId = Vue.inject(routeIdContext, undefined)
+  // Link renders under. Only the route-module translation reads it, which
+  // route modules install before any component sets up.
+  const routeId = scopeLocationOptions
+    ? Vue.inject(routeIdContext, undefined)
+    : undefined
   const dest = Vue.computed((prev?: Record<string, any>) => {
     const options = getOptions() as Record<string, any>
     const dest: Record<string, any> = {}
@@ -211,7 +215,9 @@ export function useLinkPropsImpl(
       }
       same &&= prev![key] === value
     }
-    dest._nearestRoute = routeId
+    if (scopeLocationOptions) {
+      dest._nearestRoute = routeId
+    }
     return same ? prev! : dest
   })
 
@@ -472,10 +478,7 @@ const NAVIGATION_KEYS = [
   'unsafeRelative',
   'from',
   'href',
-  // Internal route-module scope (see `scopeLocationOptions` in router-core).
-  '_module',
-  '_fromRoute',
-] as const
+]
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
   const props =
@@ -665,6 +668,17 @@ const LINK_OPTION_KEYS = new Set<string>([
   '_asChild',
   'additionalProps',
 ])
+
+/**
+ * Called by route-module code: its scopes pass these internal options, which
+ * decide where a Link navigates (see `scopeLocationOptions` in router-core).
+ */
+export function addRouteModuleLinkOptions(): void {
+  if (!LINK_OPTION_KEYS.has('_module')) {
+    NAVIGATION_KEYS.push('_module', '_fromRoute')
+    LINK_OPTION_KEYS.add('_module').add('_fromRoute')
+  }
+}
 
 const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   const propsSafeToSpread: Record<string, unknown> = {}

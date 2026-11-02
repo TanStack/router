@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
 import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -33,16 +34,25 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const { navigate } = useRouter()
-  const routeId = Vue.inject(routeIdContext, undefined)
+  // Only the route-module translation reads the nearest route, which route
+  // modules install before any component sets up.
+  const routeId = scopeLocationOptions
+    ? Vue.inject(routeIdContext, undefined)
+    : undefined
 
   return ((options: NavigateOptions) => {
-    return navigate({
-      // Route-module APIs also pass their internal `_module`/`_fromRoute`
-      // scope; it resolves to the installation of the nearest match.
-      ..._defaultOpts,
-      _nearestRoute: routeId,
-      ...options,
-    })
+    return navigate(
+      scopeLocationOptions
+        ? {
+            // Route-module APIs also pass their internal `_module` and
+            // `_fromRoute` scope; it resolves to the installation of the
+            // nearest match.
+            ..._defaultOpts,
+            _nearestRoute: routeId,
+            ...options,
+          }
+        : { from: _defaultOpts?.from, ...options },
+    )
   }) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
 
