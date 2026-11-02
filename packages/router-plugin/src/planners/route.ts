@@ -291,13 +291,6 @@ export function recognizeRoute(
   const exp = analysis.exports.find(
     (e) => e.kind === 'local' && e.name === 'Route' && !e.typeOnly,
   )
-  if (!exp || exp.kind !== 'local' || exp.local === null) {
-    return { route: null, warnings }
-  }
-  const routeSym = exp.local
-  const unitIds = t1.declaringUnits.get(routeSym)
-  const routeUnit =
-    unitIds && unitIds.length === 1 ? t1.units[unitIds[0]!] : undefined
   const warn = (message: string, range?: Range, code?: string) => {
     warnings.push({
       severity: 'warning',
@@ -308,13 +301,33 @@ export function recognizeRoute(
     })
   }
   const fileName = identity.path
+  const notOneVariable = (range: Range) => {
+    if (importsFactory(analysis)) {
+      warn(
+        `[tanstack-router] The \`Route\` export of "${fileName}" is not one variable (a namespace of that name merges with it, even one holding only types), so it is not code-split or hot-updated. Rename what else declares \`Route\`.`,
+        range,
+        'route-unrecognized',
+      )
+    }
+    return { route: null, warnings }
+  }
+  if (!exp || exp.kind !== 'local') {
+    return { route: null, warnings }
+  }
+  if (exp.local === null) {
+    return notOneVariable(exp.range)
+  }
+  const routeSym = exp.local
+  const unitIds = t1.declaringUnits.get(routeSym)
+  const routeUnit =
+    unitIds && unitIds.length === 1 ? t1.units[unitIds[0]!] : undefined
   if (
     !routeUnit ||
     routeUnit.kind !== 'declaration' ||
     routeUnit.node.type !== 'VariableDeclarator' ||
     routeUnit.node.init === null
   ) {
-    return { route: null, warnings }
+    return notOneVariable(exp.range)
   }
   const outer = unwrapExpression(routeUnit.node.init)
   if (outer.type !== 'CallExpression') {
