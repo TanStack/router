@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { pruneServerOnlySubtrees } from '@tanstack/router-generator'
 import { normalize } from 'pathe'
 import { SERVER_PROP } from './constants'
@@ -18,6 +19,7 @@ function isServerOnlyNode(node: RouteNode | undefined) {
 export function createClientRouteTree(invalidate: () => void = () => {}) {
   let generator: Generator | undefined
   let moduleTrees = new Map<string, string>()
+  let clientShape: string | undefined
 
   const generatorPlugin: GeneratorPlugin = {
     name: 'start-client-tree-plugin',
@@ -29,7 +31,7 @@ export function createClientRouteTree(invalidate: () => void = () => {}) {
         invalidate()
       }
     },
-    onRouteTreeChanged() {
+    onRouteTreeChanged({ rootRouteNode, acc }) {
       moduleTrees = new Map(
         generator!
           .getRouteModuleClientTrees()
@@ -38,7 +40,25 @@ export function createClientRouteTree(invalidate: () => void = () => {}) {
             clientFilePath,
           ]),
       )
-      invalidate()
+      // Reload only when the client keeps a different set of routes: its own
+      // or a provider's, whose pruned tree bundlers may not watch. Other route
+      // changes reach the client through HMR.
+      const nextShape = JSON.stringify([
+        pruneServerOnlySubtrees({ rootRouteNode, acc }).routeNodes.map(
+          (node) => node.variableName,
+        ),
+        [...moduleTrees].map(([filePath, clientFilePath]) => [
+          filePath,
+          clientFilePath,
+          existsSync(clientFilePath)
+            ? readFileSync(clientFilePath, 'utf8')
+            : null,
+        ]),
+      ])
+      if (clientShape !== undefined && clientShape !== nextShape) {
+        invalidate()
+      }
+      clientShape = nextShape
     },
   }
 
