@@ -72,13 +72,22 @@ function countLineBreaks(code: string, start: number, end: number): number {
   return n
 }
 
+/** What says something about the code after it: a bundler's annotation, a license. */
+const APPLIES_TO_NEXT_RE =
+  /[#@]__(?:PURE|NO_SIDE_EFFECTS)__|^!|@license|@preserve/
+
 /**
  * Extends `end` over trailing same-line whitespace and comments through one
- * line terminator, so a removed statement takes its line with it.
+ * line terminator, so a removed statement takes its line with it. Code on the
+ * same line keeps an annotation or a license comment written right before it
+ * (`a; /* @__PURE__ *\/ mk()`): moved with `a`, it would apply to whatever
+ * comes next there.
  */
 export function extendOverTrailingLine(code: string, end: number): number {
   let i = end
   const len = code.length
+  /** The first comment that applies to the code after it. */
+  let applying = -1
   while (i < len) {
     const c = code.charCodeAt(i)
     if (c === 32 || c === 9 || c === 11 || c === 12) {
@@ -106,6 +115,12 @@ export function extendOverTrailingLine(code: string, end: number): number {
       if (hasBreak) {
         return i
       }
+      if (
+        applying === -1 &&
+        APPLIES_TO_NEXT_RE.test(code.slice(i + 2, close))
+      ) {
+        applying = i
+      }
       i = close + 2
       continue
     }
@@ -115,7 +130,7 @@ export function extendOverTrailingLine(code: string, end: number): number {
     if (c === 10 || c === 0x2028 || c === 0x2029) {
       return i + 1
     }
-    return i
+    return applying === -1 ? i : applying
   }
   return i
 }

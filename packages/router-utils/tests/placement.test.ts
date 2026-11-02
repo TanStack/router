@@ -4511,3 +4511,76 @@ describe('a statement an edit rewrites from its first byte', () => {
     expect(out?.code).toContain('(() => {})()')
   })
 })
+
+describe('a comment after a statement, before code on the same line', () => {
+  const moved = (comment: string, rest: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      const a = 'A'; ${comment} ${rest}
+      export const Route = createFileRoute('/')({ component: () => a })
+    `)
+  async function outputs(code: string) {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [toySplitPlanner()]
+    const env = await host.compile('/app/route.tsx', planners)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+    )
+    return { env: env?.code ?? '', chunk: chunk?.code ?? '' }
+  }
+
+  it.for([
+    '/* @__PURE__ */',
+    '/* #__PURE__ */',
+    '/*! MARK */',
+    '/* @license MARK */',
+    '/* @preserve MARK */',
+  ])('%s stays with that code, not with what moves', async (comment) => {
+    const { env, chunk } = await outputs(moved(comment, 'mk()'))
+    expect(env).toContain(`${comment} mk()`)
+    expect(chunk).not.toContain(comment)
+  })
+
+  it('an annotation of a function declared next stays with it', async () => {
+    const { env, chunk } = await outputs(
+      moved('/* @__NO_SIDE_EFFECTS__ */', 'function mk() { return g() }\nmk()'),
+    )
+    expect(env).toContain('/* @__NO_SIDE_EFFECTS__ */ function mk()')
+    expect(chunk).not.toContain('@__NO_SIDE_EFFECTS__')
+  })
+
+  it('an ordinary comment still goes with the statement', async () => {
+    const { env, chunk } = await outputs(moved('/* about a */', 'mk()'))
+    expect(env).not.toContain('about a')
+    expect(chunk).toContain('/* about a */')
+  })
+
+  it.for(['/* @__PURE__ */', '/* about a */', '// about a'])(
+    '%s that ends the line goes with the statement, as before',
+    async (comment) => {
+      const { env, chunk } = await outputs(moved(comment, '\nmk()'))
+      expect(env.slice(0, env.indexOf('mk()'))).not.toContain(comment)
+      expect(chunk).toContain(comment)
+    },
+  )
+
+  it('generated imports go before an annotation after a directive', async () => {
+    const { env } = await outputs(
+      dedent(`
+        'use client'; /* @__PURE__ */ mk()
+        import { createFileRoute } from 'toy-router'
+        const a = 'A'
+        export const Route = createFileRoute('/')({ component: () => a })
+      `),
+    )
+    expect(env).toContain('/* @__PURE__ */ mk()')
+  })
+
+  it('a statement ended by its brace keeps the annotation on the next code', async () => {
+    const { env } = await outputs(
+      moved('', 'function f() { return a } /* @__PURE__ */ mk(f)'),
+    )
+    expect(env).toMatch(/\/\* @__PURE__ \*\/ mk\(f\)/)
+  })
+})

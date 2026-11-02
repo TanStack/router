@@ -391,3 +391,17 @@ describe('function-local declarations only erased code read', () => {
     )
   })
 })
+
+describe('an annotation next to a removed local declaration', () => {
+  it('stays with the call on its line', async () => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      export function f() {
+        const local = 1; /* @__PURE__ */ mk()
+        return wrapServer(() => local)
+      }
+    `)
+    expect(out).not.toContain('local')
+    expect(out).toContain('/* @__PURE__ */ mk()')
+  })
+})
