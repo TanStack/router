@@ -860,13 +860,17 @@ export function createStartHandler<TRegister = Register>(
           })
           signal.throwIfAborted()
 
-          if (routerInstance._serverResult?.type === 'redirect') {
-            return normalizeSsrResponse(routerInstance._serverResult.redirect)
+          const result = routerInstance._serverResult
+          if (result?.type === 'redirect') {
+            return normalizeSsrResponse(result.redirect)
           }
 
-          earlyHints?.collectDynamic(
-            _getRenderedMatches(routerInstance.stores.matches.get()),
-          )
+          const hadPendingLoads = !!routerInstance._serverLoads
+          if (!hadPendingLoads) {
+            earlyHints?.collectDynamic(
+              _getRenderedMatches(routerInstance.stores.matches.get()),
+            )
+          }
 
           // Pass request-scoped assets to dehydrate for manifest injection
           await routerInstance.serverSsr!.dehydrate({
@@ -874,6 +878,15 @@ export function createStartHandler<TRegister = Register>(
             signal,
           })
           signal.throwIfAborted()
+          if (routerInstance._serverResult?.type === 'redirect') {
+            return normalizeSsrResponse(routerInstance._serverResult.redirect)
+          }
+
+          if (hadPendingLoads || routerInstance._serverResult !== result) {
+            earlyHints?.collectDynamic(
+              _getRenderedMatches(routerInstance.stores.matches.get()),
+            )
+          }
 
           const responseHeaders = getStartResponseHeaders(routerInstance)
           earlyHints?.appendResponseHeaders(responseHeaders)
