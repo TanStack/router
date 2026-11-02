@@ -300,6 +300,18 @@ export function computeSharedBindings(opts: {
 }
 
 /**
+ * Whether `node` is a namespace that compiles to a value, such as
+ * `namespace styles {}`. A `declare namespace` emits no code.
+ */
+function isRuntimeNamespace(
+  node: t.Node,
+): node is t.TSModuleDeclaration & { id: t.Identifier } {
+  return (
+    t.isTSModuleDeclaration(node) && !node.declare && t.isIdentifier(node.id)
+  )
+}
+
+/**
  * Find which shared bindings are user-exported in the original source.
  * These need to be re-exported from the shared module.
  */
@@ -324,6 +336,9 @@ function findExportedSharedBindings(
       if (sharedBindings.has(stmt.declaration.id.name))
         exported.add(stmt.declaration.id.name)
     } else if (t.isClassDeclaration(stmt.declaration) && stmt.declaration.id) {
+      if (sharedBindings.has(stmt.declaration.id.name))
+        exported.add(stmt.declaration.id.name)
+    } else if (isRuntimeNamespace(stmt.declaration)) {
       if (sharedBindings.has(stmt.declaration.id.name))
         exported.add(stmt.declaration.id.name)
     }
@@ -354,6 +369,8 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
     } else if (t.isFunctionDeclaration(decl) && decl.id) {
       if (sharedBindings.has(decl.id.name)) return false
     } else if (t.isClassDeclaration(decl) && decl.id) {
+      if (sharedBindings.has(decl.id.name)) return false
+    } else if (isRuntimeNamespace(decl)) {
       if (sharedBindings.has(decl.id.name)) return false
     }
 
@@ -1173,6 +1190,10 @@ export function compileCodeSplitVirtualRoute(
             // becomes
             // import { x } from '${opts.id}'
 
+            // An export inside a namespace is a member of the namespace,
+            // not a module export.
+            if (!path.parentPath.isProgram()) return
+
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
                 const specifiers = path.node.declaration.declarations.flatMap(
@@ -1599,6 +1620,8 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
 
   babel.traverse(ast, {
     ExportNamedDeclaration(path) {
+      if (!path.parentPath.isProgram()) return
+
       if (path.node.declaration) {
         // declared as `const loaderFn = () => {}`
         if (t.isVariableDeclaration(path.node.declaration)) {
@@ -1664,6 +1687,8 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
   // the program tree but typescript doesn't know that.
   babel.traverse(ast, {
     ExportNamedDeclaration(path) {
+      if (!path.parentPath.isProgram()) return
+
       if (path.node.declaration) {
         if (t.isVariableDeclaration(path.node.declaration)) {
           // declared as `const loaderFn = () => {}`
