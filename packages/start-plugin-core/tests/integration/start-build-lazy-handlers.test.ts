@@ -95,6 +95,24 @@ function Page() {
 }
 export const Route = createFileRoute('/nested')({ component: Page })
 `,
+  // a server fn nested in an exported class only the split component reads:
+  // the class leaves the route module, which holds the hoisted fn, and each
+  // of the two imports the other
+  'src/routes/nested-class.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}export class K {
+  label() {
+    return 'MARK_CLASS'
+  }
+  make() {
+    return createServerFn().handler(async () => new K().label())
+  }
+}
+function Page() {
+  ;(globalThis as any).__classLoad = new K().make()
+  return 'MARK_CLASS_PAGE'
+}
+export const Route = createFileRoute('/nested-class')({ component: Page })
+`,
   'client-entry.ts': `export * from './fns'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
@@ -199,6 +217,27 @@ return { before, called: await fn(), after: counts('deep') }`)
         before: { deep: 0 },
         called: 'MARK_DEEP',
         after: { deep: 1 },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a server fn nested in an exported class only the split component reads runs, directly and over HTTP',
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+const rendered = await entry.renderPath(routeTree, '/nested-class')
+const load = globalThis.__classLoad
+return {
+  rendered: rendered.includes('MARK_CLASS_PAGE'),
+  called: await load(),
+  overHttp: await callById(serverFnId(load)),
+}`)
+      expect(result).toEqual({
+        rendered: true,
+        called: 'MARK_CLASS',
+        overHttp: 'MARK_CLASS',
       })
     },
     timeout,
