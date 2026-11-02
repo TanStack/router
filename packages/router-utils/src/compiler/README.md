@@ -184,8 +184,9 @@ directives, never license comments.
   an app module re-exporting it is not followed, and a third party's purity is never assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
   and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data property):
-  no namespace merged in, and every value use a member access or an export, so whatever writes it is in the mutation
-  model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`),
+  no namespace merged in, and every value use a read of a member it declares or an export, so whatever writes it is in
+  the mutation model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
+  `E.__defineGetter__(…)`),
   an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
