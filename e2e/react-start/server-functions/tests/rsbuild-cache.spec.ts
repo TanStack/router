@@ -454,8 +454,37 @@ test('rsbuild watch updates and removes server function metadata', async ({
     expect(staleResult.ok).toBe(false)
     expect(staleResult.status).toBeGreaterThanOrEqual(400)
     expect(staleResult.text).not.toContain('WATCH')
+
+    writeFileSync(consistentRoutePath, originalSource)
+    await waitForRetry(devServer, 'restored server functions', () =>
+      exerciseServerFunctionsWithLogs(page, baseURL, devServer),
+    )
   } finally {
     writeFileSync(consistentRoutePath, originalSource)
     await stopDevServer(devServer)
+  }
+})
+
+test('rsbuild compiles server functions produced by a later pre transform', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  const originalSource = readFileSync(consistentRoutePath, 'utf8')
+  const port = await getAvailablePort()
+  let devServer: DevServer | undefined
+  try {
+    writeFileSync(
+      consistentRoutePath,
+      originalSource.replaceAll('createServerFn(', '__fixture_createServerFn('),
+    )
+    devServer = startRsbuildDevServer(port, false)
+    const baseURL = `http://127.0.0.1:${port}`
+    await waitForHttpOk(devServer, baseURL)
+    await exerciseServerFunctionsWithLogs(page, baseURL, devServer)
+  } finally {
+    writeFileSync(consistentRoutePath, originalSource)
+    if (devServer) {
+      await stopDevServer(devServer)
+    }
   }
 })

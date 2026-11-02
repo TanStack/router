@@ -22,7 +22,7 @@ export default mergeConfig(
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
       './src/rsbuild/import-protection-loader.ts',
-      './src/rsbuild/start-compiler-metadata-loader.ts',
+      './src/rsbuild/start-compiler-loader.ts',
     ],
     srcDir: './src',
     outDir: './dist',
