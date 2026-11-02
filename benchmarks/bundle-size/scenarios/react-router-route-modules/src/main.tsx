@@ -1,8 +1,8 @@
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { RouterProvider, createRouteModuleRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-const router = createRouter({ routeTree })
+const router = createRouteModuleRouter({ routeTree })
 
 declare module '@tanstack/react-router' {
   interface Register {

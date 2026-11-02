@@ -117,10 +117,10 @@ export const Route = createFileRoute('/api')({ server: { handlers: { GET: () => 
   )
   await fs.writeFile(
     path.join(app, 'src/router.ts'),
-    `import { createRouter, createMemoryHistory } from '${routerPackage}'
+    `import { createRouteModuleRouter, createMemoryHistory } from '${routerPackage}'
 import { routeTree } from './routeTree.gen'
 export function getRouter() {
-  return createRouter({ routeTree, history: createMemoryHistory() })
+  return createRouteModuleRouter({ routeTree, history: createMemoryHistory() })
 }
 `,
   )

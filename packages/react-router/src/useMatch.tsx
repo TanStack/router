@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
-import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { isServer } from '@tanstack/router-core/isServer'
 import { dummyMatchContext, matchContext } from './matchContext'
 import { useRouter } from './useRouter'
@@ -176,7 +176,7 @@ export function useMatch<
   // `from` that is not a route of the router can be the module-local id of a
   // module installed several times: it resolves through the nearest match.
   const moduleFrom =
-    resolveRouteId && opts.from && !router.routesById[opts.from]
+    routeModules && opts.from && !router.routesById[opts.from]
       ? opts.from
       : undefined
   const nearestRouteId: string | undefined = React.useContext(
@@ -184,8 +184,8 @@ export function useMatch<
   )
 
   const routeId =
-    resolveRouteId && moduleFrom
-      ? resolveRouteId(router, moduleFrom, nearestRouteId)
+    routeModules && moduleFrom
+      ? routeModules.resolveRouteId(router, moduleFrom, nearestRouteId)
       : (opts.from ?? nearestRouteId)
   const matchStore = router.stores.getMatchStore(routeId!)
 

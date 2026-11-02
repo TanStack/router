@@ -8,7 +8,7 @@ import {
   runRouteLifecycle,
 } from './router'
 import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
-import { resolveRouteId } from './route-module-hooks'
+import { routeModules } from './route-module-hooks'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -1005,8 +1005,8 @@ async function getNotFoundBoundary(
           match.routeId ===
           // Module-local ids of a route module installed several times
           // resolve in the installation of the match that threw.
-          (resolveRouteId
-            ? resolveRouteId(
+          (routeModules
+            ? routeModules.resolveRouteId(
                 router,
                 cause.routeId,
                 matches[indexed![0 /* index */]]?.routeId,
@@ -1106,8 +1106,8 @@ function materializeRedirect(
     const redirect = outcome[1 /* redirect */]
     const redirectOptions = redirect.options
     // Module redirects resolve in the installation of the route that threw.
-    // Only route modules, which install `resolveRouteId`, read it.
-    if (resolveRouteId) {
+    // Only route-module routers read it.
+    if (routeModules) {
       redirectOptions._nearestRoute ??= route.id
     }
     try {

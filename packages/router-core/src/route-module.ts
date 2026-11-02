@@ -1,7 +1,8 @@
 import { invariant } from './invariant'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
-import { installRouteModuleHooks } from './route-module-hooks'
+import { installRouteModuleBehavior } from './route-module-hooks'
+import type { RouteModuleBehavior } from './route-module-hooks'
 import type { RedirectFn } from './redirect'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { AnyContext, AnyRoute, Route, RouteOptions } from './route'
@@ -307,23 +308,24 @@ function getModuleNavigationScope(routeId: string) {
     : { from: undefined, _module: moduleId, _fromRoute: routeId }
 }
 
-/** The id of a module root: `<moduleId>:` (see `getModuleRootId`). */
+/** The id of a module root: `<moduleId>:`. */
 function getModuleRootId(options: { _module?: string } | undefined) {
   return options?._module === undefined ? undefined : `${options._module}:`
 }
 
 /**
- * Installs the route-module behavior of the core. Route-module code calls it
- * before it creates module roots or module-local options, so applications
- * without route modules never ship that behavior.
+ * Installs the route-module behavior of the core. Only route-module routers
+ * (`createRouteModuleRouter` of the frameworks) call it, before they create
+ * the router, so applications without route modules never ship that behavior.
+ * Installing again assigns the same behavior.
  */
 export function installRouteModules(): void {
-  installRouteModuleHooks(
-    resolveModuleRouteId,
-    scopeLocationOptions,
-    getModuleNavigationScope,
-    getModuleRootId,
-  )
+  installRouteModuleBehavior({
+    rootId: getModuleRootId,
+    resolveRouteId: resolveModuleRouteId,
+    scopeLocation: scopeLocationOptions,
+    navigationScope: getModuleNavigationScope,
+  } satisfies RouteModuleBehavior)
 }
 
 type MissingKeys<THave, TNeed> = Exclude<keyof TNeed, keyof THave> & string
@@ -635,14 +637,13 @@ export function mountRouteModule<
     path: at && at !== '/' ? at : undefined,
     _uses: options.uses,
   }
-  installRouteModules()
   if (options.as === undefined) {
     root.update(mount as any)
     ;(root as { isRoot: boolean }).isRoot = false
     return root
   }
   if (root.id === undefined) {
-    initTemplates(root, () => templateHost)
+    initTemplates(root, () => templateHost, `${moduleId}:`)
   }
   return copyRoute(root, {
     ...mount,
@@ -656,9 +657,19 @@ export function mountRouteModule<
  */
 const templateHost = { id: rootRouteId, fullPath: '/' } as AnyRoute
 
-function initTemplates(route: AnyRoute, getParentRoute: () => AnyRoute) {
+function initTemplates(
+  route: AnyRoute,
+  getParentRoute: () => AnyRoute,
+  rootId?: string,
+) {
   route.update({ getParentRoute } as any)
   route.init(0)
+  if (rootId) {
+    // Templates are initialized at import, before a route-module router
+    // installs the module-root id: the template root takes it here, and its
+    // subtree derives the module-local ids from it.
+    Object.assign(route, { _id: rootId, _path: undefined })
+  }
   route.children?.forEach((child: AnyRoute) =>
     initTemplates(child, () => route),
   )
@@ -717,7 +728,6 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
   router?: AnyRouter,
   nearestRouteId?: string,
 ): Omit<T, '_module'> & { _module: RouteModuleScope } {
-  installRouteModules()
   let scope = options._module
   if (typeof scope === 'object' && router) {
     const target = resolveRouteScopeConstraint(

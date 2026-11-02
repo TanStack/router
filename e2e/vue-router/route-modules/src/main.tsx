@@ -1,10 +1,10 @@
 import { createApp, h } from 'vue'
-import { RouterProvider, createRouter } from '@tanstack/vue-router'
+import { RouterProvider, createRouteModuleRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
 
 const observedModuleMatches: Array<string | undefined> = []
 Object.assign(window, { observedModuleMatches })
-const router = createRouter({
+const router = createRouteModuleRouter({
   routeTree,
   context: { onProfileMatch: (routeId) => observedModuleMatches.push(routeId) },
 })

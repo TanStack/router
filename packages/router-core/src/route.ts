@@ -3,7 +3,7 @@ import { cleanPath, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
-import { getModuleRootId, getRouteNavigationScope } from './route-module-hooks'
+import { routeModules } from './route-module-hooks'
 import type { LazyRoute } from './fileRoute'
 import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
@@ -1822,7 +1822,7 @@ export class BaseRoute<
 
     // A route module's root is never the tree root: it is mounted under a
     // host route, and its id qualifies the ids of its subtree.
-    const moduleRootId = getModuleRootId?.(options)
+    const moduleRootId = routeModules?.rootId(options)
     const isRoot = !moduleRootId && !options?.path && !options?.id
 
     this.parentRoute = this.options.getParentRoute?.()
@@ -2041,7 +2041,7 @@ export class BaseRoute<
   redirect: RedirectFnRoute<TFullPath, TRegister> = (opts) =>
     redirect({
       from: this.fullPath,
-      ...getRouteNavigationScope?.(this.id),
+      ...routeModules?.navigationScope(this.id),
       ...opts,
     } as any)
 }
@@ -2070,7 +2070,7 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   > = (opts) =>
     redirect({
       from: this.id as string,
-      ...getRouteNavigationScope?.(this.id as string),
+      ...routeModules?.navigationScope(this.id as string),
       ...opts,
     } as any)
 }

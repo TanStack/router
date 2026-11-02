@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
-import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { routeIdContext } from './matchContext'
@@ -113,8 +113,8 @@ export function useMatch<
     // `from` can be the module-local id of a module installed several times:
     // it resolves through the nearest match.
     const routeId =
-      resolveRouteId && opts.from
-        ? resolveRouteId(router, opts.from, nearestRouteId)
+      routeModules && opts.from
+        ? routeModules.resolveRouteId(router, opts.from, nearestRouteId)
         : (opts.from ?? nearestRouteId)
     const matchStore = routeId
       ? router.stores.getMatchStore(routeId)
@@ -160,8 +160,8 @@ export function useMatch<
   // `from` can be the module-local id of a module installed several times:
   // it resolves through the nearest match.
   const routeId =
-    resolveRouteId && opts.from
-      ? resolveRouteId(router, opts.from, nearestRouteId)
+    routeModules && opts.from
+      ? routeModules.resolveRouteId(router, opts.from, nearestRouteId)
       : (opts.from ?? nearestRouteId)
 
   if (routeId) {

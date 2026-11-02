@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -36,13 +36,13 @@ export function useNavigate<
   const router = useRouter()
   // Only the route-module translation reads the nearest route. A live match
   // never changes route, so read it once without tracking.
-  const routeId = scopeLocationOptions
+  const routeId = routeModules
     ? Solid.useContext(nearestMatchContext)[0 /* routeId */]()
     : undefined
 
   return ((options: NavigateOptions) => {
     return router.navigate(
-      scopeLocationOptions
+      routeModules
         ? {
             // Route-module APIs also pass their internal `_module` and
             // `_fromRoute` scope; it resolves to the installation of the

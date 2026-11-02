@@ -39,7 +39,7 @@ import {
 } from './path'
 import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
-import { resolveRouteId, scopeLocationOptions } from './route-module-hooks'
+import { routeModules } from './route-module-hooks'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -1407,6 +1407,9 @@ export class RouterCore<
   }
 
   buildRouteTree = (): RouteTreeCaches<TRouteTree> => {
+    if (process.env.NODE_ENV !== 'production' && !routeModules) {
+      assertNoRouteModules(this.routeTree)
+    }
     const result = processRouteTree(this.routeTree, this.options.caseSensitive)
     if (this.options.routeMasks) {
       processRouteMasks(this.options.routeMasks, result.processedTree)
@@ -1775,9 +1778,9 @@ export class RouterCore<
           staticData: route.options.staticData || {},
           fullPath: route.fullPath,
         }
-        // The resolver is installed only by route-module composition, so an
-        // application without modules can eliminate this identity work.
-        if (resolveRouteId && route.id[0] !== '/') {
+        // Only route-module routers install the behavior, so an application
+        // without modules can eliminate this identity work.
+        if (routeModules && route.id[0] !== '/') {
           const separator = route.id.indexOf(':')
           if (separator > 0) {
             const installation = route.id.indexOf('#')
@@ -2210,13 +2213,19 @@ export class RouterCore<
 
     // Route-module APIs pass module-local destinations (`_fromRoute` always
     // comes with `_module`); translate them once so the destination, its mask
-    // and route masks all see final paths. Route-module code installs the
-    // translation before it creates such options. The caller's options stay
-    // the cache key.
+    // and route masks all see final paths. Route-module routers install the
+    // translation. The caller's options stay the cache key.
     let cacheKey: typeof opts | undefined
-    if (scopeLocationOptions && opts._module !== undefined) {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      !routeModules &&
+      opts._module !== undefined
+    ) {
+      throwRouteModuleRouterRequired()
+    }
+    if (routeModules && opts._module !== undefined) {
       cacheKey = opts
-      opts = scopeLocationOptions(this, opts)
+      opts = routeModules.scopeLocation(this, opts)
     }
     const next = build(opts)
 
@@ -2849,6 +2858,22 @@ const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
 function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
+}
+
+// Development diagnostics of route modules used without a route-module router.
+function throwRouteModuleRouterRequired(): never {
+  throw new Error(
+    'Invariant failed: Route modules need a route-module router. Create the router with createRouteModuleRouter().',
+  )
+}
+
+function assertNoRouteModules(route: AnyRoute) {
+  if (route.options?._module !== undefined) {
+    throwRouteModuleRouterRequired()
+  }
+  ;(route.children as Array<AnyRoute> | undefined)?.forEach(
+    assertNoRouteModules,
+  )
 }
 
 /**

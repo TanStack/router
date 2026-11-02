@@ -147,6 +147,17 @@ export default defineConfig({
 })
 ```
 
+Return a [route-module router](../../../../router/routing/route-modules.md#creating-the-router) from `getRouter()`:
+
+```tsx title="apps/web/src/router.tsx"
+import { createRouteModuleRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+export function getRouter() {
+  return createRouteModuleRouter({ routeTree })
+}
+```
+
 For modules with executable fragments, install the generated list in the application's Start instance:
 
 ```ts title="apps/web/src/start.ts"

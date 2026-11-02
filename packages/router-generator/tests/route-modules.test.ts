@@ -790,12 +790,12 @@ export const Route = createModuleRoot()({})
       dependencies: ['@fixture/catalog', '@fixture/shop'],
       files: {
         'src/routes/__root.tsx': appRoot,
-        'src/consumer.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+        'src/consumer.ts': `import { createMemoryHistory, createRouteModuleRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { catalog } from '@fixture/shop/scope'
 export function matchCatalog(pathname: string) {
   const history = createMemoryHistory({ initialEntries: [pathname] })
-  const router = createRouter({ routeTree, history, isServer: true })
+  const router = createRouteModuleRouter({ routeTree, history, isServer: true })
   try {
     const match = router.matchRoutes(pathname).at(-1)!
     return { routeId: match.routeId, accepted: catalog.isScopedMatch(match) }

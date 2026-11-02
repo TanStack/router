@@ -6,7 +6,10 @@ import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
 } from '@tanstack/router-core'
-import { mountRouteModule } from '@tanstack/router-core/_internal/route-module'
+import {
+  installRouteModules,
+  mountRouteModule,
+} from '@tanstack/router-core/_internal/route-module'
 import { TanStackRouterDevtoolsPanelCore } from '../src/TanStackRouterDevtoolsPanelCore'
 import type { AnyRoute } from '@tanstack/router-core'
 
@@ -20,6 +23,9 @@ beforeAll(async () => {
   })
   await import('../src/BaseTanStackRouterDevtoolsPanel')
 }, 30_000)
+
+// What `createRouteModuleRouter` of the frameworks installs.
+installRouteModules()
 
 const panels: Array<TanStackRouterDevtoolsPanelCore> = []
 
