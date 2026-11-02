@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 /**
  * These tests verify the <ClientOnly> compiler optimization.
@@ -15,7 +16,15 @@ import { test } from '@tanstack/router-e2e-utils'
 
 test('ClientOnly renders fallback on server, then client content after hydration', async ({
   page,
+  request,
 }) => {
+  const response = await request.get('/client-only')
+  expect(response.status()).toBe(200)
+  const html = await response.text()
+  expect(html).not.toContain('data-testid="window-size"')
+  if (!isSpaMode) {
+    expect(html).toContain('Loading window size...')
+  }
   // Navigate directly to the client-only route
   // If the compiler optimization isn't working, this would crash the server
   // because WindowSize.tsx accesses `window` at module scope
