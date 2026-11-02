@@ -41,22 +41,25 @@ import {
   bindRouteScopeMatchRoute,
   bindRouteScopeUseMatchRoute,
   bindRouteScopeUseRouter,
-  bindRouteScopeGetRouteApi,
-  bindRouteScopeUseMatch,
-  bindRouteScopeUseMatches,
-  bindRouteScopeUseParentMatches,
-  bindRouteScopeUseChildMatches,
-  bindRouteScopeUseLoaderData,
-  bindRouteScopeUseLoaderDeps,
-  bindRouteScopeUseSearch,
-  bindRouteScopeUseParams,
-  bindRouteScopeUseRouteContext,
-  bindRouteScopeUseLocation,
-  bindRouteScopeUseRouterState,
   bindRouteScopeUseLinkProps,
-  bindRouteScopeUseBlocker,
-  bindRouteScopeNotFound,
 } from '@tanstack/react-router/_internal/route-module'
+
+import {
+  getRouteApi as frameworkGetRouteApi,
+  useMatch as frameworkUseMatch,
+  useMatches as frameworkUseMatches,
+  useParentMatches as frameworkUseParentMatches,
+  useChildMatches as frameworkUseChildMatches,
+  useLoaderData as frameworkUseLoaderData,
+  useLoaderDeps as frameworkUseLoaderDeps,
+  useSearch as frameworkUseSearch,
+  useParams as frameworkUseParams,
+  useRouteContext as frameworkUseRouteContext,
+  useLocation as frameworkUseLocation,
+  useRouterState as frameworkUseRouterState,
+  useBlocker as frameworkUseBlocker,
+  notFound as frameworkNotFound,
+} from '@tanstack/react-router'
 
 import type { RouteScope } from '@tanstack/react-router'
 
@@ -90,61 +93,49 @@ export const useRouter: RouteScope<RouteModuleRouter>['useRouter'] =
   /* @__PURE__ */ bindRouteScopeUseRouter<RouteModuleRouter>('@fixture/shop')
 
 export const getRouteApi: RouteScope<RouteModuleRouter>['getRouteApi'] =
-  /* @__PURE__ */ bindRouteScopeGetRouteApi<RouteModuleRouter>('@fixture/shop')
+  frameworkGetRouteApi as never
 
 export const useMatch: RouteScope<RouteModuleRouter>['useMatch'] =
-  /* @__PURE__ */ bindRouteScopeUseMatch<RouteModuleRouter>('@fixture/shop')
+  frameworkUseMatch as never
 
 export const useMatches: RouteScope<RouteModuleRouter>['useMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseMatches<RouteModuleRouter>('@fixture/shop')
+  frameworkUseMatches as never
 
 export const useParentMatches: RouteScope<RouteModuleRouter>['useParentMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseParentMatches<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseParentMatches as never
 
 export const useChildMatches: RouteScope<RouteModuleRouter>['useChildMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseChildMatches<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseChildMatches as never
 
 export const useLoaderData: RouteScope<RouteModuleRouter>['useLoaderData'] =
-  /* @__PURE__ */ bindRouteScopeUseLoaderData<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseLoaderData as never
 
 export const useLoaderDeps: RouteScope<RouteModuleRouter>['useLoaderDeps'] =
-  /* @__PURE__ */ bindRouteScopeUseLoaderDeps<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseLoaderDeps as never
 
 export const useSearch: RouteScope<RouteModuleRouter>['useSearch'] =
-  /* @__PURE__ */ bindRouteScopeUseSearch<RouteModuleRouter>('@fixture/shop')
+  frameworkUseSearch as never
 
 export const useParams: RouteScope<RouteModuleRouter>['useParams'] =
-  /* @__PURE__ */ bindRouteScopeUseParams<RouteModuleRouter>('@fixture/shop')
+  frameworkUseParams as never
 
 export const useRouteContext: RouteScope<RouteModuleRouter>['useRouteContext'] =
-  /* @__PURE__ */ bindRouteScopeUseRouteContext<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseRouteContext as never
 
 export const useLocation: RouteScope<RouteModuleRouter>['useLocation'] =
-  /* @__PURE__ */ bindRouteScopeUseLocation<RouteModuleRouter>('@fixture/shop')
+  frameworkUseLocation as never
 
 export const useRouterState: RouteScope<RouteModuleRouter>['useRouterState'] =
-  /* @__PURE__ */ bindRouteScopeUseRouterState<RouteModuleRouter>(
-    '@fixture/shop',
-  )
+  frameworkUseRouterState as never
 
 export const useLinkProps: RouteScope<RouteModuleRouter>['useLinkProps'] =
   /* @__PURE__ */ bindRouteScopeUseLinkProps<RouteModuleRouter>('@fixture/shop')
 
 export const useBlocker: RouteScope<RouteModuleRouter>['useBlocker'] =
-  /* @__PURE__ */ bindRouteScopeUseBlocker<RouteModuleRouter>('@fixture/shop')
+  frameworkUseBlocker as never
 
 export const notFound: RouteScope<RouteModuleRouter>['notFound'] =
-  /* @__PURE__ */ bindRouteScopeNotFound<RouteModuleRouter>('@fixture/shop')
+  frameworkNotFound as never
 
 import type {
   ValidateLinkOptions as RouterValidateLinkOptions,

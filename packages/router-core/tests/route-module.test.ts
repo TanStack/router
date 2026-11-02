@@ -6,6 +6,7 @@ import {
   getRouteModuleId,
   getRouteNavigationScope,
   getScopedRouterView,
+  installRouteModules,
   mountRouteModule,
   resolveRouteId,
 } from '../src/route-module-internal'
@@ -201,12 +202,13 @@ describe('getRouteModuleId', () => {
   })
 
   test.each(cases)(
-    'getRouteNavigationScope agrees for %s',
+    'the installed navigation scope agrees for %s',
     (routeId, moduleId) => {
-      expect(getRouteNavigationScope(routeId, '/full')).toEqual(
+      installRouteModules()
+      expect(getRouteNavigationScope?.(routeId)).toEqual(
         moduleId === undefined
-          ? { from: '/full' }
-          : { _module: moduleId, _fromRoute: routeId },
+          ? undefined
+          : { from: undefined, _module: moduleId, _fromRoute: routeId },
       )
     },
   )

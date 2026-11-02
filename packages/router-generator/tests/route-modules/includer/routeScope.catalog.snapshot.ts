@@ -22,22 +22,25 @@ import {
   bindRouteScopeMatchRoute,
   bindRouteScopeUseMatchRoute,
   bindRouteScopeUseRouter,
-  bindRouteScopeGetRouteApi,
-  bindRouteScopeUseMatch,
-  bindRouteScopeUseMatches,
-  bindRouteScopeUseParentMatches,
-  bindRouteScopeUseChildMatches,
-  bindRouteScopeUseLoaderData,
-  bindRouteScopeUseLoaderDeps,
-  bindRouteScopeUseSearch,
-  bindRouteScopeUseParams,
-  bindRouteScopeUseRouteContext,
-  bindRouteScopeUseLocation,
-  bindRouteScopeUseRouterState,
   bindRouteScopeUseLinkProps,
-  bindRouteScopeUseBlocker,
-  bindRouteScopeNotFound,
 } from '@tanstack/react-router/_internal/route-module'
+
+import {
+  getRouteApi as frameworkGetRouteApi,
+  useMatch as frameworkUseMatch,
+  useMatches as frameworkUseMatches,
+  useParentMatches as frameworkUseParentMatches,
+  useChildMatches as frameworkUseChildMatches,
+  useLoaderData as frameworkUseLoaderData,
+  useLoaderDeps as frameworkUseLoaderDeps,
+  useSearch as frameworkUseSearch,
+  useParams as frameworkUseParams,
+  useRouteContext as frameworkUseRouteContext,
+  useLocation as frameworkUseLocation,
+  useRouterState as frameworkUseRouterState,
+  useBlocker as frameworkUseBlocker,
+  notFound as frameworkNotFound,
+} from '@tanstack/react-router'
 
 import type { RouteScope } from '@tanstack/react-router'
 
@@ -69,49 +72,49 @@ export const useRouter: RouteScope<Router>['useRouter'] =
   /* @__PURE__ */ bindRouteScopeUseRouter<Router>('@fixture/catalog')
 
 export const getRouteApi: RouteScope<Router>['getRouteApi'] =
-  /* @__PURE__ */ bindRouteScopeGetRouteApi<Router>('@fixture/catalog')
+  frameworkGetRouteApi as never
 
 export const useMatch: RouteScope<Router>['useMatch'] =
-  /* @__PURE__ */ bindRouteScopeUseMatch<Router>('@fixture/catalog')
+  frameworkUseMatch as never
 
 export const useMatches: RouteScope<Router>['useMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseMatches<Router>('@fixture/catalog')
+  frameworkUseMatches as never
 
 export const useParentMatches: RouteScope<Router>['useParentMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseParentMatches<Router>('@fixture/catalog')
+  frameworkUseParentMatches as never
 
 export const useChildMatches: RouteScope<Router>['useChildMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseChildMatches<Router>('@fixture/catalog')
+  frameworkUseChildMatches as never
 
 export const useLoaderData: RouteScope<Router>['useLoaderData'] =
-  /* @__PURE__ */ bindRouteScopeUseLoaderData<Router>('@fixture/catalog')
+  frameworkUseLoaderData as never
 
 export const useLoaderDeps: RouteScope<Router>['useLoaderDeps'] =
-  /* @__PURE__ */ bindRouteScopeUseLoaderDeps<Router>('@fixture/catalog')
+  frameworkUseLoaderDeps as never
 
 export const useSearch: RouteScope<Router>['useSearch'] =
-  /* @__PURE__ */ bindRouteScopeUseSearch<Router>('@fixture/catalog')
+  frameworkUseSearch as never
 
 export const useParams: RouteScope<Router>['useParams'] =
-  /* @__PURE__ */ bindRouteScopeUseParams<Router>('@fixture/catalog')
+  frameworkUseParams as never
 
 export const useRouteContext: RouteScope<Router>['useRouteContext'] =
-  /* @__PURE__ */ bindRouteScopeUseRouteContext<Router>('@fixture/catalog')
+  frameworkUseRouteContext as never
 
 export const useLocation: RouteScope<Router>['useLocation'] =
-  /* @__PURE__ */ bindRouteScopeUseLocation<Router>('@fixture/catalog')
+  frameworkUseLocation as never
 
 export const useRouterState: RouteScope<Router>['useRouterState'] =
-  /* @__PURE__ */ bindRouteScopeUseRouterState<Router>('@fixture/catalog')
+  frameworkUseRouterState as never
 
 export const useLinkProps: RouteScope<Router>['useLinkProps'] =
   /* @__PURE__ */ bindRouteScopeUseLinkProps<Router>('@fixture/catalog')
 
 export const useBlocker: RouteScope<Router>['useBlocker'] =
-  /* @__PURE__ */ bindRouteScopeUseBlocker<Router>('@fixture/catalog')
+  frameworkUseBlocker as never
 
 export const notFound: RouteScope<Router>['notFound'] =
-  /* @__PURE__ */ bindRouteScopeNotFound<Router>('@fixture/catalog')
+  frameworkNotFound as never
 
 import type {
   ValidateLinkOptions as RouterValidateLinkOptions,

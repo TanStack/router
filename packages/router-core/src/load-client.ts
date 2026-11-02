@@ -8,7 +8,7 @@ import {
   runRouteLifecycle,
 } from './router'
 import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
-import { resolveRouteId } from './route-id'
+import { resolveRouteId } from './route-module-hooks'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'

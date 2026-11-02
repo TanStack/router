@@ -123,19 +123,53 @@ const scopeApis = [
   'notFound',
 ] as const
 
+// Scope APIs that are the framework's own APIs, only typed against the
+// scope's router.
+const frameworkScopeApis = new Set<string>([
+  'useMatches',
+  'useParentMatches',
+  'useChildMatches',
+  'useLocation',
+  'useRouterState',
+  'useBlocker',
+])
+
+// Id-based scope APIs. Only the namespace of one installation of a module
+// installed several times (`<moduleId>#<as>`) maps the module's route ids to
+// that installation; every other scope uses the framework's own APIs.
+const idScopeApis = new Set<string>([
+  'getRouteApi',
+  'useMatch',
+  'useLoaderData',
+  'useLoaderDeps',
+  'useSearch',
+  'useParams',
+  'useRouteContext',
+  'notFound',
+])
+
 function scopeBindings(
   frameworkPackage: string,
   routerType: string,
   key: string,
 ) {
-  const binder = (api: string) =>
-    `bindRouteScope${api[0]!.toUpperCase()}${api.slice(1)}`
+  const capitalized = (api: string) => api[0]!.toUpperCase() + api.slice(1)
+  // Exporting the framework's API itself costs no runtime binding.
+  const isFrameworkApi = (api: string) =>
+    frameworkScopeApis.has(api) || (idScopeApis.has(api) && !key.includes('#'))
+  const frameworkApis = scopeApis.filter(isFrameworkApi)
+  const boundApis = scopeApis.filter((api) => !isFrameworkApi(api))
   return [
-    `import { ${scopeApis.map(binder).join(', ')} } from '${frameworkPackage}/_internal/route-module'`,
+    `import { ${boundApis.map((api) => `bindRouteScope${capitalized(api)}`).join(', ')} } from '${frameworkPackage}/_internal/route-module'`,
+    `import { ${frameworkApis.map((api) => `${api} as framework${capitalized(api)}`).join(', ')} } from '${frameworkPackage}'`,
     `import type { RouteScope } from '${frameworkPackage}'`,
     ...scopeApis.map(
       (api) =>
-        `export const ${api}: RouteScope<${routerType}>['${api}'] = /* @__PURE__ */ ${binder(api)}<${routerType}>('${key}')`,
+        `export const ${api}: RouteScope<${routerType}>['${api}'] = ${
+          isFrameworkApi(api)
+            ? `framework${capitalized(api)} as never`
+            : `/* @__PURE__ */ bindRouteScope${capitalized(api)}<${routerType}>('${key}')`
+        }`,
     ),
     `import type { ValidateLinkOptions as RouterValidateLinkOptions, ValidateLinkOptionsArray as RouterValidateLinkOptionsArray, ValidateNavigateOptions as RouterValidateNavigateOptions, ValidateNavigateOptionsArray as RouterValidateNavigateOptionsArray, ValidateRedirectOptions as RouterValidateRedirectOptions, ValidateRedirectOptionsArray as RouterValidateRedirectOptionsArray, ValidateFromPath as RouterValidateFromPath, ValidateToPath as RouterValidateToPath, ValidateSearch as RouterValidateSearch, ValidateParams as RouterValidateParams, ValidateId as RouterValidateId, ValidateUseSearchOptions as RouterValidateUseSearchOptions, ValidateUseParamsOptions as RouterValidateUseParamsOptions } from '${frameworkPackage}'`,
     `export type ValidateLinkOptions<TOptions = unknown, TDefaultFrom extends string = string, TComp = 'a'> = RouterValidateLinkOptions<${routerType}, TOptions, TDefaultFrom, TComp>`,

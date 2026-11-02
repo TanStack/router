@@ -50,24 +50,22 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const router = useRouter()
-  // Route-module APIs also pass the internal `_module`/`_fromRoute` scope,
-  // which resolves to the installation of the nearest match.
-  const defaults = _defaultOpts as
-    | { from?: string; _module?: RouteModuleScope; _fromRoute?: string }
-    | undefined
   const routeId = React.useContext(matchContext)
 
   return React.useCallback(
     (options: NavigateOptions) => {
       return router.navigate({
-        _module: defaults?._module,
-        _fromRoute: defaults?._fromRoute,
+        // Route-module APIs also pass their internal `_module`/`_fromRoute`
+        // scope, constant for a route or scoped API. It resolves to the
+        // installation of the nearest match.
+        ..._defaultOpts,
         _nearestRoute: routeId,
         ...options,
-        from: options.from ?? defaults?.from,
+        from: options.from ?? _defaultOpts?.from,
       })
     },
-    [defaults?.from, defaults?._module, defaults?._fromRoute, routeId, router],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope of the defaults is constant
+    [_defaultOpts?.from, routeId, router],
   ) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
 
