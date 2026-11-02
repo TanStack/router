@@ -163,7 +163,7 @@ export class StartRsbuildCompilerSession {
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       readFile: (file) => this.readFile(file),
-      // our virtual modules are files of the compilers' input file systems
+      // our virtual modules are unread (`readFile`)
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
     })
@@ -187,11 +187,12 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * Reads a file from the disk. The compilers' input file systems are no
-   * better source: a file the compiler watches is as fresh there at `watchRun`,
-   * an unwatched one stays stale until their 60 s TTL, and they cannot read
-   * Rspack's `VirtualModulesPlugin` files. Those stay unread: our own virtual
-   * modules (`node_modules/.virtual/`) are missing to the raw facts.
+   * Reads a file from the disk. At `watchRun` a compiler's input file system
+   * holds a file it watches as fresh, keeps an unwatched one it has read stale
+   * until its 60 s TTL, and cannot read Rspack's `VirtualModulesPlugin` files:
+   * our own virtual modules (`node_modules/.virtual/`) are missing to the raw
+   * facts. Only a file system a user replaced (`webpack-virtual-modules` with
+   * `useInputFileSystem`) would know more, and it isn't asked.
    */
   async readFile(file: string): Promise<string | null> {
     try {
