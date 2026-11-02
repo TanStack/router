@@ -39,5 +39,20 @@
     "@tanstack/router-cli": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@types/react": "^19.0.8"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          "^build",
+          "^emit-types"
+        ]
+      },
+      "emit-types": {
+        "dependsOn": [
+          "generate"
+        ]
+      }
+    }
   }
 }

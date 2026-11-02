@@ -29,5 +29,21 @@
     "@vitejs/plugin-react": "^6.0.1",
     "vite": "^8.0.14",
     "vitest": "catalog:"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          "^build",
+          "^emit-types"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "^build",
+          "^emit-types"
+        ]
+      }
+    }
   }
 }

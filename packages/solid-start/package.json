@@ -145,7 +145,9 @@
     "eslint-plugin-react-hooks": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@tanstack/router-generator": "workspace:*",
+    "vite-plugin-solid": "^2.11.11"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",
@@ -158,6 +160,16 @@
     },
     "vite": {
       "optional": true
+    }
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "^build",
+          "build"
+        ]
+      }
     }
   }
 }

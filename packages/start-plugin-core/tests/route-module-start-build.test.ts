@@ -1,9 +1,6 @@
-import { execFileSync } from 'node:child_process'
-import { createRequire } from 'node:module'
 import { promises as fs, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { afterEach, expect, it } from 'vitest'
 import {
   Generator,
@@ -17,7 +14,6 @@ import { routesManifestPlugin } from '../src/start-router-plugin/generator-plugi
 
 type Framework = 'react' | 'solid' | 'vue'
 const frameworks = ['react', 'solid', 'vue'] as const
-const bundlers = ['vite', 'rsbuild'] as const
 let workspace: string | undefined
 afterEach(async () => {
   delete globalThis.TSS_PRERENDABLE_PATHS
@@ -286,223 +282,12 @@ it.each(frameworks)(
   },
 )
 
-it.each(
-  frameworks.flatMap((framework) =>
-    bundlers.map((bundler) => ({ framework, bundler })),
-  ),
-)(
-  '$framework/$bundler prunes application and module endpoints from the client',
-  async ({ framework, bundler }) => {
-    const { app } = await fixtures(framework)
-    const repository = path.resolve(import.meta.dirname, '../../..')
-    const outputRoot = path.join(app, 'dist')
-    const outDir = path.join(outputRoot, 'client')
-    await fs.writeFile(
-      path.join(app, 'src/client.ts'),
-      `import { getRouter } from './router'
-globalThis.__routeModuleBuildRouter = getRouter()
-`,
-    )
-    // Use each public Start plugin, including its compiler, environment
-    // resolution and default server entry. The custom client entry exposes the
-    // actual browser router without starting hydration in this probe.
-    const buildScript = path.join(app, 'build.mjs')
-    if (bundler === 'vite') {
-      await fs.symlink(
-        path.join(repository, 'packages/start-plugin-core/node_modules/vite'),
-        path.join(app, 'node_modules/vite'),
-      )
-      const frameworkPlugins = {
-        react: ['@vitejs/plugin-react'],
-        solid: ['vite-plugin-solid'],
-        vue: ['@vitejs/plugin-vue', '@vitejs/plugin-vue-jsx'],
-      }[framework]
-      for (const plugin of frameworkPlugins) {
-        const destination = path.join(app, 'node_modules', plugin)
-        await fs.mkdir(path.dirname(destination), { recursive: true })
-        await fs.symlink(
-          path.join(
-            repository,
-            `e2e/${framework}-start/server-routes/node_modules`,
-            plugin,
-          ),
-          destination,
-        )
-      }
-      await fs.writeFile(
-        buildScript,
-        `import { createBuilder } from 'vite'
-import { tanstackStart } from '@tanstack/${framework}-start/plugin/vite'
-${frameworkPlugins.map((plugin, index) => `import frameworkPlugin${index} from '${plugin}'`).join('\n')}
-
-const builder = await createBuilder({
-  configFile: false,
-  root: process.cwd(),
-  logLevel: 'warn',
-  plugins: [
-    tanstackStart({
-      router: {
-        routeModules: { includes: [{ module: '@review/feature', at: '/feature' }] },
-        tmpDir: ${JSON.stringify(path.join(workspace!, '.tmp'))},
-      },
-    }),
-    ${frameworkPlugins.map((_, index) => `frameworkPlugin${index}(${framework === 'solid' ? '{ ssr: true }' : ''})`).join(',\n    ')},
-  ],
-  build: { outDir: ${JSON.stringify(outputRoot)}, minify: false },
-  environments: {
-    client: { build: { rolldownOptions: { output: { entryFileNames: 'assets/[name].js' } } } },
-    ssr: { build: { rolldownOptions: { output: { entryFileNames: 'index.js' } } } },
-  },
-})
-await builder.buildApp()
-`,
-      )
-    } else {
-      await fs.mkdir(path.join(app, 'node_modules/@rsbuild'), {
-        recursive: true,
-      })
-      await fs.symlink(
-        path.join(
-          repository,
-          'packages/start-plugin-core/node_modules/@rsbuild/core',
-        ),
-        path.join(app, 'node_modules/@rsbuild/core'),
-      )
-      await fs.writeFile(
-        buildScript,
-        `import { createRsbuild } from '@rsbuild/core'
-import { tanstackStart } from '@tanstack/${framework}-start/plugin/rsbuild'
-
-const rsbuild = await createRsbuild({
-  cwd: process.cwd(),
-  config: {
-    plugins: [tanstackStart({
-      router: {
-        routeModules: { includes: [{ module: '@review/feature', at: '/feature' }] },
-        tmpDir: ${JSON.stringify(path.join(workspace!, '.tmp'))},
-      },
-    })],
-    output: {
-      distPath: { root: ${JSON.stringify(outputRoot)} },
-      filename: { js: '[name].js' },
-      filenameHash: false,
-      minify: false,
-    },
-    environments: { ssr: { output: { module: true } } },
-  },
-})
-await rsbuild.build()
-`,
-      )
-    }
-    execFileSync(process.execPath, [buildScript], {
-      cwd: app,
-      encoding: 'utf8',
-      maxBuffer: 16 * 1024 * 1024,
-    })
-
-    const serverResult = JSON.parse(
-      execFileSync(
-        process.execPath,
-        [
-          '--input-type=module',
-          '-e',
-          `const { default: server } = await import(${JSON.stringify(pathToFileURL(path.join(outputRoot, 'server/index.js')).href)});
-const paths = ['/api', '/feature/api', '/mixed', '/feature/mixed', '/only/child', '/feature/only/child'];
-const responses = await Promise.all(paths.map(async path => {
-  const response = await server.fetch(new Request('http://localhost' + path));
-  return [path, { status: response.status, body: await response.text() }];
-}));
-console.log(JSON.stringify(Object.fromEntries(responses)));
-`,
-        ],
-        { cwd: app, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
-      ),
-    )
-    expect(serverResult['/api']).toEqual({ status: 200, body: 'app api' })
-    expect(serverResult['/feature/api']).toEqual({
-      status: 200,
-      body: 'module api',
-    })
-    for (const route of [
-      '/mixed',
-      '/feature/mixed',
-      '/only/child',
-      '/feature/only/child',
-    ]) {
-      expect(serverResult[route]).toEqual({
-        status: 200,
-        body: 'server-only-sentinel',
-      })
-    }
-    const jsdom = createRequire(
-      path.join(repository, 'packages/react-router/package.json'),
-    ).resolve('jsdom')
-    const result = JSON.parse(
-      execFileSync(
-        process.execPath,
-        [
-          '--input-type=module',
-          '-e',
-          `
-    import { JSDOM } from ${JSON.stringify(pathToFileURL(jsdom).href)};
-    const dom = new JSDOM('', {url: 'http://localhost/'});
-    globalThis.window = dom.window;
-    globalThis.self = dom.window;
-    globalThis.document = dom.window.document;
-    await import(${JSON.stringify(pathToFileURL(path.join(outDir, bundler === 'rsbuild' ? 'assets/js/index.js' : 'assets/index.js')).href)});
-    const router = globalThis.__routeModuleBuildRouter;
-    const summarize = (url) => router.matchRoutes(url).map(match => ({routeId: match.routeId, globalNotFound: match.globalNotFound}));
-    console.log(JSON.stringify({
-      routes: Object.keys(router.routesById),
-      moduleHasServer: !!router.routesById['@review/feature:/api']?.options.server,
-      appMatches: summarize('/api'),
-      moduleMatches: summarize('/feature/api'),
-      matches: Object.fromEntries(['/about', '/mixed', '/branch/page', '/only', '/only/child', '/feature/about', '/feature/mixed', '/feature/branch/page', '/feature/only', '/feature/only/child'].map(url => [url, summarize(url).at(-1)?.routeId])),
-      mixedHasServer: !!router.routesById['@review/feature:/mixed']?.options.server,
-    }));
-    dom.window.close();
-  `,
-        ],
-        { encoding: 'utf8' },
-      ),
-    )
-    expect(result.appMatches.at(-1)?.routeId).not.toBe('/api')
-    expect(result.moduleMatches.at(-1)?.routeId).not.toBe(
-      '@review/feature:/api',
-    )
-    expect(result.matches).toMatchObject({
-      '/about': '/about',
-      '/mixed': '/mixed',
-      '/branch/page': '/branch/page',
-      '/feature/about': '@review/feature:/about',
-      '/feature/mixed': '@review/feature:/mixed',
-      '/feature/branch/page': '@review/feature:/branch/page',
-    })
-    for (const [url, id] of [
-      ['/only', '/only'],
-      ['/only/child', '/only/child'],
-      ['/feature/only', '@review/feature:/only'],
-      ['/feature/only/child', '@review/feature:/only/child'],
-    ] as const) {
-      expect(result.matches[url]).not.toBe(id)
-    }
-    expect(result.mixedHasServer).toBe(false)
-    const files = await fs.readdir(outDir, { recursive: true })
-    for (const file of files.filter((file) => file.endsWith('.js'))) {
-      expect(await fs.readFile(path.join(outDir, file), 'utf8')).not.toContain(
-        'server-only-sentinel',
-      )
-    }
-  },
-  60000,
-)
-
 it('refreshes module page eligibility after a provider option edit without a path change', async () => {
   const { app, feature, providerGenerator } = await fixtures('react')
   const config = getConfig(
     {
       disableLogging: true,
+      tmpDir: path.join(workspace!, '.tmp'),
       routeModules: {
         includes: [{ module: '@review/feature', at: '/feature' }],
       },
@@ -556,6 +341,7 @@ it('respects explicit page overrides, filters, basepath and disabled discovery f
     config: getConfig(
       {
         disableLogging: true,
+        tmpDir: path.join(workspace!, '.tmp'),
         routeModules: {
           includes: [{ module: '@review/feature', at: '/feature' }],
         },
@@ -655,13 +441,17 @@ export const Route = createModuleRoot()({})
   )
   await new Generator({
     root: wrapper,
-    config: getConfig({ disableLogging: true }, wrapper),
+    config: getConfig(
+      { disableLogging: true, tmpDir: path.join(workspace!, '.tmp') },
+      wrapper,
+    ),
   }).run()
   await new Generator({
     root: app,
     config: getConfig(
       {
         disableLogging: true,
+        tmpDir: path.join(workspace!, '.tmp'),
         plugins: [prerenderRoutesPlugin()],
         routeModules: {
           includes: [{ module: '@review/wrapper', at: '/outer' }],
@@ -685,6 +475,7 @@ export const Route = createFileRoute('/orgs/$orgId')({ component: () => 'organiz
     config: getConfig(
       {
         disableLogging: true,
+        tmpDir: path.join(workspace!, '.tmp'),
         plugins: [prerenderRoutesPlugin()],
         routeModules: {
           includes: [

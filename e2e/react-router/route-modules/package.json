@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
+    "@route-modules/web": "workspace:*",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@types/node": "catalog:",

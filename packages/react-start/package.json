@@ -26,6 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
+    "test:unit": "vitest",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
@@ -207,6 +208,19 @@
     "@types/react-dom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@tanstack/router-generator": "workspace:*",
+    "@vitejs/plugin-react": "catalog:",
+    "vite": "*"
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "^build",
+          "build"
+        ]
+      }
+    }
   }
 }
