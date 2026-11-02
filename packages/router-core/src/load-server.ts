@@ -10,7 +10,7 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { resolveRouteId } from './route-id'
+import { resolveRouteId } from './route-module-hooks'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'

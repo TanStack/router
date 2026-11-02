@@ -1,8 +1,7 @@
 import { invariant } from './invariant'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
-import { setResolveRouteId } from './route-id'
-import { setScopeLocationOptions } from './router'
+import { installRouteModuleHooks } from './route-module-hooks'
 import type { RedirectFn } from './redirect'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { AnyContext, AnyRoute, Route, RouteOptions } from './route'
@@ -297,22 +296,34 @@ export function getInstallationRouteIdMapper(
 }
 
 /**
- * Navigation options that resolve a route-bound navigation from `route`.
- *
- * Application routes resolve relative destinations from their full path.
- * Route-module routes resolve absolute destinations in their module and take
- * `from` from the route's current full path, which depends on the mount.
+ * The navigation scope of a route-module route: its route-bound APIs resolve
+ * absolute destinations in the module and take `from` from the route's
+ * current full path, which depends on the mount.
  */
-export function getRouteNavigationScope(
-  routeId: string,
-  fullPath: string | undefined,
-): { from?: string; _module?: string; _fromRoute?: string } {
-  // The module id of a qualified route id (see `getRouteModuleId`), inlined:
-  // this runs in every route-bound API of every application.
-  const index = routeId.indexOf(':')
-  return index > 0 && routeId[0] !== '/'
-    ? { _module: routeId.slice(0, index), _fromRoute: routeId }
-    : { from: fullPath }
+function getModuleNavigationScope(routeId: string) {
+  const moduleId = getRouteModuleId(routeId)
+  return moduleId === undefined
+    ? undefined
+    : { from: undefined, _module: moduleId, _fromRoute: routeId }
+}
+
+/** The id of a module root: `<moduleId>:` (see `getModuleRootId`). */
+function getModuleRootId(options: { _module?: string } | undefined) {
+  return options?._module === undefined ? undefined : `${options._module}:`
+}
+
+/**
+ * Installs the route-module behavior of the core. Route-module code calls it
+ * before it creates module roots or module-local options, so applications
+ * without route modules never ship that behavior.
+ */
+export function installRouteModules(): void {
+  installRouteModuleHooks(
+    resolveModuleRouteId,
+    scopeLocationOptions,
+    getModuleNavigationScope,
+    getModuleRootId,
+  )
 }
 
 type MissingKeys<THave, TNeed> = Exclude<keyof TNeed, keyof THave> & string
@@ -523,7 +534,8 @@ function scopeLocationOptions<
     _nearestRoute?: string
   },
 >(router: AnyRouter, opts: TOptions): TOptions {
-  // Only called with `_module` set (see `RouterCore.buildLocation`).
+  // Only called with `_module` set (see `RouterCore.buildLocation`); module
+  // routes and scoped APIs, which create such options, installed it.
   // Route/RouteApi consumers retain their authored origin even when reusable
   // options supply a destination stamp.
   if (opts._fromRoute) {
@@ -623,8 +635,7 @@ export function mountRouteModule<
     path: at && at !== '/' ? at : undefined,
     _uses: options.uses,
   }
-  setScopeLocationOptions(scopeLocationOptions)
-  setResolveRouteId(resolveModuleRouteId)
+  installRouteModules()
   if (options.as === undefined) {
     root.update(mount as any)
     ;(root as { isRoot: boolean }).isRoot = false
@@ -706,6 +717,7 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
   router?: AnyRouter,
   nearestRouteId?: string,
 ): Omit<T, '_module'> & { _module: RouteModuleScope } {
+  installRouteModules()
   let scope = options._module
   if (typeof scope === 'object' && router) {
     const target = resolveRouteScopeConstraint(

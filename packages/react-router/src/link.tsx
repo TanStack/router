@@ -257,13 +257,12 @@ export function useLinkProps<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-    // Route-module scope; constant for a given scoped component.
+    // Route-module scope; spread link options can change it. The
+    // `_fromRoute` of a route's own `Link` is constant.
     _module,
-    _fromRoute,
   } = options as typeof options & {
     to?: string
     _module?: RouteModuleScope
-    _fromRoute?: string
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -361,7 +360,6 @@ export function useLinkProps<
     options.mask,
     options.unsafeRelative,
     _module,
-    _fromRoute,
     stableActiveOptions,
     disabled,
   ])

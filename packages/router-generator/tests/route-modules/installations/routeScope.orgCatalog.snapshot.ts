@@ -32,20 +32,23 @@ import {
   bindRouteScopeUseRouter,
   bindRouteScopeGetRouteApi,
   bindRouteScopeUseMatch,
-  bindRouteScopeUseMatches,
-  bindRouteScopeUseParentMatches,
-  bindRouteScopeUseChildMatches,
   bindRouteScopeUseLoaderData,
   bindRouteScopeUseLoaderDeps,
   bindRouteScopeUseSearch,
   bindRouteScopeUseParams,
   bindRouteScopeUseRouteContext,
-  bindRouteScopeUseLocation,
-  bindRouteScopeUseRouterState,
   bindRouteScopeUseLinkProps,
-  bindRouteScopeUseBlocker,
   bindRouteScopeNotFound,
 } from '@tanstack/react-router/_internal/route-module'
+
+import {
+  useMatches as frameworkUseMatches,
+  useParentMatches as frameworkUseParentMatches,
+  useChildMatches as frameworkUseChildMatches,
+  useLocation as frameworkUseLocation,
+  useRouterState as frameworkUseRouterState,
+  useBlocker as frameworkUseBlocker,
+} from '@tanstack/react-router'
 
 import type { RouteScope } from '@tanstack/react-router'
 
@@ -95,19 +98,13 @@ export const useMatch: RouteScope<Router>['useMatch'] =
   /* @__PURE__ */ bindRouteScopeUseMatch<Router>('@fixture/catalog#orgCatalog')
 
 export const useMatches: RouteScope<Router>['useMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseMatches<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseMatches as never
 
 export const useParentMatches: RouteScope<Router>['useParentMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseParentMatches<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseParentMatches as never
 
 export const useChildMatches: RouteScope<Router>['useChildMatches'] =
-  /* @__PURE__ */ bindRouteScopeUseChildMatches<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseChildMatches as never
 
 export const useLoaderData: RouteScope<Router>['useLoaderData'] =
   /* @__PURE__ */ bindRouteScopeUseLoaderData<Router>(
@@ -131,14 +128,10 @@ export const useRouteContext: RouteScope<Router>['useRouteContext'] =
   )
 
 export const useLocation: RouteScope<Router>['useLocation'] =
-  /* @__PURE__ */ bindRouteScopeUseLocation<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseLocation as never
 
 export const useRouterState: RouteScope<Router>['useRouterState'] =
-  /* @__PURE__ */ bindRouteScopeUseRouterState<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseRouterState as never
 
 export const useLinkProps: RouteScope<Router>['useLinkProps'] =
   /* @__PURE__ */ bindRouteScopeUseLinkProps<Router>(
@@ -146,9 +139,7 @@ export const useLinkProps: RouteScope<Router>['useLinkProps'] =
   )
 
 export const useBlocker: RouteScope<Router>['useBlocker'] =
-  /* @__PURE__ */ bindRouteScopeUseBlocker<Router>(
-    '@fixture/catalog#orgCatalog',
-  )
+  frameworkUseBlocker as never
 
 export const notFound: RouteScope<Router>['notFound'] =
   /* @__PURE__ */ bindRouteScopeNotFound<Router>('@fixture/catalog#orgCatalog')

@@ -33,18 +33,13 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const { navigate } = useRouter()
-  // Route-module APIs also pass the internal `_module`/`_fromRoute` scope,
-  // which resolves to the installation of the nearest match.
-  const defaults = _defaultOpts as
-    | { from?: string; _module?: RouteModuleScope; _fromRoute?: string }
-    | undefined
   const routeId = Vue.inject(routeIdContext, undefined)
 
   return ((options: NavigateOptions) => {
     return navigate({
-      from: defaults?.from,
-      _module: defaults?._module,
-      _fromRoute: defaults?._fromRoute,
+      // Route-module APIs also pass their internal `_module`/`_fromRoute`
+      // scope; it resolves to the installation of the nearest match.
+      ..._defaultOpts,
       _nearestRoute: routeId,
       ...options,
     })

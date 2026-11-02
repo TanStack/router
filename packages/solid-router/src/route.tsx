@@ -145,12 +145,10 @@ export class RouteApi<
     { router: TRouter }
   > => {
     const router = useRouter()
-    return useNavigate(
-      getRouteNavigationScope(
-        this.id as string,
-        router.routesById[this.id as string]?.fullPath,
-      ) as any,
-    ) as any
+    return useNavigate({
+      from: router.routesById[this.id as string]?.fullPath,
+      ...getRouteNavigationScope?.(this.id as string),
+    } as any) as any
   }
 
   notFound = (opts?: NotFoundError) => {
@@ -165,7 +163,8 @@ export class RouteApi<
     const fullPath = router.routesById[this.id as string]?.fullPath
     return (
       <Link
-        {...(getRouteNavigationScope(this.id as string, fullPath) as any)}
+        from={fullPath as never}
+        {...(getRouteNavigationScope?.(this.id as string) as any)}
         {...props}
       />
     )
@@ -295,15 +294,17 @@ export class Route<
   }
 
   useNavigate = (): UseNavigateResult<TFullPath, TRegister> => {
-    return useNavigate(
-      getRouteNavigationScope(this.id, this.fullPath) as any,
-    ) as any
+    return useNavigate({
+      from: this.fullPath,
+      ...getRouteNavigationScope?.(this.id),
+    } as any) as any
   }
 
   Link: LinkComponentRoute<TFullPath, TRegister> = ((props) => {
     return (
       <Link
-        {...(getRouteNavigationScope(this.id, this.fullPath) as any)}
+        from={this.fullPath as never}
+        {...(getRouteNavigationScope?.(this.id) as any)}
         {...props}
       />
     )

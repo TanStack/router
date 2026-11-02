@@ -5,18 +5,12 @@ import {
   createScopedRedirect,
   getInstallationRouteIdMapper,
   getScopedRouterView,
+  installRouteModules,
 } from '@tanstack/router-core/_internal/route-module'
 import { Route, getRouteApi } from './route'
 import { Link, useLinkProps } from './link'
-import { useBlocker } from './useBlocker'
 import { Navigate, useNavigate } from './useNavigate'
-import {
-  MatchRoute,
-  useChildMatches,
-  useMatchRoute,
-  useMatches,
-  useParentMatches,
-} from './Matches'
+import { MatchRoute, useMatchRoute } from './Matches'
 import { useRouter } from './useRouter'
 import { matchContext } from './matchContext'
 import { useMatch } from './useMatch'
@@ -25,8 +19,6 @@ import { useLoaderDeps } from './useLoaderDeps'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useRouteContext } from './useRouteContext'
-import { useLocation } from './useLocation'
-import { useRouterState } from './useRouterState'
 import type { UseBlockerFn } from './useBlocker'
 import type {
   AnyContext,
@@ -170,6 +162,9 @@ export interface FileRouteScope<
 export function bindCreateModuleRoot<TRegister, TModuleId extends string>(
   moduleId: TModuleId,
 ): FileRouteScope<never, TRegister, TModuleId>['createModuleRoot'] {
+  // Module routes resolve their route-bound APIs through the core's
+  // route-module behavior: install it with the first module root.
+  installRouteModules()
   return () => (options) =>
     new Route({ ...(options as any), _module: moduleId }) as any
 }
@@ -390,42 +385,6 @@ export function bindRouteScopeUseRouteContext<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useRouteContext'] {
   return bindIdHook(moduleId, useRouteContext) as any
-}
-
-export function bindRouteScopeUseMatches<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useMatches'] {
-  return useMatches as any
-}
-
-export function bindRouteScopeUseParentMatches<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useParentMatches'] {
-  return useParentMatches as any
-}
-
-export function bindRouteScopeUseChildMatches<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useChildMatches'] {
-  return useChildMatches as any
-}
-
-export function bindRouteScopeUseLocation<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useLocation'] {
-  return useLocation as any
-}
-
-export function bindRouteScopeUseRouterState<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useRouterState'] {
-  return useRouterState as any
-}
-
-export function bindRouteScopeUseBlocker<TRouter extends AnyRouter>(
-  _moduleId: string,
-): RouteScope<TRouter>['useBlocker'] {
-  return useBlocker as any
 }
 
 export function bindRouteScopeNotFound<TRouter extends AnyRouter>(

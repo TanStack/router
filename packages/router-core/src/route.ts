@@ -3,7 +3,7 @@ import { cleanPath, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
-import { getRouteNavigationScope } from './route-module'
+import { getModuleRootId, getRouteNavigationScope } from './route-module-hooks'
 import type { LazyRoute } from './fileRoute'
 import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
@@ -1820,10 +1820,10 @@ export class BaseRoute<
           RoutePathOptionsIntersection<TCustomId, TPath>)
       | undefined
 
-    // A route module's root (`options._module`) is never the tree root: it is
-    // mounted under a host route and qualifies the ids of its subtree.
-    const moduleId = options?._module
-    const isRoot = !options?.path && !options?.id && moduleId === undefined
+    // A route module's root is never the tree root: it is mounted under a
+    // host route, and its id qualifies the ids of its subtree.
+    const moduleRootId = getModuleRootId?.(options)
+    const isRoot = !moduleRootId && !options?.path && !options?.id
 
     this.parentRoute = this.options.getParentRoute?.()
 
@@ -1848,18 +1848,15 @@ export class BaseRoute<
 
     const customId = options?.id || path
 
-    // Strip the parentId prefix from the first level of children. A module
-    // root's id is `<moduleId>:`, so its descendants get qualified ids such as
-    // `@acme/products:/$productId` wherever the module is mounted.
+    // Strip the parentId prefix from the first level of children
     const id = isRoot
       ? rootRouteId
-      : moduleId !== undefined
-        ? `${moduleId}:`
-        : cleanPath(
-            (this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id) +
-              '/' +
-              (customId ?? ''),
-          )
+      : (moduleRootId ??
+        cleanPath(
+          (this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id) +
+            '/' +
+            (customId ?? ''),
+        ))
 
     if (path === rootRouteId) {
       path = '/'
@@ -2043,7 +2040,8 @@ export class BaseRoute<
    */
   redirect: RedirectFnRoute<TFullPath, TRegister> = (opts) =>
     redirect({
-      ...getRouteNavigationScope(this.id, this.fullPath),
+      from: this.fullPath,
+      ...getRouteNavigationScope?.(this.id),
       ...opts,
     } as any)
 }
@@ -2071,7 +2069,8 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     { router: TRouter }
   > = (opts) =>
     redirect({
-      ...getRouteNavigationScope(this.id as string, this.id as string),
+      from: this.id as string,
+      ...getRouteNavigationScope?.(this.id as string),
       ...opts,
     } as any)
 }

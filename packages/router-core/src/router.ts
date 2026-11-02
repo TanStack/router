@@ -38,9 +38,8 @@ import {
   trimPathRight,
 } from './path'
 import { createSieveCache } from './sieve-cache'
-import { invariant } from './invariant'
 import { isNotFound } from './not-found'
-import { resolveRouteId } from './route-id'
+import { resolveRouteId, scopeLocationOptions } from './route-module-hooks'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -2211,19 +2210,12 @@ export class RouterCore<
 
     // Route-module APIs pass module-local destinations (`_fromRoute` always
     // comes with `_module`); translate them once so the destination, its mask
-    // and route masks all see final paths.
-    let dest = opts
-    if (opts._module !== undefined) {
-      if (!scopeLocationOptions) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error(
-            `Invariant failed: Route module "${opts._module}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
-          )
-        }
-        invariant()
-      }
-      dest = scopeLocationOptions(this, opts)
-    }
+    // and route masks all see final paths. Route-module code installs the
+    // translation before it creates such options.
+    const dest =
+      scopeLocationOptions && opts._module !== undefined
+        ? scopeLocationOptions(this, opts)
+        : opts
     const next = build(dest)
 
     if (dest.mask) {
@@ -2784,24 +2776,6 @@ export class RouterCore<
   serverSsr?: ServerSsr
 
   serverSsrLifecycle?: RouterSsrLifecycle
-}
-
-/**
- * Translates the module-local options of route-module APIs. `mountRouteModule`
- * installs it, so applications without route modules do not ship it.
- */
-let scopeLocationOptions:
-  | (<TOptions extends BuildNextOptions>(
-      router: AnyRouter,
-      opts: TOptions,
-    ) => TOptions)
-  | undefined
-
-/** @internal Called by `mountRouteModule`. */
-export function setScopeLocationOptions(
-  scope: NonNullable<typeof scopeLocationOptions>,
-): void {
-  scopeLocationOptions = scope
 }
 
 async function documentNavigation(

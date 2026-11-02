@@ -33,21 +33,17 @@ export function useNavigate<
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const router = useRouter()
-  // Route-module APIs also pass the internal `_module`/`_fromRoute` scope,
-  // which resolves to the installation of the nearest match. A live match
-  // never changes route, so read it once without tracking.
-  const defaults = _defaultOpts as
-    | { from?: string; _module?: RouteModuleScope; _fromRoute?: string }
-    | undefined
+  // A live match never changes route, so read it once without tracking.
   const routeId = Solid.useContext(nearestMatchContext)[0 /* routeId */]()
 
   return ((options: NavigateOptions) => {
     return router.navigate({
-      _module: defaults?._module,
-      _fromRoute: defaults?._fromRoute,
+      // Route-module APIs also pass their internal `_module`/`_fromRoute`
+      // scope; it resolves to the installation of the nearest match.
+      ..._defaultOpts,
       _nearestRoute: routeId,
       ...options,
-      from: options.from ?? defaults?.from,
+      from: options.from ?? _defaultOpts?.from,
     })
   }) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
