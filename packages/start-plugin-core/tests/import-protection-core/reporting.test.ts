@@ -337,4 +337,3 @@ describe('positions', () => {
     })
   })
 })
-

@@ -1084,6 +1084,15 @@ export const query = () => 'MARK_DB'
     }
   }, 120_000)
 
+  test('an edit adding a second import of an allowed module: the warm build keeps the first one allowed', async () => {
+    const cold = await cached({ allowImport: () => true })
+    const warm = await cold.rebuild({
+      'src/page.ts': `${page}export const later = () => import('./secret.server')\n`,
+    })
+    expect(warm.violations).toEqual([])
+    expect(warm.client.where(/MARK_SECRET/)).not.toBe('nowhere')
+  }, 120_000)
+
   test('allowImport changing its answer: the warm build follows it, both ways', async () => {
     let answer = true
     const told: Array<string> = []

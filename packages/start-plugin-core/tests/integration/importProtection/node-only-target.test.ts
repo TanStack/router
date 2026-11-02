@@ -26,7 +26,7 @@ export const secret = () => db() + 'MARK_SECRET'
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each([
+  test.each<{ name: string; files: Record<string, string> }>([
     {
       name: 'live',
       files: {

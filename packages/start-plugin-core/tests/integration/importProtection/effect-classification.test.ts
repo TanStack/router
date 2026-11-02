@@ -78,6 +78,26 @@ export const secret = () => String(getRequest) + 'MARK_SECRET'
   )
 
   test(
+    'a bare import of a denied module whose only effect is an external URL is reported',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/s.server.ts': `import 'https://cdn.example.com/x.js'\nexport {}\n`,
+            'src/entry.ts': `import './s.server'\nexport const read = () => 1\n`,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+      expect(
+        reportedViolations(error).map(({ environment }) => environment),
+      ).toContain('client')
+    },
+    timeout,
+  )
+
+  test(
     'an unused import of a denied module with an effect at the end of 300 modules is reported',
     async () => {
       const error = await rejection(

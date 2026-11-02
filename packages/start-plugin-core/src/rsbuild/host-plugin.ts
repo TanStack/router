@@ -568,7 +568,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             const unconfirmed = new Set<string>()
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource
-              if (resource && ipEnv.unconfirmed(resource)) {
+              if (
+                resource &&
+                ipEnv.unconfirmed(resource, env.compiled.has(resource))
+              ) {
                 unconfirmed.add(resource)
               }
             }

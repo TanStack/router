@@ -35,12 +35,14 @@
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
+import { isBuiltin } from 'node:module'
 import {
   ASSET_QUERY_RE,
   identify,
-  isAnalyzableSpecifier,
+  isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
+import { startRecognizer } from '../compiler/recognizer'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
@@ -115,6 +117,9 @@ function markerIdOf(envType: EnvType, target: string): string {
     ? identify(target).path
     : target
 }
+
+/** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
+const KNOWN_PACKAGES = startRecognizer()
 
 export function importEdgesPlanner(ip: ImportProtection): Planner {
   const { config } = ip
@@ -455,12 +460,11 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         return true
       }
       for (const spec of facts.imports) {
-        if (!isAnalyzableSpecifier(spec)) {
+        if (isBuiltin(spec) || isKnownSpecifier(KNOWN_PACKAGES, spec)) {
           continue
         }
         const r = await resolve(spec, id)
-        // (a known framework package answers by its specifier: never resolved)
-        if (r !== spec && (r === null || (await effectful(r)))) {
+        if (r === null || (await effectful(r))) {
           return true
         }
       }

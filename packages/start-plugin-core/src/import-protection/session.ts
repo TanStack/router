@@ -209,13 +209,6 @@ export class ImportProtection {
    */
   forget(path: string): void {
     this.scopeCache.delete(path)
-    for (const targets of Object.values(this.allowedTargets)) {
-      for (const id of targets) {
-        if (identify(id).path === path) {
-          targets.delete(id)
-        }
-      }
-    }
     for (const env of this.envs.values()) {
       env.forget(path)
     }
@@ -449,7 +442,7 @@ class ImportProtectionEnv {
   private readonly importersByFile = new IdsByFile()
   /** `allowImport`'s answers: one per import (`dedupeKey`) for this environment's session or build. */
   private readonly answers = new Map<string, Promise<boolean>>()
-  /** Edges (and modules that are their own violation) `allowImport` answered `true` for: their edge modules are transparent. */
+  /** The edge modules (by key: edge and target) `allowImport` answered `true` for: transparent. A module that is its own violation counts by its mock's key. */
   private readonly allowed = new Set<string>()
   /** The imports `onViolation` was told about (`dedupeKey`): per dev session with `log: 'once'`, per build. */
   private readonly notified = new Set<string>()
@@ -684,7 +677,9 @@ class ImportProtectionEnv {
     if (!(await answer)) {
       return false
     }
-    this.allowed.add(v.edgeKey)
+    if (v.module) {
+      this.allowed.add(v.module.key)
+    }
     this.ip.allowTarget(this.type, v.resolved)
     return true
   }
@@ -698,7 +693,7 @@ class ImportProtectionEnv {
    */
   private selfAllowed(self: EdgeViolation): boolean {
     if (
-      this.allowed.has(self.edgeKey) ||
+      this.allowed.has(self.module!.key) ||
       this.ip.targetAllowed(this.type, self.resolved!)
     ) {
       return true
@@ -774,12 +769,12 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Whether a restored edge module must be built again by this session (Rspack
-   * restored it from the persistent cache without building it): with
-   * `allowImport`, another session's answer chose its state; in dev, pending
-   * violations it never confirmed were another session's to report.
+   * Whether an edge module of the compilation must be built again by this
+   * session: with `allowImport`, one Rspack restored from the persistent cache
+   * without building it (`built`: another session's answer chose its state); in
+   * dev, pending violations it never confirmed were another session's to report.
    */
-  unconfirmed(resource: string): boolean {
+  unconfirmed(resource: string, built: boolean): boolean {
     const ref = this.ip.ids.parse(resource)
     const m =
       ref?.kind === 'edge' && ref.env === this.name
@@ -788,11 +783,8 @@ class ImportProtectionEnv {
     if (!m) {
       return false
     }
-    if (this.ip.config.allowImport) {
-      const [first] = m.violations.values()
-      if (first && !first.self && !this.answers.has(dedupeKey(first))) {
-        return true
-      }
+    if (this.ip.config.allowImport && !built) {
+      return true
     }
     if (this.ip.config.mode !== 'dev') {
       return false
@@ -894,7 +886,10 @@ class ImportProtectionEnv {
    */
   confirm(id: string): Promise<Error | null> | null {
     const ref = this.ip.ids.parse(id)
-    const m = ref?.kind === 'edge' ? this.modules.get(ref.key) : undefined
+    if (ref?.kind !== 'edge') {
+      return null
+    }
+    const m = this.modules.get(ref.key)
     if (!m) {
       return null
     }
@@ -920,8 +915,13 @@ class ImportProtectionEnv {
       // (a module's own mock is not asked here: `allowsSelf` chose it)
       if (
         !first?.self &&
-        (await this.allows(first ?? this.violationOfContent(m.content)))
+        (await this.allows(
+          first ?? this.violationOfContent(ref.key, m.content),
+        ))
       ) {
+        for (const [key] of pending) {
+          this.confirmed.add(key)
+        }
         return null
       }
       const errors: Array<ViolationInfo> = []
@@ -935,7 +935,10 @@ class ImportProtectionEnv {
   }
 
   /** The violation an edge module stands for when no record of it was read: an importer restored from a persistent cache. */
-  private violationOfContent(content: EdgeModuleContent): EdgeViolation {
+  private violationOfContent(
+    key: string,
+    content: EdgeModuleContent,
+  ): EdgeViolation {
     const importer = path.resolve(this.ip.config.root, content.importer)
     return {
       edgeKey: content.edgeKey,
@@ -949,7 +952,7 @@ class ImportProtectionEnv {
       loc: null,
       snippet: null,
       behavior: this.ip.config.behavior,
-      module: null,
+      module: { key, content },
     }
   }
 
@@ -993,17 +996,9 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Forgets a deleted file's importer records (edges, violations of its ids, `allowImport`'s answers on its imports). */
+  /** Forgets a deleted file's importer records (edges, violations of its ids). `allowImport` is asked once per import for the session: its answers stay. */
   forget(path: string): void {
     this.edges.forget(path)
-    const prefix = `${this.name}\u0000${path}\u0000`
-    for (const records of [this.answers, this.notified]) {
-      for (const key of records.keys()) {
-        if (key.startsWith(prefix)) {
-          records.delete(key)
-        }
-      }
-    }
     for (const importerId of this.importersByFile.take(path)) {
       const keys = this.byImporter.get(importerId)
       this.byImporter.delete(importerId)
@@ -1037,7 +1032,7 @@ class ImportProtectionEnv {
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
-    if (this.allowed.has(c.edgeKey)) {
+    if (this.allowed.has(key)) {
       return {
         code: allowedModuleCode(c, c.resolved ?? c.specifier),
         moduleSideEffects: null,
@@ -1050,9 +1045,7 @@ class ImportProtectionEnv {
   witness(): WitnessLookup {
     const effectfulOf = (key: string) => {
       const m = this.modules.get(key)
-      return m && !this.allowed.has(m.content.edgeKey)
-        ? m.content.effectful
-        : null
+      return m && !this.allowed.has(key) ? m.content.effectful : null
     }
     const edges = witnessLookup(this.ip.ids, this.name, effectfulOf)
     if (this.selfModules.size === 0) {
