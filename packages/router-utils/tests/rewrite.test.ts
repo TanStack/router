@@ -228,6 +228,29 @@ describe('context-aware reference rewrites', () => {
     )
   })
 
+  it('keeps the property a shorthand with a default names, in a pattern below the declaration', () => {
+    const code = dedent(`
+      var page = 1
+      if (o) { var { page = 2 } = o }
+      ;({ page = 3 } = o)
+      for (var { page = 4 } of list) {}
+      const f = ({ a = page }) => a
+    `)
+    const e = engine(code)
+    const sym = e.ctx.t1.units[0]!.declares[0]!
+    const to = e.ctx.names.alloc('TsrPage')
+    e.ctx.renameRefs(sym, { sym: to.sym }, 'all-outputs', 'hmr')
+    expect(e.render().code).toBe(
+      dedent(`
+      var TsrPage = 1
+      if (o) { var { page: TsrPage = 2 } = o }
+      ;({ page: TsrPage = 3 } = o)
+      for (var { page: TsrPage = 4 } of list) {}
+      const f = ({ a = TsrPage }) => a
+    `),
+    )
+  })
+
   it('renames JSX tags (open and close) of a component binding', () => {
     const code = dedent(`
       const Foo = () => null

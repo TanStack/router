@@ -1625,6 +1625,17 @@ function classify(
         }
       }
       return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
+    case 'AssignmentPattern': {
+      // `{ a = 1 }`: `a` names the property too
+      const property = parent.left === node ? file.parentOf(parent) : null
+      if (property?.type === 'Property' && property.shorthand) {
+        return { kind: 'write', ctx: 'shorthandPattern' }
+      }
+      return {
+        kind: ref.isWrite ? 'write' : 'value',
+        ctx: ref.isWrite ? 'assignTarget' : 'plain',
+      }
+    }
     case 'CallExpression':
       return { kind: 'value', ctx: parent.callee === node ? 'callee' : 'plain' }
     case 'TaggedTemplateExpression':

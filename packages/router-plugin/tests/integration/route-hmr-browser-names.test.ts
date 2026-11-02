@@ -31,6 +31,62 @@ const inPlace = { reloaded: false, errors: [] }
 const withoutLoaderErrors = (errors: Array<string>) =>
   errors.filter((error) => !isAppError(error, 'loader failed'))
 
+// A lowercase component a destructuring assigns from the property of its own
+// name, with a default: the property keeps its name, whatever the compiler
+// calls the binding. Not the declaration's own pattern alone: `var` nested in a
+// block, an assignment pattern.
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: a lowercase component destructured with a default',
+  { timeout: 60_000 },
+  (bundler) => {
+    const route =
+      (declared: string) =>
+      (
+        version: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+const FromObject = () => <p>from the object ${version}</p>
+const source: any = { comp: FromObject }
+var comp = () => <p>first ${version}</p>
+${declared}
+export const Route = createFileRoute('/')({ component: comp })
+`
+    test.for([
+      {
+        name: '`var` in a block',
+        route: route(`if (source) { var { comp = null } = source }`),
+      },
+      {
+        name: 'an assignment pattern',
+        route: route(`;({ comp = null } = source)`),
+      },
+      {
+        name: 'an assignment pattern in a block',
+        route: route(`if (source) { ({ comp = null } = source) }`),
+      },
+      {
+        name: '`var` in a for-of head',
+        route: route(`for (var { comp = null } of [source]) {}`),
+      },
+    ])(
+      '$name reads its own property, before and after an edit',
+      async ({ route }, { expect, onTestFinished }: TestContext) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting: false },
+          files: { 'routes/index.tsx': route('v1') },
+          ready: 'from the object v1',
+        })
+        const edited = await app.edit(
+          { 'routes/index.tsx': route('v2') },
+          'from the object v2',
+        )
+        expect(edited.errors).toEqual([])
+      },
+    )
+  },
+)
+
 describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
   /**
    * A route at `/` whose `mode` search parameter picks what the page shows:
