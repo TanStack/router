@@ -1590,6 +1590,158 @@ export const Route = createRootRoute()
       'Only an application can install a route module several times.',
     )
   })
+
+  describe('namespace file layouts', () => {
+    const includes = { routeModules: { includes: installations } }
+    // Every relative import of the scope and its namespaces resolves to a
+    // generated file, wherever the layout puts them.
+    const expectGeneratedImportsResolve = async (app: string) => {
+      const src = path.join(app, 'src')
+      const files = (await fs.readdir(src, { recursive: true }))
+        .filter((file) => /^(?!routes\/).*\.ts$/.test(file))
+        .map((file) => path.join(src, file))
+      for (const file of files) {
+        for (const [, from] of read('/', file).matchAll(
+          /from '(\.{1,2}\/[^']+)'/g,
+        )) {
+          expect(
+            ['.ts', '.tsx'].some((extension) =>
+              existsSync(path.resolve(path.dirname(file), from + extension)),
+            ),
+            `${path.relative(src, file)} imports ${from}`,
+          ).toBe(true)
+        }
+      }
+    }
+    const scopeImports = (app: string) =>
+      [
+        ...read(app, 'src/routeScope.gen.ts').matchAll(
+          /export \* as (\w+) from '([^']+)'/g,
+        ),
+      ].map(([, name, from]) => [name, from])
+
+    it.each([
+      [
+        'indexed',
+        [
+          ['orgCatalog', './routeScope.gen.namespace0'],
+          ['userCatalog', './routeScope.gen.namespace1'],
+        ],
+      ],
+      [
+        'named',
+        [
+          ['orgCatalog', './routeScope.gen.orgCatalog'],
+          ['userCatalog', './routeScope.gen.userCatalog'],
+        ],
+      ],
+      [
+        'folder',
+        [
+          ['orgCatalog', './routeScope.gen/orgCatalog'],
+          ['userCatalog', './routeScope.gen/userCatalog'],
+        ],
+      ],
+    ] as const)('%s', async (layout, expected) => {
+      const app = await writeApp()
+      await generate(app, { ...includes, routeScopeNamespaceFiles: layout })
+      expect(scopeImports(app)).toEqual(expected)
+      for (const [, from] of expected) {
+        expect(existsSync(path.join(app, 'src', `${from}.ts`))).toBe(true)
+      }
+      await expectGeneratedImportsResolve(app)
+    })
+
+    it('takes the path of each namespace from a function', async () => {
+      const app = await writeApp()
+      const seen: Array<unknown> = []
+      await generate(app, {
+        ...includes,
+        routeScopeNamespaceFiles: (namespace: { name: string }) => {
+          seen.push(namespace)
+          return `scopes/${namespace.name}.gen`
+        },
+      })
+      expect(seen).toEqual([
+        {
+          name: 'orgCatalog',
+          moduleId: '@fixture/catalog',
+          key: '@fixture/catalog#orgCatalog',
+          index: 0,
+        },
+        {
+          name: 'userCatalog',
+          moduleId: '@fixture/catalog',
+          key: '@fixture/catalog#userCatalog',
+          index: 1,
+        },
+      ])
+      expect(scopeImports(app)).toEqual([
+        ['orgCatalog', './scopes/orgCatalog.gen'],
+        ['userCatalog', './scopes/userCatalog.gen'],
+      ])
+      // A namespace below the generated directory imports the route tree
+      // relative to its own location.
+      expect(read(app, 'src/scopes/orgCatalog.gen.ts')).toContain(
+        "from '../routeTree.gen'",
+      )
+      await expectGeneratedImportsResolve(app)
+    })
+
+    it('removes the files of an earlier layout', async () => {
+      const app = await writeApp()
+      await generate(app, { ...includes, routeScopeNamespaceFiles: 'folder' })
+      expect(existsSync(path.join(app, 'src/routeScope.gen'))).toBe(true)
+      await generate(app, { ...includes, routeScopeNamespaceFiles: 'named' })
+      expect(existsSync(path.join(app, 'src/routeScope.gen'))).toBe(false)
+      expect(
+        existsSync(path.join(app, 'src/routeScope.gen.orgCatalog.ts')),
+      ).toBe(true)
+      await generate(app, includes)
+      expect(
+        (await fs.readdir(path.join(app, 'src')))
+          .filter((file) => file.startsWith('routeScope.gen'))
+          .sort(),
+      ).toEqual([
+        'routeScope.gen.namespace0.ts',
+        'routeScope.gen.namespace1.ts',
+        'routeScope.gen.ts',
+      ])
+    })
+
+    it.each([
+      [
+        'outside the generated directory',
+        () => '../outside',
+        /must be a path inside the directory of the generated route tree/,
+      ],
+      [
+        'an absolute path',
+        () => '/tmp/namespace',
+        /must be a path inside the directory of the generated route tree/,
+      ],
+      [
+        'paths that differ only in case',
+        (namespace: { index: number }) => (namespace.index ? 'Scope' : 'scope'),
+        /clashes with "scope"/,
+      ],
+      [
+        'a generated file of the module',
+        () => 'routeTree.gen',
+        /clashes with "routeTree.gen"/,
+      ],
+      [
+        'the routes directory',
+        (namespace: { name: string }) => `routes/${namespace.name}`,
+        /inside the routes directory/,
+      ],
+    ])('rejects %s', async (_, layout, error) => {
+      const app = await writeApp()
+      await expect(
+        generate(app, { ...includes, routeScopeNamespaceFiles: layout }),
+      ).rejects.toThrow(error)
+    })
+  })
 })
 
 describe('TanStack Start fragments', () => {

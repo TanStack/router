@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import { routeModulesOptionSchema } from './route-module/declaration'
 import type { GeneratorPlugin } from './plugin/types'
+import type { RouteScopeNamespaceFiles } from './route-module/emit'
 
 export const DEFAULT_ROUTE_TREE_FILE_HEADER = [
   '/* eslint-disable */',
@@ -88,6 +89,24 @@ export const configSchema = baseConfigSchema.extend({
    * (`tanstack.router.module`).
    */
   routeModules: routeModulesOptionSchema.optional(),
+  /**
+   * Where the generated files of route-module namespaces (`products.Link`)
+   * live, next to the generated route tree:
+   * - `'indexed'` (default): `routeScope.gen.namespace<N>.ts`;
+   * - `'named'`: `routeScope.gen.<namespace>.ts`;
+   * - `'folder'`: `routeScope.gen/<namespace>.ts`;
+   * - a function returning the path relative to the generated route tree's
+   *   directory, without extension.
+   */
+  routeScopeNamespaceFiles: z
+    .union([
+      z.enum(['indexed', 'named', 'folder']),
+      z.custom<Extract<RouteScopeNamespaceFiles, Function>>(
+        (value) => typeof value === 'function',
+      ),
+    ])
+    .optional()
+    .default('indexed'),
 })
 
 export type Config = z.infer<typeof configSchema>

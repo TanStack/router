@@ -1,3 +1,5 @@
+import path from 'node:path'
+import { replaceBackslash } from '../utils'
 import type { RouteModuleContext, ScopeModule } from './context'
 
 export const ROUTE_SCOPE_FILE = 'routeScope.gen'
@@ -222,16 +224,94 @@ export function isScopedMatch(match: AnyRouteMatch): match is KnownRouteMatchUni
   ]
 }
 
-export function getRouteNamespaceFile(
-  module: ScopeModule,
+/** One generated namespace, as passed to a `routeScopeNamespaceFiles` function. */
+export interface RouteScopeNamespace {
+  /** The namespace's identifier in the scope, such as `products`. */
+  name: string
+  /** The id of the module it addresses. */
+  moduleId: string
+  /** The module id, or `<moduleId>#<as>` for one installation of a module. */
+  key: string
+  /** Its position among the scope's namespaces, ordered by key. */
+  index: number
+}
+
+/**
+ * Where the generated files of route-module namespaces live:
+ * - `'indexed'`: `routeScope.gen.namespace<N>.ts` next to the route tree;
+ * - `'named'`: `routeScope.gen.<namespace>.ts` next to the route tree;
+ * - `'folder'`: `routeScope.gen/<namespace>.ts`;
+ * - a function returning the path relative to the generated route tree's
+ *   directory, without extension.
+ */
+export type RouteScopeNamespaceFiles =
+  | 'indexed'
+  | 'named'
+  | 'folder'
+  | ((namespace: RouteScopeNamespace) => string)
+
+const reservedFiles = [
+  ROUTE_SCOPE_FILE,
+  ROUTE_CONTRACT_FILE,
+  ROUTE_MODULE_FILE,
+  START_MODULES_FILE,
+]
+
+/**
+ * The file of each namespace of the scope (by key), relative to the generated
+ * route tree's directory and without extension.
+ */
+export function getRouteNamespaceFiles(
   context: RouteModuleContext,
-) {
-  // Ordinal names are portable on case-insensitive filesystems and do not
-  // impose filesystem length limits on otherwise valid public JS aliases.
-  return `${ROUTE_SCOPE_FILE}.namespace${context.scope
-    .map((entry) => entry.key)
-    .sort()
-    .indexOf(module.key)}`
+  layout: RouteScopeNamespaceFiles,
+  routeTreeFile: string,
+): Map<string, string> {
+  const keys = context.scope.map((entry) => entry.key).sort()
+  const files = new Map<string, string>()
+  // Namespace files are distinct ignoring case, so they are portable to
+  // case-insensitive filesystems.
+  const taken = new Map(
+    [...reservedFiles, routeTreeFile].map((file) => [file.toLowerCase(), file]),
+  )
+  for (const module of context.scope) {
+    const index = keys.indexOf(module.key)
+    const file = path.posix.normalize(
+      replaceBackslash(
+        layout === 'indexed'
+          ? `${ROUTE_SCOPE_FILE}.namespace${index}`
+          : layout === 'named'
+            ? `${ROUTE_SCOPE_FILE}.${module.namespace}`
+            : layout === 'folder'
+              ? `${ROUTE_SCOPE_FILE}/${module.namespace}`
+              : layout({
+                  name: module.namespace,
+                  moduleId: module.moduleId,
+                  key: module.key,
+                  index,
+                }),
+      ),
+    )
+    if (
+      !file ||
+      file === '.' ||
+      path.posix.isAbsolute(file) ||
+      file === '..' ||
+      file.startsWith('../')
+    ) {
+      throw new Error(
+        `[route modules] The file of namespace "${module.namespace}" must be a path inside the directory of the generated route tree, without extension; got "${file}".`,
+      )
+    }
+    const clash = taken.get(file.toLowerCase())
+    if (clash !== undefined) {
+      throw new Error(
+        `[route modules] The file of namespace "${module.namespace}" ("${file}") clashes with "${clash}". Generated files must differ in more than letter case; use another "routeScopeNamespaceFiles" layout.`,
+      )
+    }
+    taken.set(file.toLowerCase(), file)
+    files.set(module.key, file)
+  }
+  return files
 }
 
 function namespaceRouteIds(context: RouteModuleContext, module: ScopeModule) {

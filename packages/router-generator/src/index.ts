@@ -70,5 +70,9 @@ export type {
   RouteModuleDeclaration,
   RouteModulesOption,
 } from './route-module/declaration'
+export type {
+  RouteScopeNamespace,
+  RouteScopeNamespaceFiles,
+} from './route-module/emit'
 
 export { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'

@@ -64,7 +64,7 @@ import {
   buildStartModulesSource,
   getModuleIdentifier,
   getMountVariableName,
-  getRouteNamespaceFile,
+  getRouteNamespaceFiles,
 } from './route-module/emit'
 import {
   ROUTE_MODULE_MANIFEST_VERSION,
@@ -850,6 +850,33 @@ export class Generator {
       ),
     )
 
+    const namespaceFiles = getRouteNamespaceFiles(
+      context,
+      this.config.routeScopeNamespaceFiles,
+      removeExt(path.basename(this.generatedRouteTreePath), false),
+    )
+    const routesDirectory = this.routesDirectoryPath
+    for (const file of namespaceFiles.values()) {
+      const filePath = this.getRouteModuleFilePath(file)
+      if (filePath.startsWith(routesDirectory + path.sep)) {
+        throw new Error(
+          `[route modules] The namespace file "${filePath}" is inside the routes directory, where it would be read as a route.`,
+        )
+      }
+    }
+    const routeTreeImportFrom = (baseName: string) => {
+      const relative = replaceBackslash(
+        removeExt(
+          path.relative(
+            path.dirname(this.getRouteModuleFilePath(baseName)),
+            this.generatedRouteTreePath,
+          ),
+          this.config.addExtensions,
+        ),
+      )
+      return relative.startsWith('.') ? relative : `./${relative}`
+    }
+
     const files: Array<[string, string]> = [
       [
         ROUTE_SCOPE_FILE,
@@ -875,22 +902,22 @@ export class Generator {
                 ]
               : [],
           namespaceImport: (module) =>
-            importFrom(
-              ROUTE_SCOPE_FILE,
-              getRouteNamespaceFile(module, context),
-            ),
+            importFrom(ROUTE_SCOPE_FILE, namespaceFiles.get(module.key)!),
         }),
       ],
-      ...context.scope.map((module): [string, string] => [
-        getRouteNamespaceFile(module, context),
-        buildRouteNamespaceSource({
-          context,
-          module,
-          frameworkPackage: this.targetTemplate.fullPkg,
-          routeTreeImport,
-          header,
-        }),
-      ]),
+      ...context.scope.map((module): [string, string] => {
+        const file = namespaceFiles.get(module.key)!
+        return [
+          file,
+          buildRouteNamespaceSource({
+            context,
+            module,
+            frameworkPackage: this.targetTemplate.fullPkg,
+            routeTreeImport: routeTreeImportFrom(file),
+            header,
+          }),
+        ]
+      }),
     ]
     if (context.declaration.mode === 'module') {
       files.push(
@@ -972,31 +999,14 @@ export class Generator {
         })
       }
     }
-    const namespaceNames = new Set(
-      context.scope.map((module) =>
-        path.basename(
-          this.getRouteModuleFilePath(getRouteNamespaceFile(module, context)),
-        ),
-      ),
-    )
-    for (const entry of await fsp.readdir(
-      path.dirname(this.generatedRouteTreePath),
-    )) {
-      if (
-        /^routeScope\.gen\.namespace\d+\.ts$/.test(entry) &&
-        !namespaceNames.has(entry)
-      ) {
-        await fsp.rm(
-          path.join(path.dirname(this.generatedRouteTreePath), entry),
-        )
-      }
-    }
+    await this.removeStaleNamespaceFiles(new Set(namespaceFiles.values()))
 
     for (const [baseName, source] of files) {
       const content = this.config.enableRouteTreeFormatting
         ? await format(source, this.config)
         : source
       const filePath = this.getRouteModuleFilePath(baseName)
+      await fsp.mkdir(path.dirname(filePath), { recursive: true })
       const existing = await this.fs.readFile(filePath)
       if (
         existing === 'file-not-existing' ||
@@ -2437,6 +2447,55 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
   }
 
   /** Path of a generated route-module file next to the route tree. */
+  /**
+   * Removes the namespace files of an earlier generation that are not
+   * generated anymore: the previous scope file lists them, whatever their
+   * layout, and earlier versions used `routeScope.gen.namespace<N>.ts`.
+   */
+  private async removeStaleNamespaceFiles(current: Set<string>) {
+    const directory = path.dirname(this.generatedRouteTreePath)
+    const scopeFile = this.getRouteModuleFilePath(ROUTE_SCOPE_FILE)
+    const keep = new Set(
+      [...current].map((file) => this.getRouteModuleFilePath(file)),
+    )
+    const previous = new Set<string>()
+    const scope = await this.fs.readFile(scopeFile)
+    if (scope !== 'file-not-existing') {
+      for (const [, specifier] of scope.fileContent.matchAll(
+        /^export \* as \w+ from ['"]([^'"]+)['"]/gm,
+      )) {
+        previous.add(
+          path.resolve(
+            path.dirname(scopeFile),
+            `${specifier!.replace(/\.[cm]?[jt]sx?$/, '')}.ts`,
+          ),
+        )
+      }
+    }
+    for (const entry of await fsp.readdir(directory)) {
+      if (/^routeScope\.gen\.namespace\d+\.ts$/.test(entry)) {
+        previous.add(path.join(directory, entry))
+      }
+    }
+    for (const file of previous) {
+      if (keep.has(file) || !file.startsWith(directory + path.sep)) {
+        continue
+      }
+      await fsp.rm(file, { force: true })
+      // Remove folders the layout emptied, up to the generated directory.
+      for (
+        let folder = path.dirname(file);
+        folder !== directory && folder.startsWith(directory + path.sep);
+        folder = path.dirname(folder)
+      ) {
+        if ((await fsp.readdir(folder)).length > 0) {
+          break
+        }
+        await fsp.rmdir(folder)
+      }
+    }
+  }
+
   private getRouteModuleFilePath(baseName: string) {
     return path.join(
       path.dirname(this.generatedRouteTreePath),
