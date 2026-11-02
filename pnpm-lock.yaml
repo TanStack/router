@@ -14004,8 +14004,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       yuku:
-        specifier: 0.26.0
-        version: 0.26.0
+        specifier: 0.27.0
+        version: 0.27.0
 
   packages/compiler-vite-versions:
     dependencies:
@@ -14779,8 +14779,8 @@ importers:
         specifier: ^3.9.6
         version: 3.9.6
       yuku:
-        specifier: 0.26.0
-        version: 0.26.0
+        specifier: 0.27.0
+        version: 0.27.0
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -14864,8 +14864,8 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       yuku:
-        specifier: 0.26.0
-        version: 0.26.0
+        specifier: 0.27.0
+        version: 0.27.0
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -15018,8 +15018,8 @@ importers:
         specifier: 'catalog:'
         version: 0.2.17
       yuku:
-        specifier: 0.26.0
-        version: 0.26.0
+        specifier: 0.27.0
+        version: 0.27.0
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -23059,33 +23059,33 @@ packages:
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
 
-  '@yuku-toolchain/darwin-arm64@0.26.0':
-    resolution: {integrity: sha512-r5ny7ZcxgXZRfJU1OYZdrYQqXTJojLkOxbDqx0+I8w8ALql4U8WI4gxXKiRwEdUshatklMwPmAW5g2b3ljQfhA==}
+  '@yuku-toolchain/darwin-arm64@0.27.0':
+    resolution: {integrity: sha512-A3v83rNyHWlnJeeMBsWggZ+RZDP2BEMHIiMk+j23LqtVch24MXwg8veflkQgZ2GtCtZOxcG+NkztnsSUS4rWEQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@yuku-toolchain/darwin-x64@0.26.0':
-    resolution: {integrity: sha512-Fy+1Mv2M+rgWi0/WZ7IaXg5yKNce36490t9uNbNUgbjcq6q239zZt8G5cJcvlJYwvmGyDLcBVBlV4jYHWA9SdQ==}
+  '@yuku-toolchain/darwin-x64@0.27.0':
+    resolution: {integrity: sha512-u+fcqQw0uRj5irtO5f0xu5nGazYRxfBVBNIuhiONWX6Mh2izRONSNXhCwFDaYRqHunublzw2l2aQMB0n5n1t0Q==}
     cpu: [x64]
     os: [darwin]
 
-  '@yuku-toolchain/linux-arm64@0.26.0':
-    resolution: {integrity: sha512-2xYU5+w+S0sCG6mTY+uoI0O7tMxFeGVlDCEHLv7zgFzzn3/BosHv01ikqbPrs2EesXs1aRKdlSf+DXQcBe6Bpg==}
+  '@yuku-toolchain/linux-arm64@0.27.0':
+    resolution: {integrity: sha512-IPB+9LSC/sf8Sa8DtqapUgU4uTL/U94Vr5mgUsfRx59u8/4BT38cze+e5b96AlQynsdtuF4tgC0FW0TmJ2B75g==}
     cpu: [arm64]
     os: [linux]
 
-  '@yuku-toolchain/linux-x64@0.26.0':
-    resolution: {integrity: sha512-1mpAfP+rheq56tqZuIMCBz0APExRCrmQSJj3owYzHQKdK2vkYxxavC2XGvwIkWM9NkfMc9o14VmemJJ2BiKJTw==}
+  '@yuku-toolchain/linux-x64@0.27.0':
+    resolution: {integrity: sha512-fe1kN04JPBODrkRZOuI06jIqKyzcyn0ykx+tpiERDwqAh9ALWOtkgfhFjVaOQSu+guhakzY/89xjQdmfY7EJ7w==}
     cpu: [x64]
     os: [linux]
 
-  '@yuku-toolchain/win32-arm64@0.26.0':
-    resolution: {integrity: sha512-70Az6giEK6TFtssMW+UayiVqwAFr5tX5yfLNupQs506g1ZyX1H4Qqc4Ve51XmYrVf9u32WbKRQ1Tc9lyJIOA2A==}
+  '@yuku-toolchain/win32-arm64@0.27.0':
+    resolution: {integrity: sha512-NZmiFTF7ee45Fhnsa0BGMCpElJGg8iGYt4N3UoKj/n1vNmACcgY6NI4najNr9Jc1ulIVVvtPbo934RMlZQakrA==}
     cpu: [arm64]
     os: [win32]
 
-  '@yuku-toolchain/win32-x64@0.26.0':
-    resolution: {integrity: sha512-SbxIgspiUTLY/0aySGjBkOGlBa7QxDjIrFt4W31SVXVRj0i71ddZSVoXOBkIx8w5c+fQ+1Y9qRxmEoRiQpiRgQ==}
+  '@yuku-toolchain/win32-x64@0.27.0':
+    resolution: {integrity: sha512-7LSviI8HtHga0g7G2oT7C/SP2IoLmrg8LYPeWZkp4ljFtaWKJoTRF0Iv0cVt0dR4rehoN/+TjN4r8SoArCKvlg==}
     cpu: [x64]
     os: [win32]
 
@@ -30008,11 +30008,11 @@ packages:
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
 
-  yuku@0.26.0:
-    resolution: {integrity: sha512-Adk7YngGAvFybLcVmVlr24uu7HCfMIbcFkbQ73qyPLkdUCBeLYTxAs0eA4rxP18oFoEMwhO1x+BWumzanM1Fig==}
+  yuku@0.27.0:
+    resolution: {integrity: sha512-YmSD4xYlESRi8egxzC4guegQdMhAcz1G9NUsMNrTABAIV9dQxoBzDC7ZyAG/dSG18o1Oxt4xDok2irvPy9FSJQ==}
     engines: {node: '>=16.4.0'}
     peerDependencies:
-      '@yuku-toolchain/wasm': 0.26.0
+      '@yuku-toolchain/wasm': 0.27.0
     peerDependenciesMeta:
       '@yuku-toolchain/wasm':
         optional: true
@@ -37788,22 +37788,22 @@ snapshots:
 
   '@yarnpkg/lockfile@1.1.0': {}
 
-  '@yuku-toolchain/darwin-arm64@0.26.0':
+  '@yuku-toolchain/darwin-arm64@0.27.0':
     optional: true
 
-  '@yuku-toolchain/darwin-x64@0.26.0':
+  '@yuku-toolchain/darwin-x64@0.27.0':
     optional: true
 
-  '@yuku-toolchain/linux-arm64@0.26.0':
+  '@yuku-toolchain/linux-arm64@0.27.0':
     optional: true
 
-  '@yuku-toolchain/linux-x64@0.26.0':
+  '@yuku-toolchain/linux-x64@0.27.0':
     optional: true
 
-  '@yuku-toolchain/win32-arm64@0.26.0':
+  '@yuku-toolchain/win32-arm64@0.27.0':
     optional: true
 
-  '@yuku-toolchain/win32-x64@0.26.0':
+  '@yuku-toolchain/win32-x64@0.27.0':
     optional: true
 
   '@zkochan/js-yaml@0.0.7':
@@ -46055,14 +46055,14 @@ snapshots:
       cookie: 1.1.1
       youch-core: 0.3.3
 
-  yuku@0.26.0:
+  yuku@0.27.0:
     optionalDependencies:
-      '@yuku-toolchain/darwin-arm64': 0.26.0
-      '@yuku-toolchain/darwin-x64': 0.26.0
-      '@yuku-toolchain/linux-arm64': 0.26.0
-      '@yuku-toolchain/linux-x64': 0.26.0
-      '@yuku-toolchain/win32-arm64': 0.26.0
-      '@yuku-toolchain/win32-x64': 0.26.0
+      '@yuku-toolchain/darwin-arm64': 0.27.0
+      '@yuku-toolchain/darwin-x64': 0.27.0
+      '@yuku-toolchain/linux-arm64': 0.27.0
+      '@yuku-toolchain/linux-x64': 0.27.0
+      '@yuku-toolchain/win32-arm64': 0.27.0
+      '@yuku-toolchain/win32-x64': 0.27.0
 
   zeptomatch@2.0.2:
     dependencies:

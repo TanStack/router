@@ -76,7 +76,7 @@
     "@jridgewell/remapping": "^2.3.5",
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
-    "yuku": "0.26.0"
+    "yuku": "0.27.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
