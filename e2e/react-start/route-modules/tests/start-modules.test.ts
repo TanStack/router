@@ -156,6 +156,7 @@ ${invalidConsumer}
         config: getConfig(
           {
             disableLogging: true,
+            tmpDir: path.join(workspace.root, '.tmp'),
             routeModules: { includes: ['@start-route-modules/catalog'] },
           },
           app,
@@ -217,6 +218,7 @@ export const Route = createRootRoute()
       config: getConfig(
         {
           disableLogging: true,
+          tmpDir: path.join(workspace.root, '.tmp'),
           routeModules: {
             includes: [
               {
@@ -325,4 +327,39 @@ declare module '@tanstack/react-start' {
       "Route module '@start-route-modules/notes' returns loader or beforeLoad results from '@start-route-modules/notes:/' that the application cannot serialize",
     )
   })
+
+  // The generated scope of a Start module imports private bindings of the
+  // same names; the namespace export must not collide with them.
+  it.each(['bindRouteScopeLink', 'createStartServerFn'])(
+    'a module may name a used module %s',
+    async (alias) => {
+      workspace.edit('team', 'package.json', (source) => {
+        const manifest = JSON.parse(source)
+        manifest.tanstack.router.module.uses = [
+          { module: '@start-route-modules/settings', as: alias },
+        ]
+        return JSON.stringify(manifest, null, 2)
+      })
+      workspace.edit('team', 'src/routes/index.tsx', (source) =>
+        source.replace(
+          'import { Link, createFileRoute, settings } from',
+          `import { Link, createFileRoute, ${alias} as settings } from`,
+        ),
+      )
+      writeFileSync(
+        path.join(workspace.pkg('team'), 'src/consumer.ts'),
+        `import { ${alias}, linkOptions, createServerFn } from './routeScope.gen'
+export const ownLink = linkOptions({ to: '/' })
+export const dependencyLink = ${alias}.linkOptions({ to: '/profile' })
+export const serverFn = createServerFn().handler(() => 'ok')
+// @ts-expect-error The dependency namespace retains its provider's local paths.
+${alias}.linkOptions({ to: '/outside' })
+`,
+      )
+      for (const name of ['settings', 'team']) {
+        const result = await workspace.publish(name)
+        expect(result.diagnostics, name).toEqual([])
+      }
+    },
+  )
 })

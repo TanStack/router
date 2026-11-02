@@ -144,7 +144,10 @@ export class Workspace {
   async publish(name: string) {
     const root = this.pkg(name)
     await new Generator({
-      config: getConfig({ disableLogging: true }, root),
+      config: getConfig(
+        { disableLogging: true, tmpDir: path.join(this.root, '.tmp') },
+        root,
+      ),
       root,
     }).run()
     const project = JSON.parse(
@@ -167,6 +170,7 @@ export class Workspace {
     const config = getConfig(
       {
         disableLogging: true,
+        tmpDir: path.join(this.root, '.tmp'),
         target: 'react',
         routeModules,
         routeTreeFileFooter: startFooter,

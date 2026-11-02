@@ -130,6 +130,7 @@ declare module '${startPackage}' {
       {
         target: framework,
         disableLogging: true,
+        tmpDir: path.join(workspace, '.tmp'),
         routesDirectory: './src/routes',
         generatedRouteTree: './src/routeTree.gen.ts',
         ...(root === host
