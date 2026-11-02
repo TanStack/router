@@ -248,7 +248,10 @@ export type RouteScopeNamespaceFiles =
   | 'indexed'
   | 'named'
   | 'folder'
-  | ((namespace: RouteScopeNamespace) => string)
+  | RouteScopeNamespaceFile
+
+/** Returns the file of a namespace, relative to the generated route tree's directory and without extension. */
+export type RouteScopeNamespaceFile = (namespace: RouteScopeNamespace) => string
 
 const reservedFiles = [
   ROUTE_SCOPE_FILE,
