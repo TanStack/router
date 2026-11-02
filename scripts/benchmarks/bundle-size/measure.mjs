@@ -25,6 +25,13 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-router.route-modules',
+    dir: 'react-router-route-modules',
+    framework: 'react',
+    packageName: '@tanstack/react-router',
+    case: 'route-modules',
+  },
+  {
     id: 'react-router.full',
     dir: 'react-router-full',
     framework: 'react',
@@ -65,6 +72,13 @@ const SCENARIOS = [
     framework: 'react',
     packageName: '@tanstack/react-start',
     case: 'minimal',
+  },
+  {
+    id: 'react-start.route-modules',
+    dir: 'react-start-route-modules',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'route-modules',
   },
   {
     id: 'react-start.query-integration',

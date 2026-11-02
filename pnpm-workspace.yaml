@@ -15,6 +15,7 @@ trustPolicyExclude:
 packages:
   - 'packages/*'
   - 'benchmarks/*'
+  - 'benchmarks/bundle-size/modules/*'
   - 'benchmarks/memory/*'
   - 'examples/react/*'
   - 'examples/solid/*'
