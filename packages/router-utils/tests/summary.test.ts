@@ -25,6 +25,28 @@ function summarise(code: string) {
 }
 
 describe('export facts', () => {
+  it.each([
+    [
+      'after',
+      `export const base = createServerFn()
+      export namespace base.X { export type E = string }`,
+    ],
+    [
+      'before',
+      `export namespace base.X { export type E = string }
+      export const base = createServerFn()`,
+    ],
+  ])(
+    'keeps the value of an export with a dotted namespace %s it',
+    (_, code) => {
+      const s = summarise(`import { createServerFn } from 'toy-start'\n${code}`)
+      expect(s.exports.base).toEqual({
+        kind: 'local',
+        value: expect.objectContaining({ t: 'builder', kind: 'serverFn' }),
+      })
+    },
+  )
+
   it('summarises a default export expression, re-exports, namespaces and stars', () => {
     const s = summarise(`
       import { createServerFn } from 'toy-start'

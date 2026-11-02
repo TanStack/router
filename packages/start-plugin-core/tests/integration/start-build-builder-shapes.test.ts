@@ -40,6 +40,23 @@ interface Refused extends Compiled {
 }
 
 const compiled: Array<Compiled> = [
+  // A dotted namespace merged into a builder or a factory says nothing about its
+  // value: the handler stays out of the client.
+  ...[
+    ['a server fn builder', `createServerFn()`],
+    ['a factory', `createServerFn`],
+  ].map(([name, value]) => ({
+    name: `a type-only dotted namespace after ${name}`,
+    files: {
+      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = ${value}
+export namespace base.X { export type E = string }
+`,
+      'src/entry.ts': `import { base } from './base'
+export const fn = base${value === 'createServerFn' ? '()' : ''}.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  })),
   {
     name: '`export * as` of a project module',
     files: {
