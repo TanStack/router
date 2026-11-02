@@ -453,6 +453,12 @@ export function attachRouterServerSsrUtils({
           preparedManifest.routes,
           opts?.requestAssets,
         )
+        manifestToDehydrate.routes = Object.fromEntries(
+          Object.entries(manifestToDehydrate.routes).map(([id, route]) => [
+            dehydrateSsrMatchId(id),
+            route,
+          ]),
+        )
       }
       const dehydratedRouter: DehydratedRouter = {
         manifest: manifestToDehydrate,
