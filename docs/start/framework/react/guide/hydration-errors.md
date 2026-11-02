@@ -8,6 +8,24 @@ title: Hydration Errors
 - **Mismatch**: Server HTML differs from client render during hydration
 - **Common causes**: `Intl` (locale/time zone), `Date.now()`, random IDs, responsive-only logic, feature flags, user prefs
 
+### A route works during navigation but fails on refresh
+
+Check the server log for a serialization error before treating this as a markup mismatch. A loader runs in the browser during client navigation, but its SSR result must cross the server-to-browser boundary. Returning a plain function, including a method nested inside an object, can break that transfer.
+
+Return the data the component needs instead:
+
+```tsx
+// Cannot be serialized for SSR
+loader: () => ({ title: () => 'My page' })
+
+// Return the computed value
+loader: () => ({ title: 'My page' })
+```
+
+Keep formatting functions in component code or another imported module. Call server-side functions inside the loader and return their supported results. Do not return an ordinary function to make it callable remotely, use [Server Functions](./server-functions.md) for that.
+
+`suppressHydrationWarning` only addresses markup differences, it cannot repair missing loader data. Test a direct request, hydration, and client navigation after fixing the return value. The [loader serialization example](https://github.com/TanStack/router/blob/main/e2e/react-start/basic/src/routes/loader-serialization.tsx) and its [browser tests](https://github.com/TanStack/router/blob/main/e2e/react-start/basic/tests/loader-serialization.spec.ts) cover all three.
+
 ### Strategy 1 — Make server and client match
 
 - **Pick a deterministic locale/time zone on the server** and use the same on the client
