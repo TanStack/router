@@ -2,7 +2,10 @@ import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../../hydration-constants'
 import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
 import type { Rollup } from 'vite'
-import type { NormalizedClientBuild, NormalizedClientChunk } from '../../types'
+import type {
+  NormalizedClientChunk,
+  NormalizedClientChunkBuild,
+} from '../../types'
 
 export function normalizeViteClientChunk(
   chunk: Rollup.OutputChunk,
@@ -39,7 +42,7 @@ export function normalizeViteClientChunks(
 export function normalizeViteClientBuild(
   clientBundle: Rollup.OutputBundle,
   inlineCssEnabled = false,
-): NormalizedClientBuild {
+): NormalizedClientChunkBuild {
   let entryChunkFileName: string | undefined
   const chunksByFileName = normalizeViteClientChunks(clientBundle)
   let cssContentByFileName: Map<string, string> | undefined

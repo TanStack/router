@@ -10,17 +10,18 @@ import {
 } from '../../src/rsbuild/normalized-client-build'
 import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
-import type { GetConfigFn, NormalizedClientBuild } from '../../src/types'
+import type { GetConfigFn, NormalizedClientGroupBuild } from '../../src/types'
 
 async function buildClientFixture(
   files: Record<string, string>,
   config: Rspack.Configuration = {},
-  captureBuild: (compilation: Rspack.Compilation) => NormalizedClientBuild = (
-    compilation,
-  ) => normalizeRspackClientBuild(compilation, true),
+  captureBuild: (
+    compilation: Rspack.Compilation,
+  ) => NormalizedClientGroupBuild = (compilation) =>
+    normalizeRspackClientBuild(compilation, true),
 ) {
   const directory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-css-'))
-  let clientBuild: NormalizedClientBuild | undefined
+  let clientBuild: NormalizedClientGroupBuild | undefined
   const compiler = rspack({
     ...config,
     context: directory,
@@ -99,6 +100,26 @@ const stylesheetFiles = {
   'dot.svg': '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
 }
 
+function manifestForRoutes(
+  clientBuild: NormalizedClientGroupBuild,
+  directory: string,
+  routes: Array<string>,
+) {
+  return buildStartManifest({
+    clientBuild,
+    basePath: '/',
+    routeTreeRoutes: {
+      __root__: { children: routes.map((route) => `/${route}`) },
+      ...Object.fromEntries(
+        routes.map((route) => [
+          `/${route}`,
+          { filePath: join(directory, `${route}.js`) },
+        ]),
+      ),
+    },
+  })
+}
+
 // Rspack reports module paths using the OS native separator on Windows
 // (e.g. `C:\app\src\routes\posts.tsx`), while the generated route tree always
 // records `filePath` with POSIX separators. This compilation mimics that
@@ -121,24 +142,38 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
     { name: 'root.css', source: { source: readCss } },
     { name: 'posts.css', source: { source: readCss } },
   ]
+  const entryGroup = {
+    chunks: [entryChunk],
+    getEntrypointChunk: () => entryChunk,
+    isInitial: () => true,
+    getParents: () => [],
+    origins: [],
+    getModulePostOrderIndex: () => null,
+    childrenIterable: [],
+  }
+  const request = String.raw`C:\app\src\routes\posts.tsx?tsr-split=component`
+  const routeGroup = {
+    chunks: [routeChunk],
+    isInitial: () => false,
+    getParents: () => [entryGroup],
+    origins: [
+      {
+        request,
+        module: { blocks: [{ dependencies: [{ request }], blocks: [] }] },
+      },
+    ],
+    getModulePostOrderIndex: () => null,
+    childrenIterable: [],
+  }
   const compilation = {
-    entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
-    chunks: new Set([entryChunk, routeChunk]),
-    moduleGraph: { getConnection: () => undefined },
-    chunkGraph: {
-      getModuleChunksIterable: () => [],
-      getChunkModules: (chunk: unknown) =>
-        chunk === routeChunk
-          ? [
-              {
-                dependencies: [],
-                identifier: () =>
-                  'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
-                nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
-              },
-            ]
-          : [],
+    entrypoints: new Map([['index', entryGroup]]),
+    chunkGroups: [entryGroup, routeGroup],
+    moduleGraph: {
+      getModule: () => ({
+        nameForCondition: () => String.raw`C:\app\src\routes\posts.tsx`,
+      }),
     },
+    chunkGraph: { getChunkModulesIterableBySourceType: () => [] },
     getAssets,
   } as unknown as Rspack.Compilation
   return compilation
@@ -227,10 +262,6 @@ describe('normalizeRspackClientBuild', () => {
         },
       })
 
-      expect(
-        clientBuild.chunksByFileName.get('alpha.js')?.dynamicImports,
-      ).toContain('lazy.js')
-
       for (const routeOrder of [
         ['alpha', 'beta'],
         ['beta', 'alpha'],
@@ -270,6 +301,198 @@ describe('normalizeRspackClientBuild', () => {
       }
     },
   )
+
+  test.each([false, true])(
+    'resolves aliased route origins with concatenateModules=%s',
+    async (concatenateModules) => {
+      const { clientBuild, directory } = await buildClientFixture(
+        {
+          'index.js': `import { load } from './loader.js'; globalThis.load = load`,
+          'loader.js': `export const load = () => import(/* webpackChunkName: "alpha" */ '@route?tsr-split=component')`,
+          'alpha.js': `import './alpha.css'; export const component = 'alpha'`,
+          'alpha.css': '.alpha { color: red }',
+        },
+        {
+          resolve: { alias: { '@route': './alpha.js' } },
+          optimization: { concatenateModules },
+        },
+      )
+      const manifest = manifestForRoutes(clientBuild, directory, ['alpha'])
+      expect(manifest.routes['/alpha']?.preloads).toEqual(['/alpha.js'])
+      expect(manifest.routes['/alpha']?.css).toEqual(['/alpha.css'])
+    },
+  )
+
+  test('maps every tagged origin when routes share a named loading group', async () => {
+    const { clientBuild, directory } = await buildClientFixture({
+      'index.js': `globalThis.routes = [
+        () => import(/* webpackChunkName: "routes" */ './alpha.js?tsr-split=component'),
+        () => import(/* webpackChunkName: "routes" */ './beta.js?tsr-split=component'),
+      ]`,
+      'alpha.js': `import './alpha.css'; export const component = 'alpha'`,
+      'beta.js': `import './beta.css'; export const component = 'beta'`,
+      'alpha.css': '.alpha { color: red }',
+      'beta.css': '.beta { color: blue }',
+    })
+    const manifest = manifestForRoutes(clientBuild, directory, [
+      'alpha',
+      'beta',
+    ])
+    for (const route of ['/alpha', '/beta']) {
+      expect(manifest.routes[route]?.preloads).toEqual(['/routes.js'])
+      expect(manifest.routes[route]?.css).toEqual(['/routes.css'])
+    }
+  })
+
+  test('merges component and loader groups for the same physical route', async () => {
+    const { clientBuild, directory } = await buildClientFixture({
+      'index.js': `globalThis.routes = [
+        () => import(/* webpackChunkName: "component" */ './alpha.js?tsr-split=component'),
+        () => import(/* webpackChunkName: "loader" */ './alpha.js?tsr-split=loader'),
+      ]`,
+      'alpha.js': `import './alpha.css'; export const route = 'alpha'`,
+      'alpha.css': '.alpha { color: red }',
+    })
+    const manifest = manifestForRoutes(clientBuild, directory, ['alpha'])
+    expect(manifest.routes['/alpha']?.preloads).toEqual(
+      expect.arrayContaining(['/component.js', '/loader.js']),
+    )
+    expect(manifest.routes['/alpha']?.preloads).toHaveLength(2)
+    expect(manifest.routes['/alpha']?.css).toEqual(
+      expect.arrayContaining(['/component.css', '/loader.css']),
+    )
+    expect(manifest.routes['/alpha']?.css).toHaveLength(2)
+  })
+
+  test('includes nested deferred hydration CSS without preloading its JS or ordinary lazy children', async () => {
+    const { clientBuild, directory } = await buildClientFixture({
+      'index.js': `globalThis.routes = [
+        () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+        () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+      ]`,
+      'alpha.js': `
+        import './alpha.css'
+        export const deferred = () => import(/* webpackChunkName: "deferred" */ './deferred.js?tss-hydrate=first')
+        export const lazy = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+      `,
+      'beta.js': `export const component = 'beta'`,
+      'deferred.js': `
+        import './deferred.css'
+        export const nested = () => import(/* webpackChunkName: "nested" */ './nested.js?tss-hydrate=second')
+      `,
+      'nested.js': `import './nested.css'; export const component = 'nested'`,
+      'lazy.js': `
+        import './lazy.css'
+        export const deferred = () => import(/* webpackChunkName: "unrelated" */ './unrelated.js?tss-hydrate=third')
+      `,
+      'unrelated.js': `import './unrelated.css'; export const component = 'unrelated'`,
+      'alpha.css': '.alpha { color: red }',
+      'deferred.css': '.deferred { color: blue }',
+      'nested.css': '.nested { color: green }',
+      'lazy.css': '.lazy { color: yellow }',
+      'unrelated.css': '.unrelated { color: orange }',
+    })
+    const manifest = manifestForRoutes(clientBuild, directory, [
+      'alpha',
+      'beta',
+    ])
+    expect(manifest.routes['/alpha']?.preloads).toEqual(['/alpha.js'])
+    expect(manifest.routes['/alpha']?.css).toEqual([
+      '/alpha.css',
+      '/deferred.css',
+      '/nested.css',
+    ])
+    expect(manifest.routes['/beta']?.preloads).toEqual(['/beta.js'])
+    expect(manifest.routes['/beta']?.css).toBeUndefined()
+  })
+
+  test('includes hydration CSS from an entrypoint root without preloading hydration JS', async () => {
+    const { clientBuild, directory } = await buildClientFixture({
+      'index.js': `
+        import { widget } from './root.js'
+        globalThis.widget = widget
+        globalThis.routes = [
+          () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+        ]
+      `,
+      'root.js': `
+        export const widget = () => import(/* webpackChunkName: "deferred" */ './deferred.js?tss-hydrate=root_widget')
+      `,
+      'alpha.js': `
+        import { widget } from './root.js'
+        export const component = widget
+      `,
+      'deferred.js': `import './deferred.css'; export const component = 'deferred'`,
+      'deferred.css': '.deferred { color: blue }',
+    })
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: {
+          filePath: join(directory, 'root.js'),
+          children: ['/alpha'],
+        },
+        '/alpha': { filePath: join(directory, 'alpha.js') },
+      },
+    })
+    const root = manifest.routes.__root__
+    const alpha = manifest.routes['/alpha']
+    const css = [...(root?.css ?? []), ...(alpha?.css ?? [])]
+    const preloads = [...(root?.preloads ?? []), ...(alpha?.preloads ?? [])]
+
+    expect(css).toEqual(['/deferred.css'])
+    expect(preloads).toEqual(expect.arrayContaining(['/index.js', '/alpha.js']))
+    expect(preloads).not.toContain('/deferred.js')
+  })
+
+  test('preserves initial script order and includes RSC entry CSS without its JS', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `import { value } from './vendor.js'; globalThis.value = value()`,
+        'vendor.js': `export const value = () => 'vendor'`,
+        'rsc.js': `import './rsc.css'; globalThis.rsc = true`,
+        'rsc.css': '.rsc { color: red }',
+      },
+      {
+        entry: { index: './index.js', rsc: './rsc.js' },
+        optimization: {
+          runtimeChunk: { name: 'runtime' },
+          splitChunks: {
+            cacheGroups: {
+              vendor: {
+                test: /vendor\.js$/,
+                name: 'vendor',
+                chunks: 'all',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/assets/',
+      routeTreeRoutes: { __root__: {} },
+      scriptFormat: 'iife',
+      additionalRouteAssets: { __root__: [{ attrs: { src: '/custom.js' } }] },
+    })
+    expect(
+      manifest.routes.__root__?.scripts?.map((script) => script.attrs?.src),
+    ).toEqual([
+      '/custom.js',
+      '/assets/runtime.js',
+      '/assets/vendor.js',
+      '/assets/index.js',
+    ])
+    expect(manifest.routes.__root__?.css).toEqual(['/assets/rsc.css'])
+    expect(manifest.routes.__root__?.preloads).toEqual([
+      '/assets/runtime.js',
+      '/assets/vendor.js',
+      '/assets/index.js',
+    ])
+  })
 
   test('preloads second-level static dependency chunks and orders their css first', async () => {
     const { clientBuild, directory } = await buildClientFixture(
@@ -349,8 +572,8 @@ describe('normalizeRspackClientBuild', () => {
       ])
       expect(manifest.routes[`/${route}`]?.preloads).toEqual([
         `/${route}.js`,
-        '/header.js',
         '/format.js',
+        '/header.js',
       ])
     }
   })
@@ -438,7 +661,7 @@ describe('normalizeRspackClientBuild', () => {
   })
 
   test('excludes tree-shaken imports even when the module is in an initial chunk', async () => {
-    const { clientBuild } = await buildClientFixture(
+    const { clientBuild, directory } = await buildClientFixture(
       {
         'index.js': `
         import { unused } from './unused.js'
@@ -463,14 +686,13 @@ describe('normalizeRspackClientBuild', () => {
       },
     )
 
-    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([])
-    expect(clientBuild.chunksByFileName.get('alpha.js')?.css).toEqual([
-      'alpha.css',
-    ])
+    const manifest = manifestForRoutes(clientBuild, directory, ['alpha'])
+    expect(manifest.routes['/alpha']?.preloads).toEqual(['/alpha.js'])
+    expect(manifest.routes['/alpha']?.css).toEqual(['/alpha.css'])
   })
 
   test('uses a dependency in the parent group without importing its copy in another entry', async () => {
-    const { clientBuild } = await buildClientFixture(
+    const { clientBuild, directory } = await buildClientFixture(
       {
         'index.js': `
         import { header } from './header.js'
@@ -485,16 +707,337 @@ describe('normalizeRspackClientBuild', () => {
       { entry: { index: './index.js', other: './other.js' } },
     )
 
-    expect(clientBuild.chunksByFileName.get('index.js')?.css).toEqual([
-      'index.css',
-    ])
-    expect(clientBuild.chunksByFileName.get('other.js')?.css).toEqual([
-      'other.css',
-    ])
-    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
-      'index.js',
+    const manifest = manifestForRoutes(clientBuild, directory, ['alpha'])
+    expect(manifest.routes.__root__?.css).toEqual(['/index.css'])
+    expect(manifest.routes['/alpha']?.preloads).toEqual(['/alpha.js'])
+    expect(manifest.routes['/alpha']?.css).toBeUndefined()
+  })
+
+  test('does not import sibling route copies of a module from a shared chunk', async () => {
+    const routes = ['alpha', 'beta', 'gamma']
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `globalThis.routes = [${routes
+          .map(
+            (route) =>
+              `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+          )
+          .join(', ')}]`,
+        ...Object.fromEntries(
+          routes.flatMap((route) => [
+            [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                import './${route}.css'
+                export const render = () => shared() + '${route}'
+              `,
+            ],
+            [`${route}.css`, `.${route} { color: red; }`],
+          ]),
+        ),
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
+        'widget.css': '.widget { display: grid; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: routes.map((route) => `/${route}`) },
+        ...Object.fromEntries(
+          routes.map((route) => [
+            `/${route}`,
+            { filePath: join(directory, `${route}.js`) },
+          ]),
+        ),
+      },
+    })
+
+    for (const route of routes) {
+      expect(manifest.routes[`/${route}`]?.css).toEqual([`/${route}.css`])
+      expect(manifest.routes[`/${route}`]?.preloads).toEqual([
+        `/${route}.js`,
+        '/shared.js',
+      ])
+      expect(clientBuild.cssContentByFileName?.get(`${route}.css`)).toMatch(
+        /\.widget\s*\{/,
+      )
+    }
+  })
+
+  test('links the split chunk a shared chunk uses in each route that loads it', async () => {
+    const routes = ['alpha', 'beta', 'gamma']
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `globalThis.routes = [${routes
+          .map(
+            (route) =>
+              `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+          )
+          .join(', ')}]`,
+        ...Object.fromEntries(
+          routes.flatMap((route) => [
+            [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                import './${route}.css'
+                export const render = () => shared() + '${route}'
+              `,
+            ],
+            [`${route}.css`, `.${route} { color: red; }`],
+          ]),
+        ),
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
+        'widget.css': '.widget { display: grid; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+              widget: {
+                name: 'widget',
+                test: /widget\.(?:js|css)$/,
+                chunks: (chunk) => chunk.name !== 'gamma',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: routes.map((route) => `/${route}`) },
+        ...Object.fromEntries(
+          routes.map((route) => [
+            `/${route}`,
+            { filePath: join(directory, `${route}.js`) },
+          ]),
+        ),
+      },
+    })
+
+    for (const route of ['alpha', 'beta']) {
+      expect(manifest.routes[`/${route}`]?.css).toEqual([
+        '/widget.css',
+        `/${route}.css`,
+      ])
+      expect(manifest.routes[`/${route}`]?.preloads).toEqual([
+        `/${route}.js`,
+        '/widget.js',
+        '/shared.js',
+      ])
+    }
+    expect(manifest.routes['/gamma']?.css).toEqual(['/gamma.css'])
+    expect(manifest.routes['/gamma']?.preloads).toEqual([
+      '/gamma.js',
+      '/shared.js',
     ])
   })
+
+  test('does not import a chunk that only one parent of a lazy group supplies', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "first" */ './first.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "second" */ './second.js?tsr-split=component'),
+          ]
+        `,
+        'first.js': `
+          import { dep } from './dep.js'
+          export const render = () => dep() + 'first'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js?tsr-split=component')
+        `,
+        'second.js': `
+          import { dep } from './dep.js'
+          export const render = () => dep() + 'second'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js?tsr-split=component')
+        `,
+        'lazy.js': `import { dep } from './dep.js'; export const lazy = () => dep()`,
+        'dep.js': `export const dep = () => 'dep'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              dep: {
+                name: 'dep',
+                test: /dep\.js$/,
+                chunks: (chunk) => chunk.name === 'first',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    const manifest = manifestForRoutes(clientBuild, directory, [
+      'first',
+      'second',
+      'lazy',
+    ])
+    expect(manifest.routes['/first']?.preloads).toEqual([
+      '/first.js',
+      '/dep.js',
+    ])
+    expect(manifest.routes['/lazy']?.preloads).toEqual(['/lazy.js'])
+  })
+
+  test('imports a chunk that every parent of a lazy group supplies', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          import { base } from './base.js'
+          globalThis.base = base
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "first" */ './first.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "second" */ './second.js?tsr-split=component'),
+          ]
+        `,
+        'first.js': `
+          import { common } from './common.js'
+          export const render = () => common() + 'first'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js?tsr-split=component')
+        `,
+        'second.js': `
+          import { common } from './common.js'
+          export const render = () => common() + 'second'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js?tsr-split=component')
+        `,
+        'lazy.js': `
+          import { base } from './base.js'
+          import { common } from './common.js'
+          export const lazy = () => base() + common()
+        `,
+        'base.js': `export const base = () => 'base'`,
+        'common.js': `export const common = () => 'common'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              common: {
+                name: 'common',
+                test: /common\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    const manifest = manifestForRoutes(clientBuild, directory, [
+      'first',
+      'second',
+      'lazy',
+    ])
+    expect(manifest.routes['/lazy']?.preloads).toEqual([
+      '/lazy.js',
+      '/common.js',
+    ])
+  })
+
+  test.each([
+    { routeOrder: ['ping', 'pong'] },
+    { routeOrder: ['pong', 'ping'] },
+  ])(
+    'resolves static imports in cyclic lazy routes regardless of order ($routeOrder)',
+    async ({ routeOrder }) => {
+      const otherRoute = { ping: 'pong', pong: 'ping' } as const
+      const { clientBuild, directory } = await buildClientFixture(
+        {
+          'index.js': `globalThis.routes = [${routeOrder
+            .map(
+              (route) =>
+                `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+            )
+            .join(', ')}]`,
+          ...Object.fromEntries(
+            (['ping', 'pong'] as const).map((route) => [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                export const render = () => shared() + '${route}'
+                export const next = () => import(/* webpackChunkName: "${otherRoute[route]}" */ './${otherRoute[route]}.js?tsr-split=component')
+              `,
+            ]),
+          ),
+          'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+          'widget.js': `export const widget = () => 'widget'`,
+        },
+        {
+          optimization: {
+            splitChunks: {
+              minSize: 0,
+              cacheGroups: {
+                default: false,
+                defaultVendors: false,
+                shared: {
+                  name: 'shared',
+                  test: /shared\.js$/,
+                  chunks: 'async',
+                  enforce: true,
+                },
+              },
+            },
+          },
+        },
+      )
+
+      const manifest = manifestForRoutes(clientBuild, directory, [
+        'ping',
+        'pong',
+      ])
+      for (const route of ['ping', 'pong'] as const) {
+        expect(manifest.routes[`/${route}`]?.preloads).toEqual([
+          `/${route}.js`,
+          '/shared.js',
+        ])
+      }
+    },
+  )
 
   test('collects nested CSS imports before the importing route stylesheet', async () => {
     const { clientBuild, directory } = await buildClientFixture(
@@ -538,8 +1081,6 @@ describe('normalizeRspackClientBuild', () => {
       },
     })
 
-    expect(clientBuild.chunksByFileName.has('base.js')).toBe(false)
-    expect(clientBuild.chunksByFileName.has('theme.js')).toBe(false)
     expect(manifest.routes['/alpha']?.css).toEqual([
       '/base.css',
       '/theme.css',
@@ -616,16 +1157,7 @@ describe('normalizeRspackClientBuild', () => {
     },
   )
 
-  test('keys the route chunk by a POSIX path when rspack reports OS native module paths', () => {
-    const compilation = makeWindowsCompilation(() => '.card{color:red}')
-    const clientBuild = normalizeRspackClientBuild(compilation)
-
-    expect(
-      clientBuild.chunksByFileName.get('posts.js')?.routeFilePaths,
-    ).toEqual(['C:/app/src/routes/posts.tsx'])
-  })
-
-  test('gives a route its stylesheet and preload when rspack reports OS native module paths', () => {
+  test('maps Windows route paths to matching route assets', () => {
     const compilation = makeWindowsCompilation(() => '.card{color:red}')
     const clientBuild = normalizeRspackClientBuild(compilation)
     const manifest = buildStartManifest({
