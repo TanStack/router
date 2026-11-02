@@ -129,7 +129,7 @@ export const getMyOrders = createServerFn({ method: 'GET' })
 ```tsx
 // src/server/login.functions.ts
 import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 import { setSessionCookie } from './session'
 
 export const login = createServerFn({ method: 'POST' })
@@ -228,7 +228,7 @@ When a user requests a reset, do not let the response shape or timing reveal whe
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const requestPasswordReset = createServerFn({ method: 'POST' })
   .validator(z.object({ email: z.string().email() }))

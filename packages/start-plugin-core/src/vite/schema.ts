@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   parseStartConfig as parseCoreStartConfig,
   tanstackStartOptionsObjectSchema,
@@ -12,7 +12,6 @@ export const tanstackStartViteOptionsSchema = tanstackStartOptionsObjectSchema
       .object({ installDevServerMiddleware: z.boolean().optional() })
       .optional(),
   })
-  .optional()
   .prefault({})
 
 export function parseStartConfig(

@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@solidjs/testing-library'
-import { z } from 'zod'
+import * as z from 'zod'
 import { composeRewrites, notFound } from '@tanstack/router-core'
 import {
   Link,

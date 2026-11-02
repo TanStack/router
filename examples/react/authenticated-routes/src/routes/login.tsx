@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { redirect, useRouter, useRouterState } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 import { useAuth } from '../auth'
 import { sleep } from '../utils'

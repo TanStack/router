@@ -4,7 +4,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const getDrawingTools = createServerFn({ method: 'POST' })
   .validator(z.object({ savedState: z.string().nullable() }))

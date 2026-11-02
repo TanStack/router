@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { redirect, useRouter } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 import { useAuth } from '../auth'
 import { siGithub } from 'simple-icons'

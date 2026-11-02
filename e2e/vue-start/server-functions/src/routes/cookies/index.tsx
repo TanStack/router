@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue'
 import { Link, createFileRoute } from '@tanstack/vue-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const cookieSchema = z
   .object({ value: z.string().default(() => `CLIENT-${Date.now()}`) })
