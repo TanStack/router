@@ -140,6 +140,88 @@ const allCreateRouteFns = [
 ]
 
 /**
+ * A loader can be an object, `{ handler, staleReloadMode }`. The router reads
+ * its other keys from the route options, so only `handler` is split. Returns
+ * the property to split, or `undefined` to keep the whole loader in the route
+ * file. A `handler() {}` method is replaced by a property holding the same
+ * function, so it splits like any other value.
+ */
+function getLoaderHandler(
+  loader: t.ObjectExpression,
+): t.ObjectProperty | undefined {
+  // The last `handler` wins, unless a spread or computed key after it may
+  // replace it
+  for (let index = loader.properties.length - 1; index >= 0; index--) {
+    const prop = loader.properties[index]!
+    if (t.isSpreadElement(prop) || prop.computed) {
+      return undefined
+    }
+    if (getObjectPropertyKeyName(prop) !== 'handler') {
+      continue
+    }
+    if (t.isObjectProperty(prop)) {
+      const value = prop.value
+      const isFallback =
+        t.isBooleanLiteral(value) ||
+        t.isNullLiteral(value) ||
+        (t.isIdentifier(value) && value.name === 'undefined')
+      return isFallback ? undefined : prop
+    }
+    // `super` is only valid in a method
+    if (prop.kind !== 'method' || containsSuper(prop.body)) {
+      return undefined
+    }
+    const fn = t.functionExpression(
+      null,
+      prop.params,
+      prop.body,
+      prop.generator,
+      prop.async,
+    )
+    fn.returnType = prop.returnType
+    fn.typeParameters = prop.typeParameters
+    const handler = t.objectProperty(t.identifier('handler'), fn)
+    loader.properties[index] = handler
+    return handler
+  }
+  return undefined
+}
+
+function containsSuper(node: t.Node) {
+  let found = false
+  t.traverseFast(node, (child) => {
+    if (t.isSuper(child)) found = true
+  })
+  return found
+}
+
+/**
+ * The parts of a route option and the group each one belongs to (-1 for the
+ * route file): the whole value, or, for a split loader in object form, its
+ * handler and the options that stay in the route file.
+ */
+function getRouteOptionParts(
+  key: string,
+  value: t.Node,
+  groupIndex: number,
+): Array<[node: t.Node, groupIndex: number]> {
+  if (key !== 'loader' || groupIndex === -1 || !t.isObjectExpression(value)) {
+    return [[value, groupIndex]]
+  }
+  const handler = getLoaderHandler(value)
+  if (!handler) {
+    return [[value, -1]]
+  }
+  const options = value.properties.filter((prop) => prop !== handler)
+  return options.length > 0
+    ? [
+        [handler.value, groupIndex],
+        [t.objectExpression(options), -1],
+      ]
+    : [[handler.value, groupIndex]]
+}
+
+/**
  * Computes module-level bindings that are shared between split and non-split
  * route properties. These bindings need to be extracted into a shared virtual
  * module to avoid double-initialization.
@@ -211,11 +293,17 @@ export function computeSharedBindings(opts: {
     if (!key) continue
     if (key === 'codeSplitGroupings') continue
     if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
-    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
-    if (groupIndex === -1) {
-      hasNonSplit = true
-    } else {
-      splitGroupsPresent.add(groupIndex)
+    const parts = getRouteOptionParts(
+      key,
+      prop.value,
+      findIndexForSplitNode(key), // -1 if non-split
+    )
+    for (const [, groupIndex] of parts) {
+      if (groupIndex === -1) {
+        hasNonSplit = true
+      } else {
+        splitGroupsPresent.add(groupIndex)
+      }
     }
   }
 
@@ -250,25 +338,31 @@ export function computeSharedBindings(opts: {
 
     if (key === 'codeSplitGroupings') continue
 
-    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
-
-    const directRefs = collectModuleLevelRefsFromNode(
+    const parts = getRouteOptionParts(
+      key,
       prop.value,
-      localModuleLevelBindings,
+      findIndexForSplitNode(key), // -1 if non-split
     )
 
-    // Expand transitively: if component references SharedComp which references
-    // `shared`, then `shared` is also attributed to component's group.
-    const allRefs = new Set(directRefs)
-    expandTransitively(allRefs, depGraph)
+    for (const [node, groupIndex] of parts) {
+      const directRefs = collectModuleLevelRefsFromNode(
+        node,
+        localModuleLevelBindings,
+      )
 
-    for (const ref of allRefs) {
-      let groups = refsByGroup.get(ref)
-      if (!groups) {
-        groups = new Set()
-        refsByGroup.set(ref, groups)
+      // Expand transitively: if component references SharedComp which references
+      // `shared`, then `shared` is also attributed to component's group.
+      const allRefs = new Set(directRefs)
+      expandTransitively(allRefs, depGraph)
+
+      for (const ref of allRefs) {
+        let groups = refsByGroup.get(ref)
+        if (!groups) {
+          groups = new Set()
+          refsByGroup.set(ref, groups)
+        }
+        groups.add(groupIndex)
       }
-      groups.add(groupIndex)
     }
   }
 
@@ -667,7 +761,15 @@ export function compileCodeSplitReferenceRoute(
                         addRouteHmr(insertionPath, routeOptions)
                       } else {
                         // if (splitNodeMeta.splitStrategy === 'lazyFn') {
-                        const value = prop.value
+                        // A loader in object form splits only its handler
+                        const target =
+                          key === 'loader' && t.isObjectExpression(prop.value)
+                            ? getLoaderHandler(prop.value)
+                            : prop
+                        if (!target) {
+                          return
+                        }
+                        const value = target.value
 
                         let shouldSplit = true
 
@@ -725,7 +827,7 @@ export function compileCodeSplitReferenceRoute(
                         }
 
                         // Add the lazyFn call with the dynamic import to the prop value
-                        prop.value = template.expression(
+                        target.value = template.expression(
                           `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                         )()
                       }
@@ -932,7 +1034,19 @@ export function compileCodeSplitVirtualRoute(
                         return
                       }
 
-                      const value = prop.value
+                      let value = prop.value
+
+                      // A loader in object form splits only its handler
+                      if (
+                        splitType === 'loader' &&
+                        t.isObjectExpression(value)
+                      ) {
+                        const handler = getLoaderHandler(value)
+                        if (!handler) {
+                          return
+                        }
+                        value = handler.value
+                      }
 
                       // If the value for the `key` is `undefined`, then we don't need to include it
                       // in the split file, so we can just return, since it will kept in-place in the
@@ -957,7 +1071,7 @@ export function compileCodeSplitVirtualRoute(
                       } else {
                         const meta = SPLIT_NODES_CONFIG.get(splitType)!
                         trackedNodesToSplitByType[splitType] = {
-                          node: prop.value,
+                          node: value,
                           meta,
                         }
                       }
