@@ -608,6 +608,8 @@ export class Generator {
     config?: Partial<Config>
   }) {
     const config = { ...this.config, ...(opts.config || {}) }
+    const isolatedDeclarations =
+      config.isolatedDeclarations && !config.disableTypes
 
     const { rootRouteNode, acc } = opts
 
@@ -627,8 +629,9 @@ export class Generator {
 
     for (const node of sortedRouteNodes) {
       if (node.isVirtual) {
+        const routeImportAnnotation = isolatedDeclarations ? ': any' : ''
         virtualRouteNodes.push(
-          `const ${node.variableName}RouteImport = createFileRoute('${node.routePath}')()`,
+          `const ${node.variableName}RouteImport${routeImportAnnotation} = createFileRoute('${node.routePath}')()`,
         )
       } else {
         routeImports.push(
@@ -685,6 +688,7 @@ export class Generator {
     const routeTreeConfig = buildRouteTreeConfig(
       acc.routeTree,
       config.disableTypes,
+      isolatedDeclarations,
     )
 
     const createUpdateRoutes = sortedRouteNodes.map((node) => {
@@ -695,10 +699,13 @@ export class Generator {
       const notFoundComponentNode = pieces?.notFoundComponent
       const pendingComponentNode = pieces?.pendingComponent
       const lazyComponentNode = pieces?.lazy
+      const routeAnnotation = isolatedDeclarations
+        ? `: typeof ${node.variableName}RouteImport`
+        : ''
 
       return [
         [
-          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
+          `const ${node.variableName}Route${routeAnnotation} = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
               !node.isNonPath ||
@@ -815,12 +822,7 @@ export class Generator {
       rootNotFoundComponentNode ||
       rootPendingComponentNode
     ) {
-      rootRouteUpdate = `const rootRouteWithChildren = rootRouteImport${
-        rootComponentNode ||
-        rootErrorComponentNode ||
-        rootNotFoundComponentNode ||
-        rootPendingComponentNode
-          ? `.update({
+      rootRouteUpdate = `.update({
               ${(
                 [
                   ['component', rootComponentNode],
@@ -856,8 +858,6 @@ export class Generator {
                 })
                 .join('\n,')}
             })`
-          : ''
-      }._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`
     }
 
     let fileRoutesByPathInterface = ''
@@ -924,6 +924,27 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       })
     }
 
+    const routeTreeLines: Array<string> = []
+    if (isolatedDeclarations) {
+      let rootRouteReference = 'rootRouteImport'
+      if (rootRouteUpdate) {
+        routeTreeLines.push(
+          `const rootRouteUpdated: typeof rootRouteImport = rootRouteImport${rootRouteUpdate}`,
+        )
+        rootRouteReference = 'rootRouteUpdated'
+      }
+      routeTreeLines.push(
+        `const rootRouteWithChildren: ReturnType<typeof ${rootRouteReference}._addFileChildren<RootRouteChildren>> = ${rootRouteReference}._addFileChildren(rootRouteChildren)`,
+        'export const routeTree: ReturnType<typeof rootRouteWithChildren._addFileTypes<FileRouteTypes>> = rootRouteWithChildren._addFileTypes<FileRouteTypes>()',
+      )
+    } else {
+      const fileTypesSuffix = config.disableTypes
+        ? ''
+        : '._addFileTypes<FileRouteTypes>()'
+      routeTreeLines.push(
+        `export const routeTree = rootRouteImport${rootRouteUpdate}._addFileChildren(rootRouteChildren)${fileTypesSuffix}`,
+      )
+    }
     const routeTree = [
       `const rootRouteChildren${config.disableTypes ? '' : `: RootRouteChildren`} = {
   ${acc.routeTree
@@ -933,12 +954,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     )
     .join(',')}
 }`,
-      rootRouteUpdate
-        ? rootRouteUpdate.replace(
-            'const rootRouteWithChildren = ',
-            'export const routeTree = ',
-          )
-        : `export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
+      ...routeTreeLines,
     ].join('\n')
 
     checkRouteFullPathUniqueness(

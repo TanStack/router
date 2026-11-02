@@ -1132,6 +1132,7 @@ Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDi
 export function buildRouteTreeConfig(
   nodes: Array<RouteNode>,
   disableTypes: boolean,
+  isolatedDeclarations: boolean,
   depth = 1,
 ): Array<string> {
   const children = nodes.map((node) => {
@@ -1149,6 +1150,7 @@ export function buildRouteTreeConfig(
       const childConfigs = buildRouteTreeConfig(
         node.children,
         disableTypes,
+        isolatedDeclarations,
         depth + 1,
       )
 
@@ -1172,7 +1174,15 @@ export function buildRouteTreeConfig(
     .join(',')}
 }`
 
-      const routeWithChildren = `const ${route}RouteWithChildren = ${route}Route._addFileChildren(${route}RouteChildren)`
+      let routeWithChildrenAnnotation = ''
+      if (isolatedDeclarations) {
+        if (node.isVirtual) {
+          routeWithChildrenAnnotation = ': any'
+        } else {
+          routeWithChildrenAnnotation = `: ReturnType<typeof ${route}Route._addFileChildren<${route}RouteChildren>>`
+        }
+      }
+      const routeWithChildren = `const ${route}RouteWithChildren${routeWithChildrenAnnotation} = ${route}Route._addFileChildren(${route}RouteChildren)`
 
       return [
         childConfigs.join('\n'),
