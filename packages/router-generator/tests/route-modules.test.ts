@@ -94,6 +94,11 @@ function readNamespace(root: string, namespace: string) {
   return read(root, path.join('src', `${entry[2]}.ts`))
 }
 
+/** A route file as `getRoutesByFileMap()` keys it: with forward slashes. */
+function routeFile(root: string, file: string) {
+  return path.join(root, file).replaceAll(path.sep, '/')
+}
+
 async function linkRouter(root: string) {
   const target = fileURLToPath(new URL('../../react-router', import.meta.url))
   const link = path.join(root, 'node_modules/@tanstack/react-router')
@@ -660,7 +665,7 @@ export const Route = createModuleRoot()({})`,
     expect(
       generator
         .getRoutesByFileMap()
-        .get(path.join(movedCatalog, 'src/routes/$itemId.tsx')),
+        .get(routeFile(movedCatalog, 'src/routes/$itemId.tsx')),
     ).toEqual({ routeId: '@fixture/catalog:/$itemId' })
   })
 
@@ -725,7 +730,7 @@ export const Route = createModuleRoot()({})`,
     expect(
       generator
         .getRoutesByFileMap()
-        .get(path.join(catalog, 'src/routes/profile/route.tsx')),
+        .get(routeFile(catalog, 'src/routes/profile/route.tsx')),
     ).toEqual({
       routeId: '@fixture/catalog:/profile',
     })
@@ -1208,10 +1213,7 @@ export const Route = createRootRoute()
     const generator = new Generator({ config, root: app })
     await generator.run()
 
-    // Keyed like the bundlers' normalized module ids, on every platform.
     const routesByFile = generator.getRoutesByFileMap()
-    const routeFile = (root: string, file: string) =>
-      path.join(root, file).replaceAll(path.sep, '/')
     expect(routesByFile.get(routeFile(app, 'src/routes/__root.tsx'))).toEqual({
       routeId: '/__root',
     })
