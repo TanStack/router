@@ -210,7 +210,6 @@ describe('createMemoryHistory', () => {
     expect(history.location.pathname).toBe('/a')
     expect(blockerFn).not.toHaveBeenCalled()
   })
-  
   test('preserves the index when push is followed by replace with an async blocker', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
     const unblock = history.block({
