@@ -31,7 +31,7 @@ test('#8049: revisiting loaded split routes transitions without pending or blank
   })
   await page.goto('/')
   await expect(page.getByText('Home Page')).toBeVisible()
-  await page.waitForTimeout(1_000)
+  await expect(page.getByTestId('hydrated')).toBeAttached()
 
   await page.getByRole('link', { name: 'Test' }).click()
   await expect(page.getByText('Test Page')).toBeVisible()
