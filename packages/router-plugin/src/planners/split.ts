@@ -293,14 +293,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       ctx.keep(sym)
       continue
     }
-    const name = ctx.nameOf(sym)
-    const output = ctx.declareOutput({
-      kind: 'export',
-      key: `export~${name}`,
-      derived: { kind: 'export', value: name },
-      sideEffectFree: true,
-    })
-    ctx.extract(sym, output)
+    ctx.extractExport(sym, e.name)
   }
 
   if (helperImports.length > 0) {

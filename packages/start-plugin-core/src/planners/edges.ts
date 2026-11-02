@@ -257,9 +257,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             offset = forwarded.span.start
           }
         } else {
-          offset = e.locations.find(
-            (l): l is { range: { start: number; end: number } } => 'range' in l,
-          )?.range.start
+          offset = e.locations[0]?.range.start
         }
         return { edge: e, raw, importerPath, resolved, rule, offset }
       }

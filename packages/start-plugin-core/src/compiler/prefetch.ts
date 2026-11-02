@@ -175,6 +175,8 @@ export function isClientOnlyPartial(v: AbstractValue): boolean {
 interface PrefetchOptions {
   table: RecognizerTable
   late?: boolean
+  /** `TSR_COMPILER_NO_CACHE=registry` turns it off: the route file's summary answers. */
+  answerFromRegistry: boolean
 }
 
 /**
@@ -215,7 +217,7 @@ export async function prefetchStartValues(
     // a route, never a Start value: answered from the registry entry, a
     // dependency of this plan, instead of the file's summary (the route tree
     // imports every route; reading them all gave it nothing but this).
-    if (name === 'Route') {
+    if (name === 'Route' && opts.answerFromRegistry) {
       const routes = ctx.host.routes
       const filePath = identify(canonicalId).path
       if (routes?.lookup(filePath)?.routerConstructor) {

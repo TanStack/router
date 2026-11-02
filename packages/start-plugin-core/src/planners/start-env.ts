@@ -13,6 +13,7 @@
  * cleanup for function-local declarators and destructured bindings.
  */
 import {
+  cacheDisabled,
   identifierBase,
   isPureExpression,
   normalizePath,
@@ -355,6 +356,7 @@ function roleOf(ctx: PlanContext, config: StartEnvConfig): Role {
 
 export function startEnvPlanner(opts?: { late: true }): Planner {
   const table = startRecognizer()
+  const answerFromRegistry = !cacheDisabled('registry')
   return {
     name: START_ENV,
     tier: 1,
@@ -363,6 +365,7 @@ export function startEnvPlanner(opts?: { late: true }): Planner {
       const result = await prefetchStartValues(t0, ctx, {
         table,
         late: opts?.late,
+        answerFromRegistry,
       })
       ctx.set(result)
       return result.relevant

@@ -10,7 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { patternIdentifiers } from './source'
+import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
@@ -521,7 +521,11 @@ export class ModuleAnalysis {
               exportEntries.push({
                 kind: 'local',
                 name: id.name,
-                local: exportLocals.get(id.start) ?? null,
+                // (Yuku lists no export for `export namespace A.B`)
+                local:
+                  exportLocals.get(id.start) ??
+                  (file.bindingOf(id)?.id as SymbolId | undefined) ??
+                  null,
                 typeOnly: typeOnly || isTypeDeclaration(stmt.declaration),
                 range: { start: id.start, end: id.end },
               })
@@ -1410,8 +1414,12 @@ function declaredNames(
     case 'TSTypeAliasDeclaration':
     case 'TSInterfaceDeclaration':
       return decl.id ? [decl.id] : []
-    case 'TSModuleDeclaration':
-      return decl.id.type === 'Identifier' ? [decl.id] : []
+    case 'TSImportEqualsDeclaration':
+      return [decl.id]
+    case 'TSModuleDeclaration': {
+      const id = namespaceName(decl)
+      return id === null ? [] : [id]
+    }
     default:
       return []
   }
@@ -1422,6 +1430,7 @@ function isTypeDeclaration(decl: Node): boolean {
     decl.type === 'TSTypeAliasDeclaration' ||
     decl.type === 'TSInterfaceDeclaration' ||
     (decl.type === 'TSModuleDeclaration' && decl.declare) ||
+    (decl.type === 'TSImportEqualsDeclaration' && decl.importKind === 'type') ||
     ((decl.type === 'VariableDeclaration' ||
       decl.type === 'ClassDeclaration' ||
       decl.type === 'FunctionDeclaration') &&

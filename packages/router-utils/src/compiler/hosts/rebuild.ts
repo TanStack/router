@@ -14,7 +14,9 @@ import { identify } from '../identity'
 import type { PlanKey } from '../identity'
 
 /** A compilation of the webpack family (`TModule`: its module type). */
-interface RebuildCompilationLike<TModule = unknown> {
+interface RebuildCompilationLike<
+  TModule extends { identifier: () => string; resource?: string },
+> {
   modules: Iterable<TModule>
   rebuildModule: (
     module: TModule,
@@ -77,19 +79,30 @@ export function invalidateFiles(
  * Rebuilds the modules of `compilation` whose resource `paths` holds
  * (`pathOf`: a resource as `paths` spells it), in place.
  */
-export async function rebuildModules<TModule>(
+export async function rebuildModules<
+  TModule extends { identifier: () => string; resource?: string },
+>(
   compilation: RebuildCompilationLike<TModule>,
   paths: ReadonlySet<string>,
   pathOf: (resource: string) => string,
 ): Promise<void> {
-  for (const m of compilation.modules) {
-    const resource = (m as { resource?: string }).resource
-    if (resource && paths.has(pathOf(resource))) {
-      await new Promise<void>((resolve, reject) => {
-        compilation.rebuildModule(m, (error) =>
-          error ? reject(error) : resolve(),
-        )
-      })
+  const pending = [...compilation.modules].filter(
+    (m) => m.resource && paths.has(pathOf(m.resource)),
+  )
+  for (let i = 0; i < pending.length; i++) {
+    const m = pending[i]!
+    if (i > 0) {
+      // the rebuild before it may have removed it (a handler module its
+      // importer no longer needs), and Rspack panics on a module outside its graph
+      const id = m.identifier()
+      if (![...compilation.modules].some((x) => x.identifier() === id)) {
+        continue
+      }
     }
+    await new Promise<void>((resolve, reject) => {
+      compilation.rebuildModule(m, (error) =>
+        error ? reject(error) : resolve(),
+      )
+    })
   }
 }

@@ -153,14 +153,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           if (unit.declares.includes(sym)) {
             continue // the route itself stays, as the real splitter has it
           }
-          const name = ctx.symbols.name(sym)
-          const out = ctx.declareOutput({
-            kind: 'export',
-            key: `export~${name}`,
-            derived: { kind: 'export', value: name },
-            sideEffectFree: true,
-          })
-          ctx.extract(sym, out)
+          ctx.extractExport(sym, e.name)
         }
       }
       for (const key of opts.deleteNodes ?? []) {

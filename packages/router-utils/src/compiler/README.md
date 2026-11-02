@@ -76,7 +76,9 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
   from the route module). A pure cluster with an identity, or a written one, that an extracted module and another
   output both need stays in the route module (one instance every output imports); a function or primitive in that
   position is copied into each. Writes inside code the environment erases impose nothing (the mutation model is
-  read through the env output's liveness). Nothing but importers of the route file reach the extracted module of
+  read through the env output's liveness). Exports that read each other (`class Z { o() { return A } }` and `class A
+extends Z`, directly or through what they carry) share the module of the first in the source: in two modules importing each other
+  the one evaluated first depends on the bundler, and a read at evaluation can find the other uninitialised. Nothing but importers of the route file reach the extracted module of
   a copied export, so a bundler drops it when unused; a non-copied export's module is imported by the route's
   chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
   merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
@@ -181,7 +183,10 @@ directives, never license comments.
   Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
   an app module re-exporting it is not followed, and a third party's purity is never assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
-  and runs no code, as an imported identifier does; a property of any other value may be a getter.
+  and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data property):
+  no namespace merged in, and every value use a member access or an export, so whatever writes it is in the mutation
+  model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`),
+  an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 
@@ -301,7 +306,8 @@ nothing per compile.
 
 - `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is published, every request
   compiles again), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
-  imported modules are rebuilt on every read), or `all`. Output must be identical with any combination; only speed
+  imported modules are rebuilt on every read), `registry` (a route file's `Route` is read from the file instead of
+  answered from the route registry's `routerConstructor`), or `all`. Output must be identical with any combination; only speed
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
   changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
   names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
@@ -310,7 +316,7 @@ nothing per compile.
   output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
   the outputs that import from the env module, an extracted export's module never reads a binding of the env
   module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
-  nor imports. A violation fails the compile. Every test run sets it (the shared run-directory setup and
+  nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and

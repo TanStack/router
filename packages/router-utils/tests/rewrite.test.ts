@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest'
+import { EditBand, compareEditOrder } from '../src/compiler/rewrite'
 import { dedent } from './helpers'
 import { engine, rangeOf } from './engine'
 import type { OutputId } from '../src/compiler'
 import type { Anchor } from '../src/compiler/rewrite'
+
+describe('edit order', () => {
+  it('is the band, then the number inside it, then nesting, whatever the numbers', () => {
+    // the numbers would have crossed the gaps of numeric bands
+    const big = 2 ** 40
+    const inOrder = [
+      { band: EditBand.planner, n: 0 },
+      { band: EditBand.planner, n: big },
+      { band: EditBand.claim, n: 0 },
+      { band: EditBand.claim, n: big },
+      { band: EditBand.claim, n: big, nested: true },
+      { band: EditBand.claim, n: big + 1 },
+      { band: EditBand.lineEnd, n: 0 },
+      { band: EditBand.glueImports, n: 0 },
+      { band: EditBand.core, n: 0 },
+      { band: EditBand.core, n: big },
+    ]
+    expect([...inOrder].reverse().sort(compareEditOrder)).toEqual(inOrder)
+  })
+})
 
 describe('rewrite tree', () => {
   it('nests an inner edit inside a retained child slice and drops one inside erased text', () => {

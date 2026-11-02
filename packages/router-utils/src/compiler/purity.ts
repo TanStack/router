@@ -6,12 +6,14 @@
  * exports of known packages (`RecognizerTable.pureCalls`: by import
  * binding or namespace member; re-exports are not followed), JSX with bound/intrinsic tags and
  * pure attributes and children, and a member of a module namespace import (`ns.x`: its [[Get]]
- * reads the module's binding and runs no code, as an imported identifier does; a property of
- * any other object may be a getter). `import()` is impure. The same
- * classification yields Tier 0's `ownEffects` at statement granularity.
+ * reads the module's binding and runs no code, as an imported identifier does) or of a
+ * plain enum of the module (`isPlainEnum`; a property of any other object may be a getter).
+ * `import()` is impure. The same classification yields Tier 0's `ownEffects` at statement granularity.
  */
+import { BindingFlags } from 'yuku'
 import { unwrapExpression } from './source'
 import type {
+  Binding,
   Comment,
   Expression,
   Node,
@@ -311,7 +313,7 @@ export function isPureExpression(
     case 'JSXFragment':
       return node.children.every((ch) => isPureJsxChild(ctx, ch))
     case 'MemberExpression':
-      return ctx.namespaceImports.size > 0 && isNamespaceMember(ctx, node)
+      return isPlainMemberRead(ctx, node)
     case 'ChainExpression':
     case 'TaggedTemplateExpression':
     case 'ImportExpression':
@@ -325,8 +327,8 @@ export function isPureExpression(
   }
 }
 
-/** `ns.x` / `ns['x']` of a namespace import (`namespaceImports`). */
-function isNamespaceMember(ctx: PurityContext, node: Node): boolean {
+/** `x.y` / `x['y']` of a namespace import (`namespaceImports`) or of a plain enum. */
+function isPlainMemberRead(ctx: PurityContext, node: Node): boolean {
   if (
     node.type !== 'MemberExpression' ||
     (node.computed &&
@@ -342,7 +344,36 @@ function isNamespaceMember(ctx: PurityContext, node: Node): boolean {
     return false
   }
   const b = ctx.file.referenceOf(object)?.binding
-  return b !== undefined && b !== null && ctx.namespaceImports.has(b.id)
+  return (
+    b !== undefined &&
+    b !== null &&
+    (ctx.namespaceImports.has(b.id) || isPlainEnum(ctx, b))
+  )
+}
+
+/**
+ * An enum of this module whose object holds data, written only where the
+ * mutation model sees it: not a declared one (whatever the global is), no
+ * namespace merged in (its functions can write the object), and every value
+ * use a member access or an export, so no alias or callee can write it or
+ * define a getter on it unseen (`w(E)`, `const a = E`, `import F = E`).
+ */
+function isPlainEnum(ctx: PurityContext, b: Binding): boolean {
+  return (
+    b.has(BindingFlags.RegularEnum | BindingFlags.ConstEnum) &&
+    !b.has(BindingFlags.Ambient | BindingFlags.ValueModule) &&
+    b.references.every((r) => {
+      if (r.inTypePosition) {
+        return true
+      }
+      const parent = ctx.file.parentOf(r.node)
+      return (
+        parent?.type === 'ExportSpecifier' ||
+        (parent?.type === 'MemberExpression' &&
+          parent.object.start === r.node.start)
+      )
+    })
+  )
 }
 
 /** Whether a callee's calls are pure when their arguments are (`noSideEffectCallees`, `pureNamespaces`). */

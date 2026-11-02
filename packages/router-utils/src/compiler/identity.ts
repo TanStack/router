@@ -97,6 +97,17 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
   return null
 }
 
+/**
+ * An export name may be any string (`export { x as 'a.css' }`), and a bundler
+ * reads an id's end as its language, a `/` as a directory and a `!` as a loader
+ * separator: anything else than word characters is percent-encoded.
+ */
+function encodeExportName(name: string): string {
+  return name.replace(/[^\w$~+-]/gu, (c) =>
+    Buffer.from(c).toString('hex').replace(/../g, '%$&'),
+  )
+}
+
 function ownedQueryPair(q: DerivedQuery): string {
   switch (q.kind) {
     case 'split':
@@ -104,7 +115,7 @@ function ownedQueryPair(q: DerivedQuery): string {
     case 'shared':
       return `${OWNED_QUERY_KEYS.split}=shared~${q.value}`
     case 'export':
-      return `${OWNED_QUERY_KEYS.split}=export~${q.value}`
+      return `${OWNED_QUERY_KEYS.split}=export~${encodeExportName(q.value)}`
     case 'hydrate':
       return `${OWNED_QUERY_KEYS.hydrate}=${q.value}`
     case 'provider':
@@ -119,6 +130,15 @@ function ownedQueryPair(q: DerivedQuery): string {
 /** A path with forward slashes, as the hosts and planners compare paths. */
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/')
+}
+
+/** The value of an owned key; a hand-written one with a bad escape stays as written (no output has that name). */
+function decodeOwnedValue(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 /** Maps a host id to its canonical identity. Never canonicalises virtual ids beyond their owned keys. */
@@ -136,7 +156,7 @@ export function identify(hostId: string): SourceIdentity {
       const value = eq === -1 ? '' : part.slice(eq + 1)
       if (OWNED_KEY_SET.has(key)) {
         // Several owned keys on one id: the last one wins; earlier ones are dropped.
-        derived = parseDerived(key, decodeURIComponent(value))
+        derived = parseDerived(key, decodeOwnedValue(value))
       } else {
         foreign.push(part)
       }

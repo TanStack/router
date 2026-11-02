@@ -115,44 +115,64 @@ const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
 const NO_REGIONS: ReadonlySet<RegionId> = new Set()
 
 /**
- * Bands of edit sequences (`TreeEdit.seq`). Among edits of one range a
- * lower sequence is the outer edit (`RenderTree`), and among inserts at one
- * position the first. Planner edits count from 0 (`RewriteSet.add`). A
- * claim's placeholder is `CLAIM_SEQ + region`, above them: a planner edit
- * scoped to one output on exactly the claimed region replaces it there, and
- * one addressed to every output nests inside it (`+ NESTED_IN_CLAIM`, below
- * the next region's). The core's glue imports (`GLUE_IMPORTS_SEQ`) and its
- * own edits of an output (from `CORE_SEQ` up: statement-level removals,
- * generated units, export glue) come last. Planner edits and regions stay
- * far below the bands' gaps (5e8).
+ * The order of the edits of one range and of the inserts at one position: the
+ * lower is the outer edit (`RenderTree`) and the first insert. By band, then by
+ * `n` within it, then `nested`:
+ * - `planner`: planner edits, `n` in call order;
+ * - `claim`: a claim's placeholder, `n` its region, after the planners' so that
+ *   a planner edit scoped to one output on exactly the claimed region replaces
+ *   it there; an edit addressed to every output on exactly that region shares
+ *   its `n` and is `nested` inside it;
+ * - `lineEnd`: the line end a statement needs, before anything else generated
+ *   at that position;
+ * - `glueImports`: the core's glue imports;
+ * - `core`: the core's own edits of an output (statement-level removals,
+ *   generated units, export glue), `n` in call order.
  */
-export const CLAIM_SEQ = 1e9
-export const NESTED_IN_CLAIM = 0.5
-export const GLUE_IMPORTS_SEQ = 1.5e9
-export const CORE_SEQ = 2e9
+export const EditBand = {
+  planner: 0,
+  claim: 1,
+  lineEnd: 2,
+  glueImports: 3,
+  core: 4,
+} as const
+export type EditBand = (typeof EditBand)[keyof typeof EditBand]
+
+interface EditOrder {
+  band: EditBand
+  n: number
+  nested?: boolean
+}
+
+export function compareEditOrder(a: EditOrder, b: EditOrder): number {
+  return (
+    a.band - b.band ||
+    a.n - b.n ||
+    Number(a.nested === true) - Number(b.nested === true)
+  )
+}
 
 /** An internal edit of a render tree: a planner edit or a claim placeholder. */
-export interface TreeEdit {
+export interface TreeEdit extends EditOrder {
   range: Range
   body: ReadonlyArray<Frag>
   by: string
-  seq: number
   /** The claimed region when this edit is a claim placeholder. */
   claim: RegionId | null
 }
 
 export class RewriteSet {
-  readonly edits: Array<Edit & { seq: number }> = []
+  readonly edits: Array<Edit & { n: number }> = []
   readonly generated: Array<GeneratedUnit> = []
   readonly claims = new Map<RegionId, RegionClaim>()
-  private seq = 0
+  private nextEdit = 0
   private version = 0
   private trees = new Map<string, { version: number; tree: RenderTree }>()
 
   constructor(private readonly regions: RegionTable) {}
 
   add(edit: Edit): void {
-    this.edits.push({ ...edit, seq: this.seq++ })
+    this.edits.push({ ...edit, n: this.nextEdit++ })
     this.bump()
   }
 
@@ -226,24 +246,28 @@ export class RewriteSet {
     }
     const edits: Array<TreeEdit> = []
     // An edit addressed to every output on exactly a claimed region travels
-    // with the region: it nests inside the claim (its seq above the claim's)
-    const claimed: Array<{ range: Range; seq: number }> = []
+    // with the region: it nests inside the claim
+    const claimed: Array<{ range: Range; region: RegionId }> = []
     for (const claim of this.claims.values()) {
       claimed.push({
         range: this.regions.get(claim.region).range,
-        seq: claimSeq(claim.region),
+        region: claim.region,
       })
     }
     for (const e of this.edits) {
       if (RewriteSet.inScope(e.scope, output)) {
-        let seq = e.seq
+        let band: EditBand = EditBand.planner
+        let n = e.n
+        let nested = false
         if (e.scope === 'all-outputs') {
           for (const c of claimed) {
             if (
               c.range.start === e.range.start &&
               c.range.end === e.range.end
             ) {
-              seq = c.seq + NESTED_IN_CLAIM
+              band = EditBand.claim
+              n = c.region
+              nested = true
               break
             }
           }
@@ -252,7 +276,9 @@ export class RewriteSet {
           range: e.range,
           body: e.body,
           by: e.by,
-          seq,
+          band,
+          n,
+          nested,
           claim: null,
         })
       }
@@ -367,14 +393,10 @@ function claimEdit(regions: RegionTable, claim: RegionClaim): TreeEdit {
     range: regions.get(claim.region).range,
     body: claim.placeholder,
     by: claim.by,
-    seq: claimSeq(claim.region),
+    band: EditBand.claim,
+    n: claim.region,
     claim: claim.region,
   }
-}
-
-/** The sequence of a claim's placeholder edit (see `CLAIM_SEQ`). */
-function claimSeq(region: RegionId): number {
-  return CLAIM_SEQ + region
 }
 
 function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {
@@ -383,7 +405,7 @@ function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {
 
 /**
  * Edits of one output sorted by (start asc, zero-width first, end desc,
- * seq asc), nested by containment and conflict-checked.
+ * `compareEditOrder`), nested by containment and conflict-checked.
  */
 export class RenderTree {
   readonly edits: Array<TreeEdit>
@@ -401,7 +423,7 @@ export class RenderTree {
         Number(b.range.start === b.range.end) -
           Number(a.range.start === a.range.end) ||
         b.range.end - a.range.end ||
-        a.seq - b.seq,
+        compareEditOrder(a, b),
     )
     // dedupe identical edits; detect conflicts
     const out: Array<TreeEdit> = []
@@ -593,7 +615,7 @@ export class RenderTree {
           (e.range.start >= until.range.start &&
             e.range.end <= until.range.end &&
             e !== until &&
-            e.seq >= until.seq))
+            compareEditOrder(e, until) >= 0))
       ) {
         break
       }

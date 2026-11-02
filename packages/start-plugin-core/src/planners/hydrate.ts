@@ -478,24 +478,14 @@ function plan(ctx: PlanContext): void {
  * nothing writes, else imports it from there; in dev the declaration stays in
  * the parent: `placement/settle.ts`), so a component a boundary renders and nothing
  * else imports is not in the eager code. The same outputs the route splitter
- * declares for a route module (one output per name: `declareOutput` is
- * idempotent).
+ * declares for a route module (`extractExport` keeps a binding's first).
  */
 function extractExports(ctx: PlanContext): void {
-  const symbols = ctx.symbols
   for (const e of ctx.analysis.exports) {
     if (e.kind !== 'local' || e.local === null || e.typeOnly) {
       continue
     }
-    const sym = e.local
-    const name = symbols.name(sym)
-    const output = ctx.declareOutput({
-      kind: 'export',
-      key: `export~${name}`,
-      derived: { kind: 'export', value: name },
-      sideEffectFree: true,
-    })
-    ctx.extract(sym, output)
+    ctx.extractExport(e.local, e.name)
   }
 }
 

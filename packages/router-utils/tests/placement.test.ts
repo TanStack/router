@@ -728,7 +728,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('export { Card as View }')
     expect(r.env).not.toContain('export default Card')
     expect(r.env).toContain(
-      "export { Card as View, Card as default } from './route.tsx?tsr-split=export~Card'",
+      "export { Card as View, Card as default } from './route.tsx?tsr-split=export~View'",
     )
   })
 
@@ -871,7 +871,9 @@ describe('extracted-export outputs', () => {
     `)
       const r = await extract(code)
       expect(r.env).not.toContain('function Page')
-      expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+      expect(r.env).toMatch(
+        /export \{ Page as default \} from '.*export~default'/,
+      )
     },
   )
 
@@ -884,7 +886,9 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).not.toContain('function Page')
-    expect(r.env).toMatch(/export \{ Page as default \} from '.*export~Page'/)
+    expect(r.env).toMatch(
+      /export \{ Page as default \} from '.*export~default'/,
+    )
   })
 
   // `export * from …` may export any name: the glue export names are the
@@ -943,6 +947,32 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  it('puts exports that read each other in one module and keeps a one-way read apart', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export class Z { o() { return A } }
+      export class A extends Z {}
+      export class Other extends A {}
+      function Page() { return [new A(), new Other()] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { Z, A } from './route.tsx?tsr-split=export~Z'",
+    )
+    expect(r.env).toContain(
+      "export { Other } from './route.tsx?tsr-split=export~Other'",
+    )
+    const z = (await r.extracted('Z'))!.code
+    expect(z.indexOf('class Z')).toBeGreaterThan(-1)
+    expect(z.indexOf('class A')).toBeGreaterThan(z.indexOf('class Z'))
+    expect(z).not.toContain('import ')
+    const other = (await r.extracted('Other'))!.code
+    expect(other).toContain(
+      "import { A } from './route.tsx?tsr-split=export~Z'",
+    )
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -953,7 +983,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~Card'",
+      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~card-view'",
     )
   })
 
@@ -2617,6 +2647,50 @@ function Page() {
     ).toHaveLength(2)
     expect(r.env).toContain('/// <reference types="vite/client" />')
     expect(r.env).toContain("import { createFileRoute } from 'toy-router'")
+  })
+})
+
+describe('generated units after the imports of a derived output', () => {
+  it('render after the last included import, before the statement it ends at', async () => {
+    const code = dedent(`
+      const before = 'B'
+      import { x } from './x'
+      const after = 'A'
+      export const read = () => [before, x, after]
+    `)
+    const host = new MemoryHost({
+      files: { '/app/m.ts': code, '/app/x.ts': 'export const x = 1\n' },
+    })
+    const planner: Planner = {
+      name: 'toy-derived',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const read = ctx.t1.units.find((u) => u.exported.includes('read'))!
+        ctx.addRoot(out, { t: 'unit', id: read.id })
+        ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts: ['const generated = 1\n'] }],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'after-header' },
+          home: out,
+          by: 'toy-derived',
+        })
+      },
+    }
+    const env = envInfo({ name: 'rsc', type: 'server' })
+    const out = await host.compile('/app/m.ts?tss-serverfn-split', [planner], {
+      env,
+    })
+    const at = (text: string) => out!.code.indexOf(text)
+    expect(at("from './x'")).toBeGreaterThan(-1)
+    expect(at('const generated')).toBeGreaterThan(at("from './x'"))
+    expect(at("const after = 'A'")).toBeGreaterThan(at('const generated'))
   })
 })
 

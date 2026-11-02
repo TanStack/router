@@ -10,8 +10,9 @@ import { siblingSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
+import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
-import { CORE_SEQ, GLUE_IMPORTS_SEQ } from './rewrite'
+import { EditBand, compareEditOrder } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -209,7 +210,7 @@ function renderEnv(
   const { items, units } = t1
   const code = analysis.source.code
   const extra: Array<TreeEdit> = []
-  let seq = CORE_SEQ
+  let coreEdits = 0
   const baseTree = rewrites.tree('env')
   // a statement only the line break inside the multi-line comment after it
   // ends: that comment leads what follows and may not render, so the statement
@@ -224,7 +225,8 @@ function renderEnv(
         range: { start: at, end: at },
         body: [{ k: 'text', parts: ['\n'] }],
         by: 'core:glue',
-        seq: GLUE_IMPORTS_SEQ - 1,
+        band: EditBand.lineEnd,
+        n: 0,
         claim: null,
       })
     }
@@ -244,7 +246,8 @@ function renderEnv(
       range: { start: at, end: at },
       body: gen.body,
       by: gen.by,
-      seq: seq++,
+      band: EditBand.core,
+      n: coreEdits++,
       claim: null,
       gen: gen.id,
     } as TreeEdit)
@@ -305,7 +308,8 @@ function renderEnv(
         range: { start: item.nodeRange.start, end: item.nodeRange.start },
         body: [{ k: 'text', parts: [';'] }],
         by: 'core:dce',
-        seq: seq++,
+        band: EditBand.core,
+        n: coreEdits++,
         claim: null,
       })
     }
@@ -317,7 +321,8 @@ function renderEnv(
       range: item.range,
       body: recipe === 'drop' ? [] : recipe,
       by: 'core:dce',
-      seq: seq++,
+      band: EditBand.core,
+      n: coreEdits++,
       claim: null,
     })
   }
@@ -334,7 +339,8 @@ function renderEnv(
       range: { start: analysis.header.end, end: analysis.header.end },
       body: glueImports,
       by: 'core:glue',
-      seq: GLUE_IMPORTS_SEQ,
+      band: EditBand.glueImports,
+      n: 0,
       claim: null,
     })
   }
@@ -355,7 +361,8 @@ function renderEnv(
       range: { start: code.length, end: code.length },
       body: exportsText,
       by: 'core:glue',
-      seq: seq++,
+      band: EditBand.core,
+      n: coreEdits++,
       claim: null,
     })
   }
@@ -363,7 +370,7 @@ function renderEnv(
   if (code.length > 0 && !isLineTerminator(code.charCodeAt(code.length - 1))) {
     const atEnd = extra
       .filter((e) => e.range.start === code.length && e.body.length > 0)
-      .sort((a, b) => a.seq - b.seq)
+      .sort(compareEditOrder)
     const first = atEnd[0]
     if (first) {
       first.body = [{ k: 'text', parts: ['\n'] }, ...first.body]
@@ -470,7 +477,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from './file?tsr-split=export~x'` for every extracted cluster. */
+/** `export { x as name, … } from './file?tsr-split=export~name'` for every extracted cluster. */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
@@ -666,22 +673,23 @@ function renderDerived(
       importsEnd = Math.max(importsEnd, item.range.end)
     }
   }
-  // a piece's position is a source offset: between the last included import
-  // (it starts before its end) and a statement starting where it ends
-  const afterImports = importsEnd - 0.5
   for (const a of anchored) {
     const pos =
       a.gen.anchor.k === 'after-header'
-        ? afterImports
+        ? importsEnd
         : a.gen.anchor.k === 'end'
           ? Infinity
           : a.at
+    // after-header: after the last included import (it starts before its end),
+    // before a statement starting where it ends and what is anchored before it
     const order =
-      a.gen.anchor.k === 'before-unit'
-        ? 0
-        : a.gen.anchor.k === 'after-unit'
-          ? 2
-          : 1
+      a.gen.anchor.k === 'after-header'
+        ? -1
+        : a.gen.anchor.k === 'before-unit'
+          ? 0
+          : a.gen.anchor.k === 'after-unit'
+            ? 2
+            : 1
     pieces.push({
       pos,
       order,
@@ -815,7 +823,7 @@ function isAmbientValueDeclaration(node: Node): boolean {
     case 'TSDeclareFunction':
       return node.declare
     case 'TSModuleDeclaration':
-      return node.declare === true && node.id.type === 'Identifier'
+      return node.declare === true && namespaceName(node) !== null
     default:
       return false
   }
@@ -1027,7 +1035,7 @@ class Renderer {
             form: f.form ?? 'static',
             kind: f.form === 'dynamic' ? 'evaluation' : 'binding',
             specifier: f.specifier,
-            locations: [{ segment: out.length - 1 }],
+            locations: [],
             typeOnly: false,
             names: [...(f.names ?? [])],
             provenance: f.provenance ?? { origin: 'runtime' },
