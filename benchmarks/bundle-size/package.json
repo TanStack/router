@@ -54,6 +54,7 @@
     }
   },
   "dependencies": {
+    "@benchmarks/feature": "workspace:*",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-ssr-query": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
@@ -70,6 +71,7 @@
   "devDependencies": {
     "@rsbuild/core": "^2.1.0",
     "@rsbuild/plugin-react": "^2.0.0",
+    "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
