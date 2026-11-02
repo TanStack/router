@@ -555,8 +555,8 @@ importers:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.0.1)
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -14528,11 +14528,11 @@ importers:
         specifier: ^3.0.0
         version: 3.1.1
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
       seroval-plugins:
-        specifier: ^1.6.7
-        version: 1.6.7(seroval@1.6.7)
+        specifier: ^1.7.1
+        version: 1.7.1(seroval@1.7.1)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15228,8 +15228,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15319,8 +15319,8 @@ importers:
         specifier: ^4.0.7
         version: 4.0.7
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
       source-map:
         specifier: ^0.7.6
         version: 0.7.6
@@ -15401,8 +15401,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15447,8 +15447,8 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
       seroval:
-        specifier: ^1.6.7
-        version: 1.6.7
+        specifier: ^1.7.1
+        version: 1.7.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -27793,9 +27793,9 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
-  seroval-plugins@1.6.7:
-    resolution: {integrity: sha512-4Nk35ttD3DTDJW4hgw5StsVAPeU6qnDFnULAouw6tQ7oLTV/ICXrWpsXo2EE52eSP2joUMazbVf52mFEcADqRw==}
-    engines: {node: '>=10'}
+  seroval-plugins@1.7.1:
+    resolution: {integrity: sha512-5EiMqQiw2/KqzTCyJNdpMvBFbKlidtcinyRwZg77pW5Z+QllOp2JUkEpTdThkdsEFXsPGf8ofTpu5yC1kXwv0g==}
+    engines: {node: '>=20'}
     peerDependencies:
       seroval: ^1.0
 
@@ -27803,9 +27803,9 @@ packages:
     resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
     engines: {node: '>=10'}
 
-  seroval@1.6.7:
-    resolution: {integrity: sha512-AeDcLh0yO2SFm9W71essgnSzLV9DI8ZH0x0knXn2DMnUZj728mpLbxjlbB6IqKCmqh8JA3cEqRyGoNkt584JcQ==}
-    engines: {node: '>=10'}
+  seroval@1.7.1:
+    resolution: {integrity: sha512-tSRMcPkD/bu1rmY0/XfFP2zLPD8jXVuzHli6Y2UFi9AiG/d0kOd8LAc/G6NolpW8MA1PtgDUhywKCmerS4E3tg==}
+    engines: {node: '>=20'}
 
   serve-index@1.9.1:
     resolution: {integrity: sha512-pXHfKNP4qujrtteMrSBb0rc8HJ9Ms/GrXwcUtUtD5s4ewDJI8bT3Cz2zTVRMKtri49pLx2e0Ya8ziP5Ya2pZZw==}
@@ -42745,13 +42745,13 @@ snapshots:
     dependencies:
       seroval: 1.5.4
 
-  seroval-plugins@1.6.7(seroval@1.6.7):
+  seroval-plugins@1.7.1(seroval@1.7.1):
     dependencies:
-      seroval: 1.6.7
+      seroval: 1.7.1
 
   seroval@1.5.4: {}
 
-  seroval@1.6.7: {}
+  seroval@1.7.1: {}
 
   serve-index@1.9.1(supports-color@10.2.2):
     dependencies:
