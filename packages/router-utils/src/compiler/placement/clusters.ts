@@ -11,6 +11,7 @@ import { observesIdentity, runsAtLoad } from '../analysis'
 import { writeKind } from '../mutation'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
+import type { Range } from '../header'
 import type { RegionId, Unit, UnitId } from '../units'
 import type { Frag, GenUnitId, OutputId, RenderTree } from '../rewrite'
 import type { Fallback, PlacementInput } from '../reach'
@@ -282,14 +283,23 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   const envTree = treeOf('env')
   const isLive = (ref: ClassifiedRef, o: OutputId) =>
     !treeOf(o).isErasedAt(ref.range.start)
+  /**
+   * Whether a statement stays: an edit that starts with it may keep the rest
+   * (`createIsomorphicFn().server(f)()` keeps `f` and the call), and only an
+   * edit that leaves nothing of it but its `;` removes it.
+   */
+  const statementSurvives = ({ start, end }: Range): boolean =>
+    !envTree.isErasedAt(start) ||
+    !envTree.isErasedRange({
+      start,
+      end: input.code.charCodeAt(end - 1) === 59 ? end - 1 : end,
+    })
   const unitSurvives = (u: UnitId): boolean => {
     const unit = units[u]!
     const item = items[unit.item]!
-    const probe =
-      unit.range.start === item.range.start
-        ? item.nodeRange.start
-        : unit.range.start
-    return !envTree.isErasedAt(probe)
+    return unit.range.start === item.range.start
+      ? statementSurvives(item.nodeRange)
+      : !envTree.isErasedAt(unit.range.start)
   }
 
   // ---- owner index: refs by owning region --------------------------------
@@ -496,7 +506,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       for (const s of u.declares) {
         cl.declares.add(s)
       }
-      if (u.effectful && !envTree.isErasedAt(items[u.item]!.nodeRange.start)) {
+      if (u.effectful && statementSurvives(items[u.item]!.nodeRange)) {
         cl.effectful = true
         cl.firstEffect = Math.min(cl.firstEffect, u.range.start)
         cl.lastEffect = Math.max(cl.lastEffect, u.range.start)

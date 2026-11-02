@@ -4479,3 +4479,35 @@ describe('pure calls of known packages', () => {
     }
   })
 })
+
+describe('a statement an edit rewrites from its first byte', () => {
+  it('stays an effect: what the rest of it reads stays with it', async () => {
+    const code = dedent(`
+      import { clientOnly } from 'toy-start'
+      const label = 'L'
+      function use(value) { return value }
+      clientOnly(() => use(label))();
+    `)
+    const host = new MemoryHost({ files: { '/app/m.ts': code } })
+    const out = await host.compile('/app/m.ts', [toyEnvPlanner()], {
+      env: envInfo(),
+    })
+    expect(out?.code).toContain(`const label = 'L'`)
+    expect(out?.code).toContain('function use(value)')
+    expect(out?.code).toContain('() => use(label)')
+  })
+
+  it('leaves no read behind on the side that gets the stub', async () => {
+    const code = dedent(`
+      import { clientOnly } from 'toy-start'
+      const label = 'L'
+      clientOnly(() => label)();
+    `)
+    const host = new MemoryHost({ files: { '/app/m.ts': code } })
+    const out = await host.compile('/app/m.ts', [toyEnvPlanner()], {
+      env: envInfo({ name: 'ssr', type: 'server' }),
+    })
+    expect(out?.code).not.toContain('label')
+    expect(out?.code).toContain('(() => {})()')
+  })
+})
