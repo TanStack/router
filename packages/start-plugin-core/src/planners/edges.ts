@@ -38,6 +38,7 @@
 import {
   ASSET_QUERY_RE,
   identify,
+  isAnalyzableSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from '../import-protection/edge-modules'
@@ -85,9 +86,6 @@ export type ImportRewrite = (
 
 /** The planner's configuration of a compile (`CompileConfig.perPlanner`): its environment's type. */
 export type ImportEdgesConfig = EnvType
-
-/** Most modules an effect classification follows from one target (beyond: effectful). */
-const MAX_EFFECT_WALK = 256
 
 interface Judged {
   edge: EdgeRecord
@@ -393,10 +391,14 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
 
   /**
    * What a mock of `resolved` must export (its export names, following
-   * `export *`) and whether evaluating it has effects (own top-level
-   * effects, an effectful module it evaluates, a package without
-   * `sideEffects: false`; unknown → effectful). Every consulted module is a
-   * target-facts/resolution fingerprint of this plan (J6.13).
+   * `export *`) and, in a build (the effect witness is read after tree-shaking),
+   * whether evaluating it has effects (own top-level effects, an effectful
+   * module it evaluates, a dependency without `sideEffects: false`; unknown →
+   * effectful). A module of a package declaring `sideEffects: false`, a platform
+   * builtin and the framework's own packages have none: bundlers drop them with
+   * an unused importer. Every
+   * consulted module is a target-facts/resolution fingerprint of this plan
+   * (J6.13).
    */
   async function describeTarget(
     resolved: string,
@@ -416,7 +418,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     const top = await ctx.targetFacts(resolved)
     const visitedStars = new Set<string>()
     const collect = async (id: string, isTop: boolean): Promise<void> => {
-      if (visitedStars.has(id) || visitedStars.size > MAX_EFFECT_WALK) {
+      if (visitedStars.has(id)) {
         return
       }
       visitedStars.add(id)
@@ -441,20 +443,24 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         return false
       }
       visited.add(id)
-      if (visited.size > MAX_EFFECT_WALK) {
-        return true
-      }
       const path = identify(id).path
+      if (await ip.packageSideEffectFree(path)) {
+        return false
+      }
       if (path.includes('/node_modules/')) {
-        return !(await ip.packageSideEffectFree(path))
+        return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)
       if (!facts.exists || !facts.esm || facts.codeEffects) {
         return true
       }
       for (const spec of facts.imports) {
+        if (!isAnalyzableSpecifier(spec)) {
+          continue
+        }
         const r = await resolve(spec, id)
-        if (r === null || (await effectful(r))) {
+        // (a known framework package answers by its specifier: never resolved)
+        if (r !== spec && (r === null || (await effectful(r)))) {
           return true
         }
       }
@@ -463,7 +469,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     return {
       names: [...names].filter((n) => n !== 'default'),
       hasDefault: top.exportNames.includes('default') || !top.esm,
-      effectful: await effectful(resolved),
+      effectful: config.mode === 'build' && (await effectful(resolved)),
     }
   }
 }

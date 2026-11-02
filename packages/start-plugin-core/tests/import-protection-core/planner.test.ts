@@ -574,7 +574,7 @@ import { k as k2 } from './purepkg.server'
 export const all = () => [p, c, k, k2]
 `,
     }
-    const a = app(files)
+    const a = app(files, {}, 'build')
     const { out } = await a.compile('src/a.js', 'client')
     expect(
       Object.fromEntries(
@@ -592,10 +592,14 @@ export const all = () => [p, c, k, k2]
   })
 
   test('the mock module owns its exports, is pure, and carries the effect witness only for an effectful target', async () => {
-    const a = app({
-      'src/fx.server.ts': `globalThis.x = 1\nexport const s = 1\n`,
-      'src/a.ts': `import { s } from './fx.server'\nexport const r = () => s\n`,
-    })
+    const a = app(
+      {
+        'src/fx.server.ts': `globalThis.x = 1\nexport const s = 1\n`,
+        'src/a.ts': `import { s } from './fx.server'\nexport const r = () => s\n`,
+      },
+      {},
+      'build',
+    )
     const { out } = await a.compile('src/a.ts', 'client')
     const code = a.ip.load(edgeImports(out!.code)[0]!)!.code
     expect(code).toContain('const e0 = /* @__PURE__ */ __mk(m, "s");')
