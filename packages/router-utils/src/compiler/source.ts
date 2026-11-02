@@ -8,6 +8,7 @@ import { SourceText } from './output-builder'
 import type { Node, SourceFile } from 'yuku'
 import type { Lang } from './identity'
 import type { Diagnostic } from './diagnostics'
+import type { Range } from './header'
 
 export { SourceText } from './output-builder'
 export { langFromId } from './identity'
@@ -117,6 +118,26 @@ export function patternIdentifiers(
     default:
       return []
   }
+}
+
+const IDENTIFIER_NAME =
+  /(?:[\p{ID_Continue}$\u200c\u200d]|\\u[\da-fA-F]{4}|\\u\{[\da-fA-F]+\})+/uy
+
+/**
+ * The range of a binding's name as written: an identifier's own range holds
+ * its annotation (`comp: FC`, `b!: T`, as in every TypeScript AST) and an
+ * escaped name is longer than its value.
+ */
+export function bindingNameRange(
+  code: string,
+  id: Extract<Node, { type: 'Identifier' }>,
+): Range {
+  if (id.end - id.start === id.name.length) {
+    return { start: id.start, end: id.end }
+  }
+  IDENTIFIER_NAME.lastIndex = id.start
+  IDENTIFIER_NAME.test(code)
+  return { start: id.start, end: IDENTIFIER_NAME.lastIndex }
 }
 
 /** The name a namespace declares: `A` of `namespace A` and of `namespace A.B.C`; a `declare module 'x'` has none. */

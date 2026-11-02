@@ -447,12 +447,12 @@ export class AnalysisPlan implements PlanContext {
     }
     const exportNames: Array<string> = []
     const renamedUnits: Array<UnitId> = []
-    const code = this.analysis.source.code
     const name = this.symbols.name(sym)
     for (const uid of declaringUnits.get(sym) ?? []) {
       const u = units[uid]!
       for (const r of u.declNameRanges) {
-        if (code.slice(r.start, r.end) !== name) {
+        const id = this.t1.nodeAt(r.start)
+        if (id?.type !== 'Identifier' || id.name !== name) {
           continue // another binding of the same declarator (destructuring)
         }
         if (this.isShorthandPatternName(r)) {
