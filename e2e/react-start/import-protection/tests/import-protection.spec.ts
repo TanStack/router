@@ -1,10 +1,11 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
+import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
 import { getViolationArtifactName } from './violations.utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
+import type { RsbuildPlugin } from '@rsbuild/core'
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const fixtureRoot = path.resolve(import.meta.dirname, '..')
@@ -137,6 +138,185 @@ test.beforeEach(({}, testInfo) => {
   }
 })
 
+test('development rebuilds check changed modules, importers and re-resolved imports', async () => {
+  test.skip(toolchain !== 'rsbuild', 'Rsbuild incremental scan')
+  test.setTimeout(120_000)
+  const [{ createRsbuild }, { pluginReact }, { tanstackStart }] =
+    await Promise.all([
+      import('@rsbuild/core'),
+      import('@rsbuild/plugin-react'),
+      import('@tanstack/react-start/plugin/rsbuild'),
+    ])
+  const sourceDir = path.join(fixtureRoot, 'src/import-protection-hmr')
+  const targetFile = path.join(sourceDir, 'target.ts')
+  const markedFile = path.join(sourceDir, 'marked.ts')
+  const packageFile = path.join(sourceDir, 'package.json')
+  const perfFile = test.info().outputPath('import-protection-perf.json')
+  const target = (label: string) => `import { marked } from './marked'
+import { value } from '#target'
+
+export const label = () => \`${label} \${marked()} \${value}\`
+`
+  const importMap = (file: string) =>
+    JSON.stringify({ imports: { '#target': file } })
+
+  const editor = createHmrFileEditor({
+    rootDir: fixtureRoot,
+    files: { index: 'src/routes/index.tsx' },
+  })
+  await editor.capturePromise
+  const previousPerf = process.env.TSR_IMPORT_PROTECTION_PERF
+  const previousPerfFile = process.env.TSR_IMPORT_PROTECTION_PERF_FILE
+  const clientWarnings: Array<string> = []
+  let compileWaiters: Array<() => void> = []
+  const nextCompile = () =>
+    new Promise<void>((resolve) => {
+      compileWaiters.push(resolve)
+    })
+  const editAndCompile = async (file: string, source: string) => {
+    const compiled = nextCompile()
+    await fs.promises.writeFile(file, source)
+    await compiled
+  }
+  const readCounter = async (name: string) =>
+    (
+      JSON.parse(await fs.promises.readFile(perfFile, 'utf8')) as {
+        counters: Record<string, number | undefined>
+      }
+    ).counters[name] ?? 0
+
+  try {
+    await fs.promises.mkdir(sourceDir, { recursive: true })
+    await fs.promises.writeFile(packageFile, importMap('./safe.ts'))
+    await fs.promises.writeFile(targetFile, target('safe'))
+    await fs.promises.writeFile(
+      markedFile,
+      `export const marked = () => 'plain'\n`,
+    )
+    await fs.promises.writeFile(
+      path.join(sourceDir, 'safe.ts'),
+      `export const value = 'safe'\n`,
+    )
+    await fs.promises.writeFile(
+      path.join(sourceDir, 'secret.server.ts'),
+      `export const value = 'secret'\n`,
+    )
+    await editor.replaceText(
+      'index',
+      `import { createFileRoute, useHydrated } from '@tanstack/react-router'`,
+      `import { createFileRoute, useHydrated } from '@tanstack/react-router'
+import { label } from '../import-protection-hmr/target'
+import '../import-protection-hmr/secret.server'`,
+    )
+    await editor.replaceText(
+      'index',
+      '<h1 data-testid="heading">Import Protection E2E</h1>',
+      '<h1 data-testid="heading">Import Protection E2E</h1>\n      <p>{label()}</p>',
+    )
+    process.env.TSR_IMPORT_PROTECTION_PERF = '1'
+    process.env.TSR_IMPORT_PROTECTION_PERF_FILE = perfFile
+
+    const rsbuild = await createRsbuild({
+      cwd: fixtureRoot,
+      rsbuildConfig: {
+        root: fixtureRoot,
+        plugins: [
+          pluginReact(),
+          tanstackStart(),
+          {
+            name: 'observe-import-protection-rebuilds',
+            setup(api) {
+              api.onAfterEnvironmentCompile(({ environment, stats }) => {
+                if (environment.name === 'client' && stats) {
+                  for (const warning of stats.compilation.warnings) {
+                    clientWarnings.push(warning.message)
+                  }
+                }
+              })
+              api.onAfterDevCompile(() => {
+                const waiters = compileWaiters
+                compileWaiters = []
+                for (const resolve of waiters) {
+                  resolve()
+                }
+              })
+            },
+          } satisfies RsbuildPlugin,
+        ],
+      },
+    })
+    const initialCompile = nextCompile()
+    const server = await rsbuild.createDevServer({ getPortSilently: true })
+    const targetWarnings = () =>
+      clientWarnings.filter((warning) =>
+        warning.includes('Importer: src/import-protection-hmr/target'),
+      )
+    try {
+      await initialCompile
+      expect(targetWarnings()).toEqual([])
+
+      // Already-reported fixture violations don't block the fast path.
+      await editAndCompile(targetFile, target('edited'))
+      expect(targetWarnings()).toEqual([])
+      expect(
+        await readCounter('processAssets.incremental.modules'),
+      ).toBeGreaterThan(0)
+
+      // Rebuilding a module with reported violations doesn't enrich them again.
+      const enriched = await readCounter('violations.enriched')
+      const incremental = await readCounter('processAssets.incremental.modules')
+      const indexCompiled = nextCompile()
+      await editor.replaceText(
+        'index',
+        'Import Protection E2E</h1>',
+        'Import Protection E2E!</h1>',
+      )
+      await indexCompiled
+      expect(await readCounter('violations.enriched')).toBe(enriched)
+      expect(
+        await readCounter('processAssets.incremental.modules'),
+      ).toBeGreaterThan(incremental)
+
+      // Re-pointing the import map rebuilds no module.
+      await editAndCompile(packageFile, importMap('./secret.server.ts'))
+      expect(
+        targetWarnings().some(
+          (warning) =>
+            warning.includes('Import: "#target"') &&
+            warning.includes('secret.server'),
+        ),
+      ).toBe(true)
+
+      await editAndCompile(
+        markedFile,
+        `import '@tanstack/react-start/server-only'\n\nexport const marked = () => 'server'\n`,
+      )
+      expect(
+        clientWarnings.some(
+          (warning) =>
+            warning.includes('marked') &&
+            warning.includes('@tanstack/react-start/server-only'),
+        ),
+      ).toBe(true)
+    } finally {
+      await server.close()
+    }
+  } finally {
+    for (const [name, value] of [
+      ['TSR_IMPORT_PROTECTION_PERF', previousPerf],
+      ['TSR_IMPORT_PROTECTION_PERF_FILE', previousPerfFile],
+    ] as const) {
+      if (value === undefined) {
+        delete process.env[name]
+      } else {
+        process.env[name] = value
+      }
+    }
+    await editor.restoreFiles()
+    await fs.promises.rm(sourceDir, { recursive: true, force: true })
+  }
+})
+
 test('app loads successfully with mock mode', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('heading')).toContainText(
@@ -231,6 +411,23 @@ for (const mode of ['build', 'dev'] as const) {
     expect(fileViolation).toBeDefined()
     expect(fileViolation!.trace).toBeDefined()
     expect(fileViolation!.trace.length).toBeGreaterThanOrEqual(2)
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`client violation traces start at the client entry in ${mode}`, async () => {
+    // Rsbuild skips modules outside the app until a scan finds a violation.
+    test.skip(toolchain !== 'rsbuild', 'Rsbuild scan')
+    const violations = (await readViolations(mode)).filter(
+      (v) => v.envType === 'client',
+    )
+
+    expect(violations.length).toBeGreaterThan(0)
+    for (const violation of violations) {
+      expect(violation.trace[0]?.file.replace(/\\/g, '/')).toMatch(
+        /\/default-entry\/client\.tsx$/,
+      )
+    }
   })
 }
 
