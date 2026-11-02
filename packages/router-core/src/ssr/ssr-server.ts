@@ -14,7 +14,10 @@ import {
   SSR_SERIALIZATION_SCOPE_ID,
   createHydrationScripts,
 } from './hydrationScripts'
-import { dehydrateSsrMatchId } from './ssr-match-id'
+import {
+  dehydrateSsrManifestRouteId,
+  dehydrateSsrMatchId,
+} from './ssr-match-id'
 import { ssrSerovalPlugins } from './serializer/seroval-plugins.ssr'
 import { makeSsrSerovalPlugin } from './serializer/makeSsrSerovalPlugin'
 import type { SieveCache } from '../sieve-cache'
@@ -455,7 +458,7 @@ export function attachRouterServerSsrUtils({
         )
         manifestToDehydrate.routes = Object.fromEntries(
           Object.entries(manifestToDehydrate.routes).map(([id, route]) => [
-            dehydrateSsrMatchId(id),
+            dehydrateSsrManifestRouteId(id),
             route,
           ]),
         )
