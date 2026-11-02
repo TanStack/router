@@ -3,6 +3,7 @@ import {
   hydrateInteractionEventsAttribute,
   hydrateWhenAttribute,
 } from './constants'
+import { replayEventsByGateId } from './replay'
 import {
   clearResolvedGateIdsInMarker,
   getMarkerGate,
@@ -19,13 +20,6 @@ export type InteractionHydrationOptions = {
 }
 
 const hydrateIdSelector = `[${hydrateIdAttribute}]`
-
-type PendingReplayEvent = {
-  marker: Element
-  targetPath: Array<number>
-  type: string
-  event: Event
-}
 
 const defaultInteractionEvents = [
   'pointerenter',
@@ -54,11 +48,6 @@ const interactionType = 'interaction'
 const dynamicType = 'dynamic'
 const interactionHydrateSelector = `[${hydrateWhenAttribute}="${interactionType}"]`
 const delegatedHydrateSelector = `${interactionHydrateSelector},[${hydrateWhenAttribute}="${dynamicType}"]`
-const replayEventsByGateId = /* @__PURE__ */ new Map<
-  string,
-  Array<PendingReplayEvent>
->()
-
 function getIntentListenerEvents(
   marker: Element,
   events: ReadonlyArray<string>,
