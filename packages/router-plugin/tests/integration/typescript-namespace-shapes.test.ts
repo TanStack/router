@@ -1,7 +1,8 @@
 /**
  * The TypeScript declarations whose name isn't a plain identifier statement:
  * `namespace A.B` declares `A`, and `export import R = N.v` declares and exports
- * `R`. A split component reading them gets the binding on every bundler.
+ * `R`. A split component reading them gets the binding on every bundler. One
+ * shape is pinned below: Yuku lists no export for `export namespace A.B`.
  */
 import { describe, expect, test } from 'vitest'
 import { build, head, rootRoute } from '../build-harness'
@@ -101,9 +102,10 @@ describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
   )
 })
 
-// Neither name of `A` goes missing when one of them is extracted.
+// An importer of the route file reads the name: with no other export naming `A`,
+// it stays in the route module as written.
 test.each(['vite', 'rspack', 'webpack'] as const)(
-  'an exported dotted namespace another export names keeps both names on %s',
+  'an exported dotted namespace is read through the route file on %s',
   async (bundler) => {
     const app = await build({
       bundler,
@@ -112,22 +114,62 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       files: {
         'routes/__root.tsx': rootRoute,
         'routes/index.tsx': `${head}export namespace A.B { export const v = 'MARK_NS_END' }
-export { A as Z }
 ${component('A.B.v')}`,
         'entry.ts': `import * as M from './routes/index'
-export const read = () => [(M as any).A.B.v, (M as any).Z.B.v]
+export const read = () => (M as any).A.B.v
 `,
       },
     })
     try {
       const { result } = await app.run('return entry.read()')
-      expect(result).toEqual(['MARK_NS_END', 'MARK_NS_END'])
+      expect(result).toBe('MARK_NS_END')
     } finally {
       await app.dispose()
     }
   },
   timeout,
 )
+
+// Bug: Yuku 0.26 (yuku-toolchain/yuku) has no `file.exports` record for
+// `export namespace A.B` (one for `export namespace A`), so the compiler doesn't
+// know that export names the binding. Another export of it (`export { A as Z }`,
+// `export default A`) offers the binding for extraction when only split code
+// reads it, and the route file re-exports only the names it knows (KNOWN-BUGS,
+// "Upstream issues").
+// Impact: in a build the route file loses `A`: importers of it fail to link on
+// Rolldown, Rspack and Rsbuild, and read undefined on webpack and through a
+// namespace import on Rolldown.
+describe.each([
+  ['export { A as Z }', 'Z'],
+  ['export default A', 'default'],
+])('an exported dotted namespace and %s', (other, name) => {
+  test.fails.each(['vite', 'rspack', 'webpack'] as const)(
+    'keeps both names on %s',
+    async (bundler) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        minify: false,
+        files: {
+          'routes/__root.tsx': rootRoute,
+          'routes/index.tsx': `${head}export namespace A.B { export const v = 'MARK_NS_END' }
+${other}
+${component('A.B.v')}`,
+          'entry.ts': `import * as M from './routes/index'
+export const read = () => [(M as any).A.B.v, (M as any).${name}.B.v]
+`,
+        },
+      })
+      try {
+        const { result } = await app.run('return entry.read()')
+        expect(result).toEqual(['MARK_NS_END', 'MARK_NS_END'])
+      } finally {
+        await app.dispose()
+      }
+    },
+    timeout,
+  )
+})
 
 test(
   'a namespace of types only stays out of every chunk',

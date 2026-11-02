@@ -521,11 +521,7 @@ export class ModuleAnalysis {
               exportEntries.push({
                 kind: 'local',
                 name: id.name,
-                // (Yuku lists no export for `export namespace A.B`)
-                local:
-                  exportLocals.get(id.start) ??
-                  (file.bindingOf(id)?.id as SymbolId | undefined) ??
-                  null,
+                local: exportLocals.get(id.start) ?? null,
                 typeOnly: typeOnly || isTypeDeclaration(stmt.declaration),
                 range: { start: id.start, end: id.end },
               })
