@@ -17,6 +17,7 @@ import {
   diagnosticPosition,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { StartBuildError, buildStart } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
 
@@ -372,6 +373,41 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       async () => {
         const build = await sharedApp()
         expect(build.client.where('unused-hydrated-marker')).toBe('nowhere')
+      },
+      timeout,
+    )
+
+    // Bug: Yuku 0.26 (yuku-toolchain/yuku) has no `file.exports` record for
+    // `export namespace A.B`, so `A`'s other name offers it for extraction and
+    // the module re-exports only that name (KNOWN-BUGS, "Upstream issues").
+    // Impact: the client build's module loses `A`.
+    test.fails(
+      'an exported dotted namespace another export names keeps both names',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          registerCleanup: onTestFinished,
+          files: {
+            ...pageEntries,
+            'src/widget.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
+import { Toggle } from './toggle'
+export namespace A.B { export const v = 'dotted-marker' }
+export { A as Z }
+export function Page() {
+  return <Hydrate when={load()}><Toggle label={A.B.v} /></Hydrate>
+}
+`,
+            'src/toggle.tsx': toggleSource,
+            'src/pages.ts': `import * as W from './widget'
+export { Page } from './widget'
+export const names = () => [(W as any).A.B.v, (W as any).Z.B.v]
+`,
+          },
+        })
+        const { result } = await build.client.run('return entry.pages.names()')
+        expect(result).toEqual(['dotted-marker', 'dotted-marker'])
       },
       timeout,
     )

@@ -973,6 +973,40 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  it('lets a chunk copy a cycle of functions, which the route file re-exports from one module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function F() { return G }
+      export function G() { return F }
+      function Page() { return [F, G] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { F, G } from './route.tsx?tsr-split=export~F'",
+    )
+    expect(r.chunk).toContain('function F()')
+    expect(r.chunk).toContain('function G()')
+    expect(r.chunk).not.toContain('export~')
+  })
+
+  it('imports one way between two cycles', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export class A1 { o() { return A2 } }
+      export class A2 extends A1 {}
+      export class B1 extends A2 { o() { return B2 } }
+      export class B2 extends B1 {}
+      function Page() { return [new A1(), new B2()] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    const b = (await r.extracted('B1'))!.code
+    expect(b).toContain("import { A2 } from './route.tsx?tsr-split=export~A1'")
+    const a = (await r.extracted('A1'))!.code
+    expect(a).not.toContain('export~B1')
+  })
+
   it('re-exports a string export name as a string literal', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

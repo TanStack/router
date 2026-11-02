@@ -9,6 +9,9 @@ describe.each(['vite', 'rspack', 'webpack'] as const)(
   'a string export name of an extracted module on %s',
   (bundler) => {
     test.each([
+      // (webpack reads `export { K as "" } from` as `export *`: KNOWN-BUGS,
+      // "Upstream issues")
+      ...(bundler === 'webpack' ? [] : ['']),
       'a.b',
       'a.css',
       'a.json',
