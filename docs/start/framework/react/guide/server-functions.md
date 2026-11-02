@@ -93,6 +93,9 @@ function PostList() {
 }
 ```
 
+> [!NOTE]
+> If you use TanStack Query with the `@tanstack/react-router-ssr-query` integration package, wrapping server functions called in `queryFn` or `mutationFn` with `useServerFn` is not required. See the [Query integration guide](/router/latest/docs/integrations/query#redirect-handling) for more details.
+
 ## File Organization
 
 For larger applications, consider organizing server-side code into separate files. Here's one approach:
@@ -257,7 +260,7 @@ export const looseOutputServerFn = createServerFn({
 
 ## Error Handling & Redirects
 
-Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles or components using `useServerFn()`.
+Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles, components using `useServerFn()`, or inside TanStack Query `queryFn` and `mutationFn` functions when the [`@tanstack/react-router-ssr-query` integration package](/router/latest/docs/integrations/query) is used.
 
 ### Basic Errors
 
