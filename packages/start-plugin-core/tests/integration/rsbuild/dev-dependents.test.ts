@@ -5,6 +5,8 @@
  * the modules that read them; a dev server started again on its persistent
  * cache compiles again what changed while it was down.
  */
+import fs from 'node:fs'
+import { syncBuiltinESMExports } from 'node:module'
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -230,6 +232,38 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
       const server = await first.restart()
       expect(server.errors).toEqual([])
       expect(await client(server)).not.toContain('MARK_A')
+    },
+    timeout,
+  )
+
+  // A package manager replaced the compiler in place while the server was
+  // down (a flat `node_modules`: the loader's path stays, a lockfile-only
+  // upgrade leaves the app's `package.json` alone). The cache holds another
+  // compiler's outputs, which may have kept server code in the client.
+  test(
+    'restores nothing the previous version of the compiler compiled',
+    async () => {
+      const first = await startRsbuildStartDevServer({
+        compileTimeout,
+        config,
+        files: app,
+      })
+      expect(first.errors).toEqual([])
+      await first.stop()
+      const read = fs.readFileSync
+      fs.readFileSync = ((file: fs.PathOrFileDescriptor, options?: never) =>
+        String(file).endsWith('/router-utils/package.json')
+          ? `${read(file, options)}\n`
+          : read(file, options)) as typeof read
+      syncBuiltinESMExports()
+      try {
+        const server = await first.restart()
+        expect(server.errors).toEqual([])
+        expect(builtAppModules(server)).toContain('src/a.ts')
+      } finally {
+        fs.readFileSync = read
+        syncBuiltinESMExports()
+      }
     },
     timeout,
   )
