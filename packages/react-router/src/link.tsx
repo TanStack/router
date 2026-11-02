@@ -10,7 +10,7 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
 import type {
@@ -298,7 +298,7 @@ export function useLinkProps<
     const dest = { ...options } as any
     // The nearest route resolves module destinations to the installation
     // the link renders under. Only the route-module translation reads it.
-    if (scopeLocationOptions) {
+    if (routeModules) {
       dest._nearestRoute = routeId
     }
     let source: ParsedLocation | undefined
@@ -370,7 +370,7 @@ export function useLinkProps<
     // Spread route-module link options can change the scope of the same
     // destination. The `_fromRoute` of a route's own `Link` is constant.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the condition is constant for an application
-    ...(scopeLocationOptions
+    ...(routeModules
       ? [(options as { _module?: RouteModuleScope })._module]
       : []),
   ])
@@ -490,7 +490,7 @@ export function useLinkProps<
       // module destination. Navigation builds again to run `validateSearch`
       // before committing.
       router.navigate(
-        scopeLocationOptions
+        routeModules
           ? {
               ...options,
               _fromLocation: dest._fromLocation,
@@ -525,8 +525,8 @@ export function useLinkProps<
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 // Options the router consumes; they never reach the element. Every other
-// option is an element prop and passes through. Route-module code adds the
-// options of its scopes (`addRouteModuleLinkOptions`).
+// option is an element prop and passes through. Route-module routers add the
+// options of route-module scopes (`addRouteModuleLinkOptions`).
 const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'to',
   'params',
@@ -552,7 +552,7 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   '_asChild',
 ])
 
-/** Called by route-module code: its scopes pass these internal options. */
+/** Called by route-module routers: scoped APIs pass these internal options. */
 export function addRouteModuleLinkOptions(): void {
   ROUTER_OPTION_KEYS.add('_module').add('_fromRoute')
 }

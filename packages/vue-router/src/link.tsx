@@ -9,7 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { linkLocationContext, routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
@@ -196,8 +196,8 @@ export function useLinkPropsImpl(
   // mask holds destination options of its own, so its values are checked too.
   // The nearest route resolves module destinations to the installation the
   // Link renders under. Only the route-module translation reads it, which
-  // route modules install before any component sets up.
-  const routeId = scopeLocationOptions
+  // route-module routers install before any component sets up.
+  const routeId = routeModules
     ? Vue.inject(routeIdContext, undefined)
     : undefined
   const dest = Vue.computed((prev?: Record<string, any>) => {
@@ -215,7 +215,7 @@ export function useLinkPropsImpl(
       }
       same &&= prev![key] === value
     }
-    if (scopeLocationOptions) {
+    if (routeModules) {
       dest._nearestRoute = routeId
     }
     return same ? prev! : dest
@@ -670,8 +670,8 @@ const LINK_OPTION_KEYS = new Set<string>([
 ])
 
 /**
- * Called by route-module code: its scopes pass these internal options, which
- * decide where a Link navigates (see `scopeLocationOptions` in router-core).
+ * Called by route-module routers: scoped APIs pass these internal options, which
+ * decide where a Link navigates (see `routeModules.scopeLocation` in router-core).
  */
 export function addRouteModuleLinkOptions(): void {
   if (!LINK_OPTION_KEYS.has('_module')) {

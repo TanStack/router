@@ -15,6 +15,9 @@ const {
 } = require('../dist/cjs/index.cjs') as typeof import('../src')
 const moduleWiring =
   require('../dist/cjs/route-module.cjs') as typeof import('../src/route-module')
+// Route-module routers install the behavior; revisions that install it from
+// module code have no installer, or an idempotent one.
+;(moduleWiring as { installRouteModules?: () => void }).installRouteModules?.()
 const { createMemoryHistory } =
   require('@tanstack/history') as typeof import('@tanstack/history')
 

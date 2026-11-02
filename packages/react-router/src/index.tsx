@@ -277,6 +277,7 @@ export type {
 export type { Route as RouteCore } from '@tanstack/router-core'
 
 export { createRouter, Router } from './router'
+export { createRouteModuleRouter } from './routeModule'
 
 export type {
   FileRoutesByPathEntry,

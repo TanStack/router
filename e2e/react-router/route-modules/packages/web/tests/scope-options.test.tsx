@@ -4,14 +4,14 @@ import { expect, test } from 'vitest'
 import {
   RouterContextProvider,
   createMemoryHistory,
-  createRouter,
+  createRouteModuleRouter,
 } from '@tanstack/react-router'
 import { routeTree } from '../src/routeTree.gen'
 import { orgSettings, personSettings } from '../src/routeScope.gen'
 import * as settings from '@route-modules/settings/scope'
 
 async function createApp() {
-  const router = createRouter({
+  const router = createRouteModuleRouter({
     routeTree,
     context: {
       productsApi: {

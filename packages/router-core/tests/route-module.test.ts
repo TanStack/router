@@ -4,14 +4,16 @@ import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import {
   createScopedRedirect,
   getRouteModuleId,
-  getRouteNavigationScope,
   getScopedRouterView,
   installRouteModules,
   mountRouteModule,
-  resolveRouteId,
+  routeModules,
 } from '../src/route-module-internal'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 import type { AnyRoute } from '../src'
+
+// What `createRouteModuleRouter` of the frameworks installs.
+installRouteModules()
 
 function createModuleRoot(moduleId: string, options: object = {}) {
   return new BaseRoute({ ...options, _module: moduleId } as any) as AnyRoute
@@ -204,8 +206,7 @@ describe('getRouteModuleId', () => {
   test.each(cases)(
     'the installed navigation scope agrees for %s',
     (routeId, moduleId) => {
-      installRouteModules()
-      expect(getRouteNavigationScope?.(routeId)).toEqual(
+      expect(routeModules?.navigationScope(routeId)).toEqual(
         moduleId === undefined
           ? undefined
           : { from: undefined, _module: moduleId, _fromRoute: routeId },
@@ -683,21 +684,29 @@ describe('a module installed several times', () => {
     const { router } = setupInstallations()
 
     expect(
-      resolveRouteId!(
+      routeModules!.resolveRouteId(
         router,
         '@acme/settings:/profile',
         '@acme/settings#userSettings:/',
       ),
     ).toBe('@acme/settings#userSettings:/profile')
     expect(
-      resolveRouteId!(router, '@acme/settings:/profile', '@acme/billing:/'),
+      routeModules!.resolveRouteId(
+        router,
+        '@acme/settings:/profile',
+        '@acme/billing:/',
+      ),
     ).toBe('@acme/settings#orgSettings:/profile')
     expect(
-      resolveRouteId!(router, '@acme/settings:/profile', '/orgs/$orgId'),
+      routeModules!.resolveRouteId(
+        router,
+        '@acme/settings:/profile',
+        '/orgs/$orgId',
+      ),
     ).toBe('@acme/settings:/profile')
-    expect(resolveRouteId!(router, '/orgs/$orgId', '@acme/billing:/')).toBe(
-      '/orgs/$orgId',
-    )
+    expect(
+      routeModules!.resolveRouteId(router, '/orgs/$orgId', '@acme/billing:/'),
+    ).toBe('/orgs/$orgId')
   })
 
   test('module-local destinations stay in the installation of the caller', async () => {

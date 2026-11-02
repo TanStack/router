@@ -184,6 +184,19 @@ Mounting follows these rules, and the generator or the type checker reports ever
 
 Generated code performs the mounting and emits the corresponding type checks. Mounting helpers are internal; author composition through configuration and generated APIs.
 
+### Creating the router
+
+An application that mounts modules creates its router with `createRouteModuleRouter` instead of `createRouter`. It takes the same options and returns the same router. It also switches on the route-module behavior of the router and its links, such as module-local paths and ids, before the router is created. Applications without route modules keep `createRouter` and ship none of that code.
+
+```tsx title="apps/web/src/router.tsx"
+import { createRouteModuleRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+export const router = createRouteModuleRouter({ routeTree })
+```
+
+A TanStack Start application returns it from `getRouter()`. Create the router before the first render. In development, an ordinary `createRouter` throws when its route tree contains a mounted module or when it receives options from a module's generated APIs.
+
 ### Mounting under path params
 
 A module can be mounted below routes with path params, for example once per organization:

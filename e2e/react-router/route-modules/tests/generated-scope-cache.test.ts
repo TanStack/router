@@ -68,12 +68,12 @@ export const Route = createRootRoute()
       'src/probe.tsx',
       `import * as React from 'react'
 import { renderToString } from 'react-dom/server'
-import { RouterContextProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { RouterContextProvider, createMemoryHistory, createRouteModuleRouter } from '@tanstack/react-router'
 import { useRouter } from 'constructor/scope'
 import { routeTree } from './routeTree.gen'
 
 export async function render() {
-  const router = createRouter({
+  const router = createRouteModuleRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: ['/settings/profile'] }),
     isServer: true,

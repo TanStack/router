@@ -7,6 +7,7 @@ import {
   getScopedRouterView,
   installRouteModules,
 } from '@tanstack/router-core/_internal/route-module'
+import { createRouter } from './router'
 import { Route, getRouteApi } from './route'
 import { Link, addRouteModuleLinkOptions, useLinkProps } from './link'
 import { Navigate, useNavigate } from './useNavigate'
@@ -25,6 +26,7 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouter,
+  CreateRouterFn,
   ModuleRootRoute,
   ModuleRootRouteOptions,
   NotFoundError,
@@ -160,22 +162,25 @@ export interface FileRouteScope<
 }
 
 /**
- * Installs the route-module behavior of the core and of this framework's
- * links. Generated scopes and module roots call it when they are created,
- * before an application renders.
+ * Creates the router of an application that mounts route modules. It takes the
+ * options of `createRouter` and returns the same router, after installing the
+ * route-module behavior of the core and of this framework's links. Applications
+ * create it before they render; applications without route modules use
+ * `createRouter` and ship none of that behavior.
+ *
+ * @experimental Route modules are experimental and may change in any release.
+ * @link https://tanstack.com/router/latest/docs/framework/solid/routing/route-modules
  */
-function installRouteModuleBindings() {
+export const createRouteModuleRouter: CreateRouterFn = (options) => {
   installRouteModules()
   addRouteModuleLinkOptions()
+  return createRouter(options)
 }
 
 /** Binds only the module-root factory used by generated route scopes. */
 export function bindCreateModuleRoot<TRegister, TModuleId extends string>(
   moduleId: TModuleId,
 ): FileRouteScope<never, TRegister, TModuleId>['createModuleRoot'] {
-  // Module routes resolve their route-bound APIs through the route-module
-  // behavior: install it with the first module root.
-  installRouteModuleBindings()
   return () => (options) =>
     new Route({ ...(options as any), _module: moduleId }) as any
 }
@@ -243,7 +248,6 @@ function bindIdHook(moduleId: string, hook: (options: any) => any) {
 export function bindRouteScopeLink<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['Link'] {
-  installRouteModuleBindings()
   const AnyLink = Link as (props: any) => Solid.JSX.Element
   return ((props: object) => {
     const bind = bindOptions(moduleId)
@@ -254,7 +258,6 @@ export function bindRouteScopeLink<TRouter extends AnyRouter>(
 export function bindRouteScopeCreateLink<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['createLink'] {
-  installRouteModuleBindings()
   const AnyLink = Link as (props: any) => Solid.JSX.Element
   return ((Comp: unknown) => (props: object) => {
     const bind = bindOptions(moduleId)
@@ -286,7 +289,6 @@ export function bindRouteScopeMatchRoute<TRouter extends AnyRouter>(
 export function bindRouteScopeUseLinkProps<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useLinkProps'] {
-  installRouteModuleBindings()
   return ((options: any) => {
     const bind = bindOptions(moduleId)
     return useLinkProps(
@@ -302,7 +304,6 @@ export function bindRouteScopeUseLinkProps<TRouter extends AnyRouter>(
 export function bindRouteScopeLinkOptions<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['linkOptions'] {
-  installRouteModuleBindings()
   return ((options: any) =>
     Array.isArray(options)
       ? options.map((option) => bindRouteScopeOptions(moduleId, option))

@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
-import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -109,7 +109,7 @@ export function useMatch<
   // it resolves through the nearest match. A live match never changes route,
   // so read it once without tracking.
   const nearestRouteId =
-    resolveRouteId && opts.from
+    routeModules && opts.from
       ? Solid.untrack(contextMatch[0 /* route id */])
       : undefined
 
@@ -117,8 +117,8 @@ export function useMatch<
     if (opts.from) {
       return router.stores
         .getMatchStore(
-          resolveRouteId
-            ? resolveRouteId(router, opts.from, nearestRouteId)
+          routeModules
+            ? routeModules.resolveRouteId(router, opts.from, nearestRouteId)
             : opts.from,
         )
         .get()

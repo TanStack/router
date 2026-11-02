@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+import {
+  createMemoryHistory,
+  createRouteModuleRouter,
+} from '@tanstack/react-router'
 import { routeTree } from '../src/routeTree.gen'
 import {
   account,
@@ -11,7 +14,7 @@ import {
 import { isScopedMatch } from '@route-modules/settings/scope'
 
 function createApp(pathname: string) {
-  return createRouter({
+  return createRouteModuleRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [pathname] }),
     // This server harness drives load explicitly. Browser e2e tests exercise

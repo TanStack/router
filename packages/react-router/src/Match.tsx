@@ -1,6 +1,6 @@
 'use client'
 
-import { resolveRouteId } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
@@ -113,8 +113,11 @@ function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
         fallback={(error) => {
           error.routeId ??= match.routeId
           if (
-            (resolveRouteId?.(router, error.routeId, match.routeId) ??
-              error.routeId) !== match.routeId
+            (routeModules?.resolveRouteId(
+              router,
+              error.routeId,
+              match.routeId,
+            ) ?? error.routeId) !== match.routeId
           ) {
             throw error
           }
