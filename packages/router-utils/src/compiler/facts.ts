@@ -69,8 +69,11 @@ interface RawFactsOptions {
   opaque?: (path: string, text: string) => boolean
 }
 
+/** The ids whose text only the bundler has (`loadVirtual`). */
+export const VIRTUAL_ID_RE = /^(?:\0|virtual:)/
+
 const isVirtualId = (canonicalId: string): boolean =>
-  canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
+  VIRTUAL_ID_RE.test(canonicalId)
 
 /** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown (effectful). */
 const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
