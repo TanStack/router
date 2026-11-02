@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
+import type { Hash } from 'node:crypto'
+import type { Dirent } from 'node:fs'
 
-const BUILT_SCRIPT_RE = /\.c?js$/
+const BUILT_SCRIPT_RE = /\.[cm]?js$/
 
 /**
  * A key for what a bundler's persistent cache keeps of a compile, from the
@@ -20,14 +22,25 @@ export function compilerCacheKey(manifests: ReadonlyArray<string>): string {
     if (manifest.split(path.sep).includes('node_modules')) {
       continue
     }
-    const dist = path.join(path.dirname(manifest), 'dist')
-    const scripts = readdirSync(dist, { recursive: true, encoding: 'utf8' })
-      .filter((file) => BUILT_SCRIPT_RE.test(file))
-      .sort()
-    for (const script of scripts) {
-      hash.update(script)
-      hash.update(readFileSync(path.join(dist, script)))
-    }
+    hashBuiltScripts(hash, path.join(path.dirname(manifest), 'dist'))
   }
   return hash.digest('hex').slice(0, 16)
+}
+
+function hashBuiltScripts(hash: Hash, dist: string): void {
+  let entries: Array<Dirent>
+  try {
+    entries = readdirSync(dist, { recursive: true, withFileTypes: true })
+  } catch {
+    // no build (yet): the plugin running from source, a rebuild wiping it
+    return
+  }
+  const scripts = entries
+    .filter((entry) => entry.isFile() && BUILT_SCRIPT_RE.test(entry.name))
+    .map((entry) => path.join(entry.parentPath, entry.name))
+    .sort()
+  for (const script of scripts) {
+    hash.update(path.relative(dist, script))
+    hash.update(readFileSync(script))
+  }
 }

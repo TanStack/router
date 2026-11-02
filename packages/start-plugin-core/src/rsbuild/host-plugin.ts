@@ -9,8 +9,10 @@
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
  */
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import {
+  compilerCacheKey,
   emittedMapTexts,
   identify,
   initialChunkResources,
@@ -61,6 +63,14 @@ interface StartHostPluginOptions {
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
 
+const require = createRequire(import.meta.url)
+
+const COMPILER_PACKAGES = [
+  '@tanstack/start-plugin-core',
+  '@tanstack/router-plugin',
+  '@tanstack/router-utils',
+]
+
 /** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
 function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
   const view = rspackGraphView(compilation as never)
@@ -104,6 +114,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
+      // A persistent cache holds this compiler's outputs and restores them
+      // without compiling (Rsbuild's `buildCache` keys on the app's
+      // `package.json`, config and tsconfig; `tools.rspack` may set its own).
+      const persistent = compiler.options.cache
+      if (typeof persistent === 'object' && persistent.type === 'persistent') {
+        const key = compilerCacheKey(
+          COMPILER_PACKAGES.map((name) =>
+            require.resolve(`${name}/package.json`),
+          ),
+        )
+        persistent.version = `${persistent.version ?? ''}-${key}`
+      }
       ;(compiler as unknown as Record<string, unknown>)[LOADER_REGISTRY] = ((
         ctx,
         source,

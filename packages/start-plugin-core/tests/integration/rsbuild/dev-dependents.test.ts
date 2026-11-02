@@ -240,12 +240,31 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
   // down (a flat `node_modules`: the loader's path stays, a lockfile-only
   // upgrade leaves the app's `package.json` alone). The cache holds another
   // compiler's outputs, which may have kept server code in the client.
-  test(
-    'restores nothing the previous version of the compiler compiled',
-    async () => {
+  test.each([
+    ['Rsbuild', config],
+    [
+      'an own Rspack',
+      {
+        tools: {
+          rspack: {
+            cache: {
+              type: 'persistent' as const,
+              version: 'own',
+              storage: {
+                type: 'filesystem' as const,
+                directory: 'node_modules/.cache/own',
+              },
+            },
+          },
+        },
+      },
+    ],
+  ])(
+    'restores nothing the previous version of the compiler compiled, with %s cache',
+    async (_, cacheConfig) => {
       const first = await startRsbuildStartDevServer({
         compileTimeout,
-        config,
+        config: cacheConfig,
         files: app,
       })
       expect(first.errors).toEqual([])

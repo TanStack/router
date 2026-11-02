@@ -51,4 +51,13 @@ describe('compilerCacheKey', () => {
     writeFileSync(path.join(manifest, '../dist/esm/b.js'), 'one')
     expect(compilerCacheKey([manifest])).not.toBe(before)
   })
+
+  it('reads what a package outside node_modules has built, whatever it has', () => {
+    const manifest = pkg('packages/compiler')
+    const before = compilerCacheKey([manifest])
+    mkdirSync(path.join(manifest, '../dist/chart.js'))
+    expect(compilerCacheKey([manifest])).toBe(before)
+    rmSync(path.join(manifest, '../dist'), { recursive: true })
+    expect(compilerCacheKey([manifest])).not.toBe(before)
+  })
 })

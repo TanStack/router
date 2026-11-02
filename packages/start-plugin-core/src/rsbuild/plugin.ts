@@ -1,12 +1,8 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
-import {
-  compilerCacheKey,
-  rebuildModules,
-} from '@tanstack/router-utils/compiler'
+import { rebuildModules } from '@tanstack/router-utils/compiler'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -60,14 +56,6 @@ const isInsideRouterMonoRepo = (() => {
   const candidate = resolve(currentDir, '../../../../')
   return candidate.endsWith('/packages') || candidate.endsWith('\\packages')
 })()
-
-const require = createRequire(import.meta.url)
-
-const COMPILER_PACKAGES = [
-  '@tanstack/start-plugin-core',
-  '@tanstack/router-plugin',
-  '@tanstack/router-utils',
-]
 
 type RspackNamespace = typeof rspackNamespaceType
 type RscPluginPair = ReturnType<
@@ -468,24 +456,6 @@ export function tanStackStartRsbuild(
           }
         })
       }
-
-      // A persistent cache holds this compiler's outputs and is restored
-      // without compiling (Rsbuild's `buildCache` keys on the app's
-      // `package.json`, config and tsconfig).
-      let compilerKey: string | undefined
-      api.modifyRspackConfig((config) => {
-        if (
-          typeof config.cache === 'object' &&
-          config.cache.type === 'persistent'
-        ) {
-          compilerKey ??= compilerCacheKey(
-            COMPILER_PACKAGES.map((name) =>
-              require.resolve(`${name}/package.json`),
-            ),
-          )
-          config.cache.version = `${config.cache.version ?? ''}-${compilerKey}`
-        }
-      })
 
       // ---------------------------------------------------------------
       // 7. RSC: rspack layer rules + native RSC plugins
