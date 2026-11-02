@@ -634,13 +634,33 @@ export interface ClientRender {
 const hydrationMessage =
   /hydration failed|tree hydrated|didn't match|did not match|while hydrating|hydration mismatch/i
 
-/** Page code: `settled(quiet)`, `openGates()`. */
-const settleSource = `const settled = async (quiet = 30, timeout = 10000) => {
+/**
+ * Page code: `settled(quiet)`, `openGates()`. A page that hydrates the markup
+ * it already shows looks finished, so `settled` waits for what the page has
+ * yet to do rather than for a stretch of nothing changing. Each round lets a
+ * frame's intersection observers run (a visible gate opens there, and this
+ * round's observer hears in the same step, however late the frame), then every
+ * task queued after them (React renders what the gate let through, which
+ * requests its code), and only then asks what is in flight: the answer of a
+ * question asked earlier cannot know of a request started since. Two rounds
+ * alike: nothing is left to happen.
+ */
+const settleSource = `const settleRound = () => new Promise((resolve) => {
+  const observer = new IntersectionObserver(() => {
+    observer.disconnect()
+    requestIdleCallback(resolve)
+  })
+  observer.observe(root)
+})
+const settled = async (quiet = 30, timeout = 10000) => {
   const start = performance.now()
   let last = ''
   let since = performance.now()
   while (performance.now() - start < timeout) {
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await Promise.race([
+      settleRound(),
+      new Promise((resolve) => setTimeout(resolve, timeout)),
+    ])
     // A module request still in flight (the page's own count, from the
     // browser's network events) keeps the page busy.
     const inFlight = window.__harnessInFlight ? await window.__harnessInFlight() : 0
