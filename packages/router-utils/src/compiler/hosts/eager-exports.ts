@@ -19,7 +19,7 @@ import type { WarningLedger } from '../diagnostics'
 interface EagerExtractedExport {
   /** The route file's path, with forward slashes. */
   file: string
-  /** The export's name (of the first in the source, when exports that read each other share the module). */
+  /** The export's name. */
   name: string
   /** The extracted module's id, as the bundler names it. */
   id: string
@@ -216,7 +216,7 @@ function eagerExportWarning(
     bundler === 'webpack'
       ? 'Move it to its own module and import it from there, or declare "sideEffects": false in package.json so the bundler can bypass the route file, so the importer and the route share one instance.'
       : 'Move it to its own module and import it from there, so the importer and the route share one instance.'
-  const head = `[tanstack-router] The export \`${e.name}\` of "${e.file}", with any export it shares a module with (exports that read each other), loads with the entry chunk:`
+  const head = `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk:`
   switch (cause) {
     case 'chunk':
       // split code imports the module (the export is not copied); it landed
