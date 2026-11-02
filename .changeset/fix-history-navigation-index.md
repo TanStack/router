@@ -1,4 +1,3 @@
-
 ---
 '@tanstack/history': patch
 ---
