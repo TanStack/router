@@ -15,13 +15,12 @@ import type { ImportProtectionOptions } from '../../src/schema'
 
 const SECRET = `export const secret = () => 'MARK_SECRET'\n`
 
-function recorder(verdict?: (info: ViolationInfo) => boolean | void) {
+function recorder() {
   const calls: Array<ViolationInfo> = []
   return {
     calls,
     onViolation: (info: unknown) => {
       calls.push(info as ViolationInfo)
-      return verdict?.(info as ViolationInfo)
     },
   }
 }
@@ -343,17 +342,16 @@ export const x = (t: T, u: U, w: W) => v
     expect(a.ip.env('client').confirm(edge!)).toBeNull()
   })
 
-  test('a pending edge vetoed at confirmation serves the real module; error behaviour fails at confirmation', async () => {
+  test('a pending edge allowed at confirmation serves the real module; error behaviour fails at confirmation', async () => {
     const files = {
       'src/secret.server.ts': `globalThis.loaded = 1\nexport class Secret {}\n`,
       'src/a.ts': `import { Secret } from './secret.server'\nexport const f = (s: Secret) => s\n`,
     }
-    const veto = app(files, { onViolation: () => false })
-    const { out } = await veto.compile('src/a.ts', 'client')
+    const allow = app(files, { allowImport: () => true })
+    const { out } = await allow.compile('src/a.ts', 'client')
     const [edge] = edgeImports(out!.code)
-    expect(veto.ip.load(edge!)!.code).toContain('__mk')
-    expect(await veto.ip.env('client').confirm(edge!)).toBeNull()
-    expect(veto.ip.load(edge!)!.code).toContain(
+    expect(await allow.ip.env('client').confirm(edge!)).toBeNull()
+    expect(allow.ip.load(edge!)!.code).toContain(
       'export * from "/app/src/secret.server.ts"',
     )
 
@@ -399,19 +397,25 @@ describe('dev decisions', () => {
     'src/a.ts': `import { secret } from './secret.server'\nexport const read = () => secret()\n`,
   }
 
-  test('onViolation → false (or Promise<false>) leaves the real import and records nothing', async () => {
+  test('allowImport → true (or Promise<true>) gives the edge the real module, once per import, and tells onViolation nothing', async () => {
     const rec = recorder()
+    let asked = 0
     const a = app(files, {
-      onViolation: async (info) => {
-        await rec.onViolation(info)
-        return false
+      onViolation: rec.onViolation,
+      allowImport: async () => {
+        asked++
+        return true
       },
     })
     const { out, outcome } = await a.compile('src/a.ts', 'client')
-    expect(out!.code).toBe(files['src/a.ts'])
-    expect(rec.calls).toHaveLength(1)
-    expect(violationsOf(out!)).toEqual([])
+    const [edge] = edgeImports(out!.code)
     expect(outcome.error).toBeNull()
+    expect(a.ip.load(edge!)!.code).toContain(
+      'export * from "/app/src/secret.server.ts"',
+    )
+    await a.ip.env('client').confirm(edge!)
+    expect(asked).toBe(1)
+    expect(rec.calls).toEqual([])
   })
 
   test('behavior "error": nothing is substituted and the module fails with a positioned error', async () => {

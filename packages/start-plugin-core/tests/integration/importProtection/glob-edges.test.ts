@@ -283,14 +283,14 @@ describe.each(startBundlers)('%s build verdicts', (bundler) => {
   )
 
   test(
-    'a veto gives the client the real module',
+    'allowImport gives the client the real module',
     async () => {
       const build = await buildStart({
         bundler,
         files,
         entry: 'src/entry.ts',
         start: {
-          importProtection: { ...importProtection, onViolation: () => false },
+          importProtection: { ...importProtection, allowImport: () => true },
         },
       })
       const { result: read } = await build.client.run(readScript)

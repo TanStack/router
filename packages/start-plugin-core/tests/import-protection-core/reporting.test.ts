@@ -13,7 +13,6 @@ import {
   originalPositionFor,
 } from '../../src/import-protection/locate'
 import { DevReporter } from '../../src/import-protection/report'
-import { BuildVerdicts } from '../../src/import-protection/verdict'
 import { violationInfo } from '../../src/import-protection/violations'
 import type { ImportGraphView } from '../../src/import-protection/graph-trace'
 import type { EdgeViolation } from '../../src/import-protection/violations'
@@ -339,58 +338,3 @@ describe('positions', () => {
   })
 })
 
-describe('build verdicts', () => {
-  test('onViolation once per surviving logical edge; a veto asks for a pass; reports are the final pass', async () => {
-    const state = new BuildVerdicts()
-    const asked: Array<string> = []
-    const changes: Array<string> = []
-    state.onStateChange = (k, s) => changes.push(`${k}:${s}`)
-    const ask = (v: EdgeViolation) => {
-      asked.push(v.edgeKey)
-      return Promise.resolve(v.edgeKey === 'veto' ? false : undefined)
-    }
-    const a = violation({ edgeKey: 'a' })
-    const a2 = violation({ edgeKey: 'a', importerId: '/app/src/r.tsx?split' })
-    const veto = violation({ edgeKey: 'veto' })
-    const first = await state.decide([a, a2, veto], ask)
-    expect(first).toEqual({ needPass: true })
-    expect(state.reports).toEqual([])
-    expect(state.stateOf('veto')).toBe('allowed')
-    expect(changes).toEqual(['veto:allowed'])
-    // pass 2: the vetoed module is real; a new edge it exposed survives
-    const inner = violation({ edgeKey: 'inner' })
-    const second = await state.decide([a, inner], ask)
-    expect(second.needPass).toBe(false)
-    expect(state.reports.map((v) => v.edgeKey)).toEqual(['a', 'inner'])
-    expect(asked).toEqual(['a', 'veto', 'inner'])
-    expect(state.passes).toBe(2)
-    // a new logical build asks again and resets the states
-    state.beginLogicalBuild()
-    expect(changes).toEqual(['veto:allowed', 'veto:mock'])
-    expect(state.stateOf('veto')).toBe('mock')
-    await state.decide([a], ask)
-    expect(asked).toEqual(['a', 'veto', 'inner', 'a'])
-  })
-
-  test('runToFixedPoint rebuilds while a pass vetoes, and refuses to loop forever', async () => {
-    const state = new BuildVerdicts()
-    let n = 0
-    await state.runToFixedPoint(async () => {
-      n++
-      await state.decide([violation({ edgeKey: `e${n}` })], (v) =>
-        Promise.resolve(v.edgeKey === 'e1' ? false : undefined),
-      )
-    })
-    expect(n).toBe(2)
-    const looping = new BuildVerdicts()
-    let m = 0
-    await expect(
-      looping.runToFixedPoint(async () => {
-        m++
-        await looping.decide([violation({ edgeKey: `x${m}` })], () =>
-          Promise.resolve(false),
-        )
-      }, 3),
-    ).rejects.toThrow(/did not settle after 3 passes/)
-  })
-})

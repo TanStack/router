@@ -599,7 +599,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   from the production client bundle on every supported bundler, with side-effect hints varied; a declaration kept
   alive only by a type position (`typeof schema`) is dead and must go. Modules import protection denies for the
   client are absent too, subject to the configured policy: an edge import protection permits (`enabled: false`,
-  `onViolation` returning `false`, an exempt importer or `excludeFiles` target, J6.6, J6.7) gets the real module. This
+  `allowImport` returning `true`, an exempt importer or `excludeFiles` target, J6.6, J6.7) gets the real module. This
   also covers imports the client cannot resolve: a platform module only removed code uses (`cloudflare:workers` read
   in a handler or `.server()`, `node:*`, `bun:*`) does not fail the client build and is absent from client output,
   while the server build keeps it; how the compiler avoids resolving it is free (G16). "Only removed code uses" is
@@ -707,8 +707,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   coordinates. The chain is any real import chain from an entry to the importer (not necessarily the shortest),
   bounded by `maxTraceDepth`, listed entry first or entry last, as long as the entry is identifiable and the direction
   unambiguous.
-- **J6.6 `onViolation`.** Called for every violation with the documented info; returning `false` allows the import:
-  real module, no mock, no report (dev and build).
+- **J6.6 `onViolation` and `allowImport`.** `onViolation` is called for every violation with the documented info,
+  and only reports. `allowImport` is asked before the import is mocked, once per import (dev and build), tree-shaken
+  imports included; returning `true` allows the import: real module, no mock, no report, no `onViolation` call.
 - **J6.7 Exemptions give the real module.** An importer exempted by `ignoreImporters`, `exclude` or outside
   `include` gets the real module, and nothing is reported for it; a denied target matched by `excludeFiles` is not
   checked at all; non-exempt importers of the same file are still mocked and reported.

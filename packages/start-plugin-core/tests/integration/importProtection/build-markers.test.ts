@@ -1,7 +1,7 @@
 /**
  * Import protection in a real Start build (Vite and Rsbuild), continued
  * from build.test.ts and build-mock.test.ts (three files, to keep each
- * within the per-file time budget): an `onViolation` that returns false,
+ * within the per-file time budget): an `allowImport` that returns true,
  * and the server-only marker. A mock is told by what it does
  * (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a violation by
  * what `onViolation` receives.
@@ -102,16 +102,15 @@ async function clientRead(
 // (rsbuild/import-protection.ts `reportViolation`). Returning `false` only
 // silences the report. (A Vite build of a server-only marker violation keeps
 // the real module either way, see the mock-mode pin above.)
-// Impact: an import a project allows with `onViolation` (documented:
-// "Return false ... to allow this specific import (override the denial)",
-// guide/import-protection.md) is a mock in the client: its calls return mocks
-// in production, without any warning.
-// Source: review (`onViolation` false only had a recorder).
+// Impact: an import a project allows with `allowImport` (documented:
+// guide/import-protection.md) would be a mock in the client: its calls return
+// mocks in production, without any warning.
+// Source: review.
 describe.each(startBundlers)(
-  '%s build, onViolation returning false',
+  '%s build, allowImport returning true',
   (bundler) => {
     const allowed = { hasRealCode: true, ranReal: true, warnings: [] }
-    const allowAll = { importProtection: { onViolation: () => false } }
+    const allowAll = { importProtection: { allowImport: () => true } }
 
     test.each(deniedModuleNames)(
       'allows the import of %s: the build succeeds and the client gets the real module',

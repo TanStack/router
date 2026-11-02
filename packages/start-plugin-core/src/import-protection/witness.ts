@@ -92,13 +92,6 @@ export function rolldownGraphView(
   }
 }
 
-/** Removes every output of a non-final pass so nothing is written (Rollup semantics; Rolldown honours deletes). */
-export function discardBundle(bundle: Record<string, unknown>): void {
-  for (const name of Object.keys(bundle)) {
-    delete bundle[name]
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Rspack
 // ---------------------------------------------------------------------------

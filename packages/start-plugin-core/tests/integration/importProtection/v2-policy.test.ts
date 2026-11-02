@@ -62,18 +62,18 @@ export default { fetch: () => new Response(String(handler())) }
 }
 
 /** Whether a violation's importer is the app file `file`. */
-const importerIs = (info: unknown, file: string) =>
-  (info as ViolationInfo).importer.split('?')[0]!.endsWith(`/${file}`)
+const importerIs = (info: { importer: string }, file: string) =>
+  info.importer.split('?')[0]!.endsWith(`/${file}`)
 
 const importProtection: ImportProtectionOptions = {
   mockAccess: 'off',
   ignoreImporters: ['**/exempt/**'],
-  onViolation: (info) => {
+  allowImport: (info) => {
     if (importerIs(info, 'src/app/allowed-sync.ts')) {
-      return false
+      return true
     }
     if (importerIs(info, 'src/app/allowed-async.ts')) {
-      return Promise.resolve(false)
+      return Promise.resolve(true)
     }
     return undefined
   },
@@ -138,12 +138,12 @@ describe('rsbuild dev', () => {
   const permitted = [
     { how: 'ignoreImporters exempts', name: 'exempt', file: 'src/exempt/a.ts' },
     {
-      how: 'onViolation returns false for',
+      how: 'allowImport returns true for',
       name: 'allowedSync',
       file: 'src/app/allowed-sync.ts',
     },
     {
-      how: 'onViolation returns Promise<false> for',
+      how: 'allowImport returns Promise<true> for',
       name: 'allowedAsync',
       file: 'src/app/allowed-async.ts',
     },
@@ -158,18 +158,10 @@ describe('rsbuild dev', () => {
     timeout,
   )
 
-  // Bug: Rsbuild dev replaces a denied file with its mock in the file's own
-  // transform, for every importer (rsbuild/import-protection-loader.ts:
-  // `checkFileDenial` matches, then `generateDevSelfDenialModule`), before an
-  // importer's exemption or the verdict of `onViolation` (`reportViolation`,
-  // rsbuild/import-protection.ts, at the end of the compile) counts.
-  // Exempting or allowing an importer only silences its report (the control
-  // above). The Rsbuild dev twin of the Vite dev and build pins
-  // (exemptions.test.ts; dev.test.ts and build.test.ts "onViolation returning
-  // false").
   // Impact: code a project exempts on purpose, or an import it allows with
-  // `onViolation` (documented: "Return false (or Promise<false>) to allow
-  // this specific import"), silently gets a mock whose calls return mocks.
+  // `allowImport`, would silently get a mock whose calls return mocks. The
+  // Rsbuild dev twin of the Vite dev and build tests (exemptions.test.ts;
+  // dev.test.ts and build-markers.test.ts "allowImport returning true").
   test.each(permitted)(
     'an importer $how gets the real module',
     async ({ name, file }) => {
@@ -198,7 +190,7 @@ describe('rsbuild dev', () => {
   )
 })
 
-describe('vite dev: onViolation returning Promise<false>', () => {
+describe('vite dev: allowImport returning Promise<true>', () => {
   afterEach(() => {
     delete (globalThis as Record<string, unknown>).loaded
     delete (globalThis as Record<string, unknown>).uses
@@ -206,8 +198,8 @@ describe('vite dev: onViolation returning Promise<false>', () => {
 
   /**
    * `src/app/allowed-async.ts` uses the denied file; Start's router entry
-   * reaches it (as a router reaches its routes), and `onViolation` allows it
-   * with `Promise<false>`.
+   * reaches it (as a router reaches its routes), and `allowImport` allows it
+   * with `Promise<true>`.
    */
   const viteApp = {
     'src/secret.server.ts': app['src/secret.server.ts'],
@@ -257,13 +249,8 @@ export const getRouter = () => undefined
     timeout,
   )
 
-  // Bug: the `Promise<false>` twin of the pin "returning false allows the
-  // import: the client gets the real module" (dev.test.ts): dev import
-  // protection replaces the denied file with its mock when it resolves the
-  // import, before `onViolation` decides; returning `Promise<false>` only
-  // silences the report (the control above).
-  // Impact: an import allowed by an async `onViolation` (the form the docs
-  // show) is a mock in the browser, without any warning.
+  // Impact: an import allowed by an async `allowImport` would be a mock in
+  // the browser, without any warning.
   test(
     'the client gets the real module',
     async () => {

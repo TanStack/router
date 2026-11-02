@@ -32,7 +32,7 @@ import {
   manifestResolverModule,
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
-import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
+import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { CompiledOutputLike } from '../import-protection/session'
@@ -516,8 +516,8 @@ export class StartRsbuildCompilerSession {
     const passthrough: LoaderResult = { code: source, map: inputMap }
     const { ip } = this.start
     if (options.pass === 'edge') {
-      // dev: the bundler requested this edge module from the importer's
-      // post-SWC code; a veto serves the real module
+      // the bundler requested this edge module from the importer's post-SWC
+      // code: `allowImport` decides between the real module and the mock
       const ipEnv = ip?.env(env.name, env.type)
       env.compiled.add(ctx.resource)
       const error = await ipEnv?.confirm(ctx.resource)

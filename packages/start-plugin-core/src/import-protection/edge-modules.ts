@@ -9,8 +9,9 @@
  *   It is the survival witness in builds: bundlers keep an owned
  *   export only where the importer's binding survives, and keep `__fx` only
  *   where the importer is evaluated.
- * - `allowed` (a build veto, `onViolation` → false): a transparent
- *   re-export of the real module, side effects left to the bundler.
+ * - `allowed` (`allowImport` → true): a transparent re-export of the real
+ *   module, side effects left to the bundler. The mock is never produced for
+ *   it: the host asks before it loads the module (`ImportProtectionEnv.confirm`).
  * - the runtime (one per environment, side-effect free): the recursive
  *   mock Proxy with the `mockAccess` diagnostics, in every environment and
  *   mode (J6.3).
@@ -24,6 +25,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { CLIENT_ENV_SUGGESTIONS, SERVER_ENV_SUGGESTIONS } from './trace'
 import type { MockAccess } from './config'
+import type { RuleRef } from './rules'
 
 const EDGE_MODULE_PREFIX = 'tanstack-start-ip:'
 
@@ -190,6 +192,8 @@ export interface EdgeModuleContent {
   hasDefault: boolean
   /** The edge only evaluates the module (bare import): the allowed state imports it for its effects. */
   bare: boolean
+  /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
+  rule: RuleRef
 }
 
 /** The key of an edge module: a digest of its content, edge key included (a new content is a new module id). */

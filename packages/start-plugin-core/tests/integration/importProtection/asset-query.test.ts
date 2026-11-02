@@ -401,11 +401,11 @@ describe.each(patternImports)(
     )
 
     test(
-      'a veto gives the real text',
+      'allowImport gives the real text',
       async () => {
         const result = await buildApp(bundler, entry, denied, {
           ...importProtection,
-          onViolation: () => false,
+          allowImport: () => true,
         })
         expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
       },

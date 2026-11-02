@@ -1,7 +1,7 @@
 /**
  * A violation as the `import-edges` planner records it (plain data: plan
- * facts, Rspack `buildInfo`) and as `onViolation` receives it
- * (`ViolationInfo`, J6.5).
+ * facts, Rspack `buildInfo`), as `onViolation` receives it (`ViolationInfo`,
+ * J6.5) and as `allowImport` is asked about it (`AllowImportInfo`).
  */
 import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from './edge-modules'
@@ -10,7 +10,8 @@ import type { EdgeModuleContent } from './edge-modules'
 import type { ImportProtectionConfig } from './config'
 import type { EnvType, RuleRef } from './rules'
 import type { CodeFrame, OriginalLocation } from './locate'
-import type { TraceStep, ViolationInfo } from './trace'
+import type { IndexedEdge } from './graph-trace'
+import type { AllowImportInfo, TraceStep, ViolationInfo } from './trace'
 
 export const IMPORT_EDGES_PLANNER = 'import-edges'
 
@@ -83,6 +84,7 @@ export function selfViolationOf(
     resolved: id,
     hasDefault: target.hasDefault,
     bare: false,
+    rule,
   }
   return {
     edgeKey,
@@ -124,6 +126,30 @@ export function dedupeKey(v: EdgeViolation): string {
 }
 
 /**
+ * What `allowImport` is told of a violation: all that is known of the import
+ * before the bundler's graph is finished, so no `trace` (no chain exists yet)
+ * and no `snippet` (a rendering of the source for a report, nothing a decision
+ * reads).
+ */
+export function allowImportInfo(
+  v: EdgeViolation,
+  config: ImportProtectionConfig,
+): AllowImportInfo {
+  const pattern = patternOf(rulesFor(config, v.envType), v.rule)
+  return {
+    env: v.env,
+    envType: v.envType,
+    type: v.rule.type,
+    behavior: v.behavior,
+    ...(pattern !== undefined && { pattern }),
+    specifier: v.specifier,
+    importer: v.importer,
+    ...(v.loc && { importerLoc: { ...v.loc } }),
+    ...(v.resolved !== null && { resolved: identify(v.resolved).path }),
+  }
+}
+
+/**
  * The `ViolationInfo` of a violation. `trace` is read from the bundler's
  * graph when it is first read (dev: the graph may not know the importer's
  * importers yet when `onViolation` runs; a report freezes it when printed).
@@ -133,8 +159,6 @@ export function violationInfo(
   config: ImportProtectionConfig,
   trace: () => Array<TraceStep>,
 ): ViolationInfo & { freezeTrace: () => Array<TraceStep> } {
-  const rules = rulesFor(config, v.envType)
-  const pattern = patternOf(rules, v.rule)
   let frozen: Array<TraceStep> | null = null
   const withImporterStep = (steps: Array<TraceStep>): Array<TraceStep> => {
     const last = steps[steps.length - 1]
@@ -148,18 +172,10 @@ export function violationInfo(
     return steps
   }
   const info = {
-    env: v.env,
-    envType: v.envType,
-    type: v.rule.type,
-    behavior: v.behavior,
-    ...(pattern !== undefined && { pattern }),
-    specifier: v.specifier,
-    importer: v.importer,
-    ...(v.loc && { importerLoc: { ...v.loc } }),
+    ...allowImportInfo(v, config),
     ...(v.snippet && {
       snippet: { ...v.snippet, lines: [...v.snippet.lines] },
     }),
-    ...(v.resolved !== null && { resolved: identify(v.resolved).path }),
   } as ViolationInfo & { freezeTrace: () => Array<TraceStep> }
   Object.defineProperty(info, 'trace', {
     enumerable: true,
@@ -171,4 +187,23 @@ export function violationInfo(
     value: () => (frozen ??= withImporterStep(trace())),
   })
   return info
+}
+
+/** The `buildInfo` key of the import-protection records of a module (Rspack persistent cache). */
+export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
+
+/**
+ * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`
+ * (plain JSON, restored with the module by the persistent cache) and what
+ * `finishMake` replays into the environment (`ImportProtectionEnv.replay`).
+ */
+export interface RspackImportProtectionBuildInfo {
+  version: 1
+  env: string
+  /** The violations of this module's output (with their edge modules). */
+  violations: Array<EdgeViolation>
+  /** The module's resolved edges (the trace steps through a restored module). */
+  edges?: Array<IndexedEdge>
+  /** The revision of the input the edges were judged in (their positions are located in the raw file at that revision). */
+  revision?: string
 }

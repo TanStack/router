@@ -7,8 +7,8 @@
  * invalidation operation on `hotUpdate`, the server-fn registry shared by
  * the envs, the dev lookup and production resolver modules, the custom-id
  * patching at `renderChunk`, and import protection's host side (edge
- * modules, dev reports, build witness + fixed-point veto rebuild, the late
- * pass for non-JS importers).
+ * modules, dev reports, build witness and reports, the late pass for non-JS
+ * importers).
  */
 import { promises as fs, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -58,7 +58,6 @@ import {
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
 import {
-  discardBundle,
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
@@ -84,13 +83,11 @@ import type {
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
 import type {
-  BuildEnvironment,
   DevEnvironment,
   Environment,
   EnvironmentModuleNode,
   Plugin,
   PluginOption,
-  ViteBuilder,
   ViteDevServer,
 } from 'vite'
 
@@ -774,6 +771,9 @@ export function startCompilerPlugin(
       },
       async buildStart() {
         const s = requireSession()
+        if (this.environment.mode === 'build' && this.meta.watchMode) {
+          s.start.ip?.env(env.name, env.type).beginBuild()
+        }
         if (this.environment.mode === 'build' && env.type === 'client') {
           if (!this.meta.watchMode) {
             // a new build: the registry of the previous one is gone (the
@@ -841,10 +841,21 @@ export function startCompilerPlugin(
           clientRebuild = null
         }
       },
+      /**
+       * A build that writes its bundle (not a scan: plugin-rsc analyses the
+       * rsc and ssr environments with `write: false` first and builds them
+       * again) outside watch mode is the environment's last: its compiler
+       * state is released before the next environment builds. What later
+       * environments read stays in the session: the server-fn registry and id
+       * allocator, the raw facts, the warnings ledger.
+       */
       closeBundle() {
         if (this.environment.mode === 'build') {
           unsubscribeRoutes?.()
           unsubscribeRoutes = null
+          if (isFinalBuild(this.environment.config.build)) {
+            requireSession().start.release(env.name)
+          }
         }
       },
       resolveId: {
@@ -854,8 +865,9 @@ export function startCompilerPlugin(
           if (edge !== null) {
             // an importer's request for an edge module comes from its
             // transformed code (import analysis, or Rolldown): the import
-            // survived the TypeScript transform, so a pending violation is
-            // decided now; `error` fails the importer's import analysis
+            // survived the TypeScript transform, and `allowImport` decides
+            // before the module loads; a pending violation it does not allow
+            // is reported, and `error` fails the importer's import analysis
             const confirmation =
               importer !== undefined && session?.start.ip
                 ? session.start.ip.env(env.name, env.type).confirm(edge)
@@ -1037,11 +1049,9 @@ export function startCompilerPlugin(
         return { code: built.code, map: built.map as never }
       },
       /**
-       * Import protection's build verdict: the edge
-       * modules that survived tree-shaking → `onViolation` once per logical
-       * edge per logical build → a veto asks for another pass of this
-       * environment (`buildApp` below rebuilds it; this pass writes nothing);
-       * the settled pass reports.
+       * Import protection's build reports: the edge modules that survived
+       * tree-shaking → `onViolation` once per import → the build's errors and
+       * warnings.
        */
       async generateBundle(_options, bundle) {
         const s = requireSession()
@@ -1051,8 +1061,7 @@ export function startCompilerPlugin(
         if (env.type === 'client') {
           // an extracted-export output an entry chunk (or a chunk it imports
           // statically) holds is eager whatever the splitter did: say so
-          // once per file and export (J2.8; a pass that writes nothing
-          // comes first under import protection's veto, the ledger dedups)
+          // once per file and export (J2.8)
           warnEagerExports(
             rollupEntryModuleIds(bundle as never),
             'rollup',
@@ -1066,15 +1075,11 @@ export function startCompilerPlugin(
         }
         const ipEnv = s.start.ip.env(env.name, env.type)
         const live = readRolldownWitness(bundle as never, ipEnv.witness())
-        const result = await ipEnv.decide(
+        const reports = await ipEnv.surviving(
           live,
           rolldownGraphView((id) => this.getModuleInfo(id)),
         )
-        if (result.needPass) {
-          discardBundle(bundle)
-          return
-        }
-        for (const report of ipEnv.buildReports()) {
+        for (const report of reports) {
           if (report.severity === 'error') {
             this.error(report.message)
           }
@@ -1096,51 +1101,6 @@ export function startCompilerPlugin(
         transform: { filter: dependencyFilter, handler: compileTransform },
       },
     ]
-  }
-
-  /**
-   * One logical build per `builder.build(env)` of a Start environment —
-   * Start's own `buildApp` loop or another driver's, such as
-   * `@vitejs/plugin-rsc` — repeated while its `generateBundle` asked for
-   * another pass (import protection's fixed-point veto rebuild). A logical
-   * build that writes its bundle (not a scan: plugin-rsc analyses the rsc
-   * and ssr environments with `write: false` first and builds them again)
-   * outside watch mode is the environment's last: its compiler state is
-   * released before the next environment builds. What later environments
-   * read stays in the session: the server-fn registry and id allocator,
-   * the raw facts, the warnings ledger.
-   */
-  const buildLoopPlugin: Plugin = {
-    name: 'tanstack-start:build-loop',
-    apply: 'build',
-    buildApp: {
-      order: 'pre',
-      handler(builder: ViteBuilder) {
-        const s = requireSession()
-        const original = builder.build.bind(builder)
-        builder.build = async (environment: BuildEnvironment) => {
-          const env = envOf(environment.name)
-          if (!env) {
-            return original(environment)
-          }
-          let output: Awaited<ReturnType<typeof original>> | undefined
-          if (s.start.ip) {
-            const ipEnv = s.start.ip.env(env.name, env.type)
-            ipEnv.beginLogicalBuild()
-            await ipEnv.build.runToFixedPoint(async () => {
-              output = await original(environment)
-            })
-          } else {
-            output = await original(environment)
-          }
-          if (isFinalBuild(environment.config.build)) {
-            s.start.release(env.name)
-          }
-          return output!
-        }
-        return Promise.resolve()
-      },
-    },
   }
 
   /**
@@ -1317,7 +1277,6 @@ export function startCompilerPlugin(
 
   return [
     ...opts.environments.flatMap(perEnvPlugins),
-    buildLoopPlugin,
     latePassPlugin,
     devLookupPlugin,
     forwardPlugin,

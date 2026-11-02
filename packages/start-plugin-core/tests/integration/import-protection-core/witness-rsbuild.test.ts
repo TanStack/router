@@ -1,12 +1,17 @@
 /**
  * The Rspack (Rsbuild) survival witness and veto fixed point on real
  * production builds (the matrix of `cases.ts`): an edge
- * is reported (and `onViolation` asked) iff it survives tree-shaking; a veto
- * gives the real module after one more pass of the environment.
+ * is reported (and `onViolation` told) iff it survives tree-shaking; an allowed
+ * import gets the real module.
  */
 import { describe, expect, test } from 'vitest'
 import { buildWithRsbuild } from './hosts'
-import { byName, expectVerdicts, expectVeto, vetoScenarios } from './scenarios'
+import {
+  allowScenarios,
+  byName,
+  expectAllow,
+  expectVerdicts,
+} from './scenarios'
 import { cases } from './cases'
 
 const timeout = 30_000
@@ -21,11 +26,11 @@ describe.concurrent('rsbuild build: reported iff the edge survives', () => {
   )
 })
 
-describe.concurrent('rsbuild build: onViolation → false', () => {
-  test.each(vetoScenarios.map((s) => [s.name, s] as const))(
-    '%s: the real module after one more pass, once per edge',
+describe.concurrent('rsbuild build: allowImport → true', () => {
+  test.each(allowScenarios.map((s) => [s.name, s] as const))(
+    '%s: the real module, reported once per other edge',
     async (_name, scenario) => {
-      await expectVeto(buildWithRsbuild, scenario)
+      await expectAllow(buildWithRsbuild, scenario)
     },
     timeout,
   )
@@ -40,11 +45,7 @@ describe.concurrent('rsbuild build: onViolation → false', () => {
         behavior: 'error',
         runOutput: true,
       })
-      expect([dead.error, dead.out, dead.passes]).toEqual([
-        null,
-        'OUT client',
-        1,
-      ])
+      expect([dead.error, dead.out]).toEqual([null, 'OUT client'])
     },
     timeout,
   )

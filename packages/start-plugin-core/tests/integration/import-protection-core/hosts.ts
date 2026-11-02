@@ -4,7 +4,7 @@
  * the way a Start host does:
  * compile every in-scope module with the `import-edges` planner,
  * `afterCompile`, serve edge modules, read the survival witness after
- * tree-shaking, `decide`, and rebuild to the fixed point on a veto.
+ * tree-shaking, report it, and ask `allowImport` before an edge module loads.
  * Internal tests of the host-agnostic modules (not oracle tests).
  */
 import { execFile } from 'node:child_process'
@@ -24,7 +24,6 @@ import {
 } from '../../../src/import-protection/edge-modules'
 import { createImportProtection } from '../../../src/import-protection/session'
 import {
-  discardBundle,
   readRolldownWitness,
   readRspackWitness,
   rolldownGraphView,
@@ -47,9 +46,8 @@ export interface BuildOutcome {
   root: string
   /** `importer -> specifier` of every `onViolation` call, in order. */
   calls: Array<string>
-  /** `importer -> specifier` of the final reports. */
+  /** `importer -> specifier` of the reports. */
   reported: Array<string>
-  passes: number
   error: string | null
   /** The `OUT …` lines the built program prints (null when it was not run). */
   out: string | null
@@ -57,8 +55,8 @@ export interface BuildOutcome {
 
 export interface BuildOptions {
   behavior?: 'error' | 'mock'
-  /** Edges (`importer -> specifier`) whose `onViolation` returns false. */
-  veto?: Array<string>
+  /** Edges (`importer -> specifier`) whose `allowImport` returns true. */
+  allow?: Array<string>
   /** Run the built program. */
   runOutput?: boolean
 }
@@ -81,7 +79,7 @@ function session(
   calls: Array<string>,
   ids?: ReturnType<typeof rspackEdgeModuleIds>,
 ) {
-  const label = (info: ViolationInfo) =>
+  const label = (info: Pick<ViolationInfo, 'importer' | 'specifier'>) =>
     `${path.relative(root, info.importer)} -> ${info.specifier}`
   const ip = createImportProtection({
     options: {
@@ -90,10 +88,9 @@ function session(
       ignoreImporters: ['src/exempt/**'],
       ...(c.denied && { client: { files: c.denied } }),
       onViolation: (info) => {
-        const l = label(info as ViolationInfo)
-        calls.push(l)
-        return opts.veto?.includes(l) ? false : undefined
+        calls.push(label(info))
       },
+      allowImport: (info) => opts.allow?.includes(label(info)),
     },
     root,
     srcDirectory: path.join(root, 'src'),
@@ -160,7 +157,7 @@ async function runProgram(file: string): Promise<string> {
   }
 }
 
-/** A Vite production build of the case's client with the session's plugin (Start's build loop: rebuild to the fixed point). */
+/** A Vite production build of the case's client with the session's plugin. */
 export async function buildWithVite(
   c: WitnessCase,
   opts: BuildOptions = {},
@@ -173,8 +170,12 @@ export async function buildWithVite(
   const plugin: Plugin = {
     name: 'test:import-protection',
     enforce: 'pre',
-    resolveId(source) {
-      return resolveViteEdgeModuleId(source)
+    async resolveId(source) {
+      const edge = resolveViteEdgeModuleId(source)
+      if (edge !== null) {
+        await env.confirm(edge)
+      }
+      return edge
     },
     load(id) {
       const load = ip.load(id)
@@ -201,15 +202,10 @@ export async function buildWithVite(
     },
     async generateBundle(_options, bundle) {
       const live = readRolldownWitness(bundle as never, env.witness())
-      const result = await env.decide(
+      const reports = await env.surviving(
         live,
         rolldownGraphView((id) => this.getModuleInfo(id)),
       )
-      if (result.needPass) {
-        discardBundle(bundle)
-        return
-      }
-      const reports = env.buildReports()
       reported = reports.map((r) => label(r.info))
       const failure = reports.find((r) => r.severity === 'error')
       if (failure) {
@@ -238,12 +234,9 @@ export async function buildWithVite(
       },
     },
   })
-  env.beginLogicalBuild()
   let error: string | null = null
   try {
-    await env.build.runToFixedPoint(() =>
-      builder.build(builder.environments.client!),
-    )
+    await builder.build(builder.environments.client!)
   } catch (e) {
     error = String((e as Error).message)
   }
@@ -252,7 +245,6 @@ export async function buildWithVite(
     root,
     calls,
     reported,
-    passes: env.build.passes,
     error,
     out:
       opts.runOutput && !error && fs.existsSync(entry)
@@ -278,7 +270,7 @@ const loaderHosts = ((globalThis as Record<symbol, unknown>)[HOSTS] ??= new Map<
   LoaderHost
 >()) as Map<string, LoaderHost>
 
-/** An Rsbuild production build (Rspack, Rsbuild's defaults) with the session's plugin and loader (needAdditionalPass to the fixed point). */
+/** An Rsbuild production build (Rspack, Rsbuild's defaults) with the session's plugin and loader. */
 export async function buildWithRsbuild(
   c: WitnessCase,
   opts: BuildOptions = {},
@@ -305,6 +297,10 @@ export async function buildWithRsbuild(
     fs.writeFileSync(file, load.code)
   })
   loaderHosts.set(root, async (loader, code) => {
+    if (ids.parse(loader.resource)?.kind === 'edge') {
+      await env.confirm(loader.resource)
+      return ip.load(loader.resource)!.code
+    }
     const resolve = loader.getResolve({})
     const host: HostServices = {
       resolve: async (specifier, importer) => {
@@ -326,9 +322,6 @@ export async function buildWithRsbuild(
   const plugin = {
     apply(compiler: any) {
       const { Compilation, WebpackError } = compiler.webpack
-      compiler.hooks.beforeRun.tap('test:import-protection', () =>
-        env.beginLogicalBuild(),
-      )
       compiler.hooks.thisCompilation.tap(
         'test:import-protection',
         (compilation: any) => {
@@ -339,14 +332,10 @@ export async function buildWithRsbuild(
             },
             async () => {
               const live = readRspackWitness(compilation, env.witness())
-              const result = await env.decide(
+              const reports = await env.surviving(
                 live,
                 rspackGraphView(compilation),
               )
-              if (result.needPass) {
-                return
-              }
-              const reports = env.buildReports()
               reported = reports.map((r) => label(r.info))
               for (const r of reports) {
                 ;(r.severity === 'error'
@@ -355,10 +344,6 @@ export async function buildWithRsbuild(
                 ).push(new WebpackError(r.message))
               }
             },
-          )
-          compilation.hooks.needAdditionalPass.tap(
-            'test:import-protection',
-            () => env.build.needPass,
           )
         },
       )
@@ -394,6 +379,10 @@ export async function buildWithRsbuild(
                 test: /[\\/]import-protection[\\/][^\\/]+[\\/]runtime\.mjs$/,
                 sideEffects: false,
               },
+              {
+                test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
+                use: [{ loader: path.join(here, 'ip-loader.mjs') }],
+              },
             )
           },
         },
@@ -411,7 +400,6 @@ export async function buildWithRsbuild(
     root,
     calls,
     reported,
-    passes: env.build.passes,
     error,
     out:
       opts.runOutput && !error && fs.existsSync(entry)

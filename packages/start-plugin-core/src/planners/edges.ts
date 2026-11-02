@@ -6,28 +6,28 @@
  * target facts). A violation is substituted by its edge module (the specifier
  * literal only):
  *
- * - dev: with `log: 'once'`, `onViolation` decides now, once per logical
- *   edge for the session (`false` leaves the edge alone); with `'always'`
- *   the host asks at every compile, a cached plan's included
- *   (`ImportProtectionEnv.afterCompile`; `false` makes the edge module serve
- *   the real module). `mock` substitutes the mock, `error` leaves the
- *   specifier and the host fails the module. An edge the
+ * - dev: `mock` substitutes the edge module, `error` leaves the specifier and
+ *   the host decides after the compile (`ImportProtectionEnv.afterCompile`:
+ *   `allowImport`, then the report or the failure of the module). An edge the
  *   bundler's TypeScript transform may erase (a static import of a
  *   `.ts`/`.tsx` module with no binding used as a value) is substituted in
  *   both behaviours and recorded *pending*: the host confirms it when the
  *   bundler requests its edge module from the transformed importer
  *   (`ImportProtectionEnv.confirm`), which never happens for an erased
  *   import;
- * - build: every violation gets its edge module (mock first in both
- *   behaviours); `onViolation` runs after tree-shaking (`verdict.ts`): an
+ * - build: every violation gets its edge module, in both behaviours; what
+ *   survives tree-shaking is reported (`ImportProtectionEnv.surviving`): an
  *   erased edge module is absent from the bundle.
+ *
+ * The plan holds no answer of `allowImport`: the edge module's state does
+ * (the mock or a transparent re-export), so no cache keeps one.
  *
  * A module that a file rule or its own marker denies in the environment it
  * is compiled in is its own violation (`EdgeViolation.self`): each import of
  * it the plan reads is substituted, so an import the compiler does not read
  * brought it there (an `import.meta.glob`, a template literal `import()`).
  * The host serves its mock, unless an exempt importer imports it (its
- * imports are indexed, not judged) or a veto allowed it; a dev compile
+ * imports are indexed, not judged) or `allowImport` allows it; a dev compile
  * reports it then, a build names its importers from the bundler's graph.
  * An asset query of a denied file is never compiled, and the same verdict
  * reaches it through its host (`ImportProtectionEnv.assetOutput`).
@@ -53,9 +53,7 @@ import {
 import { relativizePath } from '../import-protection/utils'
 import {
   IMPORT_EDGES_PLANNER,
-  dedupeKey,
   selfViolationOf,
-  violationInfo,
 } from '../import-protection/violations'
 import type {
   EdgeRecord,
@@ -323,17 +321,6 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           module: null,
           ...(pending && { pending: true }),
         }
-        if (config.mode === 'dev' && !pending && config.log === 'once') {
-          const verdict = await env.onceVerdict(dedupeKey(base), async () =>
-            config.onViolation?.(
-              violationInfo(base, config, () => env.trace(importerId)),
-            ),
-          )
-          if (verdict === false) {
-            env.allowTarget(j.resolved)
-            continue
-          }
-        }
         if (substitute) {
           const content = await edgeModuleContent(plan, j, ctx)
           const key = edgeModuleKey(content)
@@ -400,6 +387,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
+      rule: j.rule!,
     }
   }
 

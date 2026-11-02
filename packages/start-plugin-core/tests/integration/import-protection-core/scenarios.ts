@@ -1,7 +1,7 @@
 /**
  * The expectations shared by the Vite and Rsbuild witness tests: the case
- * matrix (which violating edges a build reports) and the veto scenarios
- * (`onViolation` → false: the real module, to a fixed point).
+ * matrix (which violating edges a build reports) and the allow scenarios
+ * (`allowImport` → true: the real module from the only pass).
  */
 import { expect } from 'vitest'
 import { cases } from './cases'
@@ -44,61 +44,52 @@ export function expectVerdicts(
 export const byName = (name: string): WitnessCase =>
   cases.find((c) => c.name.startsWith(name))!
 
-export const vetoScenarios = [
+export const allowScenarios = [
   {
     name: 'C1a',
-    veto: ['src/entry.ts -> ./secret.server'],
-    calls: ['src/entry.ts -> ./secret.server'],
+    allow: ['src/entry.ts -> ./secret.server'],
     reported: [],
     out: 'OUT MARK_SECRET',
   },
   {
-    // the vetoed denied module is real; its own denied import is judged in the next pass
+    // the allowed denied module is real; its own denied import is judged
     name: 'C9',
-    veto: ['src/entry.ts -> ./secret.server'],
-    calls: [
-      'src/entry.ts -> ./secret.server',
-      'src/secret.server.ts -> ./inner.server',
-    ],
+    allow: ['src/entry.ts -> ./secret.server'],
     reported: ['src/secret.server.ts -> ./inner.server'],
     out: 'OUT MARK_SECRET[import-protection mock]',
   },
   {
     // a live binding stays live through the allowed edge module
     name: 'S1',
-    veto: ['src/entry.ts -> ./counter.server'],
-    calls: ['src/entry.ts -> ./counter.server'],
+    allow: ['src/entry.ts -> ./counter.server'],
     reported: [],
     out: 'OUT 1',
   },
   {
     // a cycle entered at the target: no TDZ through the allowed edge module
     name: 'S2',
-    veto: ['src/a.ts -> ./secret.server'],
-    calls: ['src/a.ts -> ./secret.server'],
+    allow: ['src/a.ts -> ./secret.server'],
     reported: [],
     out: 'OUT MARK_SECRET',
   },
 ] as const
 
-export async function expectVeto(
+export async function expectAllow(
   build: Build,
-  scenario: (typeof vetoScenarios)[number],
+  scenario: (typeof allowScenarios)[number],
 ): Promise<void> {
   const outcome = await build(byName(scenario.name), {
-    veto: [...scenario.veto],
+    allow: [...scenario.allow],
     runOutput: true,
   })
   expect({
     error: outcome.error,
-    passes: outcome.passes,
     calls: outcome.calls,
     reported: outcome.reported,
     out: outcome.out,
   }).toEqual({
     error: null,
-    passes: 2,
-    calls: [...scenario.calls],
+    calls: [...scenario.reported],
     reported: [...scenario.reported],
     out: scenario.out,
   })

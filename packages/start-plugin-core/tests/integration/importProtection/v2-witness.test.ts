@@ -385,13 +385,13 @@ describe('behavior "error" in dev', () => {
   )
 })
 
-describe('onViolation returning false in dev', () => {
+describe('allowImport returning true in dev', () => {
   const solution = layouts[0]!
   const off = layouts[2]!
   const swcKeeps: RsbuildConfig = {
     tools: { swc: { jsc: { transform: { verbatimModuleSyntax: true } } } },
   }
-  const allow = { onViolation: () => false as const }
+  const allow = { allowImport: () => true }
   test(
     'vite dev: the import oxc keeps gets the real module',
     async () => {
