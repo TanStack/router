@@ -234,6 +234,37 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
     timeout,
   )
 
+  // `base` changes back and forth while the server is down, each start on the
+  // cache the previous one left: the handler is in the client exactly while
+  // `base` is no builder, and no start fails.
+  // Source: lane bfs (a builder that became plain killed the dev server 6/6).
+  test(
+    'follows an import that stopped and started being a server fn builder across restarts',
+    async () => {
+      let server = await startRsbuildStartDevServer({
+        compileTimeout,
+        config,
+        files: { ...app, 'src/lib/base.ts': builderBase },
+      })
+      const client = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(server.errors).toEqual([])
+      expect(await client()).not.toContain('MARK_A')
+      for (const [base, handlerInClient] of [
+        [plainBase, true],
+        [builderBase, false],
+        [plainBase, true],
+      ] as const) {
+        await server.stop()
+        await writeFile(path.join(server.root, 'src/lib/base.ts'), base)
+        server = await server.restart()
+        expect(server.errors).toEqual([])
+        expect((await client()).includes('MARK_A')).toBe(handlerInClient)
+      }
+    },
+    timeout,
+  )
+
   // `base` stopped being a server fn builder while the server was down:
   // compiling a restored importer again removes its handler module, which was
   // on the list of what to compile again too. Whether a handler comes after
