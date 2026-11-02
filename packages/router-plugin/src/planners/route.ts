@@ -207,6 +207,18 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
 }
 
 /** The module-level declaration unit of a symbol, when it is a plain declarator with an initialiser. */
+/**
+ * The one unit declaring a binding's value. A namespace of the same name holding
+ * only types declares none: TypeScript erases it, and it stays in the env module.
+ */
+function onlyValueUnit(ctx: PlanContext, sym: SymbolId): Unit | undefined {
+  const values = ctx.t1.declaringUnits
+    .get(sym)
+    ?.map((id) => ctx.t1.units[id]!)
+    .filter((unit) => unit.kind !== 'type')
+  return values?.length === 1 ? values[0] : undefined
+}
+
 export function declaratorOf(
   ctx: PlanContext,
   sym: SymbolId,
@@ -215,12 +227,9 @@ export function declaratorOf(
   if (!symbols.isModuleLevel(sym) || symbols.isImport(sym)) {
     return null
   }
-  const units = t1.declaringUnits.get(sym)
-  if (!units || units.length !== 1) {
-    return null
-  }
-  const unit = t1.units[units[0]!]!
+  const unit = onlyValueUnit(ctx, sym)
   if (
+    !unit ||
     unit.kind !== 'declaration' ||
     unit.node.type !== 'VariableDeclarator' ||
     unit.node.init === null ||
@@ -288,9 +297,13 @@ export function recognizeRoute(
   const { analysis, t1, symbols, identity } = ctx
   const file = analysis.file
   const warnings: Array<Diagnostic> = []
-  const exp = analysis.exports.find(
+  // (a row with no binding is `export namespace Route.A`: another row names the variable)
+  const routeExports = analysis.exports.filter(
     (e) => e.kind === 'local' && e.name === 'Route' && !e.typeOnly,
   )
+  const exp =
+    routeExports.find((e) => e.kind === 'local' && e.local !== null) ??
+    routeExports[0]
   const warn = (message: string, range?: Range, code?: string) => {
     warnings.push({
       severity: 'warning',
@@ -301,33 +314,28 @@ export function recognizeRoute(
     })
   }
   const fileName = identity.path
-  const notOneVariable = (range: Range) => {
-    if (importsFactory(analysis)) {
+  const notFactoryCall = (range?: Range) => {
+    if (entry !== null && importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The \`Route\` export of "${fileName}" is not one variable (a namespace of that name merges with it, even one holding only types), so it is not code-split or hot-updated. Rename what else declares \`Route\`.`,
+        `[tanstack-router] The route of "${fileName}" is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
         range,
         'route-unrecognized',
       )
     }
     return { route: null, warnings }
   }
-  if (!exp || exp.kind !== 'local') {
-    return { route: null, warnings }
-  }
-  if (exp.local === null) {
-    return notOneVariable(exp.range)
+  if (!exp || exp.kind !== 'local' || exp.local === null) {
+    return exp ? notFactoryCall(exp.range) : { route: null, warnings }
   }
   const routeSym = exp.local
-  const unitIds = t1.declaringUnits.get(routeSym)
-  const routeUnit =
-    unitIds && unitIds.length === 1 ? t1.units[unitIds[0]!] : undefined
+  const routeUnit = onlyValueUnit(ctx, routeSym)
   if (
     !routeUnit ||
     routeUnit.kind !== 'declaration' ||
     routeUnit.node.type !== 'VariableDeclarator' ||
     routeUnit.node.init === null
   ) {
-    return notOneVariable(exp.range)
+    return notFactoryCall(exp.range)
   }
   const outer = unwrapExpression(routeUnit.node.init)
   if (outer.type !== 'CallExpression') {
