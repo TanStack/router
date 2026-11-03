@@ -70,7 +70,8 @@ code.test.ts`: "a root route's %s loads lazily".
   special case for the plugin's output (skipping `__returned__` ships a template-attached handler). Upstream option:
   compiler-sfc exposing only the template's imports for JavaScript as for TypeScript. SPEC J4.5.
   `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles"; must stay
-  refused: "a template attaching a handler to an exposed builder is refused ($mode)".
+  refused (dev, and a `prodDevtools` build): "a template attaching a handler to a builder a $name block hands it is
+  refused", "… fails the build"; the recipe: "$name compiles", "$name builds, and no server code reaches the client".
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
   (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's
   worker build has no Start plugin); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
