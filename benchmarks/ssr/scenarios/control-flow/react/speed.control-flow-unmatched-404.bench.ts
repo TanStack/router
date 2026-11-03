@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertControlFlowSanity,
   controlFlowBenchOptions,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertControlFlowSanity(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr control-flow unmatched 404 (react)',
-    () => runUnmatchedLoop(handler),
-    controlFlowBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr control-flow unmatched 404 (react)', async () =>
+    runUnmatchedLoop(handler),
+  ).run(controlFlowBenchOptions)
 })

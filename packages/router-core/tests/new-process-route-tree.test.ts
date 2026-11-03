@@ -1961,7 +1961,7 @@ describe('findRouteMatch', () => {
   })
 })
 
-describe('processRouteMasks', { sequential: true }, () => {
+describe('processRouteMasks', { concurrent: false }, () => {
   const routeTree = {
     id: '__root__',
     isRoot: true,

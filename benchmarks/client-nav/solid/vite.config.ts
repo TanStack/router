@@ -37,6 +37,7 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     setupFiles: [`${rootDir}vitest.setup.ts`],
+    benchmark: { include: ['solid/speed.bench.ts'] },
     server: {
       deps: {
         inline: [/@solidjs/, /@tanstack\/solid-store/],

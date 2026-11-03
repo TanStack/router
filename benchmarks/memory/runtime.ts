@@ -29,8 +29,8 @@ export function memoryConfig(side: 'client' | 'server') {
   return {
     execArgv,
     setupFiles:
-      side === 'client' || isMemoryInstrumented()
-        ? [fileURLToPath(new URL(`./${side}/vitest.setup.ts`, import.meta.url))]
+      side === 'client'
+        ? [fileURLToPath(new URL('./client/vitest.setup.ts', import.meta.url))]
         : [],
   }
 }

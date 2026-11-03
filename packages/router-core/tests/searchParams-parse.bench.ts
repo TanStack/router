@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { defaultParseSearch, parseSearchWith } from '../src'
 
 const iterations = 1_000
@@ -184,60 +184,96 @@ const searches = Object.fromEntries(
 )
 
 describe('default search parsing', () => {
-  bench('ordinary string values', () => {
-    parseBatch(searches.ordinaryStrings!)
+  test('ordinary string values', async ({ bench }) => {
+    await bench('ordinary string values', () => {
+      parseBatch(searches.ordinaryStrings!)
+    }).run()
   })
 
-  bench('ordinary strings outside JSON-literal initials', () => {
-    parseBatch(searches.nonLiteralInitialStrings!)
+  test('ordinary strings outside JSON-literal initials', async ({ bench }) => {
+    await bench('ordinary strings outside JSON-literal initials', () => {
+      parseBatch(searches.nonLiteralInitialStrings!)
+    }).run()
   })
 
-  bench('ordinary strings with JSON-literal initials', () => {
-    parseBatch(searches.jsonInitialStrings!)
+  test('ordinary strings with JSON-literal initials', async ({ bench }) => {
+    await bench('ordinary strings with JSON-literal initials', () => {
+      parseBatch(searches.jsonInitialStrings!)
+    }).run()
   })
 
-  bench('empty string values', () => {
-    parseBatch(searches.emptyStrings!)
+  test('empty string values', async ({ bench }) => {
+    await bench('empty string values', () => {
+      parseBatch(searches.emptyStrings!)
+    }).run()
   })
 
-  bench('ordinary strings with non-JSON punctuation starts', () => {
-    parseBatch(searches.punctuationStrings!)
+  test('ordinary strings with non-JSON punctuation starts', async ({
+    bench,
+  }) => {
+    await bench('ordinary strings with non-JSON punctuation starts', () => {
+      parseBatch(searches.punctuationStrings!)
+    }).run()
   })
 
-  bench('ordinary f/n/t words outside JSON-literal prefixes', () => {
-    parseBatch(searches.nonLiteralPrefixStrings!)
+  test('ordinary f/n/t words outside JSON-literal prefixes', async ({
+    bench,
+  }) => {
+    await bench('ordinary f/n/t words outside JSON-literal prefixes', () => {
+      parseBatch(searches.nonLiteralPrefixStrings!)
+    }).run()
   })
 
-  bench('application words with JSON-literal prefixes', () => {
-    parseBatch(searches.jsonLiteralPrefixStrings!)
+  test('application words with JSON-literal prefixes', async ({ bench }) => {
+    await bench('application words with JSON-literal prefixes', () => {
+      parseBatch(searches.jsonLiteralPrefixStrings!)
+    }).run()
   })
 
-  bench('application words with complete JSON-literal prefixes', () => {
-    parseBatch(searches.jsonLiteralWordStrings!)
+  test('application words with complete JSON-literal prefixes', async ({
+    bench,
+  }) => {
+    await bench('application words with complete JSON-literal prefixes', () => {
+      parseBatch(searches.jsonLiteralWordStrings!)
+    }).run()
   })
 
-  bench('JSON-literal prefixes followed by punctuation', () => {
-    parseBatch(searches.jsonLiteralBoundaryStrings!)
+  test('JSON-literal prefixes followed by punctuation', async ({ bench }) => {
+    await bench('JSON-literal prefixes followed by punctuation', () => {
+      parseBatch(searches.jsonLiteralBoundaryStrings!)
+    }).run()
   })
 
-  bench('JSON-compatible string values', () => {
-    parseBatch(searches.jsonStrings!)
+  test('JSON-compatible string values', async ({ bench }) => {
+    await bench('JSON-compatible string values', () => {
+      parseBatch(searches.jsonStrings!)
+    }).run()
   })
 
-  bench('mixed application values', () => {
-    parseBatch(searches.mixedValues!)
+  test('mixed application values', async ({ bench }) => {
+    await bench('mixed application values', () => {
+      parseBatch(searches.mixedValues!)
+    }).run()
   })
-  bench('primitives already converted by decode', () => {
-    parseBatch(searches.decodedPrimitives!)
+  test('primitives already converted by decode', async ({ bench }) => {
+    await bench('primitives already converted by decode', () => {
+      parseBatch(searches.decodedPrimitives!)
+    }).run()
   })
-  bench('strings requiring JSON.parse', () => {
-    parseBatch(searches.parsedJson!)
+  test('strings requiring JSON.parse', async ({ bench }) => {
+    await bench('strings requiring JSON.parse', () => {
+      parseBatch(searches.parsedJson!)
+    }).run()
   })
-  bench('JSON with leading whitespace', () => {
-    parseBatch(searches.whitespaceJson!)
+  test('JSON with leading whitespace', async ({ bench }) => {
+    await bench('JSON with leading whitespace', () => {
+      parseBatch(searches.whitespaceJson!)
+    }).run()
   })
-  bench('malformed JSON retains original strings', () => {
-    parseBatch(searches.malformedJson!)
+  test('malformed JSON retains original strings', async ({ bench }) => {
+    await bench('malformed JSON retains original strings', () => {
+      parseBatch(searches.malformedJson!)
+    }).run()
   })
 })
 
@@ -248,16 +284,20 @@ expect(customParse(searches.ordinaryStrings!)).toEqual({
   category: 'HARDWARE',
   sort: 'NEWEST',
 })
-bench('custom search parser ordinary strings', () => {
-  parseBatch(searches.ordinaryStrings!, customParse)
+test('custom search parser ordinary strings', async ({ bench }) => {
+  await bench('custom search parser ordinary strings', () => {
+    parseBatch(searches.ordinaryStrings!, customParse)
+  }).run()
 })
 
 const throwingParse = parseSearchWith(() => {
   throw new Error('not parseable')
 })
 expect(throwingParse(searches.ordinaryStrings!)).toEqual(ordinaryStrings)
-bench('custom search parser rejected strings', () => {
-  parseBatch(searches.ordinaryStrings!, throwingParse)
+test('custom search parser rejected strings', async ({ bench }) => {
+  await bench('custom search parser rejected strings', () => {
+    parseBatch(searches.ordinaryStrings!, throwingParse)
+  }).run()
 })
 
 const encodedMixed = new URLSearchParams([
@@ -279,8 +319,10 @@ expect(defaultParseSearch(encodedMixed)).toEqual({
   category: 'favorite',
   tag: ['one', 'two'],
 })
-bench('encoded mixed search with repeated keys', () => {
-  parseBatch(encodedMixed)
+test('encoded mixed search with repeated keys', async ({ bench }) => {
+  await bench('encoded mixed search with repeated keys', () => {
+    parseBatch(encodedMixed)
+  }).run()
 })
 
 void benchmarkSink

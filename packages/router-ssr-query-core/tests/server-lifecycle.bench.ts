@@ -1,21 +1,23 @@
 // @vitest-environment node
 
 import { QueryClient } from '@tanstack/query-core'
-import { afterAll, bench, describe } from 'vitest'
+import { afterAll, describe, test } from 'vitest'
 import { setupCoreRouterSsrQueryIntegration } from '../src'
 
 let benchmarkSink = 0
 
 describe('server request lifecycle', () => {
-  bench('create and close a ReadableStream', () => {
-    let controller!: ReadableStreamDefaultController<unknown>
-    const stream = new ReadableStream({
-      start(value) {
-        controller = value
-      },
-    })
-    controller.close()
-    benchmarkSink += stream.locked ? 1 : 0
+  test('create and close a ReadableStream', async ({ bench }) => {
+    await bench('create and close a ReadableStream', () => {
+      let controller!: ReadableStreamDefaultController<unknown>
+      const stream = new ReadableStream({
+        start(value) {
+          controller = value
+        },
+      })
+      controller.close()
+      benchmarkSink += stream.locked ? 1 : 0
+    }).run()
   })
 
   const subscriptionClient = new QueryClient()
@@ -23,58 +25,68 @@ describe('server request lifecycle', () => {
   const listener = () => {}
   afterAll(() => subscriptionClient.clear())
 
-  bench('subscribe and unsubscribe from QueryCache', () => {
-    const unsubscribe = queryCache.subscribe(listener)
-    unsubscribe()
+  test('subscribe and unsubscribe from QueryCache', async ({ bench }) => {
+    await bench('subscribe and unsubscribe from QueryCache', () => {
+      const unsubscribe = queryCache.subscribe(listener)
+      unsubscribe()
+    }).run()
   })
 
-  bench('setup and cleanup before dehydrate', () => {
-    const queryClient = new QueryClient()
-    const fixture = createServerRouter()
+  test('setup and cleanup before dehydrate', async ({ bench }) => {
+    await bench('setup and cleanup before dehydrate', () => {
+      const queryClient = new QueryClient()
+      const fixture = createServerRouter()
 
-    setupCoreRouterSsrQueryIntegration({
-      router: fixture.router as any,
-      queryClient,
-    })
-    fixture.attach()
-    fixture.cleanup()
-    benchmarkSink += fixture.cleanupListenerCount()
+      setupCoreRouterSsrQueryIntegration({
+        router: fixture.router as any,
+        queryClient,
+      })
+      fixture.attach()
+      fixture.cleanup()
+      benchmarkSink += fixture.cleanupListenerCount()
+    }).run()
   })
 
-  bench('setup and dehydrate an empty request', async () => {
-    const queryClient = new QueryClient()
-    const fixture = createServerRouter()
+  test('setup and dehydrate an empty request', async ({ bench }) => {
+    await bench('setup and dehydrate an empty request', async () => {
+      const queryClient = new QueryClient()
+      const fixture = createServerRouter()
 
-    setupCoreRouterSsrQueryIntegration({
-      router: fixture.router as any,
-      queryClient,
-    })
-    fixture.attach()
-    const dehydrated = await fixture.router.options.dehydrate?.()
-    fixture.finishRender()
-    fixture.cleanup()
-    benchmarkSink += dehydrated?.query.stream.locked ? 1 : 0
+      setupCoreRouterSsrQueryIntegration({
+        router: fixture.router as any,
+        queryClient,
+      })
+      fixture.attach()
+      const dehydrated = await fixture.router.options.dehydrate?.()
+      fixture.finishRender()
+      fixture.cleanup()
+      benchmarkSink += dehydrated?.query.stream.locked ? 1 : 0
+    }).run()
   })
 
-  bench('write 100 loader queries without integration', () => {
-    const queryClient = new QueryClient()
-    populateQueryClient(queryClient, 100)
-    benchmarkSink += queryClient.getQueryCache().getAll().length
-    queryClient.clear()
+  test('write 100 loader queries without integration', async ({ bench }) => {
+    await bench('write 100 loader queries without integration', () => {
+      const queryClient = new QueryClient()
+      populateQueryClient(queryClient, 100)
+      benchmarkSink += queryClient.getQueryCache().getAll().length
+      queryClient.clear()
+    }).run()
   })
 
-  bench('write 100 loader queries before dehydrate', () => {
-    const queryClient = new QueryClient()
-    const fixture = createServerRouter()
+  test('write 100 loader queries before dehydrate', async ({ bench }) => {
+    await bench('write 100 loader queries before dehydrate', () => {
+      const queryClient = new QueryClient()
+      const fixture = createServerRouter()
 
-    setupCoreRouterSsrQueryIntegration({
-      router: fixture.router as any,
-      queryClient,
-    })
-    fixture.attach()
-    populateQueryClient(queryClient, 100)
-    benchmarkSink += queryClient.getQueryCache().getAll().length
-    fixture.cleanup()
+      setupCoreRouterSsrQueryIntegration({
+        router: fixture.router as any,
+        queryClient,
+      })
+      fixture.attach()
+      populateQueryClient(queryClient, 100)
+      benchmarkSink += queryClient.getQueryCache().getAll().length
+      fixture.cleanup()
+    }).run()
   })
 })
 

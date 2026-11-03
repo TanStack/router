@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertRewriteScenario,
   rewriteBenchOptions,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertRewriteScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr rewrite localized (react)',
-    () => runRewriteLocalizedLoop(handler),
-    rewriteBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr rewrite localized (react)', async () =>
+    runRewriteLocalizedLoop(handler),
+  ).run(rewriteBenchOptions)
 })

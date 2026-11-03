@@ -9,7 +9,6 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
   vi.resetAllMocks()

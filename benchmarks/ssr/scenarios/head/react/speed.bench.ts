@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import { assertHeadSanity, headBenchOptions, runHeadLoop } from '../shared'
 import type { StartRequestHandler } from '../shared'
 
@@ -12,6 +12,8 @@ const { default: handler } = (await import(
 
 await assertHeadSanity(handler)
 
-describe('ssr', () => {
-  bench('ssr head (react)', () => runHeadLoop(handler), headBenchOptions)
+test('ssr', async ({ bench }) => {
+  await bench('ssr head (react)', async () => runHeadLoop(handler)).run(
+    headBenchOptions,
+  )
 })

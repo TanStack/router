@@ -9,7 +9,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { type } from 'arktype'
 import { arkTypeValidator } from '../src'
-import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
   vi.resetAllMocks()

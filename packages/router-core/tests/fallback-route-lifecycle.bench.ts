@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { lifecycleEnd, runRouteLifecycle } from '../src/router'
 import type { AnyRouteMatch, AnyRouter, AnyRoute } from '../src'
 import type { LoadTransaction } from '../src/load-client'
@@ -191,16 +191,16 @@ for (const depth of [1, 2, 3, 4, 5, 6]) {
           ['original', originalLifecycle],
           ['candidate', candidateLifecycle],
         ] as const) {
-          bench(
-            name,
-            () => {
+          test(name, async ({ bench }) => {
+            await bench(name, () => {
               for (let i = 0; i < 100; i++) {
                 router._lifecycleEnd = previousEnd
                 run(router, previous, matches, owner)
               }
-            },
-            { time: 300 },
-          )
+            }).run({
+              time: 300,
+            })
+          })
         }
       })
     }

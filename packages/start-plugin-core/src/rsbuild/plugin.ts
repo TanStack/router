@@ -27,6 +27,7 @@ import {
 } from './virtual-modules'
 import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
+import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
 import { enableSwcReactServerComponents } from './swc-rsc'
@@ -343,22 +344,24 @@ export function tanStackStartRsbuild(
             return
           }
 
+          const environmentName = utils.environment.name
           config.plugins.push({
             apply(compiler: RspackCompiler) {
-              compiler.hooks.finishMake.tapPromise(
-                {
-                  name: 'TanStackStartServerFnResolverRebuild',
-                  stage: -10,
-                },
-                async (compilation: RspackCompilationExtended) => {
+              tapServerFnResolverRebuild(compiler, {
+                name: 'TanStackStartServerFnResolverRebuild',
+                updateResolver: () => {
                   virtualModuleState.updateServerFnResolver()
-
-                  await rebuildModulesContaining(
+                },
+                getResolverWriteCount: () =>
+                  virtualModuleState.getServerFnResolverWriteCount(
+                    environmentName,
+                  ),
+                rebuildResolver: (compilation) =>
+                  rebuildModulesContaining(
                     compilation,
                     virtualModuleState.serverFnResolverPath,
-                  )
-                },
-              )
+                  ),
+              })
             },
           })
         })
@@ -537,24 +540,23 @@ export function tanStackStartRsbuild(
 
             config.plugins.push({
               apply(compiler: RspackCompiler) {
-                compiler.hooks.finishMake.tapPromise(
-                  {
-                    name: 'TanStackStartRscServerFnResolverRebuild',
-                    stage: -10,
-                  },
-                  async (compilation: RspackCompilationExtended) => {
-                    const resolverContent =
-                      virtualModuleState.generateCurrentResolverContent(true)
+                tapServerFnResolverRebuild(compiler, {
+                  name: 'TanStackStartRscServerFnResolverRebuild',
+                  updateResolver: () => {
                     virtualModuleState.tryUpdateServerFnResolver(
-                      resolverContent,
+                      virtualModuleState.generateCurrentResolverContent(true),
                     )
-
-                    await rebuildModulesContaining(
+                  },
+                  getResolverWriteCount: () =>
+                    virtualModuleState.getServerFnResolverWriteCount(
+                      RSBUILD_ENVIRONMENT_NAMES.server,
+                    ),
+                  rebuildResolver: (compilation) =>
+                    rebuildModulesContaining(
                       compilation,
                       virtualModuleState.serverFnResolverPath,
-                    )
-                  },
-                )
+                    ),
+                })
               },
             })
 
