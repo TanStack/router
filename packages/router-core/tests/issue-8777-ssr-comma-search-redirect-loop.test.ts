@@ -20,7 +20,11 @@ const stringifySearch = (search: Record<string, unknown>) => {
   return parts.length ? `?${parts.join('&')}` : ''
 }
 
-function createRouter({ rewrite = false, defaults = false } = {}) {
+function createRouter({
+  rewrite = false,
+  defaults = false,
+  nonIdentity = false,
+} = {}) {
   const rootRoute = new BaseRootRoute({})
   const testRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
@@ -40,7 +44,18 @@ function createRouter({ rewrite = false, defaults = false } = {}) {
     parseSearch,
     stringifySearch,
     rewrite: rewrite
-      ? { input: ({ url }) => url, output: ({ url }) => url }
+      ? nonIdentity
+        ? {
+            input: ({ url }) => {
+              url.pathname = url.pathname.replace('/public', '')
+              return url
+            },
+            output: ({ url }) => {
+              url.pathname = `/public${url.pathname}`
+              return url
+            },
+          }
+        : { input: ({ url }) => url, output: ({ url }) => url }
       : undefined,
   })
 }
@@ -74,4 +89,23 @@ describe.each([false, true])('rewrite=%s', (rewrite) => {
     expect(second.status).toBe(200)
     expect(second.headers.get('Location')).toBeNull()
   })
+})
+
+test('a non-identity rewrite converges comma-search redirects', async () => {
+  const options = { rewrite: true, defaults: true, nonIdentity: true }
+  const first = await loadServerResponse(
+    createRouter(options),
+    '/public/test?tags=1,2',
+  )
+
+  expect(first.status).toBe(307)
+  expect(first.headers.get('Location')).toBe('/public/test?tags=1,2&page=1')
+
+  const second = await loadServerResponse(
+    createRouter(options),
+    first.headers.get('Location')!,
+  )
+
+  expect(second.status).toBe(200)
+  expect(second.headers.get('Location')).toBeNull()
 })
