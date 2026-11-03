@@ -12,6 +12,7 @@ import { buildSummary } from './summary'
 import { ownEntry } from './strings'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
+import type { CodeEffects } from './analysis'
 import type { ModuleSummary } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
@@ -30,8 +31,10 @@ export interface TargetFacts {
   esm: boolean
   /** Own top-level effects or a bare import (transitive classification is the consumer's). */
   effectful: boolean
-  /** Its own statements have effects, module loading (`imports`) aside. */
-  codeEffects: boolean
+  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.codeEffects`). */
+  codeEffects: CodeEffects
+  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.erasedImports`; absent when none is). */
+  erasedImports?: { client: Array<string>; server: Array<string> }
   digest: string
 }
 
@@ -69,6 +72,9 @@ interface RawFactsOptions {
   opaque?: (path: string, text: string) => boolean
 }
 
+/** Effects in every environment: what is unknown of a module. */
+const ALL_EFFECTS: CodeEffects = { client: true, server: true }
+
 const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
 
@@ -82,7 +88,7 @@ const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   lazyImports: [],
   esm: false,
   effectful: true,
-  codeEffects: true,
+  codeEffects: ALL_EFFECTS,
 }
 
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
@@ -94,8 +100,12 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   lazyImports: [],
   esm: false,
   effectful: true,
-  codeEffects: true,
+  codeEffects: ALL_EFFECTS,
 }
+
+/** (computed once: an opaque module's read is on every package module's path) */
+const OPAQUE_DIGEST = digestOf(OPAQUE_TARGET)
+const MISSING_DIGEST = digestOf(MISSING_TARGET)
 
 interface FactsEntry {
   stale: boolean
@@ -422,7 +432,7 @@ export class RawFactsCache {
       lazyImports: [],
       esm: true,
       effectful: false,
-      codeEffects: false,
+      codeEffects: { client: false, server: false },
     }
     return {
       rawRevision: digest,
@@ -455,7 +465,7 @@ export class RawFactsCache {
       return {
         rawRevision: null,
         summary: null,
-        targetFacts: { ...MISSING_TARGET, digest: digestOf(MISSING_TARGET) },
+        targetFacts: { ...MISSING_TARGET, digest: MISSING_DIGEST },
       }
     }
     const id = identify(canonicalId)
@@ -468,7 +478,7 @@ export class RawFactsCache {
       return {
         rawRevision: rev,
         summary: null,
-        targetFacts: { ...OPAQUE_TARGET, digest: digestOf(OPAQUE_TARGET) },
+        targetFacts: { ...OPAQUE_TARGET, digest: OPAQUE_DIGEST },
         opaque: true,
       }
     }
@@ -491,7 +501,7 @@ export class RawFactsCache {
         lazyImports: [],
         esm: false,
         effectful: true,
-        codeEffects: true,
+        codeEffects: ALL_EFFECTS,
       }
       return {
         rawRevision: rev,
@@ -503,6 +513,7 @@ export class RawFactsCache {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
+      builders: this.opts.recognizer,
     })
     return this.fromAnalysis(rev, analysis)
   }
@@ -549,6 +560,12 @@ export class RawFactsCache {
       esm: analysis.sourceType === 'module',
       effectful: own || bareImportEffect,
       codeEffects: analysis.codeEffects,
+      ...(analysis.erasedImports && {
+        erasedImports: {
+          client: [...analysis.erasedImports.client],
+          server: [...analysis.erasedImports.server],
+        },
+      }),
     }
     return {
       rawRevision,

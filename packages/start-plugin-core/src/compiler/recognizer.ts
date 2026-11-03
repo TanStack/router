@@ -104,6 +104,25 @@ export function startRecognizer(): RecognizerTable {
       [START_KINDS.serverOnly]: 'server',
       [START_KINDS.clientOnly]: 'client',
     },
+    // the methods of the runtime builders (start-client-core
+    // `createServerFn`, `createMiddleware`; start-fn-stubs
+    // `createIsomorphicFn`), and where start-env keeps their arguments: the
+    // client erases validators, handlers and server implementations, the
+    // server the client implementation of an isomorphic fn
+    builderLinks: {
+      [START_KINDS.serverFn]: {
+        middleware: 'both',
+        validator: 'server',
+        handler: 'server',
+      },
+      [START_KINDS.middleware]: {
+        middleware: 'both',
+        validator: 'server',
+        server: 'server',
+        client: 'both',
+      },
+      [START_KINDS.isoFn]: { server: 'server', client: 'client' },
+    },
     startKind: START_KINDS.start,
     startMembers: { createMiddleware: START_KINDS.middleware },
     // the router's own pure APIs: its table, not a copy

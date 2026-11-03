@@ -12,6 +12,7 @@
  */
 import { BindingFlags } from 'yuku'
 import { unwrapExpression } from './source'
+import { ownEntry } from './strings'
 import type {
   Binding,
   Comment,
@@ -38,6 +39,42 @@ export interface PurityContext {
   namespaceImports: ReadonlySet<number>
   /** How many calls the purity checks visited: what a unit's check added says it calls something at load (`Unit.callsAtLoad`). */
   calls: number
+  /**
+   * Builder chains whose calls are no effect in one environment
+   * (`RecognizerTable.builderLinks`). Only on the contexts of the
+   * per-environment code effects of raw facts (`ModuleAnalysis.codeEffects`),
+   * never on the planners'.
+   */
+  builders?: BuilderPurity
+}
+
+/** The builder chains `isPureExpression` takes as pure in one environment (`PurityContext.builders`). */
+export interface BuilderPurity {
+  env: 'client' | 'server'
+  /** Kind → link method → the environment keeping its argument (`RecognizerTable.builderLinks`). */
+  links: Readonly<Record<string, Record<string, 'client' | 'server' | 'both'>>>
+  /** Env-only kind → the environment keeping its argument (`RecognizerTable.envOnlyKinds`). */
+  envOnly: Readonly<Record<string, 'client' | 'server'>>
+  /**
+   * Local names of imports of known packages' chain factories → kind. By
+   * name: the checks evaluate module-level expressions only (never a
+   * function body), where a name is the module scope's.
+   */
+  factories: ReadonlyMap<string, string>
+  /** Local names of namespace imports of known packages → their factory exports → kind. */
+  namespaces: ReadonlyMap<string, Readonly<Record<string, string>>>
+  /** Kind → the terminal value its builder reaches (`RecognizerTable.terminal`): `serverFn` ends at `.handler()`. */
+  terminal: Readonly<Record<string, string>>
+  /** Names of the module-level `const`s declared so far whose value is an open chain's builder → kind. */
+  locals: Map<string, string>
+  /** The arguments the environment's compile erases, as the checks met them (their reads are erased with them). */
+  erased: Array<{ start: number; end: number }>
+}
+
+/** A builder chain's call that is no effect (`builderCall`): its kind, and whether links may follow (`.handler()` ends a server fn's). */
+export interface BuilderCall {
+  kind: string
+  open: boolean
 }
 
 const PURE_RE = /[@#]__PURE__/
@@ -282,7 +319,11 @@ export function isPureExpression(
           a.type === 'SpreadElement' ? false : isPureExpression(ctx, a),
         )
       }
-      return false
+      return (
+        ctx.builders !== undefined &&
+        node.type === 'CallExpression' &&
+        builderCall(ctx, ctx.builders, node) !== null
+      )
     }
     case 'JSXElement': {
       const name = node.openingElement.name
@@ -325,6 +366,90 @@ export function isPureExpression(
     default:
       return false
   }
+}
+
+/**
+ * A builder chain's call that is no effect in `b.env`, or null: a call of a
+ * builder or env-only factory, or of a link method of the kind's runtime
+ * builder on such an open call or on a `const` holding one (`b.locals`),
+ * with every argument the environment keeps pure. The first argument of a
+ * method whose argument the environment's compile erases is not evaluated
+ * there (it is recorded in `b.erased`); a later one is kept.
+ */
+export function builderCall(
+  ctx: PurityContext,
+  b: BuilderPurity,
+  call: Extract<Node, { type: 'CallExpression' }>,
+): BuilderCall | null {
+  const keptPure = (keep: 'client' | 'server' | 'both') => {
+    const erases = keep !== 'both' && keep !== b.env
+    return call.arguments.every((a, i) => {
+      if (erases && i === 0) {
+        b.erased.push({ start: a.start, end: a.end })
+        return true
+      }
+      return a.type !== 'SpreadElement' && isPureExpression(ctx, a)
+    })
+  }
+  const callee = unwrapExpression(call.callee)
+  let factory: string | undefined
+  if (callee.type === 'Identifier') {
+    factory = b.factories.get(callee.name)
+  } else if (
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.property.type === 'Identifier'
+  ) {
+    const object = unwrapExpression(callee.object as Node)
+    const namespace =
+      object.type === 'Identifier' ? b.namespaces.get(object.name) : undefined
+    if (namespace) {
+      factory = ownEntry(namespace, callee.property.name)
+    } else {
+      const receiver = builderReceiverKind(ctx, b, object)
+      const method = callee.property.name
+      const methods = receiver === null ? undefined : b.links[receiver]
+      const keep = methods && ownEntry(methods, method)
+      return keep !== undefined && keptPure(keep)
+        ? {
+            kind: receiver!,
+            open: !(
+              ownEntry(b.terminal, receiver!) === 'serverFn' &&
+              method === 'handler'
+            ),
+          }
+        : null
+    }
+  }
+  if (factory === undefined) {
+    return null
+  }
+  const only = ownEntry(b.envOnly, factory)
+  if (only === undefined && ownEntry(b.links, factory) === undefined) {
+    // a factory of no builder chain (`createStart`, a component)
+    return null
+  }
+  // (an env-only fn is a function, no builder)
+  return keptPure(only ?? 'both')
+    ? { kind: factory, open: only === undefined }
+    : null
+}
+
+/** The builder kind of a link's receiver: an open chain's call, or a `const` holding one. */
+function builderReceiverKind(
+  ctx: PurityContext,
+  b: BuilderPurity,
+  node: Node,
+): string | null {
+  const n = unwrapExpression(node)
+  if (n.type === 'CallExpression') {
+    const c = builderCall(ctx, b, n)
+    return c?.open ? c.kind : null
+  }
+  if (n.type === 'Identifier') {
+    return b.locals.get(n.name) ?? null
+  }
+  return null
 }
 
 /** `x.y` / `x['y']` of a namespace import (`namespaceImports`) or of a plain enum. */

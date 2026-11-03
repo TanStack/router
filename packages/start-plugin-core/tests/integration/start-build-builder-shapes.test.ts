@@ -360,20 +360,6 @@ export const fn = withInput((d: unknown) => {
     },
   },
   {
-    name: 'a parameter passed to `.inputValidator()`',
-    file: 'src/entry.ts',
-    line: 2,
-    files: {
-      'src/entry.ts': `import { createServerFn } from '@tanstack/react-start'
-const withInput = (schema: any) => (createServerFn() as any).inputValidator(schema)
-export const fn = withInput((d: unknown) => {
-  console.log('MARK_SERVER_SECRET')
-  return d
-}).handler(async () => 'x')
-`,
-    },
-  },
-  {
     name: 'a parameter passed to a middleware’s `.validator()`',
     file: 'src/entry.ts',
     line: 2,

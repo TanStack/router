@@ -368,10 +368,10 @@ describe('target facts', () => {
     const barrel = await host.rawFacts.get('/app/barrel.ts', 'client')
     expect(barrel.targetFacts).toMatchObject({
       effectful: true,
-      codeEffects: false,
+      codeEffects: { client: false, server: false },
     })
     const fx = await host.rawFacts.get('/app/fx.ts', 'client')
-    expect(fx.targetFacts.codeEffects).toBe(true)
+    expect(fx.targetFacts.codeEffects).toEqual({ client: true, server: true })
     const c = await host.rawFacts.get('/app/c.cjs', 'client')
     expect(c.targetFacts.esm).toBe(false)
     const missing = await host.rawFacts.get('/app/none.ts', 'client')

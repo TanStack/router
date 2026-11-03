@@ -222,7 +222,7 @@ const supported: Array<Shape> = [
   },
   {
     name: 'a ternary of builders with validators on each side',
-    code: `${P}const base = Math.random() > 2 ? createServerFn().inputValidator((d: string) => { db.y(); return d }) : createServerFn().inputValidator((d: string) => d)\nexport const fn = base.handler(async () => db.x())`,
+    code: `${P}const base = Math.random() > 2 ? createServerFn().validator((d: string) => { db.y(); return d }) : createServerFn().validator((d: string) => d)\nexport const fn = base.handler(async () => db.x())`,
     body: 'db.y()',
   },
   {

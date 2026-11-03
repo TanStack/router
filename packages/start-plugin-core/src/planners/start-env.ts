@@ -555,8 +555,7 @@ function planStartEnv(
         continue
       }
       const strip =
-        (recv.kind === 'serverFn' &&
-          (link.method === 'validator' || link.method === 'inputValidator')) ||
+        (recv.kind === 'serverFn' && link.method === 'validator') ||
         (recv.kind === 'middleware' &&
           (link.method === 'server' || link.method === 'validator'))
       if (!strip) {
