@@ -946,7 +946,9 @@ export const inferFullPath = (routeNode: RouteNode): string => {
     return fullPath
   }
 
-  return fullPath.replace(/\/$/, '')
+  // A route group's layout (e.g. `/(group)/_layout`) strips down to `/`,
+  // which is the router's full path, not an empty string
+  return fullPath.replace(/\/$/, '') || '/'
 }
 
 const shouldPreferIndexRoute = (
