@@ -115,6 +115,7 @@ export {
 export type { ClientFnMeta, ServerFnMeta } from './constants'
 
 export type * from './serverRoute'
+export type * from './prerenderParams'
 
 export type * from './startEntry'
 

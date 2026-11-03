@@ -17,6 +17,7 @@ import {
   SERVER_FN_BUILD_INFO_CONTEXT_KEY,
   SERVER_FN_BUILD_INFO_FIELD,
 } from './start-compiler-metadata'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   ServerFnBuildInfo,
@@ -227,7 +228,10 @@ export function registerStartCompilerTransforms(
 
   for (const env of environments) {
     const compilerTransforms =
-      env.name === opts.providerEnvName ? opts.compilerTransforms : undefined
+      env.name === opts.providerEnvName ||
+      env.name === RSBUILD_ENVIRONMENT_NAMES.prerender
+        ? opts.compilerTransforms
+        : undefined
     const envCodeFilters = getTransformCodeFilterForEnv(env.type, {
       compilerTransforms,
       compilerPlugins,

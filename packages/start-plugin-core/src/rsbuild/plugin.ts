@@ -9,6 +9,7 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { shouldSeparateRouteOptions } from '../prerender-route-options-env'
 import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
@@ -93,12 +94,14 @@ export function tanStackStartRsbuild(
   let devServerRef: Pick<RsbuildDevServer, 'sockWrite'> | null = null
   const serverFnsById: Record<string, ServerFn> = {}
   let updateServerFnResolver: (() => void) | undefined
+  let prerenderOutputDirectory: string | undefined
 
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
       const startCompilerEnvironments = [
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
+        { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
         ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
         !rscEnabled
@@ -166,6 +169,7 @@ export function tanStackStartRsbuild(
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
         })
+        const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
 
         const environmentPlan = createRsbuildEnvironmentPlan({
           root,
@@ -174,11 +178,26 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
+          separatePrerenderRouteOptions: separateRouteOptions,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscOpts,
           dev: isDev,
         })
+        prerenderOutputDirectory = separateRouteOptions
+          ? resolveRsbuildOutputDirectory({
+              distPath:
+                environmentPlan.environments[
+                  RSBUILD_ENVIRONMENT_NAMES.prerender
+                ]?.output?.distPath,
+              rootDistPath: undefined,
+              fallback: join(
+                resolvedStartConfig.outputDirectories.server,
+                '.tanstack/prerender',
+              ),
+              subdirectory: 'prerender',
+            })
+          : undefined
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
@@ -446,7 +465,9 @@ export function tanStackStartRsbuild(
       if (isInsideRouterMonoRepo && api.context.action === 'dev') {
         api.modifyRspackConfig((config) => {
           const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
-          if (workspaceDistRealpaths.length === 0) return
+          if (workspaceDistRealpaths.length === 0) {
+            return
+          }
 
           config.watchOptions = {
             ...(config.watchOptions ?? {}),
@@ -671,8 +692,9 @@ export function tanStackStartRsbuild(
           START_MANIFEST_PLACEHOLDER,
         )
         api.modifyRspackConfig((config, utils) => {
-          if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server)
+          if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server) {
             return
+          }
 
           config.plugins.push({
             apply(compiler: RspackCompiler) {
@@ -753,7 +775,9 @@ export function tanStackStartRsbuild(
       // 9. After client env compiles — refresh resolver + manifest
       // ---------------------------------------------------------------
       api.onAfterEnvironmentCompile(({ environment }) => {
-        if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) return
+        if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) {
+          return
+        }
 
         virtualModuleState.updateServerFnResolver()
 
@@ -766,11 +790,14 @@ export function tanStackStartRsbuild(
       if (api.context.action === 'build') {
         api.onAfterBuild(async () => {
           const { startConfig } = getConfig()
+          const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
 
           await postBuildWithRsbuild({
             startConfig,
             clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
             serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
+            prerenderOutputDirectory,
+            separatePrerenderRouteOptions: separateRouteOptions,
           })
         })
       }
@@ -804,8 +831,11 @@ function rebuildModulesContaining(
     rebuilds.push(
       new Promise<void>((resolve, reject) => {
         compilation.rebuildModule(mod, (err: Error | null) => {
-          if (err) reject(err)
-          else resolve()
+          if (err) {
+            reject(err)
+          } else {
+            resolve()
+          }
         })
       }),
     )
@@ -827,7 +857,9 @@ function resolveWorkspacePackageDistRealpaths(): Array<string> {
   // or <repo>/packages/start-plugin-core/dist/<fmt>/rsbuild. Four levels up
   // lands on <repo>/packages in both layouts.
   const packagesDir = resolve(currentDir, '../../../../')
-  if (!existsSync(packagesDir)) return []
+  if (!existsSync(packagesDir)) {
+    return []
+  }
 
   let entries: Array<string>
   try {
@@ -840,7 +872,9 @@ function resolveWorkspacePackageDistRealpaths(): Array<string> {
   for (const entry of entries) {
     const distPath = join(packagesDir, entry, 'dist')
     try {
-      if (!statSync(distPath).isDirectory()) continue
+      if (!statSync(distPath).isDirectory()) {
+        continue
+      }
     } catch {
       continue
     }

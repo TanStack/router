@@ -1,9 +1,13 @@
 import { HEADERS } from '@tanstack/start-server-core/constants'
-import type { TanStackStartOutputConfig } from './schema'
+import type { Page, TanStackStartOutputConfig } from './schema'
+import type { PrerenderPageSink } from './prerender'
 
 export interface StartPostBuildAdapter {
   getClientOutputDirectory: () => string
-  prerender: (startConfig: TanStackStartOutputConfig) => Promise<void>
+  prerender: (
+    startConfig: TanStackStartOutputConfig,
+    options?: { pageSink?: PrerenderPageSink },
+  ) => Promise<void>
 }
 
 export async function postBuild({
@@ -18,15 +22,26 @@ export async function postBuild({
       ...startConfig.prerender,
       enabled:
         startConfig.prerender?.enabled ??
-        startConfig.pages.some((d) =>
-          typeof d === 'string' ? false : !!d.prerender?.enabled,
-        ),
+        startConfig.pages.some((page) => page.prerender?.enabled),
     }
   }
 
+  const spaOnly = Boolean(
+    startConfig.spa?.enabled && startConfig.prerender.enabled !== true,
+  )
+
   if (startConfig.spa?.enabled) {
+    if (spaOnly) {
+      startConfig.pages = []
+    }
+
     startConfig.prerender = {
       ...startConfig.prerender,
+      ...(spaOnly
+        ? {
+            autoStaticPathsDiscovery: false,
+          }
+        : {}),
       enabled: true,
     }
 
@@ -51,12 +66,21 @@ export async function postBuild({
   }
 
   if (startConfig.prerender.enabled) {
-    await adapter.prerender(startConfig)
+    const pages: Array<Page> = []
+    await adapter.prerender(
+      { ...startConfig },
+      {
+        pageSink: (page) => {
+          pages.push(page)
+        },
+      },
+    )
+    startConfig.pages = pages
   }
 
   if (startConfig.sitemap?.enabled) {
     const { buildSitemap } = await import('./build-sitemap')
-    buildSitemap({
+    await buildSitemap({
       startConfig,
       publicDir: adapter.getClientOutputDirectory(),
     })
