@@ -3,7 +3,7 @@ id: retainSearchParams
 title: Search middleware to retain search params
 ---
 
-`retainSearchParams` is a search middleware that allows to keep search params.
+`retainSearchParams` is a search middleware that allows keeping search params.
 
 ## retainSearchParams props
 
