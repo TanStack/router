@@ -1,5 +1,16 @@
 # @tanstack/start-server-core
 
+## 1.169.45
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
+  - @tanstack/router-core@1.171.39
+  - @tanstack/start-client-core@1.170.39
+  - @tanstack/start-storage-context@1.167.41
+
 ## 1.169.44
 
 ### Patch Changes
