@@ -23,6 +23,7 @@ import {
   staticPropertyKey,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
+import { HYDRATE_KINDS } from './recognizer'
 import { NODE_MODULES_RE } from './scope'
 import type {
   AbstractValue,
@@ -61,6 +62,8 @@ export function isStartValue(
 ): boolean {
   switch (v.t) {
     case 'factory':
+      // the `Hydrate` boundary is the hydrate planner's
+      return ownEntry(HYDRATE_KINDS, v.kind) === undefined
     case 'startInstance':
     case 'builder':
     case 'serverFn':
@@ -172,33 +175,64 @@ export function isClientOnlyPartial(v: AbstractValue): boolean {
   )
 }
 
-interface PrefetchOptions {
+interface ValueReaderOptions {
   table: RecognizerTable
-  late?: boolean
   /** `TSR_COMPILER_NO_CACHE=registry` turns it off: the route file's summary answers. */
   answerFromRegistry: boolean
+  /**
+   * The modules the reader enters (default: every one): an import or a
+   * re-export of any other reads as unknown.
+   */
+  enters?: (canonicalId: string) => boolean
+}
+
+/** Reads the Start values of other modules' exports for one compile (`startValueReader`). */
+export interface StartValueReader {
+  /** The value of `name` exported by `canonicalId`, reduced; cycles → unknown. */
+  exportValue: (
+    canonicalId: string,
+    name: string,
+    path: LookupPath,
+  ) => Promise<AbstractValue>
+  /** Resolves `specifier` as imported by `owner` and reads `name` of it (unknown when it does not resolve, or to a module the reader does not enter). */
+  importedValue: (
+    owner: string,
+    specifier: string,
+    name: string,
+    path: LookupPath,
+  ) => Promise<AbstractValue>
+  /** Reduces a summary term of module `owner` with the transfer function. */
+  reduce: (
+    v: AbstractValue,
+    owner: string,
+    path: LookupPath,
+  ) => Promise<AbstractValue>
+  /** Resolves `specifier` from `importer`, within the modules the reader enters. */
+  resolveFrom: (specifier: string, importer: string) => Promise<string | null>
 }
 
 /**
- * Resolves the Start values of this module's imports. Only imports with a
- * value reference are followed (a type-only or unreferenced import carries
- * nothing); namespace imports resolve the member names the module reads.
+ * The reader of other modules' Start values in one compile: the raw-domain
+ * summaries through the compile's resolver (re-export chains), symbolic
+ * terms reduced with the transfer function once their imports are known,
+ * known packages answered by specifier. Every summary and resolution it
+ * reads is a dependency of the compile.
  */
-export async function prefetchStartValues(
-  t0: ModuleAnalysis,
+export function startValueReader(
   ctx: PrefetchContext,
-  opts: PrefetchOptions,
-): Promise<StartPrefetch> {
-  const { table } = opts
-  const values = new Map<string, AbstractValue>()
-  const namespaceEscapes: Array<NamespaceEscape> = []
-  const lateExports: Array<Range> = []
-  let relevant = false
-  const file = t0.file
+  opts: ValueReaderOptions,
+): StartValueReader {
+  const { table, enters } = opts
+  const resolver = enters ? ctx.resolver.within(enters) : ctx.resolver
+  const resolveFrom = enters
+    ? async (specifier: string, importer: string) => {
+        const target = await ctx.resolveFrom(specifier, importer)
+        return target !== null && enters(target) ? target : null
+      }
+    : ctx.resolveFrom
   // settled values only: two of this module's imports may lead to one export at once
   const memo = new Map<string, AbstractValue>()
 
-  /** The value of `name` exported by `canonicalId`, reduced; cycles → unknown. */
   const exportValue = async (
     canonicalId: string,
     name: string,
@@ -235,7 +269,7 @@ export async function prefetchStartValues(
       return UNKNOWN
     }
     let value = UNKNOWN
-    const outcome = await ctx.resolver.resolve(canonicalId, name)
+    const outcome = await resolver.resolve(canonicalId, name)
     if (outcome.k === 'found') {
       const owner = outcome.origin.canonicalId
       value = stampSites(await reduce(outcome.value, owner, inner), owner)
@@ -246,7 +280,6 @@ export async function prefetchStartValues(
     return value
   }
 
-  /** Resolves `specifier` as imported by `owner` and reads `name` of it. */
   const importedValue = async (
     owner: string,
     specifier: string,
@@ -256,14 +289,13 @@ export async function prefetchStartValues(
     if (isKnownSpecifier(table, specifier)) {
       return recognizeImport(table, specifier, name)
     }
-    const target = await ctx.resolveFrom(specifier, owner)
+    const target = await resolveFrom(specifier, owner)
     if (target === null) {
       return UNKNOWN
     }
     return exportValue(target, name, path)
   }
 
-  /** Reduces a summary term of module `owner` with the transfer function. */
   const reduce = async (
     v: AbstractValue,
     owner: string,
@@ -277,7 +309,7 @@ export async function prefetchStartValues(
           return v
         }
         // a namespace of a project module, named by its module: it leaves `owner`
-        const target = await ctx.resolveFrom(v.specifier, owner)
+        const target = await resolveFrom(v.specifier, owner)
         return target === null ? UNKNOWN : { t: 'namespace', specifier: target }
       }
       case 'member': {
@@ -313,6 +345,37 @@ export async function prefetchStartValues(
         return v
     }
   }
+
+  return { exportValue, importedValue, reduce, resolveFrom }
+}
+
+interface PrefetchOptions {
+  table: RecognizerTable
+  late?: boolean
+  /** `TSR_COMPILER_NO_CACHE=registry` turns it off: the route file's summary answers. */
+  answerFromRegistry: boolean
+}
+
+/**
+ * Resolves the Start values of this module's imports. Only imports with a
+ * value reference are followed (a type-only or unreferenced import carries
+ * nothing); namespace imports resolve the member names the module reads.
+ */
+export async function prefetchStartValues(
+  t0: ModuleAnalysis,
+  ctx: PrefetchContext,
+  opts: PrefetchOptions,
+): Promise<StartPrefetch> {
+  const { table } = opts
+  const values = new Map<string, AbstractValue>()
+  const namespaceEscapes: Array<NamespaceEscape> = []
+  const lateExports: Array<Range> = []
+  let relevant = false
+  const file = t0.file
+  const { exportValue, importedValue, reduce } = startValueReader(ctx, {
+    table,
+    answerFromRegistry: opts.answerFromRegistry,
+  })
 
   /** An export of `id` (or of a namespace it exports) that server code can still be attached to. A dependency's are not followed. */
   const openExport = async (
@@ -520,8 +583,12 @@ export async function prefetchStartValues(
         continue
       }
       if (known) {
-        const v = recognizeImport(table, imp.specifier, spec.imported)
-        if (v.t !== 'unknown') {
+        if (
+          isStartValue(
+            table,
+            recognizeImport(table, imp.specifier, spec.imported),
+          )
+        ) {
           relevant = true
         }
         continue

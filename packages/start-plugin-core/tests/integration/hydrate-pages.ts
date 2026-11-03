@@ -214,6 +214,103 @@ const button = () => root.querySelector('button[data-label="child"]')
 await clickUntil(button, () => button().textContent === 'child:1')
 return { beforeClick, loadedByClick: requested().length > beforeClick }`
 
+/**
+ * Page script: the boundary around `<button data-label="child">` keeps the
+ * server's HTML through a click and hydrates on focus (a boundary gated on
+ * `focusin`, split or not); returns the counter's text before the focus.
+ */
+export const deferredUntilFocus = `const button = () => root.querySelector('button[data-label="child"]')
+button().click()
+await settled()
+const beforeFocus = button().textContent
+button().focus()
+await clickUntil(button, () => button().textContent === 'child:1')
+return beforeFocus`
+
+/**
+ * Modules re-exporting the `Hydrate` of `@tanstack/<framework>-start`: the
+ * app's own (a named re-export, an imported binding exported again, `export
+ * *`, a chain of them, one barrel per environment through the `#ui` import
+ * of the app's `package.json`, a re-export under another name). With
+ * `hydrateBarrelFixtures`.
+ */
+export function hydrateBarrelFiles(
+  framework: PageFramework,
+): Record<string, string> {
+  const start = `@tanstack/${framework}-start`
+  return {
+    'src/ui/index.ts': `export { Hydrate } from '${start}'\nexport const tone = 'ui'\n`,
+    'src/ui/imported.ts': `import { Hydrate } from '${start}'\nexport { Hydrate }\n`,
+    'src/ui/star.ts': `export * from './imported'\nexport const other = 'other'\n`,
+    'src/ui/chain.ts': `export { Hydrate } from './index'\n`,
+    'src/ui/client.ts': `export { Hydrate } from './chain'\n`,
+    'src/ui/server.ts': `export * from './imported'\n`,
+    'src/ui/renamed.ts': `export { Hydrate as Defer } from '${start}'\n`,
+    'package.json': JSON.stringify({
+      name: 'app',
+      private: true,
+      type: 'module',
+      imports: {
+        '#ui': { browser: './src/ui/client.ts', default: './src/ui/server.ts' },
+      },
+    }),
+  }
+}
+
+/**
+ * Pages with a boundary imported from the modules of `hydrateBarrelFiles`
+ * around `<Counter label="child">` (`../counter`), gated on interaction:
+ * the `barrel*` rows on a click, `reexportRenamed` on focus.
+ * `barrelPerEnv` has a second boundary, imported from the Start package,
+ * after it (`<Counter label="after">`).
+ */
+export function hydrateBarrelFixtures(
+  framework: PageFramework,
+): Record<string, string> {
+  const page = (imports: string, tag: string, when = 'interaction()') =>
+    `${imports}
+import { interaction } from '@tanstack/${framework}-start/hydration'
+import { Counter } from '../counter'
+export function Page() {
+  return <${tag} when={${when}}><Counter label="child" /></${tag}>
+}`
+  const focus = `interaction({ events: 'focusin' })`
+  return {
+    barrelNamed: page(`import { Hydrate } from '../ui'`, 'Hydrate'),
+    barrelImported: page(`import { Hydrate } from '../ui/imported'`, 'Hydrate'),
+    barrelStar: page(`import { Hydrate } from '../ui/star'`, 'Hydrate'),
+    barrelChain: page(`import { Hydrate } from '../ui/chain'`, 'Hydrate'),
+    barrelNamespace: page(`import * as UI from '../ui'`, 'UI.Hydrate'),
+    barrelRenamedImport: page(
+      `import { Hydrate as Lazy } from '../ui'`,
+      'Lazy',
+    ),
+    barrelPerEnv: `import { Hydrate } from '#ui'
+import { Hydrate as Direct } from '@tanstack/${framework}-start'
+import { interaction } from '@tanstack/${framework}-start/hydration'
+import { Counter } from '../counter'
+export function Page() {
+  return <div><Hydrate when={interaction()}><Counter label="child" /></Hydrate><Direct when={interaction()}><Counter label="after" /></Direct></div>
+}`,
+    reexportRenamed: page(
+      `import { Defer } from '../ui/renamed'`,
+      'Defer',
+      focus,
+    ),
+  }
+}
+
+/** The names of the `barrel*` rows of `hydrateBarrelFixtures`. */
+export const barrelRows = [
+  'barrelNamed',
+  'barrelImported',
+  'barrelStar',
+  'barrelChain',
+  'barrelNamespace',
+  'barrelRenamedImport',
+  'barrelPerEnv',
+]
+
 const exportName = (name: string) => `f_${name.replace(/\W/g, '_')}`
 
 /**

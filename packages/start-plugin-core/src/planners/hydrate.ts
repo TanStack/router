@@ -1,12 +1,17 @@
 /**
  * The `<Hydrate>` deferred-hydration planner (J5) on the shared compiler core.
  *
- * A boundary is a JSX element whose tag is the `Hydrate` import of a Start
- * package, by binding (a named or renamed import, or `<NS.Hydrate>` on a
- * namespace import). Its id is computed from the pristine source (the base36
- * offset of its `<` and a hash of the root-relative path), so every env and
- * every output of one build agree whatever other planners erase: server and
- * client must emit the same prefix for every boundary.
+ * A boundary is a JSX element whose tag is the `Hydrate` of a Start package,
+ * by binding: a named or renamed import, or `<NS.Hydrate>` on a namespace
+ * import, of the package or of an app module re-exporting it as `Hydrate`
+ * (the recognizer's `Hydrate` kinds, read through the summaries in the
+ * prefetch; a package's re-export is not followed: a Vite server resolves no
+ * package it externalises, so the client alone would follow it). Its id is
+ * computed from the pristine source (the ordinal of its `<` among the
+ * elements of the module that may be one, and a hash of the root-relative
+ * path), so every env and every output of one build agree whatever other
+ * planners erase or the envs resolve: server and client must emit the same
+ * prefix for every boundary.
  *
  * - Every env inserts ` h="<id>"` into the opening tag of each boundary the
  *   client extracts (anything but a literal `split={false}` with children to
@@ -23,20 +28,34 @@
 import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
+  LookupPath,
+  UNKNOWN,
+  isKnownSpecifier,
   listEnd,
   ownEntry,
+  recognizeImport,
   removeListItems,
   siblingSpecifier,
   unwrapExpression,
   valueBinding,
 } from '@tanstack/router-utils/compiler'
+import { startValueReader } from '../compiler/prefetch'
+import {
+  HYDRATE_COMPONENT,
+  HYDRATE_KINDS,
+  startRecognizer,
+} from '../compiler/recognizer'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import type {
+  AbstractValue,
   ClassifiedRef,
   Diagnostic,
+  ImportEntry,
   ModuleAnalysis,
   OutputId,
   PlanContext,
   Planner,
+  PrefetchContext,
   Range,
   RefTarget,
   SymRef,
@@ -65,14 +84,6 @@ export interface HydratePlannerConfig {
 }
 
 export const HYDRATE_PLANNER = 'hydrate'
-/** The boundary component the planner recognises (imported from a Start package). */
-export const HYDRATE_COMPONENT = 'Hydrate'
-
-/** Packages whose `Hydrate` export is a boundary, with their framework. */
-const PACKAGES: Readonly<Record<string, HydrateFramework>> = {
-  '@tanstack/react-start': 'react',
-  '@tanstack/solid-start': 'solid',
-}
 
 const HOOK_RE = /^use[A-Z0-9]/
 /** Props React (and Solid, for `ref`) keep for themselves, or that the chunk component must not receive. */
@@ -102,23 +113,123 @@ export function createHydratePlanner(): Planner {
     name: HYDRATE_PLANNER,
     tier: 1,
     gate: (t0) => gate(t0),
+    prefetch: (t0, ctx) => prefetch(t0, ctx),
     plan: (ctx) => plan(ctx),
   }
+}
+
+type ImportSpecifierEntry = ImportEntry['specifiers'][number]
+
+/** An import a boundary's tag may be: imported as `Hydrate`, or a namespace (`<NS.Hydrate>`), of any module. */
+function isCandidate(s: ImportSpecifierEntry): boolean {
+  return !s.typeOnly && (s.imported === HYDRATE_COMPONENT || s.imported === '*')
 }
 
 function gate(t0: ModuleAnalysis): boolean {
   return (
     t0.imports.some(
-      (imp) =>
-        !imp.typeOnly &&
-        ownEntry(PACKAGES, imp.specifier) !== undefined &&
-        imp.specifiers.some(
-          (s) =>
-            !s.typeOnly &&
-            (s.imported === HYDRATE_COMPONENT || s.imported === '*'),
-        ),
+      (imp) => !imp.typeOnly && imp.specifiers.some(isCandidate),
     ) && t0.source.code.includes(HYDRATE_COMPONENT)
   )
+}
+
+/**
+ * Whether an import names the tag of an element: a JSX reference of the
+ * binding (of `<NS.Hydrate>` for a namespace). The prefetch reads nothing
+ * for an import no element can be a boundary through (a module calling
+ * `useHydrated` passes the gate), so it records no dependency for it.
+ */
+function mayTagBoundary(t0: ModuleAnalysis, s: ImportSpecifierEntry): boolean {
+  if (
+    s.imported === '*' &&
+    !t0.source.code.includes(`${s.localName}.${HYDRATE_COMPONENT}`)
+  ) {
+    return false
+  }
+  const binding = t0.file.bindings[s.local]
+  return (
+    binding !== undefined &&
+    binding.references.some(
+      (r) => !r.inTypePosition && r.node.type === 'JSXIdentifier',
+    )
+  )
+}
+
+/** The framework of a value that is the `Hydrate` of a Start package. */
+function frameworkOf(v: AbstractValue): HydrateFramework | undefined {
+  return v.t === 'factory' ? ownEntry(HYDRATE_KINDS, v.kind) : undefined
+}
+
+/** The prefetch's result: the candidate imports of app modules that are the Start `Hydrate`, by binding. */
+interface HydratePrefetch {
+  reexported: Array<[SymbolId, HydrateFramework]>
+}
+
+/**
+ * What each candidate import of an app module is, through the summaries
+ * (named re-exports, imports exported again, `export *`, namespaces, chains),
+ * never entering a package. Withdraws a module with no boundary.
+ */
+async function prefetch(
+  t0: ModuleAnalysis,
+  ctx: PrefetchContext,
+): Promise<boolean> {
+  const table = startRecognizer()
+  const self = ctx.identity.canonicalId
+  let reader: ReturnType<typeof startValueReader> | null = null
+  let direct = false
+  const reexported: HydratePrefetch['reexported'] = []
+  const work: Array<Promise<void>> = []
+  for (const imp of t0.imports) {
+    if (imp.typeOnly) {
+      continue
+    }
+    const known = isKnownSpecifier(table, imp.specifier)
+    for (const s of imp.specifiers) {
+      if (!isCandidate(s) || s.local < 0 || !mayTagBoundary(t0, s)) {
+        continue
+      }
+      if (known) {
+        direct ||=
+          frameworkOf(
+            recognizeImport(table, imp.specifier, HYDRATE_COMPONENT),
+          ) !== undefined
+        continue
+      }
+      reader ??= startValueReader(ctx, {
+        table,
+        answerFromRegistry: false,
+        enters: (id) => !NODE_MODULES_RE.test(id),
+      })
+      const read = reader
+      work.push(
+        (async () => {
+          const start = LookupPath.start()
+          let v: AbstractValue = UNKNOWN
+          if (s.imported === '*') {
+            const target = await read.resolveFrom(imp.specifier, self)
+            if (target !== null) {
+              v = await read.exportValue(target, HYDRATE_COMPONENT, start)
+            }
+          } else {
+            v = await read.importedValue(
+              self,
+              imp.specifier,
+              HYDRATE_COMPONENT,
+              start,
+            )
+          }
+          const fw = frameworkOf(v)
+          if (fw) {
+            reexported.push([s.local, fw])
+          }
+        })(),
+      )
+    }
+  }
+  await Promise.all(work)
+  ctx.set({ reexported } satisfies HydratePrefetch)
+  return direct || reexported.length > 0
 }
 
 // ---------------------------------------------------------------------------
@@ -170,9 +281,21 @@ function findBoundaries(
   cfg: ResolvedConfig,
 ): Array<Boundary> {
   const { analysis, t1 } = ctx
+  const table = startRecognizer()
+  const reexported = new Map(
+    (ctx.prefetched.get(HYDRATE_PLANNER) as HydratePrefetch | undefined)
+      ?.reexported,
+  )
+  // every element whose tag may be a boundary (its framework, or null when
+  // its import is no Start `Hydrate`): ordinals count them all, so an env
+  // resolving an app module differently shifts no other boundary's id
   const found = new Map<
     number,
-    { element: JSXElement; opening: JSXOpeningElement; fw: HydrateFramework }
+    {
+      element: JSXElement
+      opening: JSXOpeningElement
+      fw: HydrateFramework | null
+    }
   >()
   const elementOf = (opening: Node | null) => {
     if (!opening || opening.type !== 'JSXOpeningElement') {
@@ -184,14 +307,20 @@ function findBoundaries(
       : null
   }
   for (const imp of analysis.imports) {
-    const fw = ownEntry(PACKAGES, imp.specifier)
-    if (fw === undefined || imp.typeOnly) {
+    if (imp.typeOnly) {
       continue
     }
+    const known = isKnownSpecifier(table, imp.specifier)
     for (const s of imp.specifiers) {
-      if (s.typeOnly) {
+      if (!isCandidate(s)) {
         continue
       }
+      const fw =
+        (known
+          ? frameworkOf(
+              recognizeImport(table, imp.specifier, HYDRATE_COMPONENT),
+            )
+          : reexported.get(s.local)) ?? null
       if (s.imported === HYDRATE_COMPONENT) {
         for (const ref of t1.refs.refsOf(s.local)) {
           if (ref.ctx !== 'jsxOpen') {
@@ -234,18 +363,23 @@ function findBoundaries(
   ).slice(0, 10)
   const out: Array<Boundary> = []
   let index = 0
-  // the id's ordinal counts every boundary of the pristine source (the
-  // same in every env, as ids derive from the pristine source); shorter than an offset in the client's markup
+  // the id's ordinal counts every candidate element of the pristine source
+  // (the same in every env, as ids derive from the pristine source); shorter
+  // than an offset in the client's markup
   let ordinal = 0
   for (const start of [...found.keys()].sort((a, b) => a - b)) {
     const { element, opening, fw } = found.get(start)!
+    const id = `${(ordinal++).toString(36)}_${fileHash}`
+    if (fw === null) {
+      continue
+    }
     const split = !isLiteralSplitFalse(opening)
     const children = childrenShape(element)
     out.push({
       element,
       opening,
       framework: fw,
-      id: `${(ordinal++).toString(36)}_${fileHash}`,
+      id,
       split,
       children,
       insertAt: insertPoint(opening),

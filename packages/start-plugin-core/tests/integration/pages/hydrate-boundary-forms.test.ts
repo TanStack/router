@@ -636,6 +636,89 @@ export function Page() {
     expect(client.lazy).toContain('./search')
   })
 
+  // SPEC J5.1: recognition by binding follows the app's re-exports of the
+  // Start `Hydrate` on a dev server too (builds: the `barrel*` rows of
+  // integration/hydrate-pages-*.test.ts).
+  test.each([
+    {
+      name: 'a named re-export',
+      imports: `import { Hydrate } from './ui'`,
+      tag: 'Hydrate',
+      ui: `export { Hydrate } from '@tanstack/react-start'`,
+    },
+    {
+      name: '`export *` of a module exporting its import',
+      imports: `import { Hydrate } from './ui'`,
+      tag: 'Hydrate',
+      ui: `export * from './inner'`,
+    },
+    {
+      name: 'a namespace of the barrel',
+      imports: `import * as UI from './ui'`,
+      tag: 'UI.Hydrate',
+      ui: `export * from './inner'`,
+    },
+  ])(
+    'a Hydrate the app re-exports ($name) is a boundary',
+    async ({ imports, tag, ui }) => {
+      const { client } = await expectRendersLikeSource(
+        await hosts(),
+        `${imports}
+import { interaction } from '@tanstack/react-start/hydration'
+import { SearchBox } from './search'
+export function Page() {
+  return (
+    <${tag} when={interaction({ events: 'focusin' })}>
+      <SearchBox />
+    </${tag}>
+  )
+}`,
+        {
+          files: {
+            './search': `export const SearchBox = () => <input />`,
+            './ui': ui,
+            './inner': `import { Hydrate } from '@tanstack/react-start'\nexport { Hydrate }`,
+          },
+        },
+      )
+      expect(client.html).toContain('<input>')
+      expect(client.loaded).not.toContain('./search')
+      expect(client.lazy).toContain('./search')
+    },
+  )
+
+  // A package's re-export is not followed (a Vite server loads packages
+  // without the compiler, so only the client would follow it): both
+  // environments leave the boundary in place, and it hydrates like the source.
+  test('a Hydrate a package re-exports hydrates like the source', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `import { Hydrate } from 'ui-kit'
+import { interaction } from '@tanstack/react-start/hydration'
+import { SearchBox } from './search'
+export function Page() {
+  return (
+    <Hydrate when={interaction({ events: 'focusin' })}>
+      <SearchBox />
+    </Hydrate>
+  )
+}`,
+      {
+        files: {
+          './search': `export const SearchBox = () => <input />`,
+          'node_modules/ui-kit/package.json': JSON.stringify({
+            name: 'ui-kit',
+            type: 'module',
+            exports: './index.js',
+          }),
+          'node_modules/ui-kit/index.js': `export { Hydrate } from '@tanstack/react-start'\n`,
+        },
+        split: false,
+      },
+    )
+    expect(client.html).toContain('<input>')
+  })
+
   describe('elements that are not the Start Hydrate', () => {
     /**
      * A component of the app named `Hydrate`: renders the props it receives
@@ -791,6 +874,25 @@ function Widget(props: { title: string }) {
     expect(mounted.lazy.filter(isReact)).toEqual([])
     expect(mounted.loads.filter(isReact)).toEqual([])
     expect(mounted.serverLoads.filter(isReact)).toEqual([])
+  })
+
+  test('Solid: a Hydrate the app re-exports splits', async () => {
+    const solid = await solidHost()
+    const mounted = await solid.mount(
+      `import { Hydrate } from './ui'
+import { visible } from '@tanstack/solid-start/hydration'
+export function Page() {
+  return (
+    <Hydrate when={visible()}>
+      <p>Hello</p>
+    </Hydrate>
+  )
+}`,
+      { './ui': `export { Hydrate } from '@tanstack/solid-start'` },
+    )
+    expect(mounted.errors).toEqual([])
+    expect(mounted.html).toContain('<p>Hello</p>')
+    expect(mounted.lazy).not.toEqual([])
   })
 })
 

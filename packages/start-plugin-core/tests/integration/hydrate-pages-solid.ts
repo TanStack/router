@@ -16,7 +16,11 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
+  barrelRows,
   buildHydrationApp,
+  deferredUntilFocus,
+  hydrateBarrelFiles,
+  hydrateBarrelFixtures,
   loadedOnInteraction,
   updatesExpected,
   updatesScript,
@@ -275,8 +279,12 @@ export function solidPageSuite(bundler: StartBundler) {
     app = await buildHydrationApp({
       framework: 'solid',
       bundler,
-      fixtures,
-      files: { 'src/counter.tsx': counterFile, 'src/theme.tsx': themeFile },
+      fixtures: { ...fixtures, ...hydrateBarrelFixtures('solid') },
+      files: {
+        'src/counter.tsx': counterFile,
+        'src/theme.tsx': themeFile,
+        ...hydrateBarrelFiles('solid'),
+      },
       registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
   }, 60_000)
@@ -403,6 +411,36 @@ export function solidPageSuite(bundler: StartBundler) {
           script: loadedOnInteraction,
         })
         expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+        expect(page.consoleErrors).toEqual([])
+      })
+
+      // SPEC J5.1: recognition by binding follows the app's re-exports of the
+      // Start `Hydrate` (`hydrateBarrelFiles`), as with a direct import.
+      test.each(barrelRows)(
+        'a Hydrate the app re-exports (%s) loads its children when it hydrates',
+        async (name) => {
+          const page = await app.hydrate(name, { script: loadedOnInteraction })
+          expect({
+            result: page.result,
+            consoleErrors: page.consoleErrors,
+          }).toEqual({
+            result: { beforeClick: 0, loadedByClick: true },
+            consoleErrors: [],
+          })
+        },
+      )
+
+      // The `#ui` barrel is another module in each environment.
+      test('a barrel resolving to another module in each environment hydrates every boundary the server rendered', async () => {
+        await expectChildrenHydrate('barrelPerEnv', ['child', 'after'])
+      })
+
+      // Not followed: a re-export under another name.
+      test('a Hydrate re-exported under another name still defers hydration', async () => {
+        const page = await app.hydrate('reexportRenamed', {
+          script: deferredUntilFocus,
+        })
+        expect(page.result).toBe('child:0')
         expect(page.consoleErrors).toEqual([])
       })
 
