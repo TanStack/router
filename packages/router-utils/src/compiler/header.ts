@@ -78,10 +78,12 @@ const APPLIES_TO_NEXT_RE =
 
 /**
  * Extends `end` over trailing same-line whitespace and comments through one
- * line terminator, so a removed statement takes its line with it. Code on the
- * same line keeps an annotation or a license comment written right before it
- * (`a; /* @__PURE__ *\/ mk()`): moved with `a`, it would apply to whatever
- * comes next there.
+ * line terminator, so a removed statement takes its line with it. The code
+ * after it keeps an annotation or a license comment written for it: on the
+ * same line (`a; /* @__PURE__ *\/ mk()`), or ending the line, with `mk()` on
+ * a later one (after a line comment or a multi-line comment too; a line
+ * comment annotation, `// @__PURE__`, too). Moved with
+ * `a`, it would apply to whatever comes next there.
  */
 export function extendOverTrailingLine(code: string, end: number): number {
   let i = end
@@ -95,8 +97,15 @@ export function extendOverTrailingLine(code: string, end: number): number {
       continue
     }
     if (c === 47 && code.charCodeAt(i + 1) === 47) {
+      const start = i
       while (i < len && !isLineTerminator(code.charCodeAt(i))) {
         i++
+      }
+      if (
+        applying === -1 &&
+        APPLIES_TO_NEXT_RE.test(code.slice(start + 2, i))
+      ) {
+        applying = start
       }
       continue
     }
@@ -113,7 +122,7 @@ export function extendOverTrailingLine(code: string, end: number): number {
         }
       }
       if (hasBreak) {
-        return i
+        return applying === -1 ? i : applying
       }
       if (
         applying === -1 &&
@@ -124,13 +133,13 @@ export function extendOverTrailingLine(code: string, end: number): number {
       i = close + 2
       continue
     }
-    if (c === 13) {
-      return code.charCodeAt(i + 1) === 10 ? i + 2 : i + 1
+    if (applying !== -1) {
+      return applying
     }
-    if (c === 10 || c === 0x2028 || c === 0x2029) {
-      return i + 1
+    if (isLineTerminator(c)) {
+      return c === 13 && code.charCodeAt(i + 1) === 10 ? i + 2 : i + 1
     }
-    return applying === -1 ? i : applying
+    return i
   }
   return i
 }

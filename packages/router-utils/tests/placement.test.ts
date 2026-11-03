@@ -4556,12 +4556,31 @@ describe('a comment after a statement, before code on the same line', () => {
     expect(chunk).toContain('/* about a */')
   })
 
-  it.for(['/* @__PURE__ */', '/* about a */', '// about a'])(
-    '%s that ends the line goes with the statement, as before',
+  it.for(['/* about a */', '// about a'])(
+    '%s that ends the line goes with the statement',
     async (comment) => {
       const { env, chunk } = await outputs(moved(comment, '\nmk()'))
       expect(env.slice(0, env.indexOf('mk()'))).not.toContain(comment)
       expect(chunk).toContain(comment)
+    },
+  )
+
+  it.for([
+    ['/* @__PURE__ */', '\n'],
+    ['/* #__PURE__ */', '\r\n'],
+    ['/*! MARK */', '\n'],
+    ['/* @license MARK */', '\n'],
+    ['/* @__PURE__ */', ' // about mk\n'],
+    ['/* @__PURE__ */', ' /* about\nmk */ '],
+    ['/* @__PURE__ */', '\n/* about\nmk */\n'],
+    ['// @__PURE__', '\n'],
+    ['// #__NO_SIDE_EFFECTS__', '\n'],
+  ])(
+    '%s ending the line stays with the code on a later line (then %j)',
+    async ([comment, between]) => {
+      const { env, chunk } = await outputs(moved(comment!, `${between}mk()`))
+      expect(env).toContain(`${comment} ${between}mk()`)
+      expect(chunk).not.toContain(comment)
     },
   )
 

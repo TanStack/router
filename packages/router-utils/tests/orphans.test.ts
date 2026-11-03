@@ -404,4 +404,17 @@ describe('an annotation next to a removed local declaration', () => {
     expect(out).not.toContain('local')
     expect(out).toContain('/* @__PURE__ */ mk()')
   })
+
+  it('stays with the call on the next line when it ends its line', async () => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      export function f() {
+        const local = 1; /* @__PURE__ */
+        mk()
+        return wrapServer(() => local)
+      }
+    `)
+    expect(out).not.toContain('local')
+    expect(out).toMatch(/\/\* @__PURE__ \*\/\s*mk\(\)/)
+  })
 })
