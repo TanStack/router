@@ -137,6 +137,89 @@ return { id, value: await callById(id) }`,
     timeout,
   )
 
+  // A generator that embeds the documented inputs in a readable id: every
+  // server fn of the module, also of a name the module repeats or nested in
+  // functions, gets an id the client's request carries whole to the server
+  // (a URL path segment), and the call runs its own handler. functionName
+  // is the handler name earlier versions generated, so custom ids survive
+  // the upgrade.
+  test(
+    'serverFns.generateFunctionId embedding functionName: each server fn of one module reaches its own handler',
+    async () => {
+      const received = new Set<string>()
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+let first
+let second
+{
+  const twice = createServerFn().handler(async () => 'the first twice')
+  first = twice
+}
+{
+  const twice = createServerFn().handler(async () => 'the second twice')
+  second = twice
+}
+export { first, second }
+export function outer() {
+  const fn = createServerFn().handler(async () => 'in outer')
+  function inner() {
+    const fn = createServerFn().handler(async () => 'in inner')
+    return fn
+  }
+  return { fn, inner }
+}
+`,
+          'src/client-entry.ts': `export * from './fns'\n`,
+          'src/ssr-entry.ts': `export * from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: {
+          serverFns: {
+            generateFunctionId: ({ filename, functionName }) => {
+              received.add(functionName)
+              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName}`
+            },
+          },
+        },
+      })
+      const urls = (
+        await client.run(`return {
+  first: entry.first.url,
+  second: entry.second.url,
+  outer: entry.outer().fn.url,
+  inner: entry.outer().inner().url,
+}`)
+      ).result as Record<string, string>
+      expect(
+        (
+          await ssr.run(
+            `${callByIdPrelude}const urls = ${JSON.stringify(urls)}
+const called = {}
+for (const [name, url] of Object.entries(urls)) {
+  called[name] = await callById(serverFnId(url))
+}
+return called`,
+          )
+        ).result,
+      ).toEqual({
+        first: 'the first twice',
+        second: 'the second twice',
+        outer: 'in outer',
+        inner: 'in inner',
+      })
+      expect([...received].sort()).toEqual([
+        'fn_createServerFn_handler',
+        'fn_createServerFn_handler_1',
+        'twice_createServerFn_handler',
+        'twice_createServerFn_handler_1',
+      ])
+    },
+    timeout,
+  )
+
   /**
    * A route whose loader and component each read a module of their own
    * that records when it loads (`loadMarker`): what loads, and when, is

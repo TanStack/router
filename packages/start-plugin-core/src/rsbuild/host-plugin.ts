@@ -592,7 +592,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             const fns = info[SERVER_FN_BUILD_INFO_FIELD] as
               | ServerFnBuildInfo
               | undefined
-            if (fns?.version === 2) {
+            if (fns?.version === 3) {
               snapshot.set(fns.canonicalId, fns.facts)
             }
           }

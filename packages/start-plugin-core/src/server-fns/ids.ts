@@ -57,6 +57,35 @@ export function placeholderId(key: ServerFnKey): string {
   return `${PLACEHOLDER_PREFIX}${placeholderToken(key)}${PLACEHOLDER_SUFFIX}`
 }
 
+/**
+ * The `functionName` a custom generator receives: the handler name earlier
+ * Start versions generated (so custom ids survive an upgrade),
+ * `<name>_createServerFn_handler`, then `_1`, `_2`… for a name taken earlier
+ * in the module (`taken`: the module's names so far, in source order).
+ * Characters outside `[A-Za-z0-9_$]` (a non-ASCII identifier, a string
+ * property key) become `_`, so an id that embeds the name stays a URL path
+ * segment.
+ */
+export function handlerFunctionName(base: string, taken: Set<string>): string {
+  let name = `${base.replace(/[^A-Za-z0-9_$]/g, '_')}_createServerFn_handler`
+  while (taken.has(name)) {
+    const [stem, count] = name.split(/_(\d+)$/)
+    name = `${identifierSafe(stem!)}_${Number(count || '0') + 1}`
+  }
+  taken.add(name)
+  return name
+}
+
+/** What the earlier versions applied to an incremented name. */
+function identifierSafe(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9_$]/g, '_')
+    .replace(/^[0-9]/, '_$&')
+    .replace(/^\$/, '_$')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
 export type GenerateFunctionId = (opts: {
   filename: string
   functionName: string
@@ -76,7 +105,7 @@ export class FunctionIdAllocator {
   constructor(private readonly generate: GenerateFunctionId | undefined) {}
 
   /** Allocates the entries of one rank (those not yet allocated), in sorted key order. */
-  allocate(entries: Array<ServerFnKey>): void {
+  allocate(entries: Array<ServerFnKey & { functionName: string }>): void {
     const sorted = [...entries].sort(
       (a, b) =>
         (a.rootRel < b.rootRel ? -1 : a.rootRel > b.rootRel ? 1 : 0) ||
@@ -88,8 +117,10 @@ export class FunctionIdAllocator {
         continue
       }
       const base =
-        this.generate?.({ filename: e.rootRel, functionName: e.stableKey }) ??
-        defaultFunctionId(e)
+        this.generate?.({
+          filename: e.rootRel,
+          functionName: e.functionName,
+        }) ?? defaultFunctionId(e)
       let cand = base
       let n = 1
       while (this.occupied.has(cand)) {

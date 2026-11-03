@@ -428,7 +428,12 @@ Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
-The generator receives `filename` (the file's path relative to the project root) and `functionName` (the server function's export or variable name, e.g. `getUser`). Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+The generator receives:
+
+- `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
+- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. When a file uses the same name for more than one server function, the later ones, in source order, get `_1`, `_2`, … appended. A server function that isn't declared as a variable takes the name it's assigned to (an object property, a class field), `default` for `export default`, and `fn` otherwise. `functionName` contains only ASCII letters, digits, `_` and `$`; any other character of the name becomes `_`.
+
+Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
 Please note that this customization is **experimental** and subject to change.
 

@@ -56,7 +56,7 @@ export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
 export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
 
 export interface ServerFnBuildInfo {
-  version: 2
+  version: 3
   canonicalId: string
   facts: Array<ServerFnFact>
 }
@@ -581,7 +581,7 @@ export class StartRsbuildCompilerSession {
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {
       buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
-        version: 2,
+        version: 3,
         canonicalId: identity.canonicalId,
         facts: serverFns,
       } satisfies ServerFnBuildInfo

@@ -1,9 +1,9 @@
 const FUNCTION_IDS: Record<string, Record<string, string>> = {
   'src/routes/submit-post-formdata.tsx': {
-    greetUser: 'submit-post-formdata-greetUser',
+    greetUser_createServerFn_handler: 'submit-post-formdata-greetUser',
   },
   'src/routes/formdata-redirect/index.tsx': {
-    greetUser: 'formdata-redirect-greetUser',
+    greetUser_createServerFn_handler: 'formdata-redirect-greetUser',
   },
 }
 

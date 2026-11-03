@@ -9,6 +9,8 @@ import { deriveId } from '@tanstack/router-utils/compiler'
 import type { ServerFnKey } from './ids'
 
 export interface ServerFnEntry extends ServerFnKey {
+  /** What a custom `generateFunctionId` receives as `functionName` (`handlerFunctionName`). */
+  functionName: string
   /** The id as printed in the outputs: a dev id, a default id or a placeholder. */
   id: string
   /** The export name of the `createServerRpc` wrapper in the provider module. */
@@ -26,6 +28,7 @@ export interface ServerFnEntry extends ServerFnKey {
 export interface ServerFnFact {
   rootRel: string
   stableKey: string
+  functionName: string
   id: string
   exportName: string
   name: string
@@ -141,6 +144,7 @@ export class ServerFnRegistry {
           byId.set(f.id, {
             rootRel: f.rootRel,
             stableKey: f.stableKey,
+            functionName: f.functionName,
             id: f.id,
             exportName: f.exportName,
             name: f.name,
