@@ -2,12 +2,21 @@
  * Vue's `<script setup>` on a real Vite dev server (`@vitejs/plugin-vue`,
  * `tanstackStart()` of `@tanstack/vue-start`).
  *
- * Bug: in development the plugin exposes the block's bindings to the template
- * through a generated object (`const __returned__ = { base, get f() { return f } }`),
- * and that reads as a builder or factory going where the compiler cannot follow it.
- * Impact: the SFC is a compile error on the dev server (the overlay); `vite build`
- * inlines the template, has no such object and builds. A fix must not need a
- * special case for the plugin's output (R92 amendment 3).
+ * Bug: in development, and in builds with Vue's devtools (Vite:
+ * `features.prodDevtools`, a true `__VUE_PROD_DEVTOOLS__` define,
+ * `NODE_ENV=development`; Rsbuild: `NODE_ENV=development`), the plugin does
+ * not inline the template: it hands the block's bindings to it through a
+ * generated object (`const __returned__ = { base, get f() { return f } }`),
+ * in JavaScript every import too, and that is a builder or factory going
+ * where the compiler cannot follow it.
+ * Impact: the SFC is a compile error there (the overlay, the build); no
+ * server code ships. A default production build inlines the template and
+ * builds. Workaround: `lang="ts"` (only the imports the template uses are
+ * handed over), builders and middleware in a `.ts` module or a module-scope
+ * `<script lang="ts">` (the recipe rows below). A fix must not need a
+ * special case for the plugin's output (R92 amendment 3): the template can
+ * attach server code to what it is handed, so the refusal must stay for a
+ * template that does (the must-refuse rows below).
  */
 import { afterAll, expect, test } from 'vitest'
 import { compileError, createStartHost } from '../regression-helpers'

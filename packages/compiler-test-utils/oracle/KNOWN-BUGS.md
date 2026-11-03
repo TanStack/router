@@ -57,10 +57,20 @@ code.test.ts`: "a root route's %s loads lazily".
   J2.5. `router-plugin/tests/integration/code-splitter-module-state.test.ts`: "gives the split component the value a
   `var` declared again takes in a head or a pattern (Rolldown)". Fix: upstream.
 
-- **A Vue `<script setup>` binding holding a Start factory or builder is a compile error on the dev server** (plugin-vue's
-  generated `__returned__` object reads as an escape); the build is fine. Accepted for now, R92 amendment 3: a fix must
-  not need a special case for the plugin's output. SPEC J4.5.
-  `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles".
+- **A Vue `<script setup>` block that hands a Start builder or factory to its template is a compile error on the dev
+  servers and in builds with Vue's devtools**: Vite and Rsbuild dev; Vite builds with `features.prodDevtools`, a true
+  `__VUE_PROD_DEVTOOLS__` define or `NODE_ENV=development` (`--mode development` alone inlines); Rsbuild builds with
+  `NODE_ENV=development` (vue-loader reads no devtools flag). There the template is not inlined: compiler-sfc's
+  generated `__returned__` object hands it every binding of the block, in JavaScript every import too (in TypeScript only
+  the imports the template uses), and the template can attach server code to it (`{{ base.handler(…) }}`), so the
+  refusal is right and no server code ships. Hit by a JavaScript block importing a builder or factory, and by any block
+  whose local holds an open builder. The refusal names the binding at its declaration in the SFC when the input map
+  maps it (dev; a build with `build.sourcemap`), with the recipe: `lang="ts"`, builders and middleware in a `.ts` module
+  or a module-scope `<script lang="ts">`, finished server fns imported. Accepted, R92 amendment 3: a fix must not need a
+  special case for the plugin's output (skipping `__returned__` ships a template-attached handler). Upstream option:
+  compiler-sfc exposing only the template's imports for JavaScript as for TypeScript. SPEC J4.5.
+  `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles"; must stay
+  refused: "a template attaching a handler to an exposed builder is refused ($mode)".
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
   (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's
   worker build has no Start plugin); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
