@@ -9,6 +9,9 @@
  * - a `generateFunctionId` returning `undefined` falls back to a working id;
  * - server fns given the same custom id (in one module, or in two) still
  *   each reach their own handler, from the client and from server code;
+ * - a generator that embeds `functionName` in the id gives each server fn
+ *   of a module its own working id: two server fns of one name in one
+ *   module, and server fns nested in functions;
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
  * Moved from the unit test start-compiler-determinism.test.ts, which
@@ -21,6 +24,7 @@ import {
   callFromClient,
   callOnServer,
   createStartHost,
+  inPage,
   serverFnUrls,
 } from '../regression-helpers'
 import type { StartCase, StartHost } from '../regression-helpers'
@@ -65,6 +69,8 @@ async function callBothWays(startCase: StartCase, fn: string, file: string) {
 describe('a custom generateFunctionId', () => {
   /** The ids the custom function returned. */
   const returned: Array<string> = []
+  /** The names the custom function received for named-ids.ts. */
+  const namesReceived = new Set<string>()
   let host: StartHost | undefined
   const cases: Record<string, StartCase> = {}
 
@@ -85,9 +91,8 @@ describe('a custom generateFunctionId', () => {
           }) => {
             if (filename.includes('custom-ids')) {
               // URL-safe: the id is a path segment of the server fn's url
-              // (an id with a '/' is not routed back to its handler by
-              // Start's runtime: a runtime limitation, not this test's
-              // subject)
+              // (any other id fails the build:
+              // start-build-function-id-url.test.ts)
               const id = `custom_${Buffer.from(`${filename}:${functionName}`).toString('hex')}`
               returned.push(id)
               return id
@@ -97,6 +102,11 @@ describe('a custom generateFunctionId', () => {
             }
             if (filename.includes('same-ids')) {
               return 'same-id'
+            }
+            if (filename.includes('named-ids')) {
+              namesReceived.add(functionName)
+              // the documented inputs, readable: the file and the name
+              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName}`
             }
             return undefined
           },
@@ -119,6 +129,41 @@ export const c = createServerFn().handler(async () => 'from c')
     cases.colliding = await host.case({
       'same-ids-a.ts': serverFnModule('a', 'from a'),
       'same-ids-b.ts': serverFnModule('b', 'from b'),
+    })
+    cases.named = await host.case({
+      'named-ids.ts': `import { createServerFn } from '@tanstack/react-start'
+let first
+let second
+let third
+{
+  const twice = createServerFn().handler(async () => 'the first twice')
+  first = twice
+}
+{
+  const twice = createServerFn().handler(async () => 'the second twice')
+  second = twice
+}
+{
+  const twice = createServerFn().handler(async () => 'the third twice')
+  third = twice
+}
+export { first, second, third }
+export const $dollar = createServerFn().handler(async () => 'dollar')
+export const _under = createServerFn().handler(async () => 'under')
+export const café = createServerFn().handler(async () => 'café')
+export const again = (() => {
+  const _under = createServerFn().handler(async () => 'under again')
+  return _under
+})()
+export function outer() {
+  const fn = createServerFn().handler(async () => 'in outer')
+  function inner() {
+    const fn = createServerFn().handler(async () => 'in inner')
+    return fn
+  }
+  return { fn, inner }
+}
+`,
     })
     await host.preview()
   }, 60_000)
@@ -162,6 +207,67 @@ export const c = createServerFn().handler(async () => 'from c')
       )
     }
     expect(called).toEqual({ a: 'from a', b: 'from b', c: 'from c' })
+  })
+
+  // The generator embeds the name it receives: each server fn of the
+  // module has its own url, and calling it from the browser runs its own
+  // handler.
+  test('embedding functionName: server fns of one name in one module each reach their own handler', async () => {
+    const calls = {
+      first: 'module.first',
+      second: 'module.second',
+      third: 'module.third',
+      dollar: 'module.$dollar',
+      under: 'module._under',
+      underAgain: 'module.again',
+      cafe: 'module.café',
+      outer: 'module.outer().fn',
+      inner: 'module.outer().inner()',
+    }
+    const urls = await inPage<Array<string>>(
+      cases.named!,
+      `return [${Object.values(calls).join(', ')}].map((fn) => fn.url)`,
+      { file: 'named-ids.ts' },
+    )
+    expect(new Set(urls).size, urls.join(', ')).toBe(9)
+    const called: Record<string, unknown> = {}
+    for (const [name, fn] of Object.entries(calls)) {
+      called[name] = await callFromClient(cases.named!, fn, undefined, {
+        file: 'named-ids.ts',
+      })
+    }
+    expect(called).toEqual({
+      first: 'the first twice',
+      second: 'the second twice',
+      third: 'the third twice',
+      dollar: 'dollar',
+      under: 'under',
+      underAgain: 'under again',
+      cafe: 'café',
+      outer: 'in outer',
+      inner: 'in inner',
+    })
+  })
+
+  // functionName is the handler name earlier versions generated (a custom
+  // generator's ids survive the upgrade): the variable's name, numbered in
+  // source order when the module repeats it (a numbered name loses its
+  // leading `_`, as it did), with `_` for a character outside
+  // [A-Za-z0-9_$], so that an id embedding it is a URL path segment.
+  test('functionName is the generated handler name of earlier versions', () => {
+    expect([...namesReceived].sort()).toEqual(
+      [
+        '$dollar_createServerFn_handler',
+        '_under_createServerFn_handler',
+        'caf__createServerFn_handler',
+        'fn_createServerFn_handler',
+        'fn_createServerFn_handler_1',
+        'twice_createServerFn_handler',
+        'twice_createServerFn_handler_1',
+        'twice_createServerFn_handler_2',
+        'under_createServerFn_handler_1',
+      ].sort(),
+    )
   })
 
   // Two server fns of two modules get the same custom id: the build tells

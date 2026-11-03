@@ -30,6 +30,7 @@ import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import {
   defaultFunctionId,
   devFunctionId,
+  handlerFunctionName,
   placeholderId,
 } from '../server-fns/ids'
 import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
@@ -215,6 +216,8 @@ interface ServerFnSite {
   handler: Node
   base: string
   stableKey: string
+  /** What a custom `generateFunctionId` receives (`handlerFunctionName`). */
+  functionName: string
   /** The declared top-level symbol when the chain initialises a top-level declarator. */
   topLevelSym: SymbolId | null
   topLevelUnit: Unit | null
@@ -584,6 +587,7 @@ function planStartEnv(
   // ---- 2. server fns
   const sites: Array<ServerFnSite> = []
   const keyCount = new Map<string, number>()
+  const functionNames = new Set<string>()
   // in source order (the analysis lists chains per import binding): an
   // enclosing handler's site before a nested one, so the nested site is
   // judged against the stub that replaced its handler (a nested server fn
@@ -626,6 +630,7 @@ function planStartEnv(
       handler: handlerLink.arg,
       base: described.base || 'fn',
       stableKey: n === 0 ? baseKey : `${baseKey}#${n}`,
+      functionName: handlerFunctionName(described.base || 'fn', functionNames),
       topLevelSym: described.topLevelSym,
       topLevelUnit: described.topLevelUnit,
       nested: described.nested,
@@ -1226,6 +1231,7 @@ function serverFnFact(
   return {
     rootRel,
     stableKey: site.stableKey,
+    functionName: site.functionName,
     id,
     exportName,
     name,

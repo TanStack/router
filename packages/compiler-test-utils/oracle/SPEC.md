@@ -530,8 +530,11 @@ dir)` is not a conflict by itself.
 - **J4.4 Ids.** _Build_: ids are deterministic for unchanged input, identical in client, ssr and provider output of
   one build, de-duplicated with `_1`, `_2`… on collision, hashed by default (no path leak), and overridable through
   `serverFns.generateFunctionId({ filename, functionName })` (experimental). The form of `filename` (relative or
-  absolute) and what `functionName` holds (today: the generated handler name, C5) are not specified: tests derive the
-  expected id from the arguments received. Edits change the input, so ids need not survive edits. _Dev_: an
+  absolute) is not specified: tests derive the expected id from the arguments received. `functionName` is the
+  generated handler name of earlier versions (`<name>_createServerFn_handler`, `_1`, `_2`… for a name the module
+  repeats, in source order; C5), so custom ids survive an upgrade, and holds only `[A-Za-z0-9_$]`. An id the generator
+  returns is one URL path segment no layer rewrites (RFC 3986 unreserved characters and `$`, not `.` or `..`); any
+  other id fails the build, naming the file. Edits change the input, so ids need not survive edits. _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
   ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. A by-id request for a
   module the running dev server has not compiled yet (a page left open across a restart) compiles that module and is
@@ -850,7 +853,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
 | C2  | `router-plugin/src/core/config.ts` JSDoc default grouping includes `pendingComponent`; `guide/automatic-code-splitting.md` does not             | J2.2 follows the docs                                                                                                                                                   |
 | C3  | `guide/automatic-code-splitting.md`: exporting a route property bundles it into the main bundle                                                 | that is today's behaviour, not intent: J2.4, J2.8 (an unused export must not prevent the split; real eager consumers or impure initialisers keep one instance and warn) |
 | C4  | `guide/import-protection.md`: dev may report imports that "would later be compiled away"                                                        | not a conflict: J6.4 separates edges the Start compiler removed (never reported) from edges awaiting bundler tree-shaking (may be reported in dev)                      |
-| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 requires determinism and overridability only; what `functionName` holds is not specified                                                                           |
+| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 keeps the generated handler name as `functionName` (custom ids survive an upgrade)                                                                                 |
 | C6  | `routing/virtual-file-routes.md` prose says `virtualRoutesConfig`                                                                               | the option is `virtualRouteConfig` (docs typo)                                                                                                                          |
 | C7  | `guide/automatic-code-splitting.md` shows `createRoute('/posts')({...})` in a file-route example                                                | J2.1: file routes use `createFileRoute`/`createRootRoute*` only (docs typo)                                                                                             |
 | C8  | React `HydrateProps` rejects function children even with `split={false}`; `deferred-hydration.md` recommends `split={false}` for them           | a types/docs mismatch, no compiler rule: with `split={false}` the compiler neither extracts nor errors (J5.5)                                                           |

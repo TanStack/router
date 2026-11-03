@@ -57,10 +57,52 @@ export function placeholderId(key: ServerFnKey): string {
   return `${PLACEHOLDER_PREFIX}${placeholderToken(key)}${PLACEHOLDER_SUFFIX}`
 }
 
+/**
+ * The `functionName` a custom generator receives: the handler name earlier
+ * Start versions generated (so custom ids survive an upgrade),
+ * `<name>_createServerFn_handler`, then `_1`, `_2`… for a name taken earlier
+ * in the module (`taken`: the module's names so far, in source order).
+ * Characters outside `[A-Za-z0-9_$]` (a non-ASCII identifier, a string
+ * property key) become `_`, so an id that embeds the name stays a URL path
+ * segment.
+ */
+export function handlerFunctionName(base: string, taken: Set<string>): string {
+  let name = `${base.replace(/[^A-Za-z0-9_$]/g, '_')}_createServerFn_handler`
+  while (taken.has(name)) {
+    const [stem, count] = name.split(/_(\d+)$/)
+    name = `${identifierSafe(stem!)}_${Number(count || '0') + 1}`
+  }
+  taken.add(name)
+  return name
+}
+
+/** What the earlier versions applied to an incremented name. */
+function identifierSafe(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9_$]/g, '_')
+    .replace(/^[0-9]/, '_$&')
+    .replace(/^\$/, '_$')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
 export type GenerateFunctionId = (opts: {
   filename: string
   functionName: string
 }) => string | undefined
+
+/**
+ * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
+ * unencoded; the server reads the segment back as is): RFC 3986 unreserved
+ * characters, which no client, proxy or server encodes, decodes or
+ * normalises, and `$`, which `functionName` can hold; not a dot segment,
+ * which URL parsing removes.
+ */
+const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
+
+function isUrlSegmentId(id: string): boolean {
+  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
+}
 
 /**
  * One immutable allocation of final ids against a global occupied set:
@@ -72,32 +114,54 @@ export type GenerateFunctionId = (opts: {
 export class FunctionIdAllocator {
   private readonly occupied = new Set<string>()
   private readonly final = new Map<string, string>()
+  /** The error of each placeholder token whose custom id is not a URL path segment. */
+  private readonly invalid = new Map<string, string>()
 
   constructor(private readonly generate: GenerateFunctionId | undefined) {}
 
-  /** Allocates the entries of one rank (those not yet allocated), in sorted key order. */
-  allocate(entries: Array<ServerFnKey>): void {
+  /**
+   * Allocates the entries of one rank (those not yet allocated), in sorted
+   * key order. Returns an error for each entry of the rank whose custom id
+   * is not a URL path segment (also when an earlier call allocated it: a
+   * rebuild reports it again).
+   */
+  allocate(
+    entries: Array<ServerFnKey & { functionName: string; name: string }>,
+  ): Array<string> {
     const sorted = [...entries].sort(
       (a, b) =>
         (a.rootRel < b.rootRel ? -1 : a.rootRel > b.rootRel ? 1 : 0) ||
         (a.stableKey < b.stableKey ? -1 : a.stableKey > b.stableKey ? 1 : 0),
     )
+    const errors: Array<string> = []
     for (const e of sorted) {
       const token = placeholderToken(e)
-      if (this.final.has(token)) {
-        continue
+      if (!this.final.has(token)) {
+        const custom = this.generate?.({
+          filename: e.rootRel,
+          functionName: e.functionName,
+        })
+        if (custom !== undefined && !isUrlSegmentId(custom)) {
+          this.invalid.set(
+            token,
+            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(custom)} for the server function ${e.name} (functionName "${e.functionName}") of ${e.rootRel}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
+          )
+        }
+        const base = custom ?? defaultFunctionId(e)
+        let cand = base
+        let n = 1
+        while (this.occupied.has(cand)) {
+          cand = `${base}_${n++}`
+        }
+        this.occupied.add(cand)
+        this.final.set(token, cand)
       }
-      const base =
-        this.generate?.({ filename: e.rootRel, functionName: e.stableKey }) ??
-        defaultFunctionId(e)
-      let cand = base
-      let n = 1
-      while (this.occupied.has(cand)) {
-        cand = `${base}_${n++}`
+      const error = this.invalid.get(token)
+      if (error !== undefined) {
+        errors.push(error)
       }
-      this.occupied.add(cand)
-      this.final.set(token, cand)
     }
+    return errors
   }
 
   /** Replaces every placeholder of `code`; unknown tokens are left (a diagnostic for the host). */

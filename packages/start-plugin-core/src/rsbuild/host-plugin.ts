@@ -457,7 +457,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
-        const allocator = session.start.allocateIds(environment.type)
+        const { allocator, errors } = session.start.allocateIds(
+          environment.type,
+        )
+        for (const error of errors) {
+          compilation.errors.push(new WebpackError(error))
+        }
         for (const asset of compilation.getAssets()) {
           if (!/\.[cm]?js$/.test(asset.name)) {
             continue
@@ -601,7 +606,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             const fns = info[SERVER_FN_BUILD_INFO_FIELD] as
               | ServerFnBuildInfo
               | undefined
-            if (fns?.version === 2) {
+            if (fns?.version === 3) {
               snapshot.set(fns.canonicalId, fns.facts)
             }
           }
