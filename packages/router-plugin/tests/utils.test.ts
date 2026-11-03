@@ -176,4 +176,40 @@ describe('getObjectPropertyKeyName', () => {
 
     expect(getObjectPropertyKeyName(prop)).toBeUndefined()
   })
+
+  // `dehydrate() {}` and `async hydrate() {}` are object methods, not
+  // properties; `deleteNodes` must find them by the same key
+  it('returns identifier keys of object methods', () => {
+    const method = t.objectMethod(
+      'method',
+      t.identifier('dehydrate'),
+      [],
+      t.blockStatement([]),
+    )
+
+    expect(getObjectPropertyKeyName(method)).toBe('dehydrate')
+  })
+
+  it('returns string literal keys of object methods', () => {
+    const method = t.objectMethod(
+      'method',
+      t.stringLiteral('hydrate'),
+      [],
+      t.blockStatement([]),
+    )
+
+    expect(getObjectPropertyKeyName(method)).toBe('hydrate')
+  })
+
+  it('returns undefined for computed object method keys', () => {
+    const method = t.objectMethod(
+      'method',
+      t.identifier('key'),
+      [],
+      t.blockStatement([]),
+      true,
+    )
+
+    expect(getObjectPropertyKeyName(method)).toBeUndefined()
+  })
 })

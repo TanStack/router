@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import { Link, Outlet } from '@tanstack/solid-router'
-import { fetchPosts } from '../posts'
 import { Route } from 'arrow-function.tsx'
 const PostsComponent = () => {
   const posts = Route.useLoaderData()
@@ -29,6 +28,4 @@ const PostsComponent = () => {
     </div>
   )
 }
-const SplitLoader = fetchPosts
-export { SplitLoader as loader }
 export { PostsComponent as component }

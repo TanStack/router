@@ -1,4 +1,4 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
+import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
@@ -33,18 +33,68 @@ const config = defineConfig(({ mode }) => {
       },
     }),
     test: {
-      name: packageJson.name,
-      dir: './tests',
-      exclude: ['server'],
       watch: false,
-      environment: 'jsdom',
-      typecheck: { enabled: true },
-      setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
-      server: {
-        deps: {
-          inline: [/@solidjs/, /@tanstack\/solid-store/],
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: packageJson.name,
+            dir: './tests',
+            exclude: ['server'],
+            environment: 'jsdom',
+            typecheck: {
+              enabled: true,
+              exclude: [
+                ...configDefaults.typecheck.exclude,
+                '**/start-register/**',
+                '**/docs-examples/**',
+              ],
+            },
+            setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
+            server: {
+              deps: {
+                inline: [/@solidjs/, /@tanstack\/solid-store/],
+              },
+            },
+          },
         },
-      },
+        {
+          // Type tests that register a Start app (`Register.ssr: true` plus a
+          // concrete `Register.router`). The module augmentation is global to a
+          // tsc program, so these run in their own project with their own tsconfig
+          // (tests/start-register/tsconfig.json), which also keeps them out of the
+          // package's main tsconfig program. Source errors are ignored here only
+          // because the library source is not written to type-check under a concrete
+          // registered router (apps consume the .d.ts); src is still checked by the
+          // main project and by test:types.
+          extends: true,
+          test: {
+            name: `${packageJson.name} (start register)`,
+            dir: './tests/start-register',
+            environment: 'node',
+            typecheck: {
+              enabled: true,
+              tsconfig: './tests/start-register/tsconfig.json',
+              ignoreSourceErrors: true,
+            },
+          },
+        },
+        {
+          // The docs' code examples compiled under their own Start register
+          // (ssr, router and the adapters' config); same setup as start-register.
+          extends: true,
+          test: {
+            name: `${packageJson.name} (docs examples)`,
+            dir: './tests/docs-examples',
+            environment: 'node',
+            typecheck: {
+              enabled: true,
+              tsconfig: './tests/docs-examples/tsconfig.json',
+              ignoreSourceErrors: true,
+            },
+          },
+        },
+      ],
     },
   }
 })

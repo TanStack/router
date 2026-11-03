@@ -5,9 +5,11 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
+import { isPlainObject, isPromise } from './utils'
 import {
   getLocationChangeInfo,
   lifecycleEnd,
+  routeNeedsLoad,
   runRouteLifecycle,
 } from './router'
 import type { ParsedLocation } from './location'
@@ -90,11 +92,37 @@ function normalize(value: unknown, rejected: boolean): LoaderOutcome {
   if (isNotFound(value)) {
     return [NOT_FOUND, value]
   }
-  if (rejected && typeof (value as any)?.then === 'function') {
+  if (rejected && isPromise(value)) {
     value = new Error('A Promise was thrown', { cause: value })
   }
   return rejected ? [ERROR, value] : [SUCCESS, value]
 }
+
+// Runs a custom `dehydrate` on a settled result. Callers await only a custom
+// `dehydrate`, so other lifecycles keep their timing. It is a transform, so a
+// redirect or notFound thrown from it is an ordinary error.
+async function runDehydrate(
+  dehydrate: (ctx: any) => unknown,
+  ctx: object,
+  data: unknown,
+): Promise<unknown> {
+  try {
+    return await dehydrate({ ...ctx, data })
+  } catch (cause) {
+    throw isRedirect(cause) || isNotFound(cause)
+      ? new Error(
+          process.env.NODE_ENV !== 'production'
+            ? 'TanStack Router: throw `redirect()` and `notFound()` from `handler`, not from `dehydrate`.'
+            : 'Invalid throw from dehydrate',
+          { cause },
+        )
+      : cause
+  }
+}
+
+// Keyed on the route object so the warning prints once per process, not once
+// per request (Start creates a router per request).
+let warnedAsyncContexts: WeakSet<AnyRoute> | undefined
 
 function normalizeError(
   router: AnyRouter,
@@ -268,11 +296,13 @@ async function contextualize(
       break
     }
 
-    match.__beforeLoadContext = undefined
-    let context = parentContext
+    // A failed context keeps the inherited context, as a failed beforeLoad does.
+    let context = (match.context = parentContext)
     try {
       let routeContext
-      if (route.options.context) {
+      const contextOption = route.options.context
+      // `ssr: false` runs nothing on the server, `context` included.
+      if (contextOption && match.ssr !== false) {
         const routeContextOptions: RouteContextOptions<
           any,
           any,
@@ -291,8 +321,39 @@ async function contextualize(
           preload: false,
           matches: lane.matches,
           routeId: route.id,
+          ...router.options.additionalContext,
         }
-        routeContext = route.options.context(routeContextOptions) ?? undefined
+        routeContext = (
+          typeof contextOption === 'function'
+            ? contextOption
+            : contextOption.handler
+        )(routeContextOptions)
+        if (isPromise(routeContext)) {
+          routeContext = await routeContext
+          signal?.throwIfAborted()
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            !isRedirect(routeContext) &&
+            contextOption.dehydrate === undefined &&
+            !(warnedAsyncContexts ??= new WeakSet()).has(route)
+          ) {
+            warnedAsyncContexts.add(route)
+            console.warn(
+              `TanStack Router: the async \`context\` of route "${route.id}" runs again on the client during hydration; write \`context: { handler, dehydrate: true }\` to send its result, or \`dehydrate: false\` to silence this warning.`,
+            )
+          }
+        }
+        if (isRedirect(routeContext)) {
+          throw routeContext
+        }
+        routeContext ??= undefined
+        const dehydrate = contextOption.dehydrate
+        if (dehydrate) {
+          ;(match._dehydrated ??= {}).m =
+            typeof dehydrate === 'function'
+              ? await runDehydrate(dehydrate, routeContextOptions, routeContext)
+              : routeContext
+        }
       }
       context = {
         ...parentContext,
@@ -331,7 +392,8 @@ async function contextualize(
     }
     signal?.throwIfAborted()
 
-    if (match.ssr === false || !route.options.beforeLoad) {
+    const beforeLoadOption = route.options.beforeLoad
+    if (match.ssr === false || !beforeLoadOption) {
       parentContext = context
       continue
     }
@@ -363,7 +425,11 @@ async function contextualize(
     }
 
     try {
-      const beforeLoadContext = await route.options.beforeLoad(options)
+      const beforeLoadContext = await (
+        typeof beforeLoadOption === 'function'
+          ? beforeLoadOption
+          : beforeLoadOption.handler
+      )(options)
       signal?.throwIfAborted()
       const outcome = stampNotFound(
         match,
@@ -380,7 +446,14 @@ async function contextualize(
         end = index
         break
       }
-      match.__beforeLoadContext = beforeLoadContext
+      const dehydrate = beforeLoadOption.dehydrate
+      if (dehydrate !== false) {
+        ;(match._dehydrated ??= {}).b =
+          typeof dehydrate === 'function'
+            ? await runDehydrate(dehydrate, options, beforeLoadContext)
+            : beforeLoadContext
+        signal?.throwIfAborted()
+      }
       match.context = {
         ...context,
         ...beforeLoadContext,
@@ -431,6 +504,13 @@ function getLoaderContext(
   }
 }
 
+function isAbandoned(match: AnyRouteMatch, signal?: AbortSignal) {
+  return (
+    signal?.aborted ||
+    match.abortController.signal.reason === REDIRECT_ABORT_REASON
+  )
+}
+
 function createLoaderTask(
   router: AnyRouter,
   lane: ContextualizedLane,
@@ -451,27 +531,69 @@ function createLoaderTask(
     if (!loader) {
       outcome = Promise.resolve<LoaderOutcome>([SUCCESS, undefined])
     } else {
-      outcome = Promise.resolve()
-        .then(() =>
-          loader(getLoaderContext(router, lane, match, route, index, tasks)),
+      const dehydrate = routeLoader.dehydrate
+      const context = getLoaderContext(router, lane, match, route, index, tasks)
+      const settle = (result: LoaderOutcome, wire?: unknown): LoaderOutcome => {
+        if (isAbandoned(match, signal)) {
+          return [SKIPPED]
+        }
+        if (result[0] === SUCCESS) {
+          if (dehydrate !== false) {
+            ;(match._dehydrated ??= {}).l = wire
+          }
+          return result
+        }
+        return stampNotFound(
+          match,
+          result[0] === ERROR
+            ? normalizeError(router, lane, route, result[1], signal)
+            : materializeRedirect(router, lane, route, result, signal),
         )
+      }
+      outcome = Promise.resolve()
+        .then(() => loader(context))
         .then(
           (result) => normalize(result, false),
           (cause) => normalize(cause, true),
         )
-        .then((result): LoaderOutcome => {
+        .then((result) => {
+          const data: any = result[1]
+          // The stream sends the default loader data as is and handles
+          // rejections of the promises it sends.
           if (
-            signal?.aborted ||
-            match.abortController.signal.reason === REDIRECT_ABORT_REASON
+            result[0] !== SUCCESS ||
+            dehydrate === undefined ||
+            dehydrate === true
           ) {
-            return [SKIPPED]
+            return settle(result, data)
           }
-          if (result[0] === ERROR) {
-            result = normalizeError(router, lane, route, result[1], signal)
-          } else {
-            result = materializeRedirect(router, lane, route, result, signal)
+          // Loader data the stream may not send as is (`dehydrate: false`, a
+          // codec) would otherwise reject unhandled, so the promises in the
+          // top-level fields of a plain object get a no-op handler. Their own
+          // enumerable fields are read as the stream reads them, and a getter
+          // that throws is skipped because this data is never serialized as
+          // is. Arrays and buffers are skipped.
+          if (isPlainObject(data)) {
+            for (const key of Object.keys(data)) {
+              try {
+                const value = data[key]
+                if (value instanceof Promise) {
+                  value.catch(() => {})
+                }
+              } catch {}
+            }
           }
-          return stampNotFound(match, result)
+          // An aborted or redirecting lane skips the codec.
+          return typeof dehydrate === 'function' && !isAbandoned(match, signal)
+            ? runDehydrate(dehydrate, context, data).then(
+                (wire) => settle(result, wire),
+                (cause) => {
+                  // A failed codec drops the result: nothing renders or sends it.
+                  match.abortController.abort(MATCH_SETTLED_ABORT_REASON)
+                  return settle([ERROR, cause])
+                },
+              )
+            : settle(result, data)
         })
     }
   }
@@ -688,12 +810,23 @@ async function executeServerLane(
 ): Promise<ServerLoadResult> {
   const matched = {
     location,
+    // A reused router must not render or send results from its previous load.
     matches: matchedMatches.map((match) => ({
       ...match,
-      __beforeLoadContext: undefined,
+      status: routeNeedsLoad(getRoute(router, match)) ? 'pending' : 'success',
+      error: undefined,
+      ssr: undefined,
+      loaderData: undefined,
+      _dehydrated: undefined,
       context: {},
       isFetching: false,
       abortController: new AbortController(),
+      meta: undefined,
+      links: undefined,
+      headScripts: undefined,
+      styles: undefined,
+      scripts: undefined,
+      headers: undefined,
     })),
   } as MatchedLane
   const abortLane = () =>
@@ -808,12 +941,7 @@ async function executeServerLane(
           break
         }
         const outcome = await task.outcome
-        // Presence means a loader previously succeeded, even with `undefined`.
-        if (
-          outcome[0] !== SUCCESS &&
-          outcome[0] < REDIRECTED &&
-          !('loaderData' in lane.matches[task.index]!)
-        ) {
+        if (outcome[0] !== SUCCESS && outcome[0] < REDIRECTED) {
           failure = [task.index, outcome]
           failure[2] =
             outcome[0] === NOT_FOUND
@@ -881,12 +1009,17 @@ async function executeServerLane(
     //   middleware replaced the response)            -> abort (never delivered)
     // - plain response / `hydrate: false`: the
     //   loader data was never dehydrated              -> abort (never consumed)
+    // - loader data not sent as is (`dehydrate:
+    //   false`, a codec)                              -> abort (never consumed)
     // - stream completed: every dehydrated value
     //   already settled                               -> nothing left to abort
     //
     // `settled` is false in exactly the first four cases.
     router.serverSsr?.onCleanup((settled) => {
-      if (!settled) {
+      if (
+        !settled ||
+        lane.matches.some((match) => match.loaderData !== match._dehydrated?.l)
+      ) {
         abortLane()
       }
     })

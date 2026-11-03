@@ -516,14 +516,11 @@ export function isModuleNotFoundError(error: any): boolean {
   )
 }
 
+/** Recognize thenables without invoking `then`. */
 export function isPromise<T>(
-  value: Promise<Awaited<T>> | T,
+  value: Promise<Awaited<T>> | PromiseLike<T> | T,
 ): value is Promise<Awaited<T>> {
-  return Boolean(
-    value &&
-    typeof value === 'object' &&
-    typeof (value as Promise<T>).then === 'function',
-  )
+  return typeof (value as Promise<T>)?.then === 'function'
 }
 
 export function findLast<T>(

@@ -360,6 +360,10 @@
         {
           "label": "Create Route Property Order",
           "to": "eslint/create-route-property-order"
+        },
+        {
+          "label": "No Lifecycle Codec Param Annotations",
+          "to": "eslint/no-lifecycle-codec-param-annotations"
         }
       ]
     },

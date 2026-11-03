@@ -67,3 +67,30 @@ test('createIsomorphicFn with arguments', () => {
   expectTypeOf(fn2).toBeCallableWith(1, 'a')
   expectTypeOf(fn2).returns.toEqualTypeOf<string | number>()
 })
+
+test('phase result metadata preserves both implementations and the callable union', () => {
+  const fn = createIsomorphicFn()
+    .server(async () => ({ count: 1 }))
+    .client(() => ({ count: 1, ready: true }))
+
+  expectTypeOf<(typeof fn)['~types']['server']>().toEqualTypeOf<
+    Promise<{ count: number }>
+  >()
+  expectTypeOf<(typeof fn)['~types']['client']>().toEqualTypeOf<{
+    count: number
+    ready: boolean
+  }>()
+  expectTypeOf(fn).returns.toEqualTypeOf<
+    Promise<{ count: number }> | { count: number; ready: boolean }
+  >()
+
+  const reversed = createIsomorphicFn()
+    .client(async () => ({ count: 1, ready: true }))
+    .server(() => ({ count: 1 }))
+  expectTypeOf<(typeof reversed)['~types']['server']>().toEqualTypeOf<{
+    count: number
+  }>()
+  expectTypeOf<(typeof reversed)['~types']['client']>().toEqualTypeOf<
+    Promise<{ count: number; ready: boolean }>
+  >()
+})

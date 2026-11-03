@@ -85,6 +85,60 @@ Both calls use the same query key and options. The loader populates the request'
 
 For a parameterized resource, include its identity in the key, such as `['post', postId]`. If search values affect the result, validate them and include them in both `loaderDeps` and the query key. Keep secrets out of keys and serialized query data.
 
+## Put query options in route context
+
+> **Experimental:** the route `context` option is experimental and subject to change.
+
+When the loader and the component need the same parameterized options, the route's `context` option can build them once per match and hand them to both:
+
+```tsx title="src/routes/posts.$postId.tsx"
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { postQueryOptions } from '../utils/posts'
+
+export const Route = createFileRoute('/posts/$postId')({
+  context: ({ params }) => ({
+    postQueryOptions: postQueryOptions(params.postId),
+  }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(context.postQueryOptions),
+  component: Post,
+})
+
+function Post() {
+  const { postQueryOptions } = Route.useRouteContext()
+  const { data: post } = useSuspenseQuery(postQueryOptions)
+  return <h1>{post.title}</h1>
+}
+```
+
+This works without further configuration because of how `context` behaves. It is not sent to the client (the options hold a `queryFn`); the browser computes it again from `params` during hydration. It is cached per match, so `Route.useRouteContext()` returns the same options object across re-renders and across `router.invalidate()` calls, and the query identity stays stable. The caching rules are in the Router docs: [Router Context](/router/latest/docs/framework/react/guide/router-context).
+
+## Cache an auth check in route context
+
+> **Experimental:** the route `context` option is experimental and subject to change.
+
+An auth lookup that should run once per match, not on every client navigation, also belongs in `context`. Its result is plain data, so it can be sent to the client with `dehydrate: true`, and `revalidate: true` makes `router.invalidate()` run it again after a login or logout:
+
+```tsx title="src/routes/_authed.tsx"
+import { createFileRoute, redirect } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/_authed')({
+  context: {
+    handler: async ({ context }) => ({
+      session: await context.auth.getSession(),
+    }),
+    dehydrate: true, // send it; the result is serializability-checked
+    revalidate: true, // re-run on router.invalidate() (login/logout)
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.session) throw redirect({ to: '/login' })
+  },
+})
+```
+
+Without `revalidate`, `router.invalidate()` leaves the cached session alone. After a mutation that changes the session, call `router.invalidate()` for the context and `queryClient.invalidateQueries` for the private queries that depend on it. What is sent and what is recomputed is described in [SSR Data Transport](./ssr-data-transport.md).
+
 ## Await critical data and stream secondary data
 
 Await queries that determine the page's main content, title, authorization, redirects, or whether it exists. Return title and description data from the loader when a route's `head` needs them, as the example's post route does.
@@ -109,7 +163,7 @@ const mutation = useMutation({
 
 Returning the invalidation promise keeps the mutation pending until its active query's refetch finishes. The form can use `mutation.isPending` and `mutation.isError` for feedback. The example also disables its JavaScript-dependent form until hydration and uses a POST method so a native submission cannot put form values in the URL.
 
-Invalidate the data's actual owner. `queryClient.invalidateQueries` refreshes Query data; `router.invalidate()` reloads Router-owned loader data and route context. Use both only when the mutation changes both, such as a login that changes root authentication context and private queries. Neither call purges your CDN or invalidates a database cache.
+Invalidate the data's actual owner. `queryClient.invalidateQueries` refreshes Query data; `router.invalidate()` reloads Router-owned loader data and re-runs `beforeLoad`. A route's `context` re-runs only when it sets `revalidate` (see [Cache an auth check in route context](#cache-an-auth-check-in-route-context)). Use both only when the mutation changes both, such as a login that changes the authentication context and private queries. Neither call purges your CDN or invalidates a database cache.
 
 If a mutation returns the complete updated resource, `setQueryData` can update that cache entry directly instead. Optimistic updates need cancellation, rollback on failure, and reconciliation with the server result. This example uses a confirmed write followed by invalidation, not an optimistic update.
 

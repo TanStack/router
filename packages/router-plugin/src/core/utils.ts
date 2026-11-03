@@ -22,8 +22,12 @@ export const routeFactoryCallCodeFilter = [
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
 ]
 
+/**
+ * The static key of an object-literal member, for `key: value`, `key` and
+ * `key() {}` members alike; `undefined` for computed keys.
+ */
 export function getObjectPropertyKeyName(
-  prop: t.ObjectProperty,
+  prop: t.ObjectProperty | t.ObjectMethod,
 ): string | undefined {
   if (prop.computed) {
     return undefined

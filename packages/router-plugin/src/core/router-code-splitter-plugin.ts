@@ -24,7 +24,7 @@ import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
-import type { Config, HmrStyle } from './config'
+import type { Config, DeletableNodes, HmrStyle } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
@@ -87,6 +87,7 @@ export function createRouterCodeSplitterPlugin(
   let hmrStyle: HmrStyle
   let compilerPlugins: Array<CodeSplitCompilerPlugin>
   let virtualRouteCompilerPlugins: Array<CodeSplitCompilerPlugin>
+  let deleteNodes: Set<DeletableNodes> | undefined
 
   let isProduction = process.env.NODE_ENV === 'production'
 
@@ -98,6 +99,9 @@ export function createRouterCodeSplitterPlugin(
     }
 
     addHmr = (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
+    deleteNodes = userConfig.codeSplittingOptions?.deleteNodes
+      ? new Set(userConfig.codeSplittingOptions.deleteNodes)
+      : undefined
     hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
     compilerPlugins = [
       ...(addHmr
@@ -172,6 +176,7 @@ export function createRouterCodeSplitterPlugin(
       code,
       filename: id,
       codeSplitGroupings: splitGroupings,
+      deleteNodes,
     })
     if (sharedBindings.size > 0) {
       sharedBindingsMap.set(id, sharedBindings)
@@ -185,9 +190,7 @@ export function createRouterCodeSplitterPlugin(
       targetFramework: userConfig.target,
       filename: id,
       id,
-      deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
-        ? new Set(userConfig.codeSplittingOptions.deleteNodes)
-        : undefined,
+      deleteNodes,
       addHmr,
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
@@ -242,6 +245,7 @@ export function createRouterCodeSplitterPlugin(
       splitTargets: grouping,
       sharedBindings: resolvedSharedBindings,
       compilerPlugins: virtualRouteCompilerPlugins,
+      deleteNodes,
     })
 
     if (debug) {
@@ -391,6 +395,7 @@ export function createRouterCodeSplitterPlugin(
             code,
             sharedBindings,
             filename: normalizedId,
+            deleteNodes,
           })
 
           if (debug) {

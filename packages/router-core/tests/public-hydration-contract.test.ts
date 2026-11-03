@@ -55,6 +55,90 @@ describe('public hydration contracts', () => {
     vi.unstubAllGlobals()
   })
 
+  test.each([
+    ['context', false],
+    ['context', true],
+    ['beforeLoad', false],
+    ['beforeLoad', true],
+  ] as const)(
+    'stops later serial hydration callbacks when %s self-aborts (async: %s)',
+    async (abortAt, asynchronous) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const calls: Array<string> = []
+      let aborted = false
+      const build = (isServer: boolean) => {
+        const run = (lifecycle: string, abortController: AbortController) => {
+          const data = { [lifecycle]: true }
+          if (!isServer) {
+            calls.push(lifecycle)
+            if (lifecycle === abortAt && !aborted) {
+              aborted = true
+              const abort = () => {
+                abortController.abort()
+                return data
+              }
+              return asynchronous ? Promise.resolve().then(abort) : abort()
+            }
+          }
+          return data
+        }
+        const rootRoute = new BaseRootRoute({
+          context: ({ abortController }) => run('context', abortController),
+          beforeLoad: {
+            handler: ({ abortController }) =>
+              run('beforeLoad', abortController),
+            dehydrate: false,
+          },
+        })
+        const pageRoute = new BaseRoute({
+          getParentRoute: () => rootRoute,
+          path: '/page',
+          context: ({ abortController }) =>
+            run('child.context', abortController),
+          beforeLoad: {
+            handler: ({ abortController }) =>
+              run('child.beforeLoad', abortController),
+            dehydrate: false,
+          },
+          loader: {
+            handler: () => {
+              if (!isServer) {
+                calls.push('child.loader')
+              }
+              return 'client data'
+            },
+            dehydrate: false,
+          },
+        })
+        return createTestRouter({
+          routeTree: rootRoute.addChildren([pageRoute]),
+          history: createMemoryHistory({ initialEntries: ['/page'] }),
+          isServer,
+        })
+      }
+
+      mockWindow.$_TSR = await dehydrateToBootstrap(build(true), testManifest)
+      const router = build(false)
+      await hydrate(router)
+
+      expect(calls).toEqual(
+        abortAt.startsWith('context') ? [abortAt] : ['context', abortAt],
+      )
+      await router.load()
+
+      expect(router.state.matches.at(-1)).toMatchObject({
+        status: 'success',
+        loaderData: 'client data',
+        context: {
+          context: true,
+          beforeLoad: true,
+          'child.context': true,
+          'child.beforeLoad': true,
+        },
+      })
+    },
+  )
+
   test('starts head and scripts together and swallows a head failure', async () => {
     const error = new Error('head failed')
     const headGate = createControlledPromise<void>()
@@ -109,96 +193,209 @@ describe('public hydration contracts', () => {
     })
   })
 
-  test('adopts a shorter selective-SSR prefix ending at a pending client-only match', async () => {
-    const serverLoader = vi.fn(() => 'server data')
-    const serverRootRoute = new BaseRootRoute({})
-    const serverClientOnlyRoute = new BaseRoute({
-      getParentRoute: () => serverRootRoute,
-      path: '/client-only',
-      ssr: false,
-      loader: serverLoader,
-    })
-    const serverChildRoute = new BaseRoute({
-      getParentRoute: () => serverClientOnlyRoute,
-      path: '/child',
-      ssr: true,
-    })
-    const serverRouter = createTestRouter({
-      routeTree: serverRootRoute.addChildren([
-        serverClientOnlyRoute.addChildren([serverChildRoute]),
-      ]),
-      history: createMemoryHistory({
-        initialEntries: ['/client-only/child'],
-      }),
-      isServer: true,
-    })
-    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
-    expect(bootstrap.router?.matches).toHaveLength(2)
-    expect(bootstrap.router?.matches.at(-1)).toMatchObject({
-      s: 'pending',
-      ssr: false,
-    })
-    expect(serverLoader).not.toHaveBeenCalled()
+  test.each(['loaderless', 'restored-only'] as const)(
+    'hydrates a child against its %s immediate parent while ancestor loader work is pending',
+    async (parentKind) => {
+      const ancestorGate = createControlledPromise<void>()
+      const ancestorHydrate = vi.fn(async ({ data }: { data: string }) => {
+        await ancestorGate
+        return `${data}:hydrated`
+      })
+      const parentLoader = vi.fn(() => 'parent:client')
+      const readParent = vi.fn((match: AnyRouteMatch | undefined) => match)
+      const childLoader = vi.fn(
+        async ({
+          parentMatchPromise,
+        }: {
+          parentMatchPromise?: Promise<AnyRouteMatch>
+        }) => {
+          readParent(await parentMatchPromise)
+          return 'child:client'
+        },
+      )
+      const build = (isServer: boolean) => {
+        const rootRoute = new BaseRootRoute({
+          loader: {
+            handler: () => 'ancestor:server',
+            dehydrate: true,
+            hydrate: ancestorHydrate,
+          },
+        })
+        const parentRoute = new BaseRoute({
+          getParentRoute: () => rootRoute,
+          path: '/parent',
+          loader:
+            parentKind === 'restored-only'
+              ? isServer
+                ? () => 'parent:server'
+                : parentLoader
+              : undefined,
+        })
+        const childRoute = new BaseRoute({
+          getParentRoute: () => parentRoute,
+          path: '/child',
+          loader: {
+            handler: isServer ? () => 'child:server' : childLoader,
+            dehydrate: false,
+          },
+        })
+        return createTestRouter({
+          routeTree: rootRoute.addChildren([
+            parentRoute.addChildren([childRoute]),
+          ]),
+          history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+          isServer,
+        })
+      }
+      const bootstrap = await dehydrateToBootstrap(build(true), testManifest)
+      const router = build(false)
+      mockWindow.$_TSR = bootstrap
 
-    const routeContext = vi.fn(() => ({ routeContext: true }))
-    const beforeLoad = vi.fn(() => ({ clientContext: true }))
-    const loader = vi.fn(
-      ({ context }) => context.clientContext && context.routeContext,
-    )
-    const rootRoute = new BaseRootRoute({})
-    const clientOnlyRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/client-only',
-      ssr: false,
-      context: routeContext,
-      beforeLoad,
-      loader,
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => clientOnlyRoute,
-      path: '/child',
-      ssr: true,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([
-        clientOnlyRoute.addChildren([childRoute]),
-      ]),
-      history: createMemoryHistory({
-        initialEntries: ['/client-only/child'],
-      }),
-      isServer: false,
-    })
-    mockWindow.$_TSR = bootstrap
+      let settled = false
+      const hydration = hydrate(router).then(() => {
+        settled = true
+      })
+      try {
+        await vi.waitFor(() => {
+          expect(ancestorHydrate).toHaveBeenCalledTimes(1)
+          expect(childLoader).toHaveBeenCalledTimes(1)
+          expect(readParent).toHaveBeenCalledTimes(1)
+        })
+        expect(childLoader.mock.calls[0]![0].parentMatchPromise).toBeInstanceOf(
+          Promise,
+        )
+        const parent = readParent.mock.calls[0]![0]
+        expect(parent?.routeId).toBe('/parent')
+        expect(parent?.status).toBe('success')
+        expect(parent?.loaderData).toBe(
+          parentKind === 'restored-only' ? 'parent:server' : undefined,
+        )
+        expect(parentLoader).not.toHaveBeenCalled()
+        // Flush completion callbacks while the ancestor remains gated.
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(settled).toBe(false)
+      } finally {
+        ancestorGate.resolve()
+        await hydration
+      }
 
-    await hydrate(router)
+      expect(router.state.matches.map((match) => match.status)).toEqual([
+        'success',
+        'success',
+        'success',
+      ])
+      expect(router.state.matches.map((match) => match.loaderData)).toEqual([
+        'ancestor:server:hydrated',
+        parentKind === 'restored-only' ? 'parent:server' : undefined,
+        'child:client',
+      ])
+      expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
+    },
+  )
 
-    expect(router.state.matches.map((match) => match.routeId)).toEqual([
-      rootRoute.id,
-      clientOnlyRoute.id,
-      childRoute.id,
-    ])
-    expect(router.state.matches.slice(1)).toMatchObject([
-      { routeId: clientOnlyRoute.id, status: 'pending', ssr: false },
-      { routeId: childRoute.id, ssr: true },
-    ])
-    expect(router.state.resolvedLocation).toBeUndefined()
-    expect(router.state.matches[1]?.context).toEqual({ routeContext: true })
-    expect(routeContext).toHaveBeenCalledTimes(1)
-    expect(beforeLoad).not.toHaveBeenCalled()
-    expect(loader).not.toHaveBeenCalled()
+  test.each(['function', 'object'] as const)(
+    'adopts a shorter selective-SSR prefix ending at a pending client-only match (%s context)',
+    async (contextForm) => {
+      const serverLoader = vi.fn(() => 'server data')
+      const serverRootRoute = new BaseRootRoute({})
+      const serverClientOnlyRoute = new BaseRoute({
+        getParentRoute: () => serverRootRoute,
+        path: '/client-only',
+        ssr: false,
+        loader: serverLoader,
+      })
+      const serverChildRoute = new BaseRoute({
+        getParentRoute: () => serverClientOnlyRoute,
+        path: '/child',
+        ssr: true,
+      })
+      const serverRouter = createTestRouter({
+        routeTree: serverRootRoute.addChildren([
+          serverClientOnlyRoute.addChildren([serverChildRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: ['/client-only/child'],
+        }),
+        isServer: true,
+      })
+      const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
+      expect(bootstrap.router?.matches).toHaveLength(2)
+      expect(bootstrap.router?.matches.at(-1)).toMatchObject({
+        s: 'pending',
+        ssr: false,
+      })
+      expect(serverLoader).not.toHaveBeenCalled()
 
-    await router.load()
+      const routeContext = vi.fn(() => ({ routeContext: true }))
+      const hydrateContext = vi.fn(() => ({ routeContext: true }))
+      const beforeLoad = vi.fn(() => ({ clientContext: true }))
+      const loader = vi.fn(
+        ({ context }) => context.clientContext && context.routeContext,
+      )
+      const rootRoute = new BaseRootRoute({})
+      const clientOnlyRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/client-only',
+        ssr: false,
+        context:
+          contextForm === 'object'
+            ? {
+                handler: routeContext,
+                dehydrate: true,
+                hydrate: hydrateContext,
+              }
+            : routeContext,
+        beforeLoad,
+        loader,
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => clientOnlyRoute,
+        path: '/child',
+        ssr: true,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          clientOnlyRoute.addChildren([childRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: ['/client-only/child'],
+        }),
+        isServer: false,
+      })
+      mockWindow.$_TSR = bootstrap
 
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(routeContext).toHaveBeenCalledTimes(1)
-    expect(router.state.matches[1]).toMatchObject({
-      routeId: clientOnlyRoute.id,
-      status: 'success',
-      loaderData: true,
-    })
-    expect(router.state.resolvedLocation?.href).toBe('/client-only/child')
-  })
+      await hydrate(router)
+
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        rootRoute.id,
+        clientOnlyRoute.id,
+        childRoute.id,
+      ])
+      expect(router.state.matches.slice(1)).toMatchObject([
+        { routeId: clientOnlyRoute.id, status: 'pending', ssr: false },
+        { routeId: childRoute.id, ssr: true },
+      ])
+      expect(router.state.resolvedLocation).toBeUndefined()
+      expect(router.state.matches[1]?.context).toEqual({ routeContext: true })
+      expect(routeContext).toHaveBeenCalledTimes(1)
+      expect(hydrateContext).not.toHaveBeenCalled()
+      expect(beforeLoad).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
+
+      await router.load()
+
+      expect(beforeLoad).toHaveBeenCalledTimes(1)
+      expect(loader).toHaveBeenCalledTimes(1)
+      expect(routeContext).toHaveBeenCalledTimes(1)
+      expect(hydrateContext).not.toHaveBeenCalled()
+      expect(router.state.matches[1]).toMatchObject({
+        routeId: clientOnlyRoute.id,
+        status: 'success',
+        loaderData: true,
+      })
+      expect(router.state.resolvedLocation?.href).toBe('/client-only/child')
+    },
+  )
 
   test('selective SSR exposes the complete accepted lane to route context and head hooks', async () => {
     const serverRootRoute = new BaseRootRoute({})
@@ -264,7 +461,10 @@ describe('public hydration contracts', () => {
     expect(headLanes).toEqual([fullLane])
     expect(router.state.matches.map((match) => match.routeId)).toEqual(fullLane)
     expect(router.state.matches[0]?.context).toMatchObject({ hydrated: true })
-    expect(router.state.matches[0]?.meta).toEqual([{ title: 'undefined' }])
+    // The server marked the client-only route success without running a
+    // loader; the client declares one, so it runs in place during hydration
+    // and the head projection already sees its data.
+    expect(router.state.matches[0]?.meta).toEqual([{ title: 'client data' }])
 
     await router.load()
 
@@ -624,6 +824,9 @@ describe('public hydration contracts', () => {
       isServer: true,
     })
     const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
+    // The guard-only child beforeLoad returned nothing; the key still says it
+    // ran, so the client does not run it again.
+    expect(bootstrap.router!.matches[2]).toHaveProperty('b', undefined)
 
     expect(serverParentBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverChildBeforeLoad).toHaveBeenCalledTimes(1)
@@ -690,16 +893,21 @@ describe('public hydration contracts', () => {
     expect(childLoader).not.toHaveBeenCalled()
   })
 
-  test('keeps an ssr-false route-context error authoritative', async () => {
-    const serverError = new Error('server route context failed')
+  test('does not run the route context of an ssr-false route on the server', async () => {
+    // `context` is a lifecycle like `beforeLoad` and `loader`: an `ssr: false`
+    // subtree runs nothing on the server, so a server-side context failure
+    // cannot exist for it. The client owns that subtree's whole lifecycle.
+    const serverContext = vi.fn(() => {
+      throw new Error('server route context must not run')
+    })
+    const serverLoader = vi.fn(() => 'server data')
     const serverRootRoute = new BaseRootRoute({})
     const serverPageRoute = new BaseRoute({
       getParentRoute: () => serverRootRoute,
       path: '/page',
       ssr: false,
-      context: () => {
-        throw serverError
-      },
+      context: serverContext,
+      loader: serverLoader,
     })
     const serverRouter = createTestRouter({
       routeTree: serverRootRoute.addChildren([serverPageRoute]),
@@ -707,16 +915,17 @@ describe('public hydration contracts', () => {
       isServer: true,
     })
     const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
-    const transportedError = bootstrap.router?.matches.at(-1)?.e
 
-    expect(transportedError).toMatchObject({
-      name: serverError.name,
-      message: serverError.message,
-    })
+    expect(serverContext).not.toHaveBeenCalled()
+    expect(serverLoader).not.toHaveBeenCalled()
+    const dehydratedPage = bootstrap.router?.matches.at(-1)
+    expect(dehydratedPage).toMatchObject({ s: 'pending', ssr: false })
+    expect(dehydratedPage).not.toHaveProperty('e')
+    expect(dehydratedPage).not.toHaveProperty('m')
 
     const context = vi.fn(() => ({ source: 'client' }))
-    const beforeLoad = vi.fn()
-    const loader = vi.fn()
+    const beforeLoad = vi.fn(() => ({ guard: true }))
+    const loader = vi.fn(({ context }) => context.source)
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -738,7 +947,9 @@ describe('public hydration contracts', () => {
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
       status: 'pending',
-      error: transportedError,
+      ssr: false,
+      error: undefined,
+      context: { source: 'client' },
     })
     expect(context).toHaveBeenCalledTimes(1)
     expect(beforeLoad).not.toHaveBeenCalled()
@@ -748,12 +959,13 @@ describe('public hydration contracts', () => {
 
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
-      status: 'error',
-      error: transportedError,
+      status: 'success',
+      error: undefined,
+      loaderData: 'client',
     })
     expect(context).toHaveBeenCalledTimes(1)
-    expect(beforeLoad).not.toHaveBeenCalled()
-    expect(loader).not.toHaveBeenCalled()
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('aborts the hydrated route context generation when the route is later left', async () => {

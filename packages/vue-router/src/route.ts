@@ -20,6 +20,7 @@ import type {
   AnyRouter,
   ConstrainLiteral,
   ErrorComponentProps,
+  LifecycleNoWire,
   NotFoundError,
   NotFoundRouteProps,
   Register,
@@ -236,7 +237,10 @@ export class Route<
       TBeforeLoadFn,
       TSSR,
       TMiddlewares,
-      THandlers
+      THandlers,
+      any,
+      any,
+      any
     >,
   ) {
     super(options)
@@ -280,7 +284,7 @@ export class Route<
 }
 
 export function createRoute<
-  TRegister = unknown,
+  TRegister = Register,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -302,6 +306,9 @@ export function createRoute<
   TChildren = unknown,
   TSSR = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >(
   options: RouteOptions<
     TRegister,
@@ -318,7 +325,11 @@ export function createRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TSSR,
-    THandlers
+    THandlers,
+    undefined,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ): Route<
   TRegister,
@@ -357,7 +368,10 @@ export function createRoute<
     unknown,
     TSSR,
     THandlers
-  >(options)
+  >(
+    // the options hold the lifecycle slots as written, Route takes them folded
+    options as any,
+  )
 }
 
 export type AnyRootRoute = RootRoute<
@@ -383,6 +397,9 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TLoaderFn = undefined,
     TSSR = unknown,
     THandlers = undefined,
+    TContextWire = LifecycleNoWire,
+    TBeforeLoadWire = LifecycleNoWire,
+    TLoaderWire = LifecycleNoWire,
   >(
     options?: RootRouteOptions<
       TRegister,
@@ -393,7 +410,11 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      THandlers
+      THandlers,
+      undefined,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >,
   ) => {
     return createRootRoute<
@@ -405,7 +426,10 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >(options)
   }
 }
@@ -469,7 +493,11 @@ export class RootRoute<
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      THandlers
+      THandlers,
+      undefined,
+      any,
+      any,
+      any
     >,
   ) {
     super(options)
@@ -608,6 +636,9 @@ export function createRootRoute<
   TLoaderFn = undefined,
   TSSR = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -618,7 +649,11 @@ export function createRootRoute<
     TLoaderDeps,
     TLoaderFn,
     TSSR,
-    THandlers
+    THandlers,
+    undefined,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ): RootRoute<
   TRegister,
@@ -645,5 +680,5 @@ export function createRootRoute<
     unknown,
     TSSR,
     THandlers
-  >(options)
+  >(options as any)
 }

@@ -1,0 +1,19 @@
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({
+  context: {
+    handler: () => ({ value: 'context' }),
+    dehydrate: true,
+    revalidate: false,
+  },
+  beforeLoad: {
+    handler: () => ({ value: 'beforeLoad' }),
+    dehydrate: false,
+  },
+  loader: {
+    handler: () => ({ value: 'loader' }),
+    dehydrate: true,
+    hydrate: ({ data }) => data,
+  },
+  component: () => <div className="p-2">hello world</div>,
+})

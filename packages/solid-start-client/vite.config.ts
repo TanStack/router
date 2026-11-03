@@ -7,11 +7,33 @@ import type { ViteUserConfig } from 'vitest/config'
 const config = defineConfig({
   plugins: [solid()] as ViteUserConfig['plugins'],
   test: {
-    typecheck: { enabled: true },
-    name: packageJson.name,
     watch: false,
-    environment: 'jsdom',
-    setupFiles: ['./src/tests/jest-dom.setup.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: packageJson.name,
+          dir: './src',
+          include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+          typecheck: { enabled: true },
+          environment: 'jsdom',
+          setupFiles: ['./src/tests/jest-dom.setup.ts'],
+        },
+      },
+      {
+        // Keep the Start registration in its own TypeScript program.
+        extends: true,
+        test: {
+          name: `${packageJson.name} (lifecycle phases)`,
+          dir: './tests/lifecycle-phases',
+          environment: 'node',
+          typecheck: {
+            enabled: true,
+            tsconfig: './tests/lifecycle-phases/tsconfig.json',
+          },
+        },
+      },
+    ],
   },
 })
 

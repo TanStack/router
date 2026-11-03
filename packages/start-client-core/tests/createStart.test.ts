@@ -36,27 +36,32 @@ test('getOptions resolves the options of an asynchronous factory', async () => {
   expect(options.serializationAdapters).toEqual([extended, base])
 })
 
-test('getOptions adopts a thenable that a factory returns', async () => {
-  const error = new Error('boom')
-  const resolving = createStart(
-    () =>
-      ({
-        then(resolve: (value: unknown) => void) {
-          resolve({ serializationAdapters: [extended, base, extended] })
-        },
-      }) as never,
-  )
-  const rejecting = createStart(
-    () =>
-      ({
-        then(_: unknown, reject: (reason: unknown) => void) {
-          reject(error)
-        },
-      }) as never,
-  )
+test.each([false, true])(
+  'getOptions adopts a thenable returned by a factory: callable %s',
+  async (callable) => {
+    const error = new Error('boom')
+    const wrap = <T extends object>(value: T) =>
+      callable ? Object.assign(() => undefined, value) : value
+    const resolving = createStart(
+      () =>
+        wrap({
+          then(resolve: (value: unknown) => void) {
+            resolve({ serializationAdapters: [extended, base, extended] })
+          },
+        }) as never,
+    )
+    const rejecting = createStart(
+      () =>
+        wrap({
+          then(_: unknown, reject: (reason: unknown) => void) {
+            reject(error)
+          },
+        }) as never,
+    )
 
-  await expect(resolving.getOptions()).resolves.toEqual({
-    serializationAdapters: [extended, base],
-  })
-  await expect(rejecting.getOptions()).rejects.toBe(error)
-})
+    await expect(resolving.getOptions()).resolves.toEqual({
+      serializationAdapters: [extended, base],
+    })
+    await expect(rejecting.getOptions()).rejects.toBe(error)
+  },
+)

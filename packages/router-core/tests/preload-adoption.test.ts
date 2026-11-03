@@ -216,7 +216,7 @@ describe('preload adoption', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      beforeLoad: vi.fn(),
+      beforeLoad: vi.fn(() => {}),
       loader,
     })
 

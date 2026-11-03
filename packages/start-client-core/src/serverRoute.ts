@@ -73,6 +73,24 @@ declare module '@tanstack/router-core' {
     >
   }
 
+  interface RouteContextOptions<
+    in out TParentRoute extends AnyRoute,
+    in out TParams,
+    in out TRouterContext,
+    in out TLoaderDeps,
+    in out TRouteId,
+    in out TRegister,
+    in out TServerMiddlewares,
+    in out THandlers,
+  > {
+    serverContext?: Expand<
+      Assign<
+        ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
+        ExtractHandlersContext<THandlers>
+      >
+    >
+  }
+
   interface BeforeLoadContextOptions<
     in out TRegister,
     in out TParentRoute extends AnyRoute,

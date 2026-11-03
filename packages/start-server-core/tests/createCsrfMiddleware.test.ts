@@ -264,16 +264,29 @@ describe('createCsrfMiddleware', () => {
     expect(next).toHaveBeenCalledTimes(1)
   })
 
-  it.each([false, true])(
-    'waits for an async filter returning %s before validating',
-    async (shouldValidate) => {
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ])(
+    'waits for an async filter returning %s before validating: callable %s',
+    async (shouldValidate, callable) => {
       let resolveFilter!: (result: boolean) => void
       const filterResult = new Promise<boolean>((resolve) => {
         resolveFilter = resolve
       })
       const matcher = vi.fn(() => false)
       const middleware = createCsrfMiddleware({
-        filter: () => filterResult,
+        filter: () =>
+          callable
+            ? Object.assign(() => undefined, {
+                then: filterResult.then.bind(filterResult),
+                catch: filterResult.catch.bind(filterResult),
+                finally: filterResult.finally.bind(filterResult),
+                [Symbol.toStringTag]: 'Promise' as const,
+              })
+            : filterResult,
         secFetchSite: matcher,
       })
       const ctx = createContext({

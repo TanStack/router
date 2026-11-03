@@ -6,7 +6,7 @@ title: How to Install TanStack Router
 
 - React 18.x.x or 19.x.x
 - ReactDOM 18.x.x or 19.x.x with `createRoot` support
-- TypeScript 5.3.x or higher (recommended)
+- TypeScript 5.4.x or higher (recommended)
 
 ## Installation Steps
 

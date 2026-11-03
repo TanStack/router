@@ -224,3 +224,87 @@ export default defineConfig({
 ```
 
 We highly discourage splitting the `loader` unless you have a specific use case that requires it. In most cases, not splitting off the `loader` and keep it in the main bundle is the best choice for performance.
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+An inline object-form loader, `loader: { handler, dehydrate, hydrate, staleReloadMode }`, splits only its `handler`. Its other options remain available without loading the handler's chunk. A handler written as a getter or as a method that uses `super` stays eager.
+
+Loaders passed by name from another module, returned by a helper, or read from an object stay eager, even when `loader` is in a split group. The same applies to lifecycle objects stored in a local variable. To split an imported handler, put it in an inline object: `loader: { handler: importedHandler }`. Functions declared directly in the route file can also be split.
+
+### Removing route options from a build (`deleteNodes`)
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+`deleteNodes` lists route options that the plugin removes from the compiled route file. An entry is a key of the route options object (`'ssr'`) or a dot path into an option written in the object form (`'loader.dehydrate'`, `'context.hydrate'`). The removed code and any import that only this code used disappear from the output; the rest of the file is unchanged.
+
+The list applies to every module the plugin instance compiles, for the browser and for the server alike. A router-only setup that renders on the server compiles both builds with one `tanstackRouter()`, and in development the dev server compiles the modules it renders on the server through that same plugin. The two builds need different keys: only the server reads `ssr` and `dehydrate`, and only the client reads `hydrate`. So give each production build its own list, and none in development:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+export default defineConfig(({ command, isSsrBuild }) => ({
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        // `vite build` is the client build, `vite build --ssr` the server
+        // build; the dev server compiles both, so it removes nothing
+        deleteNodes:
+          command !== 'build'
+            ? undefined
+            : isSsrBuild
+              ? ['loader.hydrate']
+              : ['ssr', 'loader.dehydrate'],
+      },
+    }),
+  ],
+}))
+```
+
+With this configuration, the route file
+
+```tsx
+import { fetchPosts } from './posts'
+import { toWire } from './server-only'
+import { fromWire } from './client-only'
+
+export const Route = createFileRoute('/posts')({
+  ssr: 'data-only',
+  loader: {
+    handler: ({ params }) => fetchPosts(params),
+    dehydrate: ({ data }) => toWire(data),
+    hydrate: ({ data }) => fromWire(data),
+  },
+})
+```
+
+compiles to this in the client build:
+
+```tsx
+import { fetchPosts } from './posts'
+import { fromWire } from './client-only'
+
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: ({ params }) => fetchPosts(params),
+    hydrate: ({ data }) => fromWire(data),
+  },
+})
+```
+
+The server build keeps `ssr` and `dehydrate` and drops `hydrate` together with the `./client-only` import.
+
+The plugin visits:
+
+- The options object literal passed to `createFileRoute`, `createRootRoute` or `createRootRouteWithContext`, written inline or held in a variable of the same file and passed by name, also behind `satisfies` or `as`.
+- Object-form values written inline, also behind a TypeScript wrapper such as `satisfies`, `as`, `!` or parentheses.
+
+It does not visit spread members (`...sharedOptions`), computed keys, or lifecycle objects stored in variables, imported from another module, or returned by a function. Those values keep their properties. To remove a nested lifecycle option from a build, write the lifecycle object inline.
+
+A function or variable that only the removed code used is removed with it, and so are its imports. A class declaration is not: it stays, and keeps its imports.
+
+Removing an option is a bundle-size optimization, not a way to hide code. A value that must not reach the client has to live in a module the client never imports.
+
+TanStack Start configures these lists itself: its client build removes `ssr`, `server`, `headers` and the `dehydrate` key of `context`, `beforeLoad` and `loader`; its server build removes the `hydrate` key of the three and `context.revalidate`. A `deleteNodes` list in your own Start router configuration applies to both the client and the server build, with the built-in entries added after it, so it should only name options that neither build reads.

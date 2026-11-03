@@ -1,11 +1,11 @@
-const $$splitLoaderImporter = () =>
-  import('conditional-properties.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent')
-import { lazyFn } from '@tanstack/react-router'
 const $$splitComponentImporter = () =>
   import('conditional-properties.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent')
 import { lazyRouteComponent } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
+import { isEnabled } from '@features/feature-flags'
+import TrueImport from '@modules/true-component'
+import { falseLoader } from '@modules/false-component'
 export const Route = createFileRoute('/posts')({
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
-  loader: lazyFn($$splitLoaderImporter, 'loader'),
+  loader: isEnabled ? TrueImport.loader : falseLoader,
 })

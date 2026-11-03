@@ -142,8 +142,14 @@ export interface RouteMatch<
   _assetEnd?: number
   /** @internal */
   _ctx?: Record<string, unknown>
-  /** @internal */
-  __beforeLoadContext?: Record<string, unknown>
+  /** @internal Set by `router.invalidate()`; a `revalidate` context consumes it. */
+  _ctxInvalid?: boolean
+  /**
+   * @internal Server-only. Lifecycle results prepared for the SSR payload,
+   * already passed through a custom `dehydrate`. A key is present iff that
+   * lifecycle ran and was transported; the client restores by key presence.
+   */
+  _dehydrated?: { m?: unknown; b?: unknown; l?: unknown }
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema

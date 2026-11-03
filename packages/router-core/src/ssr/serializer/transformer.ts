@@ -1,11 +1,12 @@
 import type { PluginInfo, SerovalNode } from 'seroval'
+import type { RegisteredConfigType, RegisteredSsr } from '../../router'
+import type { NotFoundError } from '../../not-found'
 import type {
-  RegisteredConfigType,
-  RegisteredSsr,
-  SSROption,
-} from '../../router'
-import type { LooseReturnType } from '../../utils'
-import type { AnyRoute, ResolveAllSSR } from '../../route'
+  AnyRoute,
+  LifecycleFunction,
+  LifecycleReturnType,
+  ResolveAllSSR,
+} from '../../route'
 import type { RawStream } from './RawStream'
 
 declare const TSR_SERIALIZABLE: unique symbol
@@ -217,39 +218,137 @@ export type RegisteredSerializationAdapters<TRegister> = RegisteredConfigType<
   'serializationAdapters'
 >
 
-export type RegisteredSSROption<TRegister> =
-  unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
-    ? SSROption
-    : RegisteredConfigType<TRegister, 'defaultSsr'>
-
+// The gate sits in the check type of an `infer` conditional: inference walks the
+// branches of a conditional return type, never its check type, so a lifecycle function
+// whose return is inferred against this does not instantiate the gate's branches.
 export type ValidateSerializableLifecycleResult<
   TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+  TExtraControlFlow = NotFoundError,
+> =
+  ValidateSerializableLifecycleResultGate<
+    TRegister,
+    TParentRoute,
+    TSSR,
+    TFn,
+    TExtraControlFlow
+  > extends infer TInput
+    ? TInput
+    : never
+
+type ValidateSerializableLifecycleResultGate<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TFn,
+  TExtraControlFlow,
 > =
   false extends RegisteredSsr<TRegister>
     ? any
     : ValidateSerializableLifecycleResultSSR<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TFn
-        > extends infer TInput
-      ? TInput
-      : never
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TFn,
+        TExtraControlFlow
+      >
 
 export type ValidateSerializableLifecycleResultSSR<
   TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+  TExtraControlFlow = NotFoundError,
 > =
-  ResolveAllSSR<TParentRoute, TSSR> extends false
+  ResolveAllSSR<TParentRoute, TSSR, TRegister> extends false
     ? any
-    : RegisteredSSROption<TRegister> extends false
-      ? any
-      : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
+    : LifecycleFunction<TFn> extends {
+          '~types': { server: unknown; client: unknown }
+        }
+      ? ValidateSerializableLifecycleReturn<
+          TRegister,
+          LifecycleReturnType<TFn, 'server'>,
+          TExtraControlFlow
+        > extends infer TValid
+        ? [LifecycleReturnType<TFn, 'server'>] extends [TValid]
+          ? LifecycleReturnType<TFn, 'shared'>
+          : TValid
+        : never
+      : ValidateSerializableLifecycleReturn<
+          TRegister,
+          LifecycleReturnType<TFn, 'shared'>,
+          TExtraControlFlow
+        >
+
+type ValidateSerializableLifecycleReturn<
+  TRegister,
+  TReturn,
+  TExtraControlFlow,
+> = [TReturn] extends [Promise<infer TAwaited>]
+  ? Promise<
+      ValidateSerializableLifecycleData<TRegister, TAwaited, TExtraControlFlow>
+    >
+  : ValidateSerializableLifecycleData<TRegister, TReturn, TExtraControlFlow>
+
+// Redirects are control flow. Existing beforeLoad/loader returns also exempt
+// NotFoundError; context passes never because it treats returned not-found objects
+// as data. Next to control flow, a valid result is the target as written: a
+// union of the validated data and the all-optional NotFoundError would accept any
+// object in the function form's intersection check. For the same reason the
+// result is not distributed over its members.
+type ValidateSerializableLifecycleData<TRegister, T, TExtraControlFlow> = [
+  LifecycleControlFlow<T, TExtraControlFlow>,
+] extends [never]
+  ? ValidateSerializableInput<TRegister, T>
+  : ValidateSerializableInput<
+        TRegister,
+        LifecycleData<T, TExtraControlFlow>
+      > extends infer TValid
+    ? [LifecycleData<T, TExtraControlFlow>] extends [TValid]
+      ? T
+      : TValid
+    : never
+
+// A redirect is a Response with `options`, as `isRedirect` checks; its router
+// type does not matter. An object that is only assignable to NotFoundError
+// (`{ data: () => 1 }`) is data.
+type LifecycleControlFlow<T, TExtraControlFlow> = T extends Response & {
+  options: object
+}
+  ? T
+  : T extends TExtraControlFlow
+    ? TExtraControlFlow extends T
+      ? T
+      : never
+    : never
+
+type LifecycleData<T, TExtraControlFlow> =
+  T extends LifecycleControlFlow<T, TExtraControlFlow> ? never : T
+
+/**
+ * Same gate as ValidateSerializableLifecycleResult, but for the WIRE value returned
+ * by a `dehydrate` function. Used as an intersection target (`TWire & ...`), so every
+ * exit is `unknown` (an `any` exit would collapse the intersection).
+ */
+// The first exit lets a real `unknown` or `any` wire through; route.ts never passes
+// one, because LifecycleDehydrateReturn returns `unknown` for the uninferred wire
+// (LifecycleNoWire, also `any` and `never`) and hands an `unknown` wire over as
+// `symbol`. Keep the first exit anyway: it defers the whole gate while TWire is
+// still generic, and deleting it measured as more type instantiations.
+export type ValidateSerializableLifecycleWire<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TWire,
+> = unknown extends TWire
+  ? unknown
+  : false extends RegisteredSsr<TRegister>
+    ? unknown
+    : ResolveAllSSR<TParentRoute, TSSR, TRegister> extends false
+      ? unknown
+      : ValidateSerializableInput<TRegister, TWire>
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']

@@ -54,6 +54,7 @@ export default [
     },
     rules: {
       '@tanstack/router/create-route-property-order': 'error',
+      '@tanstack/router/no-lifecycle-codec-param-annotations': 'error',
     },
   },
   // Any other config...
@@ -84,7 +85,8 @@ Alternatively, add `@tanstack/eslint-plugin-router` to the plugins section, and 
 {
   "plugins": ["@tanstack/eslint-plugin-router"],
   "rules": {
-    "@tanstack/router/create-route-property-order": "error"
+    "@tanstack/router/create-route-property-order": "error",
+    "@tanstack/router/no-lifecycle-codec-param-annotations": "error"
   }
 }
 ```
@@ -94,6 +96,7 @@ Alternatively, add `@tanstack/eslint-plugin-router` to the plugins section, and 
 The following rules are available in the TanStack Router ESLint Plugin:
 
 - [@tanstack/router/create-route-property-order](./create-route-property-order.md)
+- [@tanstack/router/no-lifecycle-codec-param-annotations](./no-lifecycle-codec-param-annotations.md)
 
 ## Conflicts with other ESLint plugins
 

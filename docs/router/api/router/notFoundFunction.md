@@ -3,7 +3,7 @@ id: notFoundFunction
 title: notFound function
 ---
 
-The `notFound` function returns a new `NotFoundError` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger the `notFoundComponent`.
+The `notFound` function creates a new `NotFoundError` object. Throw it from a route's `context`, `beforeLoad`, or `loader` callback to trigger the `notFoundComponent`.
 
 ## notFound options
 

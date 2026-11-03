@@ -20,6 +20,7 @@ import type {
   AnyRouter,
   ConstrainLiteral,
   ErrorComponentProps,
+  LifecycleNoWire,
   NotFoundError,
   NotFoundRouteProps,
   Register,
@@ -240,7 +241,10 @@ export class Route<
       TBeforeLoadFn,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      any,
+      any,
+      any
     >,
   ) {
     super(options)
@@ -293,7 +297,7 @@ export class Route<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouteFunction
  */
 export function createRoute<
-  TRegister = unknown,
+  TRegister = Register,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -315,6 +319,9 @@ export function createRoute<
   TChildren = unknown,
   TSSR = unknown,
   const TServerMiddlewares = unknown,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >(
   options: RouteOptions<
     TRegister,
@@ -331,7 +338,11 @@ export function createRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    undefined,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ): Route<
   TRegister,
@@ -348,6 +359,7 @@ export function createRoute<
   TLoaderDeps,
   TLoaderFn,
   TChildren,
+  unknown,
   TSSR,
   TServerMiddlewares
 > {
@@ -366,6 +378,7 @@ export function createRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
+    unknown,
     TSSR,
     TServerMiddlewares
   >(
@@ -407,6 +420,9 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TLoaderFn = undefined,
     TSSR = unknown,
     TServerMiddlewares = unknown,
+    TContextWire = LifecycleNoWire,
+    TBeforeLoadWire = LifecycleNoWire,
+    TLoaderWire = LifecycleNoWire,
   >(
     options?: RootRouteOptions<
       TRegister,
@@ -417,7 +433,11 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      undefined,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >,
   ) => {
     return createRootRoute<
@@ -429,7 +449,11 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      undefined,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >(options)
   }
 }
@@ -497,7 +521,10 @@ export class RootRoute<
       TLoaderFn,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      any,
+      any,
+      any
     >,
   ) {
     super(options)
@@ -559,6 +586,9 @@ export function createRootRoute<
   TSSR = unknown,
   const TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -570,7 +600,10 @@ export function createRootRoute<
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ): RootRoute<
   TRegister,
@@ -599,7 +632,7 @@ export function createRootRoute<
     TSSR,
     TServerMiddlewares,
     THandlers
-  >(options)
+  >(options as any)
 }
 
 export function createRouteMask<

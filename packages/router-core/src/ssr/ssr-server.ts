@@ -35,19 +35,15 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
+    // A wire key is present iff its lifecycle was transported, even when its
+    // value is undefined.
+    ...match._dehydrated,
   }
-
-  const properties = [
-    ['__beforeLoadContext', 'b'],
-    ['loaderData', 'l'],
-    ['error', 'e'],
-    ['ssr', 'ssr'],
-  ] as const
-
-  for (const [key, shorthand] of properties) {
-    if (match[key] !== undefined) {
-      dehydratedMatch[shorthand] = match[key]
-    }
+  if (match.error !== undefined) {
+    dehydratedMatch.e = match.error
+  }
+  if (match.ssr !== undefined) {
+    dehydratedMatch.ssr = match.ssr
   }
   if (match._notFound) {
     dehydratedMatch.g = true
