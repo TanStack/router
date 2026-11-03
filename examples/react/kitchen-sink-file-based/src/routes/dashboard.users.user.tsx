@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
-import { z } from 'zod'
+import * as z from 'zod'
 import { fetchUserById } from '../utils/mockTodos'
 
 export const Route = createFileRoute('/dashboard/users/user')({

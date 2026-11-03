@@ -16,7 +16,7 @@ title: Search middleware to strip search params
 ## Examples
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 
 const defaultValues = {
@@ -40,7 +40,7 @@ export const Route = createFileRoute('/')({
 ```
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 import { createRootRoute, stripSearchParams } from '@tanstack/react-router'
 
 const searchSchema = z.object({
@@ -59,7 +59,7 @@ export const Route = createRootRoute({
 ```
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 
 const searchSchema = z.object({

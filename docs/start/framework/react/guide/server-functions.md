@@ -181,7 +181,7 @@ For robust validation, use schema libraries like Zod:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const UserSchema = z.object({
   name: z.string().min(1),

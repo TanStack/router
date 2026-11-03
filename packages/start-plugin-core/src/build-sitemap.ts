@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
-import { z } from 'zod'
+import * as z from 'zod'
 import { pageBaseSchema } from './schema'
 import { createLogger } from './utils'
 import type { PageBase, TanStackStartOutputConfig } from './schema'

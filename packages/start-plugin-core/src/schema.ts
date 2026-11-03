@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { z } from 'zod'
+import * as z from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { CompileStartFrameworkOptions } from './types'
 
@@ -158,16 +158,13 @@ const pagePrerenderOptionsSchema = z.object({
 const spaSchema = z.object({
   enabled: z.boolean().optional().default(true),
   maskPath: z.string().optional().default('/'),
-  prerender: pagePrerenderOptionsSchema
-    .optional()
-    .prefault({})
-    .transform((opts) => ({
-      outputPath: opts.outputPath ?? '/_shell',
-      crawlLinks: false,
-      retryCount: 0,
-      ...opts,
-      enabled: true,
-    })),
+  prerender: pagePrerenderOptionsSchema.prefault({}).transform((opts) => ({
+    outputPath: opts.outputPath ?? '/_shell',
+    crawlLinks: false,
+    retryCount: 0,
+    ...opts,
+    enabled: true,
+  })),
 })
 
 const inlineCssSchema = z
@@ -209,22 +206,19 @@ export const tanstackStartOptionsObjectSchema = z.object({
     .object({
       entry: z.string().optional(),
     })
-    .optional()
     .prefault({}),
   router: z
     .object({
       entry: z.string().optional(),
       basepath: z.string().optional(),
     })
-    .and(tsrConfig.optional().prefault({}))
-    .optional()
+    .and(tsrConfig.prefault({}))
     .prefault({}),
   client: z
     .object({
       entry: z.string().optional(),
       base: z.string().optional().default('/_build'),
     })
-    .optional()
     .prefault({}),
   server: z
     .object({
@@ -239,10 +233,8 @@ export const tanstackStartOptionsObjectSchema = z.object({
            */
           inlineCss: inlineCssSchema,
         })
-        .optional()
         .prefault({}),
     })
-    .optional()
     .prefault({}),
   serverFns: z
     .object({
@@ -257,7 +249,6 @@ export const tanstackStartOptionsObjectSchema = z.object({
         >((value) => typeof value === 'function')
         .optional(),
     })
-    .optional()
     .prefault({}),
   pages: z.array(pageSchema).optional().default([]),
   sitemap: z
@@ -289,18 +280,15 @@ export const tanstackStartOptionsObjectSchema = z.object({
           enabled: z.boolean().optional().default(true),
           basepath: z.string().optional(),
         })
-        .optional()
         .prefault({}),
     })
-    .optional()
     .prefault({}),
   spa: spaSchema.optional(),
   importProtection: importProtectionOptionsSchema,
 })
 
-export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
-  .optional()
-  .prefault({})
+export const tanstackStartOptionsSchema =
+  tanstackStartOptionsObjectSchema.prefault({})
 
 export type PageBase = z.infer<typeof pageBaseSchema>
 export type Page = z.infer<typeof pageSchema>

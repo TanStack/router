@@ -7,7 +7,7 @@ import {
   retainSearchParams,
   useNavigate,
 } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 import { Spinner } from '../components/Spinner'
 import { fetchUsers } from '../utils/mockTodos'
 

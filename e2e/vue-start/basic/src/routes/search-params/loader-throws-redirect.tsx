@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue'
 import { redirect, createFileRoute } from '@tanstack/vue-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const RouteComponent = defineComponent({
   setup() {

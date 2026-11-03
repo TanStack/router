@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import React from 'react'
-import { z } from 'zod'
+import * as z from 'zod'
 
 // Middleware that creates context on client and sends it to server
 const testMiddleware = createMiddleware({ type: 'function' })

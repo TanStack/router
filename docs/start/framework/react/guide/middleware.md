@@ -239,7 +239,7 @@ The `validator` method is used to modify the data object before it is passed to 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const mySchema = z.object({
   workspaceId: z.string(),
@@ -352,7 +352,7 @@ You may have noticed that in the example above while client-sent context is type
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const requestLogger = createMiddleware({ type: 'function' })
   .client(async ({ next, context }) => {

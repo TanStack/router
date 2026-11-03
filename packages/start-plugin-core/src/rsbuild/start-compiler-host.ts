@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { z } from 'zod'
+import * as z from 'zod'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { detectKindsInCode } from '../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../start-compiler/config'
@@ -55,10 +55,12 @@ const serverFnSchema = z.object({
   isClientReferenced: z.boolean().optional(),
 })
 
-const serverFnBuildInfoSchema = z.object({
-  version: z.literal(1),
-  serverFnsById: z.record(z.string(), serverFnSchema),
-})
+const serverFnBuildInfoSchema = z.compile(
+  z.object({
+    version: z.literal(1),
+    serverFnsById: z.record(z.string(), serverFnSchema),
+  }),
+)
 
 /**
  * In Rsbuild dev, use file:// URLs for absolute server function paths.
@@ -79,12 +81,15 @@ function resolveMetadataLoader(): string {
   return resolve(currentDir, metadataLoaderFilename)
 }
 
-function readServerFnBuildInfo(
-  module: Rspack.Module,
-): Record<string, ServerFn> | null {
-  const result = serverFnBuildInfoSchema.safeParse(
-    module.buildInfo[SERVER_FN_BUILD_INFO_FIELD],
-  )
+export function readServerFnBuildInfo(module: {
+  buildInfo: Record<string, unknown>
+}): Record<string, ServerFn> | null {
+  const metadata = module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]
+  if (metadata === undefined) {
+    return null
+  }
+
+  const result = serverFnBuildInfoSchema.safeParse(metadata)
   if (!result.success) {
     return null
   }

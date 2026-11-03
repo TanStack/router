@@ -7,7 +7,7 @@ import {
   screen,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { z } from 'zod'
+import * as z from 'zod'
 
 import { useEffect } from 'react'
 import {

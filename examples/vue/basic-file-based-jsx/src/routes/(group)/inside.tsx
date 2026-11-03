@@ -1,6 +1,6 @@
 import { createFileRoute, getRouteApi, useSearch } from '@tanstack/vue-router'
 import { defineComponent } from 'vue'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const InsideComponent = defineComponent({
   setup() {

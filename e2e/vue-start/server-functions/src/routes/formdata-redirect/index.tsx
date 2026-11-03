@@ -1,7 +1,7 @@
 import { defineComponent } from 'vue'
 import { createFileRoute, redirect } from '@tanstack/vue-router'
 import { createServerFn, useServerFn } from '@tanstack/vue-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const SubmitPostFormDataFn = defineComponent({
   setup() {
