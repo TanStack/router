@@ -924,9 +924,10 @@ const inferPath = (routeNode: RouteNode): string => {
 }
 
 /**
- * Infers the full path for use by TS
+ * The full path with groups and pathless segments removed. A route group's
+ * layout (e.g. `/(group)/_layout`) strips down to `''`.
  */
-export const inferFullPath = (routeNode: RouteNode): string => {
+const stripFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
     removeLayoutSegmentsAndUnderscoresWithEscape(
       routeNode.routePath,
@@ -946,10 +947,15 @@ export const inferFullPath = (routeNode: RouteNode): string => {
     return fullPath
   }
 
-  // A route group's layout (e.g. `/(group)/_layout`) strips down to `/`,
-  // which is the router's full path, not an empty string
-  return fullPath.replace(/\/$/, '') || '/'
+  return fullPath.replace(/\/$/, '')
 }
+
+/**
+ * Infers the full path for use by TS
+ */
+export const inferFullPath = (routeNode: RouteNode): string =>
+  // A route group's layout has the router's full path `/`
+  stripFullPath(routeNode) || '/'
 
 const shouldPreferIndexRoute = (
   current: RouteNode,
@@ -1114,8 +1120,12 @@ Conflicting files: \n ${emptyPathRoutes
     throw new Error(errorMessage)
   }
 
+  // A route group's layout keeps its stripped path `''` here, so one without
+  // child routes yet doesn't conflict with the index route. A childless
+  // `_auth.tsx` does: the route tree lists the index route first, and the
+  // router would then match `/` to the layout
   const routes = _routes.map((d) => {
-    const inferredFullPath = inferFullPath(d)
+    const inferredFullPath = stripFullPath(d)
     return { ...d, inferredFullPath }
   })
 
