@@ -99,15 +99,12 @@ export function createRouterCodeSplitterPlugin(
 
     addHmr = (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
     hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
-    compilerPlugins = [
-      ...(addHmr
-        ? (getFrameworkHmrCompilerPlugins({
-            targetFramework: userConfig.target,
-            hmrStyle,
-          }) ?? [])
-        : []),
-      ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
-    ]
+    compilerPlugins = addHmr
+      ? (getFrameworkHmrCompilerPlugins({
+          targetFramework: userConfig.target,
+          hmrStyle,
+        }) ?? [])
+      : []
     virtualRouteCompilerPlugins = compilerPlugins.filter(
       (plugin) => plugin.onVirtualRouteSplitNode,
     )
