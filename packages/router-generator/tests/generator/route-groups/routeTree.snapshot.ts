@@ -76,6 +76,7 @@ const fooAsdfbarLayoutXyzLazyRoute = fooAsdfbarLayoutXyzLazyRouteImport
   )
 
 export interface FileRoutesByFullPath {
+  '/': typeof barBarRouteWithChildren
   '/hello': typeof barBarHelloRoute
   '/asdf': typeof fooAsdfanotherGroupLayoutRouteWithChildren
   '/asdf/$id': typeof fooAsdfbarIdRoute
@@ -85,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof barBarRouteWithChildren
   '/hello': typeof barBarHelloRoute
   '/asdf': typeof fooAsdfanotherGroupLayoutRouteWithChildren
   '/asdf/$id': typeof fooAsdfbarIdRoute
@@ -108,6 +110,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/hello'
     | '/asdf'
     | '/asdf/$id'
@@ -117,6 +120,7 @@ export interface FileRouteTypes {
     | '/asdf/xyz'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/hello'
     | '/asdf'
     | '/asdf/$id'
@@ -151,7 +155,7 @@ declare module '@tanstack/react-router' {
     '/(bar)/_bar': {
       id: '/(bar)/_bar'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof barBarRouteImport
       parentRoute: typeof rootRouteImport
     }
