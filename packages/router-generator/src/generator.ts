@@ -141,6 +141,18 @@ function rerun(opts: { msg?: string; event?: GeneratorEvent }): Rerun {
   return { rerun: true, event: event ?? { type: 'rerun' }, ...rest }
 }
 
+/**
+ * Whether the route tree gives the route a `path`. Pathless and route-group
+ * layouts get none, unless their parent directory has no route of its own
+ * (`foo/_layout.tsx` without `foo.tsx` gets `path: '/foo'`).
+ */
+function hasPathOption(node: RouteNode) {
+  return (
+    !node.isNonPath ||
+    (node._fsRouteType === 'pathless_layout' && !!node.cleanedPath)
+  )
+}
+
 function isRerun(result: unknown): result is Rerun {
   return (
     typeof result === 'object' &&
@@ -701,10 +713,7 @@ export class Generator {
           `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
-              !node.isNonPath ||
-              (node._fsRouteType === 'pathless_layout' && node.cleanedPath)
-                ? `path: '${node.cleanedPath}'`
-                : undefined,
+              hasPathOption(node) ? `path: '${node.cleanedPath}'` : undefined,
               `getParentRoute: () => ${findParent(node)}`,
             ]
               .filter(Boolean)
@@ -941,13 +950,15 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         : `export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
     ].join('\n')
 
-    // A pathless or route-group layout without child routes yet shares its
-    // parent's full path (e.g. `/` with the index route) but matches no URL
-    // of its own, so it can't conflict with another route
+    // A pathless or route-group layout without a `path` shares its parent's
+    // full path (e.g. `/` with the index route) but matches no URL of its
+    // own, so it can't conflict with another route
     checkRouteFullPathUniqueness(
       sortedRouteNodes.filter(
         (d) =>
-          d.children === undefined && 'lazy' !== d._fsRouteType && !d.isNonPath,
+          d.children === undefined &&
+          'lazy' !== d._fsRouteType &&
+          hasPathOption(d),
       ),
       config,
     )

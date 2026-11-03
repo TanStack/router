@@ -71,3 +71,23 @@ describe('a layout without child routes yet next to the index route', () => {
     expect(routeTree).toContain(`'${id}': typeof`)
   })
 })
+
+// A pathless layout whose parent directory has no route file of its own
+// (`foo/_layout.tsx` without `foo.tsx`) carries that directory's path, so it
+// matches `/foo` like any other route there.
+describe('a layout without child routes yet that adds a path', () => {
+  it.each([
+    { file: '(group)/foo.tsx', id: '/(group)/foo' },
+    { file: 'foo_.tsx', id: '/foo_' },
+  ])('conflicts with $file at the same full path', async ({ file, id }) => {
+    await expect(
+      generate({
+        '__root.tsx': '__root__',
+        'foo/_layout.tsx': '/foo/_layout',
+        [file]: id,
+      }),
+    ).rejects.toThrow(
+      'Conflicting configuration paths were found for the following routes: "/foo", "/foo".',
+    )
+  })
+})
