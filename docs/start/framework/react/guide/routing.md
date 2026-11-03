@@ -202,6 +202,28 @@ To create a route, create a new file that corresponds to the path of the route y
 | `/posts/:postId` | `posts/$postId.tsx` | Dynamic Route  |
 | `/rest/*`        | `rest/$.tsx`        | Wildcard Route |
 
+> [!WARNING]
+> **Layout routes need an `<Outlet />` to render child routes.**
+>
+> When you create a layout route file (e.g. `posts.tsx`), the development server will auto-fill it with a basic component. If you later add child routes (e.g. `posts/index.tsx` or `posts/$postId.tsx`), those child routes will **not appear** until you add `<Outlet />` to the layout route's component:
+>
+> ```tsx
+> // posts.tsx — a layout route for all /posts/* routes
+> import { createFileRoute, Outlet } from '@tanstack/react-router'
+>
+> export const Route = createFileRoute('/posts')({
+>   component: () => (
+>     <div>
+>       <h1>My Posts</h1>
+>       {/* Child routes (/posts, /posts/123, etc.) render here */}
+>       <Outlet />
+>     </div>
+>   ),
+> })
+> ```
+>
+> If you skip this step, navigating to `/posts/123` will appear to do nothing — the layout renders but the child route component never appears. This is a common first-time-user gotcha.
+
 ## Defining Routes
 
 To define a route, use the `createFileRoute` function to export the route as the `Route` variable.
