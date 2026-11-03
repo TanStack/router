@@ -2,7 +2,7 @@
  * Registers Start's compiler on Rsbuild: the shared session,
  * one `pre` loader rule per Start environment (every JS/TS id, env and
  * derived alike), the late `post` pass over the JS output of other module
- * types (import protection only), the `sideEffects: false` rules for
+ * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rules for
  * extracted-export outputs and the import-protection runtime, the host
  * plugin of each environment compiler, the generator session and the
  * client route tree transform.
@@ -14,6 +14,7 @@ import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
+import { buildsVueSfcs, vueScriptBlockRule } from './vue'
 import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
 import type { TransformImportRule } from './compiler-session'
 import type { StartCompilerEnvironment } from '../compiler/session'
@@ -125,16 +126,14 @@ export function registerStartCompiler(
       },
     ]
     // the late pass (import protection and start-env)
-    loaderRules.push({
-      test: LATE_PASS_RE,
-      enforce: 'post',
-      use: [
-        {
-          loader: loaderPath,
-          options: { environment: environment.name, pass: 'late' },
-        },
-      ],
-    })
+    const lateUse = {
+      loader: loaderPath,
+      options: { environment: environment.name, pass: 'late' },
+    }
+    loaderRules.push({ test: LATE_PASS_RE, enforce: 'post', use: [lateUse] })
+    if (buildsVueSfcs(config)) {
+      loaderRules.push(vueScriptBlockRule(lateUse))
+    }
     if (s.start.ip) {
       loaderRules.push(
         // the import-protection runtime only; edge modules are analysed by the bundler

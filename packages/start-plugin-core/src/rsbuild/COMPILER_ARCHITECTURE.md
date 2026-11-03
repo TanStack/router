@@ -13,6 +13,11 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
   and id allocator, the planners and configuration per environment and layer, the reporting policy): the loader
   implementation, the invalidation operation, the resolver module content.
+- `vue.ts` holds the Vue rules: the late pass over an SFC's script block under vue-loader's inline match resource
+  (`x.vue.js?vue&type=script…`, which neither the `pre` rule, before vue-loader, nor the `.vue` late rule reads), a
+  rule registered only when vue-loader's plugin is in the configuration; and the late loader's single run per module
+  (vue-loader's pitcher copies a block's loaders into its own request, which the configured `post` rules match again:
+  a late loader that runs again later in its chain passes through).
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
   (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock

@@ -606,6 +606,7 @@ export function startCompilerPlugin(
     id: string,
     code: string,
     envType: 'client' | 'server',
+    lateInputMap?: () => InputSourceMap | null,
   ) => {
     const log = (d: Diagnostic, at: DiagnosticPosition | undefined) => ({
       message: at
@@ -613,10 +614,17 @@ export function startCompilerPlugin(
         : d.message,
       loc: at && { file: filePath, ...at },
     })
-    s.start.report(out, filePath, code, envType, {
-      error: (d, at) => ctx.error({ ...log(d, at), id }),
-      warn: (d, at) => ctx.warn(log(d, at)),
-    })
+    s.start.report(
+      out,
+      filePath,
+      code,
+      envType,
+      {
+        error: (d, at) => ctx.error({ ...log(d, at), id }),
+        warn: (d, at) => ctx.warn(log(d, at)),
+      },
+      lateInputMap,
+    )
   }
 
   /**
@@ -1128,12 +1136,17 @@ export function startCompilerPlugin(
         if (!env || identify(id).lang !== null) {
           return null
         }
+        let inputMap: InputSourceMap | null | undefined
+        const readInputMap = () =>
+          inputMap === undefined
+            ? (inputMap = inputMapOf(this, code, identify(id).path))
+            : inputMap
         const out = await s.start.compile(
           {
             id,
             code,
             env,
-            inputMap: () => inputMapOf(this, code, identify(id).path),
+            inputMap: readInputMap,
             wantMap: true,
             late: true,
           },
@@ -1145,7 +1158,16 @@ export function startCompilerPlugin(
           // not JavaScript after all: nothing to judge
           return null
         }
-        reportDiagnostics(s, this, out, identify(id).path, id, code, env.type)
+        reportDiagnostics(
+          s,
+          this,
+          out,
+          identify(id).path,
+          id,
+          code,
+          env.type,
+          readInputMap,
+        )
         let mock = afterCompile(s, env, id, out, (error) => this.error(error))
         if (mock instanceof Promise) {
           mock = await mock

@@ -34,7 +34,9 @@ import {
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import { runsAgainLater } from './vue'
 import type { StartCompilerSessionOptions } from '../compiler/session'
+import type { LoaderChainLike } from './vue'
 import type { CompiledOutputLike } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
@@ -83,7 +85,7 @@ type StartRsbuildSessionOptions = Omit<
 >
 
 /** What the loader implementation uses of Rspack's loader context. */
-interface LoaderContextLike {
+interface LoaderContextLike extends LoaderChainLike {
   resource: string
   resourcePath: string
   sourceMap?: boolean
@@ -540,7 +542,11 @@ export class StartRsbuildCompilerSession {
     }
     const identity = identify(id)
     const late = options.pass === 'late'
-    if (late ? identity.lang !== null : identity.lang === null) {
+    if (
+      late
+        ? identity.lang !== null || runsAgainLater(ctx)
+        : identity.lang === null
+    ) {
       return passthrough
     }
     if (!late && !this.start.compiles(identity.path, source)) {
@@ -571,7 +577,14 @@ export class StartRsbuildCompilerSession {
     if (!out) {
       return passthrough
     }
-    this.reportDiagnostics(ctx, out, identity.path, source, env.type)
+    this.reportDiagnostics(
+      ctx,
+      out,
+      identity.path,
+      source,
+      env.type,
+      late ? readInputMap : undefined,
+    )
     const mock = await this.protect(ctx, env, id, out)
     const buildInfo = ctx._module?.buildInfo
     if (env.persistsModules && out.persisted && buildInfo) {
@@ -648,19 +661,27 @@ export class StartRsbuildCompilerSession {
     file: string,
     code: string,
     envType: 'client' | 'server',
+    lateInputMap?: () => InputSourceMap | null,
   ): void {
     // the position in the Vite host's form, `message (file:line:col)`
     const where = (at: DiagnosticPosition | undefined) =>
       at ? ` (${file}:${at.line}:${at.column + 1})` : ''
     const errors: Array<string> = []
-    this.start.report(out, file, code, envType, {
-      error: (d, at) => errors.push(`${d.message}${where(at)}`),
-      warn: (d, at) => {
-        const warning = new Error(`${d.message}${where(at)}`)
-        warning.name = 'TanStackStartCompilerWarning'
-        ctx.emitWarning(warning)
+    this.start.report(
+      out,
+      file,
+      code,
+      envType,
+      {
+        error: (d, at) => errors.push(`${d.message}${where(at)}`),
+        warn: (d, at) => {
+          const warning = new Error(`${d.message}${where(at)}`)
+          warning.name = 'TanStackStartCompilerWarning'
+          ctx.emitWarning(warning)
+        },
       },
-    })
+      lateInputMap,
+    )
     if (errors.length > 0) {
       const error = new Error(errors.join('\n'))
       error.name = 'TanStackStartCompilerError'

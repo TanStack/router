@@ -251,10 +251,12 @@ export interface StartBuildOptions {
    * The Start framework package of the app (default `react`): Start's
    * plugin is that package's `tanstackStart()`, and `solid` links the
    * built `@tanstack/solid-start` and `@tanstack/solid-router` too (the
-   * dependencies of a Solid Start app). The app's JSX plugin (e.g.
-   * `vite-plugin-solid`) comes from `viteConfig`.
+   * dependencies of a Solid Start app; `vue`: `@tanstack/vue-start`,
+   * `@tanstack/vue-router` and `vue`). The app's own plugins (e.g.
+   * `vite-plugin-solid`, `@rsbuild/plugin-vue`) come from `viteConfig` or
+   * `rsbuildConfig`.
    */
-  framework?: 'react' | 'solid'
+  framework?: StartFramework
   /** App files by path relative to the app root. */
   files: Record<string, string>
   /**
@@ -378,6 +380,7 @@ const entryGlobal = '__tssBuildHarnessEntry'
 const routerPackages = {
   react: '@tanstack/react-router',
   solid: '@tanstack/solid-router',
+  vue: '@tanstack/vue-router',
 } as const
 
 /**
@@ -401,7 +404,7 @@ globalThis.${entryGlobal} = entry
  * loads the app's router and start entries itself and serves the app's
  * requests: `inAppRequest`), and the test's entry module.
  */
-const serverEntry = (testEntry: string, framework: 'react' | 'solid') =>
+const serverEntry = (testEntry: string, framework: StartFramework) =>
   `import * as entry from ${JSON.stringify(`../${testEntry}`)}
 globalThis.${entryGlobal} = entry
 export { default } from '@tanstack/${framework}-start/server-entry'
@@ -451,7 +454,7 @@ export async function renderPath(
 const harnessFiles = (
   entries: { client: string; ssr: string },
   files: Record<string, string>,
-  framework: 'react' | 'solid',
+  framework: StartFramework,
 ) => {
   const ownStart = 'src/start.ts' in files
   const ownRouter = Object.keys(files).some((file) =>
@@ -699,7 +702,7 @@ const describedFrom = new WeakMap<Channel, number>()
 
 interface BuildTarget {
   root: string
-  framework: 'react' | 'solid'
+  framework: StartFramework
   mode: BuildMode
   minify: boolean
   sourcemap: boolean

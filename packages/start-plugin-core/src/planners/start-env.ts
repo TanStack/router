@@ -32,7 +32,7 @@ import {
   devFunctionId,
   placeholderId,
 } from '../server-fns/ids'
-import type { StartPrefetch } from '../compiler/prefetch'
+import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -77,6 +77,21 @@ export interface StartEnvConfig {
 
 export interface StartEnvFacts {
   serverFns: Array<ServerFnFact>
+  /**
+   * The late pass (`config.late`): the binding each refused escape of a
+   * binding hands on, by the escape's offset (another plugin's generated
+   * code may hand it on: `compiler/vue.ts`). Absent when there is none.
+   */
+  lateEscapes?: Array<LateEscape>
+}
+
+/** An escape of the late pass that hands on a binding of the module. */
+export interface LateEscape {
+  /** Where the escape is reported (its diagnostic's range start). */
+  at: number
+  name: string
+  /** The binding's declaration. */
+  declaration: Range
 }
 
 type Role = 'client' | 'ssr-caller' | 'provider'
@@ -1000,6 +1015,16 @@ function planStartEnv(
         code: 'start-escape:namespace',
       })
     }
+    if (config.late) {
+      const late = lateEscapesOf(
+        ma,
+        analysis.escapes,
+        prefetched?.namespaceEscapes ?? [],
+      )
+      if (late.length > 0) {
+        facts.lateEscapes = late
+      }
+    }
     // a parameter that reaches server code: every call keeps its argument on the client
     // (a handler's captures are refused by `hoist`)
     const params = new Map<
@@ -1099,6 +1124,47 @@ const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
     'A variable holding a TanStack Start builder or factory is reassigned, so the compiler cannot tell what it holds where it is used, and server code attached to it would ship to the client. Store builders in a `const`.',
   pattern:
     'A TanStack Start builder or factory is destructured in a form the compiler cannot follow (only `const { createServerFn } = Start` style names of a Start namespace or start instance can be), so server code attached to it would ship to the client. Call its methods directly.',
+}
+
+/**
+ * The bindings the late pass's refused escapes hand on (`StartEnvFacts.lateEscapes`):
+ * an escape of an identifier, and a namespace escape (of the import it reads).
+ */
+function lateEscapesOf(
+  ma: PlanContext['analysis'],
+  escapes: ReadonlyArray<Escape>,
+  namespaceEscapes: ReadonlyArray<NamespaceEscape>,
+): Array<LateEscape> {
+  const { file } = ma
+  const out: Array<LateEscape> = []
+  const handsOn = (
+    at: number,
+    binding: ReturnType<typeof file.bindingOf> | undefined,
+  ) => {
+    const declaration = binding?.declarations[0]
+    if (declaration) {
+      out.push({ at, name: binding.name, declaration: rangeOf(declaration) })
+    }
+  }
+  for (const e of escapes) {
+    if (e.node.type === 'Identifier') {
+      handsOn(e.node.start, file.bindingOf(e.node))
+    }
+  }
+  for (const { range } of namespaceEscapes) {
+    handsOn(
+      range.start,
+      ma.imports
+        .flatMap((imp) => imp.specifiers)
+        .map((spec) => (spec.local < 0 ? undefined : file.bindings[spec.local]))
+        .find((binding) =>
+          binding?.references.some(
+            ({ node }) => node.start >= range.start && node.end <= range.end,
+          ),
+        ),
+    )
+  }
+  return out
 }
 
 function escapeMessage(e: Escape): string {
@@ -1220,7 +1286,13 @@ function hoist(
     return null
   }
   const refuse = (message: string, range: Range) => {
-    ctx.diagnostic({ severity: 'error', message, range, by })
+    ctx.diagnostic({
+      severity: 'error',
+      message,
+      range,
+      by,
+      code: 'start-hoist',
+    })
     return null
   }
   // captures of enclosing functions
