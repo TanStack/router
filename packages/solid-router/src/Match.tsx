@@ -77,18 +77,26 @@ export const Match = (props: { routeId: string }) => {
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
 
+  const ResolvedSuspenseBoundary = () =>
+    routeOptions().wrapInSuspense === false ? SafeFragment : Solid.Suspense
+
+  const renderPendingComponentFallback = () => {
+    if (routeOptions().wrapInSuspense === false) {
+      return undefined
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      return renderInNonRouteComponentContext(
+        () => <Dynamic component={resolvePendingComponent()} />,
+        'pendingComponent',
+      )
+    }
+    return <Dynamic component={resolvePendingComponent()} />
+  }
+
   const MatchContent = () => (
     <Solid.Show
       when={currentMatch().status !== 'pending'}
-      fallback={(() => {
-        if (process.env.NODE_ENV !== 'production') {
-          return renderInNonRouteComponentContext(
-            () => <Dynamic component={resolvePendingComponent()} />,
-            'pendingComponent',
-          )
-        }
-        return <Dynamic component={resolvePendingComponent()} />
-      })()}
+      fallback={renderPendingComponentFallback()}
     >
       <MatchInner />
     </Solid.Show>
@@ -97,20 +105,15 @@ export const Match = (props: { routeId: string }) => {
   return (
     <ShellComponent>
       <nearestMatchContext.Provider value={nearestMatch}>
-        <Solid.Suspense
+        <Dynamic
+          component={ResolvedSuspenseBoundary()}
           fallback={(() => {
             // Data-only SSR renders the inner fallback on the server, so
             // avoid adding an extra suspense fallback on the client.
             if (shouldSkipSuspenseFallback()) {
               return undefined
             }
-            if (process.env.NODE_ENV !== 'production') {
-              return renderInNonRouteComponentContext(
-                () => <Dynamic component={resolvePendingComponent()} />,
-                'pendingComponent',
-              )
-            }
-            return <Dynamic component={resolvePendingComponent()} />
+            return renderPendingComponentFallback()
           })()}
         >
           <Dynamic
@@ -187,7 +190,7 @@ export const Match = (props: { routeId: string }) => {
               </Solid.Switch>
             </Dynamic>
           </Dynamic>
-        </Solid.Suspense>
+        </Dynamic>
       </nearestMatchContext.Provider>
 
       {renderScrollRestoration?.(router, route)}
