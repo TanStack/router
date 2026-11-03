@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, rootRouteId } from '../src'
 import * as routeTreeUtils from '../src/new-process-route-tree'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
@@ -412,4 +412,41 @@ test('formats masked destinations without registered templates', () => {
 
   expect(build().maskedLocation?.pathname).toBe('/pretty/@one')
   expect(build().maskedLocation?.pathname).toBe('/pretty/@one')
+})
+
+// A dev server whose NODE_ENV is not `development` (`NODE_ENV=production
+// vite dev`, a dev server under test): an edit re-evaluates the route tree
+// module, which gives the root route (an unchanged module's export, so the
+// same route tree object) the edited module's new routes.
+test('a server router reads the routes a re-evaluated route tree gave the same root', () => {
+  const root = new BaseRootRoute({})
+  const before = new BaseRoute({ getParentRoute: () => root, path: '/page' })
+  const routeTree = root.addChildren([before])
+  const first = createTestRouter({
+    routeTree,
+    history: history(),
+    isServer: true,
+  })
+  expect(first.getMatchedRoutes('/page').at(-1)).toBe(before)
+
+  const after = new BaseRoute({ getParentRoute: () => root, path: '/page' })
+  expect(root.addChildren([after])).toBe(routeTree)
+  const next = createTestRouter({
+    routeTree,
+    history: history(),
+    isServer: true,
+  })
+  expect(next.getMatchedRoutes('/page').at(-1)).toBe(after)
+})
+
+test('a server router never reads the cache of another route tree without children', () => {
+  const first = new BaseRootRoute({})
+  createTestRouter({ routeTree: first, history: history(), isServer: true })
+  const second = new BaseRootRoute({})
+  const router = createTestRouter({
+    routeTree: second,
+    history: history(),
+    isServer: true,
+  })
+  expect(router.routesById[rootRouteId]).toBe(second)
 })
