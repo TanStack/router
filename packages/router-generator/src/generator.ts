@@ -941,9 +941,13 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         : `export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
     ].join('\n')
 
+    // A pathless or route-group layout without child routes yet shares its
+    // parent's full path (e.g. `/` with the index route) but matches no URL
+    // of its own, so it can't conflict with another route
     checkRouteFullPathUniqueness(
       sortedRouteNodes.filter(
-        (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
+        (d) =>
+          d.children === undefined && 'lazy' !== d._fsRouteType && !d.isNonPath,
       ),
       config,
     )
