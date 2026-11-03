@@ -22,17 +22,15 @@ if (process.env.VITEST) {
 
 /**
  * Slow-tier tests that read process-global state (the compiler's stats knob,
- * `TSR_COMPILER_STATS`; router-core's route tree cache of the first server
- * router): each runs in a process of its own (project `integration-alone`),
- * as a state an earlier file left in a shared process would count too
- * (Vite 8 keeps the plugins of every finished build and closed server, and so
- * their Start sessions, alive: Rolldown's native plugins hold Vite's callbacks
- * strongly, and those reach the plugins again).
+ * `TSR_COMPILER_STATS`): each runs in a process of its own (project
+ * `integration-alone`), as a state an earlier file left in a shared process
+ * would count too (Vite 8 keeps the plugins of every finished build and
+ * closed server, and so their Start sessions, alive: Rolldown's native
+ * plugins hold Vite's callbacks strongly, and those reach the plugins again).
  */
 const aloneTests = [
   'integration/start-build-environment-release.test.ts',
   'integration/start-build-compile-scope.test.ts',
-  'integration/start-dev-ssr-route-edit.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */

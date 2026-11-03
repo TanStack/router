@@ -4,6 +4,7 @@ import { rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createServer } from 'vite'
 import { runInPage } from '@tanstack/compiler-test-utils/browser'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { inputsOf } from './consumer-inputs'
 import type { PluginOption } from 'vite'
@@ -82,6 +83,7 @@ export async function renderAt(url, expectedParagraphs) {
     plugins.push((await import('vite-plugin-solid')).default())
   }
   const channel = openDiagnosticChannel()
+  runAsDevCommand()
   const server = await createServer({
     root,
     cacheDir: path.join(root, '.vite-consumer', framework),

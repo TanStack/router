@@ -50,6 +50,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
 import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
@@ -751,6 +752,9 @@ function leaseHost(
       (entry) => entry.key === key && entry.lease === undefined,
     )
     if (free) {
+      // A dev server an earlier file may have started: this file's
+      // environment is Vitest's again (`test-scope-setup`)
+      runAsDevCommand()
       take(free)
       return { entry: free, created: false }
     }

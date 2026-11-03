@@ -9,6 +9,7 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createServer, createServerModuleRunner, parseSync } from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { inputsOf, recordInputs } from './consumer-inputs'
@@ -163,6 +164,7 @@ async function withModule<T>(
   const entry = path.join(path.dirname(file), `.consumer-${randomUUID()}.ts`)
   await writeFile(entry, consumerSource(framework))
   const channel = openDiagnosticChannel()
+  runAsDevCommand()
   const server = await createServer({
     root,
     configFile: false,

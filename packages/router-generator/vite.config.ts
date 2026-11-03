@@ -22,7 +22,12 @@ const config = defineConfig({
     maxWorkers: 4,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
-    setupFiles: ['@tanstack/compiler-test-utils/pins-setup'],
+    setupFiles: [
+      // Each file's environment back after it: its Vite servers run under
+      // `NODE_ENV=development`, as `vite dev` does
+      '@tanstack/compiler-test-utils/test-scope-setup',
+      '@tanstack/compiler-test-utils/pins-setup',
+    ],
     // Test files share a worker's modules (the router packages, Vite): every
     // test works in its own temporary app and restores its spies and env
     // stubs, and the route tree helpers share Vite servers only where they

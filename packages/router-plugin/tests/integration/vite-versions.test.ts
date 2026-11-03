@@ -16,6 +16,7 @@ import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { tanstackRouter } from '../../src/vite'
 import { head, rootRoute, ssrRenderEntry } from '../build-harness'
@@ -179,6 +180,7 @@ export const Route = createFileRoute('/shared')({ component: Shared })
     const log = (level: string) => (message: unknown) => {
       logs.push(`${level}: ${String(message)}`)
     }
+    runAsDevCommand()
     const server = await vite.createServer({
       root: app.root,
       configFile: false,

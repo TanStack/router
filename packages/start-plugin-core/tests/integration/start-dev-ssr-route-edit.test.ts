@@ -1,11 +1,7 @@
 /**
  * A Start dev server renders an edited route on the server: after an edit of
  * a route file, the page's server render (Start's dev middleware) shows what
- * the edited route does. Runs in a process of its own (`integration-alone`):
- * outside `NODE_ENV=development` (a test process sets `test`), router-core
- * keeps the first server router's processed route tree for the process, so
- * the first dev server of a process is the one that shows whether an edit
- * reaches it.
+ * the edited route does.
  */
 import { describe, expect, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
