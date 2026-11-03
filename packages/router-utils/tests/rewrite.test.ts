@@ -1413,4 +1413,64 @@ describe('replacements at a statement start', () => {
     expect(out).toContain('const x = foo\n/* @__PURE__ */ lazy(1)\n')
     expect(out).toContain('const y = bar\n;/* @__PURE__ */ (0, lazy)(2)\n')
   })
+
+  // a removal leaves the statement after it next to the one before it: the
+  // statement the source wrote after it is guarded the same way, whatever
+  // its first token (`(`, `[`, a template, a sign, a regular expression), past
+  // a comment (the `;` before it), and only in a list
+  it('guards the statement after a removal', () => {
+    const next = ['(mk)()', '[1].map(f)', '`t`', '+n', '-n', '/x/.test(s)']
+    const code = [
+      'export function f() {',
+      '  let y = foo',
+      ...next.flatMap((n) => ['  const gone = 1;', `  ${n}`]),
+      '  const z = 1;',
+      '  /* c */ (mk)()',
+      '  const w = 2;',
+      '  g()',
+      '  if (y) { const v = 3; }',
+      '  (mk)()',
+      '  switch (y) {',
+      '    case 1:',
+      '      let u = foo',
+      '      const t = 4;',
+      '      (mk)()',
+      '  }',
+      '}',
+      '',
+    ].join('\n')
+    const e = engine(code)
+    const remove = (from: number, text: string) => {
+      const start = code.indexOf(text, from)
+      e.ctx.rewrites.add({
+        range: { start, end: start + text.length },
+        body: [],
+        scope: 'all-outputs',
+        by: 'toy',
+      })
+      return start + text.length
+    }
+    let at = 0
+    for (let i = 0; i < next.length; i++) {
+      at = remove(at, 'const gone = 1;')
+    }
+    for (const text of [
+      'const z = 1;',
+      'const w = 2;',
+      'const v = 3;',
+      'const t = 4;',
+    ]) {
+      remove(0, text)
+    }
+    const out = e.render().code
+    expect(out).toContain(`let y = foo\n  \n  ;(mk)()\n`)
+    for (const n of next.slice(1)) {
+      expect(out).toContain(`\n  \n  ;${n}\n`)
+    }
+    expect(out).toContain('\n  ;/* c */ (mk)()\n')
+    // an identifier continues nothing; a block ends a statement
+    expect(out).toContain('\n  \n  g()\n')
+    expect(out).toContain('if (y) {  }\n  (mk)()\n')
+    expect(out).toContain('let u = foo\n      \n      ;(mk)()\n')
+  })
 })

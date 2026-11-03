@@ -841,7 +841,11 @@ class Renderer {
   private edges!: Array<EdgeRecord>
   private readonly refByStart = new Map<number, ClassifiedRef>()
   /** Whether an offset starts a statement of a statement list. */
-  private readonly statementStarts = new Map<number, boolean>()
+  /** Per offset: the statement list a statement starting there stands in (`program`, `nested`), or none. */
+  private readonly statementStarts = new Map<
+    number,
+    'program' | 'nested' | null
+  >()
 
   constructor(
     private readonly plan: AnalysisPlan,
@@ -918,10 +922,33 @@ class Renderer {
       cuts.sort((a, b) => a.start - b.start || a.end - b.end)
     }
     let pos = start
+    // the source text after an edit: the statement it starts may follow
+    // what the edit left (a removed `const local = 1;` before `(mk)()`)
+    let afterEdit = false
+    const sliceTo = (to: number) => {
+      if (!afterEdit) {
+        out.push({ k: 'slice', start: pos, end: to })
+        return
+      }
+      // a `;` goes after the indentation, before a comment (an annotation
+      // stays with its call)
+      let from = pos
+      while (from < to && /\s/.test(this.code[from]!)) {
+        from++
+      }
+      if (from > pos) {
+        out.push({ k: 'slice', start: pos, end: from })
+      }
+      const at = out.length
+      out.push({ k: 'slice', start: from, end: to })
+      // (a statement of the module's own list has freeze's guard)
+      this.guardStatementStart(this.tokenStart(from, to), out, at, true)
+    }
     for (const cut of cuts) {
       if (cut.start > pos) {
-        out.push({ k: 'slice', start: pos, end: cut.start })
+        sliceTo(cut.start)
       }
+      afterEdit = cut.edit !== null
       if (cut.edit !== null) {
         const e = cut.edit
         const gen = (e as TreeEdit & { gen?: number }).gen
@@ -959,8 +986,16 @@ class Renderer {
       pos = Math.max(pos, cut.end)
     }
     if (end > pos) {
-      out.push({ k: 'slice', start: pos, end })
+      sliceTo(end)
     }
+  }
+
+  /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
+  private tokenStart(start: number, end: number): number {
+    const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/.exec(
+      this.code.slice(start, end),
+    )
+    return start + m![0].length
   }
 
   renderFrags(
@@ -1065,13 +1100,16 @@ class Renderer {
    * list, what renders before it does not end with a `;` and its first token
    * could continue that (`const x = foo` + `(() => 1)()` would be a call of
    * `foo`): an edit replacing a call with a parenthesised function, an orphaned
-   * initialiser kept as a statement, a placeholder. What renders before it may be
-   * generated, or the statement before the one the source wrote there.
+   * initialiser kept as a statement, a placeholder, or the source statement
+   * after an edit that removed the one before it (`let y = foo`, removed
+   * `const local = 1;`, `(mk)()`). What renders before it may be generated, or
+   * the statement before the one the source wrote there.
    */
   private guardStatementStart(
     offset: number,
     out: Array<Segment>,
     from: number,
+    nestedOnly = false,
   ): void {
     let first = ''
     for (let i = from; i < out.length && first === ''; i++) {
@@ -1087,22 +1125,26 @@ class Renderer {
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
     }
-    let startsStatement = this.statementStarts.get(offset)
-    if (startsStatement === undefined) {
-      startsStatement = this.startsStatementOfList(offset)
-      this.statementStarts.set(offset, startsStatement)
+    let list = this.statementStarts.get(offset)
+    if (list === undefined) {
+      list = this.statementListAt(offset)
+      this.statementStarts.set(offset, list)
     }
-    if (startsStatement && this.continuable(out, from)) {
+    if (
+      list !== null &&
+      (list === 'nested' || !nestedOnly) &&
+      this.continuable(out, from)
+    ) {
       out.splice(from, 0, { k: 'text', text: ';' })
     }
   }
 
-  /** Whether a statement of a statement list starts at `offset`. */
-  private startsStatementOfList(offset: number): boolean {
+  /** The statement list of a statement starting at `offset`: the module's (`program`), a nested one, or none. */
+  private statementListAt(offset: number): 'program' | 'nested' | null {
     const file = this.plan.analysis.file
     let node = file.nodeAt(offset)
     if (!node || node.start !== offset) {
-      return false
+      return null
     }
     let parent = file.parentOf(node)
     while (parent && parent.start === offset) {
@@ -1110,7 +1152,7 @@ class Renderer {
       parent = file.parentOf(node)
     }
     if (!parent) {
-      return false
+      return null
     }
     const list =
       parent.type === 'Program' ||
@@ -1120,7 +1162,10 @@ class Renderer {
         : parent.type === 'SwitchCase'
           ? parent.consequent
           : null
-    return list !== null && (list as ReadonlyArray<Node>).includes(node)
+    if (list === null || !(list as ReadonlyArray<Node>).includes(node)) {
+      return null
+    }
+    return parent.type === 'Program' ? 'program' : 'nested'
   }
 
   /**
