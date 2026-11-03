@@ -152,3 +152,7 @@ Note: Dynamic routes can still be prerendered if they are linked from other page
 When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
 
 For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
+
+## Reproducible Output
+
+Each prerendered page embeds a hydration payload that records when every route match was rendered, so building the same sources twice yields different HTML. For reproducible builds, set [`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/specs/source-date-epoch/) (seconds since the Unix epoch): those timestamps then come from it instead of the wall clock, and a rebuild of unchanged sources produces byte-identical pages.
