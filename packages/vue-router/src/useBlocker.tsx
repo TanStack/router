@@ -128,6 +128,114 @@ function _resolveBlockerOpts(
   }
 }
 
+function getBlockerLocation(
+  router: AnyRouter,
+  location: HistoryLocation,
+): AnyShouldBlockFnLocation {
+  const parsedLocation = router.parseLocation(location)
+  const [, rawParams, foundRoute] = router.getMatchedRoutes(
+    parsedLocation.pathname,
+  )
+  if (foundRoute === undefined) {
+    return {
+      routeId: '__notFound__',
+      fullPath: parsedLocation.pathname,
+      pathname: parsedLocation.pathname,
+      params: rawParams,
+      search: parsedLocation.search,
+    }
+  }
+  return {
+    routeId: foundRoute.id,
+    fullPath: foundRoute.fullPath,
+    pathname: parsedLocation.pathname,
+    params: rawParams,
+    search: parsedLocation.search,
+  }
+}
+
+function useBlockerImpl(getArgs: () => UseBlockerOpts) {
+  const router = useRouter()
+  const history = router.history
+  const resolver = Vue.ref<BlockerResolver>({
+    status: 'idle',
+    current: undefined,
+    next: undefined,
+    action: undefined,
+    proceed: undefined,
+    reset: undefined,
+  })
+
+  Vue.watchEffect((onCleanup) => {
+    const args = getArgs()
+    if (args.disabled) {
+      return
+    }
+
+    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+      const current = getBlockerLocation(router, blockerFnArgs.currentLocation)
+      const next = getBlockerLocation(router, blockerFnArgs.nextLocation)
+
+      // Allow navigation away from 404 pages to valid routes
+      if (
+        current.routeId === '__notFound__' &&
+        next.routeId !== '__notFound__'
+      ) {
+        return false
+      }
+
+      const shouldBlock = await args.shouldBlockFn({
+        action: blockerFnArgs.action,
+        current,
+        next,
+      })
+      if (!args.withResolver) {
+        return shouldBlock
+      }
+
+      if (!shouldBlock) {
+        return false
+      }
+
+      const promise = new Promise<boolean>((resolve) => {
+        resolver.value = {
+          status: 'blocked',
+          current,
+          next,
+          action: blockerFnArgs.action,
+          proceed: () => resolve(false),
+          reset: () => resolve(true),
+        }
+      })
+
+      const canNavigateAsync = await promise
+      resolver.value = {
+        status: 'idle',
+        current: undefined,
+        next: undefined,
+        action: undefined,
+        proceed: undefined,
+        reset: undefined,
+      }
+
+      return canNavigateAsync
+    }
+
+    const unsubscribe = history.block({
+      blockerFn: blockerFnComposed,
+      enableBeforeUnload: args.enableBeforeUnload,
+    })
+
+    onCleanup(() => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    })
+  })
+
+  return resolver
+}
+
 export function useBlocker<
   TRouter extends AnyRouter = RegisteredRouter,
   TWithResolver extends boolean = false,
@@ -160,109 +268,16 @@ export function useBlocker(
     disabled = false,
     withResolver = false,
   } = _resolveBlockerOpts(opts, condition)
+  // useBlocker callbacks historically receive no `this`; <Block> callbacks do.
+  const args: UseBlockerOpts = {
+    shouldBlockFn: (blockerArgs) => shouldBlockFn(blockerArgs),
+    enableBeforeUnload,
+    disabled,
+    withResolver,
+  }
+  const resolver = useBlockerImpl(() => args)
 
-  const router = useRouter()
-  const { history } = router
-
-  const resolver = Vue.ref<BlockerResolver>({
-    status: 'idle',
-    current: undefined,
-    next: undefined,
-    action: undefined,
-    proceed: undefined,
-    reset: undefined,
-  })
-
-  Vue.watchEffect((onCleanup) => {
-    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
-      function getLocation(
-        location: HistoryLocation,
-      ): AnyShouldBlockFnLocation {
-        const parsedLocation = router.parseLocation(location)
-        const [, rawParams, foundRoute] = router.getMatchedRoutes(
-          parsedLocation.pathname,
-        )
-        if (foundRoute === undefined) {
-          return {
-            routeId: '__notFound__',
-            fullPath: parsedLocation.pathname,
-            pathname: parsedLocation.pathname,
-            params: rawParams,
-            search: parsedLocation.search,
-          }
-        }
-        return {
-          routeId: foundRoute.id,
-          fullPath: foundRoute.fullPath,
-          pathname: parsedLocation.pathname,
-          params: rawParams,
-          search: parsedLocation.search,
-        }
-      }
-
-      const current = getLocation(blockerFnArgs.currentLocation)
-      const next = getLocation(blockerFnArgs.nextLocation)
-
-      // Allow navigation away from 404 pages to valid routes
-      if (
-        current.routeId === '__notFound__' &&
-        next.routeId !== '__notFound__'
-      ) {
-        return false
-      }
-
-      const shouldBlock = await shouldBlockFn({
-        action: blockerFnArgs.action,
-        current,
-        next,
-      })
-      if (!withResolver) {
-        return shouldBlock
-      }
-
-      if (!shouldBlock) {
-        return false
-      }
-
-      const promise = new Promise<boolean>((resolve) => {
-        resolver.value = {
-          status: 'blocked',
-          current,
-          next,
-          action: blockerFnArgs.action,
-          proceed: () => resolve(false),
-          reset: () => resolve(true),
-        }
-      })
-
-      const canNavigateAsync = await promise
-      resolver.value = {
-        status: 'idle',
-        current: undefined,
-        next: undefined,
-        action: undefined,
-        proceed: undefined,
-        reset: undefined,
-      }
-
-      return canNavigateAsync
-    }
-
-    if (disabled) {
-      return
-    }
-
-    const unsubscribe = history.block({
-      blockerFn: blockerFnComposed,
-      enableBeforeUnload,
-    })
-
-    onCleanup(() => {
-      if (unsubscribe) unsubscribe()
-    })
-  })
-
-  return withResolver ? resolver : undefined
+  return args.withResolver ? resolver : undefined
 }
 
 const _resolvePromptBlockerArgs = (
@@ -350,109 +365,7 @@ const BlockImpl = Vue.defineComponent({
       }
     })
 
-    // Use a reactive useBlocker that re-subscribes when args change
-    const router = useRouter()
-    const { history } = router
-
-    const resolver = Vue.ref<BlockerResolver>({
-      status: 'idle',
-      current: undefined,
-      next: undefined,
-      action: undefined,
-      proceed: undefined,
-      reset: undefined,
-    })
-
-    Vue.watchEffect((onCleanup) => {
-      const args = blockerArgs.value
-
-      if (args.disabled) {
-        return
-      }
-
-      const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
-        function getLocation(
-          location: HistoryLocation,
-        ): AnyShouldBlockFnLocation {
-          const parsedLocation = router.parseLocation(location)
-          const [, rawParams, foundRoute] = router.getMatchedRoutes(
-            parsedLocation.pathname,
-          )
-          if (foundRoute === undefined) {
-            return {
-              routeId: '__notFound__',
-              fullPath: parsedLocation.pathname,
-              pathname: parsedLocation.pathname,
-              params: rawParams,
-              search: parsedLocation.search,
-            }
-          }
-          return {
-            routeId: foundRoute.id,
-            fullPath: foundRoute.fullPath,
-            pathname: parsedLocation.pathname,
-            params: rawParams,
-            search: parsedLocation.search,
-          }
-        }
-
-        const current = getLocation(blockerFnArgs.currentLocation)
-        const next = getLocation(blockerFnArgs.nextLocation)
-
-        // Allow navigation away from 404 pages to valid routes
-        if (
-          current.routeId === '__notFound__' &&
-          next.routeId !== '__notFound__'
-        ) {
-          return false
-        }
-
-        const shouldBlock = await args.shouldBlockFn({
-          action: blockerFnArgs.action,
-          current,
-          next,
-        })
-        if (!args.withResolver) {
-          return shouldBlock
-        }
-
-        if (!shouldBlock) {
-          return false
-        }
-
-        const promise = new Promise<boolean>((resolve) => {
-          resolver.value = {
-            status: 'blocked',
-            current,
-            next,
-            action: blockerFnArgs.action,
-            proceed: () => resolve(false),
-            reset: () => resolve(true),
-          }
-        })
-
-        const canNavigateAsync = await promise
-        resolver.value = {
-          status: 'idle',
-          current: undefined,
-          next: undefined,
-          action: undefined,
-          proceed: undefined,
-          reset: undefined,
-        }
-
-        return canNavigateAsync
-      }
-
-      const unsubscribe = history.block({
-        blockerFn: blockerFnComposed,
-        enableBeforeUnload: args.enableBeforeUnload,
-      })
-
-      onCleanup(() => {
-        if (unsubscribe) unsubscribe()
-      })
-    })
+    const resolver = useBlockerImpl(() => blockerArgs.value)
 
     return () => {
       const defaultSlot = slots.default
