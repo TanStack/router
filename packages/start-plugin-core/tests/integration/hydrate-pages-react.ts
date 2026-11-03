@@ -797,10 +797,7 @@ return [button('outer').textContent, button('inner').textContent]`,
     // is passed; the server strips it, hydrate-boundary-forms.test.ts). The
     // boundary (`visible()`) mounts below the fold, and the page scrolls to
     // it once the page is idle (`requestIdleCallback`: React has no work
-    // left). A `visible()` boundary that becomes visible while React renders
-    // it hits a bug of the runtime boundary (react-start-client's
-    // `HydrationBoundary`, `src/hydration/visible.tsx`), outside the
-    // compilers, so these rows do not race it.
+    // left).
     describe.concurrent(
       'the fallback of a boundary mounted on the client',
       () => {

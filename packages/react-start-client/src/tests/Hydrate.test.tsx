@@ -681,18 +681,15 @@ describe('Hydrate', () => {
     }
   })
 
-  // Bug: `visible()` reads its gate's mutable flag during render
-  // (`if (!g.r) use(g.p)`) and calls a hook after it. React replays a component
-  // that suspended in `use` with its re-render dispatcher, and only `use`
-  // switches away from it. When the intersection arrives while React waits to
-  // replay, the flag is true, the replay skips `use`, and the `useEffect` after
-  // it throws "Update hook called on initial render" (#467 in production).
-  // Impact: React discards the boundary's server HTML and client-renders it:
-  // the fallback replaces the markup until the split code loads, new DOM nodes
-  // replace the server's, and `onRecoverableError` reports it.
+  // `visible()` reads its gate's mutable flag during render (`if (!g.r) use(g.p)`).
+  // React replays a component that suspended in `use` with its re-render
+  // dispatcher, and only `use` switches away from it: when the intersection
+  // arrives while React waits to replay, the flag is true, the replay skips
+  // `use`, and a hook after it would throw "Update hook called on initial render"
+  // (#467 in production). React would then discard the boundary's server HTML.
   // Which task the intersection lands in is the browser's choice, so this runs
   // it in each of the tasks around the boundary's first hydration attempt.
-  it.fails(
+  it(
     'hydrates a visible boundary whichever task the intersection arrives in',
     async () => {
       const actEnvironment = globalThis as {

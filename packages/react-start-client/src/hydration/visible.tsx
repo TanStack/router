@@ -28,6 +28,13 @@ function HydrationBoundary(props: {
 }) {
   const { g, o } = props
 
+  // Above the gate: a replay after `use` suspended can find the gate open and
+  // skip `use`, and only `use` leaves the replay's dispatcher, which rejects a
+  // hook the first attempt did not reach.
+  React.useEffect(() => {
+    o?.()
+  }, [o])
+
   if (!g.r) {
     if (!reactUse) {
       throw g.p
@@ -35,10 +42,6 @@ function HydrationBoundary(props: {
 
     reactUse(g.p)
   }
-
-  React.useEffect(() => {
-    o?.()
-  }, [o])
 
   return props.children as React.JSX.Element
 }
