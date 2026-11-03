@@ -28,7 +28,9 @@ export type UseRouterStateOptions<
 export type UseRouterStateResult<
   TRouter extends AnyRouter,
   TSelected,
-> = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+> = unknown extends TSelected
+  ? RouterState<TRouter['routeTree']>
+  : NoInfer<TSelected>
 
 /**
  * Subscribe to the router's state store with optional selection and

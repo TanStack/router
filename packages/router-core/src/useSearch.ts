@@ -9,7 +9,7 @@ export type UseSearchResult<
   TSelected,
 > = unknown extends TSelected
   ? ResolveUseSearch<TRouter, TFrom, TStrict>
-  : TSelected
+  : NoInfer<TSelected>
 
 export type ResolveUseSearch<
   TRouter extends AnyRouter,
