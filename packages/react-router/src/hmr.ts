@@ -1,7 +1,15 @@
-import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core/hmr'
+import {
+  applyKeptReaderHmr,
+  applyRouteChunkHmr,
+  applyRouteHmr,
+} from '@tanstack/router-core/hmr'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRoute } from '@tanstack/router-core'
-import type { RouteHmrAdapter, RouteHmrMeta } from '@tanstack/router-core/hmr'
+import type {
+  KeptReaderHot,
+  RouteHmrAdapter,
+  RouteHmrMeta,
+} from '@tanstack/router-core/hmr'
 
 // Provided by the webpack/Rspack React Refresh plugins (ProvidePlugin).
 declare const __react_refresh_utils__:
@@ -107,5 +115,18 @@ export function __tsrRouteHmr(
 export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
   if (process.env.NODE_ENV !== 'production') {
     applyRouteChunkHmr(routeId, chunk)
+  }
+}
+
+/**
+ * Dev-only entry point called by the router plugin's output at the top level
+ * of every evaluation of a module of a route file that reads a binding the
+ * route module keeps, on webpack-style hosts (`applyKeptReaderHmr`).
+ *
+ * Called only by compiler output; not a public API.
+ */
+export function __tsrKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+  if (process.env.NODE_ENV !== 'production') {
+    applyKeptReaderHmr(routeId, hot)
   }
 }

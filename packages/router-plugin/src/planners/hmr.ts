@@ -311,6 +311,7 @@ export function planHmrBlock(
   }
   if (!vite) {
     chunkHmr(ctx, round, route.routeId)
+    keptReaderHmr(ctx, round, route.routeId)
   }
 }
 
@@ -419,4 +420,51 @@ function chunkHmr(ctx: PlanContext, round: RouterRound, routeId: string): void {
       ],
     })
   }
+}
+
+/**
+ * Webpack-style hosts: every derived module of the file that imports a
+ * binding the route module keeps, other than the route (placement decides
+ * which: `env-readers`), hands its hot handle to the route HMR runtime. The
+ * route module self-accepts, so an update of it reaches no such module (its
+ * text did not change) and the module would go on reading the bindings of
+ * the route module's earlier evaluation: the route module's next evaluation
+ * invalidates them and refreshes the route once the update is applied
+ * (`applyRouteHmr`). Vite's update holds every module of the edited file.
+ */
+function keptReaderHmr(
+  ctx: PlanContext,
+  round: RouterRound,
+  routeId: string,
+): void {
+  const helper = ctx.names.alloc('tsrKeptReaderHmr')
+  const hmrSpecifier = `${round.route.routerPackage}/hmr`
+  ctx.rewrites.addGenerated({
+    body: [
+      {
+        k: 'text',
+        parts: [
+          'if (import.meta.webpackHot) {\n  ',
+          { sym: helper.sym, ctx: 'callee' },
+          `(${stringLiteral(routerRouteId(routeId), '"')}, import.meta.webpackHot)\n}\n`,
+        ],
+      },
+    ],
+    declares: [],
+    effectful: true,
+    anchor: { k: 'end' },
+    home: { k: 'env-readers', besides: [round.route.routeSym] },
+    by: ROUTER_PLANNER,
+    imports: [
+      {
+        names: [{ imported: '__tsrKeptReaderHmr', local: helper.sym }],
+        spec: {
+          k: 'spec',
+          specifier: hmrSpecifier,
+          edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
+          provenance: { origin: 'runtime' },
+        },
+      },
+    ],
+  })
 }
