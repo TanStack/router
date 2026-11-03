@@ -17,6 +17,8 @@ import {
   digestOf,
   fileModifiedAt,
   identify,
+  langFromId,
+  parseModule,
   registerCompilerStats,
   releaseEnvironment,
   reportCompileDiagnostics,
@@ -441,13 +443,16 @@ export class StartCompilerSession {
 
   /**
    * Reports a compile's diagnostics (`reportCompileDiagnostics`). A module
-   * the compiler cannot parse is left as it is when it names no Start
-   * package: the bundler's own parser reports a syntax error at the user's
-   * position, and a script no ESM parse accepts (a CommonJS dependency with
-   * a top-level `return`) is nothing the compiler touches (J4.16, SPEC
-   * §5.15). One that names a Start package may define server code (a
-   * handler, a server-only route option): the client build fails naming the
-   * file (never shipped untransformed, J4.12); a server build warns.
+   * the compiler cannot parse may define server code (a handler, a
+   * server-only route option), through a Start package or a builder of the
+   * app's own (`import { base } from './lib/base'`), and the bundler's parser
+   * may accept what the compiler's rejects (a TypeScript grammar error SWC
+   * lets through, ES module syntax in a `.cts` file): the client build fails
+   * naming the file and the position (never shipped untransformed, J4.12).
+   * A CommonJS script (a dependency with a top-level `return`) and a file
+   * that is no JS/TS are nothing the compiler touches and are left as they
+   * are (J4.16, SPEC §5.15). A server build warns when the module names a
+   * Start package.
    */
   report(
     out: CompileOutput,
@@ -456,22 +461,37 @@ export class StartCompilerSession {
     envType: 'client' | 'server',
     sink: DiagnosticSink,
   ): void {
+    let commonJsScript: boolean | undefined
     reportCompileDiagnostics(
       out.diagnostics,
       file,
       code,
       this.warnings,
       sink,
-      (d) =>
-        namesStartSpecifier(code)
-          ? {
-              severity: envType === 'client' ? 'error' : 'warning',
-              message: `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}`,
-              range: d.range,
-              by: 'parse',
-              code: 'parse',
-            }
-          : null,
+      (d) => {
+        if (namesStartSpecifier(code)) {
+          return {
+            severity: envType === 'client' ? 'error' : 'warning',
+            message: `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}`,
+            range: d.range,
+            by: 'parse',
+            code: 'parse',
+          }
+        }
+        if (
+          envType === 'client' &&
+          !(commonJsScript ??= leftToTheBundler(code, file))
+        ) {
+          return {
+            severity: 'error',
+            message: `[tanstack-start] The compiler cannot parse "${file}", so it cannot remove server code from it for the client: ${d.message}`,
+            range: d.range,
+            by: 'parse',
+            code: 'parse',
+          }
+        }
+        return null
+      },
     )
   }
 
@@ -496,6 +516,21 @@ export class StartCompilerSession {
     releaseEnvironment(this.caches, envName)
     this.ip?.release(envName)
   }
+}
+
+/** Whether `code` parses as a CommonJS script (no ES module syntax). */
+/**
+ * Whether a module the compiler cannot parse is none of its business: a file
+ * that is no JS/TS (an asset, or the text of a `.md` the late pass sees
+ * before a loader turns it into JS), or a CommonJS script (no ES module
+ * syntax).
+ */
+function leftToTheBundler(code: string, file: string): boolean {
+  const lang = langFromId(file)
+  return (
+    lang === null ||
+    parseModule(code, { lang, sourceType: 'commonjs', semantic: false }).ok
+  )
 }
 
 /** The configuration key of the late pass (import protection and start-env over a non-JS module's JS) of a configuration. */
