@@ -135,7 +135,7 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "@rsbuild/core": "^2.0.0",
+    "@rsbuild/core": "^2.0.5",
     "vite": ">=8.0.0",
     "vue": "^3.3.0"
   },
