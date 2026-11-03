@@ -18,5 +18,5 @@ Route code splitting and route HMR run on the new compiler core instead of Babel
 - `createFileRoute` & co. are recognised by their import binding. Routes whose options cannot be read statically, and methods or function expressions that read `this` (#8688), stay in the route module with one warning naming the file.
 - Route HMR keeps split components' lazy wrappers across updates in React, Solid and Vue, refreshes edits of split loaders and other non-component options on Rspack and webpack, and needs no framework plugin for `.ts` route modules.
 - Production output is decided by the bundler's mode and is identical with `addHmr: false`.
-- Rspack and webpack use the plugin's own loader: source maps compose with earlier loaders and name the route file (#6667, #3828); project paths with `'`, `#` or spaces work (#7754). Rspack/webpack no longer rebuild every environment once after the first watch build.
+- Rspack and webpack use the plugin's own loader: project paths with `'`, `#` or spaces work (#7754). Rspack/webpack no longer rebuild every environment once after the first watch build.
 - Removed: the `@babel/*` dependencies and the direct `chokidar` dependency (the route generator's watcher brings it). New entry `@tanstack/router-plugin/planners` exposes the route planners to TanStack Start.
