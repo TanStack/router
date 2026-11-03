@@ -22,45 +22,12 @@ import solid from 'vite-plugin-solid'
 import { pluginBabel } from '@rsbuild/plugin-babel'
 import { pluginSolid } from '@rsbuild/plugin-solid'
 import { buildStart, callByIdExports, callByIdPrelude } from '../build-harness'
+import { settledSource } from '../settled-source'
 import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 
 /** The Start framework packages a page app can be built with. */
 export type PageFramework = 'react' | 'solid'
-
-/**
- * JavaScript of a page script: waits until the page requested no new
- * resource and changed no markup for `quiet` ms (default 150), and stays so
- * across an idle period of the browser (`requestIdleCallback`: work that
- * waits for idle time, such as an `idle()` boundary's hydration, has had
- * its turn; parent-first hydration of nested boundaries shows up as a
- * change, which restarts the wait), at most `timeout` ms (default 10 000).
- * Only what the page shows and loads counts, no runtime marker.
- */
-const settledSource = `async (quiet = 150, timeout = 10000) => {
-  const start = performance.now()
-  const state = () => performance.getEntriesByType('resource').length + ':' + document.body.innerHTML
-  let last = ''
-  let since = performance.now()
-  while (performance.now() - start < timeout) {
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    const now = state()
-    if (now !== last) {
-      last = now
-      since = performance.now()
-      continue
-    }
-    if (performance.now() - since < quiet) {
-      continue
-    }
-    await new Promise((resolve) => requestIdleCallback(resolve, { timeout: 500 }))
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    if (state() === last) {
-      return
-    }
-  }
-  throw new Error('the page did not settle: ' + document.body.innerHTML)
-}`
 
 /**
  * JavaScript of a page script: polls `condition` until it returns a truthy
@@ -392,7 +359,7 @@ return { html, result: ${hydrateOptions.serverScript ?? 'null'} }`,
         ? { html: '', result: null }
         : await renderServer(name, hydrateOptions)
     const { result } = await build.client.run(`
-const settled = ${settledSource}
+${settledSource}
 const waitFor = ${waitForSource}
 const clickUntil = ${clickUntilSource}
 const root = document.getElementById('root')

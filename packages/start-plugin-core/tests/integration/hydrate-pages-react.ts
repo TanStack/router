@@ -486,6 +486,30 @@ export function reactPageSuite(bundler: StartBundler) {
       return page
     }
 
+    // The page's wait (`settled`): a boundary hydrating the markup it already
+    // shows looks finished, so the wait cannot go by the markup alone.
+    test('settled waits for the code of a visible gate the browser reaches late', async () => {
+      const page = await app.hydrate('nested', {
+        // Every observer of the page hears of an intersection 250 ms late, as
+        // on a machine that produces its frames late.
+        beforeHydration: `const Observer = globalThis.IntersectionObserver
+globalThis.IntersectionObserver = class extends Observer {
+  constructor(notify, options) {
+    super((...args) => setTimeout(() => notify(...args), 250), options)
+  }
+}`,
+        script: `const atSettled = requested().length
+await new Promise((resolve) => setTimeout(resolve, 1000))
+return { atSettled, later: requested().length }`,
+      })
+      const { atSettled, later } = page.result as {
+        atSettled: number
+        later: number
+      }
+      expect(atSettled).toBeGreaterThan(0)
+      expect(atSettled).toBe(later)
+    })
+
     describe.concurrent(
       'boundaries hydrate the HTML the server rendered',
       () => {

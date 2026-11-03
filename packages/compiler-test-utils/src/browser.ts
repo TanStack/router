@@ -333,6 +333,19 @@ export async function openPage(
       errors.push(message.text())
     }
   })
+  // How many of the page's requests have not finished yet, for page code that
+  // waits for the code it requested. A new document ends the old one's
+  // requests, whether or not the browser reports them as finished or failed.
+  const inFlight = new Set<unknown>()
+  page.on('request', (request) => inFlight.add(request))
+  page.on('requestfinished', (request) => inFlight.delete(request))
+  page.on('requestfailed', (request) => inFlight.delete(request))
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      inFlight.clear()
+    }
+  })
+  await page.exposeFunction('__harnessInFlight', () => inFlight.size)
   await page.goto(url)
 
   const text = async (selector = 'body') =>

@@ -660,39 +660,20 @@ export async function createStartHost(
   const origin = () => new URL(baseUrl()).origin
   /**
    * Opens a page of the host: the production page of the preview server
-   * (once it hydrated), or the plugin host's page of the dev server. The
-   * page gives its scripts `window.__harnessInFlight()`: how many of its
-   * requests have not finished yet (Playwright's network events), so page
-   * code can wait for the code it requested.
+   * (once it hydrated), or the plugin host's page of the dev server.
    */
   const openHostPage = async (): Promise<HostPage> => {
     const requests: Array<string> = []
-    const inFlight = new Set<unknown>()
     const track = (opened: BrowserPage) => {
       opened.page.on('request', (request) => {
         requests.push(request.url())
-        inFlight.add(request)
       })
-      opened.page.on('requestfinished', (request) => inFlight.delete(request))
-      opened.page.on('requestfailed', (request) => inFlight.delete(request))
-      // A new document (a reload) ends the old one: its requests in flight
-      // end with it, whether or not the browser reports them as finished
-      // or failed
-      opened.page.on('framenavigated', (frame) => {
-        if (frame === opened.page.mainFrame()) {
-          inFlight.clear()
-        }
-      })
-      return opened.page.exposeFunction(
-        '__harnessInFlight',
-        () => inFlight.size,
-      )
     }
     if (previewState) {
       const opened = await openPage('about:blank', {
         initScript: devSupportTrap,
       })
-      await track(opened)
+      track(opened)
       await opened.page.goto(new URL(pageRoutePath, previewState.url).href)
       try {
         await opened.page.waitForFunction(
@@ -713,7 +694,7 @@ export async function createStartHost(
       return { opened, requests }
     }
     const opened = await openPage('about:blank')
-    await track(opened)
+    track(opened)
     await opened.page.goto(
       new URL('/__plugin-host__/page.html', baseUrl()).href,
     )
