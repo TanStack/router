@@ -34,7 +34,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts60": "tsc6 -p tsconfig.legacy.json",
     "test:types:ts70": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest --typecheck false && vitest run --typecheck.only",
+    "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
@@ -75,10 +75,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tanstack/react-router": "workspace:*",
     "@types/node": ">=20",
-    "@types/react": "catalog:",
-    "react": "catalog:",
     "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

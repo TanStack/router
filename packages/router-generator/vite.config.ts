@@ -7,7 +7,6 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    typecheck: { enabled: true },
   },
 })
 
