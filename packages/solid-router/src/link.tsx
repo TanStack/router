@@ -32,6 +32,58 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
+// The links of each route id share one location signal per router.
+type LinkScope = [
+  location: Solid.Accessor<ParsedLocation>,
+  links: number,
+  dispose: () => void,
+]
+const linkScopes = new WeakMap<AnyRouter, Record<string, LinkScope>>()
+
+/**
+ * The location the Link's route presents. One computation per route writes it
+ * while a publication keeps the route; when a publishing navigation leaves the
+ * route, the signal is not written, so the route's Links are not even marked:
+ * the route unmounts when that navigation commits, and any other outcome
+ * publishes a newer location. Compare by identity: a same-href navigation can
+ * change state. The scope lives while any of its Links does.
+ */
+function useLinkLocation(router: AnyRouter, routeId: string | undefined) {
+  let scopes = linkScopes.get(router)
+  if (!scopes) {
+    linkScopes.set(router, (scopes = {}))
+  }
+  const scope = (scopes[routeId!] ??= Solid.createRoot((dispose) => {
+    const [location, setLocation] = Solid.createSignal(
+      router.stores.location.get(),
+    )
+    Solid.createComputed(() => {
+      const next = router.stores.location.get()
+      if (!_isRouteDeparting(router, routeId, next)) {
+        setLocation(next)
+      }
+    })
+    return [location, 0, dispose]
+  }))
+  scope[1 /* links */]++
+  Solid.onCleanup(() => {
+    if (!--scope[1 /* links */]) {
+      scope[2 /* dispose */]()
+      delete scopes[routeId!]
+    }
+  })
+  // A Link mounting while its route departs has nothing to hold: it reads the
+  // pending location and gates later publications itself.
+  return scope[0 /* location */]() === router.stores.location.get()
+    ? scope[0 /* location */]
+    : Solid.createMemo((prev?: ParsedLocation) => {
+        const location = router.stores.location.get()
+        return prev && _isRouteDeparting(router, routeId, location)
+          ? prev
+          : location
+      })
+}
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -56,23 +108,15 @@ function createLinkProps(
     ownKeys as Array<keyof typeof options>,
   )
 
-  // A live match never changes route, so read it once without tracking.
-  const routeId = Solid.useContext(nearestMatchContext)[0 /* routeId */]()
-
-  // While a publishing navigation leaves the Link's route, keep the location
-  // the route still presents so the Link does no work. The route unmounts
-  // when that navigation commits, and any other outcome publishes a newer
-  // location. Compare by identity: a same-href navigation can change state.
   // The server renders one location: no reactivity there.
   const currentLocation =
     (isServer ?? router.isServer)
       ? () => router.stores.location.get()
-      : Solid.createMemo((prev?: ParsedLocation) => {
-          const location = router.stores.location.get()
-          return prev && _isRouteDeparting(router, routeId, location)
-            ? prev
-            : location
-        })
+      : useLinkLocation(
+          router,
+          // A live match never changes route, so read it once without tracking.
+          Solid.useContext(nearestMatchContext)[0 /* routeId */](),
+        )
 
   // The Link's own destination options, replaced only when a destination prop
   // changes: the router reuses a location built from the same object without
