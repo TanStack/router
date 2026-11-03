@@ -36,10 +36,16 @@ describe('route tree types agree with the router', () => {
     ),
   )('$name', (testCase) => checkApp(testCase, { runtime: false }), 60_000)
 
-  // The layout route of a route group directory (`(marketing)/route.tsx`)
-  // has the full path `/` in `FileRoutesByPath`, as the router gives it
-  // (real-router.test.ts, "the layout route of a route group directory adds
-  // no path segment"; main typed it `''` before #8857).
+  // Bug: the route tree types the layout route of a route group directory
+  // (`(marketing)/route.tsx`) with `fullPath: ''` in `FileRoutesByPath`,
+  // while the router gives it the full path `/` (real-router.test.ts, "the
+  // layout route of a route group directory adds no path segment"; a
+  // pathless layout, `_auth.tsx`, is typed `/`, and agrees).
+  // Source: src/utils.ts:929-950 (`inferFullPath`: `/(marketing)` without
+  // its group is `/`, which is not an index path, so its trailing slash is
+  // dropped), printed at src/utils.ts:1260.
+  // Impact: `Route.fullPath` and the types derived from it (`from` of
+  // links and hooks) say `''` in such a layout while the app sees `/`.
   test(
     'the layout route of a route group directory has the full path of the router in the types',
     () => checkApp(groupLayout, { runtime: false }),

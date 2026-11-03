@@ -251,7 +251,7 @@ removal:
 - **A layout in a route-group directory is typed `fullPath: ''`**, while the router gives it `/`. SPEC J1.13.
   `router-generator/tests/integration/fixture-types-physical.test.ts`: "the "%s" route tree types its routes like the
   router"; `router-generator/tests/integration/route-types.test.ts`: "the layout route of a route group directory has
-  the full path of the router in the types". Main fixes it too (#8857).
+  the full path of the router in the types".
 - **The generator recognises `createFileRoute` by name, not by binding.** An aliased import is missed; an app's own
   `createFileRoute` is rebound to the router package. SPEC G15, J1.1. `router-generator/tests/known-bugs.test.ts`: "a
   moved route with an aliased import of the constructor gets the id of its new path"; "a moved route importing
