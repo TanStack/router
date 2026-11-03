@@ -355,14 +355,14 @@ ${ui.page('value.text')}`,
   // text nor the chunk's changes
   {
     name: 'edit of a module the kept binding reads',
-    files: (ui, v) => ({
+    files: (ui) => ({
       [FILE]: `${ui.imports(`import { base } from '../shared'\n`)}const value = { text: base }
 export const Route = createFileRoute('/')({
   loader: () => { ${loaderCount}; return value.text },
   component: Page,
 })
 ${ui.page('value.text')}`,
-      'shared.ts': `export const base = '${'v1'}'\n`,
+      'shared.ts': `export const base = 'v1'\n`,
     }),
     edit: (_ui, v) => ({ 'shared.ts': `export const base = '${v}'\n` }),
     shows,
@@ -645,7 +645,7 @@ ${ui.page('value.text', label)}`,
     async (fw, ctx) => {
       const ui = uiOf(fw, true)
       const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx)
-      await app.edit({ [FILE]: route(ui, 'b')[FILE]! }, 'b v1')
+      await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
       const component = app.hot.splice(0)
       expect(component.flatMap((u) => u.modules)).toEqual([
         `./${FILE}?tsr-split=component`,
