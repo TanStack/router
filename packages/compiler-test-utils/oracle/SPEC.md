@@ -532,7 +532,9 @@ dir)` is not a conflict by itself.
   `serverFns.generateFunctionId({ filename, functionName })` (experimental). The form of `filename` (relative or
   absolute) is not specified: tests derive the expected id from the arguments received. `functionName` is the
   generated handler name of earlier versions (`<name>_createServerFn_handler`, `_1`, `_2`… for a name the module
-  repeats, in source order; C5), so custom ids survive an upgrade, and holds only `[A-Za-z0-9_$]`. Edits change the input, so ids need not survive edits. _Dev_: an
+  repeats, in source order; C5), so custom ids survive an upgrade, and holds only `[A-Za-z0-9_$]`. An id the generator
+  returns is one URL path segment no layer rewrites (RFC 3986 unreserved characters and `$`, not `.` or `..`); any
+  other id fails the build, naming the file. Edits change the input, so ids need not survive edits. _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
   ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. A by-id request for a
   module the running dev server has not compiled yet (a page left open across a restart) compiles that module and is

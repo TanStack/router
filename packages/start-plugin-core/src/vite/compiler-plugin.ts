@@ -1026,7 +1026,11 @@ export function startCompilerPlugin(
         if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
           return null
         }
-        const patched = s.start.allocateIds(env.type).patch(code)
+        const { allocator, errors } = s.start.allocateIds(env.type)
+        if (errors.length > 0) {
+          this.error({ message: errors.join('\n') })
+        }
+        const patched = allocator.patch(code)
         if (patched.missing.length > 0) {
           this.error({
             message: `Server function ids could not be resolved in ${chunk.fileName}: ${patched.missing.join(', ')}`,

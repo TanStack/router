@@ -435,6 +435,8 @@ The generator receives:
 
 Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so it may contain only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and may not be `.` or `..`. Any other ID fails the build with an error naming the file, the function and the ID. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
+
 Please note that this customization is **experimental** and subject to change.
 
 Example:

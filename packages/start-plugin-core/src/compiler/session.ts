@@ -475,16 +475,24 @@ export class StartCompilerSession {
     )
   }
 
-  /** The id allocator with an environment's rank allocated (a custom generator): a client build's client-referenced functions first, the rest after. */
-  allocateIds(envType: 'client' | 'server'): FunctionIdAllocator {
+  /**
+   * The id allocator with an environment's rank allocated (a custom
+   * generator): a client build's client-referenced functions first, the
+   * rest after. `errors`: the rank's custom ids that are not a URL path
+   * segment (the host fails the build with them).
+   */
+  allocateIds(envType: 'client' | 'server'): {
+    allocator: FunctionIdAllocator
+    errors: Array<string>
+  } {
     const allocator = this.allocator!
     const entries = this.registry.entries()
-    allocator.allocate(
+    const errors = allocator.allocate(
       envType === 'client'
         ? entries.filter((e) => e.clientReferenced)
         : entries,
     )
-    return allocator
+    return { allocator, errors }
   }
 
   /**

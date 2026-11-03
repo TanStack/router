@@ -92,6 +92,19 @@ export type GenerateFunctionId = (opts: {
 }) => string | undefined
 
 /**
+ * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
+ * unencoded; the server reads the segment back as is): RFC 3986 unreserved
+ * characters, which no client, proxy or server encodes, decodes or
+ * normalises, and `$`, which `functionName` can hold; not a dot segment,
+ * which URL parsing removes.
+ */
+const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
+
+function isUrlSegmentId(id: string): boolean {
+  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
+}
+
+/**
  * One immutable allocation of final ids against a global occupied set:
  * the client rank first (sorted stable keys, frozen; under RSC the provider
  * builds first and allocates its entries first: deterministic, not
@@ -101,34 +114,54 @@ export type GenerateFunctionId = (opts: {
 export class FunctionIdAllocator {
   private readonly occupied = new Set<string>()
   private readonly final = new Map<string, string>()
+  /** The error of each placeholder token whose custom id is not a URL path segment. */
+  private readonly invalid = new Map<string, string>()
 
   constructor(private readonly generate: GenerateFunctionId | undefined) {}
 
-  /** Allocates the entries of one rank (those not yet allocated), in sorted key order. */
-  allocate(entries: Array<ServerFnKey & { functionName: string }>): void {
+  /**
+   * Allocates the entries of one rank (those not yet allocated), in sorted
+   * key order. Returns an error for each entry of the rank whose custom id
+   * is not a URL path segment (also when an earlier call allocated it: a
+   * rebuild reports it again).
+   */
+  allocate(
+    entries: Array<ServerFnKey & { functionName: string; name: string }>,
+  ): Array<string> {
     const sorted = [...entries].sort(
       (a, b) =>
         (a.rootRel < b.rootRel ? -1 : a.rootRel > b.rootRel ? 1 : 0) ||
         (a.stableKey < b.stableKey ? -1 : a.stableKey > b.stableKey ? 1 : 0),
     )
+    const errors: Array<string> = []
     for (const e of sorted) {
       const token = placeholderToken(e)
-      if (this.final.has(token)) {
-        continue
-      }
-      const base =
-        this.generate?.({
+      if (!this.final.has(token)) {
+        const custom = this.generate?.({
           filename: e.rootRel,
           functionName: e.functionName,
-        }) ?? defaultFunctionId(e)
-      let cand = base
-      let n = 1
-      while (this.occupied.has(cand)) {
-        cand = `${base}_${n++}`
+        })
+        if (custom !== undefined && !isUrlSegmentId(custom)) {
+          this.invalid.set(
+            token,
+            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(custom)} for the server function ${e.name} (functionName "${e.functionName}") of ${e.rootRel}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
+          )
+        }
+        const base = custom ?? defaultFunctionId(e)
+        let cand = base
+        let n = 1
+        while (this.occupied.has(cand)) {
+          cand = `${base}_${n++}`
+        }
+        this.occupied.add(cand)
+        this.final.set(token, cand)
       }
-      this.occupied.add(cand)
-      this.final.set(token, cand)
+      const error = this.invalid.get(token)
+      if (error !== undefined) {
+        errors.push(error)
+      }
     }
+    return errors
   }
 
   /** Replaces every placeholder of `code`; unknown tokens are left (a diagnostic for the host). */

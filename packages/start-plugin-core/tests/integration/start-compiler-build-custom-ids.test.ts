@@ -91,9 +91,8 @@ describe('a custom generateFunctionId', () => {
           }) => {
             if (filename.includes('custom-ids')) {
               // URL-safe: the id is a path segment of the server fn's url
-              // (an id with a '/' is not routed back to its handler by
-              // Start's runtime: a runtime limitation, not this test's
-              // subject)
+              // (any other id fails the build:
+              // start-build-function-id-url.test.ts)
               const id = `custom_${Buffer.from(`${filename}:${functionName}`).toString('hex')}`
               returned.push(id)
               return id

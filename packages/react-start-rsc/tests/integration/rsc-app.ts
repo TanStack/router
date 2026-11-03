@@ -290,7 +290,8 @@ async function rsbuildApi(): Promise<RsbuildApi> {
  * as for `startRscRsbuildDevServer`), and serves the build as `rsbuild
  * preview` does (Start's own middleware runs the built server entry). The
  * test process runs with `NODE_ENV=production` until the cleanup, as for
- * `startRscPreviewServer`. `errors`: what the build reported as errors.
+ * `startRscPreviewServer`. `errors`: what the build reported as errors
+ * (a failed build rejects with them, an `AggregateError`).
  */
 export async function startRscRsbuildPreviewServer(options: {
   files: Record<string, string>
@@ -313,6 +314,29 @@ export async function startRscRsbuildPreviewServer(options: {
     ]),
   })
   const reported: Array<ChannelDiagnostic> = []
+  /** The compilations' errors (a silent Rsbuild prints none). */
+  const compileErrors: Array<string> = []
+  const compileErrorsPlugin = {
+    name: 'rsc-preview-harness:compile-errors',
+    setup(api: {
+      onAfterEnvironmentCompile: (
+        callback: (params: {
+          stats?: {
+            toJson: (options: object) => {
+              errors?: Array<{ message: string }>
+            }
+          }
+        }) => void,
+      ) => void
+    }) {
+      api.onAfterEnvironmentCompile(({ stats }) => {
+        for (const error of stats?.toJson({ all: false, errors: true })
+          .errors ?? []) {
+          compileErrors.push(error.message)
+        }
+      })
+    },
+  }
   const cwd = process.cwd()
   const nodeEnv = process.env.NODE_ENV
   // In the app's directory, as `rsbuild build` and `rsbuild preview` run
@@ -331,6 +355,7 @@ export async function startRscRsbuildPreviewServer(options: {
               ...options.start,
               rsc: { enabled: true },
             }) as never,
+            compileErrorsPlugin as never,
           ],
           // Start serves the pages, not an HTML template
           tools: { htmlPlugin: false },
@@ -344,6 +369,19 @@ export async function startRscRsbuildPreviewServer(options: {
     await withBuildEnvironment('production', reported, async () => {
       const built = await (await rsbuild()).build()
       await built.close()
+    }).catch((error: unknown) => {
+      // Rsbuild's error says only that the build failed: the errors are
+      // its compilations' and what it reported meanwhile
+      throw new AggregateError(
+        [
+          ...compileErrors,
+          ...reported
+            .filter(({ severity }) => severity === 'error')
+            .map(({ text }) => text),
+        ],
+        error instanceof Error ? error.message : String(error),
+        { cause: error },
+      )
     })
     process.env.NODE_ENV = 'production'
     const { server, urls } = await (
