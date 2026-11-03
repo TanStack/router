@@ -14,11 +14,12 @@
  * update holds every module of the edited file).
  *
  * React on Rsbuild runs with React Refresh (`@rsbuild/plugin-react`) and
- * keeps the component's state on every edit; on webpack (no React Refresh,
- * as the repo's webpack example) and on Solid, a chunk that reads a binding
- * the route module keeps evaluates again on a route module edit, and its
- * component remounts: their state is asserted only where no chunk reads a
- * kept binding.
+ * keeps the component's state on every edit. On Solid, a chunk that reads a
+ * binding the route module keeps evaluates again on a route module edit, and
+ * its component remounts: Solid's state is asserted only where no chunk reads
+ * a kept binding. The webpack app has no refresh runtime (as the repo's
+ * webpack example): its state isn't kept on these edits, before this change
+ * either, and a component edit's update bubbles up to the route module.
  */
 import { describe, expect, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
