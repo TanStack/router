@@ -3,9 +3,8 @@
  * implementation on the compiler, the generator as a precondition of the
  * compilation (`beforeRun`/`watchRun`), the one invalidation operation of
  * the file events (`watchRun`, `make`), the `finishMake` replay of plan, server-fn and import-protection
- * `buildInfo` (persistent cache), the import-protection build verdict
- * (`processAssets` witness, `decide`,
- * `needAdditionalPass` to the fixed point) and dev reports (`finishModules`),
+ * `buildInfo` (persistent cache), the import-protection build reports
+ * (`processAssets` witness) and dev reports (`finishModules`),
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
  */
@@ -23,7 +22,7 @@ import {
   webpackImporters,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
-import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
+import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import {
   readRspackWitness,
   rspackGraphView,
@@ -207,7 +206,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       // import-protection edge modules are virtual files of this environment, written when
-      // they are defined (the importer's compile) or change state (a build veto); an importer
+      // they are defined (the importer's compile); an importer
       // restored from the persistent cache in a new process requests a module nothing
       // defined: the request carries its content, which defines it before it resolves
       if (session.start.ip) {
@@ -245,7 +244,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (environment.type === 'client') {
           session.start.warnings.reset()
         }
-        ipEnvOf()?.beginLogicalBuild()
         await opts.generator.beforeRun()
       })
 
@@ -258,7 +256,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
-        ipEnvOf()?.beginLogicalBuild()
+        ipEnvOf()?.beginBuild()
         starting = (c.modifiedFiles as Set<string> | undefined) ?? null
         try {
           await session.invalidateFileEvents([
@@ -322,13 +320,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         knownFiles = new Set<string>(deps as Iterable<string>)
         if (session.start.opts.mode === 'dev') {
           session.retain(environment.name, knownFiles)
-        } else if (
-          !compiler.watchMode &&
-          !stats.compilation.needAdditionalPass
-        ) {
-          // the last pass of a production build (an import-protection veto
-          // asks for another one, and `done` runs after each pass): nothing
-          // compiles in this environment any more
+        } else if (!compiler.watchMode) {
+          // a production build's end: nothing compiles in this environment any more
           session.release(environment.name)
         }
       })
@@ -428,28 +421,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   compilation as never,
                   buildEnv.witness(),
                 )
-                const result = await buildEnv.decide(
+                const reports = await buildEnv.surviving(
                   live,
                   guardedGraphView(compilation),
                 )
-                if (result.needPass) {
-                  return
-                }
-                for (const report of buildEnv.buildReports()) {
+                for (const report of reports) {
                   ;(report.severity === 'error'
                     ? compilation.errors
                     : compilation.warnings
                   ).push(new WebpackError(report.message))
                 }
               },
-            )
-            // a bail hook stops at the first tap answering anything but
-            // `undefined`: `false` would silence later taps asking for a pass
-            // (Rspack types the answer `boolean`; `undefined` is "no vote")
-            compilation.hooks.needAdditionalPass.tap(
-              PLUGIN_NAME,
-              () =>
-                (ipEnvOf()!.build.needPass || undefined) as unknown as boolean,
             )
           }
         }
@@ -518,11 +500,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // the replay of this compilation's modules (built now or restored from the persistent
       // cache): the plans of restored modules, the environment's server-fn snapshot and the
       // import-protection records. A restored module whose plan read facts that changed since
-      // (or no plan of this configuration) is built again first; in dev, so is a module
-      // restored with violations, or an edge module restored with pending ones: another
-      // session judged it (its `onViolation` verdicts decided its output; its reports were
-      // printed there). Only a compiler's first compilation restores modules (Rspack loads the
-      // cache's module graph in a build, never in a rebuild)
+      // (or no plan of this configuration) is built again first. So is, with `allowImport`, a
+      // restored edge module or a module that is its own violation: another session's answer
+      // chose their state, and the build asks once per import anyway; and, in dev, a module
+      // restored with violations or an edge module restored with pending ones: another
+      // session reported them. Edge modules first: an answer brings the module it allows. Only
+      // a compiler's first compilation restores modules (Rspack loads the cache's module graph
+      // in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
         async (compilation) => {
@@ -558,8 +542,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }
           const ipEnv = ipEnvOf()
-          if (ipEnv && session.start.opts.mode === 'dev' && !knownFiles) {
-            const unjudged = new Set<string>()
+          const unjudged = new Set<string>()
+          if (ipEnv && !knownFiles) {
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike
               const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
@@ -572,20 +556,30 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 unjudged.add(module.resource)
               }
             }
-            if (unjudged.size > 0) {
-              await rebuildModules(compilation, unjudged, (r) => r)
+          }
+          for (const m of compilation.modules) {
+            const module = m as unknown as ModuleLike
+            const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+            if (ipEnv && ip && module.resource) {
+              ipEnv.replay(canonicalResource(module.resource), ip)
             }
-            // an edge module restored without a build: the pending violations it witnesses
-            // are decided when this session builds it (the edge-module loader)
+          }
+          if (ipEnv && !knownFiles) {
             const unconfirmed = new Set<string>()
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource
-              if (resource && ipEnv.unconfirmed(resource)) {
+              if (
+                resource &&
+                ipEnv.unconfirmed(resource, env.compiled.has(resource))
+              ) {
                 unconfirmed.add(resource)
               }
             }
             if (unconfirmed.size > 0) {
               await rebuildModules(compilation, unconfirmed, (r) => r)
+            }
+            if (unjudged.size > 0) {
+              await rebuildModules(compilation, unjudged, (r) => r)
             }
           }
           const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
@@ -600,10 +594,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               | undefined
             if (fns?.version === 2) {
               snapshot.set(fns.canonicalId, fns.facts)
-            }
-            const ip = info[RSPACK_BUILD_INFO_KEY]
-            if (ipEnv && ip && module.resource) {
-              ipEnv.replay(canonicalResource(module.resource), ip)
             }
           }
           session.start.registry.replace(env, snapshot)

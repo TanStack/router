@@ -985,7 +985,7 @@ export const read = () => secret() + other
 // it built before from Rspack's persistent cache without compiling them
 // again: their imports of the per-edge modules that stand in for denied
 // imports must still resolve, and the build reports the
-// same violations, in every behaviour and after an `onViolation` veto
+// same violations, in every behaviour and with `allowImport`
 // (the additional pass).
 // Source: upstream #8798 (Rsbuild persistent cache: "Can't resolve" the
 // import-protection mock modules of restored importers).
@@ -1062,28 +1062,69 @@ export const query = () => 'MARK_DB'
     expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
   }, 120_000)
 
-  test('onViolation -> false: the build bundles the real modules again', async () => {
-    // (the harness lists no violation the app's `onViolation` allows)
-    let asked: Array<ViolationInfo> = []
-    const veto: ImportProtectionOptions = {
-      onViolation: (info) => {
-        asked.push(info as ViolationInfo)
-        return false
+  test('allowImport -> true: the warm build asks again and bundles the real modules', async () => {
+    let asked: Array<string> = []
+    const allow: ImportProtectionOptions = {
+      allowImport: (info) => {
+        asked.push(info.specifier)
+        return true
       },
     }
-    const askedOf = (root: string) =>
-      relevantViolations({ root, violations: asked }, expected).sort()
-    const cold = await cached(veto)
-    expect(askedOf(cold.root)).toEqual(expected.map(violationLabel).sort())
+    const cold = await cached(allow)
+    const coldAsked = [...asked].sort()
+    expect(cold.violations).toEqual([])
     asked = []
     const warm = await cold.rebuild()
     expect(unresolved(warm.diagnostics)).toEqual([])
-    // asked again, and allowed: nothing printed
-    expect(askedOf(warm.root)).toEqual(expected.map(violationLabel).sort())
+    // asked again, once per import, and allowed: nothing printed
+    expect([...asked].sort()).toEqual(coldAsked)
     expect(warm.violations).toEqual([])
     for (const mark of ['MARK_SECRET', 'MARK_DB', 'MARK_EFFECT']) {
       expect(warm.client.where(new RegExp(mark))).not.toBe('nowhere')
     }
+  }, 120_000)
+
+  test('an edit adding a second import of an allowed module: the warm build keeps the first one allowed', async () => {
+    const cold = await cached({ allowImport: () => true })
+    const warm = await cold.rebuild({
+      'src/page.ts': `${page}export const later = () => import('./secret.server')\n`,
+    })
+    expect(warm.violations).toEqual([])
+    expect(warm.client.where(/MARK_SECRET/)).not.toBe('nowhere')
+  }, 120_000)
+
+  test('allowImport changing its answer: the warm build follows it, both ways', async () => {
+    let answer = true
+    const told: Array<string> = []
+    const cold = await cached({
+      behavior: 'mock',
+      mockAccess: 'off',
+      allowImport: () => answer,
+      onViolation: (info) => {
+        told.push(info.specifier)
+      },
+    })
+    expect(cold.client.where(/MARK_SECRET/)).not.toBe('nowhere')
+    expect(told).toEqual([])
+    answer = false
+    const denied = await cold.rebuild()
+    expect(unresolved(denied.diagnostics)).toEqual([])
+    expect(denied.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe(
+      'nowhere',
+    )
+    expect([...told].sort()).toEqual([
+      './db',
+      './effect.server',
+      './secret.server',
+    ])
+    answer = true
+    told.length = 0
+    const allowed = await denied.rebuild()
+    expect(unresolved(allowed.diagnostics)).toEqual([])
+    for (const mark of ['MARK_SECRET', 'MARK_DB', 'MARK_EFFECT']) {
+      expect(allowed.client.where(new RegExp(mark))).not.toBe('nowhere')
+    }
+    expect(told).toEqual([])
   }, 120_000)
 })
 

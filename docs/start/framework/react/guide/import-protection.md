@@ -42,7 +42,7 @@ These defaults mean you can use the `.server.ts` / `.client.ts` naming conventio
 
 ## Pattern Imports
 
-Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when `onViolation` allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
+Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are checked too. A denied file one of them reaches is replaced by its mock (for every importer: the file itself is mocked) and reported. A build names each module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. The file is kept as it is when an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports it with a plain import, or when [`allowImport`](#the-allowimport-callback) allows it. A pattern import from an exempt importer still gets the mock (see [Limitations](#limitations)).
 
 On the client, a file rule judges the denied file itself, wherever it lives in your project: a pattern that reaches `../lib/*.server.ts`, or a file `exclude` matches, gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. On Vite this covers non-code files too (`./*.server.json`); on Rsbuild, `new URL` of a non-code file and asset queries. A package's own files in `node_modules` are not judged this way.
 
@@ -312,7 +312,7 @@ To write safe code:
 
 ## Limitations
 
-A denied file is judged when it is compiled, from the imports import protection has read so far. Some imports are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
+A denied file is judged when it is compiled, from the imports import protection has read so far. Some imports are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build. `allowImport` follows the same order: a denied file a pattern import compiled before the plain import that `allowImport` allows stays a mock.
 
 An exempt importer that reaches a denied file only through a pattern import:
 
@@ -584,7 +584,7 @@ The same applies to marker-protected files (`import '@tanstack/react-start/serve
 
 ## The `onViolation` Callback
 
-You can hook into violations for custom reporting or to override the verdict:
+`onViolation` tells you about violations, for custom reporting. It does not change the outcome: to give an import the real module, use [`allowImport`](#the-allowimport-callback).
 
 ```ts
 importProtection: {
@@ -597,16 +597,42 @@ importProtection: {
     // info.resolved -- absolute path of the resolved target (if available)
     // info.trace -- array of { file, line?, column?, specifier? } objects
     // info.snippet -- { lines, highlightLine, location } with the source code snippet (if available)
+    await report(info)
+  },
+}
+```
 
-    // Return false (or Promise<false>) to allow this specific import (override the denial)
-    if (info.specifier === 'some-special-case') {
-      return false
+In builds, `onViolation` is called after the build, once per denied import that survives tree-shaking and that `allowImport` did not allow. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is called once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
+
+Returning `false` from `onViolation` used to allow the import. It no longer does anything: Start prints a message pointing here, and the import gets the normal outcome. If you returned `false`, move that decision to `allowImport` and return `true` there. Your `allowImport` runs for more imports than your `onViolation` did, and has no `trace` or `snippet` to read.
+
+## The `allowImport` Callback
+
+`allowImport` decides, during the build and before an import is replaced by its mock, that a denied import gets the real module. It runs in dev and in builds:
+
+```ts
+importProtection: {
+  allowImport: async (info) => {
+    // info.env, info.envType, info.type, info.pattern, info.behavior, info.specifier,
+    // info.importer, info.importerLoc, info.resolved: as in onViolation
+
+    if (info.importer.endsWith('/src/lib/analytics.ts') && info.type === 'specifier') {
+      return true
     }
   },
 }
 ```
 
-In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is asked once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
+- `true` gives the import the real module, from the first pass: the import is not a violation, nothing is reported for it, and `onViolation` is not called for it.
+- `false` or nothing means no override: the normal outcome under `behavior`, so a build failure with `error`, a mock and a warning with `mock`.
+
+It is called once per denied import for a build or a dev session, and the answer is remembered.
+
+`allowImport` runs before tree-shaking, so it also sees imports tree-shaking removes later. Use it to decide, not to report: `onViolation` is the one that hears only about what stays. For the same reason its `info` has no `trace` (the import graph is not finished) and no `snippet` (source rendered for a report).
+
+Its answers must be stable: the same answer for the same import, whatever the order of the calls or the environment build it runs in.
+
+A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. A file you allow also comes along where nothing checked imports it: with React Server Components, a `.client` file with `'use client'` you allow from the `rsc` environment is the real module in `ssr` too.
 
 ## Disabling Import Protection
 
@@ -642,9 +668,10 @@ interface ImportProtectionOptions {
     files?: Array<string | RegExp>
     excludeFiles?: Array<string | RegExp>
   }
-  onViolation?: (
-    info: ViolationInfo,
-  ) => boolean | void | Promise<boolean | void>
+  onViolation?: (info: ViolationInfo) => void | Promise<void>
+  allowImport?: (
+    info: Omit<ViolationInfo, 'trace' | 'snippet'>,
+  ) => void | boolean | Promise<void | boolean>
 }
 ```
 
@@ -665,4 +692,5 @@ interface ImportProtectionOptions {
 | `server.specifiers`   | `Pattern[]`          | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
 | `server.files`        | `Pattern[]`          | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
 | `server.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
-| `onViolation`         | `function`           | `undefined`                       | Callback invoked on every violation                                                                                                                                   |
+| `onViolation`         | `function`           | `undefined`                       | Told about each violation that stays (after tree-shaking in a build); reports only                                                                                    |
+| `allowImport`         | `function`           | `undefined`                       | Decides, before the mock, that a denied import gets the real module (`true`)                                                                                          |

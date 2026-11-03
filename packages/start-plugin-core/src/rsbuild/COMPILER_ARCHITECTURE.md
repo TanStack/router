@@ -73,12 +73,12 @@ Edges are judged in the plan (per output, with the raw specifier the user wrote;
 resolved target, which for Rsbuild's `source.transformImport` is the rewritten target). A violation substitutes the
 specifier with a per-edge mock module written as a virtual file of the environment. In development a violation is
 pending until Rspack builds its edge module, which it does only for an import the importer kept after SWC: the
-loader's `edge` pass confirms it and asks `onViolation`. Reports are printed at `finishModules`, when the module graph
+loader's `edge` pass asks `allowImport` (also in builds, when one is configured) and confirms it. Reports are printed at `finishModules`, when the module graph
 knows the importer's trace. At `finishMake` the records of modules restored from the persistent cache are replayed; a
-module or an edge module another session judged is built again first. In builds
-the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, asks
-`onViolation` once per surviving edge, switches vetoed edges to transparent re-exports and asks Rspack for an
-additional pass until no new veto appears; reports are published on the final pass.
+module or an edge module another session judged is built again, so `allowImport` answers in this session. In builds
+the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
+`onViolation` once per surviving import and publishes the reports. An edge `allowImport` allows is a transparent
+re-export from the start.
 
 ## Development invalidation
 

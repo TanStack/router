@@ -8,7 +8,7 @@
  * denied file as it compiles it (nothing has recorded its importer yet).
  * Client environment, mock mode, builds and dev servers (Vite, Vite's
  * bundled dev, Rsbuild); builds with the `error` behaviour (the default)
- * fail; a veto gives the real module.
+ * fail; `allowImport` gives the real module.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
@@ -283,14 +283,14 @@ describe.each(startBundlers)('%s build verdicts', (bundler) => {
   )
 
   test(
-    'a veto gives the client the real module',
+    'allowImport gives the client the real module',
     async () => {
       const build = await buildStart({
         bundler,
         files,
         entry: 'src/entry.ts',
         start: {
-          importProtection: { ...importProtection, onViolation: () => false },
+          importProtection: { ...importProtection, allowImport: () => true },
         },
       })
       const { result: read } = await build.client.run(readScript)

@@ -6,28 +6,28 @@
  * target facts). A violation is substituted by its edge module (the specifier
  * literal only):
  *
- * - dev: with `log: 'once'`, `onViolation` decides now, once per logical
- *   edge for the session (`false` leaves the edge alone); with `'always'`
- *   the host asks at every compile, a cached plan's included
- *   (`ImportProtectionEnv.afterCompile`; `false` makes the edge module serve
- *   the real module). `mock` substitutes the mock, `error` leaves the
- *   specifier and the host fails the module. An edge the
+ * - dev: `mock` substitutes the edge module, `error` leaves the specifier and
+ *   the host decides after the compile (`ImportProtectionEnv.afterCompile`:
+ *   `allowImport`, then the report or the failure of the module). An edge the
  *   bundler's TypeScript transform may erase (a static import of a
  *   `.ts`/`.tsx` module with no binding used as a value) is substituted in
  *   both behaviours and recorded *pending*: the host confirms it when the
  *   bundler requests its edge module from the transformed importer
  *   (`ImportProtectionEnv.confirm`), which never happens for an erased
  *   import;
- * - build: every violation gets its edge module (mock first in both
- *   behaviours); `onViolation` runs after tree-shaking (`verdict.ts`): an
+ * - build: every violation gets its edge module, in both behaviours; what
+ *   survives tree-shaking is reported (`ImportProtectionEnv.surviving`): an
  *   erased edge module is absent from the bundle.
+ *
+ * The plan holds no answer of `allowImport`: the edge module's state does
+ * (the mock or a transparent re-export), so no cache keeps one.
  *
  * A module that a file rule or its own marker denies in the environment it
  * is compiled in is its own violation (`EdgeViolation.self`): each import of
  * it the plan reads is substituted, so an import the compiler does not read
  * brought it there (an `import.meta.glob`, a template literal `import()`).
  * The host serves its mock, unless an exempt importer imports it (its
- * imports are indexed, not judged) or a veto allowed it; a dev compile
+ * imports are indexed, not judged) or `allowImport` allows it; a dev compile
  * reports it then, a build names its importers from the bundler's graph.
  * An asset query of a denied file is never compiled, and the same verdict
  * reaches it through its host (`ImportProtectionEnv.assetOutput`).
@@ -35,11 +35,14 @@
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
+import { isBuiltin } from 'node:module'
 import {
   ASSET_QUERY_RE,
   identify,
+  isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
+import { startRecognizer } from '../compiler/recognizer'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
@@ -53,9 +56,7 @@ import {
 import { relativizePath } from '../import-protection/utils'
 import {
   IMPORT_EDGES_PLANNER,
-  dedupeKey,
   selfViolationOf,
-  violationInfo,
 } from '../import-protection/violations'
 import type {
   EdgeRecord,
@@ -88,9 +89,6 @@ export type ImportRewrite = (
 /** The planner's configuration of a compile (`CompileConfig.perPlanner`): its environment's type. */
 export type ImportEdgesConfig = EnvType
 
-/** Most modules an effect classification follows from one target (beyond: effectful). */
-const MAX_EFFECT_WALK = 256
-
 interface Judged {
   edge: EdgeRecord
   raw: string
@@ -119,6 +117,9 @@ function markerIdOf(envType: EnvType, target: string): string {
     ? identify(target).path
     : target
 }
+
+/** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
+const KNOWN_PACKAGES = startRecognizer()
 
 export function importEdgesPlanner(ip: ImportProtection): Planner {
   const { config } = ip
@@ -323,17 +324,6 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           module: null,
           ...(pending && { pending: true }),
         }
-        if (config.mode === 'dev' && !pending && config.log === 'once') {
-          const verdict = await env.onceVerdict(dedupeKey(base), async () =>
-            config.onViolation?.(
-              violationInfo(base, config, () => env.trace(importerId)),
-            ),
-          )
-          if (verdict === false) {
-            env.allowTarget(j.resolved)
-            continue
-          }
-        }
         if (substitute) {
           const content = await edgeModuleContent(plan, j, ctx)
           const key = edgeModuleKey(content)
@@ -400,15 +390,20 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
+      rule: j.rule!,
     }
   }
 
   /**
    * What a mock of `resolved` must export (its export names, following
-   * `export *`) and whether evaluating it has effects (own top-level
-   * effects, an effectful module it evaluates, a package without
-   * `sideEffects: false`; unknown → effectful). Every consulted module is a
-   * target-facts/resolution fingerprint of this plan (J6.13).
+   * `export *`) and, in a build (the effect witness is read after tree-shaking),
+   * whether evaluating it has effects (own top-level effects, an effectful
+   * module it evaluates, a dependency without `sideEffects: false`; unknown →
+   * effectful). A module of a package declaring `sideEffects: false`, a platform
+   * builtin and the framework's own packages have none: bundlers drop them with
+   * an unused importer. Every
+   * consulted module is a target-facts/resolution fingerprint of this plan
+   * (J6.13).
    */
   async function describeTarget(
     resolved: string,
@@ -419,11 +414,16 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     if (/\.json$/i.test(p) || ASSET_QUERY_RE.test(resolved)) {
       return { names: [], hasDefault: true, effectful: false }
     }
+    // this environment may not resolve what a denied module imports (a package
+    // with only `node` exports on the client: the Vite resolver throws): the
+    // module stays denied, and what is unknown of it counts as effectful
+    const resolve = (spec: string, importer: string) =>
+      ctx.resolve(spec, importer).catch(() => null)
     const names = new Set<string>()
     const top = await ctx.targetFacts(resolved)
     const visitedStars = new Set<string>()
     const collect = async (id: string, isTop: boolean): Promise<void> => {
-      if (visitedStars.has(id) || visitedStars.size > MAX_EFFECT_WALK) {
+      if (visitedStars.has(id)) {
         return
       }
       visitedStars.add(id)
@@ -435,7 +435,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         names.add(n)
       }
       for (const star of facts.stars) {
-        const r = await ctx.resolve(star, id)
+        const r = await resolve(star, id)
         if (r !== null) {
           await collect(r, false)
         }
@@ -448,19 +448,22 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         return false
       }
       visited.add(id)
-      if (visited.size > MAX_EFFECT_WALK) {
-        return true
-      }
       const path = identify(id).path
+      if (await ip.packageSideEffectFree(path)) {
+        return false
+      }
       if (path.includes('/node_modules/')) {
-        return !(await ip.packageSideEffectFree(path))
+        return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)
       if (!facts.exists || !facts.esm || facts.codeEffects) {
         return true
       }
       for (const spec of facts.imports) {
-        const r = await ctx.resolve(spec, id)
+        if (isBuiltin(spec) || isKnownSpecifier(KNOWN_PACKAGES, spec)) {
+          continue
+        }
+        const r = await resolve(spec, id)
         if (r === null || (await effectful(r))) {
           return true
         }
@@ -470,7 +473,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     return {
       names: [...names].filter((n) => n !== 'default'),
       hasDefault: top.exportNames.includes('default') || !top.esm,
-      effectful: await effectful(resolved),
+      effectful: config.mode === 'build' && (await effectful(resolved)),
     }
   }
 }

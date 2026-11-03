@@ -82,20 +82,16 @@ const located = (root: string, file: string, line?: number, column?: number) =>
 /**
  * An `onViolation` for Start's public `importProtection` option that records
  * every violation Start reports (`violations`), and `importProtection` with
- * it. The app's own `onViolation` (of `importProtection`) still decides: a
- * violation it allows (`false`) is not reported, so not recorded.
+ * it. The app's own `onViolation` (of `importProtection`) still runs.
  */
 export function violationRecorder(
   importProtection: ImportProtectionOptions = {},
 ) {
   const violations: Array<ViolationInfo> = []
   const own = importProtection.onViolation
-  const onViolation = async (info: unknown) => {
-    const verdict = await own?.(info)
-    if (verdict !== false) {
-      violations.push(info as ViolationInfo)
-    }
-    return verdict
+  const onViolation = async (info: Parameters<NonNullable<typeof own>>[0]) => {
+    await own?.(info)
+    violations.push(info as unknown as ViolationInfo)
   }
   return {
     violations,

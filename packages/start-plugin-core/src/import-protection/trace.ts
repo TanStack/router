@@ -33,6 +33,14 @@ export interface ViolationInfo {
 }
 
 /**
+ * What `allowImport` receives. It runs while the build still loads modules:
+ * no `trace` (the graph is not finished) and no `snippet` (source rendered for
+ * a report). `importerLoc` is absent for an importer a persistent cache
+ * restored whose record is not read yet.
+ */
+export type AllowImportInfo = Omit<ViolationInfo, 'trace' | 'snippet'>
+
+/**
  * Suggestion strings for server-only code leaking into client environments.
  * Used by both `formatViolation` (terminal) and runtime mock modules (browser).
  */

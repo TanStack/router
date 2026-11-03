@@ -193,11 +193,11 @@ describe.each<[StartBundler, string, Files]>([
   )
 
   test(
-    'a veto gives the real file',
+    'allowImport gives the real file',
     async () => {
       const result = await buildApp(bundler, entry, files, {
         ...importProtection,
-        onViolation: () => false,
+        allowImport: () => true,
       })
       expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
     },

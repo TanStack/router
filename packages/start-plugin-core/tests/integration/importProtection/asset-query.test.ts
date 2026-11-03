@@ -5,7 +5,7 @@
  * template-literal `import()`, `import.meta.webpackContext`) and whichever rule
  * denies the file (file rule, `server-only` marker). The file's text never
  * reaches the client, in any emitted file, and the import is reported. Builds
- * with the `error` behaviour fail; a veto, an exempt importer of a static
+ * with the `error` behaviour fail; `allowImport`, an exempt importer of a static
  * import and `excludeFiles` give the real text; a file that is not denied keeps
  * it, byte for byte. A server gets the text or URL of a client-only marked file.
  */
@@ -401,11 +401,11 @@ describe.each(patternImports)(
     )
 
     test(
-      'a veto gives the real text',
+      'allowImport gives the real text',
       async () => {
         const result = await buildApp(bundler, entry, denied, {
           ...importProtection,
-          onViolation: () => false,
+          allowImport: () => true,
         })
         expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
       },

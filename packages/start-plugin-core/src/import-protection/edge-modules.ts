@@ -9,8 +9,9 @@
  *   It is the survival witness in builds: bundlers keep an owned
  *   export only where the importer's binding survives, and keep `__fx` only
  *   where the importer is evaluated.
- * - `allowed` (a build veto, `onViolation` → false): a transparent
- *   re-export of the real module, side effects left to the bundler.
+ * - `allowed` (`allowImport` → true): a transparent re-export of the real
+ *   module, side effects left to the bundler. The mock is never produced for
+ *   it: the host asks before it loads the module (`ImportProtectionEnv.confirm`).
  * - the runtime (one per environment, side-effect free): the recursive
  *   mock Proxy with the `mockAccess` diagnostics, in every environment and
  *   mode (J6.3).
@@ -24,6 +25,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { CLIENT_ENV_SUGGESTIONS, SERVER_ENV_SUGGESTIONS } from './trace'
 import type { MockAccess } from './config'
+import type { RuleRef } from './rules'
 
 const EDGE_MODULE_PREFIX = 'tanstack-start-ip:'
 
@@ -190,6 +192,8 @@ export interface EdgeModuleContent {
   hasDefault: boolean
   /** The edge only evaluates the module (bare import): the allowed state imports it for its effects. */
   bare: boolean
+  /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
+  rule: RuleRef
 }
 
 /** The key of an edge module: a digest of its content, edge key included (a new content is a new module id). */
@@ -259,7 +263,10 @@ export function allowedModuleCode(
 /**
  * The mock runtime of an environment. `__mk` creates the recursive mock
  * (reads, calls, `new`, conversions never throw; `mockAccess` reports a
- * call, a construction, a conversion or a write once per access path);
+ * call, a construction, a conversion or a write once per access path).
+ * `mock.foo().then(…)` runs its callback, with a mock that is not itself
+ * thenable: a thenable resolving to itself makes `await` loop in microtasks,
+ * freezing the tab or the whole server;
  * `__fx` is the effect witness (a call no bundler can prove pure; no
  * global, nothing logged).
  */
@@ -291,16 +298,16 @@ function report(meta, action, path) {
   if (MODE === "warn") console.warn(error);
   else console.error(error);
 }
-function create(meta, name) {
+function create(meta, name, settled) {
   const target = function () {};
   const children = Object.create(null);
   const proxy = new Proxy(target, {
     get(_target, prop) {
       if (prop === "__esModule") return true;
       if (prop === "default") return proxy;
-      if (prop === "then") return (resolve) => Promise.resolve(resolve ? resolve(proxy) : proxy);
-      if (prop === "catch") return () => Promise.resolve(proxy);
-      if (prop === "finally") return (f) => { if (f) f(); return Promise.resolve(proxy); };
+      if (prop === "then") return settled ? undefined : (resolve, reject) => Promise.resolve(create(meta, name, true)).then(resolve, reject);
+      if (prop === "catch") return () => Promise.resolve(create(meta, name, true));
+      if (prop === "finally") return (f) => { if (f) f(); return Promise.resolve(create(meta, name, true)); };
       if (prop === Symbol.toPrimitive) return () => { report(meta, "toPrimitive", name); return "[import-protection mock]"; };
       if (prop === "toString" || prop === "valueOf" || prop === "toJSON")
         return () => { report(meta, String(prop), name); return "[import-protection mock]"; };

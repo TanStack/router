@@ -32,7 +32,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 
 **Import protection**
 
-- A denied import is replaced by a mock module of its own that exports the target's names. Build violations are decided after tree-shaking; when `onViolation` returns `false` the import gets the real module and the build reruns until no new import is allowed.
+- A denied import is replaced by a mock module of its own that exports the target's names. Build violations are reported after tree-shaking, in one pass; `allowImport` gives an import the real module (see its changeset).
 - Exempt importers (`ignoreImporters`, `exclude`, `include`) get the real module; dependencies that mark themselves server-only follow `excludeFiles`; `.vue` and `.mdx` importers are checked on their compiled output; a client entry marked server-only fails the build.
 - Reports show the import in the original source with a code frame, and traces follow the bundler graph. In dev, a denied import added by an edit is reported.
 - Rsbuild: works with Rspack's persistent cache (`performance.buildCache`).

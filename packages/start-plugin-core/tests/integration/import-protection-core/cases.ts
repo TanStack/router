@@ -357,7 +357,7 @@ export const cases: Array<WitnessCase> = [
     expectOut: ['client'],
   },
 
-  // --- semantics of proxies (only matters for allowed / vetoed edges) --
+  // --- semantics of proxies (only matters for allowed edges) --
   {
     name: 'S1 live binding through an allowed edge',
     files: {

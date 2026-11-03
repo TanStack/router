@@ -170,6 +170,32 @@ return {
   )
 
   test(
+    'an allowed import writes its client, and an edit keeps it working',
+    async () => {
+      const denied = (mark: string) => `export const secret = () => '${mark}'\n`
+      const { client, firstBuild } = await buildStart({
+        bundler,
+        files: {
+          'src/lib.server.ts': denied('MARK_BEFORE'),
+          'src/entry.ts': `import { secret } from './lib.server'
+export const read = () => secret()
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { allowImport: () => true } },
+        watchEdits: { 'src/lib.server.ts': denied('MARK_AFTER') },
+      })
+      expect(firstBuild.filter(({ severity }) => severity === 'error')).toEqual(
+        [],
+      )
+      expect((await client.run(`return entry.read()`)).result).toBe(
+        'MARK_AFTER',
+      )
+    },
+    timeout,
+  )
+
+  test(
     'a module an edit marks server-only is a violation of its unchanged client importer',
     async () => {
       const error = await rejection(

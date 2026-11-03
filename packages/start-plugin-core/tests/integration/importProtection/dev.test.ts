@@ -908,17 +908,17 @@ return probeMock(entry.request(), 'MARK_')`,
   )
 })
 
-describe('onViolation', () => {
+describe('onViolation and allowImport', () => {
   // What the client then gets is tested below.
   // Source: mutation testing.
   test(
-    'returning false silences the warning; it receives the importer',
+    'allowImport returning true silences the warning; it receives the importer',
     async () => {
       const importers: Array<string> = []
       const server = await startProtectedDevServer(deniedFileApp, {
-        onViolation: (info) => {
-          importers.push((info as ViolationInfo).importer)
-          return false
+        allowImport: (info) => {
+          importers.push(info.importer)
+          return true
         },
       })
       await server.load('/src/entry.ts')
@@ -932,22 +932,15 @@ describe('onViolation', () => {
     timeout,
   )
 
-  // Bug: dev import protection replaces a denied file with its mock when it
-  // resolves (and transforms) the import, before it calls `onViolation`;
-  // returning `false` only silences the warning (the dev twin of the build
-  // pin "onViolation returning false allows the import of a denied file",
-  // build.test.ts).
-  // Impact: an import a project allows with `onViolation` (documented:
-  // "Return false ... to allow this specific import (override the denial)",
-  // guide/import-protection.md) is a mock in the browser, whose calls return
-  // mocks, without any warning.
-  // Source: review (dev.test.ts "returning false silences the warning"
-  // asserted the mock).
+  // Impact: an import a project allows with `allowImport` (documented:
+  // guide/import-protection.md) would be a mock in the browser, whose calls
+  // return mocks, without any warning.
+  // Source: review.
   test(
-    'returning false allows the import: the client gets the real module',
+    'allowImport returning true: the client gets the real module',
     async () => {
       const server = await startBrowserProtectedDevServer(deniedFileApp, {
-        onViolation: () => false,
+        allowImport: () => true,
       })
       // The real module's value, in the browser (a mock gives none)
       const { result } = await runViteClient(
@@ -977,7 +970,7 @@ export const read = () => getRequest()
     async ({ files }) => {
       const server = await startProtectedDevServer(files, {
         behavior: 'error',
-        onViolation: () => false,
+        allowImport: () => true,
       })
       // The app's modules: `@tanstack/react-start/server` itself imports
       // Start's entries, which only Start's whole plugin provides.
@@ -990,9 +983,7 @@ export const read = () => getRequest()
     timeout,
   )
 
-  // Bug: same as the pin "returning false allows the import" above, with
-  // behavior "error": the denied file is still replaced with its mock.
-  // Impact: an allowed import is a mock in the browser.
+  // Impact: an allowed import would be a mock in the browser.
   // Source: review (dev.test.ts "with behavior "error", an import of $name
   // it allows loads" passed with the mock).
   test(
@@ -1000,7 +991,7 @@ export const read = () => getRequest()
     async () => {
       const server = await startBrowserProtectedDevServer(deniedFileApp, {
         behavior: 'error',
-        onViolation: () => false,
+        allowImport: () => true,
       })
       // The real module's value, in the browser (a mock gives none)
       const { result } = await runViteClient(
@@ -1013,11 +1004,10 @@ export const read = () => getRequest()
     timeout,
   )
 
-  // Only `false` overrides the denial (guide/import-protection.md): an
-  // `onViolation` that only records (returns nothing) changes nothing.
+  // `onViolation` only reports (guide/import-protection.md).
   // Source: mutation testing.
   test(
-    'that returns nothing keeps the warning; it receives the importer',
+    'onViolation keeps the warning; it receives the importer',
     async () => {
       const importers: Array<string> = []
       const server = await startProtectedDevServer(deniedFileApp, {
@@ -1051,11 +1041,11 @@ export const read = () => getRequest()
       use: 'src/a.ts:2:27',
     },
   ])(
-    'with behavior "error", an import of $name it does not return false for fails to load',
+    'with behavior "error", an import of $name allowImport answers false for fails to load',
     async ({ files, use }) => {
       const server = await startProtectedDevServer(files, {
         behavior: 'error',
-        onViolation: () => true,
+        allowImport: () => false,
       })
       await rejection(server.load('/src/entry.ts'))
       expectViolationsAt(server, [

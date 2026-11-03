@@ -33,6 +33,7 @@ const content = (partial: Partial<EdgeModuleContent>): EdgeModuleContent => ({
   file: 'src/secret.server.ts',
   names: [],
   effectful: false,
+  rule: { type: 'file', index: 0 },
   resolved: null,
   hasDefault: true,
   bare: false,

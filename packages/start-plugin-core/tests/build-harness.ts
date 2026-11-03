@@ -517,12 +517,8 @@ export async function buildStart(
       importProtection: {
         ...start.importProtection,
         onViolation: async (info) => {
-          const verdict = await userOnViolation?.(info)
-          // (`false` allows the import: Start reports nothing)
-          if (verdict !== false) {
-            violations.push(info as ViolationInfo)
-          }
-          return verdict
+          violations.push(info as unknown as ViolationInfo)
+          return userOnViolation?.(info)
         },
       },
     },

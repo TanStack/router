@@ -12,7 +12,7 @@ import { compileMatchers } from './matchers'
 import { dedupePatterns, normalizeFilePath } from './utils'
 import type { ImportProtectionEnvRules } from './adapterUtils'
 import type { CompiledMatcher } from './matchers'
-import type { ViolationInfo } from './trace'
+import type { AllowImportInfo, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 
 export type ImportProtectionMode = 'dev' | 'build'
@@ -20,9 +20,11 @@ type ImportProtectionBehavior = 'error' | 'mock'
 export type MockAccess = 'error' | 'warn' | 'off'
 export type MarkerKind = 'server-only' | 'client-only'
 
-type OnViolation = (
-  info: ViolationInfo,
-) => boolean | void | Promise<boolean | void>
+type OnViolation = (info: ViolationInfo) => void | Promise<void>
+
+type AllowImport = (
+  info: AllowImportInfo,
+) => void | boolean | Promise<void | boolean>
 
 export interface ImportProtectionConfig {
   /** Absolute project root (paths are matched relative to it). */
@@ -41,7 +43,10 @@ export interface ImportProtectionConfig {
   ignoreImporters: Array<CompiledMatcher>
   /** Marker specifier → kind (every framework's markers count in every app). */
   markerSpecifiers: Record<string, MarkerKind>
+  /** Told about the imports that stayed violations (after tree-shaking in a build). Reports only. */
   onViolation: OnViolation | undefined
+  /** Decides, before an import is mocked, that it gets the real module (`ImportProtectionEnv.allows`). */
+  allowImport: AllowImport | undefined
   /** Part of the compile `configKey`: changes with anything that changes a plan. */
   configKey: string
 }
@@ -140,7 +145,8 @@ export function resolveImportProtectionConfig(
     exclude: compileMatchers(exclude),
     ignoreImporters: compileMatchers(ignoreImporters),
     markerSpecifiers,
-    onViolation: options?.onViolation as OnViolation | undefined,
+    onViolation: options?.onViolation,
+    allowImport: options?.allowImport,
     configKey: digestOf({
       ip: 1,
       root,

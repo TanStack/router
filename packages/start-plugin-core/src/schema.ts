@@ -2,6 +2,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { CompileStartFrameworkOptions } from './types'
+import type { AllowImportInfo, ViolationInfo } from './import-protection/trace'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true })
@@ -40,9 +41,26 @@ const importProtectionOptionsSchema = z
      * - 'off': disable runtime diagnostics
      */
     mockAccess: z.enum(['error', 'warn', 'off']).optional(),
+    /**
+     * Told about an import that stayed a violation: after the build for one
+     * that survives tree-shaking, when it is compiled or loaded in dev.
+     * Reports only: use `allowImport` to give an import the real module.
+     */
     onViolation: z
       .custom<
-        (violation: unknown) => boolean | void | Promise<boolean | void>
+        (violation: ViolationInfo) => void | Promise<void>
+      >((value) => typeof value === 'function')
+      .optional(),
+    /**
+     * Decides, during the build and before a mock is chosen, whether a denied
+     * import gets the real module (`true`). `false` or nothing: the normal
+     * outcome under `behavior`. Asked once per import, including imports
+     * tree-shaking removes later, so it decides and does not report; its
+     * answers must be stable.
+     */
+    allowImport: z
+      .custom<
+        (violation: AllowImportInfo) => void | boolean | Promise<void | boolean>
       >((value) => typeof value === 'function')
       .optional(),
     include: z.array(patternSchema).optional(),

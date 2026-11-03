@@ -147,16 +147,17 @@ export function registerStartCompiler(
         {
           test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
           type: 'javascript/esm',
-          // dev: Rspack builds an edge module only for an import its importer
-          // kept after SWC, which confirms a pending violation
-          use: dev
-            ? [
-                {
-                  loader: loaderPath,
-                  options: { environment: environment.name, pass: 'edge' },
-                },
-              ]
-            : [],
+          // Rspack builds an edge module only for an import its importer kept
+          // after SWC: `allowImport` decides, and a pending violation is confirmed
+          use:
+            dev || s.start.ip.config.allowImport
+              ? [
+                  {
+                    loader: loaderPath,
+                    options: { environment: environment.name, pass: 'edge' },
+                  },
+                ]
+              : [],
         },
       )
     }

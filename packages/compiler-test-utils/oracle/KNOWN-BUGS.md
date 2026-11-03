@@ -708,9 +708,10 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
 
 Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/importProtection/`.
 
-- **`onViolation` returning `false` only silences the report**: the mock was already chosen. SPEC J6.6.
+- **Allowing an import only silenced the report on `main`** (`onViolation` returning `false`, replaced by
+  `allowImport`): the mock was already chosen. SPEC J6.6.
   `ip/build-markers.test.ts`: "allows the import of %s: the build succeeds and the client gets the real module";
-  `ip/dev.test.ts`: "returning false allows the import: the client gets the real module"; "with behavior "error", an
+  `ip/dev.test.ts`: "allowImport returning true: the client gets the real module"; "with behavior "error", an
   import of a denied file it allows gets the real module"; `ip/v2-policy.test.ts`: "the client gets the real module".
 - **Exempt importers get the mock** (the denied file is mocked in its own transform, for every importer). SPEC J6.7.
   `ip/exemptions.test.ts`: "the exempt importer gets the real module, and is not reported" (two tables);
