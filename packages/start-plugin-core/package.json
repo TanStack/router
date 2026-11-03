@@ -157,6 +157,7 @@
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-react": "^2.0.0",
     "@rsbuild/plugin-solid": "^1.2.2",
+    "@rsbuild/plugin-vue": "^1.2.7",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
     "vite": "*",

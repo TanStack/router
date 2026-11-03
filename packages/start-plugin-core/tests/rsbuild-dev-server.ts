@@ -23,6 +23,7 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
+import type { StartFramework } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
 import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
@@ -143,14 +144,15 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
  * the app has them. With `framework: 'solid'`, Start's plugin is
  * `@tanstack/solid-start`'s and the built `@tanstack/solid-start` and
  * `@tanstack/solid-router` are linked (Solid's JSX plugins come from
- * `config`).
+ * `config`); `vue` the same with Vue's packages and `vue` (`@rsbuild/plugin-vue`
+ * from `config`, and the app's own root route over `@tanstack/vue-router`).
  */
 export async function startRsbuildStartDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     /** The app's Start options (`tanStackStart(options)`). */
     start?: TanStackStartRsbuildInputConfig
     /** The Start framework package of the app (default `react`). */
-    framework?: 'react' | 'solid'
+    framework?: StartFramework
   },
 ): Promise<RsbuildDevServer> {
   const { files, start, framework = 'react', ...devServerOptions } = options

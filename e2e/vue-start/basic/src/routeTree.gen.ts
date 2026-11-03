@@ -20,6 +20,7 @@ import { Route as SearchParamsRouteRouteImport } from './routes/search-params/ro
 import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as VueSfcRouteImport } from './routes/vue-sfc'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
@@ -127,6 +128,11 @@ const StreamRoute = StreamRouteImport.update({
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VueSfcRoute = VueSfcRouteImport.update({
+  id: '/vue-sfc',
+  path: '/vue-sfc',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
@@ -362,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/vue-sfc': typeof VueSfcRoute
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -414,6 +421,7 @@ export interface FileRoutesByTo {
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/vue-sfc': typeof VueSfcRoute
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/vue-sfc': typeof VueSfcRoute
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -519,10 +528,10 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/not-found' | '/search-params' | '/specialChars' | '/deferred' | '/inline-scripts' | '/links' | '/posts' | '/raw-stream' | '/scripts' | '/stream' | '/users' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/layout-a' | '/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target/' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/'
+  fullPaths: '/' | '/not-found' | '/search-params' | '/specialChars' | '/deferred' | '/inline-scripts' | '/links' | '/posts' | '/raw-stream' | '/scripts' | '/stream' | '/users' | '/vue-sfc' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/layout-a' | '/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target/' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/specialChars' | '/deferred' | '/inline-scripts' | '/links' | '/scripts' | '/stream' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect' | '/not-found' | '/posts' | '/raw-stream' | '/redirect' | '/search-params' | '/users' | '/layout-a' | '/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn'
-  id: '__root__' | '/' | '/not-found' | '/search-params' | '/specialChars' | '/_layout' | '/deferred' | '/inline-scripts' | '/links' | '/posts' | '/raw-stream' | '/scripts' | '/stream' | '/users' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/_layout/_layout-2' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/_layout/_layout-2/layout-a' | '/_layout/_layout-2/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts_/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target/' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/'
+  to: '/' | '/specialChars' | '/deferred' | '/inline-scripts' | '/links' | '/scripts' | '/stream' | '/vue-sfc' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect' | '/not-found' | '/posts' | '/raw-stream' | '/redirect' | '/search-params' | '/users' | '/layout-a' | '/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn'
+  id: '__root__' | '/' | '/not-found' | '/search-params' | '/specialChars' | '/_layout' | '/deferred' | '/inline-scripts' | '/links' | '/posts' | '/raw-stream' | '/scripts' | '/stream' | '/users' | '/vue-sfc' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/_layout/_layout-2' | '/api/users' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/_layout/_layout-2/layout-a' | '/_layout/_layout-2/layout-b' | '/api/users/$userId' | '/not-found/parent-boundary/via-beforeLoad' | '/posts_/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/redirect/$target/' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -539,6 +548,7 @@ export interface RootRouteChildren {
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
+  VueSfcRoute: typeof VueSfcRoute
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -638,6 +648,13 @@ declare module '@tanstack/vue-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vue-sfc': {
+      id: '/vue-sfc'
+      path: '/vue-sfc'
+      fullPath: '/vue-sfc'
+      preLoaderRoute: typeof VueSfcRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
@@ -1137,6 +1154,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
+  VueSfcRoute: VueSfcRoute,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,

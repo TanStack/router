@@ -34,7 +34,9 @@ import {
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import { runsAgainLater } from './vue'
 import type { StartCompilerSessionOptions } from '../compiler/session'
+import type { LoaderChainLike } from './vue'
 import type { CompiledOutputLike } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
@@ -83,7 +85,7 @@ type StartRsbuildSessionOptions = Omit<
 >
 
 /** What the loader implementation uses of Rspack's loader context. */
-interface LoaderContextLike {
+interface LoaderContextLike extends LoaderChainLike {
   resource: string
   resourcePath: string
   sourceMap?: boolean
@@ -540,7 +542,11 @@ export class StartRsbuildCompilerSession {
     }
     const identity = identify(id)
     const late = options.pass === 'late'
-    if (late ? identity.lang !== null : identity.lang === null) {
+    if (
+      late
+        ? identity.lang !== null || runsAgainLater(ctx)
+        : identity.lang === null
+    ) {
       return passthrough
     }
     if (!late && !this.start.compiles(identity.path, source)) {
