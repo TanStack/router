@@ -19,9 +19,7 @@ import {
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
 import { importersIn, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
-import type {
-  ImportProtectionOptions,
-} from '../../importProtection/public-types'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 const compileTimeout = timeout
