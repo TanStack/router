@@ -85,7 +85,8 @@ export async function createStartApp(
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name)
     await mkdir(path.dirname(link), { recursive: true })
-    await symlink(target, link, 'dir')
+    // (a junction on Windows, which needs no privilege; a symlink elsewhere)
+    await symlink(target, link, 'junction')
   }
   const write = async (next: Record<string, string>) => {
     for (const [file, code] of Object.entries(next)) {
