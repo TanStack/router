@@ -577,7 +577,14 @@ export class StartRsbuildCompilerSession {
     if (!out) {
       return passthrough
     }
-    this.reportDiagnostics(ctx, out, identity.path, source, env.type)
+    this.reportDiagnostics(
+      ctx,
+      out,
+      identity.path,
+      source,
+      env.type,
+      late ? readInputMap : undefined,
+    )
     const mock = await this.protect(ctx, env, id, out)
     const buildInfo = ctx._module?.buildInfo
     if (env.persistsModules && out.persisted && buildInfo) {
@@ -654,19 +661,27 @@ export class StartRsbuildCompilerSession {
     file: string,
     code: string,
     envType: 'client' | 'server',
+    lateInputMap?: () => InputSourceMap | null,
   ): void {
     // the position in the Vite host's form, `message (file:line:col)`
     const where = (at: DiagnosticPosition | undefined) =>
       at ? ` (${file}:${at.line}:${at.column + 1})` : ''
     const errors: Array<string> = []
-    this.start.report(out, file, code, envType, {
-      error: (d, at) => errors.push(`${d.message}${where(at)}`),
-      warn: (d, at) => {
-        const warning = new Error(`${d.message}${where(at)}`)
-        warning.name = 'TanStackStartCompilerWarning'
-        ctx.emitWarning(warning)
+    this.start.report(
+      out,
+      file,
+      code,
+      envType,
+      {
+        error: (d, at) => errors.push(`${d.message}${where(at)}`),
+        warn: (d, at) => {
+          const warning = new Error(`${d.message}${where(at)}`)
+          warning.name = 'TanStackStartCompilerWarning'
+          ctx.emitWarning(warning)
+        },
       },
-    })
+      lateInputMap,
+    )
     if (errors.length > 0) {
       const error = new Error(errors.join('\n'))
       error.name = 'TanStackStartCompilerError'

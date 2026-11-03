@@ -37,6 +37,7 @@ import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
+import { isVueSfc, vueLateReport } from './vue'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -448,6 +449,8 @@ export class StartCompilerSession {
    * §5.15). One that names a Start package may define server code (a
    * handler, a server-only route option): the client build fails naming the
    * file (never shipped untransformed, J4.12); a server build warns.
+   * `lateInputMap`: the input map of a late compile (a Vue SFC's refusals
+   * of generated code are reported in the SFC: `vue.ts`).
    */
   report(
     out: CompileOutput,
@@ -455,13 +458,18 @@ export class StartCompilerSession {
     code: string,
     envType: 'client' | 'server',
     sink: DiagnosticSink,
+    lateInputMap?: () => InputSourceMap | null,
   ): void {
+    const vue =
+      lateInputMap && isVueSfc(file)
+        ? vueLateReport(out, file, code, lateInputMap)
+        : null
     reportCompileDiagnostics(
-      out.diagnostics,
+      vue?.diagnostics ?? out.diagnostics,
       file,
       code,
       this.warnings,
-      sink,
+      vue?.sink(sink) ?? sink,
       (d) =>
         namesStartSpecifier(code)
           ? {

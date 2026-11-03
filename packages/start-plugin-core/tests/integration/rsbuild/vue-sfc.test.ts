@@ -247,12 +247,14 @@ globalThis.__vueRows = {
     { component: 'SetupJs.vue', mark: 'MARK_SETUP_JS' },
     { component: 'IsoJs.vue', mark: 'MARK_ISO_JS' },
   ])(
-    'a JavaScript <script setup> block importing a factory ($component) is refused, and its server code does not reach the client',
+    'a JavaScript <script setup> block importing a factory ($component) is refused at the import, and its server code does not reach the client',
     async ({ component, mark }) => {
+      // (the import is the block's first line, line 2 of the SFC)
       expectDiagnostic(server.diagnostics, {
         severity: 'error',
         file: `src/${component}`,
         root: server.root,
+        position: { line: 2 },
       })
       expect(await outputsWith('client', mark)).toBe(false)
     },
