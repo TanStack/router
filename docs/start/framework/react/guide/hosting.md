@@ -24,6 +24,7 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 - [`node-server`](#nodejs--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - [`appwrite-sites`](#appwrite-sites): Deploy to Appwrite Sites
+- [`pethost`](#pethost): Deploy to Pethost
 - ... and more to come!
 
 ### Cloudflare Workers ⭐ _Official Partner_
@@ -481,3 +482,13 @@ In your Appwrite project, navigate to the **Sites** page from the sidebar. Click
 5. Click **Deploy**
 
 After successful deployment, click the **Visit site** button to see your deployed application.
+
+### Pethost
+
+[Pethost](https://pethost.dev) runs a TanStack Start app as a Node.js server. Follow the [`Nitro`](#nitro) deployment instructions and add the `build` and `start` scripts from [Node.js / Docker](#nodejs--docker). Then install the [Pethost CLI](https://pethost.dev/docs/cli/) and run this from your project's root:
+
+```sh
+pethost deploy
+```
+
+It writes a `Dockerfile` that runs both scripts, deploys the app, and prints its address. See the [Pethost guide](https://pethost.dev/blog/deploy-tanstack-start-app/) for environment variables and custom domains.
