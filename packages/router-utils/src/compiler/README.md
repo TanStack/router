@@ -118,12 +118,18 @@ extends Z`, directly or through what they carry) share the module of the first i
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that
   asks about it: a read evaluated at module load _observes mutable state_ when something outside the reading
-  cluster writes the binding after it, or at an unknown time (inside a function). Such a reader never moves to a
-  lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`; an
-  immediately invoked function evaluates at module load and counts as eager); an option value that reads one is
-  kept in place (`ordered-effect`). An effectful, unexported cluster moves with its only needer (lazy
-  initialisation is allowed; within-module order is preserved) when nothing outside it writes it eagerly, it
-  observes no mutable state, its eager reads are imports (read lazily: the chunk loads after the route module),
+  cluster writes the binding after it, or at an unknown time (inside a function). What a cluster reads at load
+  has one definition (`ClusterGraph.loadReads`): its eager reads, the reads inside any function a unit that
+  calls something may run (a function it passes directly, `['x'].map((k) => n + k)`, or calls; not a method
+  nested in an object argument, `defineComponent({ setup() {} })`), and those
+  of the declarations such reads reach, transitively (`n++` and `n += 1` read too); a claimed region's text
+  evaluates where its owner lands, and an option value that calls something (`withPrefix(Page)`) reads what that
+  call may run (`ordered-effect`).
+  Such a reader never moves to a lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }`
+  keeps the source's `[0]`); an option value that reads one is kept in place (`ordered-effect`). An effectful,
+  unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
+  preserved) when nothing outside it writes it eagerly, it observes no mutable state, its reads at load are
+  imports (read lazily: the chunk loads after the route module),
   pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind. It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect observable on its own

@@ -4,7 +4,7 @@
  * needer (the movable test) and the extracted exports are one monotone
  * fixed point over the final placement; nothing is rooted after it.
  */
-import { READ_KINDS, isDuplicable } from './clusters'
+import { isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Candidate, Seeds } from './roots'
@@ -71,50 +71,26 @@ export function derivedNeeds(
  * module's body: such a read there would run before the binding's
  * initialisation, a TDZ the user never wrote. A read inside a function the
  * evaluation may call (`const config = build()`, `o.m()`, `apply(read)`)
- * happens then too (`graph.atLoad`). A copyable cluster is duplicated into the reading
- * output instead and is no such read.
+ * happens then too (`graph.loadReads`). A copyable cluster is duplicated
+ * into the reading output instead and is no such read.
  */
 export function readsKeptEagerly(
-  input: PlacementInput,
   graph: ClusterGraph,
   roots: Pick<Roots, 'liveEnv' | 'envRoots'>,
   c: ClusterId,
 ): boolean {
-  const { symbols } = input.t1
-  const { clusters, clusterOfSym } = graph
+  const { clusters } = graph
   const kept = (d: ClusterId) =>
     roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned
-  // the reads of `c`'s own text that run at load, then those of what they
-  // read that run at load (`graph.atLoad`: the body of what the load may
-  // call), transitively
-  const seen = new Set<ClusterId>([c])
-  const work: Array<ClusterId> = [c]
-  while (work.length > 0) {
-    const from = work.pop()!
-    for (const r of clusters[from]!.regions) {
-      for (const ref of graph.ownedRefs.get(r) ?? []) {
-        if (
-          !graph.atLoad(ref) ||
-          !READ_KINDS.has(ref.kind) ||
-          !symbols.isModuleLevel(ref.sym)
-        ) {
-          continue
-        }
-        const d = clusterOfSym.get(ref.sym)
-        if (d === undefined || seen.has(d) || clusters[d]!.copyable) {
-          continue
-        }
-        if (kept(d)) {
-          return true
-        }
-        if (clusters[d]!.kind === 'declaration') {
-          seen.add(d)
-          work.push(d)
-        }
-      }
+  // what `c` reads when it evaluates (`graph.loadReads`: its own reads that
+  // run at load, then those of the functions the load may call); a copied
+  // cluster is duplicated into the reading output
+  return graph.loadReads(c, (ref, d) => {
+    if (d === undefined || d === c || clusters[d]!.copyable) {
+      return 'skip'
     }
-  }
-  return false
+    return kept(d) ? 'stop' : undefined
+  })
 }
 
 export function settleRoots(
@@ -125,7 +101,7 @@ export function settleRoots(
 ): Roots {
   const { t1, outputs, isBenign } = input
   const { units, refs, regions, symbols } = t1
-  const { clusters, clusterOfRegion, clusterOfSym } = graph
+  const { clusters, clusterOfRegion } = graph
   const { envRoots, pinned, derivedRoots, candidates } = seeds
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
@@ -138,7 +114,7 @@ export function settleRoots(
   const pure = (c: ClusterId) => !clusters[c]!.effectful
   const needs = (c: ClusterId) => derivedNeeds(input, derivedReach, c)
   const keepsEagerly = (c: ClusterId) =>
-    readsKeptEagerly(input, graph, { liveEnv, envRoots }, c)
+    readsKeptEagerly(graph, { liveEnv, envRoots }, c)
 
   /**
    * The output whose tree decides the live reads of cluster `c` reached from
@@ -244,35 +220,33 @@ export function settleRoots(
       }
       return { reason: 'written', at: unit.range.start }
     }
-    for (const r of cl.regions) {
-      for (const ref of graph.ownedRefs.get(r) ?? []) {
-        if (
-          !ref.eager ||
-          !READ_KINDS.has(ref.kind) ||
-          !liveInEnv(ref) ||
-          !symbols.isModuleLevel(ref.sym)
-        ) {
-          continue
-        }
-        const d = clusterOfSym.get(ref.sym)
-        if (d === undefined || d === cl.id) {
-          continue
-        }
-        if (graph.mutatedOutside(ref.sym, ref.range.start, cl.id)) {
-          return { reason: 'state', read: ref.sym }
-        }
-        // (c) imports (read lazily: the chunk loads after the route module,
-        // whoever else reads them), pure module clusters, or a `const` the
-        // env module keeps (evaluated before the chunk loads, which imports
-        // that one instance; a `let` still pins, however unwritten)
-        if (
-          clusters[d]!.kind !== 'import' &&
-          !pure(d) &&
-          !(liveEnv.has(d) && symbols.isConst(ref.sym))
-        ) {
-          return { reason: 'reads', read: ref.sym }
-        }
+    // what it reads when it evaluates (`graph.loadReads`: its own reads that
+    // run at load, then those of the functions the load may call)
+    let pin: Pin | undefined
+    graph.loadReads(cl.id, (ref, d) => {
+      if (!liveInEnv(ref) || d === undefined || d === cl.id) {
+        return 'skip'
       }
+      if (graph.mutatedOutside(ref.sym, ref.range.start, cl.id)) {
+        pin = { reason: 'state', read: ref.sym }
+        return 'stop'
+      }
+      // (c) imports (read lazily: the chunk loads after the route module,
+      // whoever else reads them), pure module clusters, or a `const` the
+      // env module keeps (evaluated before the chunk loads, which imports
+      // that one instance; a `let` still pins, however unwritten)
+      if (
+        clusters[d]!.kind !== 'import' &&
+        !pure(d) &&
+        !(liveEnv.has(d) && symbols.isConst(ref.sym))
+      ) {
+        pin = { reason: 'reads', read: ref.sym }
+        return 'stop'
+      }
+      return undefined
+    })
+    if (pin !== undefined) {
+      return pin
     }
     return needers[0]!
   }

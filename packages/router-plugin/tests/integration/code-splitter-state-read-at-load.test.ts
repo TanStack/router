@@ -1,0 +1,135 @@
+/**
+ * State read inside a callback that runs at module load, in a declaration only
+ * the split component reads. Code splitting must not change what a route does
+ * (AGENTS.md; core README "effects and mutable state": a reader evaluated at
+ * load that observes mutable state never moves to a lazy output). The intended
+ * value is what the same code gives unsplit. Real builds, output executed.
+ */
+import { describe, expect, it } from 'vitest'
+import { build, head, rootRoute, ssrRenderEntry } from '../build-harness'
+
+const state = `let prefix = 'a'\nexport function setPrefix(p: string) { prefix = p }\n`
+
+/** `component`: the route's component option (default: a component rendering `read`). */
+const shapes: Record<
+  string,
+  { code: string; read?: string; component?: string }
+> = {
+  'direct read (control)': { code: `const labels = [prefix + 'x']` },
+  map: { code: `const labels = ['x'].map((k) => prefix + k)` },
+  forEach: {
+    code: `const labels: Array<string> = []\n;['x'].forEach((k) => labels.push(prefix + k))`,
+  },
+  'forEach inside an IIFE': {
+    code: `const labels = (() => { const r: Array<string> = []; ['x'].forEach((k) => r.push(prefix + k)); return r })()`,
+  },
+  reduce: {
+    code: `const labels = ['x'].reduce((acc: Array<string>, k) => [...acc, prefix + k], [])`,
+  },
+  'new Map of a map': {
+    code: `const m = new Map(['x'].map((k) => [k, prefix + k]))\nconst labels = [...m.values()]`,
+    read: 'labels',
+  },
+  'new Map with a callback read by the component': {
+    code: `const labels = new Map(['x'].map((k) => [k, prefix + k]))`,
+    read: '[...labels.values()]',
+  },
+  'Array.from with a callback': {
+    code: `const labels = Array.from(['x'], (k) => prefix + k)`,
+  },
+  'Object.fromEntries of a map': {
+    code: `const o = Object.fromEntries(['x'].map((k) => [k, prefix + k]))\nconst labels = Object.values(o)`,
+  },
+  'local IIFE': { code: `const labels = (() => [prefix + 'x'])()` },
+  'helper called at load': {
+    code: `function make() { return [prefix + 'x'] }\nconst labels = make()`,
+  },
+  'helper taking a callback': {
+    code: `function apply(f: () => string) { return [f()] }\nconst labels = apply(() => prefix + 'x')`,
+  },
+  'callback defined apart': {
+    code: `const f = (k: string) => prefix + k\nconst labels = ['x'].map(f)`,
+  },
+  'map after a member read': {
+    code: `const nav = [{ to: 'x' }]\nconst labels = nav.length > 0 ? nav.map((n) => prefix + n.to) : []`,
+  },
+  'map, then an element': {
+    code: `const labels = ['x'].map((k) => prefix + k)[0]`,
+  },
+  'filter, then its length': {
+    code: `const labels = ['a', 'x'].filter((k) => k === prefix).length`,
+  },
+  'map in an object next to a global read': {
+    code: `const config = { here: typeof globalThis.location, labels: ['x'].map((k) => prefix + k) }`,
+    read: 'config.labels',
+  },
+  'helper updating the state, called by a callback': {
+    code: `function next() { return (prefix += '!') }\nconst labels = ['x'].map((k) => k + next())`,
+  },
+  'option value built by a helper reading the state': {
+    code: `function withPrefix(C: () => string) { const p = prefix; return () => <p>{p + C()}</p> }\nfunction Page() { return 'x' }`,
+    component: 'withPrefix(Page)',
+  },
+  'read at render (control, the current value is right)': {
+    code: `const labels = () => [prefix + 'x']`,
+    read: 'labels()',
+  },
+}
+
+const rows = Object.entries(shapes)
+
+async function run(bundler: 'vite' | 'rspack', split: boolean) {
+  const app = await build({
+    bundler,
+    env: 'ssr',
+    minify: false,
+    prefix: '.state-read-at-load-',
+    pluginOptions: { autoCodeSplitting: split },
+    files: {
+      'routes/__root.tsx': rootRoute,
+      ...Object.fromEntries(
+        rows.map(([, { code, read, component }], i) => [
+          `routes/r${i}.tsx`,
+          `${head}${state}${code}
+export const Route = createFileRoute('/')({ component: ${component ?? `() => <p>{String(${read ?? 'labels'})}</p>`} })
+`,
+        ]),
+      ),
+      'entry.ts': `${ssrRenderEntry.replace(/^export \{ Route \}.*$/m, '')}
+${rows.map((_, i) => `import { Route as R${i}, setPrefix as S${i} } from './routes/r${i}'`).join('\n')}
+export const routes = [${rows.map((_, i) => `R${i}`).join(', ')}]
+export const setters = [${rows.map((_, i) => `S${i}`).join(', ')}]
+`,
+    },
+  })
+  try {
+    const { result } = await app.run(`
+      const out = []
+      for (let i = 0; i < entry.routes.length; i++) {
+        entry.setters[i]('b')
+        out.push(await entry.render(entry.routes[i].options.component))
+      }
+      return out
+    `)
+    return Object.fromEntries(
+      rows.map(([name], i) => [
+        name,
+        (result as Array<string>)[i]!.replace(/<[^>]*>/g, ''),
+      ]),
+    )
+  } finally {
+    await app.dispose()
+  }
+}
+
+describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
+  const results: Record<string, ReturnType<typeof run>> = {}
+  const observed = (split: boolean) =>
+    (results[String(split)] ??= run(bundler, split))
+
+  describe.each(rows)('%s', (name) => {
+    it('gives the value the same code gives unsplit', async () => {
+      expect((await observed(true))[name]).toBe((await observed(false))[name])
+    }, 180_000)
+  })
+})
