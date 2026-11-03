@@ -301,5 +301,23 @@ export function includeAndImport(
     }
   }
 
+  // ---- units for the env module's readers ------------------------------------
+  // each derived output importing a binding of the env module other than
+  // `besides` holds a copy; the unit reads only its own imports, so the
+  // imports above stand
+  for (const g of input.rewrites.generated) {
+    if (typeof g.home !== 'object') {
+      continue
+    }
+    const { besides } = g.home
+    const c = graph.clusterOfGen.get(g.id)!
+    for (const [o, from] of imports) {
+      const fromEnv = o === 'env' ? undefined : from.get('env')
+      if (fromEnv && [...fromEnv].some((s) => !besides.includes(s))) {
+        included.get(o)!.add(c)
+      }
+    }
+  }
+
   return { included, imports, exportsNeeded, droppedTypeUnits }
 }

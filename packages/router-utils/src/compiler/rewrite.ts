@@ -85,13 +85,26 @@ export type Anchor =
 
 export type SubstEnv = ReadonlyMap<SymbolId, RefTarget>
 
+/**
+ * Where a generated unit goes: `auto` (placement decides), one output, or
+ * `env-readers`: every derived output that imports a binding of the env
+ * module other than `besides`, decided once inclusion is (route HMR's
+ * registration of the chunks that read what the route module keeps). Such a
+ * unit declares nothing, owns no claim and reads only its own imports, so
+ * where it goes changes nothing else.
+ */
+export type GeneratedHome =
+  | 'auto'
+  | OutputId
+  | { k: 'env-readers'; besides: ReadonlyArray<SymbolId> }
+
 export interface GeneratedUnit {
   id: GenUnitId
   body: ReadonlyArray<Frag>
   declares: ReadonlyArray<SymbolId>
   effectful: boolean
   anchor: Anchor
-  home: 'auto' | OutputId
+  home: GeneratedHome
   env?: SubstEnv
   by: string
   /** Glue imports this unit needs (`import { x } from '<spec>'`, rendered with the output's imports). */
@@ -177,6 +190,21 @@ export class RewriteSet {
   }
 
   addGenerated(unit: Omit<GeneratedUnit, 'id'>): GenUnitId {
+    if (typeof unit.home === 'object') {
+      const own = new Set(
+        unit.imports?.flatMap((i) => i.names.map((n) => n.local)),
+      )
+      const readsOwn = unit.body.every(
+        (f) =>
+          f.k === 'text' &&
+          f.parts.every((p) => typeof p === 'string' || own.has(p.sym)),
+      )
+      if (unit.declares.length > 0 || unit.env || !readsOwn) {
+        throw new Error(
+          `generated unit of ${unit.by}: a unit for the env module's readers declares nothing and reads only its own imports`,
+        )
+      }
+    }
     const id = this.generated.length
     this.generated.push({ ...unit, id })
     this.bump()
@@ -184,6 +212,11 @@ export class RewriteSet {
   }
 
   claim(claim: RegionClaim): void {
+    if (typeof this.generated[claim.owner]!.home === 'object') {
+      throw new Error(
+        `region ${claim.region}: a unit for the env module's readers owns no claim (${claim.by})`,
+      )
+    }
     const prev = this.claims.get(claim.region)
     if (prev) {
       throw new Error(
