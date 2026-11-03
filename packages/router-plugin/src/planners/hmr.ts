@@ -12,7 +12,8 @@
  * After it (`planHmrBlock`): the dev block, with the literal
  * `import.meta.hot.accept(` (Vite) / `import.meta.webpackHot.accept()`, the
  * `__tsrRouteHmr(routeId, Route, meta)` call that runs on every evaluation,
- * and, for React on Vite, the refresh anchor export.
+ * and, for React on Vite, the refresh anchor export; on webpack-style hosts,
+ * the chunk blocks (`chunkHmr`, `keptReaderHmr`).
  */
 import {
   stringLiteral,
