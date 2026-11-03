@@ -30,12 +30,40 @@ export async function readIfExists(file: string): Promise<string | null> {
 }
 
 /**
+ * The file a link at `file` names (every link resolved); `file` itself when
+ * it is no link (its directories' links resolve in the rename) or names
+ * nothing. Only links are resolved: the native real path of a plain file can
+ * fail or differ on some Windows drives.
+ */
+async function realPathOf(file: string) {
+  const stat = await fsp.lstat(file).catch((error: unknown) => {
+    if (isErrorCode(error, 'ENOENT')) {
+      return null
+    }
+    throw error
+  })
+  if (!stat?.isSymbolicLink()) {
+    return file
+  }
+  try {
+    return await fsp.realpath(file)
+  } catch (error) {
+    if (isErrorCode(error, 'ENOENT')) {
+      return file
+    }
+    throw error
+  }
+}
+
+/**
  * Atomic file replacement (SPEC J1.6, J1.16): the content is written to a
  * temporary file, which is renamed over the destination, so a reader sees
- * the old or the new file, never a part. Temporary files go to `tmpDir`;
- * when a rename from there crosses devices (EXDEV), the temporary file is
- * written beside the destination instead (a dot file, which the route scan
- * skips), for that directory from then on.
+ * the old or the new file, never a part. The destination is the file's real
+ * path: a symlinked route file or route tree keeps its link, and the file it
+ * names gets the content, keeping its mode and owner. Temporary files go to
+ * `tmpDir`; when a rename from there crosses devices (EXDEV), the temporary
+ * file is written beside the real destination instead (a dot file, which the
+ * route scan skips), for that directory from then on.
  */
 export class AtomicPublisher {
   private readonly session = crypto.randomBytes(4).toString('hex')
@@ -48,17 +76,18 @@ export class AtomicPublisher {
   constructor(private readonly tmpDir: string) {}
 
   /**
-   * Replaces `file` with `content`. With `expected`, the file must still
+   * Replaces `destination` with `content`. With `expected`, the file must still
    * hold exactly that (null: must not exist) right before the rename, or a
    * `ConcurrentEditError` is thrown and nothing changes.
    */
   async write(
-    file: string,
+    destination: string,
     content: string,
     expected?: string | null,
   ): Promise<void> {
+    await fsp.mkdir(path.dirname(destination), { recursive: true })
+    const file = await realPathOf(destination)
     const dir = path.dirname(file)
-    await fsp.mkdir(dir, { recursive: true })
     if (this.besideDestination.has(dir)) {
       await this.writeVia(this.besideName(file), file, content, expected)
       return
