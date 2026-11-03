@@ -1,5 +1,4 @@
 export { configSchema, getConfig } from './core/config'
-export { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 export { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 export { createRouterPluginContext } from './core/router-plugin-context'
 export type {
@@ -8,16 +7,8 @@ export type {
   ConfigOutput,
   CodeSplittingOptions,
   DeletableNodes,
-  HmrOptions,
 } from './core/config'
 export type { RouterPluginContext } from './core/router-plugin-context'
-export { getObjectPropertyKeyName } from './core/utils'
-export type {
-  CodeSplitCompilerPlugin,
-  ReferenceRouteCompilerPlugin,
-  ReferenceRouteCompilerPluginContext,
-  VirtualRouteSplitNodeCompilerPluginContext,
-} from './core/code-splitter/plugins'
 export {
   tsrSplit,
   splitRouteIdentNodes,
