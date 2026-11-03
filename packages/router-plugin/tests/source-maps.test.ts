@@ -123,20 +123,23 @@ interface Compiler {
       },
     ) => void,
   ) => void
-  close: (callback: () => void) => void
+  close: (callback: (error?: Error | null) => void) => void
 }
 
+/** Runs one build and settles once the compiler has closed. */
 function runCompiler(compiler: Compiler) {
   return new Promise<void>((resolve, reject) => {
     compiler.run((error, stats) => {
-      compiler.close(() => {})
-      if (error) {
-        reject(error)
-      } else if (stats?.hasErrors()) {
-        reject(new Error(stats.toString({ all: false, errors: true })))
-      } else {
-        resolve()
-      }
+      // The test removes the app afterwards: wait for the compiler to finish.
+      compiler.close((closeError) => {
+        if (error ?? closeError) {
+          reject(error ?? closeError)
+        } else if (stats?.hasErrors()) {
+          reject(new Error(stats.toString({ all: false, errors: true })))
+        } else {
+          resolve()
+        }
+      })
     })
   })
 }
