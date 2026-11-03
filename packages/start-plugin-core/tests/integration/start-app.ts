@@ -176,6 +176,41 @@ export async function startViteDevServer(
   return server
 }
 
+/**
+ * Waits until the dev server's file watcher reports changes in `dir` (of the
+ * app). The generator prints the first route tree before the watcher exists
+ * (`configResolved`), and the watcher's initial scan takes a file written
+ * before it ends for one that was already there (no `add`). So the test
+ * writes a file the generator ignores (`-` prefix) until the watcher
+ * reports it, and only then makes the edit it checks.
+ */
+export async function watcherReady(
+  app: StartApp,
+  server: ViteDevServer,
+  dir: string,
+) {
+  const probe = path.join(app.root, dir, '-watch-probe.ts')
+  let seen = false
+  const onEvent = (_event: string, file: string) => {
+    if (path.resolve(file) === probe) {
+      seen = true
+    }
+  }
+  server.watcher.on('all', onEvent)
+  try {
+    let writes = 0
+    await until(async () => {
+      if (!seen) {
+        await writeFile(probe, `export {}\n// ${writes++}\n`)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+      return seen
+    }, `the file watcher of ${dir}`)
+  } finally {
+    server.watcher.off('all', onEvent)
+  }
+}
+
 /** Waits for `check`, bounded. */
 export async function until(check: () => Promise<boolean>, what: string) {
   const deadline = Date.now() + 20_000

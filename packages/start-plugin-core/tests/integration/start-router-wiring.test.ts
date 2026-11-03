@@ -10,6 +10,7 @@ import {
   createStartApp,
   startViteDevServer,
   until,
+  watcherReady,
 } from './start-app'
 import type { GeneratorPlugin } from '@tanstack/router-generator'
 
@@ -124,7 +125,7 @@ describe('vite dev', () => {
     async () => {
       let line = 'MARK_FOOTER_FIRST'
       const app = await createStartApp(appFiles())
-      await startViteDevServer(app, {
+      const server = await startViteDevServer(app, {
         router: { routeTreeFileFooter: () => [`// ${line}`] },
       })
       const tree = () => app.read('src/routeTree.gen.ts').catch(() => '')
@@ -132,6 +133,7 @@ describe('vite dev', () => {
         async () => (await tree()).includes('MARK_FOOTER_FIRST'),
         'the first route tree',
       )
+      await watcherReady(app, server, 'src/routes')
       line = 'MARK_FOOTER_NEXT'
       await app.write({
         'src/routes/later.tsx': `${head}export const Route = createFileRoute('/later')({})\n`,
