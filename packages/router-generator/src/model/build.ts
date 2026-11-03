@@ -504,8 +504,10 @@ function ownersLast(routes: Array<ModelRoute>) {
 
 /**
  * Checks that no two routes of the tree have the same URL (SPEC J1.7):
- * routes with child routes, lazy files and routes without a path segment
- * of their own (pathless layouts, groups: they own no URL, J1.15) aside.
+ * routes with child routes, lazy files and routes the tree gives no `path`
+ * (pathless layouts, groups: they own no URL, J1.15) aside. A pathless
+ * layout whose directory has no route file (`foo/_layout.tsx`, no
+ * `foo.tsx`) gets the directory's path, and matches it like a route there.
  * The error names the files.
  */
 export function checkRouteFullPathUniqueness(model: TreeModel) {
@@ -513,7 +515,9 @@ export function checkRouteFullPathUniqueness(model: TreeModel) {
 
   const routes = model.routes.filter(
     (route) =>
-      route.children.length === 0 && route.kind !== 'lazy' && !route.isNonPath,
+      route.children.length === 0 &&
+      route.kind !== 'lazy' &&
+      route.pathOption !== undefined,
   )
   const fileOf = (route: ModelRoute) =>
     path.normalize(
