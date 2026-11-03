@@ -43,7 +43,9 @@ export function lazyRouteComponent<
       return render(props)
     }
 
-    return <Loadable {...props} />
+    // A direct call adds no component level, so a pending chunk keeps the
+    // server's hydration keys and `lazy` hydrates it once the chunk arrives.
+    return Loadable(props)
   }
 
   // Both preload and lazy resolution end here without starting another load.
