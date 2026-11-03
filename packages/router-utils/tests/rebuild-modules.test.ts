@@ -38,4 +38,40 @@ describe('rebuildModules', () => {
     )
     expect(rebuilt).toEqual(['parent', 'other'])
   })
+
+  it('reads the graph once, not once per rebuild', async () => {
+    const modules = new Set(
+      Array.from({ length: 1000 }, (_, i) => moduleOf(`m${i}`)),
+    )
+    let visited = 0
+    const counted: ReadonlySet<ReturnType<typeof moduleOf>> = {
+      has: (m) => modules.has(m),
+      get size() {
+        return modules.size
+      },
+      *[Symbol.iterator]() {
+        for (const m of modules) {
+          visited++
+          yield m
+        }
+      },
+    } as ReadonlySet<ReturnType<typeof moduleOf>>
+    const paths = new Set(
+      Array.from({ length: 100 }, (_, i) => `/app/m${i * 10}`),
+    )
+    let rebuilt = 0
+    await rebuildModules(
+      {
+        modules: counted,
+        rebuildModule(_m, callback) {
+          rebuilt++
+          callback()
+        },
+      },
+      paths,
+      (resource) => resource,
+    )
+    expect(rebuilt).toBe(100)
+    expect(visited).toBe(modules.size)
+  })
 })

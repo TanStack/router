@@ -17,7 +17,7 @@ import type { PlanKey } from '../identity'
 interface RebuildCompilationLike<
   TModule extends { identifier: () => string; resource?: string },
 > {
-  modules: Iterable<TModule>
+  modules: ReadonlySet<TModule>
   rebuildModule: (
     module: TModule,
     callback: (error?: Error | null) => void,
@@ -93,9 +93,9 @@ export async function rebuildModules<
     const m = pending[i]!
     if (i > 0) {
       // the rebuild before it may have removed it (a handler module its
-      // importer no longer needs), and Rspack panics on a module outside its graph
-      const id = m.identifier()
-      if (![...compilation.modules].some((x) => x.identifier() === id)) {
+      // importer no longer needs), and Rspack panics on a module outside its
+      // graph; `has` asks the graph (Rspack natively) instead of scanning it
+      if (!compilation.modules.has(m)) {
         continue
       }
     }
