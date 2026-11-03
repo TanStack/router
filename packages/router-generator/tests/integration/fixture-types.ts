@@ -48,23 +48,10 @@ export async function typeErrorsOfFixture(name: string) {
 }
 
 /**
- * Fixtures whose tree types a route otherwise than the router: the bug,
- * pinned in fixture-types-physical.test.ts.
- */
-export const knownTypeBugs = new Set([
-  'nested-route-groups-with-layouts-before-physical',
-  'route-groups',
-])
-
-/**
- * The fixtures with types to check (no conflicting routes, types enabled)
- * and without a known types bug.
+ * The fixtures with types to check (no conflicting routes, types enabled).
  */
 export async function typedFixtureNames() {
   return (await fixtureNames()).filter(
-    (name) =>
-      !conflictingFiles(name) &&
-      !fixtureConfig(name).disableTypes &&
-      !knownTypeBugs.has(name),
+    (name) => !conflictingFiles(name) && !fixtureConfig(name).disableTypes,
   )
 }
