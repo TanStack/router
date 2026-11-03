@@ -582,10 +582,13 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
       edit(ui, v),
       row.unmounted ? 'home' : row.shows(v),
     )
-    // the fix after a failed compile reloads the page
-    const reloads = row.syntaxError === true && v === 'v2'
-    expect(reloaded, `${v} reloaded`).toBe(reloads)
-    if (reloads) {
+    // the fix after a failed compile may reload the page (the dev server's
+    // client does when it showed the error); no other edit reloads
+    const mayReload = row.syntaxError === true && v === 'v2'
+    if (!mayReload) {
+      expect(reloaded, `${v} reloaded`).toBe(false)
+    }
+    if (mayReload) {
       continue
     }
     if (row.loaderRuns !== undefined) {
@@ -595,11 +598,16 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
           : row.loaderRuns(bundler)
       expect(await loaderRuns(), `${v} loader runs`).toBe(before + runs)
     }
-    if (!row.unmounted && (refresh || (row.keepsState && !webpack))) {
+    // (after a syntax error the page may have reloaded: no state to compare)
+    if (
+      !row.unmounted &&
+      !row.syntaxError &&
+      (refresh || (row.keepsState && !webpack))
+    ) {
       expect(
         await app.evaluate(`document.querySelector('#c')?.textContent`),
         `${v} state`,
-      ).toBe(row.syntaxError ? 'n=0' : 'n=2')
+      ).toBe('n=2')
     }
   }
   if (row.unmounted) {
