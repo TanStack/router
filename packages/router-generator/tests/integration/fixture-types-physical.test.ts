@@ -17,5 +17,4 @@ describe('the types of the generator fixtures without a virtual route config', (
       expect(await typeErrorsOfFixture(name)).toEqual([])
     },
   )
-
 })
