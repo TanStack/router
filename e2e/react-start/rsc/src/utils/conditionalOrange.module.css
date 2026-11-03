@@ -1,4 +1,5 @@
 .panel {
+  --conditional-variant: orange;
   background: #ffedd5;
   border: 2px solid #f97316;
   border-radius: 10px;
