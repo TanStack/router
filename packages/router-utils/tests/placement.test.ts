@@ -1945,6 +1945,23 @@ describe('extracted-export outputs', () => {
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
   // declaration; a route file exporting only `Route` reports nothing
+  it('names the exports of one binding in the plural', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './lib'
+      export const value = make()
+      export { value as alias }
+      function Page() { return value }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics.map((d) => d.message)).toEqual([
+      expect.stringContaining(
+        'The exports `value`, `alias` of "/app/route.tsx" stay in the route module (',
+      ),
+    ])
+  })
+
   it('reports an exported declaration a chunk needs that stays in the route module, with the reason', async () => {
     const effects = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -4425,6 +4442,50 @@ describe('declarations only split code needs that stay in the route module', () 
         start: code.indexOf(`${name} = `),
       })
     }
+  })
+
+  // a declaration of several bindings is named in the plural: `them`,
+  // `their` where the words are the object of the sentence
+  // several declarations kept together (tanstack.com's partner pages):
+  // their initialisers, which may have side effects
+  it('names the initialisers of several declarations in the plural', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const homeUrl = new URL('https://example.com/')
+      homeUrl.search = '?ref=x'
+      const HOME = homeUrl.toString()
+      export const Route = createFileRoute('/')({
+        component: () => HOME,
+      })
+    `)
+    const r = await kept(code)
+    expect(r.diagnostics.map((d) => d.message)).toEqual([
+      expect.stringContaining(
+        '`homeUrl`, `HOME` in "/app/route.tsx" stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
+      ),
+    ])
+  })
+
+  it('reports a declaration of several bindings in the plural', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './lib'
+      const [registry, index] = make()
+      registry.add(1)
+      const [one, two] = make()
+      export const Route = createFileRoute('/')({
+        component: () => [registry, index, one, two],
+        errorComponent: () => [one, two],
+      })
+    `)
+    const r = await kept(code, ['component', 'errorComponent'])
+    const byCode = Object.fromEntries(r.diagnostics.map((d) => [d.code, d]))
+    expect(byCode['eager-split:written']!.message).toContain(
+      '`registry`, `index` in "/app/route.tsx" stay in the route module because the module changes them outside their declaration when it loads (line 4); move `registry`, `index` and what writes them to their own module, or mark their initialiser `/* @__PURE__ */` if it has no side effects',
+    )
+    expect(byCode['eager-split:needers']!.message).toContain(
+      'because several split options read them (`component`, `errorComponent`) and their initialiser has side effects, which run once; move `one`, `two` to their own module, or mark their initialiser `/* @__PURE__ */` if it has none',
+    )
   })
 
   it('reports a reader of mutable state several split options need as such', async () => {

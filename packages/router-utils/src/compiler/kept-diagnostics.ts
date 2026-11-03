@@ -71,7 +71,7 @@ export function keptDiagnostic(
     }
     return {
       severity: 'warning',
-      message: `${tag}The export ${names.join(', ')} of "${file}" stays in the ${module} (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
+      message: `${tag}The export${names.length === 1 ? '' : 's'} ${names.join(', ')} of "${file}" stay${names.length === 1 ? 's' : ''} in the ${module} (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
       range: k.range,
       by: 'core',
       code: `eager-export:${k.reason}`,
@@ -79,8 +79,17 @@ export function keptDiagnostic(
   }
   const names = k.syms.map((s) => `\`${symbols.name(s)}\``)
   const subject = names.join(', ')
+  // the pronouns of the subject (`it`), the object (`them`) and the owner
   const it = names.length === 1 ? 'it' : 'they'
+  const them = names.length === 1 ? 'it' : 'them'
   const own = names.length === 1 ? 'its' : 'their'
+  // one declaration (a destructuring too) or several: their initialisers
+  const declarations = new Set(
+    k.syms.flatMap((s) => plan.t1.declaringUnits.get(s) ?? []),
+  ).size
+  const several = declarations > 1
+  const initialiser = several ? `${own} initialisers` : `${own} initialiser`
+  const itHas = several ? 'they have' : 'it has'
   const split = k.needers
     .map((o) => {
       const decl = plan.outputs.get(o)!
@@ -100,7 +109,7 @@ export function keptDiagnostic(
       // (it then follows it, wherever it loads), or the effect's value
       // above it; an annotation only where the effect is a call
       const effect = effectAt(plan, k.effect!)
-      because = `${describe(effect)} (${line(effect.node.start)}) runs after ${names.length === 1 ? 'it' : 'them'} and ${k.effectStays ? 'stays' : 'does not move with it'}`
+      because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them} and ${k.effectStays ? 'stays' : 'does not move with it'}`
       const unit = plan.t1.units[k.effect!]!
       const after =
         unit.declares.length > 0
@@ -129,18 +138,18 @@ export function keptDiagnostic(
       break
     }
     case 'needers':
-      because = `several split options read ${it} (${split}) and ${own} initialiser has side effects, which run once`
-      fix = `move ${subject} to its own module, or mark ${own} initialiser \`/* @__PURE__ */\` if it has none`
+      because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
+      fix = `move ${subject} to ${own} own module, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none`
       break
     case 'written':
-      because = `the module changes ${it} outside ${own} declaration when it loads (${line(k.at!)})`
-      fix = `move ${subject} and what writes ${it} to their own module, or mark ${own} initialiser \`/* @__PURE__ */\` if it has no side effects`
+      because = `the module changes ${them} outside ${own} declaration${several ? 's' : ''} when it loads (${line(k.at!)})`
+      fix = `move ${subject} and what writes ${them} to their own module, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} no side effects`
       break
     case 'shared':
       // an exported binding's extracted module and other split code both
       // read a value with an identity (or state): one instance, in the module
-      because = `an exported binding's split module and other split options (${split}) read ${it}, and ${it} ${names.length === 1 ? 'has' : 'have'} an identity or state (an object, array, class, call result or written binding), which exists once`
-      fix = `declare ${subject} in the module that uses ${it}, or read ${it} through a function`
+      because = `an exported binding's split module and other split options (${split}) read ${them}, and ${it} ${names.length === 1 ? 'has' : 'have'} an identity or state (an object, array, class, call result or written binding), which exists once`
+      fix = `declare ${subject} in the module that uses ${them}, or read ${them} through a function`
       break
     case 'state':
       because =
