@@ -1,3 +1,5 @@
+export { memoryBenchHooks } from '../turn'
+
 export interface StartRequestHandler {
   fetch: (request: Request) => Promise<Response> | Response
 }

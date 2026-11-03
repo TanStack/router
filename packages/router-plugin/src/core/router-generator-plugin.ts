@@ -19,8 +19,6 @@ export function createRouterGeneratorPlugin(
   let userConfig: Config
   let generator: Generator
 
-  const routeGenerationDisabled = () =>
-    userConfig.enableRouteGeneration === false
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
       ? userConfig.routesDirectory
@@ -46,9 +44,6 @@ export function createRouterGeneratorPlugin(
     file: string
     event: 'create' | 'update' | 'delete'
   }) => {
-    if (routeGenerationDisabled()) {
-      return
-    }
     let generatorEvent: GeneratorEvent | undefined = undefined
     if (opts) {
       const filePath = normalize(opts.file)

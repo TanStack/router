@@ -42,7 +42,7 @@ pnpm benchmark:bundle-size:run --scenario react-router.minimal,react-router.full
 The runner calls `measure.mjs`, which builds the selected package projects through Nx. Full runs build the package projects for all scenarios.
 `pnpm benchmark:bundle-size` uses the Nx build cache for the full benchmark, then generates `current.json` with the current commit, branch, dirty status, and report timestamp. CI uses this command as well.
 
-Nx caches the bundles, `measurements.json`, and `benchmark-action.json`. Git metadata does not affect the build cache. The report preserves the original `measuredAt` and build duration when measurements come from cache; `generatedAt` records when the report was generated. Running `pnpm nx run @benchmarks/bundle-size:build` directly produces only the cacheable outputs; run `node scripts/benchmarks/bundle-size/report.mjs` afterward to refresh `current.json`.
+Nx caches the bundles, `measurements.json`, and `benchmark-action.json`. Git metadata does not affect the build cache. The report preserves the original `measuredAt` and build duration when measurements come from cache; `generatedAt` records when the report was generated. Running `pnpm nx run @benchmarks/bundle-size:measure` directly produces only the cacheable outputs; run `node scripts/benchmarks/bundle-size/report.mjs` afterward to refresh `current.json`.
 
 If the required packages are already built and unchanged, skip that step:
 

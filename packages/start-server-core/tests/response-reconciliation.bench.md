@@ -35,6 +35,6 @@ unoptimized response-reconciliation branch to measure these newly introduced
 mechanisms. These focused source benchmarks supplement the production SSR app
 suite; they do not replace its cross-framework or CodSpeed results.
 
-Use `--outputJson /tmp/response-baseline.json` and a separate candidate output
-file to preserve both runs' timing statistics. Vitest's `--compare` option can
-display the saved baseline alongside a candidate run.
+Use `--reporter=json --outputFile=/tmp/response-baseline.json` and a separate
+candidate output file to preserve both runs' timing statistics; each test case
+in the JSON report carries its `benchmarks` results.

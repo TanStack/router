@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { commitMatches } from '../src/load-client'
 import type { AnyRouteMatch, AnyRouter } from '../src'
 import type { LoaderFlight, LoadTransaction } from '../src/load-client'
@@ -99,15 +99,21 @@ for (const family of ['snapshots', 'mixed flights', 'preload flights']) {
           }
         }
         const batch = size <= 100 ? 100 : 1
-        bench(
-          `${retainedFraction * 100}% retained (${batch} commits)`,
-          () => {
-            for (let index = 0; index < batch; index++) {
-              run()
-            }
-          },
-          { time: 500, warmupTime: 100 },
-        )
+        test(`${retainedFraction * 100}% retained (${batch} commits)`, async ({
+          bench,
+        }) => {
+          await bench(
+            `${retainedFraction * 100}% retained (${batch} commits)`,
+            () => {
+              for (let index = 0; index < batch; index++) {
+                run()
+              }
+            },
+          ).run({
+            time: 500,
+            warmupTime: 100,
+          })
+        })
       }
     },
   )

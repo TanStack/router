@@ -21,7 +21,7 @@ sources:
 
 # Vue Router (`@tanstack/vue-router`)
 
-This skill builds on router-core. Read [router-core](../../../router-core/skills/router-core/SKILL.md) first for foundational concepts.
+This skill builds on router-core. Read `@tanstack/router-core#router-core` first for foundational concepts.
 
 This skill covers the Vue-specific bindings, components, composables, and setup for TanStack Router.
 
@@ -390,4 +390,4 @@ Must set `target: 'vue'` in the router plugin config. Default is `'react'`.
 
 ## Cross-References
 
-- [router-core/SKILL.md](../../../router-core/skills/router-core/SKILL.md) — all sub-skills for domain-specific patterns (search params, data loading, navigation, auth, SSR, etc.)
+- `@tanstack/router-core#router-core` — all sub-skills for domain-specific patterns (search params, data loading, navigation, auth, SSR, etc.)

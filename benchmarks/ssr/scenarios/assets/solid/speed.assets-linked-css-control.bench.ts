@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertAssetsScenario,
   assetsBenchOptions,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertAssetsScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr assets linked-css control (solid)',
-    () => runAssetsLinkedControlLoop(handler),
-    assetsBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr assets linked-css control (solid)', async () =>
+    runAssetsLinkedControlLoop(handler),
+  ).run(assetsBenchOptions)
 })

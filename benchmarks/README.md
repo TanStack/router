@@ -76,7 +76,7 @@ Node and use `setImmediate` directly.
 Dispatch the existing `Benchmarks` workflow against an unchanged branch:
 
 ```sh
-gh workflow run client-nav-benchmarks.yml --ref <branch>
+gh workflow run benchmarks.yml --ref <branch>
 ```
 
 Wait for each workflow run to finish before dispatching the next repetition at

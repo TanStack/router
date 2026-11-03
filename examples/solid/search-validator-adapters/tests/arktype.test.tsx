@@ -8,7 +8,6 @@ import {
   createRouter,
 } from '@tanstack/solid-router'
 
-import '@testing-library/jest-dom/vitest'
 import { type } from 'arktype'
 
 test('can navigate to the route', async () => {

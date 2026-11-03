@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -95,25 +95,26 @@ for (const server of [false, true]) {
           }
         }
         let checksum = 0
-        bench(
-          scenario.name,
-          () => {
-            let length = 0
-            for (const path of scenario.paths) {
-              for (const match of router.matchRoutes(path, {}, options)) {
-                length +=
-                  match.id.length + Object.keys(match._strictParams).length
+        test(scenario.name, async ({ bench }) => {
+          await bench(
+            scenario.name,
+            { afterAll: () => expect(checksum).toBe(expected) },
+            () => {
+              let length = 0
+              for (const path of scenario.paths) {
+                for (const match of router.matchRoutes(path, {}, options)) {
+                  length +=
+                    match.id.length + Object.keys(match._strictParams).length
+                }
               }
-            }
-            checksum = length
-          },
-          {
+              checksum = length
+            },
+          ).run({
             time: 1000,
             warmupTime: 300,
             throws: true,
-            teardown: () => expect(checksum).toBe(expected),
-          },
-        )
+          })
+        })
       }
     })
   }

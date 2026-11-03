@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertStreamingSanity,
   benchOptions,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertStreamingSanity(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr streaming deferred (solid)',
-    () => runStreamingLoop(handler),
-    benchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr streaming deferred (solid)', async () =>
+    runStreamingLoop(handler),
+  ).run(benchOptions)
 })

@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { describe, test } from 'vitest'
 
 const MAX_DYNAMIC_RECORD_CODE_UNITS = 64 * 1024
 const SOURCE_SEPARATOR = ';'
@@ -93,11 +93,15 @@ if (
 }
 
 describe('maximum hydration source queue with 4 KiB sources', () => {
-  bench('front splice', () => {
-    return void (benchmarkSink = drainWithSplice(sources.slice()))
+  test('front splice', async ({ bench }) => {
+    await bench('front splice', () => {
+      return void (benchmarkSink = drainWithSplice(sources.slice()))
+    }).run()
   })
 
-  bench('head index with compaction', () => {
-    return void (benchmarkSink = drainWithHead(sources.slice()))
+  test('head index with compaction', async ({ bench }) => {
+    await bench('head index with compaction', () => {
+      return void (benchmarkSink = drainWithHead(sources.slice()))
+    }).run()
   })
 })

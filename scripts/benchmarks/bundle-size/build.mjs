@@ -23,7 +23,7 @@ export function build(args, execute = spawnSync) {
       ...(pnpmPath ? [pnpmPath] : []),
       'nx',
       'run',
-      '@benchmarks/bundle-size:build',
+      '@benchmarks/bundle-size:measure',
       ...args,
     ],
     options,

@@ -432,5 +432,5 @@ export const myAction = createServerFn({ method: 'POST' })
 ## Cross-References
 
 - [react-start](../../react-start/SKILL.md) — full React Start setup
-- [start-core/server-functions](../../../../start-client-core/skills/start-core/server-functions/SKILL.md) — server function patterns
-- [start-core/execution-model](../../../../start-client-core/skills/start-core/execution-model/SKILL.md) — isomorphic execution
+- `@tanstack/start-client-core#start-core/server-functions` — server function patterns
+- `@tanstack/start-client-core#start-core/execution-model` — isomorphic execution

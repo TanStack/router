@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertSerializationScenario,
   runPlainSerializationLoop,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertSerializationScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr dehydrate plain control (react)',
-    () => runPlainSerializationLoop(handler),
-    serializationBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr dehydrate plain control (react)', async () =>
+    runPlainSerializationLoop(handler),
+  ).run(serializationBenchOptions)
 })
