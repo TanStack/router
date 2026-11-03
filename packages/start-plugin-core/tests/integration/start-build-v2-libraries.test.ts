@@ -6,7 +6,10 @@
  * package without a Start peer, which the user bundles explicitly (Vite
  * `noExternal`, Rsbuild `source.include`); (c) the package of (a) linked
  * into `node_modules` by a real symlink from a directory outside it
- * (pnpm-style, #8139 as quoted). Each exports an isomorphic fn and a server
+ * (pnpm-style, #8139 as quoted); (d) a package listing Start under
+ * `dependencies` instead of `peerDependencies`, installed as a directory of
+ * `node_modules` (npm) and (e) in pnpm's store, linked into `node_modules`.
+ * Each exports an isomorphic fn and a server
  * fn with a secret, and reads a module the app shares with it. Asserted
  * per environment: the implementation of that environment runs, the ids of
  * one build agree between client and server, the client has no server
@@ -51,7 +54,7 @@ function library(
   dir: string,
   name: string,
   tag: string,
-  options: { peer?: string; startPackage: string },
+  options: { peer?: string; dependency?: string; startPackage: string },
 ) {
   return {
     [`${dir}/package.json`]: JSON.stringify({
@@ -59,6 +62,9 @@ function library(
       type: 'module',
       exports: { '.': './index.js' },
       ...(options.peer && { peerDependencies: { [options.peer]: '*' } }),
+      ...(options.dependency && {
+        dependencies: { [options.dependency]: '*' },
+      }),
     }),
     [`${dir}/index.js`]: libraryModule(tag, options.startPackage),
     [`${dir}/secret.js`]: `export const secret = () => 'MARK_${tag}_SECRET'\n`,
@@ -90,11 +96,28 @@ export const shared = { token: 'MARK_SHARED_' + Math.random() }
     peer: '@tanstack/start-client-core',
     startPackage: '@tanstack/start-client-core',
   }),
+  // (d) Start under `dependencies`, installed by npm.
+  ...library('node_modules/lib-deps', 'lib-deps', 'DEPS', {
+    dependency: '@tanstack/react-start',
+    startPackage: '@tanstack/react-start',
+  }),
+  // (e) the same in pnpm's store, linked into node_modules.
+  ...library(
+    'node_modules/.pnpm/lib-deps-pnpm@1.0.0/node_modules/lib-deps-pnpm',
+    'lib-deps-pnpm',
+    'DEPSPNPM',
+    {
+      dependency: '@tanstack/react-start',
+      startPackage: '@tanstack/react-start',
+    },
+  ),
   'src/app.ts': `import { shared } from 'lib-shared'
 import * as peer from 'lib-peer'
 import * as bundled from 'lib-bundled'
 import * as linked from 'lib-linked'
-export const libraries = { peer, bundled, linked }
+import * as deps from 'lib-deps'
+import * as depsPnpm from 'lib-deps-pnpm'
+export const libraries = { peer, bundled, linked, deps, depsPnpm }
 export const appToken = () => shared.token
 `,
   'src/client-entry.ts': `export { libraries, appToken } from './app'\n`,
@@ -102,7 +125,13 @@ export const appToken = () => shared.token
 ${callByIdExports}`,
 }
 
-const tags = { peer: 'PEER', bundled: 'BUNDLED', linked: 'LINKED' }
+const tags = {
+  peer: 'PEER',
+  bundled: 'BUNDLED',
+  linked: 'LINKED',
+  deps: 'DEPS',
+  depsPnpm: 'DEPSPNPM',
+}
 
 /** How each bundler bundles `lib-bundled` (b) into the server build. */
 const bundleExplicitly: Record<
@@ -138,7 +167,7 @@ report.sharedInits = globalThis.__inits_SHARED
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test(
-    'a start-client-core peer library, an explicitly bundled library and a symlinked library each run the implementation of each environment, agree on ids and share one module instance',
+    'a start-client-core peer library, an explicitly bundled library, a symlinked library and libraries with Start under dependencies each run the implementation of each environment, agree on ids and share one module instance',
     async () => {
       const { client, ssr } = await buildStart({
         bundler,
@@ -155,11 +184,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
             'lib-peer': '*',
             'lib-bundled': '*',
             'lib-linked': '*',
+            'lib-deps': '*',
+            'lib-deps-pnpm': '*',
           },
         },
         symlinks: {
           ...workspacePackageLinks(['@tanstack/start-client-core']),
           'node_modules/lib-linked': 'packages/lib-linked',
+          'node_modules/lib-deps-pnpm':
+            'node_modules/.pnpm/lib-deps-pnpm@1.0.0/node_modules/lib-deps-pnpm',
         },
         ...bundleExplicitly[bundler],
       })

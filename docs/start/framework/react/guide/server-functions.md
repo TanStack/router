@@ -160,6 +160,10 @@ The build process replaces server function implementations with RPC stubs in cli
 > const { getUser } = await import('~/utils/users.functions')
 > ```
 
+### Server Functions in Packages
+
+A package of your app (a workspace package or an installed one) can export server functions: the build compiles it like your own code. List `@tanstack/react-start` in the package's `peerDependencies`, so that the app installs one copy of Start, the version it chose. A package that lists Start under `dependencies` is compiled too.
+
 ## Parameters & Validation
 
 Server functions accept a single `data` parameter. Since they cross the network boundary, validation ensures type safety and runtime correctness.
