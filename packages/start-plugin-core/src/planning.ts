@@ -62,10 +62,11 @@ export function shouldRewriteDevBasepath(opts: {
 
 export function createNormalizedBasePaths(opts: {
   publicBase: string
+  assetBase?: NormalizedBasePaths['assetBase']
 }): NormalizedBasePaths {
   return {
     publicBase: opts.publicBase,
-    assetBase: {
+    assetBase: opts.assetBase ?? {
       dev: opts.publicBase,
       build: opts.publicBase,
     },

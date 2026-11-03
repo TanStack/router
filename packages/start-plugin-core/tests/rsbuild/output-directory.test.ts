@@ -63,7 +63,6 @@ describe('resolveRsbuildOutputDirectory', () => {
 
 describe('createRsbuildEnvironmentPlan client output', () => {
   const baseOptions = {
-    root: '/app',
     entryAliases: {
       client: '/app/src/client.tsx',
       server: '/app/src/server.ts',
@@ -76,61 +75,49 @@ describe('createRsbuildEnvironmentPlan client output', () => {
         '#tanstack-router-entry': '/app/src/router.tsx',
       },
     },
-    clientOutputDirectory: 'dist/client',
-    serverOutputDirectory: 'dist/server',
-    publicBase: '/_build/',
     serverFnProviderEnv: 'ssr',
+    enforcedDefines: {},
+    enforcedAliases: {
+      'virtual:tanstack-start-client-entry': '/app/src/client.tsx',
+      'virtual:tanstack-start-server-entry': '/app/src/server.ts',
+      '#tanstack-start-entry': '/app/src/start.ts',
+      '#tanstack-router-entry': '/app/src/router.tsx',
+    },
   }
 
-  test('sets client output.module from scriptFormat', () => {
-    expect(
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-      }).environments.client!.output?.module,
-    ).toBe(false)
+  test('leaves assetPrefix unset so environments inherit the root config', () => {
+    const environments = createRsbuildEnvironmentPlan(baseOptions).environments
 
+    expect(environments.client!.output?.assetPrefix).toBeUndefined()
+    expect(environments.ssr!.output?.assetPrefix).toBeUndefined()
+    expect(environments.client!.output?.distPath).toBeUndefined()
+    expect(environments.ssr!.output?.distPath).toBeUndefined()
+    expect(environments.client!.performance).toBeUndefined()
     expect(
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'module',
-      }).environments.client!.output?.module,
-    ).toBe(true)
+      createRsbuildEnvironmentPlan({ ...baseOptions, rsc: true }).environments
+        .ssr!.splitChunks,
+    ).toBeUndefined()
   })
 
-  test('throws when client output.module conflicts with scriptFormat', () => {
-    expect(() =>
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-        environmentOverrides: {
-          client: {
-            output: {
-              module: true,
-            },
-          },
-        },
-      }),
-    ).toThrow(
-      'TanStack Start rsbuild.client.output controls environments.client.output.module',
+  test('applies enforced defines and aliases to every managed environment', () => {
+    const enforcedDefines = {
+      'process.env.TSS_SERVER_FN_BASE': '"/_serverFn/"',
+    }
+    const environments = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      serverFnProviderEnv: 'server-fn',
+      enforcedDefines,
+    }).environments
+
+    expect(environments.client!.source?.define).toBe(enforcedDefines)
+    expect(environments.ssr!.source?.define).toBe(enforcedDefines)
+    expect(environments['server-fn']!.source?.define).toBe(enforcedDefines)
+    expect(environments.client!.resolve?.alias).toBe(
+      baseOptions.enforcedAliases,
     )
-  })
-
-  test('throws when shared output.module conflicts with scriptFormat', () => {
-    expect(() =>
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-        environmentOverrides: {
-          all: {
-            output: {
-              module: true,
-            },
-          },
-        },
-      }),
-    ).toThrow(
-      'TanStack Start rsbuild.client.output controls environments.client.output.module',
+    expect(environments.ssr!.resolve?.alias).toBe(baseOptions.enforcedAliases)
+    expect(environments['server-fn']!.resolve?.alias).toBe(
+      baseOptions.enforcedAliases,
     )
   })
 })
