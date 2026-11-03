@@ -157,6 +157,18 @@ describe('getObjectPropertyKeyName', () => {
     expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
   })
 
+  it('returns computed string literal keys for properties and methods', () => {
+    const key = t.stringLiteral('component')
+    expect(
+      getObjectPropertyKeyName(t.objectProperty(key, t.identifier('x'), true)),
+    ).toBe('component')
+    expect(
+      getObjectPropertyKeyName(
+        t.objectMethod('method', key, [], t.blockStatement([]), true),
+      ),
+    ).toBe('component')
+  })
+
   it('returns undefined for computed identifier keys', () => {
     const prop = t.objectProperty(
       t.identifier('component'),
