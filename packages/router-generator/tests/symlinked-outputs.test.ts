@@ -36,7 +36,8 @@ async function linked(
 async function expectLink(root: string, link: string, linkText: string) {
   const file = path.join(root, link)
   expect((await lstat(file)).isSymbolicLink()).toBe(true)
-  expect(await readlink(file)).toBe(linkText)
+  // Windows stores a link's target with its own separators
+  expect(path.normalize(await readlink(file))).toBe(path.normalize(linkText))
 }
 
 describe('symlinked files the generator rewrites', () => {
