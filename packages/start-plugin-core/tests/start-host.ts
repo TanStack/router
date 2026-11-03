@@ -51,6 +51,7 @@ import { mergeConfig, normalizePath, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import {
   workspacePackage,
@@ -1199,6 +1200,11 @@ export async function takeHost<T extends { close: () => Promise<void> }>(
   start: () => Promise<T>,
 ): Promise<T> {
   const free = key === undefined ? undefined : freeHosts.get(key)?.pop()
+  if (free) {
+    // A dev server an earlier file started: this file's environment is
+    // Vitest's again (`test-scope-setup`)
+    runAsDevCommand()
+  }
   return (free as T | undefined) ?? start()
 }
 
