@@ -94,7 +94,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",

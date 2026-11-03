@@ -54,6 +54,81 @@ export function createFileRoute<
 }
 
 /**
+ * The route factory returned by `createFileRoute(path)`. `TDefaultRegister`
+ * is the scope of the created route: the application's `Register`, or the
+ * scope register of a route module.
+ */
+export type FileRouteFactory<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+  TDefaultRegister = Register,
+> = <
+  TRegister = TDefaultRegister,
+  TSearchValidator = undefined,
+  TParams = ResolveParams<TPath>,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+  TChildren = unknown,
+  TSSR = unknown,
+  TMiddlewares = unknown,
+  THandlers = undefined,
+>(
+  options?: FileBaseRouteOptions<
+    TRegister,
+    TParentRoute,
+    TId,
+    TPath,
+    TSearchValidator,
+    TParams,
+    TLoaderDeps,
+    TLoaderFn,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    AnyContext,
+    TSSR,
+    TMiddlewares,
+    THandlers
+  > &
+    UpdatableRouteOptions<
+      TParentRoute,
+      TId,
+      TFullPath,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TLoaderDeps,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+) => Route<
+  TRegister,
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TFilePath,
+  TId,
+  TSearchValidator,
+  TParams,
+  AnyContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren,
+  unknown,
+  TSSR,
+  TMiddlewares,
+  THandlers
+>
+
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
@@ -74,68 +149,13 @@ export class FileRoute<
     this.silent = _opts?.silent
   }
 
-  createRoute = <
-    TRegister = Register,
-    TSearchValidator = undefined,
-    TParams = ResolveParams<TPath>,
-    TRouteContextFn = AnyContext,
-    TBeforeLoadFn = AnyContext,
-    TLoaderDeps extends Record<string, any> = {},
-    TLoaderFn = undefined,
-    TChildren = unknown,
-    TSSR = unknown,
-    TMiddlewares = unknown,
-    THandlers = undefined,
-  >(
-    options?: FileBaseRouteOptions<
-      TRegister,
-      TParentRoute,
-      TId,
-      TPath,
-      TSearchValidator,
-      TParams,
-      TLoaderDeps,
-      TLoaderFn,
-      AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      AnyContext,
-      TSSR,
-      TMiddlewares,
-      THandlers
-    > &
-      UpdatableRouteOptions<
-        TParentRoute,
-        TId,
-        TFullPath,
-        TParams,
-        TSearchValidator,
-        TLoaderFn,
-        TLoaderDeps,
-        AnyContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >,
-  ): Route<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TFullPath,
+  createRoute: FileRouteFactory<
     TFilePath,
+    TParentRoute,
     TId,
-    TSearchValidator,
-    TParams,
-    AnyContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    unknown,
-    TSSR,
-    TMiddlewares,
-    THandlers
-  > => {
+    TPath,
+    TFullPath
+  > = (options) => {
     if (process.env.NODE_ENV !== 'production') {
       if (!this.silent) {
         console.warn(
@@ -182,7 +202,7 @@ export function FileRouteLoader<
   return (loaderFn) => loaderFn as any
 }
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface LazyRoute<in out TRoute extends AnyRoute> {
     useMatch: UseMatchRoute<TRoute['id']>
     useRouteContext: UseRouteContextRoute<TRoute['id']>

@@ -1,6 +1,21 @@
 import * as Vue from 'vue'
 import { routerContext } from './routerContext'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  Register,
+  RegisteredRouter,
+  RegisteredRouterOf,
+} from '@tanstack/router-core'
+
+/**
+ * The signature of `useRouter`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useRouter` of this type.
+ */
+export type UseRouterFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+>(opts?: {
+  warn?: boolean
+}) => TRouter
 
 export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
   warn?: boolean

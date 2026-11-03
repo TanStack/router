@@ -82,7 +82,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@babel/code-frame": "7.29.7",

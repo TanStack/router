@@ -1,0 +1,41 @@
+{
+  "name": "@start-route-modules/team",
+  "private": true,
+  "type": "module",
+  "tanstack": {
+    "router": {
+      "module": {
+        "uses": [
+          "@start-route-modules/settings"
+        ]
+      }
+    }
+  },
+  "exports": {
+    "./route-types": {
+      "types": "./.tanstack/types/src/routeContract.gen.d.ts"
+    },
+    "./route-module": {
+      "types": "./.tanstack/types/src/routeModule.gen.d.ts",
+      "default": "./src/routeModule.gen.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "generate": "tsr generate",
+    "emit-types": "node -e \"require('node:fs').rmSync('.tanstack/types',{recursive:true,force:true})\" && tsc -p tsconfig.route-types.json",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@start-route-modules/settings": "workspace:*",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-start": "workspace:^",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/router-cli": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
+    "@tanstack/start-client-core": "workspace:^",
+    "@types/react": "^19.0.8"
+  }
+}

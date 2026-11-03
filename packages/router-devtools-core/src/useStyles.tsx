@@ -381,6 +381,54 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       font-size: ${fontSize.xs};
       line-height: ${lineHeight['xs']};
     `,
+    moduleBadge: css`
+      background: ${colors.purple[900]}${alpha[70]};
+      color: ${colors.purple[300]};
+      display: inline-block;
+      padding: 0 ${tokens.size[1.5]};
+      margin-left: ${size[1]};
+      border-radius: ${border.radius.full};
+      border: 1px solid ${colors.purple[400]};
+      font-size: ${font.size.xs};
+      line-height: ${lineHeight['xs']};
+      white-space: nowrap;
+      cursor: pointer;
+    `,
+    moduleToggle: css`
+      background: none;
+      border: none;
+      padding: 0;
+      margin-right: ${size[1]};
+      color: ${colors.gray[400]};
+      font-size: ${font.size.xs};
+      cursor: pointer;
+    `,
+    moduleChildren: css`
+      border-left-color: ${colors.purple[700]};
+    `,
+    moduleFilter: css`
+      display: flex;
+      padding: ${size[1]} ${size[2]};
+      border-bottom: 1px solid ${colors.darkGray[400]};
+      & > select {
+        background: ${colors.darkGray[700]};
+        color: ${colors.gray[300]};
+        border: 1px solid ${colors.gray[700]};
+        border-radius: ${border.radius.sm};
+        font-size: ${font.size.xs};
+      }
+    `,
+    moduleRouteRow: css`
+      display: flex;
+      justify-content: space-between;
+      gap: ${size[2]};
+      padding: ${size[1]} ${size[2]};
+      border-bottom: 1px solid ${colors.darkGray[400]};
+      font-size: ${font.size.xs};
+      & > code:last-child {
+        color: ${colors.gray[400]};
+      }
+    `,
     nestedRouteRow: (isRoot: boolean) => {
       const base = css`
         margin-left: ${isRoot ? 0 : size[3.5]};

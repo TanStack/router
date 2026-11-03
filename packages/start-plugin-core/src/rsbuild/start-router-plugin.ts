@@ -7,6 +7,8 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
+import { cleanId } from '../start-compiler/utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
@@ -26,9 +28,28 @@ export function registerRouterPlugins(
     getConfig: GetConfigFn
     corePluginOpts: TanStackStartCoreOptions
     startPluginOpts: TanStackStartRsbuildInputConfig
+    onClientTreeInvalidated?: () => void
   },
 ): void {
   const routerPluginContext = createRouterPluginContext()
+  const clientTree = createClientRouteTree(opts.onClientTreeInvalidated)
+
+  api.transform(
+    {
+      test: (id: string) =>
+        path.normalize(cleanId(id)) ===
+        path.resolve(opts.getConfig().startConfig.router.generatedRouteTree),
+      environments: [RSBUILD_ENVIRONMENT_NAMES.client],
+      order: 'pre',
+    },
+    async ({ addDependency }) => {
+      const result = await clientTree.build()
+      for (const file of result.dependencies) {
+        addDependency(file)
+      }
+      return result.code
+    },
+  )
 
   api.modifyRspackConfig((config, utils) => {
     const envName = utils.environment.name
@@ -51,6 +72,7 @@ export function registerRouterPlugins(
             })
           },
           plugins: [
+            clientTree.generatorPlugin,
             routesManifestPlugin(),
             ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]
@@ -60,6 +82,21 @@ export function registerRouterPlugins(
         routerPluginContext,
       )
       utils.appendPlugins(generatorPlugin)
+      utils.appendPlugins(
+        new utils.rspack.NormalModuleReplacementPlugin(/./, (data) => {
+          // afterResolve provides the physical resource; beforeResolve only has
+          // the request. Leave package/alias resolution to Rspack itself.
+          if (!data.createData) {
+            return
+          }
+          const clientId = clientTree.getModuleClientTree(
+            data.createData.resource,
+          )
+          if (clientId) {
+            data.createData.resource = clientId
+          }
+        }),
+      )
     }
 
     if (

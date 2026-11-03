@@ -22,6 +22,7 @@ export {
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,
+  type CreateMiddlewareFn,
   type IntersectAllValidatorInputs,
   type IntersectAllValidatorOutputs,
   type FunctionMiddlewareServerFn,
@@ -62,6 +63,7 @@ export {
   type RequestServerResult,
 } from './createMiddleware'
 export type {
+  CreateServerFn,
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
   CustomFetch,
@@ -122,9 +124,22 @@ export { createStart } from './createStart'
 export type {
   AnyStartInstance,
   AnyStartInstanceOptions,
+  CreateStartOptions,
   StartInstance,
   StartInstanceOptions,
 } from './createStart'
+export type {
+  AnyStartModule,
+  AssertStartModules,
+  CreateStartModuleFn,
+  StartModule,
+  StartModuleConfig,
+  StartModuleOptions,
+  StartModuleRegister,
+  StartModuleRequirements,
+  ValidateStartModules,
+  WithStartModules,
+} from './createStartModule'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'

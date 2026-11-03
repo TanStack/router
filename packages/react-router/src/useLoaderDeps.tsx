@@ -5,7 +5,9 @@ import type {
 } from './structuralSharing'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,
@@ -31,14 +33,27 @@ export type UseLoaderDepsOptions<
   UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected, TStructuralSharing> &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
-export type UseLoaderDepsRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseLoaderDepsRoute<out TId, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseLoaderDepsResult<TRouter, TId, TSelected>
+
+/**
+ * The signature of `useLoaderDeps`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLoaderDeps` of this type.
+ */
+export type UseLoaderDepsFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected, TStructuralSharing>,
+) => UseLoaderDepsResult<TRouter, TFrom, TSelected>
 
 /**
  * Read and select the current route's loader dependencies object.

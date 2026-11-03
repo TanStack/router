@@ -1241,28 +1241,44 @@ export const findParent = (node: RouteNode | undefined): string => {
 
 export function buildFileRoutesByPathInterface(opts: {
   routeNodes: Array<RouteNode>
-  module: string
+  /**
+   * Module to augment. Without it the interface is exported locally (route
+   * modules), and entries omit `preLoaderRoute`, which only the deprecated
+   * lazy and loader route APIs read.
+   */
+  module: string | undefined
   interfaceName: string
   config?: Pick<Config, 'routeToken'>
+  /** Maps a route path to the route id (route modules qualify ids). */
+  qualifyId?: (id: string) => string
 }): string {
-  return `declare module '${opts.module}' {
-  interface ${opts.interfaceName} {
-    ${opts.routeNodes
-      .map((routeNode) => {
-        const filePathId = routeNode.routePath
-        const preloaderRoute = `typeof ${routeNode.variableName}RouteImport`
+  const qualifyId = opts.qualifyId ?? ((id: string) => id)
+  const entries = opts.routeNodes
+    .map((routeNode) => {
+      const filePathId = qualifyId(routeNode.routePath ?? '')
+      const parent = findParent(routeNode)
 
-        const parent = findParent(routeNode)
-
-        return `'${filePathId}': {
+      return `'${filePathId}': {
           id: '${filePathId}'
           path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: ${preloaderRoute}
+          fullPath: '${inferFullPath(routeNode)}'${
+            opts.module === undefined
+              ? ''
+              : `\n          preLoaderRoute: typeof ${routeNode.variableName}RouteImport`
+          }
           parentRoute: typeof ${parent}
         }`
-      })
-      .join('\n')}
+    })
+    .join('\n')
+
+  if (opts.module === undefined) {
+    return `export interface ${opts.interfaceName} {
+    ${entries}
+}`
+  }
+  return `declare module '${opts.module}' {
+  interface ${opts.interfaceName} {
+    ${entries}
   }
 }`
 }

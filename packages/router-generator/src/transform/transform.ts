@@ -119,11 +119,43 @@ export function transform({
     routeCall.routeIdArg.start!,
     routeCall.routeIdArg.end!,
   )
-  const targetModule = `@tanstack/${ctx.target}-router`
+  const frameworkModule = `@tanstack/${ctx.target}-router`
+  const targetModule = ctx.routeImportSource ?? frameworkModule
   const imports = parseTargetImports(ast.program.body, source, targetModule)
 
   const s = new MagicString(source)
   let modified = false
+
+  // Route-module files take route constructors from their scope module only:
+  // the framework package or a stale scope path (a moved file) lose them.
+  if (targetModule !== frameworkModule) {
+    for (const declaration of parseTargetImports(
+      ast.program.body,
+      source,
+      (moduleName) => moduleName !== targetModule,
+    )) {
+      const named = declaration.named.filter(
+        (specifier) => !isRouteConstructorName(specifier.imported),
+      )
+      if (named.length === declaration.named.length) {
+        continue
+      }
+      const replacement = renderImportDeclaration({ ...declaration, named })
+      if (replacement === null) {
+        s.remove(
+          declaration.declaration.start!,
+          getRemovalEnd(source, declaration.declaration.end!),
+        )
+      } else {
+        s.update(
+          declaration.declaration.start!,
+          declaration.declaration.end!,
+          replacement,
+        )
+      }
+      modified = true
+    }
+  }
 
   if (routeCall.callee.name !== expectedCallee) {
     s.update(routeCall.callee.start!, routeCall.callee.end!, expectedCallee)
@@ -351,15 +383,19 @@ function getCreateFileRouteProps(
 function parseTargetImports(
   body: Array<t.Statement>,
   source: string,
-  targetModule: string,
+  targetModule: string | ((moduleName: string) => boolean),
 ) {
   const imports: Array<ParsedImportDeclaration> = []
+  const isTarget =
+    typeof targetModule === 'string'
+      ? (moduleName: string) => moduleName === targetModule
+      : targetModule
 
   for (const statement of body) {
     if (
       !t.isImportDeclaration(statement) ||
       statement.importKind === 'type' ||
-      statement.source.value !== targetModule
+      !isTarget(statement.source.value)
     ) {
       continue
     }

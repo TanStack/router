@@ -8,6 +8,7 @@ import {
   runRouteLifecycle,
 } from './router'
 import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
+import { resolveRouteId } from './route-module-hooks'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -999,7 +1000,19 @@ async function getNotFoundBoundary(
     | NotFoundError
     | undefined
   let index = cause?.routeId
-    ? matches.findIndex((match) => match.routeId === cause.routeId)
+    ? matches.findIndex(
+        (match) =>
+          match.routeId ===
+          // Module-local ids of a route module installed several times
+          // resolve in the installation of the match that threw.
+          (resolveRouteId
+            ? resolveRouteId(
+                router,
+                cause.routeId,
+                matches[indexed![0 /* index */]]?.routeId,
+              )
+            : cause.routeId),
+      )
     : (indexed?.[0 /* index */] ?? matches.length - 1)
   if (index < 0) {
     index = 0
@@ -1092,6 +1105,11 @@ function materializeRedirect(
   while (outcome[0 /* kind */] === REDIRECTED) {
     const redirect = outcome[1 /* redirect */]
     const redirectOptions = redirect.options
+    // Module redirects resolve in the installation of the route that threw.
+    // Only route modules, which install `resolveRouteId`, read it.
+    if (resolveRouteId) {
+      redirectOptions._nearestRoute ??= route.id
+    }
     try {
       if (redirectOptions.href || redirect.headers.has('Location')) {
         router.resolveRedirect(redirect)

@@ -26,6 +26,12 @@ export const LINK_CASES = [
     description: 'Parent and child targets inherit current params and search.',
   },
   {
+    id: 'route-bound',
+    label: 'Route-bound relative targets',
+    description:
+      'The relative case through Route.Link, which resolves from its route.',
+  },
+  {
     id: 'middleware',
     label: 'Search middleware chain',
     description:
@@ -103,6 +109,7 @@ export function sourceSearch(
   switch (caseId) {
     case 'location-updaters':
     case 'relative':
+    case 'route-bound':
     case 'middleware':
     case 'active':
       return {
@@ -157,6 +164,7 @@ function url(pathname: string, search: Partial<LinkSearch> = {}, hash = '') {
 function sourcePath(caseId: LinkCaseId, stateIndex: number) {
   switch (caseId) {
     case 'relative':
+    case 'route-bound':
       return `/teams/team-${stateIndex}/item-${stateIndex}`
     case 'numeric-params':
       return `/numbers/${stateIndex}`
@@ -210,6 +218,7 @@ function expectedHref(caseId: LinkCaseId, stateIndex: number, index: number) {
         `source-${stateIndex}-link-${index % 5}`,
       )
     case 'relative':
+    case 'route-bound':
       return url(
         index % 2 === 0
           ? `/teams/team-${stateIndex}`

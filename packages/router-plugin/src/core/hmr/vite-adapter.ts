@@ -33,12 +33,12 @@ if (import.meta.hot) {
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
-      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
-      : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
+  if (
+    initialRouteId &&
+    typeof window !== 'undefined' &&
+    window.__TSR_ROUTER__ &&
     handleRouteUpdate(initialRouteId, Route)
+  ) {
     hotData['tsr-route-update-handled'] = Route
   }
   hot.accept((newModule) => {

@@ -7,7 +7,7 @@ import { isServer } from '@tanstack/router-core/isServer'
 import type { Readable } from '@tanstack/react-store'
 import type { GetStoreConfig } from '@tanstack/router-core'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   export interface RouterReadableStore<TValue> extends Readable<TValue> {}
 }
 export const getStoreFactory: GetStoreConfig = (opts) => {

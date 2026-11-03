@@ -5,7 +5,9 @@ import type {
 } from './structuralSharing'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseLoaderData,
   StrictOrFrom,
   UseLoaderDataResult,
@@ -39,8 +41,8 @@ export type UseLoaderDataOptions<
   > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
-export type UseLoaderDataRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseLoaderDataRoute<out TId, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
@@ -53,6 +55,26 @@ export type UseLoaderDataRoute<out TId> = <
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseLoaderDataResult<TRouter, TId, true, TSelected>
+
+/**
+ * The signature of `useLoaderData`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLoaderData` of this type.
+ */
+export type UseLoaderDataFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseLoaderDataOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TSelected,
+    TStructuralSharing
+  >,
+) => UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
 
 /**
  * Read and select the current route's loader data with type‑safety.

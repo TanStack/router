@@ -105,7 +105,13 @@
         "default": "./dist/esm/client-only.js"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./_internal/route-module": {
+      "import": {
+        "types": "./dist/esm/route-module-internal.d.ts",
+        "default": "./dist/esm/route-module-internal.js"
+      }
+    }
   },
   "sideEffects": false,
   "files": [
@@ -116,7 +122,7 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:*",
@@ -139,7 +145,9 @@
     "eslint-plugin-react-hooks": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@tanstack/router-generator": "workspace:*",
+    "vite-plugin-solid": "^2.11.11"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",
@@ -152,6 +160,16 @@
     },
     "vite": {
       "optional": true
+    }
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "^build",
+          "build"
+        ]
+      }
     }
   }
 }

@@ -1,15 +1,34 @@
 'use client'
 
 import * as React from 'react'
+import { isServer } from '@tanstack/router-core/isServer'
+import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { matchContext } from './matchContext'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
+  CompatibleRouteScope,
   FromPathOption,
   NavigateOptions,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
+  RouteModuleScope,
   UseNavigateResult,
 } from '@tanstack/router-core'
+
+/**
+ * The signature of `useNavigate`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useNavigate` of this type.
+ */
+export type UseNavigateFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TDefaultFrom extends string = string,
+>(_defaultOpts?: {
+  from?: FromPathOption<TRouter, TDefaultFrom>
+  _module?: RouteModuleScope<CompatibleRouteScope<TRouter>>
+}) => UseNavigateResult<TDefaultFrom, { router: TRouter }>
 
 /**
  * Imperative navigation hook.
@@ -30,19 +49,51 @@ export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
-}): UseNavigateResult<TDefaultFrom> {
+}): UseNavigateResult<TDefaultFrom, { router: TRouter }> {
   const router = useRouter()
+  // Only the route-module translation reads the nearest route. Route modules
+  // install it when the route tree is created, before the first render, so
+  // the condition is the same in every render of an application.
+  const routeId = scopeLocationOptions
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks -- see above
+      React.useContext(matchContext)
+    : undefined
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
-        ...options,
-        from: options.from ?? _defaultOpts?.from,
-      })
+      return router.navigate(
+        scopeLocationOptions
+          ? {
+              // Route-module APIs also pass their internal `_module` and
+              // `_fromRoute` scope, constant for a route or scoped API.
+              ..._defaultOpts,
+              _nearestRoute: routeId,
+              ...options,
+              from: options.from ?? _defaultOpts?.from,
+            }
+          : { ...options, from: options.from ?? _defaultOpts?.from },
+      )
     },
-    [_defaultOpts?.from, router],
-  ) as UseNavigateResult<TDefaultFrom>
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope of the defaults is constant
+    scopeLocationOptions
+      ? [_defaultOpts?.from, routeId, router]
+      : [_defaultOpts?.from, router],
+  ) as UseNavigateResult<TDefaultFrom, { router: TRouter }>
 }
+
+/**
+ * The signature of `Navigate`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `Navigate` of this type.
+ */
+export type NavigateComponentFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => null
 
 /**
  * Component that triggers a navigation when rendered. Navigation executes
@@ -61,8 +112,13 @@ export function Navigate<
   const TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
+  if (isServer ?? router.isServer) {
+    return null
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- the server condition is static
   const navigate = useNavigate()
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- the server condition is static
   const previousPropsRef = React.useRef<NavigateOptions<
     TRouter,
     TFrom,
@@ -70,6 +126,7 @@ export function Navigate<
     TMaskFrom,
     TMaskTo
   > | null>(null)
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- the server condition is static
   useLayoutEffect(() => {
     if (previousPropsRef.current !== props) {
       navigate(props)

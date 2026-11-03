@@ -63,7 +63,7 @@
     "bin/**"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",

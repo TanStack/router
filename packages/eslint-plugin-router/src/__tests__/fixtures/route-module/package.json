@@ -1,0 +1,9 @@
+{
+  "name": "@fixture/route-module",
+  "private": true,
+  "tanstack": {
+    "router": {
+      "module": true
+    }
+  }
+}

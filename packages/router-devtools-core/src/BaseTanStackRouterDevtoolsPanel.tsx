@@ -7,6 +7,7 @@ import {
   rootRouteId,
   trimPath,
 } from '@tanstack/router-core'
+import { getRouteModuleId } from '@tanstack/router-core/_internal/route-module'
 import {
   For,
   Match,
@@ -27,6 +28,14 @@ import { AgeTicker } from './AgeTicker'
 // import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
 import { NavigateButton } from './NavigateButton'
+import {
+  getModuleIds,
+  getModuleLocalPath,
+  getModuleRoot,
+  getModuleRootId,
+  getModuleRoutes,
+  getParentModuleId,
+} from './routeModules'
 import type {
   AnyContext,
   AnyRoute,
@@ -106,6 +115,33 @@ function NavigateLink(props: {
   )
 }
 
+/** How the panel shows route modules: collapsed groups and module details. */
+interface ModuleControls {
+  isCollapsed: (moduleId: string) => boolean
+  toggle: (moduleId: string) => void
+  open: (moduleId: string) => void
+}
+
+function ModuleBadge(props: {
+  moduleId: string
+  open: (moduleId: string) => void
+}) {
+  const styles = useStyles()
+  return (
+    <button
+      type="button"
+      class={styles().moduleBadge}
+      aria-label={`Open module details for ${props.moduleId}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        props.open(props.moduleId)
+      }}
+    >
+      {props.moduleId}
+    </button>
+  )
+}
+
 function RouteComp({
   routerState,
   pendingMatches,
@@ -114,6 +150,7 @@ function RouteComp({
   isRoot,
   activeId,
   setActiveId,
+  modules,
 }: {
   routerState: Accessor<
     RouterState<
@@ -146,8 +183,13 @@ function RouteComp({
   isRoot?: boolean
   activeId: Accessor<string | undefined>
   setActiveId: (id: string) => void
+  modules: ModuleControls
 }) {
   const styles = useStyles()
+  // A route module's root heads a collapsible group of the module's routes.
+  const moduleId = getModuleRootId(route)
+  const collapsed = () =>
+    moduleId !== undefined && modules.isCollapsed(moduleId)
   const matches = createMemo(() =>
     pendingMatches().length ? pendingMatches() : routerState().matches,
   )
@@ -197,7 +239,12 @@ function RouteComp({
   })
 
   return (
-    <div>
+    <div
+      role={moduleId === undefined ? undefined : 'group'}
+      aria-label={
+        moduleId === undefined ? undefined : `Route module ${moduleId}`
+      }
+    >
       <div
         role="button"
         aria-label={`Open match details for ${route.id}`}
@@ -224,14 +271,38 @@ function RouteComp({
           }
           right={<AgeTicker match={match()} router={router} />}
         >
+          <Show when={moduleId}>
+            {(id) => (
+              <button
+                type="button"
+                class={styles().moduleToggle}
+                aria-label={`${collapsed() ? 'Expand' : 'Collapse'} ${id()}`}
+                aria-expanded={!collapsed()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  modules.toggle(id())
+                }}
+              >
+                {collapsed() ? '▸' : '▾'}
+              </button>
+            )}
+          </Show>
           <code class={styles().code}>
             {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
           </code>
           <code class={styles().routeParamInfo}>{param()}</code>
+          <Show when={moduleId}>
+            {(id) => <ModuleBadge moduleId={id()} open={modules.open} />}
+          </Show>
         </NavigateLink>
       </div>
-      {route.children?.length ? (
-        <div class={styles().nestedRouteRow(!!isRoot)}>
+      {route.children?.length && !collapsed() ? (
+        <div
+          class={cx(
+            styles().nestedRouteRow(!!isRoot),
+            moduleId !== undefined && styles().moduleChildren,
+          )}
+        >
           {[...(route.children as Array<AnyRoute>)]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -244,6 +315,7 @@ function RouteComp({
                 route={r}
                 activeId={activeId}
                 setActiveId={setActiveId}
+                modules={modules}
               />
             ))}
         </div>
@@ -279,6 +351,46 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [activeId, setActiveId] = useLocalStorage(
       'tanstackRouterDevtoolsActiveRouteId',
       '',
+    )
+
+    // Route modules: collapsed groups, the module shown in the details pane,
+    // and the module the route tree is narrowed to.
+    const [collapsedModules, setCollapsedModules] = useLocalStorage<
+      Array<string>
+    >('tanstackRouterDevtoolsCollapsedModules', [])
+    const [activeModuleId, setActiveModuleId] = useLocalStorage(
+      'tanstackRouterDevtoolsActiveModuleId',
+      '',
+    )
+    const [moduleFilter, setModuleFilter] = createSignal('')
+    const moduleIds = createMemo(() => getModuleIds(router()))
+    const selectMatch = (id: string) => {
+      setActiveModuleId('')
+      setActiveId(id)
+    }
+    const modules: ModuleControls = {
+      isCollapsed: (moduleId) => (collapsedModules() ?? []).includes(moduleId),
+      toggle: (moduleId) =>
+        setCollapsedModules((previous = []) =>
+          previous.includes(moduleId)
+            ? previous.filter((id) => id !== moduleId)
+            : [...previous, moduleId],
+        ),
+      open: (moduleId) => {
+        setActiveId('')
+        setActiveModuleId(moduleId)
+      },
+    }
+    const activeModule = createMemo(() => {
+      const moduleId = activeModuleId()
+      return moduleId && getModuleRoot(router(), moduleId)
+        ? moduleId
+        : undefined
+    })
+    const routeTreeRoot = createMemo(
+      () =>
+        (moduleFilter() && getModuleRoot(router(), moduleFilter())) ||
+        router().routeTree,
     )
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
@@ -397,6 +509,12 @@ export const BaseTanStackRouterDevtoolsPanel =
           ),
       ),
     )
+    const activeMatchModuleRoute = createMemo(() => {
+      const routeId = activeMatch()?.routeId
+      return routeId !== undefined && getRouteModuleId(routeId) !== undefined
+        ? (router().routesById[routeId] as AnyRoute | undefined)
+        : undefined
+    })
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
@@ -544,15 +662,36 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={cx(styles().routesContainer)}>
               <Switch>
                 <Match when={currentTab() === 'routes'}>
-                  <RouteComp
-                    routerState={routerState}
-                    pendingMatches={pendingMatches}
-                    router={router}
-                    route={router().routeTree}
-                    isRoot
-                    activeId={activeId}
-                    setActiveId={setActiveId}
-                  />
+                  <Show when={moduleIds().length}>
+                    <div class={styles().moduleFilter}>
+                      <select
+                        aria-label="Show routes of"
+                        value={moduleFilter()}
+                        onChange={(e) => setModuleFilter(e.currentTarget.value)}
+                      >
+                        <option value="">All routes</option>
+                        <For each={moduleIds()}>
+                          {(moduleId) => (
+                            <option value={moduleId}>{moduleId}</option>
+                          )}
+                        </For>
+                      </select>
+                    </div>
+                  </Show>
+                  <Show when={routeTreeRoot()} keyed>
+                    {(route) => (
+                      <RouteComp
+                        routerState={routerState}
+                        pendingMatches={pendingMatches}
+                        router={router}
+                        route={route}
+                        isRoot={route === router().routeTree}
+                        activeId={activeId}
+                        setActiveId={selectMatch}
+                        modules={modules}
+                      />
+                    )}
+                  </Show>
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
@@ -565,7 +704,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                           role="button"
                           aria-label={`Open match details for ${match.id}`}
                           onClick={() =>
-                            setActiveId(activeId() === match.id ? '' : match.id)
+                            selectMatch(activeId() === match.id ? '' : match.id)
                           }
                           class={cx(styles().matchRow(match === activeMatch()))}
                         >
@@ -588,6 +727,14 @@ export const BaseTanStackRouterDevtoolsPanel =
                             <code class={styles().matchID}>
                               {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                             </code>
+                            <Show when={getRouteModuleId(match.routeId)}>
+                              {(moduleId) => (
+                                <ModuleBadge
+                                  moduleId={moduleId()}
+                                  open={modules.open}
+                                />
+                              )}
+                            </Show>
                           </NavigateLink>
                         </div>
                       )
@@ -658,7 +805,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                       role="button"
                       aria-label={`Open match details for ${match.id}`}
                       onClick={() =>
-                        setActiveId(activeId() === match.id ? '' : match.id)
+                        selectMatch(activeId() === match.id ? '' : match.id)
                       }
                       class={cx(styles().matchRow(match === activeMatch()))}
                     >
@@ -687,7 +834,15 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           ) : null}
         </div>
-        {activeMatch() && activeMatch()?.status ? (
+        {activeModule() ? (
+          <ModuleDetails
+            moduleId={activeModule()!}
+            router={router}
+            routerState={routerState}
+            open={modules.open}
+            selectMatch={selectMatch}
+          />
+        ) : activeMatch() && activeMatch()?.status ? (
           <div class={styles().thirdContainer}>
             <div class={styles().detailsHeader}>Match Details</div>
             <div>
@@ -711,6 +866,33 @@ export const BaseTanStackRouterDevtoolsPanel =
                     <code>{activeMatch()?.id}</code>
                   </div>
                 </div>
+                <Show when={activeMatchModuleRoute()}>
+                  {(route) => (
+                    <>
+                      <div class={styles().matchDetailsInfoLabel}>
+                        <div>Module:</div>
+                        <div class={styles().matchDetailsInfo}>
+                          <ModuleBadge
+                            moduleId={getRouteModuleId(route().id)!}
+                            open={modules.open}
+                          />
+                        </div>
+                      </div>
+                      <div class={styles().matchDetailsInfoLabel}>
+                        <div>Local path:</div>
+                        <div class={styles().matchDetailsInfo}>
+                          <code>{getModuleLocalPath(router(), route())}</code>
+                        </div>
+                      </div>
+                      <div class={styles().matchDetailsInfoLabel}>
+                        <div>Path:</div>
+                        <div class={styles().matchDetailsInfo}>
+                          <code>{route().fullPath}</code>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Show>
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
@@ -788,6 +970,81 @@ export const BaseTanStackRouterDevtoolsPanel =
       </div>
     )
   }
+
+function ModuleDetails(props: {
+  moduleId: string
+  router: Accessor<AnyRouter>
+  routerState: Accessor<any>
+  open: (moduleId: string) => void
+  selectMatch: (id: string) => void
+}) {
+  const styles = useStyles()
+  const root = () => getModuleRoot(props.router(), props.moduleId)!
+  const parentModuleId = () => getParentModuleId(props.router(), props.moduleId)
+  const routes = () => getModuleRoutes(props.router(), props.moduleId)
+  const matches = () =>
+    (props.routerState().matches as Array<AnyRouteMatch>).filter(
+      (match) => getRouteModuleId(match.routeId) === props.moduleId,
+    )
+  return (
+    <div
+      class={styles().thirdContainer}
+      role="region"
+      aria-label="Module details"
+    >
+      <div class={styles().detailsHeader}>Module Details</div>
+      <div class={styles().matchDetails}>
+        <div class={styles().matchDetailsInfoLabel}>
+          <div>Module:</div>
+          <div class={styles().matchDetailsInfo}>
+            <code>{props.moduleId}</code>
+          </div>
+        </div>
+        <div class={styles().matchDetailsInfoLabel}>
+          <div>Mount path:</div>
+          <div class={styles().matchDetailsInfo}>
+            <code>{root().fullPath}</code>
+          </div>
+        </div>
+        <div class={styles().matchDetailsInfoLabel}>
+          <div>Parent module:</div>
+          <div class={styles().matchDetailsInfo}>
+            <Show when={parentModuleId()} fallback="Application">
+              {(id) => <ModuleBadge moduleId={id()} open={props.open} />}
+            </Show>
+          </div>
+        </div>
+      </div>
+      <div class={styles().detailsHeader}>Routes (local / final path)</div>
+      <For each={routes()}>
+        {(route) => (
+          <div class={styles().moduleRouteRow} title={route.id}>
+            <code>{getModuleLocalPath(props.router(), route)}</code>
+            <code>{route.fullPath}</code>
+          </div>
+        )}
+      </For>
+      <div class={styles().detailsHeader}>Active Matches</div>
+      <Show
+        when={matches().length}
+        fallback={<div class={styles().moduleRouteRow}>None</div>}
+      >
+        <For each={matches()}>
+          {(match) => (
+            <div
+              role="button"
+              aria-label={`Open match details for ${match.id}`}
+              class={styles().moduleRouteRow}
+              onClick={() => props.selectMatch(match.id)}
+            >
+              <code>{match.pathname}</code>
+            </div>
+          )}
+        </For>
+      </Show>
+    </div>
+  )
+}
 
 function CopyButton({ getValue }: { getValue: () => string }) {
   const [copied, setCopied] = createSignal(false)

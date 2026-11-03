@@ -8,6 +8,7 @@ import {
   createNonReactiveReadonlyStore,
   trimPathRight,
 } from '@tanstack/router-core'
+import { mountRouteModule } from '@tanstack/router-core/_internal/route-module'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
 import { createPortal } from 'react-dom'
@@ -35,7 +36,7 @@ const getHandleRouteUpdate = () => {
   return new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
     routeId: string,
     newRoute: AnyRoute,
-  ) => void
+  ) => boolean
 }
 
 function asAnyRoute<TRoute>(route: TRoute): TRoute & AnyRoute {
@@ -133,7 +134,7 @@ function runHandleRouteUpdate<TRoute>(
 ) {
   const restoreWindow = withWindowRouter(router)
   try {
-    getHandleRouteUpdate()(routeId, asAnyRoute(newRoute))
+    return getHandleRouteUpdate()(routeId, asAnyRoute(newRoute))
   } finally {
     restoreWindow()
   }
@@ -648,5 +649,76 @@ describe('handleRouteUpdate', () => {
     expect(document.head.querySelector('title')).toBeNull()
     expect(document.head.querySelector('script[src="/hot-head.js"]')).toBeNull()
     expect(document.head.querySelector('script[src="/hot-body.js"]')).toBeNull()
+  })
+
+  it('updates every installation of a route module installed several times', () => {
+    const rootRoute = new BaseRootRoute({})
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/orgs/$orgId',
+    })
+    const userRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/users/$userId',
+    })
+    const settingsRoot = asAnyRoute(
+      new BaseRoute({ _module: '@acme/settings' } as any),
+    )
+    const profileRoute = asAnyRoute(
+      new BaseRoute({
+        getParentRoute: () => settingsRoot,
+        path: '/profile',
+        loader: () => 'old',
+      }),
+    )
+    settingsRoot.addChildren([profileRoute])
+    const install = (parent: AnyRoute, as: string) =>
+      mountRouteModule(settingsRoot, {
+        parent: () => parent,
+        at: '/settings',
+        as,
+      } as any)
+    const router = createTestRouter(
+      rootRoute.addChildren([
+        orgRoute.addChildren([install(asAnyRoute(orgRoute), 'orgSettings')]),
+        userRoute.addChildren([install(asAnyRoute(userRoute), 'userSettings')]),
+      ]),
+    )
+    const copies = [
+      '@acme/settings#orgSettings:/profile',
+      '@acme/settings#userSettings:/profile',
+    ].map((id) => router.routesById[id] as AnyRoute)
+
+    const loader = () => 'new'
+    const hotProfileRoute = new BaseRoute({ loader } as any)
+    expect(
+      runHandleRouteUpdate(router, '@acme/settings:/profile', hotProfileRoute),
+    ).toBe(true)
+
+    for (const copy of copies) {
+      expect(copy.options.loader).toBe(loader)
+      expect(router.routesById[copy.id]).toBe(copy)
+    }
+    // The hot export is the new template, with the module-local id.
+    expect(hotProfileRoute.id).toBe('@acme/settings:/profile')
+    expect(hotProfileRoute.fullPath).toBe('/profile')
+    expect(
+      runHandleRouteUpdate(router, '@acme/settings:/profile', hotProfileRoute),
+    ).toBe(false)
+
+    const component = () => null
+    runHandleRouteUpdate(
+      router,
+      '@acme/settings:',
+      new BaseRoute({ _module: '@acme/settings', component } as any),
+    )
+    expect(
+      ['orgSettings', 'userSettings'].map(
+        (as) => router.routesById[`@acme/settings#${as}:`]?.options.component,
+      ),
+    ).toEqual([component, component])
+    expect(Object.keys(router.routesById)).toContain(
+      '@acme/settings#userSettings:/profile',
+    )
   })
 })

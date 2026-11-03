@@ -27,6 +27,7 @@ Object.assign(plugin.configs, {
     rules: {
       '@tanstack/router/create-route-property-order': 'warn',
       '@tanstack/router/route-param-names': 'error',
+      '@tanstack/router/route-module-imports': 'error',
     },
   },
   'flat/recommended': [
@@ -37,6 +38,7 @@ Object.assign(plugin.configs, {
       rules: {
         '@tanstack/router/create-route-property-order': 'warn',
         '@tanstack/router/route-param-names': 'error',
+        '@tanstack/router/route-module-imports': 'error',
       },
     },
   ],

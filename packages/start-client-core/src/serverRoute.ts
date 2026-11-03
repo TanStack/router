@@ -12,7 +12,7 @@ import type {
   AssignAllServerRequestContext,
 } from './createMiddleware'
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   interface FilebaseRouteOptionsInterface<
     TRegister,
     TParentRoute extends AnyRoute = AnyRoute,

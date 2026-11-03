@@ -10,7 +10,9 @@ import type {
 } from './structuralSharing'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RouterState,
 } from '@tanstack/router-core'
 
@@ -30,6 +32,19 @@ export type UseLocationResult<
 > = unknown extends TSelected
   ? RouterState<TRouter['routeTree']>['location']
   : TSelected
+
+/**
+ * The signature of `useLocation`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useLocation` of this type.
+ */
+export type UseLocationFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseLocationResult<TRouter, TSelected>
 
 /**
  * Read the current location from the router state with optional selection.

@@ -39,6 +39,7 @@ import {
 } from './path'
 import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
+import { resolveRouteId, scopeLocationOptions } from './route-module-hooks'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -106,7 +107,6 @@ import type {
 } from './routeInfo'
 import type {
   AnyRouteMatch,
-  MakeRouteMatch,
   MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
@@ -127,6 +127,7 @@ import type {
   InitialHydrationScriptTags,
 } from './ssr/hydrationScripts'
 import type { GetStoreConfig, RouterStores } from './stores'
+import type { RouteModuleScope, RouteScopeMarker } from './route-module'
 
 function isExternalUrl(url: URL, origin: string) {
   return (
@@ -574,13 +575,23 @@ export type LocationRewriteFunction = ({
 
 export interface RouterState<
   in out TRouteTree extends AnyRoute = AnyRoute,
-  in out TRouteMatch = MakeRouteMatchUnion,
+  in out TRouteMatch = TRouteTree extends RouteScopeMarker
+    ? MakeRouteMatchUnion<RouterCore<TRouteTree, 'never', false>>
+    : MakeRouteMatchUnion,
 > {
   status: 'pending' | 'idle'
   isLoading: boolean
   matches: Array<TRouteMatch>
-  location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
+  location: ParsedLocation<
+    TRouteTree extends RouteScopeMarker
+      ? Record<string, unknown>
+      : FullSearchSchema<TRouteTree>
+  >
+  resolvedLocation?: ParsedLocation<
+    TRouteTree extends RouteScopeMarker
+      ? Record<string, unknown>
+      : FullSearchSchema<TRouteTree>
+  >
 }
 
 export interface BuildNextOptions {
@@ -600,6 +611,9 @@ export interface BuildNextOptions {
   from?: string
   href?: string
   _fromLocation?: ParsedLocation
+  _module?: RouteModuleScope
+  _fromRoute?: string
+  _nearestRoute?: string
   unsafeRelative?: 'path'
   _isNavigate?: boolean
 }
@@ -1366,7 +1380,10 @@ export class RouterCore<
       if (this.latestLocation) {
         const config = this.getStoreConfig(this)
         this.batch = config.batch
-        this.stores = createRouterStores(this.latestLocation, config)
+        this.stores = createRouterStores<TRouteTree>(
+          this.latestLocation,
+          config,
+        )
 
         if (!(isServer ?? this.isServer)) {
           setupScrollRestoration(this)
@@ -1757,6 +1774,18 @@ export class RouterCore<
           preload: false,
           staticData: route.options.staticData || {},
           fullPath: route.fullPath,
+        }
+        // The resolver is installed only by route-module composition, so an
+        // application without modules can eliminate this identity work.
+        if (resolveRouteId && route.id[0] !== '/') {
+          const separator = route.id.indexOf(':')
+          if (separator > 0) {
+            const installation = route.id.indexOf('#')
+            match.localRouteId =
+              installation > 0 && installation < separator
+                ? route.id.slice(0, installation) + route.id.slice(separator)
+                : route.id
+          }
         }
       }
 
@@ -2179,6 +2208,16 @@ export class RouterCore<
       }
     }
 
+    // Route-module APIs pass module-local destinations (`_fromRoute` always
+    // comes with `_module`); translate them once so the destination, its mask
+    // and route masks all see final paths. Route-module code installs the
+    // translation before it creates such options. The caller's options stay
+    // the cache key.
+    let cacheKey: typeof opts | undefined
+    if (scopeLocationOptions && opts._module !== undefined) {
+      cacheKey = opts
+      opts = scopeLocationOptions(this, opts)
+    }
     const next = build(opts)
 
     if (opts.mask) {
@@ -2211,7 +2250,7 @@ export class RouterCore<
     // `usedCurrent`. Route masks belong to the route tree and options, whose
     // updates replace the cache.
     if (!(isServer ?? this.isServer) && !usedCurrent && opts._fromLocation) {
-      this.staticLocations!.set(opts, next)
+      this.staticLocations!.set(cacheKey ?? opts, next)
     }
 
     return next
@@ -2521,7 +2560,7 @@ export class RouterCore<
         abort.push(controller)
       }
     }
-    const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
+    const invalidate = (d: AnyRouteMatch) => {
       if (invalidIds.has(d.id)) {
         const route = this.routesById[d.routeId] as AnyRoute
         const next = {
