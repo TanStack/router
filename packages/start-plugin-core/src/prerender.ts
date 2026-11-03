@@ -71,21 +71,6 @@ export async function prerender({
     await handler.close?.()
   }
 
-  function extractLinks(html: string): Array<string> {
-    const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>/g
-    const links: Array<string> = []
-    let match: RegExpExecArray | null
-
-    while ((match = linkRegex.exec(html)) !== null) {
-      const href = match[1]
-      if (href && (href.startsWith('/') || href.startsWith('./'))) {
-        links.push(href)
-      }
-    }
-
-    return links
-  }
-
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const prerendered = new Set<string>()
@@ -289,6 +274,33 @@ export async function prerender({
   }
 }
 
+/**
+ * The internal links a prerendered page points at, as crawl targets. A
+ * fragment names a position inside a document, never another document —
+ * `/docs#install` is `/docs` — so it is dropped: crawled as itself it would
+ * be fetched and written a second time and listed in the sitemap as a
+ * distinct page.
+ */
+export function extractLinks(html: string): Array<string> {
+  const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>/g
+  const links: Array<string> = []
+  let match: RegExpExecArray | null
+
+  while ((match = linkRegex.exec(html)) !== null) {
+    const href = match[1]
+    if (href && (href.startsWith('/') || href.startsWith('./'))) {
+      links.push(withoutFragment(href))
+    }
+  }
+
+  return links
+}
+
+function withoutFragment(href: string): string {
+  const hash = href.indexOf('#')
+  return hash === -1 ? href : href.slice(0, hash)
+}
+
 function isRedirectResponse(res: Response) {
   return (
     [301, 302, 303, 307, 308].includes(res.status) &&
@@ -336,7 +348,7 @@ export function validateAndNormalizePrerenderPages(
   pages: Array<Page>,
   routerBaseUrl: URL,
 ): Array<Page> {
-  return pages.map((page) => {
+  const normalized = pages.map((page) => {
     let url: URL
     try {
       url = new URL(page.path, routerBaseUrl)
@@ -356,7 +368,9 @@ export function validateAndNormalizePrerenderPages(
     }
 
     const decodedPathname = decodeURIComponent(url.pathname)
-    const normalizedPath = decodedPathname + url.search + url.hash
+    // No fragment: it never reaches the server, so `/docs#install` is `/docs`
+    // (see extractLinks).
+    const normalizedPath = decodedPathname + url.search
     const normalizedUrl = resolveInternalUrl(
       normalizedPath,
       routerBaseUrl,
@@ -370,5 +384,14 @@ export function validateAndNormalizePrerenderPages(
       ...page,
       path: normalizedPath,
     }
+  })
+  // Two declarations that normalize to one path (`/` and `/#mission`) are
+  // one page; the first keeps its options. The crawl queue would only skip
+  // the second fetch, while the sitemap lists every entry.
+  const seen = new Set<string>()
+  return normalized.filter((page) => {
+    if (seen.has(page.path)) return false
+    seen.add(page.path)
+    return true
   })
 }
