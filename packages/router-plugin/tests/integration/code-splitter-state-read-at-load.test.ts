@@ -6,7 +6,13 @@
  * value is what the same code gives unsplit. Real builds, output executed.
  */
 import { describe, expect, it } from 'vitest'
-import { build, head, rootRoute, ssrRenderEntry } from '../build-harness'
+import {
+  build,
+  buildWithRsbuild,
+  head,
+  rootRoute,
+  ssrRenderEntry,
+} from '../build-harness'
 
 const state = `let prefix = 'a'\nexport function setPrefix(p: string) { prefix = p }\n`
 
@@ -78,12 +84,8 @@ const shapes: Record<
 
 const rows = Object.entries(shapes)
 
-async function run(bundler: 'vite' | 'rspack', split: boolean) {
-  const app = await build({
-    bundler,
-    env: 'ssr',
-    minify: false,
-    prefix: '.state-read-at-load-',
+async function run(bundler: 'vite' | 'rspack' | 'rsbuild', split: boolean) {
+  const options = {
     pluginOptions: { autoCodeSplitting: split },
     files: {
       'routes/__root.tsx': rootRoute,
@@ -101,7 +103,18 @@ export const routes = [${rows.map((_, i) => `R${i}`).join(', ')}]
 export const setters = [${rows.map((_, i) => `S${i}`).join(', ')}]
 `,
     },
-  })
+  }
+  // Rsbuild: a client build (ES modules), run in Node as the others
+  const app =
+    bundler === 'rsbuild'
+      ? await buildWithRsbuild({ ...options, registerCleanup: () => {} })
+      : await build({
+          bundler,
+          env: 'ssr',
+          minify: false,
+          prefix: '.state-read-at-load-',
+          ...options,
+        })
   try {
     const { result } = await app.run(`
       const out = []
@@ -122,7 +135,7 @@ export const setters = [${rows.map((_, i) => `S${i}`).join(', ')}]
   }
 }
 
-describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
+describe.each(['vite', 'rspack', 'rsbuild'] as const)('%s', (bundler) => {
   const results: Record<string, ReturnType<typeof run>> = {}
   const observed = (split: boolean) =>
     (results[String(split)] ??= run(bundler, split))

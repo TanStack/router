@@ -434,6 +434,24 @@ ${ui.page('upper')}`,
     shows: (v) => `shows ${v}!`,
     loaderRuns: 1,
   },
+  // kept because its value reads, in a callback run at load, state the
+  // route module writes later (beforeLoad): the source's value (`a`), and
+  // the chunk reading it is registered as a reader of the route module
+  {
+    name: 'kept for state read in a callback at load',
+    files: (ui, v) => ({
+      [FILE]: `${ui.imports()}let prefix = 'a'
+const labels = ['${v}'].map((k) => prefix + k)
+export const Route = createFileRoute('/')({
+  beforeLoad: () => { prefix = 'b' },
+  loader: () => { ${loaderCount}; return 1 },
+  component: Page,
+})
+${ui.page('labels[0]')}`,
+    }),
+    shows: (v) => `shows a${v}`,
+    loaderRuns: 1,
+  },
   // a memoised child reads it: nothing but a refresh re-renders it
   {
     name: 'a memoised child reads it',
