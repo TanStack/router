@@ -12,7 +12,12 @@ import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, writesMember } from './units'
+import {
+  buildItems,
+  buildUnits,
+  callsWhenEvaluated,
+  writesMember,
+} from './units'
 import { MutationModel } from './mutation'
 import { seedNoSideEffectDeclarations, statementHasEffects } from './purity'
 import { ownEntry } from './strings'
@@ -125,6 +130,7 @@ export type RefContext =
   | 'jsxClose'
   | 'jsxTag'
   | 'assignTarget'
+  /** The target of `n++`, `n += 1`, `n ??= x`: written, and read first. */
   | 'updateTarget'
   /** The callee of `new`: called at the reference, and its identity observed (a constructor). */
   | 'newCallee'
@@ -1475,58 +1481,118 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
  * Which references run when the module loads: the eager ones, and every
  * reference inside a module-level function or class that the load may run.
  * The load runs what an eager reference calls, and a unit whose evaluation
- * calls anything may run whatever it reads: its callee can be an alias, a
- * method of an object it reads (`o.m()`, `read.call()`), a function it returns,
- * or take the function as an argument (`apply(read)`). What such a body
- * reads may run too, transitively. A static module that evaluates
+ * calls anything (effectful or not) may run whatever it reads: its callee
+ * can be an alias, a method of an object it reads (`o.m()`, `read.call()`),
+ * a function it returns, or take the function as an argument (`apply(read)`,
+ * `['x'].map((k) => n + k)`: `callsWhenEvaluated`). A function nested in an
+ * object or array argument (`defineComponent({ setup() {} })`) runs only
+ * when called. What such a body reads may run too, transitively. A static
+ * module that evaluates
  * `const config = build()` runs `build`'s body before the route module's own
  * body, whatever `build` reads; the position of a read says nothing about
  * when it happens once a call is involved. Holding a function runs nothing
- * (`const config = { read }`). `live`: a reference in code the output keeps.
+ * (`const config = { read }`), nor does writing one of its properties.
+ * `live`: a reference in code the output evaluates where it is written
+ * (kept, and not relocated by a claim).
  */
 export function runsAtLoad(
   t1: Pick<Tier1, 'refs' | 'units' | 'regions' | 'declaringUnits' | 'ownerOf'>,
   live: (ref: ClassifiedRef) => boolean = () => true,
 ): (ref: ClassifiedRef) => boolean {
   const marked = new Set<UnitId>()
-  const work: Array<ClassifiedRef> = []
-  const mark = (unit: Unit) => {
-    marked.add(unit.id)
-    for (const inner of t1.refs.refsIn(unit.range)) {
-      if (live(inner)) {
-        work.push(inner)
-      }
-    }
-  }
+  const seeds: Array<ClassifiedRef> = []
+  /** References inside a function a calling unit passes on: they run at load. */
+  const loadCallbackRefs = new Set<ClassifiedRef>()
   for (const r of t1.refs.all) {
     if (r.eager && callsValue(r) && live(r)) {
-      work.push(r)
+      seeds.push(r)
     }
   }
+  // a unit whose evaluation calls something, effectful or not: what it
+  // reads may be called, and a function it passes to a call may run
   for (const unit of t1.units) {
-    if (unit.callsAtLoad && !unit.effectful) {
-      mark(unit)
+    // an effectful unit's purity check stopped before the calls after its
+    // first impure part
+    if (
+      !unit.callsAtLoad &&
+      !(unit.effectful && EVALUATED_KINDS.has(unit.kind))
+    ) {
+      continue
     }
-  }
-  while (work.length > 0) {
-    const r = work.pop()!
-    for (const u of t1.declaringUnits.get(r.sym) ?? []) {
-      const unit = t1.units[u]!
-      if (unit.kind === 'declaration' && !marked.has(u)) {
-        mark(unit)
+    const { calls, callbacks } = callsWhenEvaluated(unit.node)
+    if (!calls) {
+      continue
+    }
+    for (const inner of t1.refs.refsIn(unit.range)) {
+      if (inner.eager && mayRun(inner, live)) {
+        seeds.push(inner)
+      }
+    }
+    for (const range of callbacks) {
+      for (const inner of t1.refs.refsIn(range)) {
+        if (!inner.eager && mayRun(inner, live)) {
+          seeds.push(inner)
+          loadCallbackRefs.add(inner)
+        }
       }
     }
   }
-  if (marked.size === 0) {
+  // (a calling unit's own references count through `loadCallbackRefs`: a
+  // function it holds, or nests in an argument, runs only when called)
+  unitsRunBy(t1, seeds, live, marked)
+  if (marked.size === 0 && loadCallbackRefs.size === 0) {
     return (ref) => ref.eager
   }
   return (ref) => {
-    if (ref.eager) {
+    if (ref.eager || loadCallbackRefs.has(ref)) {
       return true
     }
     const u = t1.regions.unitOf(t1.ownerOf(ref))
     return u !== null && marked.has(u)
   }
+}
+
+/** Units whose text the module evaluates (imports, re-exports and types aside). */
+const EVALUATED_KINDS = new Set(['declaration', 'effect', 'export-default'])
+
+/**
+ * Whether what a live reference reads may run where it is evaluated: not
+ * the root of a member write (`Page.displayName = f()` writes `Page`, it does
+ * not call it).
+ */
+const mayRun = (
+  ref: ClassifiedRef,
+  live: (ref: ClassifiedRef) => boolean,
+): boolean => !ref.memberWrite && live(ref)
+
+/**
+ * The module-level declarations whose bodies may run where `refs` run (what
+ * they read, transitively), added to `marked`: a reference may call what it
+ * reads, or hand it to something that does.
+ */
+export function unitsRunBy(
+  t1: Pick<Tier1, 'refs' | 'units' | 'declaringUnits'>,
+  refs: Iterable<ClassifiedRef>,
+  live: (ref: ClassifiedRef) => boolean,
+  marked: Set<UnitId> = new Set(),
+): Set<UnitId> {
+  const work = [...refs]
+  while (work.length > 0) {
+    const r = work.pop()!
+    for (const u of t1.declaringUnits.get(r.sym) ?? []) {
+      const unit = t1.units[u]!
+      if (unit.kind !== 'declaration' || marked.has(u)) {
+        continue
+      }
+      marked.add(u)
+      for (const inner of t1.refs.refsIn(unit.range)) {
+        if (mayRun(inner, live)) {
+          work.push(inner)
+        }
+      }
+    }
+  }
+  return marked
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
@@ -1641,8 +1707,12 @@ function classify(
     case 'TaggedTemplateExpression':
       return { kind: 'value', ctx: parent.tag === node ? 'callee' : 'plain' }
     case 'AssignmentExpression':
+      // `n += 1`, `n ||= x` read `n` too, as `n++` does
       return parent.left === node
-        ? { kind: 'write', ctx: 'assignTarget' }
+        ? {
+            kind: 'write',
+            ctx: parent.operator === '=' ? 'assignTarget' : 'updateTarget',
+          }
         : { kind: 'value', ctx: 'plain' }
     case 'UpdateExpression':
       return { kind: 'write', ctx: 'updateTarget' }

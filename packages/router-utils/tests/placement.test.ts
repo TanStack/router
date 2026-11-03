@@ -3968,12 +3968,56 @@ describe('one mutation model: eager reads of state something writes', () => {
       true,
     ],
     ['negated and called', 'const initial = !function () { return n }()', true],
+    // a function passed to a call may run when the call does (the module
+    // does not know what `wrap` does with it): its read counts as eager
     [
       'an argument of a call whose result is called',
       'const initial = wrap(() => n)()',
+      true,
+    ],
+    ['an argument of a call', 'const initial = wrap(() => n)', true],
+    ['an argument of a method', "const initial = ['x'].map(() => n)", true],
+    [
+      'an argument of an awaited call',
+      'const initial = await wrap(() => n)',
+      true,
+    ],
+    [
+      'called by a function the declaration calls',
+      'function read() { return n }\nconst initial = [read()]',
+      true,
+    ],
+    [
+      'passed apart to a call',
+      'const read = () => n\nconst initial = wrap(read)',
+      true,
+    ],
+    ['held, not called', 'const initial = { read: () => n }', false],
+    [
+      'a method of an object passed to a call',
+      'const initial = wrap({ setup() { return n } })',
       false,
     ],
-    ['an argument of a call', 'const initial = wrap(() => n)', false],
+    [
+      'augmented by a statement that calls something',
+      'function read() { return n }\nread.label = wrap(() => 1)\nconst initial = read',
+      false,
+    ],
+    [
+      'called at load and updating the state',
+      'function bump() { return ++n }\nconst initial = [bump()]',
+      true,
+    ],
+    [
+      'called by a callback and adding to the state',
+      'function bump() { return (n += 1) }\nconst initial = [1].map(() => bump())',
+      true,
+    ],
+    [
+      'after a member read',
+      "const initial = cond.toString() ? ['x'].map(() => n) : []",
+      true,
+    ],
   ])(
     'classifies a function that is %s as %s',
     async (_, declaration, eager) => {
@@ -3995,10 +4039,75 @@ describe('one mutation model: eager reads of state something writes', () => {
       })
       // an eager read of a binding a function writes keeps the declaration
       // in the route module; a lazy one lets it move with the component
-      expect(r.env.includes(declaration)).toBe(eager)
-      expect((r.chunks.component ?? '').includes(declaration)).toBe(!eager)
+      const initial = declaration.slice(declaration.lastIndexOf('\n') + 1)
+      expect(r.env.includes(initial)).toBe(eager)
+      expect((r.chunks.component ?? '').includes(initial)).toBe(!eager)
     },
   )
+
+  it.each([
+    ['an if statement', "if (cond) { ['x'].forEach(() => { seen = n }) }"],
+    ['an assignment of a call', 'seen = wrap(() => n)()'],
+  ])(
+    'counts a callback passed in %s at the top level as run at load',
+    async (_, statement) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrap } from './state'
+        const cond = true
+        let n = 0
+        let seen = 0
+        export function inc() { n++ }
+        ${statement}
+        const initial = [seen]
+        export const Route = createFileRoute('/')({
+          component: () => initial,
+        })
+      `)
+      const r = await split(code, {
+        files: {
+          '/app/state.ts': 'export const wrap = (f: () => number) => f\n',
+        },
+      })
+      expect(r.env).toContain('const initial = [seen]')
+    },
+  )
+
+  it.each([
+    [
+      'reads the state',
+      'function wrap(C) { const v = n; return () => v + C() }',
+      false,
+    ],
+    ['reads nothing written', 'function wrap(C) { return () => C() }', true],
+  ])(
+    'an option value calling a helper that %s splits accordingly',
+    async (_, helper, splits) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let n = 0
+        export function inc() { n++ }
+        ${helper}
+        function Page() { return 'x' }
+        export const Route = createFileRoute('/')({ component: wrap(Page) })
+      `)
+      const r = await split(code)
+      expect(r.env.includes('component: wrap(Page)')).toBe(!splits)
+    },
+  )
+
+  it('a component that reads state moves when the route options are built by an effectful call', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      export function inc() { n++ }
+      function Page() { return n }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('function Page()')
+    expect(r.chunks.component).toContain('function Page() { return n }')
+  })
 
   it('still moves an immediately invoked function reading a const nothing writes', async () => {
     const code = dedent(`
@@ -4556,12 +4665,31 @@ describe('a comment after a statement, before code on the same line', () => {
     expect(chunk).toContain('/* about a */')
   })
 
-  it.for(['/* @__PURE__ */', '/* about a */', '// about a'])(
-    '%s that ends the line goes with the statement, as before',
+  it.for(['/* about a */', '// about a'])(
+    '%s that ends the line goes with the statement',
     async (comment) => {
       const { env, chunk } = await outputs(moved(comment, '\nmk()'))
       expect(env.slice(0, env.indexOf('mk()'))).not.toContain(comment)
       expect(chunk).toContain(comment)
+    },
+  )
+
+  it.for([
+    ['/* @__PURE__ */', '\n'],
+    ['/* #__PURE__ */', '\r\n'],
+    ['/*! MARK */', '\n'],
+    ['/* @license MARK */', '\n'],
+    ['/* @__PURE__ */', ' // about mk\n'],
+    ['/* @__PURE__ */', ' /* about\nmk */ '],
+    ['/* @__PURE__ */', '\n/* about\nmk */\n'],
+    ['// @__PURE__', '\n'],
+    ['// #__NO_SIDE_EFFECTS__', '\n'],
+  ])(
+    '%s ending the line stays with the code on a later line (then %j)',
+    async ([comment, between]) => {
+      const { env, chunk } = await outputs(moved(comment!, `${between}mk()`))
+      expect(env).toContain(`${comment} ${between}mk()`)
+      expect(chunk).not.toContain(comment)
     },
   )
 

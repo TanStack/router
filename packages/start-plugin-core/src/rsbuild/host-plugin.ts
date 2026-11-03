@@ -98,6 +98,15 @@ interface ModuleLike {
   identifier: () => string
 }
 
+/**
+ * Whether Rspack's native `file` is a `package.json`: its edit re-resolves
+ * what it may redirect, asked once Rspack's resolver forgot the old file
+ * (at `make`). Native separators: Windows paths have backslashes.
+ */
+export function isPackageManifest(file: string): boolean {
+  return normalizePath(file).endsWith('/package.json')
+}
+
 export function createStartHostPlugin(opts: StartHostPluginOptions): {
   apply: (compiler: Rspack.Compiler) => void
 } {
@@ -248,8 +257,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       const isKnown = (file: string) => !knownFiles || knownFiles.has(file)
-      /** Re-resolves what it may redirect: asked once Rspack's resolver forgot the old file (at `make`). */
-      const isManifest = (file: string) => file.endsWith('/package.json')
       // edits and removals of files the last compilation read, invalidated before this
       // compilation starts: the modules of their stale dependents are built with them (a
       // file's facts need no resolver, and a resolution that found a removed file is stale)
@@ -261,7 +268,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         try {
           await session.invalidateFileEvents([
             ...modified
-              .filter((file) => isKnown(file) && !isManifest(file))
+              .filter((file) => isKnown(file) && !isPackageManifest(file))
               .map((file) => ({ file, kind: 'change' as const })),
             ...removed.map((file) => ({ file, kind: 'unlink' as const })),
           ])
@@ -282,10 +289,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.forgetMisses()
         await session.invalidateFileEvents(
           [...(compiler.modifiedFiles ?? [])]
-            .filter((file) => !isKnown(file) || isManifest(file))
+            .filter((file) => !isKnown(file) || isPackageManifest(file))
             .map((file) => ({
               file,
-              kind: isManifest(file) ? ('change' as const) : ('add' as const),
+              kind: isPackageManifest(file)
+                ? ('change' as const)
+                : ('add' as const),
             })),
         )
       })

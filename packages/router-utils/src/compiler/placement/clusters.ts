@@ -7,7 +7,12 @@
  * the module's write table and the one mutation predicate every later rule
  * asks (`mutatedOutside`).
  */
-import { observesIdentity, runsAtLoad } from '../analysis'
+import {
+  callsValue,
+  observesIdentity,
+  runsAtLoad,
+  unitsRunBy,
+} from '../analysis'
 import { writeKind } from '../mutation'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -101,10 +106,11 @@ export interface ClusterGraph {
   /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export: the single-writer rule decides). */
   regionWrittenSyms: Set<SymbolId>
   /**
-   * The clusters that eagerly read a module binding something outside them
-   * writes (`mutatedOutside`): their value depends on when they evaluate, so
-   * they never move to a lazy output, pure or not (`const initial = [n]`
-   * next to `function inc() { n++ }` keeps the source's `[0]`).
+   * The clusters that read, when they evaluate (`loadReads`), a module
+   * binding something outside them writes (`mutatedOutside`): their value
+   * depends on when they evaluate, so they never move to a lazy output, pure
+   * or not (`const initial = [n]`, or `['x'].map((k) => n + k)`, next to
+   * `function inc() { n++ }` keeps the source's value).
    */
   mutableReaders: Set<ClusterId>
   /** `ordered-effect`: a relocated read (a claimed option value) of state something writes after it, or at an unknown time, keeps the option in place. */
@@ -118,6 +124,18 @@ export interface ClusterGraph {
   /** Whether a reference runs when the module loads: eager, or inside a function an eager reference calls (`runsAtLoad`). */
   atLoad: (ref: ClassifiedRef) => boolean
   /**
+   * The one notion of what a cluster reads when it evaluates: the
+   * references of `c` that run at load (`atLoad`) reading a module binding,
+   * then, transitively, those of the declaration clusters they read (a
+   * function the evaluation may call, a callback it may run). Calls `visit`
+   * with each and the cluster declaring what it reads; `skip` does not walk
+   * into that cluster, `stop` ends the walk. True when a visit stopped it.
+   */
+  loadReads: (
+    c: ClusterId,
+    visit: (ref: ClassifiedRef, d: ClusterId | undefined) => LoadReadStep,
+  ) => boolean
+  /**
    * The one mutation predicate: whether a read of `sym` evaluated at
    * `readAt` by cluster `by` observes state something else writes. A
    * surviving write by another cluster counts when it runs after the read
@@ -128,6 +146,9 @@ export interface ClusterGraph {
    */
   mutatedOutside: (sym: SymbolId, readAt: number, by: ClusterId) => boolean
 }
+
+/** What `ClusterGraph.loadReads` does after a visit (nothing: walks on). */
+export type LoadReadStep = 'skip' | 'stop' | undefined
 
 class UnionFind {
   private parent: Int32Array
@@ -606,27 +627,194 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return false
   }
-  // over the eager live reads of written bindings (few), not over every
-  // reference of every cluster
+  // a claimed region's text evaluates where its owner lands, not in the
+  // unit it is written in
+  const claimed = new Set<RegionId>()
+  for (const claim of rewrites.claims.values()) {
+    claimed.add(claim.region)
+  }
+  const inClaim = (ref: ClassifiedRef) => {
+    for (
+      let r = regions.innermostAt(ref.range.start, ref.range.end);
+      r !== null;
+      r = regions.get(r).parent
+    ) {
+      if (claimed.has(r)) {
+        return true
+      }
+    }
+    return false
+  }
+  const atLoadOf = (ref: ClassifiedRef) =>
+    (atLoad ??= runsAtLoad(
+      t1,
+      (r) => isLive(r, 'env') && (claimed.size === 0 || !inClaim(r)),
+    ))(ref)
+  /** A reference that reads a module binding (`n++` too). */
+  const reads = (ref: ClassifiedRef) =>
+    (READ_KINDS.has(ref.kind) || ref.ctx === 'updateTarget') &&
+    t1.symbols.isModuleLevel(ref.sym)
+  /** A reference that reads a module binding when the module loads. */
+  const readsAtLoad = (ref: ClassifiedRef) => reads(ref) && atLoadOf(ref)
+  // the references of each cluster that read at load (built on first use)
+  let loadRefs: Map<ClusterId, Array<ClassifiedRef>> | null = null
+  const loadRefsOf = (c: ClusterId): ReadonlyArray<ClassifiedRef> => {
+    if (loadRefs === null) {
+      loadRefs = new Map()
+      for (const cl of clusters) {
+        const list: Array<ClassifiedRef> = []
+        for (const r of cl.regions) {
+          for (const ref of ownedRefs.get(r) ?? []) {
+            if (readsAtLoad(ref)) {
+              list.push(ref)
+            }
+          }
+        }
+        if (list.length > 0) {
+          loadRefs.set(cl.id, list)
+        }
+      }
+    }
+    return loadRefs.get(c) ?? []
+  }
+  const loadReads: ClusterGraph['loadReads'] = (c, visit) => {
+    const seen = new Set<ClusterId>([c])
+    const work: Array<ClusterId> = [c]
+    while (work.length > 0) {
+      for (const ref of loadRefsOf(work.pop()!)) {
+        const d = clusterOfSym.get(ref.sym)
+        const step = visit(ref, d)
+        if (step === 'stop') {
+          return true
+        }
+        if (
+          step !== 'skip' &&
+          d !== undefined &&
+          !seen.has(d) &&
+          clusters[d]!.kind === 'declaration'
+        ) {
+          seen.add(d)
+          work.push(d)
+        }
+      }
+    }
+    return false
+  }
+
+  // ---- readers of mutable state ----------------------------------------------
+  // the clusters owning a live read at load of a written binding something
+  // outside them writes, then every cluster whose load reads reach one
+  // (`loadReads`, backwards), or reach a function reading state its own
+  // cluster writes at an unknown time (`function next() { return ++n }`);
+  // a module without writes has none (most route modules), nor one whose
+  // written bindings nothing reads at load
   const mutableReaders = new Set<ClusterId>()
   const orderedEffectRegions = new Set<RegionId>()
-  for (const ref of eagerReads) {
-    const owner = regions.innermostAt(ref.range.start, ref.range.end)
-    if (owner === null) {
-      continue
+  const work: Array<ClusterId> = []
+  const selfReaders = new Set<ClusterId>()
+  const writtenLater = (sym: SymbolId) =>
+    writesOfSym.get(sym)!.some((w) => w.live && !w.eager)
+  if (writes.length > 0) {
+    for (const ref of refs.all) {
+      if (
+        !writesOfSym.has(ref.sym) ||
+        !declMember.has(ref.sym) ||
+        !isLive(ref, 'env') ||
+        !readsAtLoad(ref)
+      ) {
+        continue
+      }
+      const owner = regions.innermostAt(ref.range.start, ref.range.end)
+      if (owner === null) {
+        continue
+      }
+      const reader = clusterOfRegion.get(owner)!
+      if (clusterOfSym.get(ref.sym) === reader) {
+        if (!ref.eager && writtenLater(ref.sym)) {
+          selfReaders.add(reader)
+        }
+        continue
+      }
+      if (!mutatedOutside(ref.sym, ref.range.start, reader)) {
+        continue
+      }
+      if (!mutableReaders.has(reader)) {
+        mutableReaders.add(reader)
+        work.push(reader)
+      }
+      // a relocated read (a claimed option value) of state something writes
+      // after it, or at an unknown time, keeps the option in place
+      if (ref.eager && regions.get(owner).kind !== 'unit') {
+        orderedEffectRegions.add(owner)
+      }
     }
-    const reader = clusterOfRegion.get(owner)!
-    if (
-      clusterOfSym.get(ref.sym) === reader ||
-      !mutatedOutside(ref.sym, ref.range.start, reader)
-    ) {
-      continue
+    // a claimed option value that calls something (`withPrefix(Page)`)
+    // runs, where it lands, what that call may run: the same reads
+    for (const claim of rewrites.claims.values()) {
+      const r = claim.region
+      if (orderedEffectRegions.has(r)) {
+        continue
+      }
+      const inner = refs.refsIn(regions.get(r).range)
+      if (!inner.some((ref) => ref.eager && callsValue(ref))) {
+        continue
+      }
+      const by = clusterOfRegion.get(r)!
+      const live = (ref: ClassifiedRef) => isLive(ref, 'env')
+      const observes = (ref: ClassifiedRef) =>
+        reads(ref) &&
+        writesOfSym.has(ref.sym) &&
+        mutatedOutside(ref.sym, ref.range.start, by)
+      if (inner.some(observes)) {
+        orderedEffectRegions.add(r)
+        continue
+      }
+      for (const u of unitsRunBy(t1, inner, live)) {
+        if (
+          refs.refsIn(units[u]!.range).some((ref) => live(ref) && observes(ref))
+        ) {
+          orderedEffectRegions.add(r)
+          break
+        }
+      }
     }
-    mutableReaders.add(reader)
-    // a relocated read (a claimed option value) of state something writes
-    // after it, or at an unknown time, keeps the option in place
-    if (regions.get(owner).kind !== 'unit') {
-      orderedEffectRegions.add(owner)
+  }
+  if (work.length > 0 || selfReaders.size > 0) {
+    // who reads each declaration cluster at load
+    const readersOf = new Map<ClusterId, Array<ClusterId>>()
+    for (const cl of clusters) {
+      for (const ref of loadRefsOf(cl.id)) {
+        const d = clusterOfSym.get(ref.sym)
+        if (
+          d === undefined ||
+          d === cl.id ||
+          clusters[d]!.kind !== 'declaration'
+        ) {
+          continue
+        }
+        let list = readersOf.get(d)
+        if (!list) {
+          list = []
+          readersOf.set(d, list)
+        }
+        list.push(cl.id)
+      }
+    }
+    for (const c of selfReaders) {
+      for (const reader of readersOf.get(c) ?? []) {
+        if (!mutableReaders.has(reader)) {
+          mutableReaders.add(reader)
+          work.push(reader)
+        }
+      }
+    }
+    while (work.length > 0) {
+      for (const reader of readersOf.get(work.pop()!) ?? []) {
+        if (!mutableReaders.has(reader)) {
+          mutableReaders.add(reader)
+          work.push(reader)
+        }
+      }
     }
   }
   const fallbacks: Array<Fallback> = []
@@ -650,7 +838,8 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     isLive,
     unitSurvives,
     // built on first use: most modules never ask (candidates, static outputs)
-    atLoad: (ref) => (atLoad ??= runsAtLoad(t1, (r) => isLive(r, 'env')))(ref),
+    atLoad: atLoadOf,
+    loadReads,
     mutatedOutside,
   }
 }

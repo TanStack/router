@@ -6,7 +6,7 @@
  * inside it; every unit is a region and planners register sub-regions (option
  * values, Hydrate children, nested chains).
  */
-import { BindingFlags } from 'yuku'
+import { BindingFlags, walk } from 'yuku'
 import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
@@ -514,7 +514,8 @@ export function buildUnits(
       id,
       item: item.index,
       region,
-      // what the purity check of this unit, just done, visited
+      // what the purity check of this unit, just done, visited (it stops at
+      // the first impure part: `callsWhenEvaluated` looks into the rest)
       callsAtLoad: purity.calls > callsSeen,
     }
     callsSeen = purity.calls
@@ -1087,4 +1088,54 @@ export function statementRecipe(
     default:
       return 'keep'
   }
+}
+
+/**
+ * Whether evaluating `node` calls something (a call, a `new`, a tagged
+ * template), and the functions those calls receive directly as arguments or
+ * as callee (they may run then too, with what they call in turn). Other
+ * function bodies run only when called. A walk of the unit's node (phase B):
+ * asked only by `runsAtLoad`, which few modules need.
+ */
+export function callsWhenEvaluated(node: Node): {
+  calls: boolean
+  callbacks: Array<Range>
+} {
+  let calls = false
+  const callbacks: Array<Range> = []
+  const runs = new Set<Node>()
+  const passed = (n: Node) => {
+    const f = unwrapExpression(n)
+    if (
+      f.type === 'FunctionExpression' ||
+      f.type === 'ArrowFunctionExpression'
+    ) {
+      runs.add(f)
+      callbacks.push({ start: f.start, end: f.end })
+    }
+  }
+  walk(node, {
+    enter: (n, wctx) => {
+      switch (n.type) {
+        case 'CallExpression':
+        case 'NewExpression':
+          calls = true
+          passed(n.callee)
+          for (const a of n.arguments) {
+            passed(a.type === 'SpreadElement' ? a.argument : a)
+          }
+          return
+        case 'TaggedTemplateExpression':
+          calls = true
+          return
+        case 'FunctionExpression':
+        case 'ArrowFunctionExpression':
+        case 'FunctionDeclaration':
+          if (n !== node && !runs.has(n)) {
+            wctx.skip()
+          }
+      }
+    },
+  })
+  return { calls, callbacks }
 }
