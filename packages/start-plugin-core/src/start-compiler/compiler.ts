@@ -629,11 +629,12 @@ export class StartCompiler {
   /**
    * Generates a unique function ID for a server function.
    * In dev mode, uses a base64-encoded JSON with file path and export name.
-   * In build mode, uses SHA256 hash or custom generator.
+   * In build mode, uses a 22-character SHA256 hash or custom generator.
    */
   private generateFunctionId(opts: {
     filename: string
     functionName: string
+    stableKey: string
     extractedFilename: string
   }): string {
     if (this.mode === 'dev') {
@@ -660,7 +661,7 @@ export class StartCompiler {
     }
 
     // Production build: use custom generator or hash
-    const entryId = `${opts.filename}--${opts.functionName}`
+    const entryId = `${opts.filename}#${opts.stableKey}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
       const knownFn = Object.values(this.options.getKnownServerFns()).find(
@@ -676,11 +677,15 @@ export class StartCompiler {
       if (this.options.generateFunctionId) {
         functionId ??= this.options.generateFunctionId({
           filename: opts.filename,
-          functionName: opts.functionName,
+          functionName: opts.stableKey,
         })
       }
       if (!functionId) {
-        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+        functionId = crypto
+          .createHash('sha256')
+          .update(entryId)
+          .digest('base64url')
+          .slice(0, 22)
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {

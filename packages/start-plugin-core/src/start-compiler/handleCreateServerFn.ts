@@ -209,6 +209,7 @@ export function handleCreateServerFn(
 
   // Track function names to ensure uniqueness within this file
   const functionNameSet = new Set<string>()
+  const stableKeyCount = new Map<string, number>()
 
   const exportNames = new Set<string>()
   const serverFnsById: Record<string, ServerFn> = {}
@@ -251,10 +252,20 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
+    // The stable key names the server fn independently of the compiled
+    // handler name: the variable name, with `#n` for repeats in the file
+    const keyCount = stableKeyCount.get(existingVariableName) ?? 0
+    stableKeyCount.set(existingVariableName, keyCount + 1)
+    const stableKey =
+      keyCount === 0
+        ? existingVariableName
+        : `${existingVariableName}#${keyCount}`
+
     // Generate function ID using pre-computed relative filename
     const functionId = context.generateFunctionId({
       filename: relativeFilename,
       functionName,
+      stableKey,
       extractedFilename,
     })
 

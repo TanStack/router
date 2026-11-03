@@ -89,16 +89,20 @@ export interface ServerFn {
  */
 export type GenerateFunctionIdFn = (opts: {
   filename: string
+  /** Name of the extracted handler export. */
   functionName: string
+  /** The server fn's variable name, with `#n` for repeats in the same file. */
+  stableKey: string
   extractedFilename: string
 }) => string
 
 /**
  * Optional version that allows returning undefined to use default ID generation.
  */
-export type GenerateFunctionIdFnOptional = (
-  opts: Omit<Parameters<GenerateFunctionIdFn>[0], 'extractedFilename'>,
-) => string | undefined
+export type GenerateFunctionIdFnOptional = (opts: {
+  filename: string
+  functionName: string
+}) => string | undefined
 
 /**
  * Function type for generating replacement code for server functions.

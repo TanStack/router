@@ -13,14 +13,10 @@ const adminMiddleware = createMiddleware({ type: 'function' }).server(
 export const createAuthServerFn = createServerFn().middleware([authMiddleware])
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
 export const myAuthedFn = createAuthServerFn().handler(
-  createClientRpc(
-    '3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3',
-  ),
+  createClientRpc('8wI54n7XLosU5JDSs5CD3r'),
 )
 export const deleteUserFn = createAdminServerFn().handler(
-  createClientRpc(
-    '44d9483a9412daaacaa5a8aee6b02294333a0e61b5d3b17ba6bcb34fd2bdce31',
-  ),
+  createClientRpc('_zazY1Jgzd8oXXcuPROEv9'),
 )
 function createFakeFn() {
   return {

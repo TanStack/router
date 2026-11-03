@@ -13,11 +13,7 @@ const adminMiddleware = createMiddleware({ type: 'function' }).server(
 const createAuthServerFn = createServerFn().middleware([authMiddleware])
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
 const myAuthedFn_createServerFn_handler = createServerRpc(
-  {
-    id: '3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3',
-    name: 'myAuthedFn',
-    filename: 'src/test.ts',
-  },
+  { id: '8wI54n7XLosU5JDSs5CD3r', name: 'myAuthedFn', filename: 'src/test.ts' },
   (opts) => myAuthedFn.__executeServer(opts),
 )
 const myAuthedFn = createAuthServerFn().handler(
@@ -28,7 +24,7 @@ const myAuthedFn = createAuthServerFn().handler(
 )
 const deleteUserFn_createServerFn_handler = createServerRpc(
   {
-    id: '44d9483a9412daaacaa5a8aee6b02294333a0e61b5d3b17ba6bcb34fd2bdce31',
+    id: '_zazY1Jgzd8oXXcuPROEv9',
     name: 'deleteUserFn',
     filename: 'src/test.ts',
   },

@@ -4,8 +4,8 @@ import viteSolid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 
 const FUNCTIONS_WITH_CONSTANT_ID = [
-  'src/routes/submit-post-formdata.tsx/greetUser_createServerFn_handler',
-  'src/routes/formdata-redirect/index.tsx/greetUser_createServerFn_handler',
+  'src/routes/submit-post-formdata.tsx/greetUser',
+  'src/routes/formdata-redirect/index.tsx/greetUser',
 ]
 
 export default defineConfig({
