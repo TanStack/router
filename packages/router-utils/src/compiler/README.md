@@ -41,7 +41,10 @@ emits its own output. Nothing depends on transform order.
   carries the env edits inside it; an edit addressed to every output on exactly a claimed region travels with the
   region (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while
   an edit scoped to one output on exactly the region replaces the placeholder there (the env module keeps a
-  nested server-fn chain in place with its stub).
+  nested server-fn chain in place with its stub). A generated unit has a home (`auto`: placement decides; an output),
+  or `env-readers`: placement copies it into every derived output importing a binding of the env module other than
+  the ones it names, once inclusion is decided (route HMR registers the chunks reading what the route module keeps); it
+  declares nothing, owns no claim and reads only its own imports.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are

@@ -156,6 +156,31 @@ const hotRoutes = new Map<
 const hotChunks = new Map<string, Set<string>>()
 
 /**
+ * What the route HMR runtime uses of a webpack-style module's hot handle
+ * (`import.meta.webpackHot`). Not a public API.
+ */
+export interface KeptReaderHot {
+  invalidate: () => void
+  dispose: (callback: () => void) => void
+  status: () => string
+  addStatusHandler: (handler: (status: string) => void) => void
+}
+
+// Per route id, the hot handles of the evaluated modules of its file that
+// read a binding its route module keeps (`applyKeptReaderHmr`); a module
+// leaves when it is disposed. Bounded by the number of derived modules.
+const keptReaders = new Map<string, Set<KeptReaderHot>>()
+
+// Per route id, the latest evaluation of a route module that invalidated its
+// kept readers: the route is refreshed with it once the update is applied
+// (`deferUntilApplied`).
+const deferred = new Map<
+  string,
+  { route: AnyRoute; meta: RouteHmrMeta; adapter: RouteHmrAdapter }
+>()
+let statusHandled = false
+
+/**
  * Has the router read its route tree again, then forgets the route ids it
  * held before and no longer holds (a route removed or renamed). An id the
  * router never held stays: a module evaluates before the route tree module
@@ -168,6 +193,7 @@ function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
     if (!(routeId in router.routesById)) {
       hotRoutes.delete(routeId)
       hotChunks.delete(routeId)
+      keptReaders.delete(routeId)
       adapter.retire?.(routeId)
     }
   }
@@ -201,6 +227,66 @@ export function applyRouteHmr(
       return
     }
     known.routes.add(route)
+    const waiting = deferred.get(routeId)
+    if (waiting) {
+      // evaluated again within the same update (an invalidated reader's
+      // update bubbles up to it): the refresh takes the latest evaluation
+      waiting.route = route
+      waiting.meta = meta
+      return
+    }
+    const readers = keptReaders.get(routeId)
+    const hot: KeptReaderHot | undefined = readers?.values().next().value
+    // the modules reading what this module kept read its earlier
+    // evaluation; invalidated while the update applies, they leave the
+    // module cache in the same update, and the refresh re-imports them
+    if (hot && hot.status() === 'apply') {
+      for (const reader of readers!) {
+        reader.invalidate()
+      }
+      deferred.set(routeId, { route, meta, adapter })
+      if (!statusHandled) {
+        // one handler for the page's lifetime: status handlers are the
+        // runtime's, whatever module registered them
+        statusHandled = true
+        hot.addStatusHandler(onStatus)
+      }
+      return
+    }
+    refreshRoute(routeId, route, meta, adapter, known)
+  }
+}
+
+/** Refreshes the routes deferred during an update once it is applied; drops them when it failed (the page reloads). */
+function onStatus(status: string): void {
+  if (status !== 'idle' && status !== 'fail' && status !== 'abort') {
+    return
+  }
+  const entries = [...deferred]
+  deferred.clear()
+  if (status !== 'idle') {
+    return
+  }
+  for (const [routeId, { route, meta, adapter }] of entries) {
+    const known = hotRoutes.get(routeId)
+    if (known) {
+      refreshRoute(routeId, route, meta, adapter, known)
+    }
+  }
+}
+
+/**
+ * Updates the live route of `window.__TSR_ROUTER__` from one evaluation of
+ * its route module (see `applyRouteHmr`).
+ */
+function refreshRoute(
+  routeId: string,
+  route: AnyRoute,
+  meta: RouteHmrMeta,
+  adapter: RouteHmrAdapter,
+  known: { routes: WeakSet<AnyRoute>; meta: RouteHmrMeta },
+): void {
+  if (process.env.NODE_ENV !== 'production') {
     const router = window.__TSR_ROUTER__
     const current = router?.routesById?.[routeId] as HotRoute | undefined
     // Another router, or a router without this route: leave it alone.
@@ -311,6 +397,32 @@ export function applyRouteHmr(
 
     known.meta = meta
     void router._refreshRoute?.()
+  }
+}
+
+/**
+ * Records one evaluation of a module of a route file that reads a binding
+ * the route module keeps (webpack-style hosts): the route module's next
+ * evaluation invalidates it (`applyRouteHmr`). The module leaves the record
+ * when it is disposed (replaced by an update or invalidated).
+ *
+ * Not a public API: called by the framework packages' `__tsrKeptReaderHmr`.
+ */
+export function applyKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+  if (process.env.NODE_ENV !== 'production') {
+    if (isServer ?? typeof window === 'undefined') {
+      return
+    }
+    let readers = keptReaders.get(routeId)
+    if (!readers) {
+      readers = new Set()
+      keptReaders.set(routeId, readers)
+    }
+    const own = readers
+    own.add(hot)
+    hot.dispose(() => {
+      own.delete(hot)
+    })
   }
 }
 

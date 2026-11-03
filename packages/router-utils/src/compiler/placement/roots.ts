@@ -151,7 +151,8 @@ export function seedRoots(
   const deadGens = new Set<GenUnitId>()
   for (const claim of rewrites.claims.values()) {
     const g = gens[claim.owner]!
-    const o: OutputId = g.home === 'auto' ? 'env' : g.home
+    // (a unit for the env module's readers owns no claim)
+    const o = (g.home === 'auto' ? 'env' : g.home) as OutputId
     if (!graph.treeOf(o).hasClaim(claim.region)) {
       deadGens.add(claim.owner)
     }
@@ -163,7 +164,7 @@ export function seedRoots(
   // fixed-home generated units pin their cluster
   const pinned = new Map<ClusterId, OutputId>()
   for (const g of gens) {
-    if (g.home === 'auto' || deadGens.has(g.id)) {
+    if (g.home === 'auto' || typeof g.home === 'object' || deadGens.has(g.id)) {
       continue
     }
     const c = clusterOfGen.get(g.id)!
@@ -246,7 +247,11 @@ export function seedRoots(
     derivedRoots.set(id, set)
   }
   for (const g of gens) {
-    if (g.home !== 'auto' && !deadGens.has(g.id)) {
+    if (
+      g.home !== 'auto' &&
+      typeof g.home !== 'object' &&
+      !deadGens.has(g.id)
+    ) {
       let set = derivedRoots.get(g.home)
       if (!set) {
         set = new Set()

@@ -115,7 +115,18 @@ export function assignHomes(
   const created: Array<OutputDecl> = []
   const sharedByKey = new Map<string, OutputId>()
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
+  // a unit for the env module's readers is copied into each of them (inclusion)
+  const forReaders = new Set<ClusterId>()
+  for (const g of rewrites.generated) {
+    if (typeof g.home === 'object') {
+      forReaders.add(clusterOfGen.get(g.id)!)
+    }
+  }
   for (const cl of clusters) {
+    if (forReaders.has(cl.id)) {
+      home.set(cl.id, 'duplicate')
+      continue
+    }
     const needers = derivedNeeders[cl.id]!
     // a provider output copies what it reaches whatever its home: it counts
     // only when nothing else needs the cluster

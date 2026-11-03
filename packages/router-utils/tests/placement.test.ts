@@ -4584,3 +4584,105 @@ describe('a comment after a statement, before code on the same line', () => {
     expect(env).toMatch(/\/\* @__PURE__ \*\/ mk\(f\)/)
   })
 })
+
+describe('generated units for the env module readers', () => {
+  /** Adds, after the split planner, a unit for the outputs reading what the env module keeps, the route aside. */
+  const readersPlanner = (
+    body: (own: SymbolId, other: SymbolId) => Array<string | { sym: SymbolId }>,
+  ): Planner => ({
+    name: 'toy-readers',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const found = findRouteOptions(ctx)
+      if (!found) {
+        return
+      }
+      const own = ctx.names.alloc('register')
+      ctx.rewrites.addGenerated({
+        body: [{ k: 'text', parts: body(own.sym, found.unit.declares[0]!) }],
+        declares: [],
+        effectful: true,
+        anchor: { k: 'end' },
+        home: { k: 'env-readers', besides: [found.unit.declares[0]!] },
+        by: 'toy-readers',
+        imports: [
+          {
+            names: [{ imported: 'register', local: own.sym }],
+            spec: {
+              k: 'spec',
+              specifier: 'toy-hmr',
+              edgeKey: ctx.edgeKey('toy-hmr', 'static', 'runtime'),
+              provenance: { origin: 'runtime' },
+            },
+          },
+        ],
+      })
+    },
+  })
+
+  const compile = async (code: string, planner: Planner) => {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toyEnvPlanner(),
+      toySplitPlanner({ keys: ['component', 'pendingComponent'] }),
+      planner,
+    ]
+    const env = envInfo({})
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    const chunk = async (key: string) =>
+      (await host.compile(`/app/route.tsx?tsr-split=${key}`, planners, { env }))
+        ?.code ?? ''
+    return {
+      env: main?.code ?? '',
+      component: await chunk('component'),
+      pending: await chunk('pendingComponent'),
+    }
+  }
+
+  it('goes into each chunk importing a binding the route module keeps, and nowhere else', async () => {
+    const out = await compile(
+      ROUTE(
+        `loader: () => value.text,
+         component: () => value.text,
+         pendingComponent: () => Route.id,`,
+        `const value = { text: 'v' }`,
+      ),
+      readersPlanner((own) => [{ sym: own }, '()\n']),
+    )
+    expect(out.component).toMatch(/import \{ value \} from/)
+    expect(out.component).toContain(`import { register } from 'toy-hmr'`)
+    expect(out.component).toMatch(/\nregister\(\)\n/)
+    // a chunk importing only the route, and the env module, don't get it
+    expect(out.pending).toMatch(/import \{ Route \} from/)
+    expect(out.pending).not.toContain('register')
+    expect(out.env).not.toContain('register')
+  })
+
+  it('goes nowhere when the chunks copy what they read', async () => {
+    const out = await compile(
+      ROUTE(
+        `loader: () => text,
+         component: () => text,`,
+        `const text = 'v'`,
+      ),
+      readersPlanner((own) => [{ sym: own }, '()\n']),
+    )
+    expect(out.component).toContain(`const text = 'v'`)
+    expect(out.component).not.toContain('register')
+  })
+
+  it('reads nothing but its own imports', async () => {
+    await expect(
+      compile(
+        ROUTE(`component: () => null,`),
+        readersPlanner((own, route) => [
+          { sym: own },
+          '(',
+          { sym: route },
+          ')\n',
+        ]),
+      ),
+    ).rejects.toThrow(/reads only its own imports/)
+  })
+})

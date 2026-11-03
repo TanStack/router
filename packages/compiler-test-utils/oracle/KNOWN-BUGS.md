@@ -34,10 +34,12 @@ code.test.ts`: "a root route's %s loads lazily".
   anything loads that chunk. Upstream, Rspack's HMR runtime (see "Upstream issues"); a plain Rsbuild app fails the
   same way. SPEC J3.3, G10. `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`: "an edit
   that adds a server fn to the component shows its result on the open page".
-- **Rsbuild: an edit of a binding the route module keeps and a split chunk imports does not reach the chunk**: the route
-  module self-accepts and the chunk's text is unchanged, so the chunk keeps reading the exports of the route module's
-  first evaluation, with no error, until a reload. SPEC J3.3. `router-plugin/tests/integration/known-bugs-route-hmr-kept-binding.test.ts`:
-  "rsbuild $target: $shape (the loader reads it: $loaderReads) shows". Fix: the edit shows, by a hot update or a reload.
+- **Rsbuild and webpack: an edit of a binding the route file exports does not reach another module importing it** from
+  the route file: the route module self-accepts and the importer's text is unchanged, so the importer keeps reading the
+  exports of the route module's first evaluation, with no error, until a reload (the route file's own chunks are
+  invalidated by the route module, J3 below). SPEC J3.3.
+  `router-plugin/tests/integration/known-bugs-route-hmr-kept-binding.test.ts`: "rsbuild %s: shows", "webpack with
+  source maps %s: shows". Fix: the edit shows, by a hot update or a reload.
 - **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
@@ -521,6 +523,15 @@ Paths under `router-plugin/tests/` unless given.
   data in place".
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
+- **Rsbuild and webpack: an edit of a binding the route module keeps and a split chunk imports does not reach the
+  chunk** (the shared core's own, not main's): the route module self-accepts and the chunk's text is unchanged, so the
+  chunk kept reading the exports of the route module's first evaluation, with no error, until a reload. The route
+  module's evaluation now invalidates the modules of its file that read what it keeps (`env-readers` units) and
+  refreshes the route once the update is applied. SPEC J3.3.
+  `integration/known-bugs-route-hmr-kept-binding.test.ts`: "rsbuild $target: $shape (the loader reads it:
+  $loaderReads) shows"; `integration/route-hmr-browser-kept-binding.test.ts`: "rsbuild $fw: $row.name", "webpack with
+  source maps $fw: $row.name"; `start-plugin-core/tests/integration/rsbuild/route-hmr-kept-binding.test.ts`: "$fw:
+  $row.name".
 
 ### J4 Start environment separation
 

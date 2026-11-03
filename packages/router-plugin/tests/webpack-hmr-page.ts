@@ -12,9 +12,10 @@
  * the update, and its client (`webpack/hot/dev-server`) reloads the page when
  * none does. The app's TypeScript compiles with `babel-loader` and
  * `@babel/preset-typescript` (webpack has no TypeScript transform of its
- * own); the app writes no JSX (`createElement`), so no JSX transform or React
- * Refresh takes part: route HMR alone decides whether an edit applies in
- * place.
+ * own); a React app writes no JSX (`createElement`), so no JSX transform or
+ * React Refresh takes part: route HMR alone decides whether an edit applies
+ * in place. A Solid app compiles its JSX with `babel-preset-solid`, as
+ * `docs/router/installation/with-webpack.md` sets it up (no solid-refresh).
  *
  * An edit settles on its outcome (`waitForOutcome`): first webpack compiled
  * the written file (a compile that started after the write ended and nothing
@@ -41,7 +42,8 @@ import type { Config } from '../src/webpack'
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-const main = `import { createElement } from 'react'
+const mains = {
+  react: `import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -49,11 +51,14 @@ const router = createRouter({ routeTree })
 createRoot(document.getElementById('app')!).render(
   createElement(RouterProvider, { router }),
 )
-`
-
-const rootRoute = `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})
-`
+`,
+  solid: `import { render } from 'solid-js/web'
+import { RouterProvider, createRouter } from '@tanstack/solid-router'
+import { routeTree } from './routeTree.gen'
+const router = createRouter({ routeTree })
+render(() => <RouterProvider router={router} />, document.getElementById('app')!)
+`,
+}
 
 const indexHtml = `<!doctype html>
 <html>
@@ -65,14 +70,19 @@ const indexHtml = `<!doctype html>
 `
 
 export interface WebpackHmrPageOptions {
+  /** Default `react`. */
+  target?: 'react' | 'solid'
+  /** webpack's `devtool` (default: webpack's own, `eval` in development). */
+  devtool?: string
   /**
    * Router plugin options over the defaults (`target: 'react'`,
    * `autoCodeSplitting: true`, the app's `routes/` directory and route tree).
    */
   pluginOptions?: Partial<Config>
   /**
-   * App files relative to its root: route files in `routes/` (TypeScript
-   * without JSX; `routes/__root.ts` defaults to an empty root route).
+   * App files relative to its root: route files in `routes/` (React:
+   * TypeScript without JSX, Solid: TSX; `routes/__root.tsx` defaults to an
+   * empty root route).
    */
   files: Record<string, string>
   /** Text the app shows once it rendered. */
@@ -88,6 +98,8 @@ export interface WebpackEditResult {
 
 export interface WebpackHmrPage {
   page: BrowserPage
+  /** Writes app files and waits until webpack compiled them; returns the compile's errors. */
+  write: (files: Record<string, string>) => Promise<Array<string>>
   /**
    * Writes app files, waits until webpack compiled them, then until the page
    * shows `expected` with no request in flight (one overall bound, 20 s).
@@ -114,14 +126,18 @@ const editQuietFailure = 3_000
 export async function openWebpackHmrPage(
   options: WebpackHmrPageOptions,
 ): Promise<WebpackHmrPage> {
+  const target = options.target ?? 'react'
+  const entry = target === 'react' ? 'main.ts' : 'main.tsx'
   const app = await createApp({
     dir: harnessDir,
     prefix: '.webpack-hmr-page-',
     registerCleanup: onTestFinished,
     files: {
       'public/index.html': indexHtml,
-      'main.ts': main,
-      'routes/__root.ts': rootRoute,
+      [entry]: mains[target],
+      'routes/__root.tsx': `import { createRootRoute } from '@tanstack/${target}-router'
+export const Route = createRootRoute({})
+`,
       ...options.files,
     },
   })
@@ -129,33 +145,46 @@ export async function openWebpackHmrPage(
   // Files older than the watcher's start: webpack's watcher reports a file
   // modified right before it started as changed
   const past = new Date(Date.now() - 60_000)
-  for (const file of ['main.ts', ...Object.keys(options.files)]) {
+  for (const file of [entry, ...Object.keys(options.files)]) {
     await utimes(path.join(root, file), past, past)
   }
 
   const compiler = webpack({
     mode: 'development',
+    ...(options.devtool ? { devtool: options.devtool } : {}),
     context: root,
-    entry: { main: './main.ts' },
+    entry: { main: `./${entry}` },
     output: { path: path.join(root, 'dist'), publicPath: '/' },
-    resolve: { extensions: ['.ts', '.js'] },
+    resolve: { extensions: ['.ts', '.tsx', '.js'] },
     module: {
       rules: [
         {
-          test: /\.ts$/,
+          test: /\.tsx?$/,
           include: root,
           loader: require.resolve('babel-loader'),
           options: {
             babelrc: false,
             configFile: false,
-            presets: [require.resolve('@babel/preset-typescript')],
+            presets:
+              target === 'react'
+                ? [require.resolve('@babel/preset-typescript')]
+                : [
+                    [
+                      require.resolve('@babel/preset-typescript'),
+                      { isTSX: true, allExtensions: true },
+                    ],
+                    [
+                      require.resolve('babel-preset-solid'),
+                      { generate: 'dom' },
+                    ],
+                  ],
           },
         },
       ],
     },
     plugins: [
       tanstackRouter({
-        target: 'react',
+        target,
         routesDirectory: path.join(root, 'routes'),
         generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
         autoCodeSplitting: true,
@@ -224,28 +253,34 @@ export async function openWebpackHmrPage(
     }
   }
   const webpackQuiet = () => !compiling && !invalidated
+  /** Writes `files`, then waits until webpack compiled them: a compile started after the write and nothing compiles or is pending. */
+  const write = async (files: Record<string, string>, deadline: number) => {
+    const compiles = started
+    for (const [file, code] of Object.entries(files)) {
+      await writeFile(path.join(root, file), code)
+    }
+    await waitForOutcome({
+      timeout: deadline - Date.now(),
+      applied: () => started > compiles,
+      quiet: webpackQuiet,
+      describe: () =>
+        `webpack did not compile the edit of ${Object.keys(files).join(', ')}`,
+    })
+  }
 
   return {
     page,
+    write: async (files) => {
+      await write(files, Date.now() + editTimeout)
+      return compileErrors
+    },
     edit: async (files, expected) => {
       const start = {
         loads: page.loads(),
         errors: page.errors.length,
-        compiles: started,
       }
       const deadline = Date.now() + editTimeout
-      for (const [file, code] of Object.entries(files)) {
-        await writeFile(path.join(root, file), code)
-      }
-      // Until webpack compiled the edit: a compile started after the write
-      // and nothing compiles or is pending
-      await waitForOutcome({
-        timeout: deadline - Date.now(),
-        applied: () => started > start.compiles,
-        quiet: webpackQuiet,
-        describe: () =>
-          `webpack did not compile the edit of ${Object.keys(files).join(', ')}`,
-      })
+      await write(files, deadline)
       // Until the page shows the edit, with nothing in flight
       await waitForOutcome({
         timeout: Math.max(0, deadline - Date.now()),

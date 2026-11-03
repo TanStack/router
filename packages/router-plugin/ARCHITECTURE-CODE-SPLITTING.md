@@ -79,6 +79,12 @@ dev nothing is bundled: the binding stays in the route module and the chunk copi
   chunk the refreshed loader re-imports is only recorded), or Rspack's lazy-compilation proxy, which re-resolves the
   chunk alone, whose evaluation then refreshes the route. Non-component split exports are lowercase so React Refresh
   does not treat the chunk as a boundary.
+- On Rspack/webpack the route module's update holds no module whose text did not change, so a module of the file that
+  imports a binding the route module keeps (other than `Route`) would go on reading its earlier evaluation. Each such
+  module (placement decides which: the `env-readers` home of a generated unit) calls `__tsrKeptReaderHmr` with its hot
+  handle; the route module's next evaluation invalidates them and refreshes the route once the update is applied.
+  Vite's update holds every module of the edited file. A module outside the file that imports such a binding stays
+  stale (KNOWN-BUGS).
 - React Refresh names: components the planner hoists or renames (inline, lowercase, `memo(...)`, `forwardRef(...)`,
   method shorthands) get stable registration names inside the plan, not in a post-pass.
 - Vite bundled dev: when re-importing a chunk throws Rolldown's `MissingFactoryError` (rolldown#11300), the route HMR
