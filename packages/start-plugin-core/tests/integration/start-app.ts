@@ -3,7 +3,7 @@
  * or served the way `vite build`, `vite dev` and `rsbuild build` do, with
  * `tanstackStart()` of the built `@tanstack/react-start` package (its
  * `plugin/vite` and `plugin/rsbuild` entries, which run this package's built
- * `dist`). The `test:unit` target builds both packages first.
+ * `dist`). The `test:integration` target builds both packages first.
  *
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed

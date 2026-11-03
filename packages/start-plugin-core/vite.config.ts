@@ -1,4 +1,4 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
+import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 
@@ -11,12 +11,30 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    typecheck: { enabled: true },
-    // The integration tests build apps with the built Start packages
-    // (`tests/integration/start-app.ts`): Node loads them, as it loads an
-    // installed package, so the plugin and the loaders Rspack loads from
-    // the same `dist` share one module instance.
-    server: { deps: { external: [builtStartPackages] } },
+    projects: [
+      {
+        // `test:unit`
+        extends: true,
+        test: {
+          name: 'unit',
+          exclude: [...configDefaults.exclude, 'integration/**'],
+          typecheck: { enabled: true },
+        },
+      },
+      {
+        // `test:integration`: real builds and dev servers of Start apps
+        // (`tests/integration/start-app.ts`), with the built Start packages.
+        // Node loads them, as it loads an installed package, so the plugin
+        // and the loaders Rspack loads from the same `dist` share one module
+        // instance.
+        extends: true,
+        test: {
+          name: 'integration',
+          include: ['integration/**/*.test.ts'],
+          server: { deps: { external: [builtStartPackages] } },
+        },
+      },
+    ],
   },
 })
 
