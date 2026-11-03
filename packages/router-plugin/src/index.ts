@@ -7,7 +7,6 @@ export type {
   ConfigOutput,
   CodeSplittingOptions,
   DeletableNodes,
-  HmrOptions,
 } from './core/config'
 export type { RouterPluginContext } from './core/router-plugin-context'
 export {

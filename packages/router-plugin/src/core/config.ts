@@ -72,19 +72,6 @@ export type CodeSplittingOptions = {
   addHmr?: boolean
 }
 
-export type HmrStyle = 'vite' | 'webpack'
-
-export type HmrOptions = {
-  /**
-   * Selects the HMR runtime style to emit code for.
-   * - `'vite'` (default): ESM `import.meta.hot` with Vite accept-callback semantics.
-   * - `'webpack'`: `import.meta.webpackHot` with webpack / Rspack `module.hot` re-execution semantics.
-   *
-   * Bundler-specific plugin entries (e.g. `rspack.ts`, `webpack.ts`) set this explicitly.
-   */
-  style?: HmrStyle
-}
-
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z
     .custom<
@@ -109,11 +96,6 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
   plugin: z
     .object({
-      hmr: z
-        .object({
-          style: z.enum(['vite', 'webpack']).optional(),
-        })
-        .optional(),
       vite: z
         .object({
           environmentName: z.string().optional(),
