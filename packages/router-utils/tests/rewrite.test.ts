@@ -1130,6 +1130,107 @@ describe('statement-level edits (one edit per statement)', () => {
   })
 })
 
+describe('renaming an annotated declaration', () => {
+  const rename = (code: string, name = 'page') => {
+    const e = engine(code)
+    const sym = e.ctx.t1.units
+      .flatMap((u) => u.declares)
+      .find((s) => e.ctx.symbols.name(s) === name)!
+    e.ctx.renameRefs(
+      sym,
+      { sym: e.ctx.names.alloc('TsrPage').sym },
+      'all-outputs',
+      'hmr',
+    )
+    return e.render().code
+  }
+
+  it.each<[string, string, string, string?]>([
+    [
+      'const',
+      'const page: FC = () => null\nuse(page)\n',
+      'const TsrPage: FC = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'let',
+      'let page: FC = () => null\nuse(page)\n',
+      'let TsrPage: FC = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'var',
+      'var page: FC = () => null\nuse(page)\n',
+      'var TsrPage: FC = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'definite',
+      'let page!: FC\nuse(page)\n',
+      'let TsrPage!: FC\nuse(TsrPage)\n',
+    ],
+    [
+      'a comment before the annotation',
+      'const page /* c */ : FC = () => null\nuse(page)\n',
+      'const TsrPage /* c */ : FC = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'an annotation that names the binding (types are erased)',
+      'const page: Wrap<typeof page> = w()\nuse(page)\n',
+      'const TsrPage: Wrap<typeof page> = w()\nuse(TsrPage)\n',
+    ],
+    [
+      'a non-ASCII name',
+      'const pagé: FC = () => null\nuse(pagé)\n',
+      'const TsrPage: FC = () => null\nuse(TsrPage)\n',
+      'pagé',
+    ],
+    [
+      'an escaped name',
+      'const p\\u0061ge = () => null\nuse(page)\n',
+      'const TsrPage = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'an escaped annotated name',
+      'const p\\u{61}ge: FC = () => null\nuse(page)\n',
+      'const TsrPage: FC = () => null\nuse(TsrPage)\n',
+    ],
+    [
+      'a `var` hoisted out of a block',
+      'if (a) { var page: FC = () => null }\nuse(page)\n',
+      'if (a) { var TsrPage: FC = () => null }\nuse(TsrPage)\n',
+    ],
+    [
+      'a `var` declared again',
+      'var page: FC = a\nvar page: FC = b\nuse(page)\n',
+      'var TsrPage: FC = a\nvar TsrPage: FC = b\nuse(TsrPage)\n',
+    ],
+    [
+      'an exported declaration',
+      'export const page: FC = () => null\n',
+      'const TsrPage: FC = () => null\nexport { TsrPage as page }\n',
+    ],
+  ])('keeps the annotation of %s', (_, code, renamed, name) => {
+    expect(rename(code, name)).toBe(renamed)
+  })
+
+  it("renames one binding of a destructuring, not its siblings or the pattern's annotation", () => {
+    expect(
+      rename(
+        'const { page, other = 1, r: [third] }: Shape = o\nuse(page, other, third)\n',
+      ),
+    ).toBe(
+      'const { page: TsrPage, other = 1, r: [third] }: Shape = o\nuse(TsrPage, other, third)\n',
+    )
+    expect(rename('const [other, page]: Pair = o\nuse(page, other)\n')).toBe(
+      'const [other, TsrPage]: Pair = o\nuse(TsrPage, other)\n',
+    )
+  })
+
+  it('leaves an annotated declaration it does not rename as written', () => {
+    expect(
+      rename('const page = () => null\nconst Page: FC = page\nuse(Page)\n'),
+    ).toBe('const TsrPage = () => null\nconst Page: FC = TsrPage\nuse(Page)\n')
+  })
+})
+
 describe('renaming a `var` declared again', () => {
   it('renames every declaration once', () => {
     const code = `var a = 1\nvar a = 2\n{\n  var { a } = o\n}\nfor (var a of o) {}\nf(a)\n`

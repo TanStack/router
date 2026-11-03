@@ -9,7 +9,12 @@
 import { BindingFlags } from 'yuku'
 import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
-import { namespaceName, patternIdentifiers, unwrapExpression } from './source'
+import {
+  bindingNameRange,
+  namespaceName,
+  patternIdentifiers,
+  unwrapExpression,
+} from './source'
 import {
   isIdentityFreeValue,
   isPrimitiveLiteral,
@@ -85,7 +90,7 @@ export interface Unit {
   importIndex: number | null
   /** For import specifiers: the imported name ('default', '*' or a name). */
   importedName: string | null
-  /** The declaration name node ranges (for renames of directly exported declarations). */
+  /** The ranges of the names as written, without an annotation (what a rename replaces). */
   declNameRanges: Array<Range>
   /** Ephemeral node (phase B only). */
   node: Node
@@ -740,7 +745,7 @@ export function buildUnits(
                 u.exported.push(id.name)
               }
             }
-            u.declNameRanges.push({ start: id.start, end: id.end })
+            u.declNameRanges.push(bindingNameRange(file.source, id))
           }
           u.effectful =
             decl.kind === 'using' || decl.kind === 'await using'
@@ -930,7 +935,11 @@ export function buildUnits(
         continue
       }
       unit.declares.push(sym)
-      unit.declNameRanges.push({ start: d.start, end: d.end })
+      unit.declNameRanges.push(
+        d.type === 'Identifier'
+          ? bindingNameRange(file.source, d)
+          : { start: d.start, end: d.end },
+      )
       let list = declaringUnits.get(sym)
       if (!list) {
         list = []
