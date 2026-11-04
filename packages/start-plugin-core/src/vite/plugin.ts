@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { crawlFrameworkPkgs } from 'vitefu'
 import {
@@ -141,8 +142,11 @@ export function tanStackStartVite(
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
-          // (the configured root, which can be relative: resolved as Vite does)
-          root: viteConfig.root ? resolve(viteConfig.root) : process.cwd(),
+          // (the configured root, which can be relative: resolved as Vite does,
+          // then physical, as Vite resolves the app's imports from there)
+          root: realpathSync(
+            viteConfig.root ? resolve(viteConfig.root) : process.cwd(),
+          ),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
             const peerDependencies = pkgJson['peerDependencies']
