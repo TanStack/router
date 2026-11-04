@@ -140,7 +140,7 @@ export function tanStackStartVite(
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
-          root: process.cwd(),
+          root: viteConfig.root || process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
             const peerDependencies = pkgJson['peerDependencies']
