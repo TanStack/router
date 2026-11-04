@@ -1541,6 +1541,9 @@ importers:
 
   e2e/react-router/route-modules/packages/products:
     dependencies:
+      '@route-modules/account':
+        specifier: workspace:*
+        version: link:../account
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../../../packages/react-router

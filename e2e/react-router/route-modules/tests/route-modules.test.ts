@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { Workspace, errorsIn } from './workspace'
 
 /**
- * The fixture is a diamond:
+ * The fixture includes a circular route reference:
  *
  *   web ──► storefront ──► products   (storefront mounts products)
- *    └────► account ─────► products   (account only links to products)
+ *    └────► account ◄────► products   (each links to the other)
  *
  * and modules web mounts below `/orgs/$orgId`, one of them twice:
  *

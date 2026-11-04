@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:unit:cycle": "vitest run tests/circular-references.test.ts",
     "test:e2e": "node scripts/prepare.mjs && pnpm --filter @route-modules/web generate && vitest run && playwright test --project=chromium && playwright test --config playwright.dev.config.ts --project=chromium",
     "test:types": "node scripts/prepare.mjs && pnpm --filter @route-modules/web generate && pnpm --filter @route-modules/web check:contracts"
   },
