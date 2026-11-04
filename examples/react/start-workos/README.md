@@ -19,7 +19,7 @@ You will need a [WorkOS account](https://dashboard.workos.com/signup).
 
 ## Running the example
 
-1. In the [WorkOS dashboard](https://dashboard.workos.com), click on the User Management tile and set up the [sign-in callback redirect](https://workos.com/docs/user-management/1-configure-your-project/configure-a-redirect-uri) as `http://localhost:3000/api/auth/callback`. Once completed, set the app homepage URL to `http://localhost:3000`.
+1. In the [WorkOS dashboard](https://dashboard.workos.com), click on the User Management tile and set up the [sign-in callback redirect](https://workos.com/docs/user-management/1-configure-your-project/configure-a-redirect-uri) as `http://localhost:3000/api/auth/callback`. Then set the _Initiate login URI_ to `http://localhost:3000/api/auth/sign-in` and the app homepage URL to `http://localhost:3000`.
    > [!NOTE]
    > If you already have set up an application in your WorkOS dashboard, then you can simply head to the _Redirects_ tab and add a new redirect URI.
 2. After creating the redirect URI, navigate to the API keys tab and copy the _Client ID_ and the _Secret Key_. Rename the `.env.example` file to `.env` and supply your Client ID and API key as environment variables.
@@ -32,6 +32,7 @@ You will need a [WorkOS account](https://dashboard.workos.com/signup).
    WORKOS_COOKIE_PASSWORD=<YOUR_COOKIE_PASSWORD>
    WORKOS_REDIRECT_URI=http://localhost:3000/api/auth/callback
    ```
+   `WORKOS_API_KEY` is optional: without it, AuthKit runs as a PKCE public client (sign-in only, no WorkOS management APIs).
    `WORKOS_COOKIE_PASSWORD` is the private key used to encrypt the session cookie. It has to be at least 32 characters long. You can use the [1Password generator](https://1password.com/password-generator/) or the `openssl` library to generate a strong password via the command line:
    ```bash
    openssl rand -base64 24
