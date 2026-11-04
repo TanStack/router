@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
+    "composite": true,
     "declaration": true,
     "emitDeclarationOnly": true,
     "noEmitOnError": true,
@@ -9,5 +10,6 @@
     "rootDir": ".",
     "outDir": ".tanstack/types"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../account/tsconfig.route-types.json" }]
 }

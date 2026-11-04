@@ -4,7 +4,11 @@
   "type": "module",
   "tanstack": {
     "router": {
-      "module": true
+      "module": {
+        "uses": [
+          "@route-modules/account"
+        ]
+      }
     }
   },
   "exports": {
@@ -28,9 +32,11 @@
   "scripts": {
     "generate": "tsr generate",
     "emit-types": "node -e \"require('node:fs').rmSync('.tanstack/types',{recursive:true,force:true})\" && tsc -p tsconfig.route-types.json",
+    "check:references": "tsc -b tsconfig.route-types.json --pretty false",
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@route-modules/account": "workspace:*",
     "@tanstack/react-router": "workspace:^",
     "react": "^19.0.0",
     "zod": "^4.4.3"
