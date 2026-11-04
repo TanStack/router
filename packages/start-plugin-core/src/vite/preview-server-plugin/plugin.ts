@@ -1,9 +1,12 @@
 import { pathToFileURL } from 'node:url'
-import { basename, extname, join, resolve } from 'pathe'
+import { basename, extname, join } from 'pathe'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { getServerOutputDirectory } from '../output-directory'
+import {
+  getServerOutputDirectory,
+  resolveOutputDirectory,
+} from '../output-directory'
 import { getBundlerOptions } from '../../utils'
 import type { Plugin } from 'vite'
 
@@ -36,7 +39,7 @@ export function previewServerPlugin(): Plugin {
 
                 // Get basename without extension and add .js
                 const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
-                const serverOutputDir = resolve(
+                const serverOutputDir = resolveOutputDirectory(
                   server.config.root,
                   getServerOutputDirectory(server.config),
                 )

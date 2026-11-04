@@ -1,6 +1,8 @@
-import { resolve } from 'pathe'
 import { postBuild } from '../post-build'
-import { getClientOutputDirectory } from './output-directory'
+import {
+  getClientOutputDirectory,
+  resolveOutputDirectory,
+} from './output-directory'
 import { prerenderWithVite } from './prerender'
 import type { TanStackStartOutputConfig } from '../schema'
 import type { ViteBuilder } from 'vite'
@@ -16,7 +18,7 @@ export async function postServerBuild({
     startConfig,
     adapter: {
       getClientOutputDirectory() {
-        return resolve(
+        return resolveOutputDirectory(
           builder.config.root,
           getClientOutputDirectory(builder.config),
         )

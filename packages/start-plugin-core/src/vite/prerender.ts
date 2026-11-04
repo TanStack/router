@@ -1,6 +1,6 @@
-import { resolve } from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { prerender } from '../prerender'
+import { resolveOutputDirectory } from './output-directory'
 import type { PrerenderHandler } from '../prerender'
 import type { TanStackStartOutputConfig } from '../schema'
 import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
@@ -27,8 +27,7 @@ export async function prerenderWithVite({
     )
   }
 
-  // `build.outDir` stays relative to `root` in the resolved config
-  const outputDir = resolve(
+  const outputDir = resolveOutputDirectory(
     clientEnv.config.root,
     clientEnv.config.build.outDir,
   )
