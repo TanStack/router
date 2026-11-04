@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
 import {
@@ -113,10 +113,13 @@ export function tanStackStartRsbuild(
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
       api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
+        // Rsbuild passes a relative `root` on as written; its resolved root
+        // (against its `cwd`) is `rootPath`
         const root =
-          typeof rsbuildConfig.root === 'string'
+          typeof rsbuildConfig.root === 'string' &&
+          isAbsolute(rsbuildConfig.root)
             ? rsbuildConfig.root
-            : process.cwd()
+            : api.context.rootPath
 
         const serverBase = rsbuildConfig.server?.base
         const assetPrefix = rsbuildConfig.output?.assetPrefix

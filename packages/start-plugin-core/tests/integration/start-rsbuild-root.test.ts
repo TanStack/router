@@ -8,6 +8,7 @@ import { realpathSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { createRsbuild } from '@rsbuild/core'
 import { expect, onTestFinished, test } from 'vitest'
 import { appFiles, buildStartApp, createStartApp } from './start-app'
 
@@ -47,6 +48,33 @@ export const Route = createFileRoute('/')({ component: () => 'MARK_INDEX' })
       rsc: { enabled: true },
     })
     expect(build.client).toContain('MARK_INDEX')
+  },
+  timeout,
+)
+
+// Rsbuild accepts a relative `root` (resolved against its `cwd`), and its
+// plugins see it as written: the virtual modules' paths were relative too,
+// and the modules importing them did not find them.
+test(
+  'an app whose Rsbuild root is relative builds',
+  async () => {
+    const app = await createStartApp(appFiles())
+    const { tanstackStart } = await import(
+      new URL(
+        '../../../react-start/dist/esm/plugin/rsbuild.js',
+        import.meta.url,
+      ).href
+    )
+    const rsbuild = await createRsbuild({
+      cwd: app.root,
+      loadEnv: false,
+      rsbuildConfig: {
+        root: '.',
+        logLevel: 'error',
+        plugins: [tanstackStart()],
+      },
+    })
+    await rsbuild.build()
   },
   timeout,
 )
