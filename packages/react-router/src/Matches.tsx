@@ -109,6 +109,7 @@ function MatchesInner() {
       onCatch={
         process.env.NODE_ENV !== 'production'
           ? (error) => {
+              ;(router as { _hmrReload?: true })._hmrReload = true
               console.warn(
                 `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
               )

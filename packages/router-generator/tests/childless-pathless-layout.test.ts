@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it, test } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { Generator, getConfig } from '../src'
 
@@ -69,21 +69,6 @@ describe('a route-group layout without child routes yet next to the index route'
 
     expect(routeTree).toContain(`'${id}': typeof`)
   })
-})
-
-// The route tree lists the index route first, and the router then matches
-// `/` to a pathless layout without child routes instead of the index route.
-// The generator refuses that pair rather than hide the index route.
-test('a pathless layout without child routes yet conflicts with the index route', async () => {
-  await expect(
-    generate({
-      '__root.tsx': '__root__',
-      'index.tsx': '/',
-      '_auth.tsx': '/_auth',
-    }),
-  ).rejects.toThrow(
-    'Conflicting configuration paths were found for the following routes: "/", "/".',
-  )
 })
 
 // A pathless layout whose parent directory has no route file of its own

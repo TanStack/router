@@ -125,6 +125,7 @@ export const Match = (props: { routeId: string }) => {
                 throw notFoundError
               }
               if (process.env.NODE_ENV !== 'production') {
+                ;(router as { _hmrReload?: true })._hmrReload = true
                 console.warn(
                   `Warning: Error in route match: ${currentMatch().routeId}`,
                 )
@@ -227,11 +228,35 @@ export const MatchInner = (): any => {
     return <Outlet />
   }
 
-  const keyedOut = () => (
-    <Solid.Show when={componentKey()} keyed>
-      {(_key) => out()}
-    </Solid.Show>
-  )
+  // Branched before the JSX (Solid memoizes a ternary prop) and with
+  // `componentKey` a `const` the minifier folds: production output stays
+  // that of the plain keyed `Show`.
+  const keyedOut =
+    process.env.NODE_ENV !== 'production'
+      ? (() => {
+          // Route HMR can replace the component of a live route: re-key once
+          // the refreshed match arrives so the new component renders.
+          let component = route.options.component
+          let version = 0
+          const hotComponentKey = () => {
+            const key = componentKey()
+            if (route.options.component !== component) {
+              component = route.options.component
+              version++
+            }
+            return version ? `${key}\0${version}` : key
+          }
+          return () => (
+            <Solid.Show when={hotComponentKey()} keyed>
+              {(_key) => out()}
+            </Solid.Show>
+          )
+        })()
+      : () => (
+          <Solid.Show when={componentKey()} keyed>
+            {(_key) => out()}
+          </Solid.Show>
+        )
 
   return (
     <Solid.Switch>

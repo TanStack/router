@@ -1,5 +1,4 @@
 export const tsrSplit = 'tsr-split'
-export const tsrShared = 'tsr-shared'
 
 export const splitRouteIdentNodes = [
   'loader',

@@ -1,10 +1,12 @@
-import { isAbsolute, join, normalize } from 'node:path'
-import { Generator, resolveConfigPath } from '@tanstack/router-generator'
+import { isAbsolute, normalize, relative } from 'node:path'
+import {
+  Generator,
+  createGeneratorSession,
+  resolveConfigPath,
+} from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
 
-import type { GeneratorEvent } from '@tanstack/router-generator'
-import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
@@ -18,12 +20,16 @@ export function createRouterGeneratorPlugin(
   let ROOT: string = process.cwd()
   let userConfig: Config
   let generator: Generator
-
-  const getRoutesDirectoryPath = () => {
-    return isAbsolute(userConfig.routesDirectory)
-      ? userConfig.routesDirectory
-      : join(ROOT, userConfig.routesDirectory)
-  }
+  /** Vite dev: watches the route roots outside Vite's root. */
+  let watchOutsideRoot: (() => void) | undefined
+  /** Rspack/webpack watch mode: the generator's own watcher reports every route file event. */
+  let watching = false
+  const session = createGeneratorSession({
+    generator: () => generator,
+    publish: (routesByFile) => {
+      routerPluginContext.routesByFile = routesByFile
+    },
+  })
 
   const initConfigAndGenerator = (opts?: { root?: string }) => {
     if (opts?.root) {
@@ -40,99 +46,84 @@ export function createRouterGeneratorPlugin(
     })
   }
 
-  const generate = async (opts?: {
-    file: string
-    event: 'create' | 'update' | 'delete'
-  }) => {
-    let generatorEvent: GeneratorEvent | undefined = undefined
-    if (opts) {
-      const filePath = normalize(opts.file)
-      if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
-        initConfigAndGenerator()
-        return
-      }
-      generatorEvent = { path: filePath, type: opts.event }
-    }
+  const isConfigFile = (file: string) =>
+    normalize(file) === resolveConfigPath({ configDirectory: ROOT })
 
-    try {
-      await generator.run(generatorEvent)
-      routerPluginContext.routesByFile = generator.getRoutesByFileMap()
-    } catch (e) {
-      console.error(e)
-    }
+  const watchRun = async (compiler: {
+    modifiedFiles?: ReadonlySet<string>
+    removedFiles?: ReadonlySet<string>
+  }) => {
+    watching = true
+    await session.watchRun(
+      compiler.modifiedFiles ?? [],
+      compiler.removedFiles ?? [],
+    )
   }
 
   return {
     name: 'tanstack:router-generator',
     enforce: 'pre',
     async watchChange(id, { event }) {
-      await generate({
-        file: id,
-        event,
-      })
+      if (isConfigFile(id)) {
+        initConfigAndGenerator()
+        if (watching) {
+          await session.close()
+          await session.watch()
+        }
+        watchOutsideRoot?.()
+        return
+      }
+      // (Rspack/webpack: the session hands the compiler's events over itself)
+      if (watching) {
+        return
+      }
+      await session.run({ path: normalize(id), type: event })
+      watchOutsideRoot?.()
     },
     vite: {
       async configResolved(config) {
         initConfigAndGenerator({ root: config.root })
-        await generate()
+        await (config.command === 'build' && !config.build.watch
+          ? session.build()
+          : session.run())
+      },
+      configureServer(server) {
+        // Vite's watcher reports the files under its root (watchChange);
+        // the routes may also come from outside it (`physical()` mounts,
+        // the virtual route config): those are watched too (SPEC J1.10).
+        const addOutsideRoot = () => {
+          const { directories, files } = generator.watchTargets()
+          const outside = [...directories, ...files].filter((target) => {
+            const fromRoot = relative(server.config.root, target)
+            return fromRoot.startsWith('..') || isAbsolute(fromRoot)
+          })
+          if (outside.length) {
+            server.watcher.add(outside)
+          }
+        }
+        addOutsideRoot()
+        watchOutsideRoot = addOutsideRoot
       },
     },
     rspack(compiler) {
       initConfigAndGenerator()
-
-      let handle: FSWatcher | null = null
-
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
-
-      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-        if (handle) {
-          return
-        }
-
-        // rspack watcher doesn't register newly created files
-        const routesDirectoryPath = getRoutesDirectoryPath()
-        const chokidar = await import('chokidar')
-        handle = chokidar
-          .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', (file) => generate({ file, event: 'create' }))
-
-        await generate()
-      })
-
-      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
-        if (handle) {
-          await handle.close()
-        }
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.build())
+      // The compiler's watcher sees the files of the bundle only: route files
+      // created, or outside the bundle (unparsable, `physical()` mounts), come
+      // from the generator's own watcher.
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, watchRun)
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
+        void session.close()
       })
     },
     webpack(compiler) {
       initConfigAndGenerator()
-
-      let handle: FSWatcher | null = null
-
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
-
-      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-        if (handle) {
-          return
-        }
-
-        // webpack watcher doesn't register newly created files
-        const routesDirectoryPath = getRoutesDirectoryPath()
-        const chokidar = await import('chokidar')
-        handle = chokidar
-          .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', (file) => generate({ file, event: 'create' }))
-
-        await generate()
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.build())
+      // See rspack above
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, watchRun)
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
+        void session.close()
       })
-
-      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
-        if (handle) {
-          await handle.close()
-        }
-      })
-
       compiler.hooks.done.tap(PLUGIN_NAME, () => {
         console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
       })

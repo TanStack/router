@@ -301,6 +301,54 @@ function RootComponent() {
 }
 ```
 
+### 6. HIGH: Start builders in a `<script setup>` block
+
+A `<script setup>` component can define and call server functions. But on the dev server (Vite and Rsbuild), and in builds with Vue's devtools on (Vite: `vue({ features: { prodDevtools: true } })`, `define: { __VUE_PROD_DEVTOOLS__: true }` or `NODE_ENV=development vite build`; Rsbuild: `NODE_ENV=development`), Vue hands every binding the block declares to its template, and in a JavaScript block every import too. The template could attach server code to a builder or factory handed over that way, so the compiler refuses it: no server code ships, but the component does not compile.
+
+```vue
+<!-- WRONG in development: a JavaScript block importing a factory -->
+<script setup>
+import { createServerFn } from '@tanstack/vue-start'
+const getGreeting = createServerFn().handler(async () => 'Hello')
+</script>
+
+<!-- WRONG in development, in TypeScript too: a local holding an open builder -->
+<script setup lang="ts">
+import { createMiddleware } from '@tanstack/vue-start'
+const logged = createMiddleware({ type: 'function' })
+</script>
+```
+
+```vue
+<!-- CORRECT: lang="ts" hands the template only the imports it uses -->
+<script setup lang="ts">
+import { createServerFn } from '@tanstack/vue-start'
+const getGreeting = createServerFn().handler(async () => 'Hello')
+</script>
+
+<!-- CORRECT: builders and middleware at the module top level (a module-scope
+     <script lang="ts">, or a .ts module), finished server functions in setup -->
+<script lang="ts">
+import { createMiddleware, createServerFn } from '@tanstack/vue-start'
+const logged = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next(),
+)
+export const getGreeting = createServerFn()
+  .middleware([logged])
+  .handler(async () => 'Hello')
+</script>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+const greeting = ref('')
+onMounted(async () => {
+  greeting.value = await getGreeting()
+})
+</script>
+```
+
+Never attach server code in the template (`{{ base.handler(...) }}`): it is refused in every mode.
+
 ## Cross-References
 
 - `@tanstack/start-client-core#start-core` — core Start concepts

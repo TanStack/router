@@ -1,10 +1,12 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import os from 'node:os'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { getViolationArtifactName } from './violations.utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
+import type { RsbuildPlugin } from '@rsbuild/core'
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const fixtureRoot = path.resolve(import.meta.dirname, '..')
@@ -12,6 +14,14 @@ const workspaceRoot = path.resolve(import.meta.dirname, '../../../..')
 
 function stripLocation(value: string): string {
   return value.replace(/:\d+:\d+$/, '')
+}
+
+// Traces follow the bundler graph from the real entry, through framework
+// package modules. Their steps may carry no line (SPEC J6.5: optional fields).
+function isFrameworkDistFile(file: string): boolean {
+  return /\/(node_modules|packages\/[^/]+\/dist)\//.test(
+    file.replace(/\\/g, '/'),
+  )
 }
 
 function normalizeKeyPath(value: string): string {
@@ -123,9 +133,10 @@ function findTypeOnlyProtectedImportHits(
 }
 
 test.use({
-  // The mock proxy returns undefined-ish values, which may cause
-  // React rendering warnings — whitelist those
-  whitelistErrors: [/mock/i, /Cannot read properties/i, /undefined/i],
+  // Mock mode: calling a mock logs the `mockAccess` runtime diagnostic in
+  // dev and production. (A list whose second item is an object would be
+  // read by Playwright as a `[value, options]` fixture tuple.)
+  whitelistErrors: [/^Error: \[import-protection\] Mocked import used/],
 })
 
 test.beforeEach(({}, testInfo) => {
@@ -270,6 +281,7 @@ for (const mode of ['build', 'dev'] as const) {
       const step = v!.trace[i]
       if (step.specifier?.includes('?tsr-split=')) continue
       if (step.file.includes('routeTree.gen')) continue
+      if (step.line == null && isFrameworkDistFile(step.file)) continue
       // In dev mode, the step right after a ?tsr-split= virtual step
       // re-enters the same file — its import may not be locatable.
       const prev = v!.trace[i - 1]
@@ -337,7 +349,18 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+// SPEC J6.4: builds decide violations after tree-shaking. `leakyReference`
+// is exported but imported by nobody, so its `secret.server` edge is dead in
+// the client build and not reported; dev reports it.
+test('compiler leak dead edge is not reported in build', async () => {
+  const violations = await readViolations('build')
+  const v = violations.find(
+    (x) => x.envType === 'client' && x.importer.includes('compiler-leak'),
+  )
+  expect(v).toBeUndefined()
+})
+
+for (const mode of ['dev'] as const) {
   test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
     const violations = await readViolations(mode)
     const v = violations.find(
@@ -395,7 +418,8 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+// Dev only: the build drops compiler-leak's dead edge (SPEC J6.4, above).
+for (const mode of ['dev'] as const) {
   test(`compiler-processed module has code snippet in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -668,6 +692,7 @@ test('warm run traces include line numbers', async () => {
     const step = v!.trace[i]
     if (step.specifier?.includes('?tsr-split=')) continue
     if (step.file.includes('routeTree.gen')) continue
+    if (step.line == null && isFrameworkDistFile(step.file)) continue
     const prev = v!.trace[i - 1]
     if (prev.specifier?.includes('?tsr-split=')) continue
     if (
@@ -1024,3 +1049,68 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
     expect(hit).toBeDefined()
   })
 }
+
+test('persistent cache restores import-protection mocks and violations', async () => {
+  test.skip(toolchain !== 'rsbuild', 'Rspack persistent cache')
+  test.setTimeout(120_000)
+  const { createRsbuild, loadConfig, mergeRsbuildConfig } =
+    await import('@rsbuild/core')
+  const directory = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'tss-import-protection-cache-'),
+  )
+
+  const build = async () => {
+    const results: Record<
+      string,
+      { errors: Array<string>; warnings: Array<string> }
+    > = {}
+    const { content } = await loadConfig({ cwd: fixtureRoot })
+    const rsbuild = await createRsbuild({
+      cwd: fixtureRoot,
+      rsbuildConfig: mergeRsbuildConfig(content, {
+        root: fixtureRoot,
+        output: { distPath: { root: path.join(directory, 'dist') } },
+        performance: {
+          buildCache: { cacheDirectory: path.join(directory, 'cache') },
+        },
+        plugins: [
+          {
+            name: 'collect-import-protection-diagnostics',
+            setup(api) {
+              api.onAfterEnvironmentCompile(({ environment, stats }) => {
+                if (stats) {
+                  results[environment.name] = {
+                    errors: stats.compilation.errors.map((e) => e.message),
+                    warnings: stats.compilation.warnings
+                      .map((w) => w.message)
+                      .sort(),
+                  }
+                }
+              })
+            },
+          } satisfies RsbuildPlugin,
+        ],
+      }),
+    })
+    await rsbuild.build().catch(() => undefined)
+    return results
+  }
+
+  try {
+    const cold = await build()
+    const warm = await build()
+
+    for (const environment of ['client', 'ssr']) {
+      expect(cold[environment]?.errors).toEqual([])
+      expect(warm[environment]?.errors).toEqual([])
+      expect(warm[environment]?.warnings).toEqual(cold[environment]?.warnings)
+    }
+    expect(
+      warm.client?.warnings.some((warning) =>
+        warning.includes('secret.server'),
+      ),
+    ).toBe(true)
+  } finally {
+    await fs.promises.rm(directory, { recursive: true, force: true })
+  }
+})

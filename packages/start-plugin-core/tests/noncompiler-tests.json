@@ -1,0 +1,20 @@
+[
+  "createVirtualModule.test.ts",
+  "csrf-warning-config.test.ts",
+  "entry-planning.test.ts",
+  "post-server-build.test.ts",
+  "prerender-ssrf.test.ts",
+  "prerender-vite.test.ts",
+  "rsbuild/normalized-client-build.test.ts",
+  "rsbuild/output-directory.test.ts",
+  "rsbuild/plugin.test.ts",
+  "rsbuild/post-build.test.ts",
+  "rsbuild/watch-ignored.test.ts",
+  "schema.test.ts",
+  "sitemap-output.test.ts",
+  "start-manifest-plugin.test.ts",
+  "start-manifest-plugin/manifestBuilder.test.ts",
+  "utils.test.ts",
+  "vite/bundled-dev-styles.test.ts",
+  "vite/dev-styles.test.ts"
+]

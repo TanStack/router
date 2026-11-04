@@ -1,6 +1,6 @@
 import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
-import { rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core/tooling'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
@@ -46,7 +46,6 @@ export function startManifestPlugin(opts: {
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
         }
-
         clientBuild = normalizeViteClientBuild(
           bundle,
           opts.getConfig().startConfig.server.build.inlineCss.enabled,

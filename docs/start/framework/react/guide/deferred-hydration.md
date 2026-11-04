@@ -190,6 +190,13 @@ By default, `Hydrate` splits the children into a generated child chunk:
 
 This delays both hydration work and child JavaScript loading.
 
+The compiler splits a `Hydrate` imported from `@tanstack/react-start`, directly
+or through your app's own modules re-exporting it under the name `Hydrate`
+(`export { Hydrate } from '@tanstack/react-start'`, `export *`, a namespace
+import). A re-export under another name (`export { Hydrate as Lazy }`) or from
+an installed package still defers hydration, but its children load with the
+page.
+
 Set `split={false}` when the child code is small or already needed elsewhere,
 and you only want to delay hydration work:
 

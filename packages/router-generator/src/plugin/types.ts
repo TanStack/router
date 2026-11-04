@@ -1,18 +1,15 @@
-import type { HandleNodeAccumulator, RouteNode } from '../types'
+import type { TreeModel } from '../types'
 import type { Generator } from '../generator'
 
 export interface GeneratorPlugin {
   name: string
   init?: (opts: { generator: Generator }) => void
+  /**
+   * After each generation that rebuilt the tree model: the routes changed,
+   * or the recorded options of a route file did.
+   */
   onRouteTreeChanged?: (opts: {
-    routeTree: Array<RouteNode>
-    routeNodes: Array<RouteNode>
-    rootRouteNode: RouteNode
-    acc: HandleNodeAccumulator
-  }) => void
-
-  afterTransform?: (opts: {
-    node: RouteNode
-    prevNode: RouteNode | undefined
+    model: TreeModel
+    generator: Generator
   }) => void
 }

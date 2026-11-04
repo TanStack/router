@@ -1118,6 +1118,12 @@ export interface RouterCore<
   _replaceRouteChunk:
     | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
     | undefined
+  /**
+   * @internal Development-only: a router catch boundary caught a render
+   * error that route HMR cannot recover from in place, so route hot updates
+   * reload the page (set by the framework adapters).
+   */
+  _hmrReload?: true
 }
 
 export type HydrationHandoff = [

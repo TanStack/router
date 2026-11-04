@@ -76,6 +76,9 @@ Call server functions from:
 - **Other server functions** - Compose server logic
 - **Event handlers** - Handle form submissions, clicks, etc.
 
+> [!NOTE]
+> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
+
 ```tsx
 // In a route loader
 export const Route = createFileRoute('/posts')({
@@ -156,6 +159,10 @@ The build process replaces server function implementations with RPC stubs in cli
 > // ❌ Can cause bundler issues
 > const { getUser } = await import('~/utils/users.functions')
 > ```
+
+### Server Functions in Packages
+
+A package of your app (a workspace package or an installed one) can export server functions: the build compiles it like your own code. List `@tanstack/react-start` in the package's `peerDependencies`, so that the app installs one copy of Start, the version it chose. A package that lists Start under `dependencies` is compiled too.
 
 ## Parameters & Validation
 
@@ -418,14 +425,21 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
+By default, IDs are short hashes (22 characters, from SHA256) of the file and function name, to keep bundles compact and avoid leaking file paths.
 If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
 
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
-Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+The generator receives:
+
+- `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
+- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. When a file uses the same name for more than one server function, the later ones, in source order, get `_1`, `_2`, … appended. A server function that isn't declared as a variable takes the name it's assigned to (an object property, a class field), `default` for `export default`, and `fn` otherwise. `functionName` contains only ASCII letters, digits, `_` and `$`; any other character of the name becomes `_`.
+
+Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so it may contain only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and may not be `.` or `..`. Any other ID fails the build with an error naming the file, the function and the ID. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.
 

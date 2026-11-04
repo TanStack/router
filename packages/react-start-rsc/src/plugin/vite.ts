@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import path from 'pathe'
 import { createVirtualModule } from '@tanstack/start-plugin-core/vite'
-import { createRscCssCompilerTransforms } from './rscCssTransform'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -27,7 +26,7 @@ export function configureRsc(): {
   providerEnvironmentName: TanStackStartVitePluginCoreOptions['providerEnvironmentName']
   ssrResolverStrategy: TanStackStartVitePluginCoreOptions['ssrResolverStrategy']
   serializationAdapters: TanStackStartVitePluginCoreOptions['serializationAdapters']
-  compilerTransforms: TanStackStartVitePluginCoreOptions['compilerTransforms']
+  rsc: NonNullable<TanStackStartVitePluginCoreOptions['rsc']>
 } {
   const serializationAdapters: TanStackStartVitePluginCoreOptions['serializationAdapters'] =
     [
@@ -58,9 +57,7 @@ export function configureRsc(): {
     providerEnvironmentName: RSC_ENV_NAME,
     ssrResolverStrategy,
     serializationAdapters,
-    compilerTransforms: createRscCssCompilerTransforms({
-      loadCssExpression: 'import.meta.viteRsc.loadCss()',
-    }),
+    rsc: { loadCssExpression: 'import.meta.viteRsc.loadCss()' },
   }
 }
 export function reactStartRscVitePlugin(): PluginOption {

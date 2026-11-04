@@ -62,11 +62,33 @@
       "dependsOn": ["^build"],
       "inputs": [
         "default",
+        "!{projectRoot}/tests/integration/**/*",
         "^production",
         "{workspaceRoot}/eslint.config.js",
         "dependentTaskOutputs"
       ],
       "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:integration": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:integration:smoke": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ]
     },
     "test:e2e": {
       "cache": true,
@@ -152,6 +174,18 @@
     },
     "test:e2e*": {
       "parallelism": false
+    },
+    "test:noncompiler": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "!{projectRoot}/tests/integration/**/*",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "outputs": ["{projectRoot}/coverage"]
     }
   },
   "plugins": [

@@ -6,7 +6,7 @@ import {
   resolveManifestAssetLink,
   resolveManifestCssLink,
   rootRouteId,
-} from '@tanstack/router-core'
+} from '@tanstack/router-core/tooling'
 import { processInlineCssUrls } from './inlineCss'
 import type {
   ManifestAssetLink,

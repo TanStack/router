@@ -1,4 +1,8 @@
-import { transform } from 'lightningcss'
+import { createRequire } from 'node:module'
+import type * as LightningCss from 'lightningcss'
+
+// loaded on first use: only inline CSS with rewritable urls needs it
+let lightningcss: typeof LightningCss | undefined
 
 export interface InlineCssTemplate {
   strings: Array<string>
@@ -94,7 +98,10 @@ export function processInlineCssUrls(options: {
 
   const urls: Array<string> = []
 
-  const result = transform({
+  lightningcss ??= createRequire(import.meta.url)(
+    'lightningcss',
+  ) as typeof LightningCss
+  const result = lightningcss.transform({
     filename: options.cssHref,
     code: Buffer.from(css),
     minify: true,
