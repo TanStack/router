@@ -17,6 +17,7 @@ However, since hosting is one of the most crucial aspects of your application's 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice:
 
 - [`cloudflare-workers`](#cloudflare-workers--official-partner): Deploy to Cloudflare Workers
+- [`cloudflare-pages`](#cloudflare-pages-spa-mode): Deploy an SPA mode app to Cloudflare Pages
 - [`netlify`](#netlify--official-partner): Deploy to Netlify
 - [`railway`](#railway--official-partner): Deploy to Railway
 - [`nitro`](#nitro): Deploy using Nitro
@@ -115,6 +116,39 @@ pnpm run deploy
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
 A full TanStack Start example for Cloudflare Workers is available [here](https://github.com/TanStack/router/tree/main/examples/react/start-basic-cloudflare).
+
+### Cloudflare Pages (SPA mode)
+
+An [SPA mode](./spa-mode) build can be deployed to Cloudflare Pages as static files. When a project has no top-level `404.html`, [Pages serves the root `index.html`](https://developers.cloudflare.com/pages/configuration/serving-pages/) for any path that doesn't match a static asset, so write the SPA shell to `/index.html` instead of the default `/_shell.html`:
+
+```ts
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      spa: {
+        enabled: true,
+        prerender: {
+          outputPath: '/index.html',
+        },
+      },
+    }),
+    viteReact(),
+  ],
+})
+```
+
+Then configure the Pages project:
+
+- **Build command:** `npm run build` (or your package manager's equivalent)
+- **Build output directory:** `dist/client`
+
+> [!NOTE]
+> Don't add a catch-all `_redirects` rule such as `/* /_shell.html 200`. Pages applies `_redirects` rules even when a static asset matches, so the rule would also rewrite your JavaScript and CSS files. Also keep a top-level `404.html` out of the build output, otherwise Pages turns off its SPA fallback.
 
 ### Netlify ⭐ _Official Partner_
 

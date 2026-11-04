@@ -87,6 +87,9 @@ Let's use Netlify's `_redirects` file to rewrite all 404 requests to the SPA she
 /* /_shell.html 200
 ```
 
+> [!NOTE]
+> Cloudflare Pages has a built-in SPA fallback and doesn't need this rule. See [Hosting on Cloudflare Pages](./hosting#cloudflare-pages-spa-mode).
+
 ## Allowing Server Functions and Server Routes
 
 Again, using Netlify's `_redirects` file, we can allow-list specific subpaths to be routed through to the server.
