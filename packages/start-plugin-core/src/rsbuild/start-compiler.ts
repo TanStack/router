@@ -196,6 +196,7 @@ export function registerStartCompiler(
         clientRouteTree:
           environment.type === 'client' ? generator.clientRouteTree : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,
+        onDevCompileDone: dev ? api.onDevCompileDone : undefined,
       }),
     )
   })

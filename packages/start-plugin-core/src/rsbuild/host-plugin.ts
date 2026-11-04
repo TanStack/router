@@ -45,7 +45,11 @@ import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { ImportGraphView } from '../import-protection/graph-trace'
 import type { PersistedPlan } from '@tanstack/router-utils/compiler'
-import type { Rspack, rspack as rspackNamespaceType } from '@rsbuild/core'
+import type {
+  RsbuildPluginAPI,
+  Rspack,
+  rspack as rspackNamespaceType,
+} from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
 
@@ -60,6 +64,11 @@ interface StartHostPluginOptions {
   clientRouteTree?: { path: () => string; version: () => number }
   /** After the `finishMake` replay rebuilt the registry (the resolver virtual module is rewritten). */
   onServerFnsReplayed: () => void
+  /**
+   * Development: Rsbuild's `onDevCompileDone`, which tells the compilations
+   * Rsbuild printed (`handOverWarnings`).
+   */
+  onDevCompileDone?: RsbuildPluginAPI['onDevCompileDone']
 }
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
@@ -323,6 +332,31 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       let knownFiles: ReadonlySet<string> | null = null
       let currentCompilation: Rspack.Compilation | null = null
       let reporterInstalled = false
+      /**
+       * Development: what this environment's last compilation reported,
+       * until Rsbuild printed it: the modules it compiled (their warnings are
+       * in their `buildInfo`) and its import-protection reports. Rsbuild
+       * prints the last compilation of each environment once every
+       * environment is done, so one a newer compilation replaced before that
+       * is never printed (a cold start's client compile, when the generator
+       * writes the route tree), and Rspack reports a module's warnings only
+       * in the compilation that built it: the next compilation reports them
+       * (`handOverWarnings`).
+       */
+      let unprinted: {
+        compilation: Rspack.Compilation
+        compiled: Set<string>
+        reports: Array<string>
+      } | null = null
+      /** Development: this compilation's import-protection reports, and the modules it reports for the one before. */
+      let reports: Array<string> = []
+      let handed: Array<string> = []
+      opts.onDevCompileDone?.(({ stats }) => {
+        const printed = 'stats' in stats ? stats.stats : [stats]
+        if (printed.some((one) => one.compilation === unprinted?.compilation)) {
+          unprinted = null
+        }
+      })
       let clientTreeBuiltAt = -1
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
@@ -402,6 +436,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+        if (opts.onDevCompileDone) {
+          unprinted = {
+            compilation: stats.compilation,
+            compiled: new Set([...env.compiled, ...handed]),
+            reports,
+          }
+        }
         session.compiledOnce = true
         const deps = stats.compilation.fileDependencies
         knownFiles = new Set<string>(deps as Iterable<string>)
@@ -416,6 +457,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
+        reports = []
+        handed = []
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
           locateDiagnostics(compilation, WebpackError),
         )
@@ -470,6 +513,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               ipEnv.useDevReporter(
                 {
                   warn: (message) => {
+                    reports.push(message)
                     currentCompilation?.warnings.push(new WebpackError(message))
                   },
                 },
@@ -525,6 +569,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             )
           }
         }
+        if (opts.onDevCompileDone) {
+          // after import protection's dev reports (`flush`)
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
+            handOverWarnings(compilation, modules),
+          )
+        }
         if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
             {
@@ -535,6 +585,48 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           )
         }
       })
+
+      /**
+       * The warnings of the compilation before `compilation`, which Rsbuild
+       * never printed (`unprinted`), reported by `compilation`: its
+       * import-protection reports that `compilation` did not report again,
+       * and the warnings of the modules it compiled that `compilation` kept
+       * without compiling them (a module compiled again reported for itself).
+       */
+      function handOverWarnings(
+        compilation: Rspack.Compilation,
+        modules: Iterable<unknown>,
+      ): void {
+        const from = unprinted
+        if (!from) {
+          return
+        }
+        for (const message of from.reports) {
+          if (!reports.includes(message)) {
+            reports.push(message)
+            compilation.warnings.push(new WebpackError(message))
+          }
+        }
+        for (const m of modules) {
+          const module = m as ModuleLike
+          if (
+            !module.resource ||
+            !from.compiled.has(module.resource) ||
+            env.compiled.has(module.resource)
+          ) {
+            continue
+          }
+          handed.push(module.resource)
+          const records = module.buildInfo?.[DIAGNOSTICS_BUILD_INFO_FIELD] as
+            | Array<LocatedDiagnostic>
+            | undefined
+          for (const d of records ?? []) {
+            if (d.severity === 'warning') {
+              compilation.warnings.push(locatedError(WebpackError, module, d))
+            }
+          }
+        }
+      }
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
