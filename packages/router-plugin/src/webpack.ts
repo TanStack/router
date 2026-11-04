@@ -11,26 +11,6 @@ import type { RouterPluginContext } from './core/router-plugin-context'
 const defaultRouterPluginContext = createRouterPluginContext()
 
 /**
- * Webpack uses `module.hot` / `import.meta.webpackHot` HMR. Force
- * `plugin.hmr.style = 'webpack'` so the router HMR adapter emits the correct
- * accept/dispose shape regardless of user config.
- */
-function withWebpackHmrStyle(
-  options: Partial<Config> | undefined,
-): Partial<Config> {
-  return {
-    ...options,
-    plugin: {
-      ...options?.plugin,
-      hmr: {
-        ...options?.plugin?.hmr,
-        style: 'webpack',
-      },
-    },
-  }
-}
-
-/**
  * @example
  * ```ts
  * export default {
@@ -50,6 +30,8 @@ const TanStackRouterGeneratorWebpack = (
 }
 
 /**
+ * Route HMR in development goes through `import.meta.webpackHot`.
+ *
  * @example
  * ```ts
  * export default {
@@ -64,10 +46,7 @@ const TanStackRouterCodeSplitterWebpack = (
 ) => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
-    createRouterCodeSplitterPlugin(
-      withWebpackHmrStyle(pluginOptions),
-      pluginContext,
-    ),
+    createRouterCodeSplitterPlugin(pluginOptions, pluginContext, 'webpack'),
   )(options)
 }
 
@@ -81,11 +60,7 @@ const TanStackRouterCodeSplitterWebpack = (
  * ```
  */
 const TanStackRouterWebpack = /* #__PURE__ */ createWebpackPlugin(
-  (options, meta) =>
-    unpluginRouterComposedFactory(
-      withWebpackHmrStyle(options as Partial<Config> | undefined),
-      meta,
-    ),
+  unpluginRouterComposedFactory,
 )
 
 const tanstackRouter = TanStackRouterWebpack
