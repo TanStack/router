@@ -2,7 +2,6 @@
  * Which modules the Start compiler compiles, in every host (the Vite plugin's
  * transform, the Rsbuild loader).
  */
-import { HYDRATE_COMPONENT } from '../planners/hydrate'
 import { isInsideDirectory } from '../import-protection/utils'
 import { startRecognizer } from './recognizer'
 import type { ImportProtection } from '../import-protection/session'
@@ -58,12 +57,12 @@ export function dependencyTextFilter(
 
 /** Whether a text names what the planners recognise (see `startCompileScope`). */
 function startTextTest(ip: ImportProtection | null): RegExp {
+  // (the table's exports include the `Hydrate` boundary)
   const names = new Set(
     Object.values(startRecognizer().factories).flatMap((exports) =>
       Object.keys(exports),
     ),
   )
-  names.add(HYDRATE_COMPONENT)
   return new RegExp(
     [
       ...names,

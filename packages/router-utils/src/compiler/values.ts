@@ -27,7 +27,6 @@ interface LinkSite {
 type LinkMethod =
   | 'middleware'
   | 'validator'
-  | 'inputValidator'
   | 'handler'
   | 'server'
   | 'client'
@@ -86,6 +85,18 @@ export interface RecognizerTable {
    * pure.
    */
   pureCalls?: Record<string, ReadonlySet<string>>
+  /**
+   * Builder kind → the link methods of its runtime builder → the
+   * environment whose compile keeps the method's argument (`both`: every
+   * one; a planner erases it from the other). A builder only records what
+   * its links are given, so a chain of these from a factory call (or from a
+   * module-level `const` holding one) with pure arguments is no effect, and
+   * an argument the environment erases is not evaluated there; an env-only
+   * kind's argument is kept in its environment alone (`envOnlyKinds`). Read
+   * by the per-environment code effects of raw facts (import protection),
+   * never by the planners' purity.
+   */
+  builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
 }
 
 export const EMPTY_RECOGNIZER: RecognizerTable = {
@@ -208,7 +219,6 @@ export function applyCall(
         switch (method) {
           case 'middleware':
           case 'validator':
-          case 'inputValidator':
             return {
               t: 'builder',
               kind: recv.kind,

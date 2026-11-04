@@ -11,7 +11,10 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
+import { invalidate } from '@tanstack/router-utils/compiler'
+import { startRecognizer } from '../../src/compiler/recognizer'
 import { createHydratePlanner } from '../../src/planners/hydrate'
+import { START_ENV, startEnvPlanner } from '../../src/planners'
 import { NAME, shape } from '../generated-names'
 import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
 import type {
@@ -119,7 +122,7 @@ async function compile(
     }
   }
   await visit(out)
-  // (an id's ordinal counts the boundaries before it: `idAt`)
+  // (an id's ordinal counts the candidate elements before it: `idAt`)
   const ordinal = (id: string) => parseInt(id.split('_')[0]!, 36)
   extracted.sort((a, b) => ordinal(a.id) - ordinal(b.id))
   return {
@@ -193,12 +196,13 @@ describe('recognition (J5.1)', () => {
   ])('%s is left alone (the module is untouched)', async (_, code) => {
     const host = new MemoryHost({ [FILE]: code })
     for (const env of [clientEnv, ssrEnv]) {
-      expect(
-        await host.compile(FILE, [hydrate], {
-          env,
-          config: { configKey: 'c', perPlanner: { hydrate: { root: ROOT } } },
-        }),
-      ).toBeNull()
+      // (an import of another module named `Hydrate` passes the gate: the
+      // prefetch withdraws and the plan is verbatim, so compare the output)
+      const out = await host.compile(FILE, [hydrate], {
+        env,
+        config: { configKey: 'c', perPlanner: { hydrate: { root: ROOT } } },
+      })
+      expect(out?.code ?? code).toBe(code)
     }
   })
 
@@ -234,6 +238,99 @@ export const Deeper = () => <Start.X.Hydrate><p>local</p></Start.X.Hydrate>
     expect(client.code).toContain('<p>local</p>')
     expect(server.code).toContain('<p>local</p>')
     expect(prefixes(server.code)).toEqual([client.extracted[0]!.id])
+  })
+
+  // A module whose imports can tag no boundary (no JSX reference of a
+  // `Hydrate` import, no `<NS.Hydrate>`) reads nothing more than start-env
+  // does, though the gate passes (`useHydrated` names Hydrate).
+  it('a module with no boundary records the dependencies start-env records', async () => {
+    const code = `import * as UI from './ui'
+import { useHydrated } from '@tanstack/react-router'
+export const Page = () => (useHydrated() ? <UI.Button /> : null)
+`
+    const files = {
+      [FILE]: code,
+      '/app/src/ui.tsx': `export const Button = () => null\nexport * from './more'\n`,
+      '/app/src/more.tsx': `export * from './last'\n`,
+      '/app/src/last.tsx': `export const Other = 1\n`,
+    }
+    const config = {
+      configKey: 'c',
+      perPlanner: {
+        hydrate: { root: ROOT },
+        [START_ENV]: {
+          framework: 'react',
+          root: ROOT,
+          providerSeparate: false,
+          idMode: 'dev',
+        },
+      },
+    }
+    const dependencies = async (planners: Array<Planner>) => {
+      const host = new MemoryHost(files, { recognizer: startRecognizer() })
+      const out = await host.compile(FILE, planners, { env: clientEnv, config })
+      return out?.persisted?.dependencies ?? []
+    }
+    expect(await dependencies([startEnvPlanner(), hydrate])).toEqual(
+      await dependencies([startEnvPlanner()]),
+    )
+  })
+
+  // A dev edit of the barrel reaches its importers: the summaries the
+  // prefetch read are dependencies of the plan, both ways.
+  it('an edit of an app module that starts or stops re-exporting the Start Hydrate recompiles its importers', async () => {
+    const code = `import { Hydrate } from './ui'
+export const Page = () => <Hydrate><p>child</p></Hydrate>
+`
+    const UI = '/app/src/ui.tsx'
+    const local = `export const Hydrate = (props) => props.children\n`
+    const host = new MemoryHost(
+      { [FILE]: code, [UI]: local },
+      { recognizer: startRecognizer() },
+    )
+    const config = { configKey: 'c', perPlanner: { hydrate: { root: ROOT } } }
+    const boundaries = async () =>
+      prefixes(
+        (await host.compile(FILE, [hydrate], { env: clientEnv, config }))
+          ?.code ?? code,
+      )
+    expect(await boundaries()).toEqual([])
+    for (const [text, expected] of [
+      [`export { Hydrate } from '@tanstack/react-start'\n`, [idAt(code)]],
+      [local, []],
+    ] as const) {
+      host.files[UI] = text
+      const { dependents } = await invalidate(
+        host.caches,
+        { path: UI, kind: 'change' },
+        host,
+      )
+      expect(dependents.map((k) => k.canonicalId)).toContain(FILE)
+      expect(await boundaries()).toEqual(expected)
+    }
+  })
+
+  // An element whose tag is imported as `Hydrate` counts in the ordinals of
+  // the ids whatever its import resolves to: an environment resolving the
+  // app's module to another one shifts no other boundary's id.
+  it('an element imported as Hydrate that is no boundary counts in the ids after it', async () => {
+    const code = `import { Hydrate as Real } from '@tanstack/react-start'
+import { Hydrate } from './ui'
+export const Page = () => <><Hydrate><p>other</p></Hydrate><Real><p>real</p></Real></>
+`
+    const host = new MemoryHost(
+      {
+        [FILE]: code,
+        '/app/src/ui.tsx': `export const Hydrate = (props) => props.children\n`,
+      },
+      { recognizer: startRecognizer() },
+    )
+    const config = { configKey: 'c', perPlanner: { hydrate: { root: ROOT } } }
+    for (const env of [clientEnv, ssrEnv]) {
+      const out = (await host.compile(FILE, [hydrate], { env, config }))!
+      expect(out.code).toContain('<p>other</p>')
+      expect(prefixes(out.code)).toEqual([idAt(code, '<Real')])
+    }
   })
 })
 

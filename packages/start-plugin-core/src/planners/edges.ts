@@ -397,9 +397,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
   /**
    * What a mock of `resolved` must export (its export names, following
    * `export *`) and, in a build (the effect witness is read after tree-shaking),
-   * whether evaluating it has effects (own top-level effects, an effectful
-   * module it evaluates, a dependency without `sideEffects: false`; unknown →
-   * effectful). A module of a package declaring `sideEffects: false`, a platform
+   * whether evaluating it has effects (own top-level effects in this
+   * environment, an effectful module it evaluates, a dependency without
+   * `sideEffects: false`; unknown → effectful). A module of a package declaring `sideEffects: false`, a platform
    * builtin and the framework's own packages have none: bundlers drop them with
    * an unused importer. Every
    * consulted module is a target-facts/resolution fingerprint of this plan
@@ -456,11 +456,16 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)
-      if (!facts.exists || !facts.esm || facts.codeEffects) {
+      if (!facts.exists || !facts.esm || facts.codeEffects[ctx.env.type]) {
         return true
       }
+      const erased = facts.erasedImports?.[ctx.env.type] ?? []
       for (const spec of facts.imports) {
-        if (isBuiltin(spec) || isKnownSpecifier(KNOWN_PACKAGES, spec)) {
+        if (
+          isBuiltin(spec) ||
+          isKnownSpecifier(KNOWN_PACKAGES, spec) ||
+          erased.includes(spec)
+        ) {
           continue
         }
         const r = await resolve(spec, id)

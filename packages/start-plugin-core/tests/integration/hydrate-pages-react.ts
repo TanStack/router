@@ -16,7 +16,11 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
+  barrelRows,
   buildHydrationApp,
+  deferredUntilFocus,
+  hydrateBarrelFiles,
+  hydrateBarrelFixtures,
   loadedOnInteraction,
   updatesExpected,
   updatesScript,
@@ -451,8 +455,12 @@ export function reactPageSuite(bundler: StartBundler) {
     beforeAll(async () => {
       app = await buildHydrationApp({
         bundler,
-        fixtures,
-        files: { 'src/counter.tsx': counterFile, 'src/theme.tsx': themeFile },
+        fixtures: { ...fixtures, ...hydrateBarrelFixtures('react') },
+        files: {
+          'src/counter.tsx': counterFile,
+          'src/theme.tsx': themeFile,
+          ...hydrateBarrelFiles('react'),
+        },
         registerCleanup: (cleanup) => cleanups.push(cleanup),
       })
     }, 60_000)
@@ -945,6 +953,45 @@ return [button('outer').textContent, button('inner').textContent]`,
           script: loadedOnInteraction,
         })
         expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+        expect(page.recoverableErrors).toEqual([])
+        expect(page.consoleErrors).toEqual([])
+      })
+
+      // SPEC J5.1: recognition by binding follows the app's re-exports of the
+      // Start `Hydrate` (`hydrateBarrelFiles`): its children load when it
+      // hydrates, as with a direct import.
+      test.each(barrelRows)(
+        'a Hydrate the app re-exports (%s) loads its children when it hydrates',
+        async (name) => {
+          const page = await app.hydrate(name, { script: loadedOnInteraction })
+          expect({
+            result: page.result,
+            recoverableErrors: page.recoverableErrors,
+            consoleErrors: page.consoleErrors,
+          }).toEqual({
+            result: { beforeClick: 0, loadedByClick: true },
+            recoverableErrors: [],
+            consoleErrors: [],
+          })
+        },
+      )
+
+      // The `#ui` barrel is another module in each environment: the
+      // boundaries the server renders and the client hydrates are the same.
+      test('a barrel resolving to another module in each environment hydrates every boundary the server rendered', async () => {
+        await expectChildrenHydrate('barrelPerEnv', ['child', 'after'])
+      })
+
+      // A re-export under another name is not followed (docs:
+      // deferred-hydration): split or not, the boundary keeps the server's
+      // HTML until its strategy fires (a focus, not a click). A package's:
+      // pages/hydrate-boundary-forms.test.ts.
+      test('a Hydrate re-exported under another name still defers hydration', async () => {
+        const page = await app.hydrate('reexportRenamed', {
+          script: deferredUntilFocus,
+        })
+        expect(page.serverHtml).toContain('child:0')
+        expect(page.result).toBe('child:0')
         expect(page.recoverableErrors).toEqual([])
         expect(page.consoleErrors).toEqual([])
       })

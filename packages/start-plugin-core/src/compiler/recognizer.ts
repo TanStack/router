@@ -18,6 +18,8 @@ export const START_KINDS = {
   rscRender: 'rsc:render',
   rscComposite: 'rsc:composite',
   rscStream: 'rsc:stream',
+  hydrateReact: 'hydrate:react',
+  hydrateSolid: 'hydrate:solid',
 } as const
 
 type StartKind = (typeof START_KINDS)[keyof typeof START_KINDS]
@@ -49,6 +51,20 @@ const RSC_EXPORTS: Record<string, StartKind> = {
   renderToReadableStream: START_KINDS.rscStream,
 }
 
+/** The deferred-hydration boundary component (the `hydrate` planner's; SPEC J5.1). */
+export const HYDRATE_COMPONENT = 'Hydrate'
+
+/**
+ * The kinds of the `Hydrate` export of each framework's Start package, by
+ * framework. A component the `hydrate` planner splits, no value of
+ * `start-env` (`isStartValue`): listed so that summaries and re-export
+ * walks recognise it through the app's barrels.
+ */
+export const HYDRATE_KINDS: Readonly<Record<string, 'react' | 'solid'>> = {
+  [START_KINDS.hydrateReact]: 'react',
+  [START_KINDS.hydrateSolid]: 'solid',
+}
+
 let table: RecognizerTable | null = null
 
 /** The one recognizer table of Start (every framework's packages; recognition is by specifier). */
@@ -68,6 +84,10 @@ export function startRecognizer(): RecognizerTable {
       ClientOnly: START_KINDS.clientOnlyJsx,
     }
   }
+  factories['@tanstack/react-start']![HYDRATE_COMPONENT] =
+    START_KINDS.hydrateReact
+  factories['@tanstack/solid-start']![HYDRATE_COMPONENT] =
+    START_KINDS.hydrateSolid
   table = {
     factories,
     builderKinds: new Set([
@@ -83,6 +103,25 @@ export function startRecognizer(): RecognizerTable {
     envOnlyKinds: {
       [START_KINDS.serverOnly]: 'server',
       [START_KINDS.clientOnly]: 'client',
+    },
+    // the methods of the runtime builders (start-client-core
+    // `createServerFn`, `createMiddleware`; start-fn-stubs
+    // `createIsomorphicFn`), and where start-env keeps their arguments: the
+    // client erases validators, handlers and server implementations, the
+    // server the client implementation of an isomorphic fn
+    builderLinks: {
+      [START_KINDS.serverFn]: {
+        middleware: 'both',
+        validator: 'server',
+        handler: 'server',
+      },
+      [START_KINDS.middleware]: {
+        middleware: 'both',
+        validator: 'server',
+        server: 'server',
+        client: 'both',
+      },
+      [START_KINDS.isoFn]: { server: 'server', client: 'client' },
     },
     startKind: START_KINDS.start,
     startMembers: { createMiddleware: START_KINDS.middleware },

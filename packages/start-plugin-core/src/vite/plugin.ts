@@ -19,6 +19,7 @@ import {
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
+  isStartPackage,
 } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
@@ -137,28 +138,29 @@ export function tanStackStartVite(
         const startPackageName =
           `@tanstack/${corePluginOpts.framework}-start` as const
 
-        // crawl packages that have start in "peerDependencies"
+        // crawl packages that use Start: Start in "peerDependencies", or in
+        // "dependencies" (Start's own packages aside: `resolve.noExternal`
+        // bundles them already). The server bundles them (`ssr.noExternal`):
+        // the compiler must transform their Start APIs, which Node would
+        // load uncompiled.
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
 
         // this is currently uncached; could be implemented similarly as vite handles lock file changes
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
+        const namesStart = (deps: unknown) =>
+          typeof deps === 'object' &&
+          deps !== null &&
+          (startPackageName in deps || '@tanstack/start-client-core' in deps)
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
           root: viteConfig.root || process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
-            const peerDependencies = pkgJson['peerDependencies']
-
-            if (peerDependencies) {
-              if (
-                startPackageName in peerDependencies ||
-                '@tanstack/start-client-core' in peerDependencies
-              ) {
-                return true
-              }
-            }
-
-            return false
+            return (
+              namesStart(pkgJson['peerDependencies']) ||
+              (namesStart(pkgJson['dependencies']) &&
+                !isStartPackage(pkgJson['name']))
+            )
           },
         })
 

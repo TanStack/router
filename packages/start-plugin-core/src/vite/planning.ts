@@ -125,6 +125,7 @@ export function createViteConfigPlan(opts: {
     },
     resolve: {
       noExternal: [
+        // Start's own packages (`isStartPackage`)
         '@tanstack/start**',
         `@tanstack/${opts.framework}-start**`,
         ...opts.noExternal,
@@ -134,6 +135,14 @@ export function createViteConfigPlan(opts: {
       },
     },
   } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
+}
+
+/** Whether a package is one of Start's own, of any framework (the app's own are the `resolve.noExternal` patterns of `createViteConfigPlan`). */
+export function isStartPackage(name: unknown): boolean {
+  return (
+    typeof name === 'string' &&
+    /^@tanstack\/(?:(?:react|solid|vue)-)?start/.test(name)
+  )
 }
 
 export function createViteDefineConfig(opts: {

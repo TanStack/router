@@ -237,7 +237,7 @@ export function startAnalysisOf(
     return (
       !isIsoFnLink(call) &&
       (v.t === 'factory'
-        ? table.envOnlyKinds[v.kind] !== 'client'
+        ? isStartValue(table, v) && table.envOnlyKinds[v.kind] !== 'client'
         : v.t === 'member' &&
           (v.object.t === 'builder' || v.object.t === 'startInstance'))
     )

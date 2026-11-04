@@ -75,6 +75,23 @@ export class ExportResolver {
     return this.deps.summaryOf(canonicalId)
   }
 
+  /**
+   * A resolver over the same summaries and resolutions that enters only the
+   * modules `enters` accepts: a re-export of another module stays a symbolic
+   * `importRef`, an `export *` of one is skipped. Its answers are memoised
+   * apart from this resolver's.
+   */
+  within(enters: (canonicalId: string) => boolean): ExportResolver {
+    const { summaryOf, resolveSpecifier } = this.deps
+    return new ExportResolver({
+      summaryOf,
+      resolveSpecifier: async (specifier, importer) => {
+        const target = await resolveSpecifier(specifier, importer)
+        return target !== null && enters(target) ? target : null
+      },
+    })
+  }
+
   private async walk(
     canonicalId: string,
     name: string,

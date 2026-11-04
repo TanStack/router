@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
+import type { RecognizerTable } from '../src/compiler'
 
 describe('RawFactsCache', () => {
   it('counts no entry stale once a marker scan has read the file again', async () => {
@@ -279,20 +280,244 @@ describe('target facts: own effects', () => {
       (await cache.get('/app/before.ts', 'client')).targetFacts,
     ).toMatchObject({
       effectful: false,
-      codeEffects: false,
+      codeEffects: { client: false, server: false },
     })
     expect(
       (await cache.get('/app/after.ts', 'client')).targetFacts,
     ).toMatchObject({
       effectful: false,
-      codeEffects: false,
+      codeEffects: { client: false, server: false },
     })
     expect(
       (await cache.get('/app/plain.ts', 'client')).targetFacts,
     ).toMatchObject({
       effectful: true,
-      codeEffects: true,
+      codeEffects: { client: true, server: true },
     })
+  })
+})
+
+describe('target facts: builder chains per environment', () => {
+  const table: RecognizerTable = {
+    factories: {
+      'toy-start': {
+        createServerFn: 'serverFn',
+        createIsomorphicFn: 'isoFn',
+        createServerOnlyFn: 'serverOnly',
+        createStart: 'start',
+      },
+    },
+    builderKinds: new Set(['serverFn', 'isoFn']),
+    terminal: { serverFn: 'serverFn', isoFn: 'isoFn' },
+    envOnlyKinds: { serverOnly: 'server' },
+    builderLinks: {
+      serverFn: { middleware: 'both', validator: 'server', handler: 'server' },
+      isoFn: { server: 'server', client: 'client' },
+    },
+  }
+  const head = `import { createIsomorphicFn, createServerFn, createServerOnlyFn, createStart } from 'toy-start'
+import * as Toy from 'toy-start'
+import { track } from './track'
+`
+  const none = { client: false, server: false }
+  const all = { client: true, server: true }
+  it.each([
+    [
+      'a chain with pure arguments',
+      `export const fn = createServerFn({ method: 'POST' }).middleware([]).handler(async () => 1)`,
+      none,
+    ],
+    [
+      'a chain in an object literal and a default export',
+      `export const fns = { a: createServerFn().handler(() => 1) }\nexport default createIsomorphicFn().server(() => 1)`,
+      none,
+    ],
+    [
+      'a namespace member factory',
+      `export const fn = Toy.createServerFn().handler(() => 1)`,
+      none,
+    ],
+    [
+      'a validator and a handler built by calls (the client erases them)',
+      `export const fn = createServerFn().validator(track()).handler(track())`,
+      { client: false, server: true },
+    ],
+    [
+      'a server-only fn of a call',
+      `export const so = createServerOnlyFn(track())`,
+      { client: false, server: true },
+    ],
+    [
+      'a client implementation built by a call (the server erases it)',
+      `export const iso = createIsomorphicFn().server(() => 1).client(track())`,
+      { client: true, server: false },
+    ],
+    [
+      'a builder in a const, extended',
+      `const base = createServerFn().middleware([])\nexport const a = base.handler(() => 1)\nexport const b = base.validator(track()).handler(() => 2)`,
+      { client: false, server: true },
+    ],
+    [
+      'a builder const read before its declaration',
+      `export const a = base.handler(() => 1)\nconst base = createServerFn()`,
+      all,
+    ],
+    [
+      'an argument every environment keeps built by a call',
+      `export const fn = createServerFn().middleware([track()]).handler(() => 1)`,
+      all,
+    ],
+    [
+      'a method the kind has not',
+      `export const fn = createIsomorphicFn().handler(() => 1)`,
+      all,
+    ],
+    [
+      'an unknown method',
+      `export const fn = (createServerFn() as any).other(() => 1)`,
+      all,
+    ],
+    [
+      'a factory of no builder',
+      `export const start = createStart(() => ({}))`,
+      all,
+    ],
+    [
+      'a TS namespace shadowing a factory',
+      `namespace N {\n  const createServerFn = () => ({ handler: (f: unknown) => f })\n  export const fn = createServerFn().handler(track())\n}`,
+      all,
+    ],
+    [
+      'a namespace member factory of no builder',
+      `export const start = Toy.createStart(() => ({}))`,
+      all,
+    ],
+    [
+      'a real effect next to a chain',
+      `;(globalThis as any).x = 1\nexport const fn = createServerFn().handler(() => 1)`,
+      all,
+    ],
+    [
+      'top-level await',
+      `const conn = await Promise.resolve(1)\nexport const fn = createServerFn().handler(() => conn)`,
+      all,
+    ],
+  ])('%s', async (_, code, codeEffects) => {
+    const files: Record<string, string> = {
+      '/app/m.ts': head + code + '\n',
+      '/app/track.ts': 'export const track = () => () => 1\n',
+    }
+    const cache = (recognizer?: RecognizerTable) =>
+      new RawFactsCache({
+        readFile: (p) => Promise.resolve(files[p] ?? null),
+        loadVirtual: () => Promise.resolve(null),
+        recognizer,
+      })
+    expect(
+      (await cache(table).get('/app/m.ts', 'client')).targetFacts.codeEffects,
+    ).toEqual(codeEffects)
+    // without the builder links, every chain is a call: an effect
+    expect(
+      (
+        await cache({ ...table, builderLinks: undefined }).get(
+          '/app/m.ts',
+          'client',
+        )
+      ).targetFacts.codeEffects,
+    ).toEqual(all)
+  })
+
+  // What only an erased argument reads goes with it: the client compile
+  // orphans it (an import, a const, a function), so its effects and its
+  // module's evaluation do not count there.
+  it.each([
+    {
+      name: 'an import only a handler reads',
+      code: `export const fn = createServerFn().handler(async () => track())`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a schema const only a validator reads',
+      code: `const Input = track()\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: { client: false, server: true },
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a function only a handler reads',
+      code: `function q() { return track() }\nexport const fn = createServerFn().handler(q)`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a const a kept export also reads',
+      code: `const Input = track()\nexport const v = () => Input\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an exported const only a validator reads',
+      code: `export const Input = track()\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an awaited const only a handler reads',
+      code: `const conn = await Promise.resolve(track)\nexport const fn = createServerFn().handler(() => conn)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an import only a function nothing else reads, read by the handler too',
+      code: `function unused() { return track() }\nexport const fn = createServerFn().handler(async () => 1)`,
+      codeEffects: none,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a cycle of functions only each other reads, one of them read by the handler',
+      code: `function a() { return b() }\nfunction b() { return a() + track() }\nexport const fn = createServerFn().handler(a)`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'an import a dead cycle reads',
+      code: `function a() { return b() }\nfunction b() { return a() + track() }\nexport const fn = createServerFn().handler(async () => 1)`,
+      codeEffects: none,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an argument after the handler (the compile keeps it)',
+      code: `export const fn = (createServerFn() as any).handler(async () => 1, track())`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a link after the handler (a server fn has none)',
+      code: `export const fn = (createServerFn().handler(() => 1) as any).handler(() => 2)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a link of a const holding a server fn',
+      code: `const f = createServerFn().handler(() => 1)\nexport const g = (f as any).validator((d: unknown) => d)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+  ])('$name', async ({ code, codeEffects, erased }) => {
+    const files: Record<string, string> = {
+      '/app/m.ts': head + code + '\n',
+      '/app/track.ts': 'export const track = () => () => 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      recognizer: table,
+    })
+    const { targetFacts } = await cache.get('/app/m.ts', 'client')
+    expect({
+      codeEffects: targetFacts.codeEffects,
+      erasedImports: targetFacts.erasedImports ?? { client: [], server: [] },
+    }).toEqual({ codeEffects, erasedImports: erased })
   })
 })
 
