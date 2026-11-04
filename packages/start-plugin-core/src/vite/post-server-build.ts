@@ -1,3 +1,4 @@
+import { resolve } from 'pathe'
 import { postBuild } from '../post-build'
 import { getClientOutputDirectory } from './output-directory'
 import { prerenderWithVite } from './prerender'
@@ -15,7 +16,10 @@ export async function postServerBuild({
     startConfig,
     adapter: {
       getClientOutputDirectory() {
-        return getClientOutputDirectory(builder.config)
+        return resolve(
+          builder.config.root,
+          getClientOutputDirectory(builder.config),
+        )
       },
       prerender(startConfig) {
         return prerenderWithVite({
