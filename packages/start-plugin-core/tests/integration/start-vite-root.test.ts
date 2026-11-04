@@ -10,9 +10,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
+import { createBuilder } from 'vite'
 import { expect, onTestFinished, test } from 'vitest'
 import { appFiles, buildStartApp, createStartApp } from './start-app'
-import type { StartApp } from './start-app'
 
 const timeout = 60_000
 
@@ -31,9 +31,9 @@ async function runElsewhere() {
   process.chdir(dir)
 }
 
-/** The HTML the built server answers `url` with, in a Node process of its own. */
-async function serverHtml(app: StartApp, url: string) {
-  const server = pathToFileURL(path.join(app.root, 'dist/server/server.js'))
+/** The HTML the built server of the app in `root` answers `url` with, in a Node process of its own. */
+async function serverHtml(root: string, url: string) {
+  const server = pathToFileURL(path.join(root, 'dist/server/server.js'))
   const script = `const { default: server } = await import(${JSON.stringify(server.href)})
 const response = await server.fetch(new Request(${JSON.stringify(url)}))
 process.stdout.write(await response.text())
@@ -41,7 +41,7 @@ process.stdout.write(await response.text())
   const { stdout } = await promisify(execFile)(
     process.execPath,
     ['--input-type=module', '--eval', script],
-    { cwd: app.root },
+    { cwd: root },
   )
   return stdout
 }
@@ -81,7 +81,64 @@ export const Route = createFileRoute('/')({
     )
     await runElsewhere()
     await buildStartApp(app, 'vite')
-    expect(await serverHtml(app, 'http://localhost/')).toContain(
+    expect(await serverHtml(app.root, 'http://localhost/')).toContain(
+      'loaded: MARK_LIB_HANDLER',
+    )
+  },
+  timeout,
+)
+
+// Vite's root as configured can be relative (`root: '.'`, `vite build .`):
+// the libraries' lookup then stopped at the working directory, short of a
+// library hoisted to a monorepo's `node_modules` above it.
+test(
+  "a relative root: a Start library hoisted above the app's directory runs during SSR",
+  async () => {
+    const lib = 'node_modules/server-fn-lib'
+    const monorepo = await createStartApp({
+      'package.json': JSON.stringify({ name: 'monorepo', private: true }),
+      [`${lib}/package.json`]: JSON.stringify({
+        name: 'server-fn-lib',
+        type: 'module',
+        exports: './index.js',
+        peerDependencies: { '@tanstack/react-start': '*' },
+      }),
+      [`${lib}/index.js`]: `import { createServerFn } from '@tanstack/react-start'
+export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
+`,
+      ...Object.fromEntries(
+        Object.entries(
+          appFiles({
+            'package.json': JSON.stringify({
+              name: 'web',
+              type: 'module',
+              dependencies: { 'server-fn-lib': '*' },
+            }),
+            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { libFn } from 'server-fn-lib'
+export const Route = createFileRoute('/')({
+  loader: () => libFn(),
+  component: () => \`loaded: \${Route.useLoaderData()}\`,
+})
+`,
+          }),
+        ).map(([file, code]) => [`apps/web/${file}`, code]),
+      ),
+    })
+    const web = path.join(monorepo.root, 'apps/web')
+    process.chdir(web)
+    const { tanstackStart } = await import(
+      new URL('../../../react-start/dist/esm/plugin/vite.js', import.meta.url)
+        .href
+    )
+    const builder = await createBuilder({
+      root: '.',
+      configFile: false,
+      logLevel: 'error',
+      plugins: [tanstackStart()],
+    })
+    await builder.buildApp()
+    expect(await serverHtml(web, 'http://localhost/')).toContain(
       'loaded: MARK_LIB_HANDLER',
     )
   },
