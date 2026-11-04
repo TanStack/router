@@ -1,10 +1,10 @@
+import path from 'node:path'
 import { expect } from '@playwright/test'
 import {
   createHmrFileEditor,
   replaceAll,
   test,
 } from '@tanstack/router-e2e-utils'
-import path from 'node:path'
 
 import type { Page } from '@playwright/test'
 
@@ -577,14 +577,12 @@ test.describe('react-start hmr', () => {
 
   test.beforeEach(async ({ page }) => {
     await capturePromise
-    const pendingRouteKeys = Array.from(routeKeysPendingRestoreCheck)
-    const restoredRouteKeys = await restoreRouteFiles(pendingRouteKeys)
-    for (const routeFileKey of restoredRouteKeys) {
-      routeKeysPendingRestoreCheck.add(routeFileKey)
-    }
-
-    const routeKeysToCheck = Array.from(routeKeysPendingRestoreCheck)
+    const routeKeysToCheck = new Set(routeKeysPendingRestoreCheck)
     routeKeysPendingRestoreCheck.clear()
+    const restoredRouteKeys = await restoreRouteFiles()
+    for (const routeFileKey of restoredRouteKeys) {
+      routeKeysToCheck.add(routeFileKey)
+    }
 
     for (const routeFileKey of routeKeysToCheck) {
       await waitForRestoredRouteFile(page, routeFileKey)
@@ -943,7 +941,6 @@ test.describe('react-start hmr', () => {
         await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
       },
     )
-    await waitForHydrationSafeReload(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
@@ -962,6 +959,7 @@ test.describe('react-start hmr', () => {
 
     // Set up local state in the index route
     await page.getByTestId('increment').click()
+    await expect(page.getByTestId('count')).toHaveText('Count: 1')
     await page.getByTestId('increment').click()
     await page.getByTestId('message').fill('preserve me')
 
@@ -1155,8 +1153,6 @@ test.describe('react-start hmr', () => {
         ),
       async () => {},
     )
-    await page.waitForTimeout(300)
-
     await reloadPageAndWaitForText(
       page,
       '/',
@@ -1211,8 +1207,6 @@ test.describe('react-start hmr', () => {
         ),
       async () => {},
     )
-    await page.waitForTimeout(300)
-
     await reloadPageAndWaitForText(
       page,
       '/',
@@ -1254,8 +1248,6 @@ test.describe('react-start hmr', () => {
           ),
       async () => {},
     )
-    await page.waitForTimeout(300)
-
     await reloadPageAndWaitForText(
       page,
       '/',
@@ -1297,8 +1289,6 @@ test.describe('react-start hmr', () => {
           ),
       async () => {},
     )
-    await page.waitForTimeout(300)
-
     await reloadPageAndWaitForText(
       page,
       '/',
