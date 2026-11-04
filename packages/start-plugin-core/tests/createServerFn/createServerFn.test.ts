@@ -682,9 +682,13 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
-  test('passes the stable key to generateFunctionId and defaults to short ids', async () => {
-    const generateFunctionId = vi.fn(() => undefined)
-    const compiler = new StartCompiler({
+  function createBuildCompiler(
+    generateFunctionId: (opts: {
+      filename: string
+      functionName: string
+    }) => string | undefined,
+  ) {
+    return new StartCompiler({
       env: 'client',
       ...getDefaultTestOptions('client'),
       mode: 'build',
@@ -701,6 +705,11 @@ describe('createServerFn compiles correctly', async () => {
       generateFunctionId,
       getKnownServerFns: () => ({}),
     })
+  }
+
+  test('passes the handler name to generateFunctionId and defaults to short ids of the file and variable name', async () => {
+    const generateFunctionId = vi.fn(() => undefined)
+    const compiler = createBuildCompiler(generateFunctionId)
 
     const result = await compiler.compile({
       code: `
@@ -708,23 +717,89 @@ describe('createServerFn compiles correctly', async () => {
         export const getUser = createServerFn().handler(async () => 'user')
         var twice = createServerFn().handler(async () => 'a')
         var twice = createServerFn().handler(async () => 'b')
+        export const getÜser = createServerFn().handler(async () => 'ü')
       `,
       id: '/test/src/users.ts',
     })
 
     expect(generateFunctionId.mock.calls).toEqual([
-      [{ filename: 'src/users.ts', functionName: 'getUser' }],
-      [{ filename: 'src/users.ts', functionName: 'twice' }],
-      [{ filename: 'src/users.ts', functionName: 'twice#1' }],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'getUser_createServerFn_handler',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'twice_createServerFn_handler',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'twice_createServerFn_handler_1',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'get_ser_createServerFn_handler',
+        },
+      ],
     ])
-    const ids = [...result!.code.matchAll(/createClientRpc\("([^"]+)"/g)].map(
-      (match) => match[1],
-    )
-    expect(ids).toHaveLength(3)
-    for (const id of ids) {
-      expect(id).toMatch(/^[\w-]{22}$/)
-    }
-    expect(new Set(ids).size).toBe(3)
+    // base64url of sha256("src/users.ts#getUser"), "…#twice", "…#twice#1",
+    // "…#getÜser", first 22 characters
+    expect(
+      [...result!.code.matchAll(/createClientRpc\("([^"]+)"/g)].map(
+        (match) => match[1],
+      ),
+    ).toEqual([
+      '5khyYluQNdT_FnYJdeNjO7',
+      '86c3ovB8BBp6j3lZ7Ys3-q',
+      'VDV9uQu-DjlBpN8wR9Hg81',
+      'fR2z51S12hblu5q1t0xfsF',
+    ])
+  })
+
+  test.each([
+    'users/get',
+    'users#get',
+    'users get',
+    'utilisateurs-é',
+    '..',
+    '',
+  ])(
+    'fails on a custom id that is not one URL path segment: %j',
+    async (id) => {
+      const compiler = createBuildCompiler(() => id)
+
+      await expect(
+        compiler.compile({
+          code: `
+            import { createServerFn } from '@tanstack/react-start'
+            export const getUser = createServerFn().handler(async () => 'user')
+          `,
+          id: '/test/src/users.ts',
+        }),
+      ).rejects.toThrow(
+        `serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function getUser (functionName "getUser_createServerFn_handler") of src/users.ts`,
+      )
+    },
+  )
+
+  test('accepts a custom id of unreserved characters and $', async () => {
+    const compiler = createBuildCompiler(() => 'Users-get.v1_~$')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn().handler(async () => 'user')
+      `,
+      id: '/test/src/users.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("Users-get.v1_~$"')
   })
 
   test('reuses deduped custom IDs across compiler instances', async () => {
@@ -755,7 +830,9 @@ describe('createServerFn compiles correctly', async () => {
         ],
         resolveId: async (id) => id,
         generateFunctionId: ({ functionName }) =>
-          functionName === 'greetUser' ? 'constant_id' : undefined,
+          functionName === 'greetUser_createServerFn_handler'
+            ? 'constant_id'
+            : undefined,
         getKnownServerFns: () => serverFnsById,
         onServerFnsById: (discovered) => {
           Object.assign(serverFnsById, discovered)

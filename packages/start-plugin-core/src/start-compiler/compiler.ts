@@ -96,6 +96,19 @@ export function isStartCompilerPluginEnabledForEnv(
   return isStartCompilerEnvironmentEnabled(plugin.environment, env)
 }
 
+/**
+ * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
+ * unencoded; the server reads the segment back as is): RFC 3986 unreserved
+ * characters, which no client, proxy or server encodes, decodes or
+ * normalises, and `$`, which `functionName` can hold; not a dot segment,
+ * which URL parsing removes.
+ */
+const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
+
+function isUrlSegmentId(id: string): boolean {
+  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
+}
+
 function isStartCompilerEnvironmentEnabled(
   environment:
     | StartCompilerEnvironment
@@ -634,7 +647,9 @@ export class StartCompiler {
   private generateFunctionId(opts: {
     filename: string
     functionName: string
+    generatorFunctionName: string
     stableKey: string
+    variableName: string
     extractedFilename: string
   }): string {
     if (this.mode === 'dev') {
@@ -674,13 +689,18 @@ export class StartCompiler {
         functionId = knownFn.functionId
       }
 
-      if (this.options.generateFunctionId) {
-        functionId ??= this.options.generateFunctionId({
+      if (functionId === undefined && this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
           filename: opts.filename,
-          functionName: opts.stableKey,
+          functionName: opts.generatorFunctionName,
         })
+        if (functionId !== undefined && !isUrlSegmentId(functionId)) {
+          throw new Error(
+            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(functionId)} for the server function ${opts.variableName} (functionName "${opts.generatorFunctionName}") of ${opts.filename}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
+          )
+        }
       }
-      if (!functionId) {
+      if (functionId === undefined) {
         functionId = crypto
           .createHash('sha256')
           .update(entryId)

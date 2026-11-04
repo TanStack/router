@@ -91,8 +91,12 @@ export type GenerateFunctionIdFn = (opts: {
   filename: string
   /** Name of the extracted handler export. */
   functionName: string
+  /** The `functionName` a custom `generateFunctionId` receives. */
+  generatorFunctionName: string
   /** The server fn's variable name, with `#n` for repeats in the same file. */
   stableKey: string
+  /** The server fn's variable name. */
+  variableName: string
   extractedFilename: string
 }) => string
 
