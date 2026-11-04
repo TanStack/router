@@ -13,6 +13,7 @@ import { Route as ClientRouteImport } from './routes/client'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
+import { Route as ApiAuthSignInRouteImport } from './routes/api/auth/sign-in'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -43,6 +44,11 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   path: '/api/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
+  id: '/api/auth/sign-in',
+  path: '/api/auth/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -50,6 +56,7 @@ export interface FileRoutesByFullPath {
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByTo {
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,13 +74,14 @@ export interface FileRoutesById {
   '/logout': typeof LogoutRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/client' | '/logout' | '/account' | '/api/auth/callback'
+  fullPaths: '/' | '/client' | '/logout' | '/account' | '/api/auth/callback' | '/api/auth/sign-in'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/client' | '/logout' | '/account' | '/api/auth/callback'
-  id: '__root__' | '/' | '/_authenticated' | '/client' | '/logout' | '/_authenticated/account' | '/api/auth/callback'
+  to: '/' | '/client' | '/logout' | '/account' | '/api/auth/callback' | '/api/auth/sign-in'
+  id: '__root__' | '/' | '/_authenticated' | '/client' | '/logout' | '/_authenticated/account' | '/api/auth/callback' | '/api/auth/sign-in'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -81,6 +90,7 @@ export interface RootRouteChildren {
   ClientRoute: typeof ClientRoute
   LogoutRoute: typeof LogoutRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthSignInRoute: typeof ApiAuthSignInRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/sign-in': {
+      id: '/api/auth/sign-in'
+      path: '/api/auth/sign-in'
+      fullPath: '/api/auth/sign-in'
+      preLoaderRoute: typeof ApiAuthSignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -146,6 +163,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientRoute: ClientRoute,
   LogoutRoute: LogoutRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthSignInRoute: ApiAuthSignInRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
