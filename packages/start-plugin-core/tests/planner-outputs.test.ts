@@ -411,6 +411,32 @@ export const outer = createServerFn().handler(async () => {
     expect(out.diagnostics[0]!.range).toBeDefined()
   })
 
+  test('`.inputValidator()` on the client is an error that names `.validator()`, at the method name', async () => {
+    const files = {
+      '/app/module.tsx': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().inputValidator((d: unknown) => d).handler(async () => 'x')
+export const mw = createMiddleware({ type: 'function' }).inputValidator((d: unknown) => d).server(({ next }) => next())
+`,
+    }
+    const code = files['/app/module.tsx']
+    const out = (await compile(files, 'client'))!
+    expect(out.diagnostics).toHaveLength(2)
+    const ranges = out.diagnostics.map((d) => {
+      expect(d.severity).toBe('error')
+      expect(d.message).toContain('`.validator()`')
+      expect(d.message).toContain('#7566')
+      expect(d.message).toContain('#8694')
+      return code.slice(d.range!.start, d.range!.end)
+    })
+    expect(ranges).toEqual(['inputValidator', 'inputValidator'])
+    expect(
+      out.diagnostics.map((d) => d.range!.start).sort((a, b) => a - b),
+    ).toEqual([
+      code.indexOf('inputValidator'),
+      code.lastIndexOf('inputValidator'),
+    ])
+  })
+
   test('a server fn without a handler argument is an error at the chain', async () => {
     const out = (await compile(
       {

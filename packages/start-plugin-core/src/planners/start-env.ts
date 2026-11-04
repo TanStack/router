@@ -24,7 +24,11 @@ import {
   unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
-import { runtimeSpecifiers, startRecognizer } from '../compiler/recognizer'
+import {
+  START_KINDS,
+  runtimeSpecifiers,
+  startRecognizer,
+} from '../compiler/recognizer'
 import { isClientOnlyPartial, prefetchStartValues } from '../compiler/prefetch'
 import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import {
@@ -985,10 +989,11 @@ function planStartEnv(
   // ---- 6. uses the compiler cannot follow, where the client output keeps them
   if (role === 'client') {
     for (const e of analysis.escapes) {
+      const inputValidator = inputValidatorRead(e)
       ctx.liveDiagnostic({
         severity: 'error',
-        message: escapeMessage(e),
-        range: rangeOf(e.node),
+        message: inputValidator ? INPUT_VALIDATOR_MESSAGE : escapeMessage(e),
+        range: rangeOf(inputValidator ?? e.node),
         by,
         code: `start-escape:${e.reason}`,
       })
@@ -1171,11 +1176,28 @@ function lateEscapesOf(
   return out
 }
 
+const INPUT_VALIDATOR_MESSAGE =
+  '`.inputValidator()` was renamed to `.validator()` (#7566) and has since been removed (#8694): call `.validator(…)` instead. When a dependency calls it, update that package to a version that uses `.validator()`.'
+
 function escapeMessage(e: Escape): string {
   const message = ESCAPE_MESSAGES[e.reason]
   return isClientOnlyPartial(e.value) && e.reason !== 'computed'
     ? `${message} For client-only code, use \`createClientOnlyFn(fn)\`, or give it a \`.server()\` implementation.`
     : message
+}
+
+/** The `inputValidator` name of `.inputValidator` read off a server fn or middleware builder. */
+function inputValidatorRead({ reason, node, value }: Escape): Node | null {
+  return reason === 'member' &&
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    node.property.name === 'inputValidator' &&
+    value.t === 'builder' &&
+    (value.kind === START_KINDS.serverFn ||
+      value.kind === START_KINDS.middleware)
+    ? node.property
+    : null
 }
 
 /**
