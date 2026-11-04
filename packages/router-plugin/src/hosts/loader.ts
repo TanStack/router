@@ -10,13 +10,14 @@
 import {
   composeLoaderMap,
   identify,
+  locatedDiagnostic,
   normalizePath,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import type { RouterCompiler } from './session'
 import type {
-  Diagnostic,
-  DiagnosticPosition,
+  LocatedDiagnostic,
+  LocatedDiagnosticsOptions,
   RecordMapText,
 } from '@tanstack/router-utils/compiler'
 
@@ -28,6 +29,7 @@ export interface LoaderContextLike {
   addDependency: (file: string) => void
   emitWarning: (error: Error) => void
   emitError: (error: Error) => void
+  _module?: { buildInfo?: Record<string, unknown> }
 }
 
 export interface LoaderResult {
@@ -44,15 +46,23 @@ export type LoaderImpl = (
 /** The property of a compiler holding the loader implementations by instance key. */
 export const LOADER_REGISTRY = '__tanstackRouterCompilers'
 
-function diagnosticError(
-  d: Diagnostic,
-  at: DiagnosticPosition | undefined,
-  file: string,
-): Error {
-  // the position in the Vite host's form, `message (file:line:col)`
-  const where = at ? ` (${file}:${at.line}:${at.column + 1})` : ''
-  const error = new Error(`${d.message}${where}`)
-  error.name = 'TanStackRouterCompilerWarning'
+/**
+ * How the loader reports its diagnostics, and where it records them with
+ * their positions: the host locates them after the seal
+ * (`locateDiagnostics`).
+ */
+export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
+  field: 'tanstack.router.diagnostics',
+  errorName: 'TanStackRouterCompilerError',
+  warningName: 'TanStackRouterCompilerWarning',
+}
+
+function diagnosticError(d: LocatedDiagnostic): Error {
+  const error = new Error(d.message)
+  error.name =
+    d.severity === 'error'
+      ? LOCATED_DIAGNOSTICS.errorName
+      : LOCATED_DIAGNOSTICS.warningName
   return error
 }
 
@@ -87,11 +97,25 @@ export function createLoaderImpl(
         ctx.addDependency(dep)
       }
     }
+    const located: Array<LocatedDiagnostic> = []
+    const locate = (d: LocatedDiagnostic) => {
+      located.push(d)
+      return diagnosticError(d)
+    }
     compiler.report(out, file, source, {
-      error: (d, at) => ctx.emitError(diagnosticError(d, at, ctx.resourcePath)),
+      error: (d, at) =>
+        ctx.emitError(
+          locate(locatedDiagnostic('error', d.message, at, ctx.resourcePath)),
+        ),
       warn: (d, at) =>
-        ctx.emitWarning(diagnosticError(d, at, ctx.resourcePath)),
+        ctx.emitWarning(
+          locate(locatedDiagnostic('warning', d.message, at, ctx.resourcePath)),
+        ),
     })
+    const buildInfo = ctx._module?.buildInfo
+    if (located.length > 0 && buildInfo) {
+      buildInfo[LOCATED_DIAGNOSTICS.field] = located
+    }
     if (identity.derived === null && out.code === source) {
       return { code: source, map: inputMap }
     }

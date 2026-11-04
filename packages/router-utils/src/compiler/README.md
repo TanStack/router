@@ -259,7 +259,8 @@ text compiles waits for it and emits its own output from the result.
 
 The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
 invalidation and live modules of a hot update, a webpack-family loader's map and module id,
-rebuilds and invalidated files, eager extracted exports, emitted maps' text, the key of a persistent cache) live in
+rebuilds and invalidated files, eager extracted exports, emitted maps' text, the key of a persistent cache, a loader's
+diagnostics at their positions) live in
 `hosts/`, exported apart from the core model, which uses none of them.
 
 A persistent bundler cache restores modules without compiling them, so its version holds `compilerCacheKey` (the

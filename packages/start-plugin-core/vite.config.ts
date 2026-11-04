@@ -10,16 +10,6 @@ import packageJson from './package.json'
 // projects and ESLint leave them out. Paths relative to `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
-// Under Vitest: Node's compile cache for the test workers and the child
-// Node runs they start (the harness passes this environment on). No outcome
-// change; less time compiling the bundlers, jsdom and the built apps again.
-if (process.env.VITEST) {
-  process.env.NODE_COMPILE_CACHE ??= path.join(
-    os.tmpdir(),
-    'node-compile-cache',
-  )
-}
-
 /**
  * Slow-tier tests that read process-global state (the compiler's stats knob,
  * `TSR_COMPILER_STATS`): each runs in a process of its own (project

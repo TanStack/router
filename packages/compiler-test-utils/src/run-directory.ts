@@ -10,6 +10,12 @@
  *   renames them into the app, which fails across filesystems (SPEC J1.16:
  *   a pinned bug). Not the generator's default
  *   (`.tanstack/tmp` in the working directory: the package's own directory).
+ * - Node's compile cache (`NODE_COMPILE_CACHE`): on for the test workers
+ *   and every Node process they start (dev servers, builds, `./run-node`),
+ *   and where Vite's and Rsbuild's bins put it (`module.enableCompileCache()`
+ *   without a directory). Its entries are per compiled file, and the apps of
+ *   a run are new files: in the shared default
+ *   (`<tmpdir>/node-compile-cache`) every run would add to it for good.
  *
  * The run directory is the native real path (Windows: long names, not the
  * 8.3 short names `os.tmpdir()` can return, so that paths the tools report
@@ -46,12 +52,19 @@ export default function setup() {
   const variables = {
     [runDirectoryVariable]: dir,
     TSR_TMP_DIR: path.join(dir, 'generator'),
+    NODE_COMPILE_CACHE: path.join(dir, 'node-compile-cache'),
     TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1',
   }
   const previous = Object.fromEntries(
     Object.keys(variables).map((name) => [name, process.env[name]]),
   )
   Object.assign(process.env, variables)
+  const remove = () =>
+    rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+  // Vitest stops its workers after the global teardown, and a stopped
+  // worker writes its compile cache: the directory goes again once they
+  // all exited, when this process exits
+  process.once('exit', remove)
   return () => {
     for (const [name, value] of Object.entries(previous)) {
       if (value === undefined) {
@@ -60,6 +73,6 @@ export default function setup() {
         process.env[name] = value
       }
     }
-    rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+    remove()
   }
 }
