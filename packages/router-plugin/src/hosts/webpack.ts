@@ -12,6 +12,7 @@ import {
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
+  locateDiagnostics,
   normalizePath,
   pathsOf,
   warnEagerExports,
@@ -24,7 +25,11 @@ import {
   onRoutesChanged,
 } from '../core/router-plugin-context'
 import { RouterCompiler } from './session'
-import { LOADER_REGISTRY, createLoaderImpl } from './loader'
+import {
+  LOADER_REGISTRY,
+  LOCATED_DIAGNOSTICS,
+  createLoaderImpl,
+} from './loader'
 import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
@@ -64,9 +69,13 @@ export interface CompilerLike extends WatchingCompilerLike {
   }
 }
 
-/** The parts of a compilation the eager-export check reads (webpack and Rspack). */
+/** The parts of a compilation the host uses (webpack and Rspack). */
 interface CompilationLike extends InitialChunksLike {
-  hooks: { processAssets: { tap: (name: string, fn: () => void) => void } }
+  hooks: {
+    processAssets: { tap: (name: string, fn: () => void) => void }
+    afterSeal: { tap: (name: string, fn: () => void) => void }
+  }
+  errors: Array<Error>
   warnings: Array<Error>
 }
 
@@ -225,9 +234,14 @@ export function createRouterCompilerWebpackPlugin(
           session.warnings.reset()
         }
       })
-      if (envType === 'client' && mode === 'build') {
-        const WebpackError = compiler.webpack?.WebpackError ?? Error
-        compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
+      const WebpackError = compiler.webpack?.WebpackError ?? Error
+      compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
+        // the loader's diagnostics at their positions: the bundlers keep
+        // none of a loader's warning or error
+        compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
+          locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS),
+        )
+        if (envType === 'client' && mode === 'build') {
           compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
             // an extracted-export output an initial chunk holds is eager
             // whatever the splitter did: say so (J2.8)
@@ -239,8 +253,8 @@ export function createRouterCompilerWebpackPlugin(
               webpackImporters(compilation as never, webpackResourceId),
             )
           })
-        })
-      }
+        }
+      })
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const changed = [...(c.modifiedFiles ?? []).values()].map(
           (f) => [f, 'change'] as const,

@@ -16,6 +16,8 @@ import {
   identify,
   initialChunkResources,
   invalidateFiles,
+  locateDiagnostics,
+  locatedError,
   normalizePath,
   rebuildModules,
   warnEagerExports,
@@ -28,7 +30,7 @@ import {
   rspackGraphView,
 } from '../import-protection/witness'
 import {
-  DIAGNOSTICS_BUILD_INFO_FIELD,
+  LOCATED_DIAGNOSTICS,
   PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
@@ -36,7 +38,6 @@ import {
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
-  LocatedDiagnostic,
   ServerFnBuildInfo,
   StartRsbuildCompilerSession,
 } from './compiler-session'
@@ -44,7 +45,10 @@ import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { ImportGraphView } from '../import-protection/graph-trace'
-import type { PersistedPlan } from '@tanstack/router-utils/compiler'
+import type {
+  LocatedDiagnostic,
+  PersistedPlan,
+} from '@tanstack/router-utils/compiler'
 import type {
   RsbuildPluginAPI,
   Rspack,
@@ -108,82 +112,6 @@ interface ModuleLike {
   layer?: string | null
   identifier: () => string
 }
-
-/**
- * Start's compile diagnostics of the compilation's modules as errors and
- * warnings located at their positions (`DIAGNOSTICS_BUILD_INFO_FIELD`):
- * Rsbuild prints a diagnostic's file and `loc` (`File: ./src/fns.ts:3:5`,
- * terminal and overlay), and Rspack keeps no location of a loader's thrown
- * error or emitted warning. A module's failure (one error for every error
- * its compile reported) and each of its warnings are replaced in place.
- */
-function locateDiagnostics(
-  compilation: Rspack.Compilation,
-  WebpackError: typeof Rspack.WebpackError,
-): void {
-  /** The warnings of each module not yet located, in the order reported. */
-  const pending = new Map<string, Array<LocatedDiagnostic>>()
-  for (const severity of ['error', 'warning'] as const) {
-    const list =
-      severity === 'error' ? compilation.errors : compilation.warnings
-    for (let i = list.length - 1; i >= 0; i--) {
-      const reported = list[i]!
-      const module = reported.module as unknown as ModuleLike | undefined
-      const records = module?.buildInfo?.[DIAGNOSTICS_BUILD_INFO_FIELD] as
-        | Array<LocatedDiagnostic>
-        | undefined
-      if (!records) {
-        continue
-      }
-      if (severity === 'error') {
-        const errors = records.filter((d) => d.severity === 'error')
-        if (
-          errors.length > 0 &&
-          reported.message.includes('TanStackStartCompilerError')
-        ) {
-          list.splice(
-            i,
-            1,
-            ...errors.map((d) => locatedError(WebpackError, module!, d)),
-          )
-        }
-        continue
-      }
-      const id = module!.identifier()
-      let warnings = pending.get(id)
-      if (!warnings) {
-        warnings = records.filter((d) => d.severity === 'warning')
-        pending.set(id, warnings)
-      }
-      // walking backwards: the module's last warning not yet located
-      const last = warnings.at(-1)
-      if (last && reported.message.includes(firstLine(last.message))) {
-        list.splice(i, 1, locatedError(WebpackError, module!, warnings.pop()!))
-      }
-    }
-  }
-}
-
-/** A compile diagnostic of `module` as an Rspack error or warning at its position. */
-function locatedError(
-  WebpackError: typeof Rspack.WebpackError,
-  module: ModuleLike,
-  d: LocatedDiagnostic,
-): Rspack.RspackError {
-  const error: Rspack.RspackError = new WebpackError(d.message)
-  error.name =
-    d.severity === 'error'
-      ? 'TanStackStartCompilerError'
-      : 'TanStackStartCompilerWarning'
-  error.module = module as never
-  if (d.line !== undefined) {
-    error.loc = { start: { line: d.line, column: d.column } }
-  }
-  return error
-}
-
-/** The start of a message's first line, as a native message quotes it. */
-const firstLine = (message: string) => message.split('\n', 1)[0]!.slice(0, 60)
 
 /**
  * Whether Rspack's native `file` is a `package.json`: its edit re-resolves
@@ -460,7 +388,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         reports = []
         handed = []
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
-          locateDiagnostics(compilation, WebpackError),
+          locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS),
         )
         if (compiler.watchMode) {
           // Rspack watches the files the plans of the compilation's modules read (no
@@ -617,12 +545,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             continue
           }
           handed.push(module.resource)
-          const records = module.buildInfo?.[DIAGNOSTICS_BUILD_INFO_FIELD] as
+          const records = module.buildInfo?.[LOCATED_DIAGNOSTICS.field] as
             | Array<LocatedDiagnostic>
             | undefined
           for (const d of records ?? []) {
             if (d.severity === 'warning') {
-              compilation.warnings.push(locatedError(WebpackError, module, d))
+              compilation.warnings.push(
+                locatedError(WebpackError, module, d, LOCATED_DIAGNOSTICS),
+              )
             }
           }
         }
