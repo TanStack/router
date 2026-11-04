@@ -21,7 +21,12 @@ const timeout = 60_000
  */
 async function runElsewhere() {
   const dir = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'start-cwd-')))
-  onTestFinished(() => rm(dir, { recursive: true, force: true }))
+  const cwd = process.cwd()
+  // (finish callbacks run last first: leave `dir` before removing it)
+  onTestFinished(async () => {
+    process.chdir(cwd)
+    await rm(dir, { recursive: true, force: true })
+  })
   await writeFile(
     path.join(dir, 'package.json'),
     JSON.stringify({ name: 'monorepo', private: true }),
