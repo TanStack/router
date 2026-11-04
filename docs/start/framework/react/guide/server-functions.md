@@ -428,7 +428,7 @@ You can customize function ID generation for the production build by providing a
 The generator receives:
 
 - `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
-- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. When a file uses the same name for more than one server function, the first keeps that name and the later ones, in source order, get `_1`, `_2`, … appended; their name also loses its leading underscores and each run of underscores becomes one (a second `_x` gets `x_createServerFn_handler_1`). `functionName` contains only ASCII letters, digits, `_` and `$`; any other character of the name becomes `_`.
+- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. Characters of the name other than ASCII letters, digits, `_` and `$` become `_`, so `functionName` contains only those. When this gives more than one server function of a file the same name (a repeated variable name, or names like `café` and `caf_`, which both give `caf__createServerFn_handler`), the first keeps it and the later ones, in source order, get `_1`, `_2`, … appended; their name also loses its leading underscores and each run of underscores becomes one (a second `_x` gets `x_createServerFn_handler_1`, and `caf_` gets `caf_createServerFn_handler_1`).
 
 Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
