@@ -113,6 +113,7 @@ export {
   X_TSS_CONTEXT,
 } from './constants'
 export type { ClientFnMeta, ServerFnMeta } from './constants'
+export type { ResolvedDeploymentMetadata } from './deployment-metadata'
 
 export type * from './serverRoute'
 

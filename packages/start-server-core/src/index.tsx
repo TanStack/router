@@ -22,6 +22,8 @@ export {
 } from '@tanstack/router-core/ssr/server'
 export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
+export type { ResolvedDeploymentMetadata } from '@tanstack/start-client-core'
+
 export * from './request-response'
 
 export * from './virtual-modules'

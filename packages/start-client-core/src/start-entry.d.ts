@@ -16,3 +16,9 @@ declare module '#tanstack-start-plugin-adapters' {
   export const pluginSerializationAdapters: Array<AnySerializationAdapter>
   export const hasPluginAdapters: boolean
 }
+
+declare module '#tanstack-start-deployment-metadata' {
+  import type { ResolvedDeploymentMetadata } from './deployment-metadata'
+
+  export const deploymentMetadata: ResolvedDeploymentMetadata | null
+}

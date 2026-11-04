@@ -1,4 +1,5 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
+import { generateDeploymentMetadataModule } from '../deployment-metadata-module'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
@@ -258,6 +259,7 @@ export function registerVirtualModules(
     manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
     serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
     pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
+    deploymentMetadata: virtualPath(root, VIRTUAL_MODULES.deploymentMetadata),
   }
 
   // RSC virtual module paths (only defined when RSC is enabled)
@@ -416,6 +418,10 @@ export function registerVirtualModules(
       })
     }
 
+    // Rsbuild has no deployment metadata discovery, so skew protection is disabled.
+    content[paths.deploymentMetadata] =
+      generateDeploymentMetadataModule(undefined)
+
     // --- RSC virtual modules ---
     if (rscPaths) {
       // virtual:tanstack-rsc-runtime
@@ -453,6 +459,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
   const aliasMap: Record<string, string> = {
     [VIRTUAL_MODULES.startManifest]: paths.manifest,
     [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
+    [VIRTUAL_MODULES.deploymentMetadata]: paths.deploymentMetadata,
   }
 
   if (hasSerializationAdapters) {
@@ -505,6 +512,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     const resolve = config.resolve
     const resolveAlias = (resolve.alias ??= {}) as Record<string, string>
     resolveAlias[VIRTUAL_MODULES.serverFnResolver] = paths.serverFnResolver
+    resolveAlias[VIRTUAL_MODULES.deploymentMetadata] = paths.deploymentMetadata
     if (hasSerializationAdapters) {
       resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
     }
