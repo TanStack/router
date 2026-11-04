@@ -1,10 +1,9 @@
 /**
  * Real Start apps for the integration tests: a temporary app directory, built
- * or served the way `vite build`, `vite dev`, `rsbuild build` and
- * `rsbuild dev` do, with `tanstackStart()` of the built
- * `@tanstack/react-start` package (its `plugin/vite` and `plugin/rsbuild`
- * entries, which run this package's built `dist`). The `test:integration`
- * target builds both packages first.
+ * or served the way `vite build`, `vite dev` and `rsbuild build` do, with
+ * `tanstackStart()` of the built `@tanstack/react-start` package (its
+ * `plugin/vite` and `plugin/rsbuild` entries, which run this package's built
+ * `dist`). The `test:integration` target builds both packages first.
  *
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed
@@ -175,28 +174,6 @@ export async function startViteDevServer(
   })
   onTestFinished(() => server.close())
   return server
-}
-
-/**
- * Starts the app's Rsbuild dev server, as `rsbuild dev` does; closed when the
- * test finishes. Returns its URL.
- */
-export async function startRsbuildDevServer(
-  app: StartApp,
-  options: StartOptions = {},
-): Promise<URL> {
-  const rsbuild = await createRsbuild({
-    cwd: app.root,
-    loadEnv: false,
-    rsbuildConfig: {
-      logLevel: 'error',
-      server: { printUrls: false },
-      plugins: [await startPlugin('rsbuild', options)],
-    },
-  })
-  const { port, server } = await rsbuild.startDevServer()
-  onTestFinished(() => server.close())
-  return new URL(`http://localhost:${port}/`)
 }
 
 /**
