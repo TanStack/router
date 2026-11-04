@@ -25,7 +25,6 @@ export default {
   plugins: [
     tanstackRouter({
       target: 'react',
-      autoCodeSplitting: true,
     }),
   ],
 }
@@ -50,10 +49,7 @@ const ctx = await esbuild.context({
   format: 'esm',
   target: ['esnext'],
   sourcemap: true,
-  plugins: [
-    solidPlugin(),
-    tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
-  ],
+  plugins: [solidPlugin(), tanstackRouter({ target: 'solid' })],
 })
 
 if (isDev) {
@@ -71,6 +67,9 @@ Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/r
 <!-- ::end:framework -->
 
 Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
+
+> [!NOTE]
+> Automatic code splitting is not available with Esbuild: the plugin throws an error when `autoCodeSplitting` is `true`. Route generation works as usual. To split routes, use [manual code splitting](../guide/code-splitting.md) or another bundler.
 
 ## Ignoring the generated route tree file
 

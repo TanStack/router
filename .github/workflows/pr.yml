@@ -10,6 +10,13 @@ concurrency:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
+  # Enable dynamic task packing for distributed CI.
+  NX_CLOUD_AGENT_TASK_QUEUE: true
+  NX_CLOUD_AUTO_TASK_PACKING: true
+  NX_CLOUD_AGENT_UNCAPPED_GROUP_WORK: true
+  NX_CLOUD_PACKING_MEM_MULTIPLIER: 1.5
+  NX_CLOUD_BUFFER_TASK_COMPLETIONS: true
+  NX_CLOUD_CONTINUOUS_ASSIGNMENT: true
 
 permissions:
   contents: read
@@ -26,8 +33,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+      - name: Start Nx Workers
+        run: npx nx-cloud start-workers
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
@@ -36,9 +43,9 @@ jobs:
           main-branch-name: main
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
-      - name: Stop Nx Agents
+      - name: Stop Nx Workers
         if: ${{ always() }}
-        run: npx nx-cloud stop-all-agents
+        run: npx nx-cloud stop-all-workers
   preview:
     name: Preview
     runs-on: ubuntu-latest

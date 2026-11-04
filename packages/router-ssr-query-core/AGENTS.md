@@ -5,5 +5,5 @@ Register QueryClient teardown at SSR attachment, before loading/dehydration can 
 For query retention or cleanup changes, enable the GC tests that normal unit runs skip. `RUN_SSR_GC_TESTS=1` configures forked workers with exposed GC. Bypass Nx cache so a previous run with the gate disabled cannot count as validation.
 
 ```sh
-RUN_SSR_GC_TESTS=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-ssr-query-core:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- tests/index.test.ts
+RUN_SSR_GC_TESTS=1 CI=1 NX_DAEMON=false pnpm nx run-many -p @tanstack/router-ssr-query-core -t test:unit --skipRemoteCache --skipNxCache -- tests/index.test.ts
 ```

@@ -1286,7 +1286,8 @@ export function compileCodeSplitVirtualRoute(
 
   const result = generateFromAst(ast, {
     sourceMaps: true,
-    sourceFileName: opts.filename,
+    // Name the route file, not this module's `?tsr-*` id.
+    sourceFileName: removeSplitSearchParamFromFilename(opts.filename),
     filename: opts.filename,
   })
 
@@ -1377,7 +1378,8 @@ export function compileCodeSplitSharedRoute(
 
   const result = generateFromAst(ast, {
     sourceMaps: true,
-    sourceFileName: opts.filename,
+    // Name the route file, not this module's `?tsr-*` id.
+    sourceFileName: removeSplitSearchParamFromFilename(opts.filename),
     filename: opts.filename,
   })
 

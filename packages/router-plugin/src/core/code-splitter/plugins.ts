@@ -1,6 +1,7 @@
 import type babel from '@babel/core'
 import type * as t from '@babel/types'
-import type { Config, DeletableNodes, HmrStyle } from '../config'
+import type { Config, DeletableNodes } from '../config'
+import type { HmrStyle } from '../hmr'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'
 
