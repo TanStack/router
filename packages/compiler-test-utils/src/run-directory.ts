@@ -59,8 +59,15 @@ export default function setup() {
     Object.keys(variables).map((name) => [name, process.env[name]]),
   )
   Object.assign(process.env, variables)
-  const remove = () =>
-    rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+  // Best effort: at the teardown, workers still running write their compile
+  // cache into the directory, and on macOS and Windows removing it then
+  // fails (ENOTEMPTY). That is not the run's failure: the removal at exit,
+  // once every worker is gone, gets what is left.
+  const remove = () => {
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+    } catch {}
+  }
   // Vitest stops its workers after the global teardown, and a stopped
   // worker writes its compile cache: the directory goes again once they
   // all exited, when this process exits
