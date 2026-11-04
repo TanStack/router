@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793796132512,
+  "lastUpdate": 1793820835403,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "41898282+github-actions[bot]@users.noreply.github.com",
-            "name": "github-actions[bot]",
-            "username": "github-actions[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "8212950807660c88ad49320f6c8d1074abd40944",
-          "message": "ci: Version Packages (#7927)\n\nci: changeset release\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
-          "timestamp": "2026-07-31T00:04:54+02:00",
-          "tree_id": "c6e7df8697931d385b1d27d16209b83e5affa0bb",
-          "url": "https://github.com/TanStack/router/commit/8212950807660c88ad49320f6c8d1074abd40944"
-        },
-        "date": 1785449269556,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89443,
-            "unit": "bytes",
-            "extra": "raw=280269; brotli=77834; initial_gzip=89302"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93248,
-            "unit": "bytes",
-            "extra": "raw=292449; brotli=81092; initial_gzip=93107"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36378,
-            "unit": "bytes",
-            "extra": "raw=108438; brotli=32709; initial_gzip=36253"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41556,
-            "unit": "bytes",
-            "extra": "raw=124021; brotli=37386; initial_gzip=41426"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54271,
-            "unit": "bytes",
-            "extra": "raw=153537; brotli=48769; initial_gzip=54141"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60351,
-            "unit": "bytes",
-            "extra": "raw=172746; brotli=54031; initial_gzip=60218"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104433,
-            "unit": "bytes",
-            "extra": "raw=329860; brotli=90343; initial_gzip=104292"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105187,
-            "unit": "bytes",
-            "extra": "raw=331268; brotli=91009; initial_gzip=104315"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107892,
-            "unit": "bytes",
-            "extra": "raw=340028; brotli=93311; initial_gzip=107751"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102087,
-            "unit": "bytes",
-            "extra": "raw=324176; brotli=87840; initial_gzip=101912"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102497,
-            "unit": "bytes",
-            "extra": "raw=325135; brotli=88183; initial_gzip=102328"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105373,
-            "unit": "bytes",
-            "extra": "raw=334474; brotli=90696; initial_gzip=105198"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50799,
-            "unit": "bytes",
-            "extra": "raw=155721; brotli=44878; initial_gzip=50665"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54138,
-            "unit": "bytes",
-            "extra": "raw=163953; brotli=48016; initial_gzip=50722"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56751,
-            "unit": "bytes",
-            "extra": "raw=173177; brotli=50072; initial_gzip=56619"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72734,
-            "unit": "bytes",
-            "extra": "raw=212163; brotli=64396; initial_gzip=72601"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76833,
-            "unit": "bytes",
-            "extra": "raw=225102; brotli=67965; initial_gzip=76702"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -26041,6 +25915,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/d05c6c66e7efc659286f37a56b3b1d4d267139e7"
         },
         "date": 1793796130045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86048,
+            "unit": "bytes",
+            "extra": "raw=267729; brotli=75041; initial_gzip=85907"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89678,
+            "unit": "bytes",
+            "extra": "raw=279899; brotli=78231; initial_gzip=89538"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34131,
+            "unit": "bytes",
+            "extra": "raw=97503; brotli=30895; initial_gzip=34004"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39172,
+            "unit": "bytes",
+            "extra": "raw=112668; brotli=35317; initial_gzip=39044"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50603,
+            "unit": "bytes",
+            "extra": "raw=139733; brotli=45875; initial_gzip=50476"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56325,
+            "unit": "bytes",
+            "extra": "raw=158343; brotli=50891; initial_gzip=56198"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99109,
+            "unit": "bytes",
+            "extra": "raw=309641; brotli=86129; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106710,
+            "unit": "bytes",
+            "extra": "raw=336860; brotli=92658; initial_gzip=106568"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99831,
+            "unit": "bytes",
+            "extra": "raw=311028; brotli=86742; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102249,
+            "unit": "bytes",
+            "extra": "raw=319111; brotli=88633; initial_gzip=102108"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102763,
+            "unit": "bytes",
+            "extra": "raw=320769; brotli=88727; initial_gzip=102589"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103184,
+            "unit": "bytes",
+            "extra": "raw=321745; brotli=89063; initial_gzip=103016"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106020,
+            "unit": "bytes",
+            "extra": "raw=330671; brotli=91408; initial_gzip=105846"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47268,
+            "unit": "bytes",
+            "extra": "raw=138294; brotli=42120; initial_gzip=47141"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50387,
+            "unit": "bytes",
+            "extra": "raw=145802; brotli=44953; initial_gzip=47202"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52405,
+            "unit": "bytes",
+            "extra": "raw=153612; brotli=46552; initial_gzip=52278"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 66954,
+            "unit": "bytes",
+            "extra": "raw=190147; brotli=59850; initial_gzip=66825"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70768,
+            "unit": "bytes",
+            "extra": "raw=202293; brotli=63102; initial_gzip=70643"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pujitha.rathna@gmail.com",
+            "name": "Pujitha Paladugu",
+            "username": "pujitha24"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5320d7ca23eca82d720ac5629d2bad5cf7d9b02",
+          "message": "fix(start-plugin-core): define TSS_SHELL in Rsbuild dev for SPA mode (#8805)\n\n* fix(start-plugin-core): define TSS_SHELL in Rsbuild dev for SPA mode\n\nIn Rsbuild dev mode, `source.define` now sets `process.env.TSS_SHELL` and `import.meta.env.TSS_SHELL` from `startConfig.spa?.enabled` (`\"true\"` when SPA mode is enabled, `\"false\"` otherwise). Before this, Rsbuild dev never defined `TSS_SHELL`, so with `spa: { enabled: true }` it server-rendered the matched route and ran its loader on the server instead of serving only the shell. Build and preview are unchanged: the define is added only when `isDev` is true.\n\nChanges:\n- `packages/start-plugin-core/src/rsbuild/plugin.ts`: add the dev-only `TSS_SHELL` defines to the Rsbuild define block.\n- `packages/start-plugin-core/tests/rsbuild/spa-shell-define.test.ts`: new test that calls the plugin's `modifyRsbuildConfig` hook. It checks that `TSS_SHELL` is `\"true\"` in dev with SPA enabled, `\"false\"` in dev without SPA, and not defined in build.\n- `.changeset/rsbuild-spa-dev-shell.md`: patch changeset for `@tanstack/start-plugin-core`.\n\nFixes #8543\n\nSigned-off-by: Pujitha Paladugu <10557236+pujitha24@users.noreply.github.com>\nAssisted-by: claude-sonnet-5-5 (via Claude Code)\n\n* test(start-plugin-core): check the SPA shell on a real Rsbuild dev server\n\n- `src/rsbuild/plugin.ts`: the `TSS_SHELL` define gets #8817's comment.\n- The regression test serves a real app with `rsbuild dev` (a new\n  `startRsbuildDevServer` in `tests/integration/start-app.ts`) and fetches\n  its `/` route: with `spa.enabled` the loader no longer runs on the\n  server; without it, the control still renders the route there. This is\n  #8817's `integration/rsbuild/dev-server-config.test.ts` scenario, and it\n  replaces the unit test that stubbed the plugin API.\n- The changeset says what users see.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(start-plugin-core): the SPA dev test checks the shell and counts loader runs\n\nThe SPA test only checked a 200 without `MARK_SERVER`, which an empty\nanswer or a loader run whose output the shell drops would also pass.\nThe root route now renders its own text, so the SPA answer must hold it\nwithout the `/` route's; the loader counts its runs on `globalThis`\n(Rsbuild dev runs the server bundle in the test's process), so the SPA\ntest asserts none and the control asserts one.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(react-start): check the dev SPA shell with an e2e on Vite and Rsbuild\n\nReplace the synthetic Rsbuild integration test with one e2e in\ne2e/react-start/basic, run against both dev servers:\ntest:e2e--vite-spa--dev and test:e2e--rsbuild-spa--dev\n(playwrightModes with E2E_DEV_SERVER, no app build, the shared dev\nserver prewarm). spa-shell.spec.ts checks that the raw document is the\nshell, that the route's loader and beforeLoad run in the browser, and\nthat client navigation works from the shell. It runs in the prod SPA\nmode too.\n\ntests/integration/start-app.ts is back to main's.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nSigned-off-by: Pujitha Paladugu <10557236+pujitha24@users.noreply.github.com>\nCo-authored-by: Pujitha Paladugu <10557236+pujitha24@users.noreply.github.com>\nCo-authored-by: Sheraff <me@florianpellet.com>\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-04T20:28:58+01:00",
+          "tree_id": "63e82f8a028cdb3e9c9851ccba6956f54d1a7e13",
+          "url": "https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02"
+        },
+        "date": 1793820832659,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
