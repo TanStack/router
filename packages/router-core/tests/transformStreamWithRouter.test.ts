@@ -537,7 +537,11 @@ describe('transformReadableStreamWithRouter — real SSR scripts', () => {
     upstream.close()
 
     const html = await readAll(output as any)
-    expect(html).toContain(`${GLOBAL_TSR}.e()`)
+    const endIndex = html.indexOf(`${GLOBAL_TSR}.e()`)
+    expect(endIndex).toBeGreaterThan(-1)
+    expect(
+      html.slice(html.lastIndexOf('<script', endIndex), endIndex),
+    ).toContain('nonce="late-nonce"')
     expect(html).not.toContain('<script>')
   })
 
