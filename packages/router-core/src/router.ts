@@ -68,6 +68,7 @@ import type {
   LoadTransaction,
   LoaderFlight,
   PendingSession,
+  RouterAbortController,
 } from './load-client'
 import type { ServerLoadResult } from './load-server'
 import type {
@@ -1121,7 +1122,7 @@ export interface RouterCore<
 }
 
 export type HydrationHandoff = [
-  claim: () => AbortController | undefined,
+  claim: () => RouterAbortController | undefined,
   finish: (matches?: Array<AnyRouteMatch>) => number | undefined,
 ]
 
