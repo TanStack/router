@@ -6,16 +6,34 @@ import { describe, expect, test } from 'vitest'
 import { appFiles, createStartApp, startRsbuildDevServer } from '../start-app'
 import type { StartOptions } from '../start-app'
 
+declare global {
+  // Counts the runs of the `/` route's loader. Rsbuild's dev server runs
+  // the server bundle in the test's process, so its loader sees this global.
+  var indexLoaderRuns: number | undefined
+}
+
 const timeout = 60_000
 
-/** A dev server of an app whose `/` route tells where its loader ran. */
+/**
+ * A dev server of an app whose root route renders "root route" around its
+ * `/` route, which renders "index route" and counts its loader's runs.
+ */
 async function startApp(options: StartOptions = {}) {
+  globalThis.indexLoaderRuns = 0
   const app = await createStartApp(
     appFiles({
+      'src/routes/__root.tsx': `import { createElement } from 'react'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: () => createElement('main', null, 'root route', createElement(Outlet)),
+})
+`,
       'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
-  loader: () => (typeof window === 'undefined' ? 'MARK_SERVER' : 'MARK_CLIENT'),
-  component: () => \`loader ran on \${Route.useLoaderData()}\`,
+  loader: () => {
+    globalThis.indexLoaderRuns = (globalThis.indexLoaderRuns ?? 0) + 1
+  },
+  component: () => 'index route',
 })
 `,
     }),
@@ -30,8 +48,10 @@ describe('Rsbuild dev server options', () => {
     'without SPA mode, the dev server renders the route on the server',
     async () => {
       const url = await startApp()
-      const response = await fetch(url)
-      expect(await response.text()).toContain('MARK_SERVER')
+      const html = await (await fetch(url)).text()
+      expect(html).toContain('root route')
+      expect(html).toContain('index route')
+      expect(globalThis.indexLoaderRuns).toBe(1)
     },
     timeout,
   )
@@ -48,7 +68,11 @@ describe('Rsbuild dev server options', () => {
       const url = await startApp({ spa: { enabled: true } })
       const response = await fetch(url)
       expect(response.status).toBe(200)
-      expect(await response.text()).not.toContain('MARK_SERVER')
+      // The shell: the root route alone, the matched route left to the client
+      const html = await response.text()
+      expect(html).toContain('root route')
+      expect(html).not.toContain('index route')
+      expect(globalThis.indexLoaderRuns).toBe(0)
     },
     timeout,
   )
