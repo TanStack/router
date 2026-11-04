@@ -113,13 +113,15 @@ export function tanStackStartRsbuild(
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
       api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
-        // Rsbuild passes a relative `root` on as written; its resolved root
-        // (against its `cwd`) is `rootPath`
-        const root =
+        // Rsbuild passes `root` on as written; its resolved root (against its
+        // `cwd`) is `rootPath`. Canonical (no trailing separator), as the
+        // virtual modules' paths must match Rspack's module paths.
+        const root = resolve(
           typeof rsbuildConfig.root === 'string' &&
-          isAbsolute(rsbuildConfig.root)
+            isAbsolute(rsbuildConfig.root)
             ? rsbuildConfig.root
-            : api.context.rootPath
+            : api.context.rootPath,
+        )
 
         const serverBase = rsbuildConfig.server?.base
         const assetPrefix = rsbuildConfig.output?.assetPrefix
