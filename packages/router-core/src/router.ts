@@ -98,8 +98,9 @@ import type {
   SearchMiddlewareMeta,
 } from './route'
 import type {
+  AllParams,
   FullSearchSchema,
-  RouteById,
+  RouteByPath,
   RoutePaths,
   RoutesById,
   RoutesByPath,
@@ -728,7 +729,7 @@ export type MatchRouteFn<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
 > = <
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = '/',
   TTo extends string | undefined = undefined,
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 >(
@@ -743,7 +744,14 @@ export type MatchRouteFn<
     TTo
   >,
   opts?: MatchRouteOptions,
-) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
+) =>
+  | false
+  | (string extends TResolved
+      ? AllParams<TRouteTree>
+      : RouteByPath<
+          TRouteTree,
+          Extract<TResolved, string>
+        >['types']['allParams'])
 
 export type UpdateFn<
   TRouteTree extends AnyRoute,
@@ -2723,13 +2731,16 @@ export class RouterCore<
       }
     }
 
+    // The declared return type is resolved per call site (a literal path
+    // picks one route's params, a broad string the merged params of all
+    // routes), so the runtime params are cast here.
+    const params = match.rawParams as any
+
     if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, true)
-        ? match.rawParams
-        : false
+      return deepEqual(baseLocation.search, next.search, true) ? params : false
     }
 
-    return match.rawParams
+    return params
   }
 
   ssr?: {
