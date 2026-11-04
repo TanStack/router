@@ -350,6 +350,9 @@ test.use({
     'SyntaxError',
     'Syntax Error',
     'Expression expected',
+    // the Start compiler's own error for the route file it cannot parse,
+    // reported at its position (Rspack's `Module build failed` no longer wraps it)
+    'The compiler cannot parse',
   ],
 })
 

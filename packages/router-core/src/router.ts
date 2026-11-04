@@ -1073,8 +1073,7 @@ declare global {
   // eslint-disable-next-line no-var
   var __TSR_CACHE__:
     | {
-        /** The root route's children: re-evaluating a route tree module gives its root, the same object, new ones. */
-        children: AnyRoute['children']
+        routeTree: AnyRoute
         caseSensitive: boolean | undefined
         processRouteTreeResult: RouteTreeCaches<AnyRoute>
       }
@@ -1345,12 +1344,11 @@ export class RouterCore<
       if (
         process.env.NODE_ENV !== 'development' &&
         (isServer ?? this.isServer) &&
-        this.routeTree.children &&
-        globalThis.__TSR_CACHE__?.children === this.routeTree.children &&
-        // it matched defined children: the cache exists
-        globalThis.__TSR_CACHE__!.caseSensitive === this.options.caseSensitive
+        globalThis.__TSR_CACHE__ &&
+        globalThis.__TSR_CACHE__.routeTree === this.routeTree &&
+        globalThis.__TSR_CACHE__.caseSensitive === this.options.caseSensitive
       ) {
-        const cached = globalThis.__TSR_CACHE__!
+        const cached = globalThis.__TSR_CACHE__
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
         processRouteTreeResult = this.buildRouteTree()
@@ -1361,7 +1359,7 @@ export class RouterCore<
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
-            children: this.routeTree.children,
+            routeTree: this.routeTree,
             caseSensitive: this.options.caseSensitive,
             processRouteTreeResult: processRouteTreeResult as any,
           }

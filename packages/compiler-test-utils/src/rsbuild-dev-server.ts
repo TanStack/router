@@ -35,6 +35,7 @@ import { createLogger, createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
+import { runAsDevCommand } from './dev-command'
 import { saveAppFile } from './save-file'
 import type { App, AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -244,6 +245,7 @@ async function openServer(
   options: RsbuildDevServerOptions,
   app?: App,
 ): Promise<RsbuildDevServer> {
+  runAsDevCommand()
   const channel = openDiagnosticChannel()
   try {
     return await channel.run(() => startServer(options, channel, app))

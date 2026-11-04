@@ -57,6 +57,23 @@ export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
 /** The `buildInfo` field holding the key and dependencies of a module's plan, as JSON (persisted by Rspack's cache; checked at a compiler's first `finishMake`). */
 export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
 
+/**
+ * The `buildInfo` field holding a compile's diagnostics with their positions
+ * (`LocatedDiagnostic`), in the order they were reported: Rspack keeps no
+ * location of a loader's warning or error, so the host plugin gives them
+ * one after the seal (`locateDiagnostics`).
+ */
+export const DIAGNOSTICS_BUILD_INFO_FIELD = 'tanstack.start.diagnostics'
+
+export interface LocatedDiagnostic {
+  severity: 'error' | 'warning'
+  /** The reported message (with the position, in the Vite host's form). */
+  message: string
+  /** 1-based line and column. */
+  line?: number
+  column?: number
+}
+
 export interface ServerFnBuildInfo {
   version: 3
   canonicalId: string
@@ -654,7 +671,11 @@ export class StartRsbuildCompilerSession {
     return { code: mock.code, map: null }
   }
 
-  /** Reports a compile's diagnostics: warnings to the loader context, the errors thrown together (the module fails). */
+  /**
+   * Reports a compile's diagnostics: warnings to the loader context, the
+   * errors thrown together (the module fails), and all of them with their
+   * positions in the module's `buildInfo` (`DIAGNOSTICS_BUILD_INFO_FIELD`).
+   */
   private reportDiagnostics(
     ctx: LoaderContextLike,
     out: CompileOutput,
@@ -663,9 +684,23 @@ export class StartRsbuildCompilerSession {
     envType: 'client' | 'server',
     lateInputMap?: () => InputSourceMap | null,
   ): void {
-    // the position in the Vite host's form, `message (file:line:col)`
-    const where = (at: DiagnosticPosition | undefined) =>
-      at ? ` (${file}:${at.line}:${at.column + 1})` : ''
+    const located: Array<LocatedDiagnostic> = []
+    const locate = (
+      severity: LocatedDiagnostic['severity'],
+      message: string,
+      at: DiagnosticPosition | undefined,
+    ) => {
+      // the position in the Vite host's form, `message (file:line:col)`
+      const text = at
+        ? `${message} (${file}:${at.line}:${at.column + 1})`
+        : message
+      located.push(
+        at
+          ? { severity, message: text, line: at.line, column: at.column + 1 }
+          : { severity, message: text },
+      )
+      return text
+    }
     const errors: Array<string> = []
     this.start.report(
       out,
@@ -673,15 +708,19 @@ export class StartRsbuildCompilerSession {
       code,
       envType,
       {
-        error: (d, at) => errors.push(`${d.message}${where(at)}`),
+        error: (d, at) => errors.push(locate('error', d.message, at)),
         warn: (d, at) => {
-          const warning = new Error(`${d.message}${where(at)}`)
+          const warning = new Error(locate('warning', d.message, at))
           warning.name = 'TanStackStartCompilerWarning'
           ctx.emitWarning(warning)
         },
       },
       lateInputMap,
     )
+    const buildInfo = ctx._module?.buildInfo
+    if (located.length > 0 && buildInfo) {
+      buildInfo[DIAGNOSTICS_BUILD_INFO_FIELD] = located
+    }
     if (errors.length > 0) {
       const error = new Error(errors.join('\n'))
       error.name = 'TanStackStartCompilerError'

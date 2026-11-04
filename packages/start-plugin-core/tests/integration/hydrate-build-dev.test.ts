@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
@@ -105,6 +106,7 @@ createRoot(document.getElementById('root')!).render(<Page />)
         ),
       )
       await server.stop()
+      runAsDevCommand()
       const restarted = await createServer({
         root: server.root,
         configFile: false,

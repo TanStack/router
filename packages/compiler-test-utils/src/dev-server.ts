@@ -61,6 +61,7 @@ import { servedDirectories } from './app-directory'
 import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
+import { runAsDevCommand } from './dev-command'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -288,6 +289,7 @@ interface ReportedEvent {
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
+  runAsDevCommand()
   const channel = openDiagnosticChannel()
   try {
     return await channel.run(() => startServer(options, channel))

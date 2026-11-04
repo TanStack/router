@@ -13,6 +13,7 @@ import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
+import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { linkStartRuntime } from '../build-harness'
 import {
@@ -116,6 +117,7 @@ describe('Vite dev server', () => {
         await writeFile(path.join(root, file), content)
       }
       await linkStartRuntime(root)
+      runAsDevCommand()
       server = await createServer({
         root,
         configFile: false,
@@ -249,6 +251,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
    * SSR as the server fn provider.
    */
   function startServerFnDevServer(root: string) {
+    runAsDevCommand()
     return createServer({
       root,
       configFile: false,
