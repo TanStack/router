@@ -2,4 +2,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Define `TSS_SHELL` in Rsbuild dev so SPA mode serves only the shell instead of server-rendering routes and running loaders on the server.
+With `spa.enabled`, the Rsbuild dev server answers the SPA shell, as Vite's dev server does, instead of rendering the route and running its loaders on the server.
