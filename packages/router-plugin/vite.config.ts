@@ -1,18 +1,7 @@
-import path from 'node:path'
 import os from 'node:os'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
-
-// Under Vitest: Node's compile cache for the test workers and the child
-// Node runs they start (the harness passes this environment on). No outcome
-// change; less time compiling the bundlers and the built apps again.
-if (process.env.VITEST) {
-  process.env.NODE_COMPILE_CACHE ??= path.join(
-    os.tmpdir(),
-    'node-compile-cache',
-  )
-}
 
 /**
  * The projects whose tests check route apps in pages of a real browser

@@ -1,5 +1,3 @@
-import path from 'node:path'
-import os from 'node:os'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
@@ -9,15 +7,6 @@ import packageJson from './package.json'
 // the public API), at main's paths and unchanged: `test:noncompiler` runs
 // them; the compiler projects leave them out. Paths relative to `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
-
-// Under Vitest: Node's compile cache for the test workers. No outcome
-// change; less time compiling the bundlers and the built apps again.
-if (process.env.VITEST) {
-  process.env.NODE_COMPILE_CACHE ??= path.join(
-    os.tmpdir(),
-    'node-compile-cache',
-  )
-}
 
 const config = defineConfig({
   resolve: {

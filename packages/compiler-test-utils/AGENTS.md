@@ -38,7 +38,8 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./determinism`: compare builds across roots and orders (SPEC G4).
 - `./dead-code-shapes`: the dependency shapes every removal runs through (SPEC G16); inputs, no judging logic.
 - `./app-directory` (`createAppDirectory`, `servedDirectories`): temp app directories that resolve like the package.
-- `./run-directory` (Vitest `globalSetup`): the run's temp dir, removed when the run ends.
+- `./run-directory` (Vitest `globalSetup`): the run's temp dir (apps, generator temp files, Node's compile cache), removed
+  when the run ends.
 - `./test-scope` (`currentTest`, `onTestFinished`) with `./test-scope-setup` (`setupFiles`): per-test resources in
   concurrent files.
 - `./pins` (`runPins`) with `./pins-setup` (`setupFiles`): `COMPILER_TESTS_PINS=run` runs every known-bug pin as an
