@@ -72,6 +72,20 @@ function HelloComponent() {
 }
 ```
 
+## Linking to Server-Only Routes
+
+Use a normal `<a href>` to navigate to a route that only defines server handlers. Server-only routes are removed from the client route tree, so `<Link>` is not supported for these destinations.
+
+Setting `reloadDocument` on `<Link>` does not change how it builds the URL. If a parent route transforms path parameters with `params.stringify`, the client can produce a different URL from the server because the destination is missing from its route tree.
+
+Supply the final public URL in `href`, including any transformations that your parameter stringifiers would normally apply. For example, if a parent route parses the public `articles` segment into the internal value `article`, link to the public path:
+
+```tsx
+<a href="/articles/1/download">Download</a>
+```
+
+For programmatic requests, pass the same public URL to `fetch`. Routes that define both server handlers and an app component can still use `<Link>` for navigation to the app component.
+
 ## File Route Conventions
 
 Server routes in TanStack Start follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory with a `server` property in the `createFileRoute` call will be treated as an API route. Here are a few examples:
