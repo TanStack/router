@@ -73,7 +73,9 @@ describe('compiler stats (TSR_COMPILER_STATS=1)', () => {
     const before = compilerStats().compiler?.instances ?? 0
     const host = new MemoryHost({ files })
     await compileAll(host)
-    expect(compilerStats().compiler?.instances ?? 0).toBe(before)
+    // the registry holds sessions weakly: an earlier test's may be collected
+    // meanwhile, so the count can drop, never rise
+    expect(compilerStats().compiler?.instances ?? 0).toBeLessThanOrEqual(before)
   })
 
   it('evicts a changed file’s plan in every env and keeps generation bookkeeping per live key', async () => {
