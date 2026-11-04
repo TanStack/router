@@ -848,8 +848,9 @@ export function compileCodeSplitReferenceRoute(
     )
     console.warn(warningMessage)
 
-    // The bundler's production mode can differ from the host NODE_ENV.
-    if (!(opts.isProduction ?? process.env.NODE_ENV === 'production')) {
+    // Development builds log it in the page too. The bundler's mode decides,
+    // not the build process's NODE_ENV, which webpack never sets.
+    if (!opts.isProduction) {
       const warningTemplate = template.statement(
         `console.warn(${JSON.stringify(warningMessage)})`,
       )()
