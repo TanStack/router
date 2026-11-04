@@ -762,6 +762,33 @@ describe('createServerFn compiles correctly', async () => {
     ])
   })
 
+  test('a repeated name loses its leading and doubled underscores in the generator input', async () => {
+    const generateFunctionId = vi.fn(
+      (_opts: { filename: string; functionName: string }) => undefined,
+    )
+    const compiler = createBuildCompiler(generateFunctionId)
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        var _x = createServerFn().handler(async () => 'a')
+        var _x = createServerFn().handler(async () => 'b')
+        export const café = createServerFn().handler(async () => 'c')
+        export const caf_ = createServerFn().handler(async () => 'd')
+      `,
+      id: '/test/src/users.ts',
+    })
+
+    expect(
+      generateFunctionId.mock.calls.map(([opts]) => opts.functionName),
+    ).toEqual([
+      '_x_createServerFn_handler',
+      'x_createServerFn_handler_1',
+      'caf__createServerFn_handler',
+      'caf_createServerFn_handler_1',
+    ])
+  })
+
   test.each([
     'users/get',
     'users#get',
