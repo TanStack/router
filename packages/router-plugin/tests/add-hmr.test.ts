@@ -269,6 +269,7 @@ export const Route = createRootRoute({})
       socket.addEventListener('error', reject)
     })
     const statuses: Record<string, number> = {}
+    const served: Record<string, string> = {}
     const queue = ['/main.ts']
     while (queue.length > 0) {
       const url = queue.shift()!
@@ -278,6 +279,7 @@ export const Route = createRootRoute({})
       const response = await fetch(origin + url)
       statuses[url] = response.status
       const code = await response.text()
+      served[url] = code
       // Static imports of the app's own modules
       for (const [, imported] of code.matchAll(
         /^import\s[^'"]*?["'](\/(?!@|node_modules)[^"'?]+)["']/gm,
@@ -287,6 +289,7 @@ export const Route = createRootRoute({})
     }
     return {
       statuses,
+      served,
       /** Writes `code` to `file`; resolves with Vite's first reaction. */
       async edit(file: string, code: string) {
         const seen = messages.length
@@ -361,10 +364,12 @@ const hot = 'hot'
 export const Route = createFileRoute('/')({ component: () => <p>{hot}</p> })
 `,
       },
-      { autoCodeSplitting: true },
+      // Unsplit, so the binding stays in the module the HMR code goes into
+      { autoCodeSplitting: false },
     )
     try {
       expect(app.statuses['/routes/index.tsx']).toBe(200)
+      expect(app.served['/routes/index.tsx']).toMatch(/const hot = ["']hot["']/)
     } finally {
       await app.close()
     }
