@@ -173,7 +173,12 @@ test(
     const linkParent = realpathSync(
       await mkdtemp(path.join(os.tmpdir(), 'start-link-')),
     )
-    onTestFinished(() => rm(linkParent, { recursive: true, force: true }))
+    const cwd = process.cwd()
+    // (finish callbacks run last first: leave the link before removing it)
+    onTestFinished(async () => {
+      process.chdir(cwd)
+      await rm(linkParent, { recursive: true, force: true })
+    })
     const link = path.join(linkParent, 'web')
     await symlink(web, link, 'junction')
     process.chdir(link)
