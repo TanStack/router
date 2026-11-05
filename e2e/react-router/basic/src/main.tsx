@@ -1,4 +1,5 @@
 import ReactDOM from 'react-dom/client'
+import { useState } from 'react'
 import {
   ErrorComponent,
   Link,
@@ -9,7 +10,7 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtoolsInProd as TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
@@ -27,6 +28,9 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  const [usesUpdatedDevtoolsProps, setUsesUpdatedDevtoolsProps] =
+    useState(false)
+
   return (
     <>
       <div className="p-2 flex gap-2 text-lg border-b">
@@ -88,7 +92,20 @@ function RootComponent() {
         </div>
       </div>
       <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
+      <button type="button" onClick={() => setUsesUpdatedDevtoolsProps(true)}>
+        Update devtools props
+      </button>
+      <TanStackRouterDevtools
+        position="bottom-right"
+        toggleButtonProps={{
+          className: usesUpdatedDevtoolsProps
+            ? 'updated-devtools-toggle'
+            : 'initial-devtools-toggle',
+          'aria-label': usesUpdatedDevtoolsProps
+            ? 'Updated Router Devtools'
+            : 'Custom Router Devtools',
+        }}
+      />
     </>
   )
 }

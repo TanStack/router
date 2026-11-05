@@ -58,7 +58,7 @@ export class TanStackRouterDevtoolsCore {
 
   #panelProps: any
   #closeButtonProps: any
-  #toggleButtonProps: any
+  #toggleButtonProps: Signal<any>
   #containerElement?: string | any
 
   #isMounted = false
@@ -74,7 +74,7 @@ export class TanStackRouterDevtoolsCore {
 
     this.#panelProps = config.panelProps
     this.#closeButtonProps = config.closeButtonProps
-    this.#toggleButtonProps = config.toggleButtonProps
+    this.#toggleButtonProps = createSignal(config.toggleButtonProps)
     this.#containerElement = config.containerElement
   }
 
@@ -92,7 +92,7 @@ export class TanStackRouterDevtoolsCore {
 
       const panelProps = this.#panelProps
       const closeButtonProps = this.#closeButtonProps
-      const toggleButtonProps = this.#toggleButtonProps
+      const [toggleButtonProps] = this.#toggleButtonProps
       const containerElement = this.#containerElement
 
       let Devtools
@@ -156,6 +156,10 @@ export class TanStackRouterDevtoolsCore {
 
     if (options.containerElement !== undefined) {
       this.#containerElement = options.containerElement
+    }
+
+    if ('toggleButtonProps' in options) {
+      this.#toggleButtonProps[1](options.toggleButtonProps)
     }
   }
 }
