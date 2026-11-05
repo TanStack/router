@@ -25,6 +25,7 @@ import { normalizePath } from '../src/core/utils'
 import { getModuleErrors } from './validate-module'
 import type { Config } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
+import type { HmrStyle } from '../src/core/hmr'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
 
@@ -243,10 +244,11 @@ export function transformWithRouteHmrPlugin(
     file: routeFile('index'),
     routeId: '/',
   },
+  hmrStyle?: HmrStyle,
 ) {
   const context = createRouterPluginContext()
   context.routesByFile.set(route.file, { routeId: route.routeId })
-  const plugins = createRouterHmrPlugin(options, context)
+  const plugins = createRouterHmrPlugin(options, context, hmrStyle)
   const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
   const output = runTransform(plugin, code, route.file)
   if (output === null) {
