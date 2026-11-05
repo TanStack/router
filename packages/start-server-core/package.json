@@ -96,6 +96,9 @@
     },
     "#tanstack-start-plugin-adapters": {
       "default": "./dist/esm/empty-plugin-adapters.js"
+    },
+    "#tanstack-start-api-route-tree": {
+      "default": "./dist/esm/empty-api-route-tree.js"
     }
   },
   "sideEffects": false,
