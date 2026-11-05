@@ -67,7 +67,11 @@ the compiler rejects a relative URL.
 
 The plugin performs three jobs:
 
-- generates the shared React route tree
+- generates the React route tree from the shared routes directory into
+  `src/routeTree.gen-native.ts`, which native builds use in place of
+  `routeTree.gen.ts`. The web build appends Start's SSR types to
+  `routeTree.gen.ts`, so a native watcher writing the same file would keep the
+  two dev servers rebuilding each other.
 - applies the NativeScript renderer and `-native` module resolver
 - runs Start's client transform with the same deterministic server-function IDs
   used by the deployed Start server
