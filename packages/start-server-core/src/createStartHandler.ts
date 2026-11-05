@@ -11,9 +11,12 @@ import {
 } from '@tanstack/start-client-core'
 import {
   _getRenderedMatches,
+  findRouteMatch,
   isDangerousProtocol,
   isPromise,
   isRedirect,
+  processRouteTree,
+  trimPathRight,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
@@ -68,6 +71,7 @@ import type {
   AnyRoute,
   AnyRouter,
   AnySerializationAdapter,
+  ProcessRouteTreeResult,
   Register,
 } from '@tanstack/router-core'
 import type {
@@ -101,14 +105,21 @@ interface PluginAdaptersEntry {
   pluginSerializationAdapters: Array<AnySerializationAdapter>
 }
 
+interface ApiRouteTreeEntry {
+  apiRouteTree: AnyRoute | undefined
+}
+
 interface Entries {
   startEntry: StartEntry
-  routerEntry: RouterEntry
   pluginAdapters: PluginAdaptersEntry
+  apiRouteTreeEntry: ApiRouteTreeEntry
 }
 
 // Share initialization, then reuse the loaded entries without a promise wait.
 let cachedEntries: Entries | Promise<Entries> | undefined
+// The router entry imports the whole app, so it loads on the first request
+// that needs a Router rather than with the other entries.
+let cachedRouterEntry: RouterEntry | Promise<RouterEntry> | undefined
 let hasWarnedMissingCsrfMiddleware = false
 const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
@@ -126,18 +137,157 @@ const createEarlyHintsForRequest: typeof createEarlyHintsCollector =
     : createEarlyHintsCollector
 
 async function loadEntries(): Promise<Entries> {
-  const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    import('#tanstack-router-entry'),
+  const [startEntry, pluginAdapters, apiRouteTreeEntry] = await Promise.all([
     // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
     import('#tanstack-start-entry'),
     // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
     import('#tanstack-start-plugin-adapters'),
+    import('#tanstack-start-api-route-tree'),
   ])
   return {
-    routerEntry: routerEntry as unknown as RouterEntry,
     startEntry: startEntry as unknown as StartEntry,
     pluginAdapters: pluginAdapters as unknown as PluginAdaptersEntry,
+    apiRouteTreeEntry: apiRouteTreeEntry as unknown as ApiRouteTreeEntry,
+  }
+}
+
+function getRouterEntry() {
+  if (!cachedRouterEntry) {
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    cachedRouterEntry = import('#tanstack-router-entry').then((entry) => {
+      cachedRouterEntry = entry as unknown as RouterEntry
+      return cachedRouterEntry
+    })
+  }
+  return cachedRouterEntry
+}
+
+// Server-only routes, matched without a Router. Rebuilt only when the
+// virtual module hands over a new tree (dev invalidation).
+let processedApiTree:
+  | {
+      tree: AnyRoute
+      processedTree: ProcessRouteTreeResult<AnyRoute>['processedTree']
+    }
+  | undefined
+
+const EMPTY_START_OPTIONS = {} as AnyStartInstanceOptions
+
+interface RequestSetup {
+  requestStartOptions: AnyStartInstanceOptions
+  flattenedRequestMiddlewares: ReturnType<typeof flattenMiddlewares>
+  /** Read-only after setup: consumers copy or query it. */
+  executedRequestMiddlewares: Set<AnyRequestMiddleware> | undefined
+}
+
+// Per Start options object (a new one after HMR), split by request kind
+// because only server functions get the default CSRF middleware.
+const requestSetups = new WeakMap<
+  AnyStartInstanceOptions,
+  { router?: RequestSetup; serverFn?: RequestSetup }
+>()
+
+function getRequestSetup(
+  startOptions: AnyStartInstanceOptions,
+  hasStartInstance: boolean,
+  pluginAdapters: PluginAdaptersEntry,
+  isServerFnRequest: boolean,
+): RequestSetup {
+  let byKind = requestSetups.get(startOptions)
+  if (!byKind) {
+    byKind = {}
+    requestSetups.set(startOptions, byKind)
+  }
+  const kind = isServerFnRequest ? 'serverFn' : 'router'
+  let setup = byKind[kind]
+  if (setup) {
+    return setup
+  }
+  const requestMiddleware = hasStartInstance
+    ? startOptions.requestMiddleware
+    : isServerFnRequest
+      ? [defaultCsrfMiddleware]
+      : undefined
+  const requestStartOptions = {
+    ...startOptions,
+    requestMiddleware,
+    serializationAdapters: [
+      ...(startOptions.serializationAdapters || []),
+      ...(pluginAdapters.hasPluginAdapters
+        ? pluginAdapters.pluginSerializationAdapters
+        : []),
+      ServerFunctionSerializationAdapter,
+    ],
+  }
+  let executedRequestMiddlewares: Set<AnyRequestMiddleware> | undefined
+  let flattenedRequestMiddlewares: ReturnType<typeof flattenMiddlewares> = []
+  if (requestMiddleware?.length) {
+    // Reuse the flattening set for request middleware deduplication.
+    executedRequestMiddlewares = new Set()
+    flattenedRequestMiddlewares = flattenMiddlewares(
+      requestMiddleware,
+      undefined,
+      executedRequestMiddlewares,
+    )
+  }
+  setup = {
+    requestStartOptions,
+    flattenedRequestMiddlewares,
+    executedRequestMiddlewares,
+  }
+  byKind[kind] = setup
+  return setup
+}
+
+/**
+ * Exact server-route match from the server-only tree, or undefined when the
+ * request needs the full Router: pages, fuzzy matches, methods without a
+ * handler, or paths that need normalization.
+ */
+function matchApiRoute(
+  tree: AnyRoute | undefined,
+  pathname: string,
+  method: string,
+): ServerRouteMatch | undefined {
+  if (!tree) {
+    return undefined
+  }
+  // Routes live under the router basepath; anything outside it is not ours.
+  let routePath = pathname
+  if (ROUTER_BASEPATH !== '/') {
+    const basepath = trimPathRight(ROUTER_BASEPATH)
+    if (pathname === basepath) {
+      routePath = '/'
+    } else if (pathname.startsWith(basepath + '/')) {
+      routePath = pathname.slice(basepath.length)
+    } else {
+      return undefined
+    }
+  }
+  if (processedApiTree?.tree !== tree) {
+    processedApiTree = {
+      tree,
+      processedTree: processRouteTree(tree).processedTree,
+    }
+  }
+  // ponytail: router-level `caseSensitive` and `rewrite` options live in the
+  // router entry, which is not loaded here. A miss falls back to the Router,
+  // so only a hit the Router would have routed elsewhere differs.
+  const match = findRouteMatch(
+    trimPathRight(routePath),
+    processedApiTree.processedTree,
+    false,
+  )
+  if (!match || !resolveRouteHandler(match.route, method)?.handler) {
+    return undefined
+  }
+  const rawParams: Record<string, string> = Object.create(null)
+  Object.assign(rawParams, match.rawParams)
+  return {
+    pathname,
+    matchedRoutes: match.branch,
+    rawParams,
+    foundRoute: match.route,
   }
 }
 
@@ -657,14 +807,30 @@ export function createStartHandler<TRegister = Register>(
       const requestUrl = event.requestUrl
       let url = requestUrl
       const pathname = url.pathname
-      // Plain RPC paths need no routing normalization. Their payload is read
-      // from the original query; normalize only if they later request a router.
-      if (
-        !SERVER_FN_BASE ||
-        !pathname.startsWith(SERVER_FN_BASE) ||
-        pathname.includes('%') ||
-        pathname.startsWith('//')
-      ) {
+      // Normalization only rewrites encoded or protocol-relative pathnames.
+      const isPlainPath = !pathname.includes('%') && !pathname.startsWith('//')
+      const isPlainServerFnPath =
+        isPlainPath && !!SERVER_FN_BASE && pathname.startsWith(SERVER_FN_BASE)
+
+      const pendingEntries = getEntries()
+      const entries = isPromise(pendingEntries)
+        ? await waitForRequest(pendingEntries, signal)
+        : pendingEntries
+
+      // A server-only route match on the raw pathname skips the Router and
+      // the normalization the Router would need; the handler can still ask
+      // for one lazily through getRouterInstance().
+      const apiMatch =
+        isPlainPath && !isPlainServerFnPath
+          ? matchApiRoute(
+              entries.apiRouteTreeEntry.apiRouteTree,
+              pathname,
+              request.method,
+            )
+          : undefined
+      // Plain RPC paths need no routing normalization either. Their payload is
+      // read from the original query; normalize only if they later request a router.
+      if (!apiMatch && !isPlainServerFnPath) {
         const normalized = getNormalizedURL(requestUrl)
         url = normalized.url
         if (normalized.handledProtocolRelativeURL) {
@@ -672,10 +838,6 @@ export function createStartHandler<TRegister = Register>(
         }
       }
 
-      const pendingEntries = getEntries()
-      const entries = isPromise(pendingEntries)
-        ? await waitForRequest(pendingEntries, signal)
-        : pendingEntries
       const isServerFnRequest =
         !!SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)
       const startInstance = entries.startEntry.startInstance
@@ -687,48 +849,30 @@ export function createStartHandler<TRegister = Register>(
           : pendingStartOptions
         signal.throwIfAborted()
       } else {
-        startOptions = {} as AnyStartInstanceOptions
+        startOptions = EMPTY_START_OPTIONS
       }
 
-      const { hasPluginAdapters, pluginSerializationAdapters } =
-        entries.pluginAdapters
-
-      const serializationAdapters = [
-        ...(startOptions.serializationAdapters || []),
-        ...(hasPluginAdapters ? pluginSerializationAdapters : []),
-        ServerFunctionSerializationAdapter,
-      ]
-
-      const requestStartOptions = {
-        ...startOptions,
-        requestMiddleware: startInstance
-          ? startOptions.requestMiddleware
-          : isServerFnRequest
-            ? [defaultCsrfMiddleware]
-            : undefined,
-        serializationAdapters,
-      }
-
-      const requestMiddleware = requestStartOptions.requestMiddleware
-      let executedRequestMiddlewares: Set<TODO> | undefined
-      let flattenedRequestMiddlewares: ReturnType<typeof flattenMiddlewares> =
-        []
-      if (requestMiddleware?.length) {
-        // Reuse the flattening set for request middleware deduplication.
-        executedRequestMiddlewares = new Set()
-        flattenedRequestMiddlewares = flattenMiddlewares(
-          requestMiddleware,
-          undefined,
-          executedRequestMiddlewares,
-        )
-      }
+      const {
+        requestStartOptions,
+        flattenedRequestMiddlewares,
+        executedRequestMiddlewares,
+      } = getRequestSetup(
+        startOptions,
+        !!startInstance,
+        entries.pluginAdapters,
+        isServerFnRequest,
+      )
 
       // Memoized router getter
       const getRouter = (): Promise<AnyRouter> => {
         routerPromise ??= (async () => {
           signal.throwIfAborted()
           const routerUrl = url === requestUrl ? getNormalizedURL(url).url : url
-          const pendingRouter = entries.routerEntry.getRouter()
+          const pendingRouterEntry = getRouterEntry()
+          const routerEntry = isPromise(pendingRouterEntry)
+            ? await waitForRequest(pendingRouterEntry, signal)
+            : pendingRouterEntry
+          const pendingRouter = routerEntry.getRouter()
           const requestRouter = isPromise(pendingRouter)
             ? await waitForRequest(pendingRouter, signal)
             : pendingRouter
@@ -893,6 +1037,7 @@ export function createStartHandler<TRegister = Register>(
             () =>
               handleServerRoutes({
                 getRouter,
+                apiMatch,
                 request,
                 executeRouter,
                 context,
@@ -1129,8 +1274,42 @@ function withParsedParams(
   }
 }
 
+interface ServerRouteMatch {
+  pathname: string
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  rawParams: Record<string, string>
+  foundRoute: AnyRoute | undefined
+}
+
+/**
+ * The handler for a request method, with HEAD falling back to GET then ANY
+ * (RFC 9110 §9.3.2: HEAD returns the same header fields as GET).
+ */
+function resolveRouteHandler(route: AnyRoute | undefined, method: string) {
+  const server = route?.options.server
+  if (!server?.handlers) {
+    return undefined
+  }
+  const handlers =
+    typeof server.handlers === 'function'
+      ? server.handlers({ createHandlers: (d: any) => d })
+      : server.handlers
+  const requestMethod = method.toUpperCase() as RouteMethod
+  const handler =
+    requestMethod === 'HEAD'
+      ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
+      : (handlers[requestMethod] ?? handlers['ANY'])
+  if (!handler) {
+    return undefined
+  }
+  return typeof handler === 'function'
+    ? { handler, middleware: undefined }
+    : { handler: handler.handler, middleware: handler.middleware }
+}
+
 async function handleServerRoutes({
   getRouter,
+  apiMatch,
   request,
   executeRouter,
   context,
@@ -1139,6 +1318,7 @@ async function handleServerRoutes({
   event,
 }: {
   getRouter: () => Promise<AnyRouter>
+  apiMatch: ServerRouteMatch | undefined
   request: Request
   executeRouter: (
     serverContext: any,
@@ -1150,20 +1330,26 @@ async function handleServerRoutes({
   signal: AbortSignal
   event: StartEvent
 }): Promise<SsrResponse> {
-  const router = await getRouter()
-  const { pathname } = router.latestLocation
-  // this will perform a fuzzy match, however for server routes we need an exact match
-  // if the route is not an exact match, executeRouter will handle rendering the app router
-  // The cached match avoids another route-tree traversal during the app router render.
-  const [matchedRoutes, rawParams, foundRoute] =
-    router.getMatchedRoutes(pathname)
+  let match = apiMatch
+  let router: AnyRouter | undefined
+  if (!match) {
+    router = await getRouter()
+    const { pathname } = router.latestLocation
+    // this will perform a fuzzy match, however for server routes we need an exact match
+    // if the route is not an exact match, executeRouter will handle rendering the app router
+    // The cached match avoids another route-tree traversal during the app router render.
+    const [matchedRoutes, rawParams, foundRoute] =
+      router.getMatchedRoutes(pathname)
+    match = { pathname, matchedRoutes, rawParams, foundRoute }
+  }
+  const { pathname, matchedRoutes, rawParams, foundRoute } = match
 
   const isExactMatch = foundRoute && rawParams['**'] === undefined
 
   // Collect and dedupe route middlewares
   const routeMiddlewares: Array<AnyMiddlewareServerFn> = []
   let terminalHandler: TODO = (ctx: TODO) =>
-    executeRouter(ctx.context, matchedRoutes, router)
+    executeRouter(ctx.context, matchedRoutes, router!)
   let terminalNext: TODO
 
   // Collect middleware from matched routes, filtering out those already executed
@@ -1183,41 +1369,23 @@ async function handleServerRoutes({
   }
 
   // Add handler middleware if exact match
-  const server = foundRoute?.options.server
-  if (server?.handlers && isExactMatch) {
-    const handlers =
-      typeof server.handlers === 'function'
-        ? server.handlers({ createHandlers: (d: any) => d })
-        : server.handlers
-
-    const requestMethod = request.method.toUpperCase() as RouteMethod
-    // Per RFC 9110 §9.3.2, HEAD must return the same header fields as GET.
-    // Priority for HEAD: explicit HEAD handler → GET → ANY (last resort).
-    const handler =
-      requestMethod === 'HEAD'
-        ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
-        : (handlers[requestMethod] ?? handlers['ANY'])
-    if (handler) {
-      const mayDefer = !!foundRoute.options.component
-
-      if (typeof handler !== 'function') {
-        if (handler.middleware?.length) {
-          const handlerMiddlewares = flattenMiddlewares(handler.middleware)
-          for (const m of handlerMiddlewares) {
-            routeMiddlewares.push(m.options.server)
-          }
-        }
+  const resolved = isExactMatch
+    ? resolveRouteHandler(foundRoute, request.method)
+    : undefined
+  if (resolved) {
+    const mayDefer = !!foundRoute!.options.component
+    if (resolved.middleware?.length) {
+      for (const m of flattenMiddlewares(resolved.middleware)) {
+        routeMiddlewares.push(m.options.server)
       }
-      const routeHandler =
-        typeof handler === 'function' ? handler : handler.handler
-      if (routeHandler) {
-        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
-        if (!mayDefer) {
-          terminalHandler = parsedHandler
-          terminalNext = throwIfMayNotDefer
-        } else {
-          routeMiddlewares.push(parsedHandler)
-        }
+    }
+    if (resolved.handler) {
+      const parsedHandler = withParsedParams(resolved.handler, matchedRoutes)
+      if (!mayDefer) {
+        terminalHandler = parsedHandler
+        terminalNext = throwIfMayNotDefer
+      } else {
+        routeMiddlewares.push(parsedHandler)
       }
     }
   }
