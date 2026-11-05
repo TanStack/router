@@ -4,6 +4,7 @@ import { createRouterCodeSplitterPlugin } from './router-code-splitter-plugin'
 import { createRouterHmrPlugin } from './router-hmr-plugin'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { Config } from './config'
+import type { HmrStyle } from './hmr'
 import type { PluginBuilder as BunPluginBuilder } from 'bun'
 import type {
   RspackCompiler,
@@ -38,6 +39,11 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
     ROOT,
   )
   const routerPluginContext = createRouterPluginContext()
+  // webpack and Rspack share webpack's `import.meta.webpackHot` HMR API.
+  const hmrStyle: HmrStyle =
+    meta.framework === 'webpack' || meta.framework === 'rspack'
+      ? 'webpack'
+      : 'vite'
 
   const getPlugin = (plugin: ReturnType<UnpluginFactory<any>>) => {
     if (!Array.isArray(plugin)) {
@@ -53,6 +59,7 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
     createRouterCodeSplitterPlugin(
       options,
       routerPluginContext,
+      hmrStyle,
       meta.framework,
     ),
   )
@@ -105,7 +112,12 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
     !userConfig.autoCodeSplitting
   ) {
     const routerHmr = getPlugin(
-      createRouterHmrPlugin(options, routerPluginContext, meta.framework),
+      createRouterHmrPlugin(
+        options,
+        routerPluginContext,
+        hmrStyle,
+        meta.framework,
+      ),
     )
     result.push(...routerHmr)
   }

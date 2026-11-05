@@ -34,9 +34,8 @@ export const Route = createFileRoute('/lowercase-components')({
 function TSRPendingComponent() {
   return <div>Pending</div>
 }
-const hot = import.meta.hot
-if (hot && typeof window !== 'undefined') {
-  hot.data ??= {}
+if (import.meta.hot && typeof window !== 'undefined') {
+  import.meta.hot.data ??= {}
   const tsrReactRefresh = (window.__TSR_REACT_REFRESH__ ??= (() => {
     const ignoredExportsById = new Map()
     const previousGetIgnoredExports = window.__getReactRefreshIgnoredExports

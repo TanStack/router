@@ -1,7 +1,7 @@
 import * as template from '@babel/template'
 import * as t from '@babel/types'
 import { getUniqueProgramIdentifier } from '../../utils'
-import type { HmrStyle } from '../../config'
+import type { HmrStyle } from '../../hmr'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
 function capitalizeIdentifier(str: string) {

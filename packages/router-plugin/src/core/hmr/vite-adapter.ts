@@ -4,7 +4,9 @@ import type * as t from '@babel/types'
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
- * with a callback that receives the freshly re-imported module.
+ * with a callback that receives the freshly re-imported module. Vite makes the
+ * module a hot boundary only when the code spells `import.meta.hot.accept(`
+ * out, so the call must not go through an alias.
  *
  * `targetFramework` is currently unused — Vite's framework-specific fast-refresh
  * plugins handle component body patching via their own accept boundaries — but

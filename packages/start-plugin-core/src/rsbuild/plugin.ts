@@ -210,6 +210,18 @@ export function tanStackStartRsbuild(
               'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(routerBasepath),
               'import.meta.env.TSS_ROUTER_BASEPATH':
                 JSON.stringify(routerBasepath),
+              // In dev, SPA mode answers the shell (as Vite's dev server);
+              // a build leaves it to the prerendered shell (#8543)
+              ...(isDev
+                ? {
+                    'process.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                    'import.meta.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                  }
+                : {}),
               'process.env.TSS_DEV_SERVER': JSON.stringify(
                 isDev ? 'true' : 'false',
               ),
@@ -251,9 +263,15 @@ export function tanStackStartRsbuild(
             rsbuildConfig.server.printUrls === true
               ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
               : {}),
-            // Rsbuild compression currently treats Node's raw header array
-            // writeHead form as an object, which corrupts SSR response headers.
-            compress: false,
+            // Off unless the app turns it on (#8544): compressed SSR streams
+            // reach the browser only when they end (the SSR middleware's
+            // srvx response does not flush the compression middleware), and
+            // @rsbuild/core < 2.0.5 corrupted the SSR response headers.
+            // `rsbuildConfig` already holds Rsbuild's default (`true`), so
+            // read the app's own config.
+            ...(api.getRsbuildConfig('original').server?.compress === undefined
+              ? { compress: false }
+              : {}),
             // SSR apps render every route on the server — disable HTML
             // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
             htmlFallback: false,
