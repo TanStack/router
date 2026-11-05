@@ -27,6 +27,9 @@ const fakeStartManifest = fileURLToPath(
 const fakePluginAdapters = fileURLToPath(
   new URL('./src/empty-plugin-adapters.ts', import.meta.url),
 )
+const fakeApiRouteTree = fileURLToPath(
+  new URL('./src/empty-api-route-tree.ts', import.meta.url),
+)
 const fakeServerFnResolver = fileURLToPath(
   new URL('./src/fake-start-server-fn-resolver.ts', import.meta.url),
 )
@@ -46,6 +49,7 @@ export default mergeConfig(
         './src/virtual-modules.ts',
         './src/fake-start-server-fn-resolver.ts',
         './src/empty-plugin-adapters.ts',
+        './src/empty-api-route-tree.ts',
       ],
       externalDeps: [
         'cookie-es',
@@ -54,6 +58,7 @@ export default mergeConfig(
         '#tanstack-router-entry',
         '#tanstack-start-server-fn-resolver',
         '#tanstack-start-plugin-adapters',
+        '#tanstack-start-api-route-tree',
       ],
       cjs: false,
     }),
@@ -63,6 +68,7 @@ export default mergeConfig(
           '#tanstack-start-entry': fakeStartEntry,
           '#tanstack-router-entry': fakeRouterEntry,
           '#tanstack-start-plugin-adapters': fakePluginAdapters,
+          '#tanstack-start-api-route-tree': fakeApiRouteTree,
           '#tanstack-start-server-fn-resolver': fakeServerFnResolver,
           'tanstack-start-manifest:v': fakeStartManifest,
         },
