@@ -81,6 +81,7 @@ import type {
 import type {
   Awaitable,
   Constrain,
+  ControlledPromise,
   NoInfer,
   NonNullableUpdater,
   PickAsRequired,
@@ -1107,6 +1108,12 @@ export interface RouterCore<
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
   _serverResult?: ServerLoadResult
+  /** Server loads retain pending status until every active load has settled. */
+  _serverLoads?: number
+  /** Allocated only when SSR needs to wait for active server loads. */
+  _serverLoadPromise?: ControlledPromise<void>
+  /** First thrown load failure in the attached SSR request, until cleanup. */
+  _serverLoadFailure?: { cause: unknown }
   /** Framework publication waiting for an exact render acknowledgement. */
   _rendered?: [
     offered?: Array<AnyRouteMatch>,

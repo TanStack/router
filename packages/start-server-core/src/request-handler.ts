@@ -11,8 +11,10 @@ type EarlyHintsOptions = {
    *
    * The `static` phase contains transformed manifest preloads and stylesheets
    * for matched routes.
-   * The `dynamic` phase runs after route load, is skipped for redirects, and
-   * can contain route `head().links` or empty `hints` and `links` arrays.
+   * The `dynamic` phase runs after route load and is skipped for redirects
+   * known before collection. It can contain route `head().links` or empty
+   * `hints` and `links` arrays. A redirect started later by a custom dehydration
+   * hook cannot retract an already emitted `103` response.
    * `hints` and `links` contain only values not emitted in earlier phases.
    * `allHints` and `allLinks` contain all values collected so far for the
    * request. Browsers generally process only the first 103 response for a
