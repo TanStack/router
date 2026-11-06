@@ -330,14 +330,24 @@ export function createBrowserHistory(opts?: {
   // Ensure there is always a key to start
   if (!win.history.state?.__TSR_key && !win.history.state?.key) {
     const addedKey = createRandomKey()
+    const existingState = win.history.state
+    // `replaceState` also clears the Navigation API entry state, so restore it
+    const navigationState = win.navigation?.currentEntry?.getState()
     win.history.replaceState(
       {
-        [stateIndexKey]: 0,
+        ...(typeof existingState === 'object' ? existingState : undefined),
+        [stateIndexKey]:
+          typeof existingState?.[stateIndexKey] === 'number'
+            ? existingState[stateIndexKey]
+            : 0,
         key: addedKey, // TODO: Remove in v2 - use __TSR_key instead
         __TSR_key: addedKey,
       },
       '',
     )
+    if (navigationState !== undefined) {
+      win.navigation.updateCurrentEntry({ state: navigationState })
+    }
   }
 
   let currentLocation = parseLocation()
