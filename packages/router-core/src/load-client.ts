@@ -2221,7 +2221,16 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
     )
   }
-  router.ssr = { manifest: dehydratedRouter!.manifest }
+  const manifest = dehydratedRouter!.manifest
+  if (manifest) {
+    // Route keys arrive encoded like match ids; see `dehydrateSsrMatchId`.
+    const routes: typeof manifest.routes = {}
+    for (const id in manifest.routes) {
+      routes[id.replace(/#/g, '/')] = manifest.routes[id]!
+    }
+    manifest.routes = routes
+  }
+  router.ssr = { manifest }
   router.options.ssr = {
     nonce: (
       document.querySelector('meta[property="csp-nonce"]') as

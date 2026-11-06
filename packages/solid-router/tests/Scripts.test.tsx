@@ -592,7 +592,7 @@ describe('ssr HeadContent', () => {
         dehydratedData: {},
         manifest: {
           routes: {
-            [childRoute.id]: {
+            [dehydrateSsrMatchId(childRoute.id)]: {
               preloads: ['/solid-data-only-manifest.js'],
               scripts: [
                 {
