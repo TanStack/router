@@ -496,6 +496,77 @@ describe('normalizeRspackClientBuild', () => {
     ])
   })
 
+  // #8780: a chunk of a module two routes share must not import either
+  // route's chunk for a module duplicated into each of them (a chunk is a
+  // dependency only when every group of the shared chunk has it).
+  test('does not import a sibling route chunk through a module duplicated into each route', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+          ]
+        `,
+        'alpha.js': `
+          import { shared } from './shared.js'
+          import './alpha.css'
+          export const render = () => shared() + 'alpha'
+        `,
+        'beta.js': `
+          import { shared } from './shared.js'
+          import './beta.css'
+          export const render = () => shared() + 'beta'
+        `,
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `export const widget = () => 'widget'`,
+        'alpha.css': '.alpha { color: red; }',
+        'beta.css': '.beta { color: blue; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual([])
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: {
+          filePath: join(directory, 'root.js'),
+          children: ['/alpha', '/beta'],
+        },
+        '/alpha': { filePath: join(directory, 'alpha.js') },
+        '/beta': { filePath: join(directory, 'beta.js') },
+      },
+    })
+    expect(manifest.routes['/alpha']?.css).toEqual(['/alpha.css'])
+    expect(manifest.routes['/alpha']?.preloads).toEqual([
+      '/alpha.js',
+      '/shared.js',
+    ])
+    expect(manifest.routes['/beta']?.css).toEqual(['/beta.css'])
+    expect(manifest.routes['/beta']?.preloads).toEqual([
+      '/beta.js',
+      '/shared.js',
+    ])
+  })
+
   test('collects nested CSS imports before the importing route stylesheet', async () => {
     const { clientBuild, directory } = await buildClientFixture(
       {
