@@ -210,4 +210,41 @@ describe('createMemoryHistory', () => {
     expect(history.location.pathname).toBe('/a')
     expect(blockerFn).not.toHaveBeenCalled()
   })
+  test('preserves the index when push is followed by replace with an async blocker', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const unblock = history.block({
+      blockerFn: async () => false,
+      enableBeforeUnload: false,
+    })
+
+    history.push('/first')
+    history.replace('/final')
+
+    await vi.waitFor(() => {
+      expect(history.location.pathname).toBe('/final')
+      expect(history.location.state.__TSR_index).toBe(1)
+      expect(history.canGoBack()).toBe(true)
+    })
+
+    unblock()
+  })
+
+  test('increments the index for consecutive pushes with an async blocker', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const unblock = history.block({
+      blockerFn: async () => false,
+      enableBeforeUnload: false,
+    })
+
+    history.push('/first')
+    history.push('/second')
+
+    await vi.waitFor(() => {
+      expect(history.location.pathname).toBe('/second')
+      expect(history.location.state.__TSR_index).toBe(2)
+      expect(history.canGoBack()).toBe(true)
+    })
+
+    unblock()
+  })
 })
