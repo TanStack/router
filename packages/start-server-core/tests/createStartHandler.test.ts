@@ -1924,6 +1924,51 @@ describe('createStartHandler request location reuse', () => {
     expect(parseSearch).toHaveBeenCalledExactlyOnceWith('?page=2')
   })
 
+  it.each([false, true])(
+    'does not redirect a request whose query only differs in encoding (rewrite=%s)',
+    async (rewrite) => {
+      const root = new BaseRootRoute()
+      const route = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/test',
+        component: () => null,
+        validateSearch: (search: Record<string, unknown>) => ({
+          tags: String(search.tags ?? '').split(','),
+        }),
+      })
+      startMocks.router = new RouterCore(
+        {
+          isServer: true,
+          routeTree: root.addChildren([route]),
+          // Arrays are written with a literal comma, strings are encoded.
+          parseSearch: (search) =>
+            Object.fromEntries(new URLSearchParams(search)),
+          stringifySearch: (search) => {
+            const parts = Object.entries(search).map(([key, value]) =>
+              Array.isArray(value)
+                ? `${key}=${value.join(',')}`
+                : `${key}=${encodeURIComponent(String(value))}`,
+            )
+            return parts.length ? `?${parts.join('&')}` : ''
+          },
+          rewrite: rewrite
+            ? { input: ({ url }) => url, output: ({ url }) => url }
+            : undefined,
+        },
+        getStoreConfig,
+      )
+      const handler = createStartHandler(() => new Response('app response'))
+
+      const response = await handler(
+        new Request('http://localhost/test?tags=1,2'),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Location')).toBeNull()
+    },
+  )
+
   // Handlers receive the router's pathname: decoded, except for characters
   // that would change how the path is read.
   it.each([

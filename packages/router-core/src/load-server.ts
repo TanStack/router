@@ -5,6 +5,7 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
+import { normalizeHrefSearchEncoding } from './utils'
 import {
   getLocationChangeInfo,
   lifecycleEnd,
@@ -920,7 +921,13 @@ export async function loadServerRoute(
       state: true,
       _includeValidateSearch: true,
     })
-    if (next.publicHref !== canonical.publicHref) {
+    // The request query was already normalized by `getNormalizedURL`, so the
+    // canonical href must be compared in that same form. Otherwise a serializer
+    // that writes "," or "%20" never matches and the redirect repeats.
+    if (
+      normalizeHrefSearchEncoding(next.publicHref) !==
+      normalizeHrefSearchEncoding(canonical.publicHref)
+    ) {
       const href = canonical.publicHref || '/'
       throw redirect({ href })
     }
