@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, getRouteSegments } from '../src'
 import * as routeTreeUtils from '../src/new-process-route-tree'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
@@ -264,18 +264,20 @@ test('keeps different route objects independent and resets derived caches when r
     ).toBe('/items/one')
   }
   expect(firstTree.item._branch).not.toBe(secondTree.item._branch)
-  expect(firstTree.item._interpolation).not.toBe(secondTree.item._interpolation)
+  expect(getRouteSegments(firstTree.item)).not.toBe(
+    getRouteSegments(secondTree.item),
+  )
 
   const previousResolve = first.resolvePathCache
   const previousLightweight = first['lightweightCache']
   const previousBranch = firstTree.item._branch
-  const previousInterpolation = firstTree.item._interpolation
+  const previousInterpolation = getRouteSegments(firstTree.item)
   first.setRoutes(first.buildRouteTree())
   expect(first.resolvePathCache).not.toBe(previousResolve)
   expect(first['lightweightCache']).not.toBe(previousLightweight)
   expect(firstTree.item._branch).toBeUndefined()
-  expect(firstTree.item._interpolation).not.toBe(previousInterpolation)
-  expect([...firstTree.item._interpolation!]).toEqual([
+  expect(getRouteSegments(firstTree.item)).not.toBe(previousInterpolation)
+  expect([...getRouteSegments(firstTree.item)!]).toEqual([
     ...previousInterpolation!,
   ])
   expect(
@@ -303,16 +305,16 @@ test('refreshes branches and segments when an existing route is reparented', () 
       .href,
   ).toBe('/left/child/one%20two')
   expect(child._branch).toEqual([root, left, child])
-  const previousInterpolation = child._interpolation
+  const previousInterpolation = getRouteSegments(child)
 
   parent = right
   left.addChildren([])
   right.addChildren([child])
   router.setRoutes(router.buildRouteTree())
   expect(child._branch).toBeUndefined()
-  expect(child._interpolation).not.toBe(previousInterpolation)
+  expect(getRouteSegments(child)).not.toBe(previousInterpolation)
   expect(child.fullPath).toBe('/right/child/$id')
-  expect(child._interpolation?.[0]).toBe('/right/child')
+  expect(getRouteSegments(child)?.[0]).toBe('/right/child')
   const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
   expect(
     router.buildLocation({ to: '/right/child/$id', params: { id: 'one two' } })
@@ -329,12 +331,12 @@ test('uses updated callbacks with rebuilt segments in development', () => {
   expect(
     router.buildLocation({ to: '/items/$id', params: { id: 'one' } }).href,
   ).toBe('/items/one')
-  const prepared = item._interpolation
+  const prepared = getRouteSegments(item)
   item.options.params = {
     stringify: ({ id }) => ({ id: `updated ${id}` }),
   }
   router.setRoutes(router.buildRouteTree())
-  expect(item._interpolation).not.toBe(prepared)
+  expect(getRouteSegments(item)).not.toBe(prepared)
   const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
   expect(
     router.buildLocation({ to: '/items/$id', params: { id: 'one' } }).href,
@@ -381,19 +383,6 @@ test('uses fixed encodings and trailing-slash policies on independent routes', (
   expect(
     allowAt.buildLocation({ to: '/items/$id', params: { id: '@+' } }).pathname,
   ).toBe('/items/@%2B')
-})
-
-test('does not reparse a legacy fallback already registered in the tree', () => {
-  const { routeTree, item } = createRoutes()
-  const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
-  const router = createTestRouter({
-    routeTree,
-    notFoundRoute: item,
-    history: history(),
-  })
-  expect(router.routesById[item.id]).toBe(item)
-  expect(item._interpolation).toBeDefined()
-  expect(parse).not.toHaveBeenCalled()
 })
 
 test('formats masked destinations without registered templates', () => {

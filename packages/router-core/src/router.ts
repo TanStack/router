@@ -32,6 +32,7 @@ import {
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
+  getRouteSegments,
   interpolatePath,
   resolvePath,
   trimPath,
@@ -1997,7 +1998,7 @@ export class RouterCore<
 
       // One parsed template serves both trailing-slash variants.
       const interpolation = isTemplate
-        ? (destRoute?._interpolation ??
+        ? ((destRoute && getRouteSegments(destRoute)) ??
           parseSegments(false, { fullPath: nextTo }, 0))
         : undefined
 
