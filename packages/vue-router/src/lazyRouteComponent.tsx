@@ -1,24 +1,8 @@
 import * as Vue from 'vue'
+import { isModuleNotFoundError } from '@tanstack/router-core'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
-
-// If the load fails due to module not found, it may mean a new version of
-// the build was deployed and the user's browser is still using an old version.
-// If this happens, the old version in the user's browser would have an outdated
-// URL to the lazy module.
-// In that case, we want to attempt one window refresh to get the latest.
-function isModuleNotFoundError(error: any): boolean {
-  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
-  return (
-    error.message.startsWith('Failed to fetch dynamically imported module') ||
-    error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
-  )
-}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,

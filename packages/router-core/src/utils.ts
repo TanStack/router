@@ -508,11 +508,14 @@ export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
+  // safari, when the missing chunk is answered with a non-JS fallback (e.g. an SPA's index.html):
+  //   "'text/html' is not a valid JavaScript MIME type for module script 'http://localhost:5173/assets/posts-abc123.js'."
   if (typeof error?.message !== 'string') return false
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
+    error.message.startsWith('Importing a module script failed') ||
+    error.message.includes('is not a valid JavaScript MIME type')
   )
 }
 
