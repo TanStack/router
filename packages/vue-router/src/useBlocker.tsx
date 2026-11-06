@@ -174,7 +174,7 @@ export function useBlocker(
   })
 
   Vue.watchEffect((onCleanup) => {
-    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+    async function* blockerFnComposed(blockerFnArgs: BlockerFnArgs) {
       function getLocation(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
@@ -224,7 +224,9 @@ export function useBlocker(
         return false
       }
 
+      let resolvePromise: (value: boolean) => void = () => {}
       const promise = new Promise<boolean>((resolve) => {
+        resolvePromise = resolve
         resolver.value = {
           status: 'blocked',
           current,
@@ -235,6 +237,7 @@ export function useBlocker(
         }
       })
 
+      yield resolvePromise
       const canNavigateAsync = await promise
       resolver.value = {
         status: 'idle',
