@@ -845,3 +845,60 @@ describe('createServerFn compiles correctly', async () => {
     expect(result!.code).not.toContain('server-only-value')
   })
 })
+
+// The server function resolver rejects client-origin calls to functions that
+// are not client-referenced. Any server function a caller module declares is
+// reachable from the client: directly in the browser, and through client
+// navigation for the SSR graph.
+describe('server functions discovered in caller modules', () => {
+  async function discover(env: 'client' | 'server', code: string) {
+    const discovered: Record<string, { isClientReferenced?: boolean }> = {}
+    const compiler = new StartCompiler({
+      env,
+      ...getDefaultTestOptions(env),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (serverFns) => {
+        Object.assign(discovered, serverFns)
+      },
+    })
+    await compiler.compile({ code, id: '/test/src/caller.ts' })
+    return discovered
+  }
+
+  test.each(['client', 'server'] as const)(
+    'are client-referenced in the %s environment',
+    async (env) => {
+      const discovered = await discover(
+        env,
+        `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'hi')`,
+      )
+      expect(
+        Object.values(discovered).map((fn) => fn.isClientReferenced),
+      ).toEqual([true])
+    },
+  )
+
+  test('require a handler function', async () => {
+    await expect(
+      discover(
+        'client',
+        `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler()`,
+      ),
+    ).rejects.toThrow(
+      'createServerFn must be called with a "handler" property!',
+    )
+  })
+})

@@ -225,6 +225,48 @@ function ${splitType}() {
   )
 })
 
+// The router reads the keys of a loader object other than `handler` (such as
+// `staleReloadMode`) from the route options, so they stay in the route module
+// while the handler moves into the loader chunk.
+describe('computeSharedBindings with a loader in object form', () => {
+  const groupings = [['loader'], ['component']] as CodeSplitGroupings
+
+  it('does not share what only the handler and one other chunk each read', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+import { createStore, createTheme } from './store'
+const store = createStore()
+const theme = createTheme()
+export const Route = createFileRoute('/')({
+  loader: { handler: () => store.get(), staleReloadMode: 'blocking' },
+  component: () => <div>{theme.color}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: groupings,
+    })
+    expect([...result]).toEqual([])
+  })
+
+  it('shares what another key of the loader object and a split option read', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+import { createConfig } from './config'
+const config = createConfig()
+export const Route = createFileRoute('/')({
+  loader: { handler: () => 1, staleReloadMode: config.mode },
+  component: () => <div>{config.mode}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: groupings,
+    })
+    expect([...result]).toEqual(['config'])
+  })
+})
+
 describe('computeSharedBindings fast paths', () => {
   it('returns empty when only one split group is present (default groupings)', () => {
     const code = `
@@ -698,6 +740,23 @@ export const Route = createFileRoute('/about')({
     expect(result.has('usePageTitle')).toBe(false)
     // HEADER is only referenced by usePageTitle which depends on Route,
     // so HEADER should also not be shared (unless it has other references)
+  })
+
+  it('INVARIANT: bindings reaching Route through a helper declared later are excluded from shared', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const useTitle = () => useData().title
+const useData = () => Route.useLoaderData()
+export const Route = createFileRoute('/')({
+  component: () => <div>{useTitle()}</div>,
+  errorComponent: () => <div>{useTitle()}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    expect(result.has('useTitle')).toBe(false)
   })
 
   it('INVARIANT: single-group-only bindings are never shared', () => {
