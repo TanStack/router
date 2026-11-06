@@ -186,18 +186,16 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
       const sourceFile = node.getSourceFile()
 
       // Detect violations in the whole arg node
-      const directViolations = violationDetector.detectViolations(sourceFile)
-      const start = node.getStart()
-      const end = node.getEnd()
+      const directViolations = violationDetector.detectViolationsInNode(
+        node,
+        sourceFile,
+      )
 
       for (const violation of directViolations) {
-        const violationPos = violation.node.getStart()
-        if (violationPos >= start && violationPos <= end) {
-          const key = `${violation.fileName}:${violation.line}:${violation.name}`
-          if (!reportedViolations.has(key)) {
-            reportedViolations.add(key)
-            reportViolation(violation, [], rootKind, eslintNode)
-          }
+        const key = `${violation.fileName}:${violation.line}:${violation.name}`
+        if (!reportedViolations.has(key)) {
+          reportedViolations.add(key)
+          reportViolation(violation, [], rootKind, eslintNode)
         }
       }
 
@@ -247,20 +245,16 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         const sourceFile = callback.getSourceFile()
 
         // Check for violations in the callback itself
-        const directViolations = violationDetector.detectViolations(sourceFile)
-
-        // Filter to only violations within the callback body
-        const callbackStart = body.getStart()
-        const callbackEnd = body.getEnd()
+        const directViolations = violationDetector.detectViolationsInNode(
+          body,
+          sourceFile,
+        )
 
         for (const violation of directViolations) {
-          const violationPos = violation.node.getStart()
-          if (violationPos >= callbackStart && violationPos <= callbackEnd) {
-            const key = `${violation.fileName}:${violation.line}:${violation.name}`
-            if (!reportedViolations.has(key)) {
-              reportedViolations.add(key)
-              reportViolation(violation, [], rootKind, eslintNode)
-            }
+          const key = `${violation.fileName}:${violation.line}:${violation.name}`
+          if (!reportedViolations.has(key)) {
+            reportedViolations.add(key)
+            reportViolation(violation, [], rootKind, eslintNode)
           }
         }
       }
