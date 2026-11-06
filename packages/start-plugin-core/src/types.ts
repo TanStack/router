@@ -111,7 +111,7 @@ export interface NormalizedClientChunk {
   fileName: string
   isEntry: boolean
   /**
-   * Chunks this chunk imports statically. Rolldown and Rsbuild report direct
+   * Chunks this chunk imports statically. Rolldown reports direct
    * imports only, so consumers must walk the graph to reach transitive chunks
    * instead of treating the list as complete.
    */
@@ -122,11 +122,28 @@ export interface NormalizedClientChunk {
   hydrationIds: Array<string>
 }
 
-export interface NormalizedClientBuild {
+export interface NormalizedClientChunkBuild {
   entryChunkFileName: string
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   cssContentByFileName?: ReadonlyMap<string, string>
 }
+
+/** File names collected in a loading context, before applying the asset base. */
+export interface NormalizedClientAssets {
+  preloads: Array<string>
+  css: Array<string>
+}
+
+export interface NormalizedClientGroupBuild {
+  entryChunkFileName: string
+  entryAssets: NormalizedClientAssets
+  routeAssetsByFilePath: ReadonlyMap<string, NormalizedClientAssets>
+  cssContentByFileName?: ReadonlyMap<string, string>
+}
+
+export type NormalizedClientBuild =
+  | NormalizedClientChunkBuild
+  | NormalizedClientGroupBuild
 
 export interface TanStackStartCoreOptions {
   framework: CompileStartFrameworkOptions
