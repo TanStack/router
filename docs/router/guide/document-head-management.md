@@ -132,7 +132,11 @@ export const Route = createRootRoute({
 
 ### Single-Page Applications
 
-First, remove the `<title>` tag from the index.html if you have set any.
+In single-page applications, the initial HTML shell is static and identical across all routes before JavaScript executes. When using `<HeadContent />` in SPA mode:
+
+- Remove the static `<title>` tag from `index.html` to avoid duplicate title tags. `<HeadContent />` dynamically injects and manages `<title>` elements at runtime, but does not adopt or replace existing unmanaged `<title>` tags from the initial HTML document.
+- If your application strictly requires route-specific metadata or titles in the raw initial HTML response (for search engines or social media crawlers), consider using [TanStack Start](../../start/framework/react/overview.md) or static prerendering instead of client-only SPA rendering.
+- For a default title fallback in SPA mode, declare a baseline title on the root route's `head` option (`head: () => ({ meta: [{ title: 'My Default Title' }] })`). Child routes will automatically override it when loaded.
 
 <!-- ::start:framework -->
 
