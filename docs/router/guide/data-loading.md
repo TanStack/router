@@ -565,7 +565,7 @@ export const Route = createFileRoute('/posts')({
 
 ### Handling Errors with `routeOptions.onCatch`
 
-The `routeOptions.onCatch` option is a function that is called whenever an error was caught by the router's CatchBoundary.
+The route's CatchBoundary calls `routeOptions.onCatch` whenever it catches an error, except a not-found error, which goes to the not-found boundary. The route has a CatchBoundary only when it has an `errorComponent` or the router has a `defaultErrorComponent`, so set one of them for `onCatch` to run.
 
 ```tsx
 // src/routes/posts.tsx
