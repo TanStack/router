@@ -5,6 +5,7 @@ import { createRouterHmrPlugin } from './router-hmr-plugin'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { Config } from './config'
 import type { HmrStyle } from './hmr'
+import type { PluginBuilder as BunPluginBuilder } from 'bun'
 import type {
   RspackCompiler,
   UnpluginFactory,
@@ -52,15 +53,28 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   }
 
   const routerGenerator = getPlugin(
-    createRouterGeneratorPlugin(options, routerPluginContext),
+    createRouterGeneratorPlugin(options, routerPluginContext, meta.framework),
   )
   const routerCodeSplitter = getPlugin(
-    createRouterCodeSplitterPlugin(options, routerPluginContext, hmrStyle),
+    createRouterCodeSplitterPlugin(
+      options,
+      routerPluginContext,
+      hmrStyle,
+      meta.framework,
+    ),
   )
 
   const result = [
     {
       name: 'tanstack:router-inline-css-defaults',
+      bun: {
+        setup(build: BunPluginBuilder) {
+          build.config.define = {
+            ...INLINE_CSS_DEFAULT_DEFINES,
+            ...build.config.define,
+          }
+        },
+      },
       vite: {
         config() {
           return {
@@ -93,9 +107,17 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
 
   const isProduction = process.env.NODE_ENV === 'production'
 
-  if (!isProduction && !userConfig.autoCodeSplitting) {
+  if (
+    (meta.framework === 'bun' || !isProduction) &&
+    !userConfig.autoCodeSplitting
+  ) {
     const routerHmr = getPlugin(
-      createRouterHmrPlugin(options, routerPluginContext, hmrStyle),
+      createRouterHmrPlugin(
+        options,
+        routerPluginContext,
+        hmrStyle,
+        meta.framework,
+      ),
     )
     result.push(...routerHmr)
   }

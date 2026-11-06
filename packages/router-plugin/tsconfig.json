@@ -4,6 +4,6 @@
   "exclude": ["tests/**/test-files/**", "tests/**/snapshots/**"],
   "compilerOptions": {
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": ["node", "bun-types-no-globals"]
   }
 }
