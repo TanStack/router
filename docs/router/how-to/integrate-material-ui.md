@@ -713,5 +713,5 @@ Before deploying your MUI + TanStack Router app:
 
 - [Material-UI with TypeScript](https://mui.com/material-ui/guides/typescript/) - Official MUI TypeScript guide
 - [MUI Theming](https://mui.com/material-ui/customization/theming/) - Complete theming documentation
-- [TanStack Router createLink API](../api/router#createlink) - API documentation for component integration
+- [TanStack Router createLink API](../api/router/createLinkFunction) - API documentation for component integration
 - [Emotion CSS-in-JS](https://emotion.sh/docs/introduction) - Styling library used by MUI

@@ -73,6 +73,16 @@ export interface BaseDevtoolsPanelOptions {
 
 const HISTORY_LIMIT = 15
 
+/**
+ * JSON.stringify, but never throws on values JSON cannot serialize
+ * (e.g. bigint search params produced by a custom `stringifySearch`).
+ */
+export function stringifySearchValue(search: unknown): string {
+  return JSON.stringify(search, (_key, value) =>
+    typeof value === 'bigint' ? value.toString() : value,
+  )
+}
+
 function Logo(props: any) {
   const { className, ...rest } = props
   const styles = useStyles()
@@ -331,8 +341,8 @@ export const BaseTanStackRouterDevtoolsPanel =
       const sameLocation =
         lastMatch &&
         lastMatch.pathname === currentMatch.pathname &&
-        JSON.stringify(lastMatch.search ?? {}) ===
-          JSON.stringify(currentMatch.search ?? {})
+        stringifySearchValue(lastMatch.search ?? {}) ===
+          stringifySearchValue(currentMatch.search ?? {})
       if (!lastMatch || !sameLocation) {
         if (historyUntracked.length >= HISTORY_LIMIT) {
           setHasHistoryOverflowed(true)
@@ -766,7 +776,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   <CopyButton
                     getValue={() => {
                       const search = routerState().location.search
-                      return JSON.stringify(search)
+                      return stringifySearchValue(search)
                     }}
                   />
                 </span>

@@ -513,5 +513,5 @@ Before deploying your Shadcn/ui + TanStack Router app:
 ## Related Resources
 
 - [Shadcn/ui TanStack Router Installation](https://ui.shadcn.com/docs/installation/tanstack-router) - Official integration guide
-- [TanStack Router createLink API](../api/router#createlink) - API documentation for component integration
+- [TanStack Router createLink API](../api/router/createLinkFunction) - API documentation for component integration
 - [Shadcn/ui Components](https://ui.shadcn.com/docs/components) - Complete component documentation
