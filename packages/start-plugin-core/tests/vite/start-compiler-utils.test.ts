@@ -1,10 +1,11 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
 } from '../../src/vite/start-compiler-plugin/module-specifier'
 import { mergeHotUpdateModules } from '../../src/vite/start-compiler-plugin/hot-update'
-import type { EnvironmentModuleNode } from 'vite'
+import { loadViteModuleFromEnvironment } from '../../src/vite/start-compiler-plugin/plugin'
+import type { Environment, EnvironmentModuleNode } from 'vite'
 
 describe('Vite dev server module specifiers', () => {
   test('encodes app files as root-relative dev server paths', () => {
@@ -69,3 +70,107 @@ describe('mergeHotUpdateModules', () => {
     ])
   })
 })
+
+describe('loadViteModuleFromEnvironment', () => {
+  test('uses plugin load hook when environment.mode is build', async () => {
+    const env = {
+      mode: 'build',
+      name: 'server',
+      config: {},
+    } as unknown as Environment
+
+    const loadMock = vi.fn().mockResolvedValue({ code: 'export const a = 1;' })
+    const transformRequestMock = vi.fn()
+
+    const code = await loadViteModuleFromEnvironment(env, '/src/module.ts', {
+      load: loadMock,
+      error: () => {
+        throw new Error('error')
+      },
+      devId: '/src/module.ts?query',
+    })
+
+    expect(loadMock).toHaveBeenCalledWith({ id: '/src/module.ts' })
+    expect(transformRequestMock).not.toHaveBeenCalled()
+    expect(code).toBe('export const a = 1;')
+  })
+
+  test('uses plugin load hook with clean id when environment is bundled in dev (environment.config.isBundled)', async () => {
+    const env = {
+      mode: 'dev',
+      name: 'server',
+      config: {
+        isBundled: true,
+      },
+    } as unknown as Environment
+
+    const loadMock = vi
+      .fn()
+      .mockResolvedValue({ code: 'export const zod = {};' })
+    const transformRequestMock = vi.fn()
+
+    const code = await loadViteModuleFromEnvironment(env, 'zod/index.js', {
+      load: loadMock,
+      error: () => {
+        throw new Error('error')
+      },
+      devId: 'zod/index.js?tss-serverfn-lookup',
+    })
+
+    expect(loadMock).toHaveBeenCalledWith({ id: 'zod/index.js' })
+    expect(transformRequestMock).not.toHaveBeenCalled()
+    expect(code).toBe('export const zod = {};')
+  })
+
+  test('uses plugin load hook when experimental.bundledDev is configured', async () => {
+    const env = {
+      mode: 'dev',
+      name: 'ssr',
+      config: {
+        experimental: {
+          bundledDev: true,
+        },
+      },
+    } as unknown as Environment
+
+    const loadMock = vi.fn().mockResolvedValue({ code: 'export const s = 2;' })
+
+    const code = await loadViteModuleFromEnvironment(env, '/src/server-fn.ts', {
+      load: loadMock,
+      error: () => {
+        throw new Error('error')
+      },
+      devId: '/src/server-fn.ts?query',
+    })
+
+    expect(loadMock).toHaveBeenCalledWith({ id: '/src/server-fn.ts' })
+    expect(code).toBe('export const s = 2;')
+  })
+
+  test('uses transformRequest when environment.mode is dev and not bundled', async () => {
+    const transformRequestMock = vi.fn().mockResolvedValue(undefined)
+    const env = {
+      mode: 'dev',
+      name: 'client',
+      config: {
+        experimental: {},
+      },
+      transformRequest: transformRequestMock,
+    } as unknown as Environment
+
+    const loadMock = vi.fn()
+
+    const code = await loadViteModuleFromEnvironment(env, '/src/route.tsx', {
+      load: loadMock,
+      error: () => {
+        throw new Error('error')
+      },
+      devId: '/src/route.tsx?query',
+    })
+
+    expect(loadMock).not.toHaveBeenCalled()
+    expect(transformRequestMock).toHaveBeenCalledWith('/src/route.tsx?query')
+    expect(code).toBeUndefined()
+  })
+})
+
