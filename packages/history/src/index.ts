@@ -343,6 +343,7 @@ export function createBrowserHistory(opts?: {
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
+  let lastPop = 0
   let nextPopIsGo = false
   let ignoreNextPop = false
   // TODO: An ignored traversal past a history boundary emits neither popstate
@@ -426,6 +427,7 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPopEvent = async () => {
+    const pop = ++lastPop
     // Same-document traversals do not fire beforeunload, so consume their
     // exemption here instead of carrying it into a later document navigation.
     ignoreNextBeforeUnload = false
@@ -436,6 +438,7 @@ export function createBrowserHistory(opts?: {
     }
 
     const nextLocation = parseLocation()
+    const previousLocation = currentLocation
     const delta =
       nextLocation.state[stateIndexKey] - currentLocation.state[stateIndexKey]
     const isForward = delta === 1
@@ -464,9 +467,16 @@ export function createBrowserHistory(opts?: {
             nextLocation,
             action,
           })
+          // A newer pop or accepted write supersedes this blocker's answer.
+          if (pop !== lastPop || currentLocation !== previousLocation) {
+            return
+          }
           if (isBlocked) {
-            ignoreNextPop = true
-            win.history.go(-delta)
+            // go(0) and go(NaN) reload the document.
+            if (delta) {
+              ignoreNextPop = true
+              win.history.go(-delta)
+            }
             history.notify(notify)
             return
           }
