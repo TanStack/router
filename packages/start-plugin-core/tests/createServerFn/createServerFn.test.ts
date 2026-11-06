@@ -116,9 +116,7 @@ describe('createServerFn compiles correctly', async () => {
         "import { createClientRpc } from '@tanstack/react-start/client-rpc'
         import { createServerFn } from '@tanstack/react-start'
         const myServerFn = createServerFn().handler(
-          createClientRpc(
-            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
-          ),
+          createClientRpc('WYpJIMNQF5bXNZqddn4S08'),
         )
         "
       `)
@@ -190,9 +188,7 @@ describe('createServerFn compiles correctly', async () => {
         "import { createClientRpc } from '@tanstack/react-start/client-rpc'
         import { createServerFn } from '@tanstack/react-start'
         const myServerFn = createServerFn().handler(
-          createClientRpc(
-            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
-          ),
+          createClientRpc('WYpJIMNQF5bXNZqddn4S08'),
         )
         "
       `)
@@ -203,9 +199,7 @@ describe('createServerFn compiles correctly', async () => {
         "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
         import { createServerFn } from '@tanstack/react-start'
         const myServerFn = createServerFn().handler(
-          createSsrRpc(
-            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
-          ),
+          createSsrRpc('WYpJIMNQF5bXNZqddn4S08'),
         )
         "
       `)
@@ -219,11 +213,7 @@ describe('createServerFn compiles correctly', async () => {
           return 'hello from the server'
         }
         const myServerFn_createServerFn_handler = createServerRpc(
-          {
-            id: '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
-            name: 'myServerFn',
-            filename: 'src/test.ts',
-          },
+          { id: 'WYpJIMNQF5bXNZqddn4S08', name: 'myServerFn', filename: 'src/test.ts' },
           (opts) => myServerFn.__executeServer(opts),
         )
         const myServerFn = createServerFn().handler(
@@ -255,9 +245,7 @@ describe('createServerFn compiles correctly', async () => {
         "import { createClientRpc } from '@tanstack/react-start/client-rpc'
         import { createServerFn } from '@tanstack/react-start'
         export const getUsersFn = createServerFn().handler(
-          createClientRpc(
-            'a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100',
-          ),
+          createClientRpc('hUsF8j58VORzR8Zh0TWYHu'),
         )
         "
       `)
@@ -285,9 +273,7 @@ describe('createServerFn compiles correctly', async () => {
         import { createServerFn } from '@tanstack/react-start'
         import { getUsers } from './server'
         export const getUsersFn = createServerFn().handler(
-          createClientRpc(
-            'a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100',
-          ),
+          createClientRpc('hUsF8j58VORzR8Zh0TWYHu'),
         )
         console.log(getUsers)
         "
@@ -357,14 +343,10 @@ describe('createServerFn compiles correctly', async () => {
         "import { createClientRpc } from '@tanstack/react-start/client-rpc'
         import { createServerFn } from '@tanstack/react-start'
         export const exportedFn = createServerFn().handler(
-          createClientRpc(
-            'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
-          ),
+          createClientRpc('2tiakNpA4QDPhHt7gcEQxW'),
         )
         const nonExportedFn = createServerFn().handler(
-          createClientRpc(
-            'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
-          ),
+          createClientRpc('p5iUR0EOmj-YLvWU2l_Tw6'),
         )
         "
       `)
@@ -382,14 +364,10 @@ describe('createServerFn compiles correctly', async () => {
         "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
         import { createServerFn } from '@tanstack/react-start'
         export const exportedFn = createServerFn().handler(
-          createSsrRpc(
-            'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
-          ),
+          createSsrRpc('2tiakNpA4QDPhHt7gcEQxW'),
         )
         const nonExportedFn = createServerFn().handler(
-          createSsrRpc(
-            'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
-          ),
+          createSsrRpc('p5iUR0EOmj-YLvWU2l_Tw6'),
         )
         "
       `)
@@ -408,11 +386,7 @@ describe('createServerFn compiles correctly', async () => {
         import { createServerFn } from '@tanstack/react-start'
         const exportedVar = 'exported'
         const exportedFn_createServerFn_handler = createServerRpc(
-          {
-            id: 'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
-            name: 'exportedFn',
-            filename: 'src/test.ts',
-          },
+          { id: '2tiakNpA4QDPhHt7gcEQxW', name: 'exportedFn', filename: 'src/test.ts' },
           (opts) => exportedFn.__executeServer(opts),
         )
         const exportedFn = createServerFn().handler(
@@ -424,7 +398,7 @@ describe('createServerFn compiles correctly', async () => {
         const nonExportedVar = 'non-exported'
         const nonExportedFn_createServerFn_handler = createServerRpc(
           {
-            id: 'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
+            id: 'p5iUR0EOmj-YLvWU2l_Tw6',
             name: 'nonExportedFn',
             filename: 'src/test.ts',
           },
@@ -706,6 +680,153 @@ describe('createServerFn compiles correctly', async () => {
       './factory-inner',
       './factory',
     )
+  })
+
+  function createBuildCompiler(
+    generateFunctionId: (opts: {
+      filename: string
+      functionName: string
+    }) => string | undefined,
+  ) {
+    return new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId,
+      getKnownServerFns: () => ({}),
+    })
+  }
+
+  test('passes the handler name to generateFunctionId and defaults to short ids of the file and variable name', async () => {
+    const generateFunctionId = vi.fn(() => undefined)
+    const compiler = createBuildCompiler(generateFunctionId)
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn().handler(async () => 'user')
+        var twice = createServerFn().handler(async () => 'a')
+        var twice = createServerFn().handler(async () => 'b')
+        export const getÜser = createServerFn().handler(async () => 'ü')
+      `,
+      id: '/test/src/users.ts',
+    })
+
+    expect(generateFunctionId.mock.calls).toEqual([
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'getUser_createServerFn_handler',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'twice_createServerFn_handler',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'twice_createServerFn_handler_1',
+        },
+      ],
+      [
+        {
+          filename: 'src/users.ts',
+          functionName: 'get_ser_createServerFn_handler',
+        },
+      ],
+    ])
+    // base64url of sha256("src/users.ts#getUser"), "…#twice", "…#twice#1",
+    // "…#getÜser", first 22 characters
+    expect(
+      [...result!.code.matchAll(/createClientRpc\("([^"]+)"/g)].map(
+        (match) => match[1],
+      ),
+    ).toEqual([
+      '5khyYluQNdT_FnYJdeNjO7',
+      '86c3ovB8BBp6j3lZ7Ys3-q',
+      'VDV9uQu-DjlBpN8wR9Hg81',
+      'fR2z51S12hblu5q1t0xfsF',
+    ])
+  })
+
+  test('a repeated name loses its leading and doubled underscores in the generator input', async () => {
+    const generateFunctionId = vi.fn(
+      (_opts: { filename: string; functionName: string }) => undefined,
+    )
+    const compiler = createBuildCompiler(generateFunctionId)
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        var _x = createServerFn().handler(async () => 'a')
+        var _x = createServerFn().handler(async () => 'b')
+        export const café = createServerFn().handler(async () => 'c')
+        export const caf_ = createServerFn().handler(async () => 'd')
+      `,
+      id: '/test/src/users.ts',
+    })
+
+    expect(
+      generateFunctionId.mock.calls.map(([opts]) => opts.functionName),
+    ).toEqual([
+      '_x_createServerFn_handler',
+      'x_createServerFn_handler_1',
+      'caf__createServerFn_handler',
+      'caf_createServerFn_handler_1',
+    ])
+  })
+
+  test.each([
+    'users/get',
+    'users#get',
+    'users get',
+    'utilisateurs-é',
+    '..',
+    '',
+  ])(
+    'fails on a custom id that is not one URL path segment: %j',
+    async (id) => {
+      const compiler = createBuildCompiler(() => id)
+
+      await expect(
+        compiler.compile({
+          code: `
+            import { createServerFn } from '@tanstack/react-start'
+            export const getUser = createServerFn().handler(async () => 'user')
+          `,
+          id: '/test/src/users.ts',
+        }),
+      ).rejects.toThrow(
+        `serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function getUser (functionName "getUser_createServerFn_handler") of src/users.ts`,
+      )
+    },
+  )
+
+  test('accepts a custom id of unreserved characters and $', async () => {
+    const compiler = createBuildCompiler(() => 'Users-get.v1_~$')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn().handler(async () => 'user')
+      `,
+      id: '/test/src/users.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("Users-get.v1_~$"')
   })
 
   test('reuses deduped custom IDs across compiler instances', async () => {

@@ -3,7 +3,7 @@ import * as TanStackStart from '@tanstack/react-start'
 import { z } from 'zod'
 const withUseServer_createServerFn_handler = createServerRpc(
   {
-    id: 'b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320',
+    id: '80v0H7Z-40eAvJELD4yOZd',
     name: 'withUseServer',
     filename: 'src/test.ts',
   },
@@ -22,7 +22,7 @@ const withUseServer = TanStackStart.createServerFn({ method: 'GET' }).handler(
 )
 const withoutUseServer_createServerFn_handler = createServerRpc(
   {
-    id: 'c0d9fdeb2b01aafecc782f439416b86f666cb5334ac9a934546b177e5698bbb2',
+    id: 'XbUOHXbrBke2Xebq_cpd9s',
     name: 'withoutUseServer',
     filename: 'src/test.ts',
   },
@@ -39,7 +39,7 @@ const withoutUseServer = TanStackStart.createServerFn({
 })
 const withVariable_createServerFn_handler = createServerRpc(
   {
-    id: '7d36cb30c30bd688b9773bd7f85a0d51d83f868255e127605e4f236615fefe70',
+    id: 'id9L9xtkvHA0G7YPmv4k5B',
     name: 'withVariable',
     filename: 'src/test.ts',
   },
@@ -66,7 +66,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
 }
 const withZodValidator_createServerFn_handler = createServerRpc(
   {
-    id: '43606a369c85444a332f701d6399564b6a3691aabab63dfc9a0b7c341fb798f3',
+    id: 'Y0OXye37qmukl8eWdR6BXL',
     name: 'withZodValidator',
     filename: 'src/test.ts',
   },

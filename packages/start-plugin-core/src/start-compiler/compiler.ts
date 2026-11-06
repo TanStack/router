@@ -96,6 +96,19 @@ export function isStartCompilerPluginEnabledForEnv(
   return isStartCompilerEnvironmentEnabled(plugin.environment, env)
 }
 
+/**
+ * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
+ * unencoded; the server reads the segment back as is): RFC 3986 unreserved
+ * characters, which no client, proxy or server encodes, decodes or
+ * normalises, and `$`, which `functionName` can hold; not a dot segment,
+ * which URL parsing removes.
+ */
+const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
+
+function isUrlSegmentId(id: string): boolean {
+  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
+}
+
 function isStartCompilerEnvironmentEnabled(
   environment:
     | StartCompilerEnvironment
@@ -629,11 +642,14 @@ export class StartCompiler {
   /**
    * Generates a unique function ID for a server function.
    * In dev mode, uses a base64-encoded JSON with file path and export name.
-   * In build mode, uses SHA256 hash or custom generator.
+   * In build mode, uses a 22-character SHA256 hash or custom generator.
    */
   private generateFunctionId(opts: {
     filename: string
     functionName: string
+    generatorFunctionName: string
+    stableKey: string
+    variableName: string
     extractedFilename: string
   }): string {
     if (this.mode === 'dev') {
@@ -660,7 +676,7 @@ export class StartCompiler {
     }
 
     // Production build: use custom generator or hash
-    const entryId = `${opts.filename}--${opts.functionName}`
+    const entryId = `${opts.filename}#${opts.stableKey}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
       const knownFn = Object.values(this.options.getKnownServerFns()).find(
@@ -673,14 +689,23 @@ export class StartCompiler {
         functionId = knownFn.functionId
       }
 
-      if (this.options.generateFunctionId) {
-        functionId ??= this.options.generateFunctionId({
+      if (functionId === undefined && this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
           filename: opts.filename,
-          functionName: opts.functionName,
+          functionName: opts.generatorFunctionName,
         })
+        if (functionId !== undefined && !isUrlSegmentId(functionId)) {
+          throw new Error(
+            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(functionId)} for the server function ${opts.variableName} (functionName "${opts.generatorFunctionName}") of ${opts.filename}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
+          )
+        }
       }
-      if (!functionId) {
-        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+      if (functionId === undefined) {
+        functionId = crypto
+          .createHash('sha256')
+          .update(entryId)
+          .digest('base64url')
+          .slice(0, 22)
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {
