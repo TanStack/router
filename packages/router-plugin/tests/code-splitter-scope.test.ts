@@ -337,3 +337,68 @@ export const Route = createFileRoute('/compare')({
     expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
   })
 })
+
+describe('TypeScript namespaces', () => {
+  // `namespace styles { export const title = ... }` compiles to a value. Its
+  // `export` is a member of the namespace, not a module export.
+  it('keeps the members of a namespace the split component reads', async () => {
+    const { modules } = compileRouteModules(
+      pageRoute(`function Page() {
+  return <h1 className={styles.title()}>Hello</h1>
+}
+
+namespace styles {
+  export const title = () => 'title'
+}`),
+    )
+    await expectValidModules(modules)
+    const chunk = await evaluateModule(modules['virtual component']!)
+    expect(chunk.component!({})).toBe('<h1>Hello</h1>')
+    expect(modules['virtual component']).toContain(
+      "export const title = () => 'title'",
+    )
+  })
+
+  it('shares a namespace that the loader and the component read', async () => {
+    const { modules, sharedBindings } = compileRouteModules(`${head}
+export const Route = createFileRoute('/')({
+  loader: () => labels.title,
+  component: () => <h1>{labels.title}</h1>,
+})
+
+namespace labels {
+  export const title = 'Hello'
+}
+`)
+    expect(sharedBindings).toEqual(['labels'])
+    await expectValidModules(modules)
+    const shared = await evaluateModule(modules.shared!)
+    expect(shared.labels).toEqual({ title: 'Hello' })
+  })
+})
+
+describe('type annotations do not reference module bindings', () => {
+  // A loader typed by the component's props, as in `(): Page.Props`, must not
+  // pull the component into the shared module the reference route imports.
+  it('leaves a component that only a type annotation names in its chunk', async () => {
+    const { modules, sharedBindings } = compileRouteModules(`${head}
+export const Route = createFileRoute('/')({
+  component: Page,
+  loader: (): Page.Props => ({ title: 'Hello' }),
+})
+
+function Page(props: Page.Props) {
+  return <h1>{props.title}</h1>
+}
+
+declare namespace Page {
+  type Props = { title: string }
+}
+`)
+    expect(sharedBindings).toEqual([])
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    await expectValidModules(modules)
+    const chunk = await evaluateModule(modules['virtual component']!)
+    expect(chunk.component!({ title: 'Hello' })).toBe('<h1>Hello</h1>')
+  })
+})
