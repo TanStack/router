@@ -667,6 +667,836 @@ describe('params.parse route selection', () => {
       )
       expect(findRouteMatch('/abc/bar', processedTree)).toBeNull()
     })
+
+    it("pathless child without params.parse keeps the parent's params.parse", () => {
+      const rootRoute = new BaseRootRoute({})
+      const postRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '$postId',
+        params: {
+          parse: ({ postId }: { postId: string }) =>
+            /^\d+$/.test(postId) ? { postId } : false,
+        },
+      })
+      const layoutRoute = new BaseRoute({
+        getParentRoute: () => postRoute,
+        id: '_layout',
+      })
+      const detailsRoute = new BaseRoute({
+        getParentRoute: () => layoutRoute,
+        path: 'details',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          postRoute.addChildren([layoutRoute.addChildren([detailsRoute])]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+      const matchIds = (path: string) =>
+        router.matchRoutes(path, {}).map((match) => match.routeId)
+
+      expect(matchIds('/abc')).toEqual(['__root__'])
+      expect(matchIds('/abc/details')).toEqual(['__root__'])
+      expect(matchIds('/123/details')).toEqual([
+        '__root__',
+        '/$postId',
+        '/$postId/_layout',
+        '/$postId/_layout/details',
+      ])
+    })
+
+    // `_layout`: file-based and virtual layouts. `pathlessLayout`: code-based
+    // routes. `(group)`: file-based group layouts.
+    describe.each(['_layout', 'pathlessLayout', '(group)'])(
+      'pathless child `%s`',
+      (layoutId) => {
+        const layout = `/$foo/${layoutId}`
+        const buildTree = ({
+          parentParse,
+          layoutParse,
+          layoutChildren = true,
+        }: {
+          parentParse?: (params: Record<string, string>) => unknown
+          layoutParse?: (params: Record<string, string>) => unknown
+          layoutChildren?: boolean
+        }) =>
+          processRouteTree(
+            root([
+              {
+                id: '/$foo',
+                fullPath: '/$foo',
+                path: '$foo',
+                options: parentParse && { params: { parse: parentParse } },
+                children: [
+                  {
+                    id: layout,
+                    fullPath: '/$foo',
+                    options: layoutParse && { params: { parse: layoutParse } },
+                    children: layoutChildren
+                      ? [
+                          {
+                            id: `${layout}/bar`,
+                            fullPath: '/$foo/bar',
+                            path: 'bar',
+                          },
+                        ]
+                      : undefined,
+                  },
+                ],
+              },
+            ]),
+          ).processedTree
+
+        it("keeps the parent's params.parse when it has none", () => {
+          const tree = buildTree({ parentParse: integerParse('foo') })
+
+          expect(findRouteMatch('/abc', tree)).toBeNull()
+          expect(findRouteMatch('/abc/bar', tree)).toBeNull()
+          expect(findRouteMatch('/123/bar', tree)?.route.id).toBe(
+            `${layout}/bar`,
+          )
+        })
+
+        it('runs both its own and the parent params.parse', () => {
+          const tree = buildTree({
+            parentParse: integerParse('foo'),
+            layoutParse: parseWhen(({ foo }) => foo!.length < 3),
+          })
+
+          expect(findRouteMatch('/abc', tree)).toBeNull()
+          expect(findRouteMatch('/123', tree)?.route.id).toBe('/$foo')
+          expect(findRouteMatch('/123/bar', tree)).toBeNull()
+          expect(findRouteMatch('/12/bar', tree)?.route.id).toBe(
+            `${layout}/bar`,
+          )
+        })
+
+        it('does not apply its params.parse to the parent', () => {
+          const tree = buildTree({ layoutParse: integerParse('foo') })
+
+          expect(findRouteMatch('/abc', tree)?.route.id).toBe('/$foo')
+          expect(findRouteMatch('/abc/bar', tree)).toBeNull()
+          expect(findRouteMatch('/123/bar', tree)?.route.id).toBe(
+            `${layout}/bar`,
+          )
+        })
+
+        it("ignores a childless child's params.parse", () => {
+          const tree = buildTree({
+            parentParse: integerParse('foo'),
+            layoutParse: () => false,
+            layoutChildren: false,
+          })
+
+          expect(findRouteMatch('/abc', tree)).toBeNull()
+          expect(findRouteMatch('/123', tree)?.route.id).toBe('/$foo')
+        })
+
+        it("a childless child of a guarded layout does not take the parent's URL", () => {
+          const { processedTree } = processRouteTree(
+            root([
+              {
+                id: '/$foo',
+                fullPath: '/$foo',
+                path: '$foo',
+                children: [
+                  {
+                    id: layout,
+                    fullPath: '/$foo',
+                    options: { params: { parse: integerParse('foo') } },
+                    children: [
+                      { id: `${layout}/leaf`, fullPath: '/$foo' },
+                      {
+                        id: `${layout}/bar`,
+                        fullPath: '/$foo/bar',
+                        path: 'bar',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ]),
+          )
+
+          expect(findRouteMatch('/1', processedTree)?.route.id).toBe('/$foo')
+          expect(findRouteMatch('/1/bar', processedTree)?.route.id).toBe(
+            `${layout}/bar`,
+          )
+        })
+
+        it('does not apply its params.parse to a sibling sharing the parent node', () => {
+          const { processedTree } = processRouteTree(
+            root([
+              { id: '/$bar', fullPath: '/$bar', path: '$bar' },
+              {
+                id: '/$foo',
+                fullPath: '/$foo',
+                path: '$foo',
+                children: [
+                  {
+                    id: layout,
+                    fullPath: '/$foo',
+                    options: { params: { parse: integerParse('foo') } },
+                    children: [
+                      {
+                        id: `${layout}/baz`,
+                        fullPath: '/$foo/baz',
+                        path: 'baz',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ]),
+          )
+
+          expect(findRouteMatch('/abc', processedTree)?.route.id).toBe('/$bar')
+          expect(findRouteMatch('/123/baz', processedTree)?.route.id).toBe(
+            `${layout}/baz`,
+          )
+        })
+
+        it.each([
+          ['without params.parse', undefined],
+          ['with params.parse but no priority', parseWhen(() => true)],
+        ])("keeps the parent's params.priority %s", (_, layoutParse) => {
+          const { processedTree } = processRouteTree(
+            root([
+              {
+                id: '/$foo',
+                fullPath: '/$foo',
+                path: '$foo',
+                options: {
+                  params: { parse: integerParse('foo'), priority: 10 },
+                },
+                children: [
+                  {
+                    id: layout,
+                    fullPath: '/$foo',
+                    options: layoutParse && { params: { parse: layoutParse } },
+                    children: [
+                      { id: `${layout}/`, fullPath: '/$foo/', path: '/' },
+                    ],
+                  },
+                ],
+              },
+              {
+                id: '/$bar',
+                fullPath: '/$bar',
+                path: '$bar',
+                options: {
+                  params: { parse: parseWhen(() => true), priority: 5 },
+                },
+              },
+            ]),
+          )
+
+          expect(findRouteMatch('/123', processedTree)?.route.id).toBe(
+            `${layout}/`,
+          )
+          expect(findRouteMatch('/abc', processedTree)?.route.id).toBe('/$bar')
+        })
+      },
+    )
+
+    describe('nested pathless layouts', () => {
+      const buildTree = (
+        outerParse?: (params: Record<string, string>) => unknown,
+        innerParse?: (params: Record<string, string>) => unknown,
+      ) =>
+        processRouteTree(
+          root([
+            {
+              id: '/$foo',
+              fullPath: '/$foo',
+              path: '$foo',
+              children: [
+                {
+                  id: '/$foo/_outer',
+                  fullPath: '/$foo',
+                  options: outerParse && { params: { parse: outerParse } },
+                  children: [
+                    {
+                      id: '/$foo/_outer/_inner',
+                      fullPath: '/$foo',
+                      options: innerParse && { params: { parse: innerParse } },
+                      children: [
+                        {
+                          id: '/$foo/_outer/_inner/a',
+                          fullPath: '/$foo/a',
+                          path: 'a',
+                        },
+                      ],
+                    },
+                    { id: '/$foo/_outer/b', fullPath: '/$foo/b', path: 'b' },
+                  ],
+                },
+              ],
+            },
+          ]),
+        ).processedTree
+
+      it('outer params.parse guards the inner layout without one', () => {
+        const tree = buildTree(integerParse('foo'))
+
+        expect(findRouteMatch('/abc/a', tree)).toBeNull()
+        expect(findRouteMatch('/abc/b', tree)).toBeNull()
+        expect(findRouteMatch('/abc', tree)?.route.id).toBe('/$foo')
+        expect(findRouteMatch('/1/a', tree)?.route.id).toBe(
+          '/$foo/_outer/_inner/a',
+        )
+      })
+
+      it('inner params.parse guards only the inner subtree', () => {
+        const tree = buildTree(undefined, integerParse('foo'))
+
+        expect(findRouteMatch('/abc/a', tree)).toBeNull()
+        expect(findRouteMatch('/abc/b', tree)?.route.id).toBe('/$foo/_outer/b')
+        expect(findRouteMatch('/1/a', tree)?.route.id).toBe(
+          '/$foo/_outer/_inner/a',
+        )
+      })
+
+      it('outer and inner params.parse both guard the inner subtree', () => {
+        const tree = buildTree(
+          integerParse('foo'),
+          parseWhen(({ foo }) => foo!.length < 2),
+        )
+
+        expect(findRouteMatch('/12/a', tree)).toBeNull()
+        expect(findRouteMatch('/12/b', tree)?.route.id).toBe('/$foo/_outer/b')
+        expect(findRouteMatch('/1/a', tree)?.route.id).toBe(
+          '/$foo/_outer/_inner/a',
+        )
+      })
+    })
+
+    it.each([
+      {
+        parent: 'the root',
+        children: [
+          {
+            id: '/pathlessLayout',
+            fullPath: '/',
+            options: { params: { parse: () => false } },
+            children: [{ id: '/pathlessLayout/a', fullPath: '/a', path: 'a' }],
+          },
+          { id: '/b', fullPath: '/b', path: 'b' },
+        ],
+        matches: { '/a': null, '/b': '/b' },
+      },
+      {
+        parent: 'a wildcard',
+        children: [
+          {
+            id: '/files/$',
+            fullPath: '/files/$',
+            path: 'files/$',
+            children: [
+              {
+                id: '/files/$/pathlessLayout',
+                fullPath: '/files/$',
+                options: {
+                  params: { parse: parseWhen(({ _splat }) => _splat !== 'x') },
+                },
+                children: [
+                  {
+                    id: '/files/$/pathlessLayout/',
+                    fullPath: '/files/$/',
+                    path: '/',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        matches: {
+          '/files/a': '/files/$/pathlessLayout/',
+          '/files/x': '/files/$',
+        },
+      },
+      {
+        parent: 'an optional param',
+        children: [
+          {
+            id: '/{-$lang}',
+            fullPath: '/{-$lang}',
+            path: '{-$lang}',
+            children: [
+              {
+                id: '/{-$lang}/pathlessLayout',
+                fullPath: '/{-$lang}',
+                options: {
+                  params: {
+                    parse: parseWhen(({ lang }) => !lang || lang === 'en'),
+                  },
+                },
+                children: [
+                  {
+                    id: '/{-$lang}/pathlessLayout/about',
+                    fullPath: '/{-$lang}/about',
+                    path: 'about',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        matches: {
+          '/about': '/{-$lang}/pathlessLayout/about',
+          '/en/about': '/{-$lang}/pathlessLayout/about',
+          '/fr/about': null,
+          '/fr': '/{-$lang}',
+        },
+      },
+    ])(
+      'pathless layout under $parent guards only its subtree',
+      ({ children, matches }) => {
+        const { processedTree } = processRouteTree(root(children))
+
+        for (const [path, routeId] of Object.entries(matches)) {
+          expect(findRouteMatch(path, processedTree)?.route.id ?? null).toBe(
+            routeId,
+          )
+        }
+      },
+    )
+
+    it('pathless siblings with params.parse are tried by params.priority', () => {
+      const layout = (
+        name: string,
+        parse: (params: Record<string, string>) => unknown,
+        priority?: number,
+      ) => ({
+        id: `/$foo/${name}`,
+        fullPath: '/$foo',
+        options: { params: { parse, priority } },
+        children: [{ id: `/$foo/${name}/a`, fullPath: '/$foo/a', path: 'a' }],
+      })
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$foo',
+            fullPath: '/$foo',
+            path: '$foo',
+            children: [
+              layout(
+                '_any',
+                parseWhen(() => true),
+              ),
+              layout('_int', integerParse('foo'), 10),
+              layout(
+                '_short',
+                parseWhen(({ foo }) => foo!.length < 3),
+                5,
+              ),
+            ],
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/1/a', processedTree)?.route.id).toBe(
+        '/$foo/_int/a',
+      )
+      expect(findRouteMatch('/ab/a', processedTree)?.route.id).toBe(
+        '/$foo/_short/a',
+      )
+      expect(findRouteMatch('/abcd/a', processedTree)?.route.id).toBe(
+        '/$foo/_any/a',
+      )
+    })
+
+    it('pathless siblings under the root are tried by params.priority', () => {
+      const { processedTree } = processRouteTree(
+        root(
+          [
+            ['_lo', 1],
+            ['_hi', 10],
+          ].map(([name, priority]) => ({
+            id: `/${name}`,
+            fullPath: '/',
+            options: {
+              params: {
+                parse: parseWhen(() => true),
+                priority: priority as number,
+              },
+            },
+            children: [{ id: `/${name}/a`, fullPath: '/a', path: 'a' }],
+          })),
+        ),
+      )
+
+      expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/_hi/a')
+    })
+
+    it.each(['_layout', 'pathlessLayout', '(group)'])(
+      'pathless layout `%s` under the root guards its index route',
+      (layoutId) => {
+        const build = (parse: (params: Record<string, string>) => unknown) =>
+          processRouteTree(
+            root([
+              {
+                id: `/${layoutId}`,
+                fullPath: '/',
+                options: { params: { parse } },
+                children: [
+                  { id: `/${layoutId}/`, fullPath: '/', path: '/' },
+                  { id: `/${layoutId}/a`, fullPath: '/a', path: 'a' },
+                ],
+              },
+            ]),
+          ).processedTree
+
+        const rejecting = build(() => false)
+        expect(findRouteMatch('/', rejecting)).toBeNull()
+        expect(findRouteMatch('/a', rejecting)).toBeNull()
+        expect(
+          findRouteMatch(
+            '/',
+            build((params) => params),
+          )?.route.id,
+        ).toBe(`/${layoutId}/`)
+      },
+    )
+  })
+
+  describe('routes ending on a shared static node', () => {
+    it.each([
+      ['declared first', true],
+      ['declared last', false],
+    ])(
+      'a same-shape route with params.parse is tried first when %s',
+      (_, parsedFirst) => {
+        const parsed = {
+          id: '/$id/edit',
+          fullPath: '/$id/edit',
+          path: '$id/edit',
+          options: { params: { parse: integerParse('id') } },
+        }
+        const plain = {
+          id: '/$slug/edit',
+          fullPath: '/$slug/edit',
+          path: '$slug/edit',
+        }
+        const { processedTree } = processRouteTree(
+          root(parsedFirst ? [parsed, plain] : [plain, parsed]),
+        )
+
+        const parsedMatch = findRouteMatch('/1/edit', processedTree)
+        expect(parsedMatch?.route.id).toBe('/$id/edit')
+        expect(parsedMatch?.rawParams).toEqual({ id: '1' })
+        const plainMatch = findRouteMatch('/abc/edit', processedTree)
+        expect(plainMatch?.route.id).toBe('/$slug/edit')
+        expect(plainMatch?.rawParams).toEqual({ slug: 'abc' })
+      },
+    )
+
+    it('params.parse does not apply to an index route sharing the static node', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            children: [
+              {
+                id: '/$a/foo',
+                fullPath: '/$a/foo',
+                path: 'foo',
+                options: { params: { parse: () => false } },
+              },
+              {
+                id: '/$a/(group)',
+                fullPath: '/$a',
+                children: [
+                  {
+                    id: '/$a/(group)/foo/',
+                    fullPath: '/$a/foo/',
+                    path: 'foo/',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/abc/foo', processedTree)?.route.id).toBe(
+        '/$a/(group)/foo/',
+      )
+    })
+
+    it('a pathless child without params.parse keeps the params.parse of a route ending on a static node', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            children: [
+              {
+                id: '/$a/foo',
+                fullPath: '/$a/foo',
+                path: 'foo',
+                options: { params: { parse: integerParse('a') } },
+                children: [
+                  {
+                    id: '/$a/foo/_layout',
+                    fullPath: '/$a/foo',
+                    children: [
+                      {
+                        id: '/$a/foo/_layout/',
+                        fullPath: '/$a/foo/',
+                        path: '/',
+                        options: {
+                          params: {
+                            parse: parseWhen(({ a }) => a!.length < 2),
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+              { id: '/$a/foo/x', fullPath: '/$a/foo/x', path: 'foo/x' },
+            ],
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/1/foo', processedTree)?.route.id).toBe(
+        '/$a/foo/_layout/',
+      )
+      expect(findRouteMatch('/12/foo', processedTree)?.route.id).toBe('/$a/foo')
+      expect(findRouteMatch('/abc/foo', processedTree)).toBeNull()
+      expect(findRouteMatch('/abc/foo/x', processedTree)?.route.id).toBe(
+        '/$a/foo/x',
+      )
+    })
+
+    it('fuzzy matching goes through a route ending on a static node with params.parse', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            children: [
+              {
+                id: '/$a/foo',
+                fullPath: '/$a/foo',
+                path: 'foo',
+                options: { params: { parse: integerParse('a') } },
+              },
+              { id: '/$a/foo/x', fullPath: '/$a/foo/x', path: 'foo/x' },
+            ],
+          },
+        ]),
+      )
+      const fuzzy = (path: string) => {
+        const match = findRouteMatch(path, processedTree, true)
+        return [match?.route.id, match?.rawParams['**']]
+      }
+
+      expect(fuzzy('/1/foo/zzz')).toEqual(['/$a/foo', 'zzz'])
+      expect(fuzzy('/abc/foo/zzz')).toEqual(['/$a', 'foo/zzz'])
+      expect(fuzzy('/abc/foo/x/y')).toEqual(['/$a/foo/x', 'y'])
+    })
+
+    it('params.parse under an optional param does not apply to a later route reusing the static node', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/{-$lang}/about',
+            fullPath: '/{-$lang}/about',
+            path: '{-$lang}/about',
+            options: {
+              params: {
+                parse: parseWhen(({ lang }) => !lang || lang === 'en'),
+              },
+            },
+          },
+          {
+            id: '/{-$x}/about/team',
+            fullPath: '/{-$x}/about/team',
+            path: '{-$x}/about/team',
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/about', processedTree)?.route.id).toBe(
+        '/{-$lang}/about',
+      )
+      expect(findRouteMatch('/en/about', processedTree)?.route.id).toBe(
+        '/{-$lang}/about',
+      )
+      expect(findRouteMatch('/fr/about', processedTree)).toBeNull()
+      expect(findRouteMatch('/fr/about/team', processedTree)?.route.id).toBe(
+        '/{-$x}/about/team',
+      )
+    })
+
+    it('params.parse does not apply to a later route reusing the static node', () => {
+      // the parser route's `$lang` node has no parser itself, so `$x` reuses it
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$lang/about',
+            fullPath: '/$lang/about',
+            path: '$lang/about',
+            options: {
+              params: { parse: parseWhen(({ lang }) => lang === 'en') },
+            },
+          },
+          {
+            id: '/$x/about/team',
+            fullPath: '/$x/about/team',
+            path: '$x/about/team',
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/en/about', processedTree)?.route.id).toBe(
+        '/$lang/about',
+      )
+      expect(findRouteMatch('/fr/about', processedTree)).toBeNull()
+      expect(findRouteMatch('/fr/about/team', processedTree)?.route.id).toBe(
+        '/$x/about/team',
+      )
+    })
+
+    it('same-shape routes with params.parse are tried by params.priority', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            children: [
+              {
+                id: '/$a/foo',
+                fullPath: '/$a/foo',
+                path: 'foo',
+                options: {
+                  params: { parse: parseWhen(() => true), priority: 1 },
+                },
+              },
+              {
+                id: '/$a/(group)',
+                fullPath: '/$a',
+                children: [
+                  {
+                    id: '/$a/(group)/foo',
+                    fullPath: '/$a/foo',
+                    path: 'foo',
+                    options: {
+                      params: { parse: integerParse('a'), priority: 10 },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/1/foo', processedTree)?.route.id).toBe(
+        '/$a/(group)/foo',
+      )
+      expect(findRouteMatch('/abc/foo', processedTree)?.route.id).toBe(
+        '/$a/foo',
+      )
+    })
+
+    // `/$a` has no params.parse, so `foo` is shared with the `/$a/foo/x` sibling
+    it.each([
+      [
+        'a route',
+        {
+          id: '/$a/foo',
+          fullPath: '/$a/foo',
+          path: 'foo',
+          options: { params: { parse: integerParse('a') } },
+        },
+        '/$a/foo',
+      ],
+      [
+        'a route with children',
+        {
+          id: '/$a/foo',
+          fullPath: '/$a/foo',
+          path: 'foo',
+          options: { params: { parse: integerParse('a') } },
+          children: [{ id: '/$a/foo/', fullPath: '/$a/foo/', path: '/' }],
+        },
+        '/$a/foo/',
+      ],
+      [
+        // routes/$a/foo/_here.tsx without a routes/$a/foo route
+        'a generated pathless route that kept its parent path',
+        {
+          id: '/$a/foo/_here',
+          fullPath: '/$a/foo',
+          path: 'foo',
+          options: { params: { parse: integerParse('a') } },
+          children: [{ id: '/$a/foo/_here/', fullPath: '/$a/foo/', path: '/' }],
+        },
+        '/$a/foo/_here/',
+      ],
+    ])(
+      '%s with params.parse does not apply it to a sibling',
+      (_, guardedRoute, guardedMatch) => {
+        const { processedTree } = processRouteTree(
+          root([
+            {
+              id: '/$a',
+              fullPath: '/$a',
+              path: '$a',
+              children: [
+                guardedRoute,
+                { id: '/$a/foo/x', fullPath: '/$a/foo/x', path: 'foo/x' },
+              ],
+            },
+          ]),
+        )
+
+        expect(findRouteMatch('/abc/foo/x', processedTree)?.route.id).toBe(
+          '/$a/foo/x',
+        )
+        expect(findRouteMatch('/abc/foo', processedTree)).toBeNull()
+        expect(findRouteMatch('/1/foo', processedTree)?.route.id).toBe(
+          guardedMatch,
+        )
+      },
+    )
+  })
+
+  describe('index routes', () => {
+    it.each([
+      ['declared first', true],
+      ['declared last', false],
+    ])(
+      'a same-shape index route with params.parse is tried first when %s',
+      (_, parsedFirst) => {
+        const parsed = {
+          id: '/$id/',
+          fullPath: '/$id/',
+          path: '$id/',
+          options: { params: { parse: integerParse('id') } },
+        }
+        const plain = { id: '/$slug/', fullPath: '/$slug/', path: '$slug/' }
+        const { processedTree } = processRouteTree(
+          root(parsedFirst ? [parsed, plain] : [plain, parsed]),
+        )
+
+        const parsedMatch = findRouteMatch('/1', processedTree)
+        expect(parsedMatch?.route.id).toBe('/$id/')
+        expect(parsedMatch?.rawParams).toEqual({ id: '1' })
+        const plainMatch = findRouteMatch('/abc', processedTree)
+        expect(plainMatch?.route.id).toBe('/$slug/')
+        expect(plainMatch?.rawParams).toEqual({ slug: 'abc' })
+      },
+    )
   })
 
   describe('optional params', () => {
