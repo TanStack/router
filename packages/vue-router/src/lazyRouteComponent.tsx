@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { waitForPageToStay, watchPageUnload } from '@tanstack/router-core'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
@@ -34,6 +35,7 @@ export function lazyRouteComponent<
   let comp: T[TKey] | T['default'] | null = null
   let error: any = null
   let attemptedReload = false
+  let cancelledByUnload = false
 
   const load = () => {
     // If we're on the server and SSR is disabled for this component
@@ -45,8 +47,11 @@ export function lazyRouteComponent<
     // Use existing promise or create new one
     if (!loadPromise) {
       error = undefined
+      cancelledByUnload = false
+      const stopWatchingUnload = watchPageUnload()
       loadPromise = importer()
         .then((res) => {
+          stopWatchingUnload()
           if (typeof document !== 'undefined') {
             loadPromise = undefined
             ;(lazyComp as any).preload = undefined
@@ -57,6 +62,7 @@ export function lazyRouteComponent<
         .catch((err) => {
           error = err
           loadPromise = undefined
+          cancelledByUnload = stopWatchingUnload() && isModuleNotFoundError(err)
 
           // If it's a module not found error, we'll try to handle it in the component
           if (isModuleNotFoundError(error)) {
@@ -76,15 +82,18 @@ export function lazyRouteComponent<
       // Create refs to track component state
       // Use shallowRef for component to avoid making it reactive (Vue warning)
       const component = Vue.shallowRef<any>(comp ? Vue.markRaw(comp) : comp)
-      const errorState = Vue.ref<any>(error)
+      // The browser cancelled the import because the page is unloading, so a
+      // reload would replace the navigation the user started. If the page
+      // stays after all, retry the import instead.
+      const retryAfterUnload = !!error && cancelledByUnload
+      const errorState = Vue.ref<any>(retryAfterUnload ? null : error)
       const loading = Vue.ref(!component.value && !errorState.value)
 
       // Setup effect to load the component when this component is used
       Vue.onMounted(() => {
         if (!component.value && !errorState.value) {
           loading.value = true
-
-          load()
+          ;(retryAfterUnload ? waitForPageToStay().then(load) : load())
             .then((result) => {
               // Use markRaw to prevent Vue from making the component reactive
               component.value = result ? Vue.markRaw(result) : result
