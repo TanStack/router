@@ -6,7 +6,7 @@ import {
   toCrossJSONStream,
   fromCrossJSON,
 } from 'seroval'
-import type { SerovalNode } from 'seroval'
+import type { SerovalNode, Stream } from 'seroval'
 import { RawStream } from '../src/ssr/serializer/RawStream'
 import {
   RawStreamJSONDeserializePlugin,
@@ -23,8 +23,7 @@ import {
   defaultSerovalPlugins,
 } from '../src/ssr/serializer/seroval-plugins'
 
-type EncodedStream = ReturnType<typeof createStream<any>>
-type EncodedStreamListener = Parameters<EncodedStream['on']>[0]
+type EncodedStream = Stream<string | undefined>
 type RawStreamFactory = (stream: EncodedStream) => ReadableStream<Uint8Array>
 
 function getRawStreamFactory(
@@ -51,49 +50,15 @@ function getRawStreamFactory(
   }
 }
 
-function createTrackedEncodedStream() {
-  const listeners = new Set<EncodedStreamListener>()
-  let unsubscribeCalls = 0
-  const stream: EncodedStream = {
-    __SEROVAL_STREAM__: true,
-    on(listener) {
-      listeners.add(listener)
-      let subscribed = true
-      return () => {
-        if (subscribed) {
-          subscribed = false
-          unsubscribeCalls++
-          listeners.delete(listener)
-        }
-      }
-    },
-    next(value) {
-      for (const listener of listeners) {
-        listener.next(value)
-      }
-    },
-    throw(value) {
-      for (const listener of listeners) {
-        listener.throw(value)
-      }
-      listeners.clear()
-    },
-    return(value) {
-      for (const listener of listeners) {
-        listener.return(value)
-      }
-      listeners.clear()
-    },
-  }
-  return {
-    stream,
-    get listenerCount() {
-      return listeners.size
-    },
-    get unsubscribeCalls() {
-      return unsubscribeCalls
-    },
-  }
+/** Spies on `stream.on`; the returned mock forwards to the real disposer. */
+function spyOnSubscription(stream: EncodedStream) {
+  const on = stream.on.bind(stream)
+  const unsubscribe = vi.fn<() => void>()
+  vi.spyOn(stream, 'on').mockImplementation((listener) => {
+    unsubscribe.mockImplementation(on(listener))
+    return unsubscribe
+  })
+  return unsubscribe
 }
 
 describe('RawStream', () => {
@@ -521,24 +486,22 @@ describe('RawStream', () => {
     ] as const)(
       'unsubscribes the %s factory on cancellation',
       async (_, emitted) => {
-        const factory = getRawStreamFactory(pluginIndex, emitted)
-        const encodedStream = createTrackedEncodedStream()
-        const output = factory(encodedStream.stream)
-        const reader = output.getReader()
+        const stream = createStream<string | undefined>()
+        const unsubscribe = spyOnSubscription(stream)
+        const reader = getRawStreamFactory(
+          pluginIndex,
+          emitted,
+        )(stream).getReader()
 
-        expect(encodedStream.listenerCount).toBe(1)
-        encodedStream.stream.next(encoded)
+        expect(stream.on).toHaveBeenCalledOnce()
+        stream.next(encoded)
         const chunk = await reader.read()
         expect(chunk.done).toBe(false)
         expect(Array.from(chunk.value!)).toEqual([65])
 
         await reader.cancel()
         await reader.cancel()
-        expect(encodedStream.unsubscribeCalls).toBe(1)
-        expect(encodedStream.listenerCount).toBe(0)
-
-        encodedStream.stream.next(encoded)
-        expect(encodedStream.listenerCount).toBe(0)
+        expect(unsubscribe).toHaveBeenCalledOnce()
       },
     )
 
@@ -548,18 +511,10 @@ describe('RawStream', () => {
     ] as const)(
       'does not retain a synchronous terminal disposer in the %s factory',
       async (_, emitted) => {
-        const unsubscribe = vi.fn()
-        const stream = {
-          __SEROVAL_STREAM__: true,
-          on(listener: EncodedStreamListener) {
-            listener.next(encoded)
-            listener.return(undefined)
-            return unsubscribe
-          },
-          next() {},
-          throw() {},
-          return() {},
-        } as EncodedStream
+        const stream = createStream<string | undefined>()
+        stream.next(encoded)
+        stream.return(undefined)
+        const unsubscribe = spyOnSubscription(stream)
         const reader = getRawStreamFactory(
           pluginIndex,
           emitted,
@@ -580,12 +535,7 @@ describe('RawStream', () => {
         if (ended) {
           stream.return(undefined)
         }
-        const on = stream.on.bind(stream)
-        const unsubscribe = vi.fn()
-        vi.spyOn(stream, 'on').mockImplementation((listener) => {
-          unsubscribe.mockImplementation(on(listener))
-          return unsubscribe
-        })
+        const unsubscribe = spyOnSubscription(stream)
 
         const reader = getRawStreamFactory(
           pluginIndex,
@@ -611,17 +561,18 @@ describe('RawStream', () => {
     ] as const)(
       'does not retain a live terminal disposer in the %s factory',
       async (_, emitted) => {
-        const encodedStream = createTrackedEncodedStream()
+        const stream = createStream<string | undefined>()
+        const unsubscribe = spyOnSubscription(stream)
         const reader = getRawStreamFactory(
           pluginIndex,
           emitted,
-        )(encodedStream.stream).getReader()
+        )(stream).getReader()
 
-        encodedStream.stream.next(encoded)
-        encodedStream.stream.return(undefined)
+        stream.next(encoded)
+        stream.return(undefined)
         await reader.cancel()
 
-        expect(encodedStream.unsubscribeCalls).toBe(0)
+        expect(unsubscribe).not.toHaveBeenCalled()
       },
     )
   })
