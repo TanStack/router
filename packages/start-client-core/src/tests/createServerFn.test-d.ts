@@ -22,6 +22,8 @@ test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('middleware')
   expectTypeOf(createServerFn()).toHaveProperty('validator')
 
+  expectTypeOf(createServerFn({ id: 'get-user' })).toHaveProperty('handler')
+
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
