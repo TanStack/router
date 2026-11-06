@@ -16,6 +16,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  splitProps,
   untrack,
 } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
@@ -253,18 +254,18 @@ function RouteComp({
 }
 
 export const BaseTanStackRouterDevtoolsPanel =
-  function BaseTanStackRouterDevtoolsPanel({
-    ...props
-  }: BaseDevtoolsPanelOptions): JSX.Element {
+  function BaseTanStackRouterDevtoolsPanel(
+    props: BaseDevtoolsPanelOptions,
+  ): JSX.Element {
+    const [visibility, options] = splitProps(props, ['isOpen'])
     const {
-      isOpen = true,
       setIsOpen,
       handleDragStart,
       router,
       routerState,
       shadowDOMTarget,
       ...panelProps
-    } = props
+    } = options
 
     const { onCloseClick } = useDevtoolsOnClose()
     const styles = useStyles()
@@ -295,6 +296,9 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
 
     createEffect(() => {
+      if (visibility.isOpen === false) {
+        return
+      }
       const refreshCache = () => {
         const next = router()._cache
         let valuesChanged = next.size !== cacheMatches.length
