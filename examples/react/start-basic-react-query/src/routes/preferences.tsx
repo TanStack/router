@@ -4,7 +4,6 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, useHydrated } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
 import { readerNameOptions, saveReaderName } from '../utils/preferences'
 
 export const Route = createFileRoute('/preferences')({
@@ -19,10 +18,9 @@ export const Route = createFileRoute('/preferences')({
 function Preferences() {
   const { data: name } = useSuspenseQuery(readerNameOptions)
   const queryClient = useQueryClient()
-  const save = useServerFn(saveReaderName)
   const hydrated = useHydrated()
   const mutation = useMutation({
-    mutationFn: (name: string) => save({ data: name }),
+    mutationFn: (name: string) => saveReaderName({ data: name }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: readerNameOptions.queryKey }),
   })
