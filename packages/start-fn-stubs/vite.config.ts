@@ -15,7 +15,7 @@ export default mergeConfig(
   tanstackViteConfig({
     tsconfigPath: './tsconfig.build.json',
     srcDir: './src',
-    entry: './src/index.ts',
+    entry: ['./src/index.ts', './src/native.ts'],
     cjs: false,
   }),
 )

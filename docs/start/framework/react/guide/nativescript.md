@@ -19,21 +19,32 @@ From a React Start app:
 npx @tanstack/router-cli@latest native init
 ```
 
-The generated development scripts start the Start server and NativeScript app
-together:
+NativeScript 9.1 integrates the Vite dev server, including HMR, directly into
+the CLI, so the generated scripts are plain `ns debug` commands:
 
 ```sh
-npm run native:ios
-npm run native:android
+npm run ios
+npm run android
 ```
 
-NativeScript Vite 2.0.3 does not register an HMR server for React, so these
-scripts use `ns debug --no-hmr`. Source changes rebuild and restart the native
-app instead of hot-patching it.
+Run the normal Start dev server (`npm run dev`) in a second terminal when
+screens call server functions during development; it hosts them on the
+configured Start port.
 
 The Android emulator reaches the host server through `10.0.2.2`. The iOS
 simulator uses `127.0.0.1`. A physical device needs a reachable LAN or deployed
 URL.
+
+## Hot module replacement
+
+An edit to a route, a screen, or any module a route imports applies to the open
+native pages in place: the adapter re-evaluates the affected route modules and
+remounts their pages, with no rebuild or app restart. Router state, loader data
+and the native stack are kept; React state inside the remounted pages resets.
+
+The update channel needs `@valor/nativescript-websockets`, which `native init`
+adds. Android reaches the HMR dev server through `adb reverse` on `127.0.0.1`,
+so the generated cleartext allowlist includes that host.
 
 ## Compiler setup
 
@@ -67,7 +78,11 @@ the compiler rejects a relative URL.
 
 The plugin performs three jobs:
 
-- generates the shared React route tree
+- generates the React route tree from the shared routes directory into
+  `src/routeTree.gen-native.ts`, which native builds use in place of
+  `routeTree.gen.ts`. The web build appends Start's SSR types to
+  `routeTree.gen.ts`, so a native watcher writing the same file would keep the
+  two dev servers rebuilding each other.
 - applies the NativeScript renderer and `-native` module resolver
 - runs Start's client transform with the same deterministic server-function IDs
   used by the deployed Start server
@@ -111,17 +126,16 @@ are sent to `serverFnBase`.
 
 ## Production builds
 
-Set the deployed endpoint before invoking a generated build script:
+Set the deployed endpoint before invoking a release build:
 
 ```sh
-TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ npm run native:build:ios
-TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ npm run native:build:android
+TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ ns build ios --release
+TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ ns build android --release
 ```
 
-The generated scripts pass NativeScript's `--release` flag. Android release
-builds require all four `--key-store-*` options, which can be appended after
-`npm run native:build:android --`. Add `--for-device` and the appropriate iOS
-signing options when producing an iOS device build.
+Android release builds require all four `--key-store-*` options. Add
+`--for-device` and the appropriate iOS signing options when producing an iOS
+device build.
 
 NativeScript platform signing, App Store configuration, Android manifests, and
 device permissions remain standard NativeScript responsibilities. The

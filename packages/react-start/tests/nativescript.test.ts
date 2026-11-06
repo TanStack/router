@@ -2,7 +2,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { tanstackStartNativeScript } from '../src/plugin/nativescript'
+import {
+  getNativeGeneratedRouteTree,
+  tanstackStartNativeScript,
+} from '../src/plugin/nativescript'
 import {
   configureNativeScriptStart,
   createNativeScriptServerFnFetch,
@@ -169,6 +172,33 @@ describe('NativeScript Start resolver', () => {
     await expect(
       plugin.resolveId.call(context, './screens/Home', files.importer),
     ).resolves.toBeNull()
+  })
+
+  test('resolves the web route tree import to the native generated tree', async () => {
+    const { root } = await createFixture()
+    const router = path.join(root, 'src/router.tsx')
+    const webRouteTree = path.join(root, 'src/routeTree.gen.ts')
+    const nativeRouteTree = path.join(
+      root,
+      getNativeGeneratedRouteTree('./src/routeTree.gen.ts'),
+    )
+    await Promise.all(
+      [router, webRouteTree, nativeRouteTree].map((file) =>
+        writeFile(file, 'export {}\n'),
+      ),
+    )
+    const plugin = getResolverPlugin({
+      serverFnBase: 'https://api.example.com/_serverFn/',
+    })
+    plugin.configResolved({ root })
+    const context = createResolverContext(async (source) =>
+      source === './routeTree.gen' ? { id: webRouteTree } : null,
+    )
+
+    expect(nativeRouteTree).toBe(path.join(root, 'src/routeTree.gen-native.ts'))
+    await expect(
+      plugin.resolveId.call(context, './routeTree.gen', router),
+    ).resolves.toBe(nativeRouteTree)
   })
 
   test('fails configuration when the native root route is missing', async () => {

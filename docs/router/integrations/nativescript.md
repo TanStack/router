@@ -23,23 +23,24 @@ by NativeScript and Vite into the nearest `pnpm-workspace.yaml`. Existing
 workspace settings and explicit denials are preserved.
 
 ```sh
-npm run native:ios
-npm run native:android
+npm run ios
+npm run android
 ```
 
 Requirements for the current stable NativeScript toolchain:
 
 - React 19
-- NativeScript 9
+- NativeScript 9.1
 - `@nativescript-community/react` 19
 - `react-nativescript` as an npm alias of `@nativescript-community/react` 19
-- `@nativescript/vite` 2.0.3
-- Vite 7.3 or newer within the Vite 7 major
+- `@nativescript/vite` 8
+- Vite 8
 
-NativeScript's stable Vite plugin does not currently support Vite 8. The
+NativeScript 9.1 integrates the Vite dev server, including HMR, into the
+`ns debug` command, so no additional development scripts are needed. The
 initializer adds a compatible Vite version when one is absent and reports a
-conflict for an existing incompatible range. `--force` deliberately replaces
-that range.
+conflict for an existing incompatible range such as Vite 7. `--force`
+deliberately replaces that range.
 
 ## Sharing an app
 

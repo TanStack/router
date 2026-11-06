@@ -61,6 +61,16 @@ function cleanId(id: string): string {
   return id.slice(0, end)
 }
 
+// `react-nativescript` is the historical npm alias of the renderer; projects
+// may depend on either name.
+function resolveRendererPackage(require: NodeJS.Require): string {
+  try {
+    return require.resolve('@nativescript-community/react/package.json')
+  } catch {
+    return require.resolve('react-nativescript/package.json')
+  }
+}
+
 function isInsideDirectory(file: string, directory: string): boolean {
   const relative = path.relative(directory, file)
   return (
@@ -159,8 +169,7 @@ function createNativeScriptResolver(
       'dist/esm/react-dom.js',
     )
 
-    const rendererPackagePath =
-      require.resolve('react-nativescript/package.json')
+    const rendererPackagePath = resolveRendererPackage(require)
     const rendererRequire = createRequire(rendererPackagePath)
     const reactReconcilerPackagePath = rendererRequire.resolve(
       'react-reconciler/package.json',
@@ -437,7 +446,22 @@ export const { useSyncExternalStoreWithSelector } = selector
       }
       return null
     },
-    config() {
+    config(_config, env) {
+      // The NativeScript HMR dev server serves React itself (CJS interop, its
+      // own JSX runtime, one shared deps bundle) and drops imports that
+      // resolve to virtual modules, so the inlined React bridge is build-only.
+      if (env?.command === 'serve') {
+        return {
+          resolve: {
+            alias: [
+              {
+                find: /^react-dom$/,
+                replacement: '@tanstack/react-nativescript-router/react-dom',
+              },
+            ],
+          },
+        }
+      }
       return {
         build: {
           modulePreload: false,

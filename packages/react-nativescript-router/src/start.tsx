@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Application } from '@nativescript/core'
 import { startReactApp } from '@nativescript-community/react'
 import { NativeScriptRouterProvider } from './NativeScriptRouterProvider'
+import { subscribeNativeScriptHmr } from './hmr'
 import type { AnyRouter } from '@tanstack/react-router/native'
 import type { NativeScriptRouterProviderProps } from './NativeScriptRouterProvider'
 
@@ -21,6 +22,9 @@ export async function startNativeScriptApp<TRouter extends AnyRouter>({
   ...providerOptions
 }: StartNativeScriptAppOptions<TRouter>): Promise<void> {
   await initialize?.()
+  if (process.env.NODE_ENV !== 'production') {
+    subscribeNativeScriptHmr(router)
+  }
   startReactApp({
     Application,
     root:

@@ -43,6 +43,10 @@
   "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
+      "react-native": {
+        "types": "./dist/esm/native.d.ts",
+        "default": "./dist/esm/native.js"
+      },
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"

@@ -49,10 +49,19 @@ export interface NativePageRecord {
   setActive: (active: boolean) => void
   update: (screen: NativeScreenSnapshot) => void
   updateOptions: (options: NativePageRenderOptions) => void
+  /** Re-render the page from scratch, picking up replaced route components. */
+  remount: () => void
   dispose: () => void
 }
 
 export const nativePageRecordKey = '__TSR_nativePageRecord'
+
+const livePageRecords = new Set<NativePageRecord>()
+
+/** Page records currently mounted in a native stack. */
+export function getLivePageRecords(): ReadonlySet<NativePageRecord> {
+  return livePageRecords
+}
 
 export type NativePageWithRecord = Page & {
   [nativePageRecordKey]?: NativePageRecord
@@ -272,12 +281,20 @@ export function createNativePageRecord({
     updateOptions(nextOptions) {
       optionsStore.setState(() => nextOptions)
     },
+    remount() {
+      if (disposed || !disposeTree) {
+        return
+      }
+      unmountTree()
+      mountTree()
+    },
     dispose() {
       if (disposed) {
         return
       }
 
       disposed = true
+      livePageRecords.delete(record)
       unmountTree()
       unsubscribeBlockers?.()
       page.off('loaded', handleLoaded)
@@ -305,6 +322,7 @@ export function createNativePageRecord({
     : undefined
 
   page[nativePageRecordKey] = record
+  livePageRecords.add(record)
   page.on('loaded', handleLoaded)
   page.on('navigatedTo', handleNavigatedTo)
   page.on('disposeNativeView', handleDisposeNativeView)

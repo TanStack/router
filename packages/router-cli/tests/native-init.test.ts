@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, expect, test } from 'vitest'
@@ -112,19 +112,18 @@ test('initializes a Start app and is idempotent', async () => {
     devDependencies: Record<string, string>
   }
   expect(packageJson.main).toBe('src/native/index.tsx')
-  expect(packageJson.scripts['native:ios']).toContain('concurrently')
-  expect(packageJson.scripts['native:ios']).toContain('pnpm run native:server')
-  expect(packageJson.scripts['native:ios']).toContain('ns debug ios --no-hmr')
-  expect(packageJson.scripts['native:build:ios']).toContain(
-    'ns build ios --release --env.production',
-  )
-  expect(packageJson.scripts['native:build:android']).toContain(
-    'ns build android --release --env.production',
-  )
+  expect(packageJson.scripts.ios).toBe('ns debug ios')
+  expect(packageJson.scripts.android).toBe('ns debug android')
+  expect(packageJson.dependencies['@nativescript/core']).toBe('~9.1.0')
   expect(packageJson.dependencies['@tanstack/react-nativescript-router']).toBe(
     'latest',
   )
-  expect(packageJson.devDependencies.vite).toBe('^7.3.6')
+  expect(packageJson.devDependencies.nativescript).toBe('~9.1.0')
+  expect(packageJson.devDependencies['@nativescript/vite']).toBe('~8.0.0')
+  expect(packageJson.devDependencies.concurrently).toBeUndefined()
+  expect(packageJson.devDependencies['wait-on']).toBeUndefined()
+  expect(packageJson.devDependencies['cross-env']).toBeUndefined()
+  expect(packageJson.devDependencies.vite).toBe('^8.0.0')
   const pnpmWorkspace = parse(
     await readFile(path.join(root, 'pnpm-workspace.yaml'), 'utf8'),
   ) as { allowBuilds: Record<string, boolean> }
@@ -335,13 +334,13 @@ test('rejects an invalid server function base before writing files', async () =>
   ).rejects.toThrow()
 })
 
-test('rejects Vite 8 atomically and replaces it only with force', async () => {
+test('rejects Vite 7 atomically and replaces it only with force', async () => {
   const root = await createFixture('start')
   const packageJsonPath = path.join(root, 'package.json')
   const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
     devDependencies?: Record<string, string>
   }
-  packageJson.devDependencies = { vite: '^8.0.0' }
+  packageJson.devDependencies = { vite: '^7.3.6' }
   const packageJsonBefore = `${JSON.stringify(packageJson, null, 2)}\n`
   await writeFile(packageJsonPath, packageJsonBefore)
 
@@ -367,7 +366,7 @@ test('rejects Vite 8 atomically and replaces it only with force', async () => {
   ) as {
     devDependencies: Record<string, string>
   }
-  expect(forcedPackageJson.devDependencies.vite).toBe('^7.3.6')
+  expect(forcedPackageJson.devDependencies.vite).toBe('^8.0.0')
 })
 
 test('preflights conflicts before changing the project', async () => {

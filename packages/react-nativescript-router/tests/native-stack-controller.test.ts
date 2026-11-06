@@ -86,6 +86,7 @@ function createHarness(initialEntries: Array<string> = ['/']) {
         record.screen = next
       },
       updateOptions: vi.fn(),
+      remount: vi.fn(),
       dispose() {
         if (disposed) {
           return
