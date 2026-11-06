@@ -21,6 +21,14 @@ Once installed, you'll need to add the plugin to your configuration.
 import { tanstackRouter } from '@tanstack/router-plugin/webpack'
 
 export default {
+  output: {
+    publicPath: '/',
+  },
+  devServer: {
+    historyApiFallback: {
+      rewrites: [{ from: /./, to: '/index.html' }],
+    },
+  },
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -38,6 +46,14 @@ Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/r
 import { tanstackRouter } from '@tanstack/router-plugin/webpack'
 
 export default {
+  output: {
+    publicPath: '/',
+  },
+  devServer: {
+    historyApiFallback: {
+      rewrites: [{ from: /./, to: '/index.html' }],
+    },
+  },
   plugins: [
     tanstackRouter({
       target: 'solid',
@@ -63,6 +79,52 @@ Or, for a full webpack.config.js, you can clone our [Quickstart Webpack example]
 <!-- ::end:framework -->
 
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
+
+## Serving direct route loads
+
+TanStack Router uses the browser history API for client-side navigation. Webpack
+needs to serve your application shell for direct loads and refreshes of nested
+routes like `/posts/1`, otherwise the dev server may try to find a real file at
+that path and return a 404 before the router can render.
+
+Configure `devServer.historyApiFallback` to rewrite unmatched requests to your
+HTML entry point:
+
+```ts title="webpack.config.ts"
+export default {
+  devServer: {
+    historyApiFallback: {
+      rewrites: [{ from: /./, to: '/index.html' }],
+    },
+  },
+}
+```
+
+Also set `output.publicPath` to the public base URL where Webpack assets are
+served from. For root deployments, use `/`:
+
+```ts title="webpack.config.ts"
+export default {
+  output: {
+    publicPath: '/',
+  },
+}
+```
+
+If your app is deployed under a subpath, set `publicPath` to that actual base
+instead, including the leading and trailing slash:
+
+```ts title="webpack.config.ts"
+export default {
+  output: {
+    publicPath: '/my-app/',
+  },
+}
+```
+
+Keep the fallback target aligned with where your HTML shell is served. The
+maintained React and Solid Webpack quickstarts use `/index.html` because the app
+is served from the domain root.
 
 ## Ignoring the generated route tree file
 
