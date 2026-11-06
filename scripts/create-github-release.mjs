@@ -6,7 +6,7 @@ import { execSync, execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
 const rootDir = path.join(import.meta.dirname, '..')
-const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
+const ghToken = process.env.GITHUB_TOKEN
 
 // Resolve GitHub usernames from commit author emails
 const usernameCache = {}
