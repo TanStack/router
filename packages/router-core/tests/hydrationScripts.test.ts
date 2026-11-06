@@ -20,7 +20,7 @@ function getBoundarySource() {
 const HYDRATION_SCRIPT_BOUNDARY_SOURCE = getBoundarySource()
 
 function createReadyOutput(nonce?: string) {
-  const scripts = createHydrationScripts(nonce, ['boot()'])
+  const scripts = createHydrationScripts(() => nonce, ['boot()'])
   const initial = scripts.takeInitialHydrationScriptTags()!
   const output = scripts.claimOutput()
   scripts.liftBarrier()
