@@ -629,8 +629,8 @@ function createPackageJson(
     '@nativescript-community/react': '^19.0.0',
     '@nativescript/core': '~9.1.0',
     '@tanstack/react-nativescript-router': adapterVersion,
+    '@valor/nativescript-websockets': '^2.0.3',
     dominative: '^0.1.3',
-    'react-nativescript': 'npm:@nativescript-community/react@^19.0.0',
     'undom-ng': '^1.1.2',
   }
   const devDependencies: Record<string, string> = {

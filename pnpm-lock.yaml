@@ -9778,6 +9778,9 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      '@valor/nativescript-websockets':
+        specifier: ^2.0.3
+        version: 2.0.3
       dominative:
         specifier: ^0.1.3
         version: 0.1.3(@nativescript/core@9.1.0)(undom-ng@1.1.2)
@@ -9787,9 +9790,6 @@ importers:
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
-      react-nativescript:
-        specifier: npm:@nativescript-community/react@^19.0.0
-        version: '@nativescript-community/react@19.0.0(@nativescript/core@9.1.0)(dominative@0.1.3(@nativescript/core@9.1.0)(undom-ng@1.1.2))(react@19.2.3)(undom-ng@1.1.2)'
       undom-ng:
         specifier: ^1.1.2
         version: 1.1.2
@@ -9805,7 +9805,7 @@ importers:
         version: 9.1.1
       '@nativescript/vite':
         specifier: ~8.0.0
-        version: 8.0.0(245238542c207fb6c2c4392adf3f59ff)
+        version: 8.0.0(96dca8eb099981a293b5c76f34b89833)
       '@tanstack/router-cli':
         specifier: workspace:*
         version: link:../../../packages/router-cli
@@ -9823,7 +9823,7 @@ importers:
         version: 5.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(less@4.4.2)(sass@1.97.3)(terser@5.46.0)(tsx@4.20.3)(yaml@2.9.0))
       nativescript:
         specifier: ~9.1.0
-        version: 9.1.0
+        version: 9.1.0(debug@4.4.3)
       nitro:
         specifier: ^3.0.260311-beta
         version: 3.0.260311-beta(@electric-sql/pglite@0.3.2)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260317.0)(mysql2@3.15.3)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(less@4.4.2)(sass@1.97.3)(terser@5.46.0)(tsx@4.20.3)(yaml@2.9.0))(xml2js@0.6.2)
@@ -21728,6 +21728,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@valor/nativescript-websockets@2.0.3':
+    resolution: {integrity: sha512-gNmdgvRttQjOxnIMqdu4xmAU19IQkqMYbYUX/OGlicGkF67Yej4ShvRFPgVCzDa2zXCctlJVVqkgsj9ZHLl+zg==}
+
   '@vercel/nft@0.29.4':
     resolution: {integrity: sha512-6lLqMNX3TuycBPABycx7A9F1bHQR7kiQln6abjFbPrf5C/05qHM9M5E4PeTE59c7z8g6vHnx1Ioihb2AQl7BTA==}
     engines: {node: '>=18'}
@@ -29881,7 +29884,7 @@ snapshots:
       magic-string: 0.30.21
       obug: 2.1.1
       oxc-parser: 0.121.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-morph: 21.0.1
     optionalDependencies:
       '@angular-devkit/build-angular': 21.2.19(@angular/compiler-cli@21.2.18(@angular/compiler@21.2.18)(typescript@6.0.2))(@angular/compiler@21.2.18)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@swc/core@1.15.33(@swc/helpers@0.5.23))(@types/node@25.0.9)(chokidar@5.0.0)(html-webpack-plugin@5.6.3(webpack@5.105.2(@swc/core@1.15.33(@swc/helpers@0.5.23))(esbuild@0.27.4)))(jiti@2.7.0)(tailwindcss@4.2.2)(tsx@4.20.3)(typescript@6.0.2)(vitest@4.1.4)(yaml@2.9.0)
@@ -34376,7 +34379,7 @@ snapshots:
       '@nativescript/types-android': 9.1.1
       '@nativescript/types-ios': 9.1.1
 
-  '@nativescript/vite@8.0.0(245238542c207fb6c2c4392adf3f59ff)':
+  '@nativescript/vite@8.0.0(96dca8eb099981a293b5c76f34b89833)':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/generator': 7.29.7
@@ -34480,7 +34483,7 @@ snapshots:
       parse-gitignore: 2.0.0
       semver: 7.8.2
       tmp-promise: 3.0.3
-      uuid: 11.1.0
+      uuid: 11.1.1
       write-file-atomic: 5.0.1
 
   '@netlify/dev@4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.56.0)':
@@ -38434,9 +38437,9 @@ snapshots:
       '@typescript-eslint/types': 8.57.1
       '@typescript-eslint/visitor-keys': 8.57.1
       debug: 4.4.3
-      minimatch: 10.2.5
+      minimatch: 10.2.6
       semver: 7.8.2
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.4.0(typescript@6.0.2)
       typescript: 6.0.2
     transitivePeerDependencies:
@@ -38586,6 +38589,8 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
+
+  '@valor/nativescript-websockets@2.0.3': {}
 
   '@vercel/nft@0.29.4(rollup@4.56.0)':
     dependencies:
@@ -39645,7 +39650,7 @@ snapshots:
       - debug
       - supports-color
 
-  axios@1.18.1:
+  axios@1.18.1(debug@4.4.3):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
@@ -40521,7 +40526,7 @@ snapshots:
       normalize-path: 3.0.0
       schema-utils: 4.3.3
       serialize-javascript: 7.0.7
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       webpack: 5.105.2(@swc/core@1.15.33(@swc/helpers@0.5.23))(esbuild@0.28.1)
     optional: true
 
@@ -43993,14 +43998,14 @@ snapshots:
       simple-plist: 1.3.1
       uuid: 11.1.0
 
-  nativescript@9.1.0:
+  nativescript@9.1.0(debug@4.4.3):
     dependencies:
       '@foxt/js-srp': 0.0.3-patch2
       '@nativescript/doctor': 2.0.18
       '@nativescript/hook': 3.0.5
       '@npmcli/arborist': 9.1.8
       '@rigor789/resolve-package-path': 1.0.7
-      axios: 1.18.1
+      axios: 1.18.1(debug@4.4.3)
       byline: 5.0.0
       chokidar: 3.6.0
       cli-table3: 0.6.5
@@ -48134,7 +48139,7 @@ snapshots:
       sockjs: 0.3.24
       spdy: 4.0.2
       webpack-dev-middleware: 7.4.5(tslib@2.8.1)(webpack@5.105.2(@swc/core@1.15.33(@swc/helpers@0.5.23))(esbuild@0.28.1))
-      ws: 8.20.0
+      ws: 8.21.1
     optionalDependencies:
       webpack: 5.105.2(@swc/core@1.15.33(@swc/helpers@0.5.23))(esbuild@0.28.1)
     transitivePeerDependencies:

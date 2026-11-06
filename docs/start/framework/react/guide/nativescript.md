@@ -35,6 +35,17 @@ The Android emulator reaches the host server through `10.0.2.2`. The iOS
 simulator uses `127.0.0.1`. A physical device needs a reachable LAN or deployed
 URL.
 
+## Hot module replacement
+
+An edit to a route, a screen, or any module a route imports applies to the open
+native pages in place: the adapter re-evaluates the affected route modules and
+remounts their pages, with no rebuild or app restart. Router state, loader data
+and the native stack are kept; React state inside the remounted pages resets.
+
+The update channel needs `@valor/nativescript-websockets`, which `native init`
+adds. Android reaches the HMR dev server through `adb reverse` on `127.0.0.1`,
+so the generated cleartext allowlist includes that host.
+
 ## Compiler setup
 
 The generated `vite.native.config.ts` composes NativeScript React with Start's
