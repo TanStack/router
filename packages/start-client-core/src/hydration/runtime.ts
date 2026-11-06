@@ -1,4 +1,5 @@
 import { hydrateIdAttribute, hydrateWhenAttribute } from './constants'
+import { replayEventsByGateId } from './replay'
 import type {
   HydrationPrefetchStrategy,
   HydrationPrefetchWaitReason,
@@ -19,6 +20,18 @@ export type HydrationGateRecord = HydrationRuntimeGate & {
 const gateRegistry = /* @__PURE__ */ new Map<string, HydrationGateRecord>()
 const resolvedGateIds = /* @__PURE__ */ new Set<string>()
 const fallbackHtmlByGateId = /* @__PURE__ */ new Map<string, string>()
+
+function deleteChildMarkerIds(
+  marker: Element,
+  ids: { delete: (id: string) => unknown },
+) {
+  marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
+    const id = childMarker.getAttribute(hydrateIdAttribute)
+    if (id) {
+      ids.delete(id)
+    }
+  })
+}
 
 export function createResolvedGate(
   id: string,
@@ -74,7 +87,10 @@ export function getOrCreateGate(
   return gate
 }
 
-export function releaseGate(gate: HydrationGateRecord) {
+export function releaseGate(
+  gate: HydrationGateRecord,
+  marker?: Element | null,
+) {
   resolvedGateIds.delete(gate.id)
   gate.consumers--
   if (gate.consumers > 0) return
@@ -82,6 +98,11 @@ export function releaseGate(gate: HydrationGateRecord) {
     gateRegistry.delete(gate.id)
     fallbackHtmlByGateId.delete(gate.id)
     gate.resolveListeners.clear()
+    replayEventsByGateId.delete(gate.id)
+    if (marker && replayEventsByGateId.size) {
+      // Nested markers can queue events before their gates are registered.
+      deleteChildMarkerIds(marker, replayEventsByGateId)
+    }
   }
 }
 
@@ -173,13 +194,7 @@ export function clearResolvedGateIdsInMarker(marker: Element) {
   if (ownId) {
     resolvedGateIds.delete(ownId)
   }
-
-  marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
-    const childId = childMarker.getAttribute(hydrateIdAttribute)
-    if (childId) {
-      resolvedGateIds.delete(childId)
-    }
-  })
+  deleteChildMarkerIds(marker, resolvedGateIds)
 }
 
 export function saveFallbackHtml(id: string, element: Element) {
