@@ -5,7 +5,7 @@ export default tanstackViteConfig({
   srcDir: './src/default-entry',
   exclude: ['./src/default-entry/client.tsx'],
   entry: ['./src/default-entry/server.ts'],
-  externalDeps: ['@tanstack/react-start/server'],
+  externalDeps: ['@tanstack/react-start/server', '@tanstack/router-core'],
   outDir: './dist/default-entry',
   cjs: false,
 })
