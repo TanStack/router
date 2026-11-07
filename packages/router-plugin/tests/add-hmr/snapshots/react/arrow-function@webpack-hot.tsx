@@ -24,6 +24,7 @@ if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = (hot.data ??= {})
   const routeId =
+    undefined ??
     hotData['tsr-route-id'] ??
     Route.id ??
     (Route.isRoot ? '__root__' : undefined)

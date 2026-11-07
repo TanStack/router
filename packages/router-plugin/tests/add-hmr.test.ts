@@ -192,6 +192,20 @@ describe('add-hmr works', () => {
     expect(output).toContain('"object":{"type":"Identifier","name":"hotData"}')
   })
 
+  it('prefers the current generated route id over stale webpack hot data', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'webpack',
+      targetFramework: 'react',
+      routeId: '@acme/feature:',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('"name":"routeId"')
+    expect(output).toContain(
+      '"operator":"??","left":{"type":"StringLiteral","value":"@acme/feature:"',
+    )
+  })
+
   it('normalizes the generated root route id for Vite HMR', async () => {
     const statement = createRouteHmrStatement([], {
       hmrStyle: 'vite',
