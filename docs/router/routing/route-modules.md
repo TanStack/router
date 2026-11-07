@@ -90,9 +90,11 @@ Declarations are emitted with a `tsconfig.route-types.json` that you own:
     "rootDir": ".",
     "outDir": ".tanstack/types"
   },
-  "include": ["src"]
+  "include": ["src", ".tanstack/route-types-stubs.d.ts"]
 }
 ```
+
+The declaration build includes `.tanstack/route-types-stubs.d.ts`. The generator writes it on every run: it declares a stand-in for the contract of every module this module [uses](#linking-across-modules), and it is empty when the module uses nothing. The stand-ins let the declaration build run without the other modules' declarations, so modules can link to each other in both directions. Do not include the file in `tsconfig.json`: the source check must read the real contracts.
 
 ## Authoring module routes
 
@@ -179,7 +181,7 @@ Mounting follows these rules, and the generator or the type checker reports ever
 - **The host chain has no required search params.** Links carry the path params of the current location over, but not its search params, so a module's own links could not provide them. Routes above a module may have path params (see [Mounting under path params](#mounting-under-path-params)). `at` itself must be a static path.
 - **The parent provides the context the module root requires.**
 - **A module is mounted once per route tree,** unless an application names several installations of it (see [Installing a module several times](#installing-a-module-several-times)). Several includers can depend on the same module, but only one of them can mount it. The others use it.
-- **Each package declares its direct providers.** Declare the modules it mounts or uses as dependencies. Generated declarations reference those providers' symbolic contracts; each provider resolves its own dependencies from its package. An application need not list every transitive module as a direct dependency. The package declaration build reports unresolved imports.
+- **Each package declares its direct providers.** Declare the modules it mounts as dependencies and the modules it uses as dependencies or peer dependencies. Generated declarations reference those providers' symbolic contracts; each provider resolves its own dependencies from its package. An application need not list every transitive module as a direct dependency. The package declaration build reports unresolved imports.
 - **Full paths must not collide** with routes of the includer or other modules.
 
 Generated code performs the mounting and emits the corresponding type checks. Mounting helpers are internal; author composition through configuration and generated APIs.
@@ -277,11 +279,20 @@ In `includes`, `as` also names the installation. In a `uses` reference, `{ "modu
 
 An application cannot link to a module route by its final path: `<Link to="/shop/products/$productId">` is a type error. This keeps modules independent of where they are mounted.
 
-APIs that take a route id work across modules with qualified ids:
+APIs that take a route id work across modules with qualified ids. An application's own scope knows every installed route:
 
 ```tsx
 const productApi = getRouteApi('@acme/products:/$productId')
 const match = useMatch({ from: '@acme/products:/$productId' })
+```
+
+A module's own scope knows its own routes and the routes of the modules it includes. The routes of a module it only uses are addressed through that module's namespace, so the module's contract never depends on the contracts it links into:
+
+```tsx
+import { products } from '../routeScope.gen'
+
+const productApi = products.getRouteApi('@acme/products:/$productId')
+const match = products.useMatch({ from: '@acme/products:/$productId' })
 ```
 
 A module can reference another module's routes without mounting it by listing it in `uses`:
@@ -294,11 +305,23 @@ A module can reference another module's routes without mounting it by listing it
       "module": { "uses": ["@acme/products"] }
     }
   },
-  "dependencies": { "@acme/products": "workspace:*" }
+  "peerDependencies": { "@acme/products": "workspace:*" }
 }
 ```
 
 The application must install that provider somewhere, directly or through an include. The generator reports a reference whose provider is not installed. A dependency used only for schemas, utilities or server functions needs no `uses` entry and imposes no route-installation requirement. Dependencies are resolved as packages; they are not automatically discovered as route consumers. An include already exposes its installed subtree, so it need not be repeated in `uses`.
+
+A used module can be declared in `dependencies`, `devDependencies` or `peerDependencies`. Prefer `peerDependencies`: the application installs the used module anyway, and Turborepo and pnpm do not treat a peer dependency as a package-graph edge, which keeps their task graphs acyclic when modules use each other.
+
+### Linking in both directions
+
+`uses` is a type-only relation and may be cyclic: products can link to account while account links to products, and a module can use the module that includes it, for example a products route linking to the cart of the storefront that mounts it. Three rules make this work:
+
+1. Generation reads only the used module's `package.json`, never its generated files, so `tsr generate` needs no ordering between modules that use each other.
+2. The declaration build compiles against the generated stand-ins in `.tanstack/route-types-stubs.d.ts` (see [Declaring a route module](#declaring-a-route-module)), so it needs no ordering either. Only the source check reads the real contracts and must run after the used modules' declaration builds.
+3. A module links into the modules it uses through their namespaces and must not import from them, neither values nor types. A type imported from a used module would make this module's emitted declarations depend on that module, which no stand-in can provide. Put types that several modules share into a package below both. The [`route-module-imports`](../eslint/route-module-imports.md) lint rule reports imports from used modules. The same holds for types obtained through the namespace: an exported helper such as `export function useOrderedProduct() { return products.getRouteApi('@acme/products:/$productId').useLoaderData() }` is emitted with the stand-in's types by the declaration build. Keep such helpers unexported, or annotate their types.
+
+Only `includes` must stay acyclic: a module cannot include a module that includes it, and the generator reports such a cycle.
 
 Namespaces are read-only generated ESM namespaces. Each API and namespace can be tree-shaken independently: using `products.Link` should not retain every routing helper. Do not mutate namespace members.
 
@@ -340,17 +363,18 @@ Generated validation type aliases bind the module's router while retaining the c
 
 ## Generated files
 
-| File                                 | Purpose                                                                      |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| `src/routeTree.gen.ts`               | Full route tree and type maps                                                |
-| `src/routeTree.gen.client.ts`        | Provider-owned client view used by Start's client bundlers                   |
-| `src/routeScope.gen.ts`              | Module-scoped exports and namespace re-exports                               |
-| `src/routeScope.gen.namespace<N>.ts` | Independent ESM exports for a referenced installation (see below)            |
-| `src/routeContract.gen.ts`           | Public route contract, exposed as `./route-types` after declaration emission |
-| `src/routeModule.gen.ts`             | Runtime entry exposed as `./route-module`                                    |
-| `src/startModules.gen.ts`            | Start contributions and erased application contract checks                   |
-| `.tanstack/route-module.json`        | Portable route/source topology, installation metadata and client-view paths  |
-| `.tanstack/types/`                   | Example declaration output directory, owned by the package build             |
+| File                                 | Purpose                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `src/routeTree.gen.ts`               | Full route tree and type maps                                                                                            |
+| `src/routeTree.gen.client.ts`        | Provider-owned client view used by Start's client bundlers                                                               |
+| `src/routeScope.gen.ts`              | Module-scoped exports and namespace re-exports                                                                           |
+| `src/routeScope.gen.namespace<N>.ts` | Independent ESM exports for a referenced installation (see below)                                                        |
+| `src/routeContract.gen.ts`           | Public route contract with the module's register and router types, exposed as `./route-types` after declaration emission |
+| `src/routeModule.gen.ts`             | Runtime entry exposed as `./route-module`                                                                                |
+| `src/startModules.gen.ts`            | Start contributions and erased application contract checks                                                               |
+| `.tanstack/route-module.json`        | Portable route/source topology, installation metadata and client-view paths                                              |
+| `.tanstack/route-types-stubs.d.ts`   | Stand-ins for the contracts of used modules, included only by the declaration build                                      |
+| `.tanstack/types/`                   | Example declaration output directory, owned by the package build                                                         |
 
 Each namespace (`products.Link`) is a separate file, so a bundler keeps only the scope APIs an application uses. The `routeScopeNamespaceFiles` option places these files:
 
@@ -385,12 +409,13 @@ Router generates routes; the package's TypeScript build emits and checks declara
 
 A declaration build should clean its configured output first, because TypeScript does not remove declarations for deleted source files. The example `build:types` script above owns that cleanup. A failed build must fail the task graph. Router has no declaration-status file, compiler wrapper or stale-output health check.
 
-Order work by the route-package dependency graph:
+Order work by the route-package dependency graph. Including a module orders tasks; using one orders only the source check:
 
-1. Generate providers before packages that include or reference them.
-2. Emit provider declarations before emitting or checking consumers.
-3. Regenerate packages that include or reference a provider after its topology changes; recheck consumers after contract changes.
-4. Build the application from the resulting artifacts.
+1. Generate included providers before the packages that include them. Modules that only use each other generate in any order.
+2. Emit included providers' declarations before emitting the includer's. Declaration builds of modules that use each other run in any order.
+3. Check a package's sources after the declaration builds of the modules it includes and uses.
+4. Regenerate packages that include a provider after its topology changes; recheck consumers after contract changes.
+5. Build the application from the resulting artifacts.
 
 An implementation edit can produce identical declaration bytes. Whether that suppresses a consumer task depends on the task runner's cache policy, not Router.
 
@@ -417,6 +442,30 @@ Expose ordinary `generate`, `build:types` and `check` package scripts. For examp
 ```
 
 The equivalent Turborepo tasks use `dependsOn: ["^generate"]` for generation and `dependsOn: ["generate", "^build:types"]` for declaration builds/checks. Use the task runner's watch mode to rerun these finite tasks in dependency order.
+
+Modules that use each other need two adjustments, because `^target` follows every package-graph edge:
+
+- **Turborepo** forms no edge for `peerDependencies`. Declare used modules as peers and `^generate`/`^build:types` follow only `includes`. pnpm warns about the workspace cycle at install time; set `ignoreWorkspaceCycles` to silence it, and declare the tasks of the packages in the cycle explicitly if you use pnpm's task orchestration. Add the check's dependency on each used module explicitly, for example `"@acme/products#check": { "dependsOn": ["@acme/account#build:types"] }` in `turbo.json`.
+- **Nx** forms an edge for every dependency field. In a package that uses modules, replace `^generate` and `^build:types` by explicit project lists of the modules it includes, so `^` never follows a `uses` edge; the task graph stays acyclic while the project graph and `nx affected` keep every edge:
+
+  ```json title="packages/products/package.json"
+  {
+    "nx": {
+      "targets": {
+        "generate": { "dependsOn": [] },
+        "build:types": { "dependsOn": ["generate"] },
+        "check": {
+          "dependsOn": [
+            "generate",
+            { "projects": ["@acme/account"], "target": "build:types" }
+          ]
+        }
+      }
+    }
+  }
+  ```
+
+  A module that also includes other modules lists them the same way (`{ "projects": ["@acme/catalog"], "target": "build:types" }` on `build:types`). `--nxIgnoreCycles` is not a substitute: when A uses B and B includes A it may drop the include ordering, and B's declaration build then fails until the next run.
 
 Configure that workflow to react to route source and generation-config changes, module `package.json` metadata, and Start-entry additions or removals beside the configured route tree. A provider topology change must regenerate packages that include or reference it. Provider declaration changes must rebuild or recheck their consumers. Include custom generated directories and TypeScript project inputs in the task configuration.
 
@@ -457,6 +506,8 @@ The `router-monorepo-*` examples share one router between packages: a router pac
 - A module is mounted at a static path, under a host chain without required search params. Only applications install a module more than once, and a module installed several times cannot install other modules.
 - A module that another module installs cannot link to a module the application installs several times.
 - Lazy route files are not supported in route modules.
+- A route module must not import values or types from a module it uses; it links through the generated namespaces. Types shared by several modules belong in a package below them.
+- Modules may use each other in both directions, and a module may use a module that includes it. A module cannot include a module that includes it.
 - `Register.server.requestContext` of TanStack Start stays global to the application.
 - Mixed code-based and file-based route-module composition is a future TODO. Use generated file-based composition for now; the mounting and scope factories remain internal. Existing physical/virtual file-routing configuration remains supported.
 - Router instances own their runtime state, including request-specific SSR state; shared module definitions must not store user context.
