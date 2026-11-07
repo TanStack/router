@@ -532,14 +532,28 @@ dir)` is not a conflict by itself.
   `serverFns.generateFunctionId({ filename, functionName })` (experimental). The form of `filename` (relative or
   absolute) is not specified: tests derive the expected id from the arguments received. `functionName` is the
   generated handler name of earlier versions (`<name>_createServerFn_handler`, `_1`, `_2`… for a name the module
-  repeats, in source order; C5), so custom ids survive an upgrade, and holds only `[A-Za-z0-9_$]`. An id the generator
-  returns is one URL path segment no layer rewrites (RFC 3986 unreserved characters and `$`, not `.` or `..`); any
-  other id fails the build, naming the file. Edits change the input, so ids need not survive edits. _Dev_: an
+  repeats, in source order; C5), so custom ids survive an upgrade; it keeps an identifier's characters (non-ASCII
+  ones too) except in a numbered name (only `[A-Za-z0-9_$]`, no leading or trailing `_`, as earlier versions), and a
+  name that is no identifier (a string property key) holds only `[A-Za-z0-9_$]`. An id the
+  generator returns is one URL path segment: one with a character that never reached the server whole (whitespace,
+  control and non-ASCII characters, ``" # / < > ? \ ^ ` { }``), that is `.` or `..`, or whose percent-encoding the
+  server reads as another id or rejects (`%41`, lowercase hex, `%2E`, `%zz`) fails the build, naming the file; other characters outside RFC 3986's unreserved set and `$` build with a deprecation warning naming the file,
+  and reach their handler. An empty id is the default id. Edits change the input, so ids need not survive edits.
+  _Output formats_ (a compatibility requirement until the next major, owned by `server-fns/format.ts`: tooling reads
+  them from the server bundle): the default id is the SHA256 hex of `<path>--<functionName>`, `<path>` the
+  defining file relative to the project root with `/` separators; collisions are numbered by file, then source
+  order within the file, in the order the environments allocate (the client's references first; under RSC the
+  provider environment, which builds first); the resolver
+  manifest's keys and `functionName`s are single-quoted, the `createServerRpc` metadata and the rpc ids
+  double-quoted, escaped as Babel printed them (seen only where the bundler keeps module text: Rsbuild's server
+  bundle); `serverFnMeta.name` is the variable's name, also when it is exported under another one. The golden test
+  `start-build-server-fn-format.test.ts` reads them from real builds, the one test that reads printed code. A server
+  function only server code references is not in the manifest (J4.2), whatever earlier versions printed. _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
   ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. A by-id request for a
   module the running dev server has not compiled yet (a page left open across a restart) compiles that module and is
-  served. A server function is identified by its public `url`; generated names and Start's internal metadata fields
-  (`serverFnMeta`) are not contracts.
+  served. A server function is identified by its public `url`; beyond the output formats, generated names and
+  Start's internal metadata fields (`serverFnMeta`) are not contracts.
 - **J4.5 Recognition.** All Start builders are recognised through renamed imports, namespace members, re-exports
   (also of a namespace, and through diamonds and cycles of `export *`, in any compile order), aliases (`export const
 createFooServerFn = createServerFn`), builders stored in variables and continued later (`const base =
@@ -770,9 +784,10 @@ A compiler may do any of these and still be correct; tests must not fail on them
 
 - **§5.1 Generated names**: identifiers for hoisted components, shared bindings, handler functions, RPC variables,
   Hydrate lazy components, mock bindings, hot-data keys, and the names of the route tree's own types.
-- **§5.2 Server-function ids** other than the default hashing, as long as deterministic, de-duplicated, equal across
-  the envs of one build, and overridable in build (J4.4, G4); dev may use another id. Equal opaque ids between builds
-  of one project at different roots are not required.
+- **§5.2 Server-function ids**: dev may use another id. Build ids follow J4.4's output formats until the next major
+  (the default hashing, collision numbering, quoting); they are deterministic, de-duplicated, equal across the envs
+  of one build and overridable (J4.4, G4). Equal opaque ids between builds of one project at different roots are not
+  required.
 - **§5.3 Module layout**: virtual-module ids and query strings (`?tsr-split=`, `?tss-hydrate=`,
   `?server-fn-module-lookup`; except that split groups keep main's ids and absolute `import()` specifiers,
   `<file>?tsr-split=<a>---<b>`, which apps' chunk naming reads: router-plugin `split-module-ids.test.ts`), chunk
@@ -855,7 +870,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
 | C2  | `router-plugin/src/core/config.ts` JSDoc default grouping includes `pendingComponent`; `guide/automatic-code-splitting.md` does not             | J2.2 follows the docs                                                                                                                                                   |
 | C3  | `guide/automatic-code-splitting.md`: exporting a route property bundles it into the main bundle                                                 | that is today's behaviour, not intent: J2.4, J2.8 (an unused export must not prevent the split; real eager consumers or impure initialisers keep one instance and warn) |
 | C4  | `guide/import-protection.md`: dev may report imports that "would later be compiled away"                                                        | not a conflict: J6.4 separates edges the Start compiler removed (never reported) from edges awaiting bundler tree-shaking (may be reported in dev)                      |
-| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 keeps the generated handler name as `functionName` (custom ids survive an upgrade)                                                                                 |
+| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 keeps the generated handler name as `functionName` (custom ids survive an upgrade), and the default id hashes `<filename>--<functionName>` (SHA256 hex)            |
 | C6  | `routing/virtual-file-routes.md` prose says `virtualRoutesConfig`                                                                               | the option is `virtualRouteConfig` (docs typo)                                                                                                                          |
 | C7  | `guide/automatic-code-splitting.md` shows `createRoute('/posts')({...})` in a file-route example                                                | J2.1: file routes use `createFileRoute`/`createRootRoute*` only (docs typo)                                                                                             |
 | C8  | React `HydrateProps` rejects function children even with `split={false}`; `deferred-hydration.md` recommends `split={false}` for them           | a types/docs mismatch, no compiler rule: with `split={false}` the compiler neither extracts nor errors (J5.5)                                                           |

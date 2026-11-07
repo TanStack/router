@@ -314,8 +314,9 @@ export async function startRscRsbuildPreviewServer(options: {
     ]),
   })
   const reported: Array<ChannelDiagnostic> = []
-  /** The compilations' errors (a silent Rsbuild prints none). */
+  /** The compilations' errors and warnings (a silent Rsbuild prints none). */
   const compileErrors: Array<string> = []
+  const compileWarnings: Array<string> = []
   const compileErrorsPlugin = {
     name: 'rsc-preview-harness:compile-errors',
     setup(api: {
@@ -324,15 +325,19 @@ export async function startRscRsbuildPreviewServer(options: {
           stats?: {
             toJson: (options: object) => {
               errors?: Array<{ message: string }>
+              warnings?: Array<{ message: string }>
             }
           }
         }) => void,
       ) => void
     }) {
       api.onAfterEnvironmentCompile(({ stats }) => {
-        for (const error of stats?.toJson({ all: false, errors: true })
-          .errors ?? []) {
+        const json = stats?.toJson({ all: false, errors: true, warnings: true })
+        for (const error of json?.errors ?? []) {
           compileErrors.push(error.message)
+        }
+        for (const warning of json?.warnings ?? []) {
+          compileWarnings.push(warning.message)
         }
       })
     },
@@ -398,7 +403,7 @@ export async function startRscRsbuildPreviewServer(options: {
     return {
       root: app.root,
       url,
-      messages: reported.map(({ text }) => text),
+      messages: [...reported.map(({ text }) => text), ...compileWarnings],
       errors: reported
         .filter(({ severity }) => severity === 'error')
         .map(({ text }) => text),

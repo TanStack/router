@@ -31,12 +31,13 @@ import {
 } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
 import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
+import { devFunctionId, placeholderId } from '../server-fns/ids'
 import {
   defaultFunctionId,
-  devFunctionId,
   handlerFunctionName,
-  placeholderId,
-} from '../server-fns/ids'
+  metaName,
+  moduleLiteral,
+} from '../server-fns/format'
 import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
@@ -223,11 +224,12 @@ interface ServerFnSite {
   stableKey: string
   /** What a custom `generateFunctionId` receives (`handlerFunctionName`). */
   functionName: string
+  /** Its position among the module's server fns, in source order. */
+  ordinal: number
   /** The declared top-level symbol when the chain initialises a top-level declarator. */
   topLevelSym: SymbolId | null
   topLevelUnit: Unit | null
   nested: boolean
-  exportName: string | null
 }
 
 function describeServerFn(
@@ -238,7 +240,6 @@ function describeServerFn(
   nested: boolean
   topLevelSym: SymbolId | null
   topLevelUnit: Unit | null
-  exportName: string | null
   destructured: Node | null
   path: Array<string>
 } {
@@ -345,23 +346,11 @@ function describeServerFn(
     }
   }
   const path = enclosingFunctionNames(file, chain.terminal)
-  let exportName: string | null = null
-  if (topLevelSym !== null) {
-    for (const e of ctx.analysis.exports) {
-      if (e.kind === 'local' && e.local === topLevelSym && !e.typeOnly) {
-        exportName = e.name
-        break
-      }
-    }
-  } else if (base === 'default' && p?.type === 'ExportDefaultDeclaration') {
-    exportName = 'default'
-  }
   return {
     base,
     nested: topLevelSym === null,
     topLevelSym,
     topLevelUnit,
-    exportName,
     destructured,
     path,
   }
@@ -635,10 +624,10 @@ function planStartEnv(
       base: described.base || 'fn',
       stableKey: n === 0 ? baseKey : `${baseKey}#${n}`,
       functionName: handlerFunctionName(described.base || 'fn', functionNames),
+      ordinal: sites.length,
       topLevelSym: described.topLevelSym,
       topLevelUnit: described.topLevelUnit,
       nested: described.nested,
-      exportName: described.exportName,
     })
   }
 
@@ -802,8 +791,8 @@ function planStartEnv(
         ? devFunctionId(key)
         : config.idMode === 'placeholder'
           ? placeholderId(key)
-          : defaultFunctionId(key)
-    const name = site.exportName ?? site.base
+          : defaultFunctionId({ rootRel, functionName: site.functionName })
+    const name = metaName(site)
     const h = site.handler
     // the provider wrapper's name: a binding and an export of the same name (an export list
     // `export { name }` survives tools that re-export bindings by their local name), allocated
@@ -828,8 +817,8 @@ function planStartEnv(
       // server fn changes and its route refreshes (Vite updates every module of the file)
       const args =
         config.idMode === 'dev'
-          ? `(${stringLiteral(id)}, ${stringLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
-          : `(${stringLiteral(id)})`
+          ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
+          : `(${moduleLiteral(id)})`
       rewrites.add({
         range: rangeOf(h),
         body: [text({ sym: rpc, ctx: 'callee' }, args)],
@@ -845,7 +834,7 @@ function planStartEnv(
       const rpc = glueImport(specs.ssrRpc, 'createSsrRpc', 'tsrSsrRpc')
       rewrites.add({
         range: rangeOf(h),
-        body: [text({ sym: rpc, ctx: 'callee' }, `(${stringLiteral(id)})`)],
+        body: [text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
       })
@@ -869,7 +858,7 @@ function planStartEnv(
           range: chain,
           body: [
             slice({ start: chain.start, end: h.start }),
-            text({ sym: rpc, ctx: 'callee' }, `(${stringLiteral(id)})`),
+            text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`),
             slice({ start: h.end, end: chain.end }),
           ],
           scope: ['env'],
@@ -949,7 +938,7 @@ function planStartEnv(
           { sym: rpcLocal.sym },
           ' = ',
           { sym: serverRpc, ctx: 'callee' },
-          `({ id: ${stringLiteral(id)}, name: ${stringLiteral(name)}, filename: ${stringLiteral(rootRel)} }, (`,
+          `({ id: ${moduleLiteral(id)}, name: ${moduleLiteral(name)}, filename: ${moduleLiteral(rootRel)} }, (`,
           { sym: opts.sym },
           ') => ',
           { sym: fnSym },
@@ -1361,6 +1350,7 @@ function serverFnFact(
     rootRel,
     stableKey: site.stableKey,
     functionName: site.functionName,
+    ordinal: site.ordinal,
     id,
     exportName,
     name,

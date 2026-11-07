@@ -7,6 +7,7 @@
  * importing each provider module. Rsbuild uses the manifest in both modes
  * (`manifestResolverModule`): its bundles hold every provider module.
  */
+import { manifestLiteral } from './format'
 import type { ServerFnEntry } from './registry'
 
 export const SERVER_FN_LOOKUP_VIRTUAL_ID =
@@ -109,8 +110,8 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
         opts.warnUnreferenced && !e.clientReferenced
           ? `,\n    unreferenced: ${JSON.stringify(unreferencedWarning(e))}`
           : ''
-      return `${JSON.stringify(e.id)}: {
-    functionName: ${JSON.stringify(e.exportName)},
+      return `${manifestLiteral(e.id)}: {
+    functionName: ${manifestLiteral(e.exportName)},
     ${moduleAccess}${unreferenced}
   }`
     })

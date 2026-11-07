@@ -74,7 +74,7 @@ export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
 }
 
 export interface ServerFnBuildInfo {
-  version: 3
+  version: 4
   canonicalId: string
   facts: Array<ServerFnFact>
 }
@@ -610,7 +610,7 @@ export class StartRsbuildCompilerSession {
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {
       buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
-        version: 3,
+        version: 4,
         canonicalId: identity.canonicalId,
         facts: serverFns,
       } satisfies ServerFnBuildInfo
@@ -750,13 +750,19 @@ export class StartRsbuildCompilerSession {
     })
   }
 
-  /** The JSON array of client-referenced function ids (the gate's set, J4.2). */
+  /**
+   * The JSON array of client-referenced function ids (the gate's set, J4.2):
+   * final ids, also with a custom generator (the gate is filled in after
+   * the ids were patched, so its placeholders resolve here).
+   */
   clientReferencedIdsLiteral(): string {
+    const allocator =
+      this.start.allocator && this.start.allocateIds('client').allocator
     return JSON.stringify(
       this.start.registry
         .entries()
         .filter((e) => e.clientReferenced)
-        .map((e) => e.id)
+        .map((e) => (allocator ? allocator.patch(e.id).code : e.id))
         .sort(),
     )
   }

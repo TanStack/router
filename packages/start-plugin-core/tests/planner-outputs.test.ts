@@ -141,7 +141,7 @@ export const label = () => 'client'
     // the export the resolver reads, the handler loaded on the first call
     const { h } = namesIn(
       out.code,
-      `const «h» = ${rpc}({ id: '«…»', name: 'fn', filename: 'module.tsx' }, («o») => fn.__executeServer(«o»))\nexport { «h» }`,
+      `const «h» = ${rpc}({ id: "«…»", name: "fn", filename: "module.tsx" }, («o») => fn.__executeServer(«o»))\nexport { «h» }`,
     )
     const { impl } = namesIn(
       out.code,
@@ -175,10 +175,11 @@ export const label = () => 'client'
     const client = (await compile(files, 'client'))!
     const ssr = (await compile(files, 'ssr'))!
     const id = client.code
-      .split(`${clientRpc(client.code)}('`)[1]!
-      .split("'")[0]
-    expect(ssr.code).toContain(`id: '${id}'`)
-    expect(id).toHaveLength(22)
+      .split(`${clientRpc(client.code)}("`)[1]!
+      .split('"')[0]
+    expect(ssr.code).toContain(`id: "${id}"`)
+    // (the format of earlier versions: server-fns/format.ts)
+    expect(id).toMatch(/^[0-9a-f]{64}$/)
   })
 
   test('a validator link on a stored builder is stripped where it is declared', async () => {
@@ -359,7 +360,7 @@ export function make() {
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
     expect(ssr.code).toContain(`const inner = ${hoisted}`)
-    expect(ssr.code).toContain("name: 'inner'")
+    expect(ssr.code).toContain('name: "inner"')
   })
 
   // The nested site is judged against the stub of its enclosing handler
