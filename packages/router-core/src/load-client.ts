@@ -999,20 +999,18 @@ async function getNotFoundBoundary(
   const cause = indexed?.[1 /* outcome */][1 /* error or redirect */] as
     | NotFoundError
     | undefined
-  let index = cause?.routeId
-    ? matches.findIndex(
-        (match) =>
-          match.routeId ===
-          // Module-local ids of a route module installed several times
-          // resolve in the installation of the match that threw.
-          (routeModules
-            ? routeModules.resolveRouteId(
-                router,
-                cause.routeId,
-                matches[indexed![0 /* index */]]?.routeId,
-              )
-            : cause.routeId),
-      )
+  let routeId = cause?.routeId
+  // Module-local ids of a route module installed several times resolve in
+  // the installation of the match that threw.
+  if (routeModules && routeId) {
+    routeId = routeModules.resolveRouteId(
+      router,
+      routeId,
+      matches[indexed![0 /* index */]]?.routeId,
+    )
+  }
+  let index = routeId
+    ? matches.findIndex((match) => match.routeId === routeId)
     : (indexed?.[0 /* index */] ?? matches.length - 1)
   if (index < 0) {
     index = 0
