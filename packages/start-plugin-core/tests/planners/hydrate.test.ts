@@ -4,7 +4,6 @@
  * and for its `?tss-hydrate=<id>` chunks.
  */
 import { createHash } from 'node:crypto'
-import { posix } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   expectMapsTo,
@@ -99,14 +98,14 @@ async function compile(
   const chunks: Record<string, string> = {}
   const chunkOutputs: Record<string, CompileOutput> = {}
   const seen = new Set<string>()
-  const ownOutput = `./${posix.basename(path)}?`
+  const ownOutput = `${path}?`
   const visit = async (output: CompileOutput): Promise<void> => {
     for (const e of output.edges) {
       if (!e.specifier.startsWith(ownOutput) || seen.has(e.specifier)) {
         continue
       }
       seen.add(e.specifier)
-      const derived = posix.join(posix.dirname(path), e.specifier)
+      const derived = e.specifier
       const c = (await host.compile(derived, planners, {
         env,
         config,
@@ -350,7 +349,7 @@ export function Page({ label }) {
     // children, with what they capture, and loads none of their code
     expect(client.code).toMatch(
       shape(
-        `import { lazyRouteComponent as «load» } from '@tanstack/react-router'\nconst «lazy» = /* @__PURE__ */ «load»(() => import('./page.tsx?tss-hydrate=${id}'), '«x»')`,
+        `import { lazyRouteComponent as «load» } from '@tanstack/react-router'\nconst «lazy» = /* @__PURE__ */ «load»(() => import('/app/src/page.tsx?tss-hydrate=${id}'), '«x»')`,
       ),
     )
     const lazy = lazyOf(client.code, id)
@@ -452,7 +451,7 @@ export const Page = (props) => <Hydrate ${attrs}><b /></Hydrate>
     const [b] = client.extracted
     expect(b!.chunk).toBe(`${FILE}?flavour=b&tss-hydrate=${b!.id}`)
     expect(client.code).toContain(
-      `import('./page.tsx?flavour=b&tss-hydrate=${b!.id}')`,
+      `import('/app/src/page.tsx?flavour=b&tss-hydrate=${b!.id}')`,
     )
     expect(client.chunks[b!.id]).toContain('return (<p>x</p>)')
   })
@@ -465,7 +464,10 @@ export const Page = () => <Hydrate><Chart /></Hydrate>
     const [b] = client.extracted
     const env = client.out.edges.map((e) => [e.specifier, e.provenance.origin])
     expect(env).toContainEqual(['@tanstack/react-router', 'runtime'])
-    expect(env).toContainEqual([`./page.tsx?tss-hydrate=${b!.id}`, 'runtime'])
+    expect(env).toContainEqual([
+      `/app/src/page.tsx?tss-hydrate=${b!.id}`,
+      'runtime',
+    ])
     expect(env).not.toContainEqual(['./chart', 'source'])
     expect(
       client.chunkOutputs[b!.id]!.edges.map((e) => [
@@ -651,17 +653,17 @@ export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
     const client = await compile(code)
     const [b] = client.extracted
     expect(client.chunks[b!.id]).toContain(
-      "import { clicks } from './page.tsx'",
+      "import { clicks } from '/app/src/page.tsx'",
     )
     expect(client.code).toContain('let clicks = 0')
     expect(client.code).toContain('export function bump() { clicks++ }')
     expect(client.code).toContain('export { clicks }')
     const built = await compile(code, { env: buildClientEnv })
     expect(built.chunks[b!.id]).toContain(
-      "import { clicks } from './page.tsx?tsr-split=export~bump'",
+      "import { clicks } from '/app/src/page.tsx?tsr-split=export---bump'",
     )
     expect(built.code).toContain(
-      "export { bump } from './page.tsx?tsr-split=export~bump'",
+      "export { bump } from '/app/src/page.tsx?tsr-split=export---bump'",
     )
     expect(built.code).not.toContain('let clicks')
   })
@@ -674,14 +676,16 @@ export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
     const client = await compile(code, { env: buildClientEnv })
     const [b] = client.extracted
     expect(client.chunks[b!.id]).toContain(
-      "import { theme } from './page.tsx?tsr-split=export~setTheme'",
+      "import { theme } from '/app/src/page.tsx?tsr-split=export---setTheme'",
     )
     expect(client.code).toContain(
-      "export { theme, setTheme } from './page.tsx?tsr-split=export~setTheme'",
+      "export { theme, setTheme } from '/app/src/page.tsx?tsr-split=export---setTheme'",
     )
     expect(client.code).not.toContain('let theme')
     const dev = await compile(code)
-    expect(dev.chunks[b!.id]).toContain("import { theme } from './page.tsx'")
+    expect(dev.chunks[b!.id]).toContain(
+      "import { theme } from '/app/src/page.tsx'",
+    )
     expect(dev.code).toContain("export let theme = 'light'")
   })
 
@@ -697,9 +701,9 @@ export const Page = () => <Hydrate><Card /></Hydrate>
     expect(built.chunks[b!.id]).toContain(
       'function Card() { return <b>card</b> }',
     )
-    expect(built.chunks[b!.id]).not.toContain('export~Card')
+    expect(built.chunks[b!.id]).not.toContain('export---Card')
     expect(built.code).toContain(
-      "export { Card } from './page.tsx?tsr-split=export~Card'",
+      "export { Card } from '/app/src/page.tsx?tsr-split=export---Card'",
     )
     expect(built.code).not.toContain('function Card()')
     const dev = await compile(code)
@@ -707,7 +711,7 @@ export const Page = () => <Hydrate><Card /></Hydrate>
       'function Card() { return <b>card</b> }',
     )
     expect(dev.code).toContain('export function Card() { return <b>card</b> }')
-    expect(dev.code).not.toContain('export~')
+    expect(dev.code).not.toContain('export---')
   })
 
   // An exported class the children use has an identity: one instance, which
@@ -719,14 +723,16 @@ export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''
     const built = await compile(code, { env: buildClientEnv })
     const [b] = built.extracted
     expect(built.chunks[b!.id]).toContain(
-      "import { Tag } from './page.tsx?tsr-split=export~Tag'",
+      "import { Tag } from '/app/src/page.tsx?tsr-split=export---Tag'",
     )
     expect(built.chunks[b!.id]).not.toContain('class Tag')
     expect(built.code).toContain(
-      "export { Tag } from './page.tsx?tsr-split=export~Tag'",
+      "export { Tag } from '/app/src/page.tsx?tsr-split=export---Tag'",
     )
     const dev = await compile(code)
-    expect(dev.chunks[b!.id]).toContain("import { Tag } from './page.tsx'")
+    expect(dev.chunks[b!.id]).toContain(
+      "import { Tag } from '/app/src/page.tsx'",
+    )
     expect(dev.chunks[b!.id]).not.toContain('class Tag')
     expect(dev.code).toContain("export class Tag { static label = 'tag' }")
   })
@@ -742,14 +748,16 @@ export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''
     const built = await compile(code, { env: buildClientEnv })
     const [b] = built.extracted
     expect(built.chunks[b!.id]).toContain(
-      "import { Tree } from './page.tsx?tsr-split=export~Tree'",
+      "import { Tree } from '/app/src/page.tsx?tsr-split=export---Tree'",
     )
     expect(built.chunks[b!.id]).not.toContain('function Tree')
     expect(built.code).toContain(
-      "export { Tree } from './page.tsx?tsr-split=export~Tree'",
+      "export { Tree } from '/app/src/page.tsx?tsr-split=export---Tree'",
     )
     const dev = await compile(code)
-    expect(dev.chunks[b!.id]).toContain("import { Tree } from './page.tsx'")
+    expect(dev.chunks[b!.id]).toContain(
+      "import { Tree } from '/app/src/page.tsx'",
+    )
     expect(dev.chunks[b!.id]).not.toContain('function Tree')
   })
 
@@ -1231,9 +1239,9 @@ function toySplitPlanner(): Planner {
               },
               {
                 k: 'spec',
-                specifier: './page.tsx?tsr-split=component',
+                specifier: '/app/src/page.tsx?tsr-split=component',
                 edgeKey: ctx.edgeKey(
-                  './page.tsx?tsr-split=component',
+                  '/app/src/page.tsx?tsr-split=component',
                   'dynamic',
                   'runtime',
                 ),
@@ -1333,7 +1341,7 @@ export const Route = createFileRoute('/')({
       options,
     )
     expect(chunk!.code).toContain(
-      `import { Route } from './page.tsx'\nimport { Chart } from './chart'`,
+      `import { Route } from '/app/src/page.tsx'\nimport { Chart } from './chart'`,
     )
     expect(chunk!.code).toMatch(
       shape(`function «c»() { return <><Chart />{Route.id}</> }`),

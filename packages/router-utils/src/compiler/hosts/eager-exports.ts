@@ -1,5 +1,5 @@
 /**
- * Extracted-export outputs (`?tsr-split=export~Name`) an entry chunk of a
+ * Extracted-export outputs (`?tsr-split=export---Name`) an entry chunk of a
  * client build holds. A route's own chunks copy an export whose closure is
  * functions and primitives instead of importing its module, and import one
  * with an identity or state from it (`placement/settle.ts`): the module

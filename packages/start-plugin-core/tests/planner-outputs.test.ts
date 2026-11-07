@@ -145,7 +145,7 @@ export const label = () => 'client'
     )
     const { impl } = namesIn(
       out.code,
-      `const «load» = () => («memo» ??= import('./module.tsx?tss-serverfn-handler'))«…».validator(schema).handler(${h}, (...args) => «load»().then((m) => m.«impl»(...args)))`,
+      `const «load» = () => («memo» ??= import('/app/module.tsx?tss-serverfn-handler'))«…».validator(schema).handler(${h}, (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(out.code).not.toContain('db.server')
     const handlers = (await compile(

@@ -6,7 +6,7 @@
  * applies the render tree, substitution environments and context-aware
  * reference rewrites; no Yuku object is reachable from the result.
  */
-import { siblingSpecifier } from './identity'
+import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
@@ -453,8 +453,8 @@ function glueImportText(
       })
       frags.push({
         k: 'spec',
-        specifier: siblingSpecifier(targetId),
-        edgeKey: plan.edgeKey(siblingSpecifier(targetId), 'static', 'runtime'),
+        specifier: sameFileSpecifier(targetId),
+        edgeKey: plan.edgeKey(sameFileSpecifier(targetId), 'static', 'runtime'),
         provenance: { origin: 'runtime' },
       })
       frags.push({ k: 'text', parts: ['\n'] })
@@ -477,7 +477,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from './file?tsr-split=export~name'` for every extracted cluster. */
+/** `export { x as name, … } from '/path/file?tsr-split=export---name'` for every extracted cluster. */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
@@ -511,9 +511,9 @@ function reexportGlue(
     frags.push({ k: 'text', parts: [`export { ${parts.join(', ')} } from `] })
     frags.push({
       k: 'spec',
-      specifier: siblingSpecifier(decl.derivedId),
+      specifier: sameFileSpecifier(decl.derivedId),
       edgeKey: plan.edgeKey(
-        siblingSpecifier(decl.derivedId),
+        sameFileSpecifier(decl.derivedId),
         'reexport',
         'runtime',
       ),

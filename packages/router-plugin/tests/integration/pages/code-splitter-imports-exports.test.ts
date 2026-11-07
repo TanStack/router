@@ -552,7 +552,7 @@ return [other.read(), options.loader(), await render('component')]`),
   })
 
   // An extracted exported component's module is a static dependency of the
-  // route module (`export { Page } from './route?tsr-split=export~Page'`), so
+  // route module (`export { Page } from '/…/route.tsx?tsr-split=export---Page'`), so
   // it evaluates before the route module's body: a declaration that moves
   // with it must not read, at module evaluation, a binding the route module
   // keeps (G3: no TDZ a user never wrote; found by differential fuzzing).

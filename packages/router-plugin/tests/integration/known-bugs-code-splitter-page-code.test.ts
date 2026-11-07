@@ -57,7 +57,7 @@ describe('page code in client builds', () => {
   // a class and state are one instance the chunk imports from the extracted
   // module, pinned in "module state shared with split chunks" and "exported
   // bindings"; the bundler drops an unused extracted module of the route
-  // file, and the hosts' `sideEffects: false` rule for `tsr-split=export~`
+  // file, and the hosts' `sideEffects: false` rule for `tsr-split=export---`
   // keeps an imported one lazy without `"sideEffects": false`). A fix must
   // keep them out of the entry chunk.
   const controls: Array<Case> = [

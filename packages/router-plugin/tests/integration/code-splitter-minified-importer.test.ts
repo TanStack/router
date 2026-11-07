@@ -1,5 +1,5 @@
 /**
- * A split option's importer (`() => import('./route?tsr-split=…')`) costs no
+ * A split option's importer (`() => import('/…/route.tsx?tsr-split=…')`) costs no
  * binding of its own in a minified client bundle: the minifier inlines it
  * into the `lazyRouteComponent` / `lazyFn` call, also when the route module
  * keeps an effectful declaration (read by an option that stays and by the

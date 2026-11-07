@@ -121,7 +121,9 @@ describe('copyable clusters', () => {
     `)
     const r = await split(code)
     expect(r.chunks.component).toContain('function Posts()')
-    expect(r.chunks.component).toContain("import { Route } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { Route } from '/app/route.tsx'",
+    )
     expect(r.chunks.component).not.toContain('fetchPosts')
     expect(r.chunks.component).not.toContain('createFileRoute')
     expect(r.env).toContain("import { fetchPosts } from './api'")
@@ -139,9 +141,9 @@ describe('copyable clusters', () => {
     const r = await split(code, { keys: ['component', 'errorComponent'] })
     expect(r.env).toContain('const re = /x/g')
     expect(r.chunks.component).not.toContain('/x/g')
-    expect(r.chunks.component).toContain("import { re } from './route.tsx'")
+    expect(r.chunks.component).toContain("import { re } from '/app/route.tsx'")
     expect(r.chunks.errorComponent).toContain(
-      "import { re } from './route.tsx'",
+      "import { re } from '/app/route.tsx'",
     )
   })
 })
@@ -185,7 +187,7 @@ describe('glue and renames (lane router)', () => {
     expect(main?.code).not.toContain('page')
     expect(main?.code).toContain('export { TsrPendingComponent }')
     expect(chunk?.code).toContain(
-      "import { TsrPendingComponent } from './route.tsx'",
+      "import { TsrPendingComponent } from '/app/route.tsx'",
     )
     expect(chunk?.code).not.toContain('page')
   })
@@ -312,7 +314,7 @@ describe('glue and renames (lane router)', () => {
     )
     expect(main?.code).toContain('pendingComponent: TsrPendingComponent')
     expect(chunk?.code).toContain(
-      "import { TsrPendingComponent } from './route.tsx'",
+      "import { TsrPendingComponent } from '/app/route.tsx'",
     )
     expect(chunk?.code).toContain('() => TsrPendingComponent()')
   })
@@ -443,7 +445,7 @@ describe('extracted-export outputs', () => {
       )?.code ?? ''
     const extracted = async (name: string) =>
       await host.compile(
-        `/app/route.tsx?tsr-split=export~${name}`,
+        `/app/route.tsx?tsr-split=export---${name}`,
         planners,
         extra,
       )
@@ -467,9 +469,9 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('function Card')
     expect(r.env).not.toContain("from './heavy'")
     expect(r.env).toContain(
-      "export { Card } from './route.tsx?tsr-split=export~Card'",
+      "export { Card } from '/app/route.tsx?tsr-split=export---Card'",
     )
-    expect(r.chunk).not.toContain('export~Card')
+    expect(r.chunk).not.toContain('export---Card')
     expect(r.chunk).toContain("import { heavy } from './heavy'")
     expect(r.chunk).toContain('function Card() { return heavy() }')
     expect(r.diagnostics).toEqual([])
@@ -495,11 +497,11 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('const config = { model: Model }')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
     expect(e?.code).not.toContain('const config')
-    expect(e?.code).toContain("import { config } from './route.tsx'")
+    expect(e?.code).toContain("import { config } from '/app/route.tsx'")
     expect(e?.code).toContain('function Page() { return config.model.label }')
   })
 
@@ -520,13 +522,13 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('loader: () => SIZE')
     expect(r.env).not.toContain('size: SIZE')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
     expect(e?.code).toContain('const SIZE = 3')
     expect(e?.code).toContain('const Page = { size: SIZE, render: () => SIZE }')
     expect(e?.code).toContain('export { Page }')
-    expect(e?.code).not.toContain("from './route.tsx'")
+    expect(e?.code).not.toContain("from '/app/route.tsx'")
   })
 
   it('keeps an effectful declaration only an extracted export needs in the env module (it would run before its effects)', async () => {
@@ -543,7 +545,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("const first = mark('page')")
     const e = await r.extracted('Page')
     expect(e?.code).not.toContain("mark('page')")
-    expect(e?.code).toContain("import { first } from './route.tsx'")
+    expect(e?.code).toContain("import { first } from '/app/route.tsx'")
   })
 
   it('re-exports every exported symbol of an extracted cluster (a let and the function writing it)', async () => {
@@ -556,7 +558,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { theme, setTheme } from './route.tsx?tsr-split=export~setTheme'",
+      "export { theme, setTheme } from '/app/route.tsx?tsr-split=export---setTheme'",
     )
     expect(r.env).not.toContain('let theme')
     expect(r.env).not.toContain('const setTheme')
@@ -565,7 +567,7 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain('const setTheme = (t) => { theme = t }')
     expect(e?.code).toContain('export { theme, setTheme }')
     expect(r.chunk).toContain(
-      "import { theme } from './route.tsx?tsr-split=export~setTheme'",
+      "import { theme } from '/app/route.tsx?tsr-split=export---setTheme'",
     )
   })
 
@@ -595,7 +597,7 @@ describe('extracted-export outputs', () => {
       build,
     )
     expect(out!.code).toContain(
-      "export { hits } from './route.tsx?tsr-split=export~hits'",
+      "export { hits } from '/app/route.tsx?tsr-split=export---hits'",
     )
     expect(out!.code).toContain('export const bump = tsrStub()')
     expect(chunk!.code).toContain('let hits = 0')
@@ -635,11 +637,11 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export function helper()')
     expect(r.env).not.toContain('export function Page()')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     // the chunk copies `Page` and imports `Card` from the route module
-    expect(r.chunk).not.toContain('export~Page')
-    expect(r.chunk).toContain("import { Card } from './route.tsx'")
+    expect(r.chunk).not.toContain('export---Page')
+    expect(r.chunk).toContain("import { Card } from '/app/route.tsx'")
     expect(r.chunk).toContain('function Page() { return Card() }')
     expect(r.chunk).toContain('const TsrSplitComponent = Page')
     expect(r.chunk).not.toContain('helper')
@@ -651,7 +653,7 @@ describe('extracted-export outputs', () => {
       },
     ])
     const page = await r.extracted('Page')
-    expect(page?.code).toContain("import { Card } from './route.tsx'")
+    expect(page?.code).toContain("import { Card } from '/app/route.tsx'")
     expect(page?.code).toContain('function Page() { return Card() }')
   })
 
@@ -670,7 +672,7 @@ describe('extracted-export outputs', () => {
     const [key] = outputs.keysAt('/app/route.tsx')
     expect(Object.keys(outputs.get(key!)!.plan.outputs).sort()).toEqual([
       'derived:/app/route.tsx?tsr-split=component',
-      'derived:/app/route.tsx?tsr-split=export~Page',
+      'derived:/app/route.tsx?tsr-split=export---Page',
       'env',
     ])
     expect((await r.extracted('Card'))?.code).toBe('export {}\n')
@@ -728,7 +730,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('export { Card as View }')
     expect(r.env).not.toContain('export default Card')
     expect(r.env).toContain(
-      "export { Card as View, Card as default } from './route.tsx?tsr-split=export~View'",
+      "export { Card as View, Card as default } from '/app/route.tsx?tsr-split=export---View'",
     )
   })
 
@@ -769,7 +771,7 @@ describe('extracted-export outputs', () => {
     // the companions render as that glue only
     expect(r.env).not.toMatch(/^export (default |\{[^}]*\}$)/m)
     const e = await r.host.compile(
-      `/app/${reexported![2]!.slice(2)}`,
+      reexported![2]!,
       [toySplitPlanner({ keys: ['component'], extractExports: true })],
       build,
     )
@@ -790,7 +792,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('let count = 0')
     expect(r.env).toContain('export default count')
-    expect(r.env).not.toContain('export~')
+    expect(r.env).not.toContain('export---')
   })
 
   it('imports a reassigned binding the env module also exports by default under a name of its own', async () => {
@@ -807,7 +809,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export default count')
     expect(r.env).toContain('export { count }')
-    expect(r.chunk).toContain("import { count } from './route.tsx'")
+    expect(r.chunk).toContain("import { count } from '/app/route.tsx'")
   })
 
   // Above the `var` declaring `x`, `export default x` holds `undefined` (the
@@ -829,7 +831,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).toContain('export default items\nvar items = [1]')
       expect(r.env).toContain('export { items }')
-      expect(r.chunk).toContain("import { items } from './route.tsx'")
+      expect(r.chunk).toContain("import { items } from '/app/route.tsx'")
     },
   )
 
@@ -851,7 +853,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).toContain('export default items')
       expect(r.env).toContain('export { items }')
-      expect(r.chunk).toContain("import { items } from './route.tsx'")
+      expect(r.chunk).toContain("import { items } from '/app/route.tsx'")
     },
   )
 
@@ -872,7 +874,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).not.toContain('function Page')
       expect(r.env).toMatch(
-        /export \{ Page as default \} from '.*export~default'/,
+        /export \{ Page as default \} from '.*export---default'/,
       )
     },
   )
@@ -887,7 +889,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).not.toContain('function Page')
     expect(r.env).toMatch(
-      /export \{ Page as default \} from '.*export~default'/,
+      /export \{ Page as default \} from '.*export---default'/,
     )
   })
 
@@ -918,8 +920,8 @@ describe('extracted-export outputs', () => {
       )
       expect(r.chunk).toContain(
         glue === 'config'
-          ? "import { config } from './route.tsx'"
-          : `import { ${glue} as config } from './route.tsx'`,
+          ? "import { config } from '/app/route.tsx'"
+          : `import { ${glue} as config } from '/app/route.tsx'`,
       )
     },
   )
@@ -958,10 +960,10 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { Z, A } from './route.tsx?tsr-split=export~Z'",
+      "export { Z, A } from '/app/route.tsx?tsr-split=export---Z'",
     )
     expect(r.env).toContain(
-      "export { Other } from './route.tsx?tsr-split=export~Other'",
+      "export { Other } from '/app/route.tsx?tsr-split=export---Other'",
     )
     const z = (await r.extracted('Z'))!.code
     expect(z.indexOf('class Z')).toBeGreaterThan(-1)
@@ -969,7 +971,7 @@ describe('extracted-export outputs', () => {
     expect(z).not.toContain('import ')
     const other = (await r.extracted('Other'))!.code
     expect(other).toContain(
-      "import { A } from './route.tsx?tsr-split=export~Z'",
+      "import { A } from '/app/route.tsx?tsr-split=export---Z'",
     )
   })
 
@@ -983,11 +985,11 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { F, G } from './route.tsx?tsr-split=export~F'",
+      "export { F, G } from '/app/route.tsx?tsr-split=export---F'",
     )
     expect(r.chunk).toContain('function F()')
     expect(r.chunk).toContain('function G()')
-    expect(r.chunk).not.toContain('export~')
+    expect(r.chunk).not.toContain('export---')
   })
 
   it('imports one way between two cycles', async () => {
@@ -1002,9 +1004,11 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     const b = (await r.extracted('B1'))!.code
-    expect(b).toContain("import { A2 } from './route.tsx?tsr-split=export~A1'")
+    expect(b).toContain(
+      "import { A2 } from '/app/route.tsx?tsr-split=export---A1'",
+    )
     const a = (await r.extracted('A1'))!.code
-    expect(a).not.toContain('export~B1')
+    expect(a).not.toContain('export---B1')
   })
 
   it('re-exports a string export name as a string literal', async () => {
@@ -1017,7 +1021,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain(
-      "export { Card as 'card-view' } from './route.tsx?tsr-split=export~card-view'",
+      "export { Card as 'card-view' } from '/app/route.tsx?tsr-split=export---card%2dview'",
     )
   })
 
@@ -1031,7 +1035,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export default () => Page()')
     expect(r.env).toContain('export function Page()')
-    expect(r.env).not.toContain('export~')
+    expect(r.env).not.toContain('export---')
   })
 
   it('moves an exported function with the module state it writes, when only the chunk reads it', async () => {
@@ -1045,10 +1049,10 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).not.toContain('let clicks')
     expect(r.env).toContain(
-      "export { bump } from './route.tsx?tsr-split=export~bump'",
+      "export { bump } from '/app/route.tsx?tsr-split=export---bump'",
     )
     expect(r.chunk).toContain(
-      "import { clicks } from './route.tsx?tsr-split=export~bump'",
+      "import { clicks } from '/app/route.tsx?tsr-split=export---bump'",
     )
     const e = await r.extracted('bump')
     expect(e?.code).toContain('let clicks = 0')
@@ -1104,7 +1108,7 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain('export const id = Route.id')
-    expect(r.chunk).toContain("import { id } from './route.tsx'")
+    expect(r.chunk).toContain("import { id } from '/app/route.tsx'")
   })
 
   // The env module re-exports an extracted declaration, so one reading
@@ -1124,7 +1128,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("const Shared = () => 'shared'")
     expect(r.env).toContain('export const Page = Shared')
     expect(r.env).toContain('export const Alias = Shared')
-    expect(r.env).not.toContain('export~')
+    expect(r.env).not.toContain('export---')
   })
 
   it('does not extract a declaration reading what an effectful declaration a chunk needs reads', async () => {
@@ -1151,7 +1155,7 @@ describe('extracted-export outputs', () => {
     const env = (await host.compile('/app/route.tsx', planners))?.code ?? ''
     expect(env).toContain('const store = see(Shared)')
     expect(env).toContain('export const Page = Shared')
-    expect(env).not.toContain('export~')
+    expect(env).not.toContain('export---')
   })
 
   it('keeps an effectful declaration only an extracted export and its copies read in the env module (one instance)', async () => {
@@ -1173,12 +1177,12 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('const theme = createTheme()')
     expect(r.env).toContain('export { theme }')
     expect(r.env).toContain(
-      "export { Card } from './route.tsx?tsr-split=export~Card'",
+      "export { Card } from '/app/route.tsx?tsr-split=export---Card'",
     )
-    expect(r.chunk).toContain("import { theme } from './route.tsx'")
+    expect(r.chunk).toContain("import { theme } from '/app/route.tsx'")
     expect(r.chunk).toContain('function Card() { return theme.card }')
     const e = await r.extracted('Card')
-    expect(e?.code).toContain("import { theme } from './route.tsx'")
+    expect(e?.code).toContain("import { theme } from '/app/route.tsx'")
     expect(e?.code).toContain('function Card() { return theme.card }')
     expect(e?.sideEffectFree).toBe(true)
   })
@@ -1228,10 +1232,10 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.chunk).toContain(
-      "import { inc } from './route.tsx?tsr-split=export~inc'",
+      "import { inc } from '/app/route.tsx?tsr-split=export---inc'",
     )
     expect(r.chunk).toContain(
-      "import { initial } from './route.tsx?tsr-split=export~initial'",
+      "import { initial } from '/app/route.tsx?tsr-split=export---initial'",
     )
     expect(r.chunk).not.toContain('n++')
     expect(r.diagnostics).toEqual([])
@@ -1257,7 +1261,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).not.toContain('function Card')
       expect(r.env).not.toContain('const label')
-      expect(r.chunk).not.toContain('export~Card')
+      expect(r.chunk).not.toContain('export---Card')
       expect(r.chunk).toContain("import { heavy } from './heavy'")
       expect(r.chunk).toContain('const LIMIT = 3')
       expect(r.chunk).toContain('const label = (v: number) => v + LIMIT')
@@ -1286,10 +1290,10 @@ describe('extracted-export outputs', () => {
         `)
         const r = await extract(code)
         expect(r.env).toContain(
-          "export { Model } from './route.tsx?tsr-split=export~Model'",
+          "export { Model } from '/app/route.tsx?tsr-split=export---Model'",
         )
         expect(r.chunk).toContain(
-          "import { Model } from './route.tsx?tsr-split=export~Model'",
+          "import { Model } from '/app/route.tsx?tsr-split=export---Model'",
         )
         expect(r.chunk).not.toMatch(/(class|const|enum) Model\b/)
         const e = await r.extracted('Model')
@@ -1311,7 +1315,7 @@ describe('extracted-export outputs', () => {
       expect(r.env).not.toContain('const state')
       expect(r.env).not.toContain('function bump')
       expect(r.chunk).toContain(
-        "import { bump } from './route.tsx?tsr-split=export~bump'",
+        "import { bump } from '/app/route.tsx?tsr-split=export---bump'",
       )
       expect(r.chunk).not.toContain('state.n++')
       const e = await r.extracted('bump')
@@ -1335,14 +1339,14 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('const listeners: Array<() => void> = []')
       expect(r.env).toContain('export { listeners }')
       expect(r.env).toContain(
-        "export { subscribe } from './route.tsx?tsr-split=export~subscribe'",
+        "export { subscribe } from '/app/route.tsx?tsr-split=export---subscribe'",
       )
       expect(r.chunk).toContain(
-        "import { subscribe } from './route.tsx?tsr-split=export~subscribe'",
+        "import { subscribe } from '/app/route.tsx?tsr-split=export---subscribe'",
       )
       expect(r.chunk).not.toContain('listeners')
       const e = await r.extracted('subscribe')
-      expect(e?.code).toContain("import { listeners } from './route.tsx'")
+      expect(e?.code).toContain("import { listeners } from '/app/route.tsx'")
       expect(e?.code).toContain(
         'function subscribe(fn: () => void) { listeners.push(fn) }',
       )
@@ -1371,13 +1375,13 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).toContain("const styles = { card: 'c' }")
       expect(r.env).toContain('export { styles }')
-      expect(r.chunk).toContain("import { styles } from './route.tsx'")
+      expect(r.chunk).toContain("import { styles } from '/app/route.tsx'")
       expect(r.chunk).toContain(
-        "import { Card } from './route.tsx?tsr-split=export~Card'",
+        "import { Card } from '/app/route.tsx?tsr-split=export---Card'",
       )
       expect(r.chunk).not.toContain('function Card')
       const e = await r.extracted('Card')
-      expect(e?.code).toContain("import { styles } from './route.tsx'")
+      expect(e?.code).toContain("import { styles } from '/app/route.tsx'")
       expect(e?.code).toContain('function Card() { return styles.card }')
       expect(r.diagnostics).toMatchObject([{ code: 'eager-split:shared' }])
     })
@@ -1397,9 +1401,9 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('export class Model {}')
       expect(r.env).toContain('const listeners')
       expect(r.env).toContain('export function subscribe')
-      expect(r.env).not.toContain('export~')
+      expect(r.env).not.toContain('export---')
       expect(r.chunk).toContain(
-        "import { Model, subscribe } from './route.tsx'",
+        "import { Model, subscribe } from '/app/route.tsx'",
       )
       expect(r.chunk).not.toContain('class Model')
       expect(r.chunk).not.toContain('listeners')
@@ -1481,8 +1485,8 @@ describe('extracted-export outputs', () => {
         export const Route = createFileRoute('/')({ loader: () => 1, component: Page })
       `)
       const r = await extract(code)
-      expect(r.chunk).not.toContain('export~Page')
-      expect(r.chunk).toContain("import { Route } from './route.tsx'")
+      expect(r.chunk).not.toContain('export---Page')
+      expect(r.chunk).toContain("import { Route } from '/app/route.tsx'")
       expect(r.chunk).toContain(
         'function Page() { return Route.useLoaderData() }',
       )
@@ -1500,8 +1504,8 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).toContain('const cfg = { dark: true }')
       expect(r.env).toContain('const theme = createTheme(cfg)')
-      expect(r.chunk).not.toContain('export~Card')
-      expect(r.chunk).toContain("import { theme } from './route.tsx'")
+      expect(r.chunk).not.toContain('export---Card')
+      expect(r.chunk).toContain("import { theme } from '/app/route.tsx'")
       expect(r.chunk).toContain('function Card() { return theme.card }')
     })
 
@@ -1517,8 +1521,8 @@ describe('extracted-export outputs', () => {
       `)
       const r = await extract(code)
       expect(r.env).toContain("const styles = { card: 'c' }")
-      expect(r.chunk).not.toContain('export~Card')
-      expect(r.chunk).toContain("import { styles } from './route.tsx'")
+      expect(r.chunk).not.toContain('export---Card')
+      expect(r.chunk).toContain("import { styles } from '/app/route.tsx'")
       expect(r.chunk).toContain('function Card() { return styles.card }')
       expect(r.diagnostics).toEqual([])
     })
@@ -1591,8 +1595,8 @@ describe('extracted-export outputs', () => {
         `)
         const r = await extract(code)
         expect(r.env).toContain('export const config')
-        expect(r.env).not.toContain('export~')
-        expect(r.chunk).toContain("from './route.tsx'")
+        expect(r.env).not.toContain('export---')
+        expect(r.chunk).toContain("from '/app/route.tsx'")
         expect(r.diagnostics).toMatchObject([
           {
             code: 'eager-export:reads',
@@ -1637,7 +1641,7 @@ describe('extracted-export outputs', () => {
         export const Route = createFileRoute('/')({ component: Page })
       `)
       const r = await extract(code)
-      expect(r.env).toContain('export~config')
+      expect(r.env).toContain('export---config')
     })
 
     it('keeps an export that holds a function reading an effectful enum, read through a method at load', async () => {
@@ -1652,7 +1656,7 @@ describe('extracted-export outputs', () => {
       `)
       const r = await extract(code)
       expect(r.env).toContain('export const R')
-      expect(r.env).not.toContain('export~')
+      expect(r.env).not.toContain('export---')
     })
 
     it.each([
@@ -1682,12 +1686,12 @@ describe('extracted-export outputs', () => {
         `)
         const r = await extract(code)
         expect(r.chunk).toContain(
-          "import { Model } from './route.tsx?tsr-split=export~Model'",
+          "import { Model } from '/app/route.tsx?tsr-split=export---Model'",
         )
         expect(r.chunk).not.toMatch(/(function|const) Model\b/)
         const e = await r.extracted('isModel')
         expect(e?.code).toContain(
-          "import { Model } from './route.tsx?tsr-split=export~Model'",
+          "import { Model } from '/app/route.tsx?tsr-split=export---Model'",
         )
         expect(e?.code).not.toMatch(/(function|const) Model\b/)
       },
@@ -1704,11 +1708,11 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.chunk).toContain('function helper() { return 1 }')
       expect(r.chunk).toContain(
-        "import { config } from './route.tsx?tsr-split=export~config'",
+        "import { config } from '/app/route.tsx?tsr-split=export---config'",
       )
       const e = await r.extracted('config')
       expect(e?.code).toContain(
-        "import { helper } from './route.tsx?tsr-split=export~helper'",
+        "import { helper } from '/app/route.tsx?tsr-split=export---helper'",
       )
       expect(e?.code).not.toContain('function helper')
       expect(e?.code).toContain('const config = { helper }')
@@ -1728,7 +1732,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code, ['component', 'errorComponent'])
       expect(r.env).toContain('const N = 1')
       expect(r.chunk).toContain('const N = 1')
-      expect(r.chunk).not.toContain("from './route.tsx'")
+      expect(r.chunk).not.toContain("from '/app/route.tsx'")
     })
 
     it('keeps a written binding an extracted export reads and a split option writes in the route module', async () => {
@@ -1747,11 +1751,11 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('export { count }')
       // the chunk reads the one `count` of the route module (through its
       // copy of `read`, a function closure)
-      expect(r.chunk).toContain("import { count } from './route.tsx'")
+      expect(r.chunk).toContain("import { count } from '/app/route.tsx'")
       expect(r.chunk).not.toContain('let count')
       expect(r.chunk).not.toContain('count++')
       const e = await r.extracted('read')
-      expect(e?.code).toContain("import { count } from './route.tsx'")
+      expect(e?.code).toContain("import { count } from '/app/route.tsx'")
       expect(e?.code).not.toContain('let count')
     })
 
@@ -1864,7 +1868,7 @@ describe('extracted-export outputs', () => {
           main: await of(''),
           chunk: await of('?tsr-split=component'),
           provider: await of('?tss-serverfn-split'),
-          extracted: await of('?tsr-split=export~Z'),
+          extracted: await of('?tsr-split=export---Z'),
         }
       }
 
@@ -1884,14 +1888,14 @@ describe('extracted-export outputs', () => {
           code('return [new A(), Route.useLoaderData()]'),
         )
         expect(r.main).toContain(
-          "export { Z, A } from './route.tsx?tsr-split=export~Z'",
+          "export { Z, A } from '/app/route.tsx?tsr-split=export---Z'",
         )
         expect(r.main).not.toContain('helper')
         expect(r.extracted).toContain('class Z')
         expect(r.extracted).toContain('class A')
         expect(r.extracted).not.toContain('helper')
         expect(r.chunk).toContain(
-          "import { A } from './route.tsx?tsr-split=export~Z'",
+          "import { A } from '/app/route.tsx?tsr-split=export---Z'",
         )
         expect(r.chunk).not.toContain('helper')
         expect(r.chunk).not.toContain("from './db'")
@@ -1923,15 +1927,15 @@ describe('extracted-export outputs', () => {
       expect(main?.code).toContain('export const fn = wrapServer(0)')
       expect(main?.code).not.toContain('const config')
       expect(main?.code).toContain(
-        "export { wrapped } from './route.tsx?tsr-split=export~wrapped'",
+        "export { wrapped } from '/app/route.tsx?tsr-split=export---wrapped'",
       )
       const wrapped = await host.compile(
-        '/app/route.tsx?tsr-split=export~wrapped',
+        '/app/route.tsx?tsr-split=export---wrapped',
         planners,
         { env },
       )
       expect(wrapped?.code).toContain('const config = { a: 1 }')
-      expect(wrapped?.code).not.toContain("from './route.tsx'")
+      expect(wrapped?.code).not.toContain("from '/app/route.tsx'")
       const prov = await host.compile(
         '/app/route.tsx?tss-serverfn-split',
         planners,
@@ -1972,7 +1976,7 @@ describe('extracted-export outputs', () => {
     `)
     let r = await extract(effects)
     expect(r.env).toContain('export const store = createStore()')
-    expect(r.chunk).toContain("import { store } from './route.tsx'")
+    expect(r.chunk).toContain("import { store } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([
       {
         severity: 'warning',
@@ -1995,7 +1999,7 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
     r = await extract(reassigned)
-    expect(r.chunk).toContain("import { count, bump } from './route.tsx'")
+    expect(r.chunk).toContain("import { count, bump } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([
       {
         code: 'eager-export:reassigned',
@@ -2043,10 +2047,10 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain("import { heavy } from './heavy'")
       expect(r.env).toContain('export function Card() { return heavy() }')
       expect(r.env).toContain('export { Card as View }')
-      expect(r.env).not.toContain('export~')
+      expect(r.env).not.toContain('export---')
       expect(r.chunk).toContain("import { heavy } from './heavy'")
       expect(r.chunk).toContain('function Card() { return heavy() }')
-      expect(r.chunk).not.toContain("from './route.tsx")
+      expect(r.chunk).not.toContain("from '/app/route.tsx")
       expect((await r.extracted('Card'))?.code).toBe('export {}\n')
       expect(r.diagnostics).toEqual([])
     })
@@ -2063,7 +2067,7 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('let clicks = 0')
       expect(r.env).toContain('export function bump() { clicks++ }')
       expect(r.env).toContain('export { clicks }')
-      expect(r.chunk).toContain("import { clicks } from './route.tsx'")
+      expect(r.chunk).toContain("import { clicks } from '/app/route.tsx'")
       expect(r.chunk).not.toContain('clicks++')
     })
 
@@ -2078,7 +2082,7 @@ describe('extracted-export outputs', () => {
       `)
       const r = await extract(code, ['component'], dev)
       expect(r.chunk).toContain(
-        "import { 'click-count' as clicks } from './route.tsx'",
+        "import { 'click-count' as clicks } from '/app/route.tsx'",
       )
     })
 
@@ -2093,7 +2097,7 @@ describe('extracted-export outputs', () => {
       const r = await extract(code, ['component'], dev)
       expect(r.env).toContain('const theme = createTheme()')
       expect(r.env).toContain('export function Card() { return theme.card }')
-      expect(r.chunk).toContain("import { theme } from './route.tsx'")
+      expect(r.chunk).toContain("import { theme } from '/app/route.tsx'")
       expect(r.chunk).toContain('function Card() { return theme.card }')
     })
 
@@ -2127,10 +2131,10 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('displayName')
     expect(r.env).not.toContain('preload')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     expect(r.chunk).toContain(
-      "import { Page } from './route.tsx?tsr-split=export~Page'",
+      "import { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
     expect(e?.code).toContain('function Page() { return Page.displayName }')
@@ -2164,10 +2168,10 @@ describe('extracted-export outputs', () => {
       const r = await extract(code)
       expect(r.env).toContain("track('card')")
       expect(r.env).toContain(
-        "export { Page } from './route.tsx?tsr-split=export~Page'",
+        "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
       )
       const e = await r.extracted('Page')
-      expect(e?.code).toContain(`import { ${binding} } from './route.tsx'`)
+      expect(e?.code).toContain(`import { ${binding} } from '/app/route.tsx'`)
       expect(e?.code).not.toContain('track')
       expect(e?.sideEffectFree).toBe(true)
       // the extracted module is no split code: nothing to report
@@ -2186,7 +2190,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('const base = make()')
     expect(r.env).toContain('export const options = { base }')
-    expect(r.env).not.toContain('export~')
+    expect(r.env).not.toContain('export---')
     expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
   })
 
@@ -2206,8 +2210,8 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain("Card.x = track('card')")
     expect(r.env).toContain('export function Page()')
-    expect(r.env).not.toContain('export~')
-    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.env).not.toContain('export---')
+    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
   })
 
@@ -2224,8 +2228,8 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("see('before')")
     expect(r.env).toContain('export function Page()')
     expect(r.env).toContain("Page.displayName = 'PageDisplay'")
-    expect(r.env).not.toContain('export~')
-    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.env).not.toContain('export---')
+    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
   })
 
@@ -2242,7 +2246,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("see('after')")
     expect(r.env).not.toContain('displayName')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
     expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
@@ -2261,7 +2265,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("import './side.css'")
     expect(r.env).not.toContain('displayName')
     expect(r.env).toContain(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
     expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
@@ -2279,17 +2283,17 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).not.toContain('displayName')
     const card = r.env.indexOf(
-      "export { Card } from './route.tsx?tsr-split=export~Card'",
+      "export { Card } from '/app/route.tsx?tsr-split=export---Card'",
     )
     const page = r.env.indexOf(
-      "export { Page } from './route.tsx?tsr-split=export~Page'",
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     expect(card).toBeGreaterThan(-1)
     expect(page).toBeGreaterThan(card)
     const e = await r.extracted('Page')
     expect(e?.code).toContain("Page.displayName = 'Page'")
     expect(e?.code).toContain(
-      "import { Card } from './route.tsx?tsr-split=export~Card'",
+      "import { Card } from '/app/route.tsx?tsr-split=export---Card'",
     )
     expect((await r.extracted('Card'))?.code).toContain(
       "Card.displayName = 'Card'",
@@ -2306,8 +2310,8 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain('export const theme = createTheme()')
-    expect(r.env).not.toContain('export~')
-    expect(r.chunk).toContain("import { theme } from './route.tsx'")
+    expect(r.env).not.toContain('export---')
+    expect(r.chunk).toContain("import { theme } from '/app/route.tsx'")
   })
 
   it('keeps an augmented export whose augmentation reads what the env module keeps at its evaluation', async () => {
@@ -2322,7 +2326,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export function Page()')
     expect(r.env).toContain('Page.label = config.label')
-    expect(r.env).not.toContain('export~')
+    expect(r.env).not.toContain('export---')
   })
 
   it.each([
@@ -2358,7 +2362,7 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
       const r = await extract(code)
-      expect(r.env.includes('export~Page')).toBe(extracted)
+      expect(r.env.includes('export---Page')).toBe(extracted)
     },
   )
 
@@ -2374,8 +2378,8 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export function Page()')
     expect(r.env).toContain("Page.x = track('page')")
-    expect(r.env).not.toContain('export~')
-    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+    expect(r.env).not.toContain('export---')
+    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
   })
 })
@@ -2595,7 +2599,7 @@ describe('route-module specifics (lane router)', () => {
     expect(main?.code).toContain('const util')
     expect(main?.code).not.toContain('tsr-split=component')
     expect(chunk?.code).toContain('const Page = (() =>')
-    expect(chunk?.code).toContain("import { util } from './route.tsx'")
+    expect(chunk?.code).toContain("import { util } from '/app/route.tsx'")
   })
 
   it('drops an unreferenced pure function that would keep a chunk dependency in the env module', async () => {
@@ -2625,7 +2629,9 @@ describe('route-module specifics (lane router)', () => {
     const r = await split(code)
     expect(r.env).toContain('for (var value = 0; value < 3; value++) {}')
     expect(r.env).toContain('export { value }')
-    expect(r.chunks.component).toContain("import { value } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { value } from '/app/route.tsx'",
+    )
   })
 
   it('prints an import assertion as an attribute wherever the import lands (J2.17)', async () => {
@@ -2880,7 +2886,9 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code)
     expect(r.env).toContain('const store = init({ plugins: [...plugins] })')
     expect(r.env).toContain('export { store }')
-    expect(r.chunks.component).toContain("import { store } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { store } from '/app/route.tsx'",
+    )
     expect(r.chunks.component).not.toContain('init(')
   })
 
@@ -2916,7 +2924,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.env).toContain('advance()')
     expect(r.env).toContain('export { initial }')
     expect(r.chunks.component).toContain(
-      "import { initial } from './route.tsx'",
+      "import { initial } from '/app/route.tsx'",
     )
   })
 
@@ -2955,7 +2963,7 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code)
     expect(r.env).toContain("const a = make('a')\nadvance()")
     expect(r.env).not.toContain('build(')
-    expect(r.chunks.component).toContain("import { a } from './route.tsx'")
+    expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
     expect(r.chunks.component).toContain(
       "const b = build('b')\nconst c = build('c')",
     )
@@ -2976,7 +2984,7 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code, { keys: ['component', 'errorComponent'] })
     expect(r.env).toContain("const a = make('a')")
     expect(r.env).not.toContain("other('b')")
-    expect(r.chunks.component).toContain("import { a } from './route.tsx'")
+    expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
     expect(r.chunks.errorComponent).toContain("const b = other('b')")
   })
 
@@ -3012,7 +3020,9 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.env).toContain(
       "const store = make('store')\nconst view = store.read()",
     )
-    expect(r.chunks.component).toContain("import { view } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { view } from '/app/route.tsx'",
+    )
     expect(r.chunks.component).not.toContain('make(')
   })
 
@@ -3030,7 +3040,7 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code)
     expect(r.env).toContain("const q = { kept: make('kept'), tv: make('tv') }")
     expect(r.env).not.toContain("make('page')")
-    expect(r.chunks.component).toContain("import { q } from './route.tsx'")
+    expect(r.chunks.component).toContain("import { q } from '/app/route.tsx'")
     expect(r.chunks.component).toContain("const page = [make('page'), q.tv]")
   })
 
@@ -3058,7 +3068,9 @@ describe('ordered evaluation and movable effects', () => {
       `)
       const r = await split(code)
       expect(r.env).toContain("const page = [make('page'), q.tv]")
-      expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+      expect(r.chunks.component).toContain(
+        "import { page } from '/app/route.tsx'",
+      )
     },
   )
 
@@ -3078,7 +3090,9 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.env).toContain(
       "const q = make('q')\nconst page = [make('page'), q]\nconst later = make('later')",
     )
-    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { page } from '/app/route.tsx'",
+    )
   })
 
   it('keeps a cluster eager when an effect follows its first effectful item', async () => {
@@ -3096,7 +3110,9 @@ describe('ordered evaluation and movable effects', () => {
     `)
     const r = await split(code)
     expect(r.env).toContain('Page.a = first()\nlog()\nPage.b = second()')
-    expect(r.chunks.component).toContain("import { Page } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { Page } from '/app/route.tsx'",
+    )
     expect(r.chunks.component).not.toContain('first()')
   })
 
@@ -3132,7 +3148,9 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code)
     expect(r.env).toContain("make('page')")
     expect(r.env).toContain("log('logged')")
-    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { page } from '/app/route.tsx'",
+    )
   })
 
   it('a /* @__PURE__ */ initialiser simply moves', async () => {
@@ -3180,7 +3198,9 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code)
     expect(r.env).toContain("Page.displayName = 'PageDisplay'")
     expect(r.env).toContain('register(Page)')
-    expect(r.chunks.component).toContain("import { Page } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { Page } from '/app/route.tsx'",
+    )
     expect(r.chunks.component).not.toContain('displayName')
   })
 
@@ -3212,7 +3232,7 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code, { identifierEdits: true })
     expect(r.env).toContain('const { Home, Skeleton } = views')
     expect(r.chunks.component).toMatch(
-      /import \{ Home\b[^}]*\} from '\.\/route\.tsx'/,
+      /import \{ Home\b[^}]*\} from '\/app\/route\.tsx'/,
     )
   })
 
@@ -3249,7 +3269,7 @@ describe('ordered evaluation and movable effects', () => {
     const r = await split(code, { identifierEdits: true })
     expect(r.env).toContain('export const { Home, Skeleton } = views')
     expect(r.chunks.component).toMatch(
-      /import \{ Home\b[^}]*\} from '\.\/route\.tsx'/,
+      /import \{ Home\b[^}]*\} from '\/app\/route\.tsx'/,
     )
   })
 
@@ -3290,7 +3310,9 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.env).toContain(
       "lazyRouteComponent(tsrImportComponent, 'component')",
     )
-    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { page } from '/app/route.tsx'",
+    )
   })
 
   it('reports a split value that writes an exported binding (one cluster with it, kept by the export: env-declared)', async () => {
@@ -3338,7 +3360,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.env).toContain("const Z = eff('z')")
     expect(r.chunks.component).not.toContain('eff(')
     expect(r.chunks.component).toContain(
-      "import { Y, Z, X } from './route.tsx'",
+      "import { Y, Z, X } from '/app/route.tsx'",
     )
   })
 })
@@ -3363,17 +3385,17 @@ describe('needers and homes', () => {
     expect(r.env).not.toContain('function shape')
     expect(r.chunks.component).toContain('const LIMIT = 10')
     expect(r.chunks.component).toContain(
-      "import { exported } from './route.tsx'",
+      "import { exported } from '/app/route.tsx'",
     )
     expect(r.chunks.component).toContain(
-      "import { shape } from './route.tsx?tsr-split=shared~component+errorComponent'",
+      "import { shape } from '/app/route.tsx?tsr-split=shared---component---errorComponent'",
     )
     expect(r.chunks.errorComponent).toContain("import { fmt } from './fmt'")
     expect(r.chunks.errorComponent).toContain(
-      "import { shape } from './route.tsx?tsr-split=shared~component+errorComponent'",
+      "import { shape } from '/app/route.tsx?tsr-split=shared---component---errorComponent'",
     )
     const shared = await r.host.compile(
-      '/app/route.tsx?tsr-split=shared~component+errorComponent',
+      '/app/route.tsx?tsr-split=shared---component---errorComponent',
       [
         toyEnvPlanner(),
         toySplitPlanner({ keys: ['component', 'errorComponent'] }),
@@ -3408,12 +3430,12 @@ describe('needers and homes', () => {
     })
     expect(r.chunks.component).toContain('function Page()')
     expect(r.chunks.component).toContain("import { fmt } from './util'")
-    expect(r.chunks.loader).toContain("import { Route } from './route.tsx'")
+    expect(r.chunks.loader).toContain("import { Route } from '/app/route.tsx'")
     expect(r.chunks.loader).not.toContain('Page')
     const outputs = [
       ...r.host.caches.plans.get(r.env ? 'client' : 'client')!.values(),
     ].flatMap((e) => Object.keys(e.plan.outputs))
-    expect(outputs.some((o) => o.includes('shared~'))).toBe(false)
+    expect(outputs.some((o) => o.includes('shared---'))).toBe(false)
   })
 
   it('copies an import only into outputs that read it, not into one importing its reader', async () => {
@@ -3429,7 +3451,7 @@ describe('needers and homes', () => {
     const r = await split(code)
     expect(r.chunks.component).toBe(
       dedent(`
-      import { exported } from './route.tsx'
+      import { exported } from '/app/route.tsx'
       import { other } from './other'
       const TsrSplitComponent = () => exported() + other()
       export { TsrSplitComponent as component }
@@ -3450,7 +3472,7 @@ describe('needers and homes', () => {
     `)
     const r = await split(code)
     expect(r.env).toContain(
-      "const tsrImportComponent$1 = () => import('./route.tsx?tsr-split=component')",
+      "const tsrImportComponent$1 = () => import('/app/route.tsx?tsr-split=component')",
     )
     expect(r.env).toContain(
       "lazyRouteComponent(tsrImportComponent$1, 'component')",
@@ -3948,7 +3970,7 @@ describe('one mutation model: eager reads of state something writes', () => {
       expect(r.env).toContain(declaration)
       expect(r.chunks.component).not.toContain(declaration)
       expect(r.chunks.component).toMatch(
-        /import \{[^}]*\b(initial|Snap)\b[^}]*\} from '\.\/route\.tsx'/,
+        /import \{[^}]*\b(initial|Snap)\b[^}]*\} from '\/app\/route\.tsx'/,
       )
     },
   )
@@ -3967,7 +3989,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     expect(r.env).toContain('const snapshot = (() => cfg.n)()')
     expect(r.chunks.component).not.toContain('(() => cfg.n)()')
     expect(r.chunks.component).toContain(
-      "import { snapshot } from './route.tsx'",
+      "import { snapshot } from '/app/route.tsx'",
     )
   })
 
@@ -4138,7 +4160,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     const r = await split(code)
     expect(r.env).not.toContain('const snapshot')
     expect(r.chunks.component).toContain('const snapshot = (() => cfg.n)()')
-    expect(r.chunks.component).toContain("import { cfg } from './route.tsx'")
+    expect(r.chunks.component).toContain("import { cfg } from '/app/route.tsx'")
   })
 
   it('pins an effectful initialiser that reads a pure object a function mutates', async () => {
@@ -4158,7 +4180,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     expect(r.env).toContain('const snapshot = read(cfg.n)')
     expect(r.chunks.component).not.toContain('read(cfg.n)')
     expect(r.chunks.component).toContain(
-      "import { snapshot } from './route.tsx'",
+      "import { snapshot } from '/app/route.tsx'",
     )
   })
 
@@ -4203,7 +4225,9 @@ describe('one mutation model: eager reads of state something writes', () => {
     // source: the store stays eager in the route module, the chunk imports it
     expect(r.env).toContain('const store = createStore()')
     expect(r.chunks.component).not.toContain('createStore()')
-    expect(r.chunks.component).toContain("import { store } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "import { store } from '/app/route.tsx'",
+    )
 
     const pure = impure.replace(
       'validateSearch: makeSchema(),',

@@ -19,7 +19,7 @@ import {
   normalizePath,
   patternIdentifiers,
   revision,
-  siblingSpecifier,
+  sameFileSpecifier,
   stringLiteral,
   unwrapExpression,
   walk,
@@ -514,7 +514,7 @@ function planStartEnv(
       })
       const memo = names.alloc('tsrHandlers')
       const load = names.alloc('tsrLoadHandlers')
-      const spec = siblingSpecifier(handlerOut.slice('derived:'.length))
+      const spec = sameFileSpecifier(handlerOut.slice('derived:'.length))
       rewrites.addGenerated({
         body: [
           text(

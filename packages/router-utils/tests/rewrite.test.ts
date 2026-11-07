@@ -191,7 +191,9 @@ describe('rewrite tree', () => {
     })
     expect(e.render('env').code).toBe('export const Route = { component: 1 }\n')
     // exported clusters stay in the env module; the chunk imports them
-    expect(e.render(chunk).code).toBe("import { Route } from './route.tsx'\n")
+    expect(e.render(chunk).code).toBe(
+      "import { Route } from '/app/route.tsx'\n",
+    )
   })
 })
 
@@ -968,7 +970,7 @@ describe('claims, homes and substitution', () => {
             parts: [
               'const ',
               { sym: lazy },
-              ` = tsrLazy(() => import('./route.tsx?tss-hydrate=h${n}'), 'TsrHydrate${n}')\n`,
+              ` = tsrLazy(() => import('/app/route.tsx?tss-hydrate=h${n}'), 'TsrHydrate${n}')\n`,
             ],
           },
         ],
@@ -1001,7 +1003,7 @@ describe('claims, homes and substitution', () => {
     expect(e.render(outer).code).toBe(
       dedent(`
       import { Hydrate } from 'toy-start'
-      const TsrHydrate1 = tsrLazy(() => import('./route.tsx?tss-hydrate=h1'), 'TsrHydrate1')
+      const TsrHydrate1 = tsrLazy(() => import('/app/route.tsx?tss-hydrate=h1'), 'TsrHydrate1')
       export function TsrHydrate0(props) { return <><section>{(0, props.read)()}{ { value: props.value }.value }<Hydrate><TsrHydrate1 label={props.label}/></Hydrate></section></> }
     `),
     )
@@ -1015,9 +1017,9 @@ describe('claims, homes and substitution', () => {
       'return <Hydrate><TsrHydrate0 read={read} value={value} label={label}/></Hydrate>',
     )
     expect(env).toContain(
-      "const TsrHydrate0 = tsrLazy(() => import('./route.tsx?tss-hydrate=h0'), 'TsrHydrate0')",
+      "const TsrHydrate0 = tsrLazy(() => import('/app/route.tsx?tss-hydrate=h0'), 'TsrHydrate0')",
     )
-    expect(env).not.toContain("'./route.tsx?tss-hydrate=h1'")
+    expect(env).not.toContain("'/app/route.tsx?tss-hydrate=h1'")
   })
 })
 
@@ -1082,7 +1084,7 @@ describe('statement-level edits (one edit per statement)', () => {
     })
     expect(e.render(chunk).code).toBe(
       dedent(`
-      import { f } from './route.tsx'
+      import { f } from '/app/route.tsx'
       const g = () => f()
     `),
     )
@@ -1109,7 +1111,7 @@ describe('statement-level edits (one edit per statement)', () => {
     })
     expect(e.render(chunk).code).toBe(
       dedent(`
-      import { b } from './route.tsx'
+      import { b } from '/app/route.tsx'
       const g = () => b
     `),
     )
@@ -1125,7 +1127,7 @@ describe('statement-level edits (one edit per statement)', () => {
       ],
     })
     expect(e2.render(chunk2).code).toBe(
-      "import { c } from './route.tsx'\nconst h = () => c\n",
+      "import { c } from '/app/route.tsx'\nconst h = () => c\n",
     )
   })
 })

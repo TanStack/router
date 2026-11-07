@@ -19,7 +19,11 @@ type DerivedKind =
 
 export interface DerivedQuery {
   kind: DerivedKind
-  /** Split keys (`component~loader`), shared group keys (`a+b`), export name, hydrate id, or '' for a provider. */
+  /**
+   * Split keys (`component~loader`), the keys of the outputs needing a
+   * shared module (`a+b`; parsed from an id: `a~b`, see `ownedQueryPair`),
+   * export name, hydrate id, or '' for a provider.
+   */
   value: string
 }
 
@@ -75,6 +79,25 @@ function splitQuery(id: string): { base: string; query: string; hash: string } {
   }
 }
 
+/**
+ * The format of the owned `tsr-split` value, the Babel splitter's (main's)
+ * that apps' chunk naming reads (`/routes/<file>.tsx?tsr-split=<a>---<b>`):
+ * a split group's options, sorted, joined by `---`. The modules main had no
+ * counterpart for are named in that style after a first key no route option
+ * has (the options are a closed set of identifiers: `splitRouteIdentNodes`
+ * of the router plugin): `shared---<keys>`, `export---<name>`. One owner: a
+ * later switch of the format is this module alone (the compiler's cache keys
+ * follow its built code: `compilerCacheKey`).
+ */
+const KEY_SEPARATOR = '---'
+const SHARED_PREFIX = `shared${KEY_SEPARATOR}`
+const EXPORT_PREFIX = `export${KEY_SEPARATOR}`
+
+/** The query of an extracted-export output (a `resourceQuery` of the webpack-family hosts' `sideEffects: false` rule). */
+export const EXTRACTED_EXPORT_QUERY_RE = new RegExp(
+  `[?&]${OWNED_QUERY_KEYS.split}=${EXPORT_PREFIX}`,
+)
+
 function parseDerived(key: string, value: string): DerivedQuery | null {
   if (key === OWNED_QUERY_KEYS.hydrate) {
     return { kind: 'hydrate', value }
@@ -86,24 +109,33 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
     return { kind: 'handler', value }
   }
   if (key === OWNED_QUERY_KEYS.split) {
-    if (value.startsWith('shared~')) {
-      return { kind: 'shared', value: value.slice('shared~'.length) }
+    if (value.startsWith(SHARED_PREFIX)) {
+      return {
+        kind: 'shared',
+        value: splitKeys(value.slice(SHARED_PREFIX.length)),
+      }
     }
-    if (value.startsWith('export~')) {
-      return { kind: 'export', value: value.slice('export~'.length) }
+    if (value.startsWith(EXPORT_PREFIX)) {
+      return { kind: 'export', value: value.slice(EXPORT_PREFIX.length) }
     }
-    return { kind: 'split', value }
+    return { kind: 'split', value: splitKeys(value) }
   }
   return null
+}
+
+/** `a---b` → the planners' `a~b`. */
+function splitKeys(value: string): string {
+  return value.split(KEY_SEPARATOR).join('~')
 }
 
 /**
  * An export name may be any string (`export { x as 'a.css' }`), and a bundler
  * reads an id's end as its language, a `/` as a directory and a `!` as a loader
- * separator: anything else than word characters is percent-encoded.
+ * separator: anything else than word characters is percent-encoded (`-` too,
+ * so that the name never holds the key separator).
  */
 function encodeExportName(name: string): string {
-  return name.replace(/[^\w$~+-]/gu, (c) =>
+  return name.replace(/[^\w$]/gu, (c) =>
     Buffer.from(c).toString('hex').replace(/../g, '%$&'),
   )
 }
@@ -111,11 +143,17 @@ function encodeExportName(name: string): string {
 function ownedQueryPair(q: DerivedQuery): string {
   switch (q.kind) {
     case 'split':
-      return `${OWNED_QUERY_KEYS.split}=${q.value}`
+      return `${OWNED_QUERY_KEYS.split}=${q.value.split('~').join(KEY_SEPARATOR)}`
     case 'shared':
-      return `${OWNED_QUERY_KEYS.split}=shared~${q.value}`
+      // the options (and other output keys) of the outputs needing it,
+      // sorted: within a file an option is in one group, so the set names
+      // the module (a parsed `a~b` prints the same)
+      return `${OWNED_QUERY_KEYS.split}=${SHARED_PREFIX}${q.value
+        .split(/[~+]/)
+        .sort()
+        .join(KEY_SEPARATOR)}`
     case 'export':
-      return `${OWNED_QUERY_KEYS.split}=export~${encodeExportName(q.value)}`
+      return `${OWNED_QUERY_KEYS.split}=${EXPORT_PREFIX}${encodeExportName(q.value)}`
     case 'hydrate':
       return `${OWNED_QUERY_KEYS.hydrate}=${q.value}`
     case 'provider':
@@ -193,12 +231,50 @@ export function deriveId(canonicalId: string, q: DerivedQuery): string {
   return `${base}?${query}&${pair}${hash}`
 }
 
-/** The glue specifier a sibling output uses to import from `target` (same directory, hostile basenames allowed). */
-export function siblingSpecifier(targetId: string): string {
+/**
+ * The specifier an output of a file imports another output of that file by
+ * (`targetId`: a derived id, or the canonical id for the env module): its
+ * absolute path, as main imported split modules, with the query verbatim.
+ * A `#` (`C#`, `project #2`) is escaped as `\0#`, the escape of
+ * webpack-family requests (a `#` there starts a fragment). A `!` separates
+ * loaders in such a request and has no escape: a path with one is imported
+ * by its basename (`./route.tsx?…`), relative to the importer, its own file.
+ * The Vite hosts resolve both forms with `resolveSameFileSpecifier`. Printed
+ * only through the string printer (`specifierLiteral`).
+ */
+export function sameFileSpecifier(targetId: string): string {
   const { base, query, hash } = splitQuery(targetId)
-  const slash = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'))
-  const basename = slash === -1 ? base : base.slice(slash + 1)
-  return `./${basename}${query.length > 0 ? `?${query}` : ''}${hash}`
+  const slash = base.lastIndexOf('/')
+  const path =
+    slash !== -1 && base.includes('!') ? `./${base.slice(slash + 1)}` : base
+  return `${path.replace(/#/g, '\0#')}${query.length > 0 ? `?${query}` : ''}${hash}`
+}
+
+/** A specifier `sameFileSpecifier` may have printed that only `resolveSameFileSpecifier` resolves right: an owned key, or an escaped `#`. */
+export const SAME_FILE_SPECIFIER_RE = new RegExp(
+  `\0#|[?&](?:${Object.values(OWNED_QUERY_KEYS).join('|')})(?:=|&|$)`,
+)
+
+/**
+ * Resolves a specifier of `sameFileSpecifier` (Vite hosts; webpack and
+ * Rspack resolve it themselves) to the id it names, without the file
+ * system: only when it names the importer's own file. Null for any other
+ * specifier: a browser URL (`/src/routes/a.tsx?tsr-split=component`, Vite
+ * dev) looks absolute too and is Vite's to resolve.
+ */
+export function resolveSameFileSpecifier(
+  specifier: string,
+  importer: string | undefined,
+): string | null {
+  if (!importer) {
+    return null
+  }
+  const own = normalizePath(identify(importer).path)
+  let id = specifier.replace(/\0#/g, '#')
+  if (id.startsWith('./')) {
+    id = own.slice(0, own.lastIndexOf('/') + 1) + id.slice(2)
+  }
+  return normalizePath(identify(id).path) === own ? id : null
 }
 
 /** Bundler queries whose module is not the file's code (`?raw`, `?url`, `?inline`, `?worker`): the file is an asset of it. */

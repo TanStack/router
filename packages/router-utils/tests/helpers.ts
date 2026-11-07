@@ -7,6 +7,7 @@ import {
   RawFactsCache,
   compileModule,
   createCompilerCaches,
+  sameFileSpecifier,
 } from '../src/compiler'
 import type {
   CompileInput,
@@ -212,7 +213,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         if (lazyImportSym === null) {
           lazyImportSym = ctx.names.alloc('lazyRouteComponent').sym
         }
-        const spec = `./${derivedId.slice(derivedId.lastIndexOf('/') + 1)}`
+        const spec = sameFileSpecifier(derivedId)
         // the importer const: `const tsrImportX = () => import('<chunk>')`, after the header, placed by needers
         ctx.rewrites.addGenerated({
           body: [
@@ -754,7 +755,7 @@ export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
           by: 'toy-hydrate',
         })
         // the lazy const in the parent, placed by needers; same name as the chunk component, its own symbol
-        const lazySpec = `./${analysis.path.slice(analysis.path.lastIndexOf('/') + 1)}?tss-hydrate=h${n}`
+        const lazySpec = sameFileSpecifier(out.slice('derived:'.length))
         ctx.rewrites.addGenerated({
           body: [
             {

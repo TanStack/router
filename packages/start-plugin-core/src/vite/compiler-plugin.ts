@@ -17,6 +17,7 @@ import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   OutputBuilder,
+  SAME_FILE_SPECIFIER_RE,
   SourceText,
   applyViteInvalidation,
   collectionSizes,
@@ -28,7 +29,7 @@ import {
   loadDerivedSource,
   normalizePath,
   registerCompilerStats,
-  resolveDerivedSibling,
+  resolveSameFileSpecifier,
   revision,
   rollupEntryModuleIds,
   warnEagerExports,
@@ -867,7 +868,7 @@ export function startCompilerPlugin(
         }
       },
       resolveId: {
-        filter: { id: [OWNED_QUERY_RE, IP_SPECIFIER_RE] },
+        filter: { id: [SAME_FILE_SPECIFIER_RE, IP_SPECIFIER_RE] },
         handler(source, importer) {
           const edge = resolveViteEdgeModuleId(source)
           if (edge !== null) {
@@ -890,7 +891,7 @@ export function startCompilerPlugin(
               return edge
             })
           }
-          return resolveDerivedSibling(source, importer)
+          return resolveSameFileSpecifier(source, importer)
         },
       },
       load: {

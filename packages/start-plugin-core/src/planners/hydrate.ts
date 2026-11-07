@@ -35,7 +35,7 @@ import {
   ownEntry,
   recognizeImport,
   removeListItems,
-  siblingSpecifier,
+  sameFileSpecifier,
   unwrapExpression,
   valueBinding,
 } from '@tanstack/router-utils/compiler'
@@ -605,7 +605,7 @@ function plan(ctx: PlanContext): void {
 /**
  * Extracted-export outputs for Hydrate chunks, as for split routes (J5.4 "an
  * export only the children use loads lazily"): every exported binding may
- * leave for an extracted-export output (`?tsr-split=export~<name>`, side-effect
+ * leave for an extracted-export output (`?tsr-split=export---<name>`, side-effect
  * free), which the parent re-exports; the core moves a pure, unwritten
  * declaration there only when the parent itself does not read it and a chunk
  * needs it (the chunk copies it when the copy is functions and primitives
@@ -1338,7 +1338,7 @@ function addLazyConst(
   lazy: SymbolId,
   chunkId: string,
 ): void {
-  const spec = siblingSpecifier(chunkId)
+  const spec = sameFileSpecifier(chunkId)
   const router = `@tanstack/${b.framework}-router`
   ctx.rewrites.addGenerated({
     body: [

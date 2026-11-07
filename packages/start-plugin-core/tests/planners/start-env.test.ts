@@ -526,7 +526,9 @@ export function read() { return count }
     expect(h).toContain(`from './db.server'`)
     // module state the defining module also reads is imported from it, not copied
     expect(h).not.toMatch(/let count/)
-    expect(h).toMatch(/import \{[^}]*\bcount\b[^}]*\} from '\.\/module\.tsx'/)
+    expect(h).toMatch(
+      /import \{[^}]*\bcount\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
   it('keeps a handler that writes module state the module also reads in place', async () => {
@@ -619,7 +621,7 @@ export const fn = createServerFn().handler(async () => db.get(<number>4))
     )
     expectValid(r.code)
     expect(r.code).toContain(
-      `import('./module.tsx?vue&type=script&tss-serverfn-handler&lang.ts')`,
+      `import('${FILE}?vue&type=script&tss-serverfn-handler&lang.ts')`,
     )
     const h = await r.derived(
       `${FILE}?vue&type=script&tss-serverfn-handler&lang.ts`,
