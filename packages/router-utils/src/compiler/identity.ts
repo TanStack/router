@@ -235,14 +235,19 @@ export function deriveId(canonicalId: string, q: DerivedQuery): string {
  * The specifier an output of a file imports another output of that file by
  * (`targetId`: a derived id, or the canonical id for the env module): its
  * absolute path, as main imported split modules, with the query verbatim.
- * A `#` of the path (`C#`, `project #2`) is escaped as `\0#`, the escape
- * of webpack-family requests (a `#` there starts a fragment); the Vite hosts
- * resolve it with `resolveSameFileSpecifier`. Printed only through the
- * string printer (`specifierLiteral`).
+ * A `#` (`C#`, `project #2`) is escaped as `\0#`, the escape of
+ * webpack-family requests (a `#` there starts a fragment). A `!` separates
+ * loaders in such a request and has no escape: a path with one is imported
+ * by its basename (`./route.tsx?…`), relative to the importer, its own file.
+ * The Vite hosts resolve both forms with `resolveSameFileSpecifier`. Printed
+ * only through the string printer (`specifierLiteral`).
  */
 export function sameFileSpecifier(targetId: string): string {
   const { base, query, hash } = splitQuery(targetId)
-  return `${base.replace(/#/g, '\0#')}${query.length > 0 ? `?${query}` : ''}${hash}`
+  const slash = base.lastIndexOf('/')
+  const path =
+    slash !== -1 && base.includes('!') ? `./${base.slice(slash + 1)}` : base
+  return `${path.replace(/#/g, '\0#')}${query.length > 0 ? `?${query}` : ''}${hash}`
 }
 
 /** A specifier `sameFileSpecifier` may have printed that only `resolveSameFileSpecifier` resolves right: an owned key, or an escaped `#`. */
@@ -264,11 +269,12 @@ export function resolveSameFileSpecifier(
   if (!importer) {
     return null
   }
-  const id = specifier.replace(/\0#/g, '#')
-  return normalizePath(identify(id).path) ===
-    normalizePath(identify(importer).path)
-    ? id
-    : null
+  const own = normalizePath(identify(importer).path)
+  let id = specifier.replace(/\0#/g, '#')
+  if (id.startsWith('./')) {
+    id = own.slice(0, own.lastIndexOf('/') + 1) + id.slice(2)
+  }
+  return normalizePath(identify(id).path) === own ? id : null
 }
 
 /** Bundler queries whose module is not the file's code (`?raw`, `?url`, `?inline`, `?worker`): the file is an asset of it. */
