@@ -1,0 +1,579 @@
+{
+  "commit": "da2adec76dbe6c0da6d6a0d5640f7b9388217f45",
+  "records": {
+    "vite": {
+      "none": {
+        "manifest": [
+          {
+            "key": "\"040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89\"",
+            "functionName": "\"localFn_createServerFn_handler\""
+          },
+          {
+            "key": "\"1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9\"",
+            "functionName": "\"deepFn_createServerFn_handler\""
+          },
+          {
+            "key": "\"25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a\"",
+            "functionName": "\"aOrder_createServerFn_handler\""
+          },
+          {
+            "key": "\"35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a\"",
+            "functionName": "\"$dollar_createServerFn_handler\""
+          },
+          {
+            "key": "\"443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28\"",
+            "functionName": "\"plainFn_createServerFn_handler\""
+          },
+          {
+            "key": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "functionName": "\"café_createServerFn_handler\""
+          },
+          {
+            "key": "\"7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57\"",
+            "functionName": "\"dupB_createServerFn_handler\""
+          },
+          {
+            "key": "\"7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0\"",
+            "functionName": "\"zOrder_createServerFn_handler\""
+          },
+          {
+            "key": "\"85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4\"",
+            "functionName": "\"dupA_createServerFn_handler\""
+          },
+          {
+            "key": "\"8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730\"",
+            "functionName": "\"crossA_createServerFn_handler\""
+          },
+          {
+            "key": "\"cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97\"",
+            "functionName": "\"innerName_createServerFn_handler\""
+          },
+          {
+            "key": "\"d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206\"",
+            "functionName": "\"crossB_createServerFn_handler\""
+          },
+          {
+            "key": "\"f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af\"",
+            "functionName": "\"callsServerOnly_createServerFn_handler\""
+          }
+        ],
+        "meta": [
+          {
+            "id": "\"35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a\"",
+            "name": "\"$dollar\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a\"",
+            "name": "\"aOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "name": "\"café\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af\"",
+            "name": "\"callsServerOnly\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730\"",
+            "name": "\"crossA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206\"",
+            "name": "\"crossB\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9\"",
+            "name": "\"deepFn\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4\"",
+            "name": "\"dupA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57\"",
+            "name": "\"dupB\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97\"",
+            "name": "\"innerName\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89\"",
+            "name": "\"localFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28\"",
+            "name": "\"plainFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0\"",
+            "name": "\"zOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          }
+        ],
+        "clientIds": [
+          "040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89",
+          "1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9",
+          "25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a",
+          "35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a",
+          "443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28",
+          "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57",
+          "7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0",
+          "85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4",
+          "8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730",
+          "cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97",
+          "d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206",
+          "f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af"
+        ]
+      },
+      "custom": {
+        "manifest": [
+          {
+            "key": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "functionName": "\"café_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-cross\"",
+            "functionName": "\"crossA_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-cross_1\"",
+            "functionName": "\"crossB_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-dup\"",
+            "functionName": "\"dupA_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-dup_1\"",
+            "functionName": "\"dupB_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-order\"",
+            "functionName": "\"zOrder_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-order_1\"",
+            "functionName": "\"aOrder_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-fns-ts-$dollar_createServerFn_handler\"",
+            "functionName": "\"$dollar_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler\"",
+            "functionName": "\"callsServerOnly_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-fns-ts-innerName_createServerFn_handler\"",
+            "functionName": "\"innerName_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-fns-ts-localFn_createServerFn_handler\"",
+            "functionName": "\"localFn_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler\"",
+            "functionName": "\"deepFn_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat:plain\"",
+            "functionName": "\"plainFn_createServerFn_handler\""
+          }
+        ],
+        "meta": [
+          {
+            "id": "\"compat-src-compat-fns-ts-$dollar_createServerFn_handler\"",
+            "name": "\"$dollar\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-order_1\"",
+            "name": "\"aOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "name": "\"café\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler\"",
+            "name": "\"callsServerOnly\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-cross\"",
+            "name": "\"crossA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-cross_1\"",
+            "name": "\"crossB\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler\"",
+            "name": "\"deepFn\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"compat-dup\"",
+            "name": "\"dupA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-dup_1\"",
+            "name": "\"dupB\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-innerName_createServerFn_handler\"",
+            "name": "\"innerName\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-localFn_createServerFn_handler\"",
+            "name": "\"localFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat:plain\"",
+            "name": "\"plainFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-order\"",
+            "name": "\"zOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          }
+        ],
+        "clientIds": [
+          "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "compat-cross",
+          "compat-cross_1",
+          "compat-dup",
+          "compat-dup_1",
+          "compat-order",
+          "compat-order_1",
+          "compat-src-compat-fns-ts-$dollar_createServerFn_handler",
+          "compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler",
+          "compat-src-compat-fns-ts-innerName_createServerFn_handler",
+          "compat-src-compat-fns-ts-localFn_createServerFn_handler",
+          "compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler",
+          "compat:plain"
+        ]
+      }
+    },
+    "rsbuild": {
+      "none": {
+        "manifest": [
+          {
+            "key": "'040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89'",
+            "functionName": "'localFn_createServerFn_handler'"
+          },
+          {
+            "key": "'1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9'",
+            "functionName": "'deepFn_createServerFn_handler'"
+          },
+          {
+            "key": "'25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a'",
+            "functionName": "'aOrder_createServerFn_handler'"
+          },
+          {
+            "key": "'35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a'",
+            "functionName": "'$dollar_createServerFn_handler'"
+          },
+          {
+            "key": "'443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28'",
+            "functionName": "'plainFn_createServerFn_handler'"
+          },
+          {
+            "key": "'46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720'",
+            "functionName": "'café_createServerFn_handler'"
+          },
+          {
+            "key": "'7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57'",
+            "functionName": "'dupB_createServerFn_handler'"
+          },
+          {
+            "key": "'7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0'",
+            "functionName": "'zOrder_createServerFn_handler'"
+          },
+          {
+            "key": "'85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4'",
+            "functionName": "'dupA_createServerFn_handler'"
+          },
+          {
+            "key": "'8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730'",
+            "functionName": "'crossA_createServerFn_handler'"
+          },
+          {
+            "key": "'cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97'",
+            "functionName": "'innerName_createServerFn_handler'"
+          },
+          {
+            "key": "'d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206'",
+            "functionName": "'crossB_createServerFn_handler'"
+          },
+          {
+            "key": "'de95b642b4af852d8f4440511b6fe4e76ca49641295ca87d813ec70dbca9c9a6'",
+            "functionName": "'serverOnlyFn_createServerFn_handler'"
+          },
+          {
+            "key": "'f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af'",
+            "functionName": "'callsServerOnly_createServerFn_handler'"
+          }
+        ],
+        "meta": [
+          {
+            "id": "\"35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a\"",
+            "name": "\"$dollar\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a\"",
+            "name": "\"aOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "name": "\"caf\\xE9\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af\"",
+            "name": "\"callsServerOnly\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730\"",
+            "name": "\"crossA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206\"",
+            "name": "\"crossB\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9\"",
+            "name": "\"deepFn\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4\"",
+            "name": "\"dupA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57\"",
+            "name": "\"dupB\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97\"",
+            "name": "\"innerName\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89\"",
+            "name": "\"localFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28\"",
+            "name": "\"plainFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"de95b642b4af852d8f4440511b6fe4e76ca49641295ca87d813ec70dbca9c9a6\"",
+            "name": "\"serverOnlyFn\"",
+            "filename": "\"src/compat/server-only.ts\""
+          },
+          {
+            "id": "\"7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0\"",
+            "name": "\"zOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          }
+        ],
+        "clientIds": [
+          "040ecb1c3309ee53e256a4f7f62e3ee4401e47feedbbc34bd40fa3acd4e09f89",
+          "1d9a930ec1a5313f8157dfc26b3198641c0a226b58bdd6a1902c3a352df08ab9",
+          "25bf890ffe300346cd29c02e3a48cf5f4662137b1671374b0166a88562743b2a",
+          "35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a",
+          "443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28",
+          "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57",
+          "7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0",
+          "85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4",
+          "8848d4a8c1a3483a5fd13c61614f6b849772604ed34f201a9fdec6ad3472d730",
+          "cb53baf0b6ef9aa8860cc1b3f1b7b85ef6df29fe5bc36df4ecd07943d0582e97",
+          "d42bc046407fd19a1767c442dc2092f88156c946dea91808fbfc035022757206",
+          "f42d56fb220085324b871a79f66c359c0493df7b0eb6446f5ee09df7ee6a55af"
+        ]
+      },
+      "custom": {
+        "manifest": [
+          {
+            "key": "'46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720'",
+            "functionName": "'café_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-cross'",
+            "functionName": "'crossA_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-cross_1'",
+            "functionName": "'crossB_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-dup'",
+            "functionName": "'dupA_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-dup_1'",
+            "functionName": "'dupB_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-order'",
+            "functionName": "'zOrder_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-order_1'",
+            "functionName": "'aOrder_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-fns-ts-$dollar_createServerFn_handler'",
+            "functionName": "'$dollar_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler'",
+            "functionName": "'callsServerOnly_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-fns-ts-innerName_createServerFn_handler'",
+            "functionName": "'innerName_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-fns-ts-localFn_createServerFn_handler'",
+            "functionName": "'localFn_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-server-only-ts-serverOnlyFn_createServerFn_handler'",
+            "functionName": "'serverOnlyFn_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler'",
+            "functionName": "'deepFn_createServerFn_handler'"
+          },
+          {
+            "key": "'compat:plain'",
+            "functionName": "'plainFn_createServerFn_handler'"
+          }
+        ],
+        "meta": [
+          {
+            "id": "\"compat-src-compat-fns-ts-$dollar_createServerFn_handler\"",
+            "name": "\"$dollar\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-order_1\"",
+            "name": "\"aOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720\"",
+            "name": "\"caf\\xE9\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler\"",
+            "name": "\"callsServerOnly\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-cross\"",
+            "name": "\"crossA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-cross_1\"",
+            "name": "\"crossB\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler\"",
+            "name": "\"deepFn\"",
+            "filename": "\"src/compat/sub/deep.ts\""
+          },
+          {
+            "id": "\"compat-dup\"",
+            "name": "\"dupA\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-dup_1\"",
+            "name": "\"dupB\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-innerName_createServerFn_handler\"",
+            "name": "\"innerName\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-fns-ts-localFn_createServerFn_handler\"",
+            "name": "\"localFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat:plain\"",
+            "name": "\"plainFn\"",
+            "filename": "\"src/compat/fns.ts\""
+          },
+          {
+            "id": "\"compat-src-compat-server-only-ts-serverOnlyFn_createServerFn_handler\"",
+            "name": "\"serverOnlyFn\"",
+            "filename": "\"src/compat/server-only.ts\""
+          },
+          {
+            "id": "\"compat-order\"",
+            "name": "\"zOrder\"",
+            "filename": "\"src/compat/fns.ts\""
+          }
+        ],
+        "clientIds": [
+          "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "compat-cross",
+          "compat-cross_1",
+          "compat-dup",
+          "compat-dup_1",
+          "compat-order",
+          "compat-order_1",
+          "compat-src-compat-fns-ts-$dollar_createServerFn_handler",
+          "compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler",
+          "compat-src-compat-fns-ts-innerName_createServerFn_handler",
+          "compat-src-compat-fns-ts-localFn_createServerFn_handler",
+          "compat-src-compat-sub-deep-ts-deepFn_createServerFn_handler",
+          "compat:plain"
+        ]
+      }
+    }
+  }
+}
