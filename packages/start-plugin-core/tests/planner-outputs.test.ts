@@ -821,4 +821,111 @@ export const fn = createServerFn().middleware([makeB(true)]).handler(async () =>
       )
     }
   })
+  const flowHead = `import { createIsomorphicFn, createMiddleware, createServerFn, createStart } from '@tanstack/react-start'
+const register = (x: unknown) => x
+`
+  const where = `where the compiler cannot follow it (${FLOW_PLACES})`
+
+  test('a server fn builder in a `const`, passed to a function', async () => {
+    const code = `${flowHead}const base = createServerFn()
+register(base)
+export const fn = base.handler(async () => 'x')
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('base)'),
+        text: 'base',
+        message: `\`base\` is a server fn builder without \`.handler()\`, used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+      },
+    ])
+  })
+
+  test('a server fn builder created inside a call', async () => {
+    const code = `${flowHead}export const fn = (register(createServerFn()) as any).handler(async () => 'x')
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('createServerFn()'),
+        text: 'createServerFn()',
+        message: `A server fn builder without \`.handler()\` is used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+      },
+    ])
+  })
+
+  test('a factory passed to a function', async () => {
+    const code = `${flowHead}const make = (f: any) => f()
+export const fn = make(createServerFn).handler(async () => 'x')
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('createServerFn)'),
+        text: 'createServerFn',
+        message: `\`createServerFn\` is a TanStack Start factory, used ${where}, so server code attached to what it creates there would ship to the client. Call it directly where you need what it creates: the compiler follows each call's chain, and the \`const\` holding it.`,
+      },
+    ])
+  })
+
+  test('a function returning a builder, passed to a function', async () => {
+    const code = `${flowHead}const make = () => createServerFn()
+register(make)
+export const fn = make().handler(async () => 'x')
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('make)'),
+        text: 'make',
+        message: `\`make\` returns a server fn builder without \`.handler()\`, and is used ${where}, so server code attached to what it returns there would ship to the client. Call it directly where you use its result: the compiler follows a call of it like the value it returns.`,
+      },
+    ])
+  })
+
+  test('an isomorphic fn returning an open middleware, passed to a function', async () => {
+    const code = `${flowHead}const a = createMiddleware({ type: 'function' }).server(({ next }) => next())
+const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
+const mw = createIsomorphicFn().server(() => a).client(() => b)
+register(mw)
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('mw)'),
+        text: 'mw',
+        message: `\`mw\` returns a middleware without \`.server()\`, and is used ${where}, so server code attached to what it returns there would ship to the client. Call it directly where you use its result: the compiler follows a call of it like the value it returns.`,
+      },
+    ])
+  })
+
+  test('a start instance passed to a function', async () => {
+    const code = `${flowHead}const si = createStart(() => ({}))
+register(si)
+export const startInstance = si
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('si)'),
+        text: 'si',
+        message: `\`si\` is a start instance, used ${where}, so server code attached there to a middleware it creates would ship to the client. Call its \`.createMiddleware()\` directly where you need a middleware.`,
+      },
+    ])
+  })
+  test('the implementation of a `createClientOnlyFn` returning an open middleware', async () => {
+    const code =
+      `${flowHead}const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
+const mw = createClientOnlyFn(() => b)
+export const startInstance = createStart(() => ({ functionMiddleware: [mw()] }))
+`.replace('createIsomorphicFn,', 'createClientOnlyFn, createIsomorphicFn,')
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('() => b'),
+        text: '() => b',
+        message: `A function returning a middleware without \`.server()\` is used ${where}, so server code attached to what it returns there would ship to the client. Call it directly where you use its result: the compiler follows a call of it like the value it returns.`,
+      },
+    ])
+  })
 })

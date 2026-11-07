@@ -317,9 +317,11 @@ export function startAnalysisOf(
   /** The implementation whose return a value in literals ends in, when it is an isomorphic fn's or a `createClientOnlyFn` function's. */
   const returnedFrom = (from: Node): Escape['returnedFrom'] => {
     const landing = landingOf(from)
+    // (the implementation itself, `createClientOnlyFn(() => mw)`, is passed, not returned)
     if (
       !landing ||
       landing.p.type !== 'CallExpression' ||
+      landing.n === from ||
       !isFunctionNode(landing.n) ||
       landing.p.callee === landing.n
     ) {
