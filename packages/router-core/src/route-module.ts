@@ -573,12 +573,15 @@ function scopeLocationOptions<
   const root = router.routesById[rootId] as AnyRoute | undefined
   if (!root) {
     if (process.env.NODE_ENV !== 'production') {
+      const names = Object.keys(router.routesById)
+        .filter((id) => id.startsWith(`${moduleId}#`) && id.endsWith(':'))
+        .map((id) => `"${id.slice(moduleId.length + 1, -1)}"`)
       throw new Error(
-        Object.keys(router.routesById).some((id) =>
-          id.startsWith(`${moduleId}#`),
-        )
-          ? `Invariant failed: Route module "${moduleId}" is installed several times in this router. Address one installation through its namespace.`
-          : `Invariant failed: Route module "${moduleId}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
+        names.length > 1
+          ? `Invariant failed: Route module "${moduleId}" is installed several times in this router (as ${names.join(', ')}). Address one installation through its namespace.`
+          : names.length === 1
+            ? `Invariant failed: Route module "${moduleId}" is installed as ${names[0]} in this router. Address it through its namespace.`
+            : `Invariant failed: Route module "${moduleId}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
       )
     }
     invariant()

@@ -803,7 +803,41 @@ describe('a module installed several times', () => {
         _module: '@acme/settings',
         to: '/profile',
       } as any),
-    ).toThrow('installed several times')
+    ).toThrow(
+      'Route module "@acme/settings" is installed several times in this router (as "orgSettings", "userSettings"). Address one installation through its namespace.',
+    )
+  })
+
+  test('a single named installation is named when addressed by module id', () => {
+    const rootRoute = new BaseRootRoute({})
+    const settingsRoot = createModuleRoot('@acme/settings')
+    settingsRoot.addChildren([
+      new BaseRoute({ getParentRoute: () => settingsRoot, path: '/profile' }),
+    ])
+    const only = mountRouteModule(settingsRoot, {
+      parent: () => rootRoute as AnyRoute,
+      at: '/settings',
+      as: 'only',
+    } as any)
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([only]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    expect(
+      router.buildLocation({
+        _module: '@acme/settings#only',
+        to: '/profile',
+      } as any).pathname,
+    ).toBe('/settings/profile')
+    expect(() =>
+      router.buildLocation({
+        _module: '@acme/settings',
+        to: '/profile',
+      } as any),
+    ).toThrow(
+      'Route module "@acme/settings" is installed as "only" in this router. Address it through its namespace.',
+    )
   })
 
   test('redirects resolve in the installation of the route that threw', async () => {
