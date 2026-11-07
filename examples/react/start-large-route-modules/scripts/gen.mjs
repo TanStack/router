@@ -178,6 +178,9 @@ async function writeModule(name, templateName, packageJson, replacements) {
         rootDir: '.',
         outDir: '.tanstack/types',
       },
+      // The stand-ins for the contracts of used modules: the declaration
+      // build needs no order among the modules.
+      include: ['src', '.tanstack/route-types-stubs.d.ts'],
     }),
   )
   await symlink(

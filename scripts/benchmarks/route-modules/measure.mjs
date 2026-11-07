@@ -84,7 +84,7 @@ const routeTypesTsconfig = {
     rootDir: '.',
     outDir: '.tanstack/types',
   },
-  include: ['src'],
+  include: ['src', '.tanstack/route-types-stubs.d.ts'],
 }
 
 function write(file, content) {
