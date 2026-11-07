@@ -631,6 +631,21 @@ export function mountRouteModule<
     }
     invariant()
   }
+  // A module is installed once, or several times under names; mixing both
+  // would resolve module-local ids ambiguously. Generated trees never mix:
+  // the generator rejects it.
+  const mountedUnder = root.options.getParentRoute?.()
+  if (
+    mountedUnder !== undefined &&
+    (mountedUnder === templateHost) !== (options.as !== undefined)
+  ) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: Route module "${moduleId}" is installed several times. Name every installation with "as".`,
+      )
+    }
+    invariant()
+  }
   const at = options.at
   const mount = {
     getParentRoute: options.parent,

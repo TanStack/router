@@ -661,6 +661,30 @@ describe('a module installed several times', () => {
     ])
   })
 
+  test('a module is installed once or several times under names, not both', () => {
+    const host = new BaseRootRoute({})
+    const moduleRoot = () => {
+      const root = createModuleRoot('@acme/settings')
+      root.addChildren([
+        new BaseRoute({ getParentRoute: () => root, path: '/' }),
+      ])
+      return root
+    }
+    const mount = (root: AnyRoute, at: string, as?: string) =>
+      mountRouteModule(root, { parent: () => host as AnyRoute, at, as } as any)
+
+    const unnamedFirst = moduleRoot()
+    mount(unnamedFirst, '/a')
+    expect(() => mount(unnamedFirst, '/b', 'second')).toThrow(
+      'Route module "@acme/settings" is installed several times. Name every installation with "as".',
+    )
+    const namedFirst = moduleRoot()
+    mount(namedFirst, '/a', 'first')
+    expect(() => mount(namedFirst, '/b')).toThrow('installed several times')
+    // Mounting the same installation again, as hot updates do, is allowed.
+    expect(() => mount(unnamedFirst, '/a')).not.toThrow()
+  })
+
   test("the module's routes stay templates with module-local ids and paths", () => {
     const { router, settingsRoot, profileRoute } = setupInstallations()
 
