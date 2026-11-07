@@ -1,6 +1,7 @@
 /**
  * Routing APIs a route module's generated scope (`routeScope.gen.ts`) exports
- * typed against the module's own routes.
+ * typed against the module's own routes. Keep in step with `scopeApis` in
+ * `packages/router-generator/src/route-module/emit.ts`.
  */
 export const scopedRouterApis = [
   'createFileRoute',
@@ -25,6 +26,9 @@ export const scopedRouterApis = [
   'useRouteContext',
   'useLocation',
   'useRouterState',
+  'useLinkProps',
+  'useBlocker',
+  'notFound',
 ] as const
 
 /** Root route constructors; a route module's root is `createModuleRoot`. */
@@ -34,4 +38,8 @@ export const rootRouteConstructors = [
 ] as const
 
 /** Start APIs a Start route module's scope exports. */
-export const scopedStartApis = ['createServerFn', 'createStartModule'] as const
+export const scopedStartApis = [
+  'createServerFn',
+  'createMiddleware',
+  'createStartModule',
+] as const

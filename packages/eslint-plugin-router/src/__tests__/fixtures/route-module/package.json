@@ -3,7 +3,15 @@
   "private": true,
   "tanstack": {
     "router": {
-      "module": true
+      "module": {
+        "uses": [
+          "@fixture/used",
+          {
+            "module": "@fixture/other",
+            "as": "other"
+          }
+        ]
+      }
     }
   }
 }

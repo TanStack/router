@@ -10,11 +10,13 @@ Files of a [route module](../routing/route-modules.md) must import routing and S
 
 The rule reports value imports of these APIs from the framework packages:
 
-- Route constructors and routing APIs: `createFileRoute`, `Link`, `createLink`, `linkOptions`, `Navigate`, `useNavigate`, `redirect`, `MatchRoute`, `useMatchRoute`, `useRouter`, `getRouteApi`, `useMatch`, `useMatches`, `useParentMatches`, `useChildMatches`, `useLoaderData`, `useLoaderDeps`, `useSearch`, `useParams`, `useRouteContext`, `useLocation` and `useRouterState`.
+- Route constructors and routing APIs: `createFileRoute`, `Link`, `createLink`, `linkOptions`, `Navigate`, `useNavigate`, `redirect`, `MatchRoute`, `useMatchRoute`, `useRouter`, `getRouteApi`, `useMatch`, `useMatches`, `useParentMatches`, `useChildMatches`, `useLoaderData`, `useLoaderDeps`, `useSearch`, `useParams`, `useRouteContext`, `useLocation`, `useRouterState`, `useLinkProps`, `useBlocker` and `notFound`.
 - Root route constructors (`createRootRoute`, `createRootRouteWithContext`): a module root is created with `createModuleRoot`.
-- Start APIs of Start route modules: `createServerFn` and `createStartModule`.
+- Start APIs of Start route modules: `createServerFn`, `createMiddleware` and `createStartModule`.
 
-The rule only applies to files whose nearest `package.json` declares `tanstack.router.module`. It ignores generated files and type-only imports.
+The rule also reports every import from a module the package lists in `uses` (`"@acme/products"` or any of its entry points), including type-only imports, re-exports and dynamic imports. A route module links into the modules it uses through the generated namespaces; its declaration build compiles against a stand-in for each used contract, so a type imported from a used module would be emitted with the stand-in's types. Move code that several modules share into a package both depend on.
+
+The rule only applies to files whose nearest `package.json` declares `tanstack.router.module`. It ignores generated files, and type-only imports of the framework packages.
 
 ## Rule Details
 
@@ -29,6 +31,17 @@ export const Route = createFileRoute('@acme/products:/$productId')({
 })
 ```
 
+```tsx title="packages/products/src/routes/index.tsx"
+/* eslint "@tanstack/router/route-module-imports": "error" */
+// package.json: "tanstack": { "router": { "module": { "uses": ["@acme/account"] } } }
+import type { Order } from '@acme/account/api'
+import { createFileRoute } from '../routeScope.gen'
+
+export const Route = createFileRoute('@acme/products:/')({
+  loader: (): Promise<Array<Order>> => fetchOrders(),
+})
+```
+
 Examples of **correct** code for this rule:
 
 ```tsx title="packages/products/src/routes/$productId.tsx"
@@ -38,6 +51,21 @@ import { createFileRoute, Link } from '../routeScope.gen'
 
 export const Route = createFileRoute('@acme/products:/$productId')({
   component: () => <Link to="/">All products</Link>,
+})
+```
+
+```tsx title="packages/products/src/routes/index.tsx"
+/* eslint "@tanstack/router/route-module-imports": "error" */
+import type { Order } from '@acme/orders-types'
+import { account, createFileRoute } from '../routeScope.gen'
+
+export const Route = createFileRoute('@acme/products:/')({
+  loader: (): Promise<Array<Order>> => fetchOrders(),
+  component: () => (
+    <account.Link to="/orders/$orderId" params={{ orderId: '1' }}>
+      My last order
+    </account.Link>
+  ),
 })
 ```
 

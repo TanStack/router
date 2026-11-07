@@ -7,7 +7,12 @@ import {
   scopedRouterApis,
   scopedStartApis,
 } from './constants'
-import { isGeneratedFile, isInRouteModule } from './route-module-imports.utils'
+import {
+  getRouteModule,
+  getUsedModule,
+  isGeneratedFile,
+} from './route-module-imports.utils'
+import type { TSESTree } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from '../../types'
 
 const createRule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
@@ -26,7 +31,7 @@ export const rule = createRule({
     type: 'problem',
     docs: {
       description:
-        'Ensure route modules import routing and Start APIs from their generated route scope',
+        'Ensure route modules import routing and Start APIs from their generated route scope and do not import from the modules they use',
       recommended: 'error',
     },
     messages: {
@@ -34,6 +39,8 @@ export const rule = createRule({
         '"{{name}}" in a route module must be imported from its generated route scope (routeScope.gen), which types it against the module\'s own routes.',
       useModuleRoot:
         'The root route of a route module is created with "createModuleRoot" from its generated route scope (routeScope.gen), not with "{{name}}".',
+      noUsedModuleImport:
+        'A route module must not import from a module it uses ("{{module}}"), in values or in types: its declaration build compiles against a stand-in for that module\'s contract. Link into its routes through the generated namespace in routeScope.gen, and move shared code into a package both modules depend on.',
     },
     schema: [],
   },
@@ -41,12 +48,43 @@ export const rule = createRule({
 
   create(context) {
     const filename = context.filename
-    if (isGeneratedFile(filename) || !isInRouteModule(path.dirname(filename))) {
+    const module = isGeneratedFile(filename)
+      ? null
+      : getRouteModule(path.dirname(filename))
+    if (!module) {
       return {}
     }
 
+    const reportUsedModule = (node: TSESTree.Node, source: string) => {
+      const used = getUsedModule(module, source)
+      if (used !== undefined) {
+        context.report({
+          node,
+          messageId: 'noUsedModuleImport',
+          data: { module: used },
+        })
+      }
+    }
+
     return {
+      ExportNamedDeclaration(node) {
+        if (node.source) {
+          reportUsedModule(node, node.source.value)
+        }
+      },
+      ExportAllDeclaration(node) {
+        reportUsedModule(node, node.source.value)
+      },
+      ImportExpression(node) {
+        if (
+          node.source.type === AST_NODE_TYPES.Literal &&
+          typeof node.source.value === 'string'
+        ) {
+          reportUsedModule(node, node.source.value)
+        }
+      },
       ImportDeclaration(node) {
+        reportUsedModule(node, node.source.value)
         if (node.importKind === 'type') {
           return
         }
