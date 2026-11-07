@@ -74,7 +74,7 @@ export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
 }
 
 export interface ServerFnBuildInfo {
-  version: 3
+  version: 4
   canonicalId: string
   facts: Array<ServerFnFact>
 }
@@ -610,7 +610,7 @@ export class StartRsbuildCompilerSession {
     const serverFns = serverFnFactsOf(out)
     if (serverFns && buildInfo) {
       buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
-        version: 3,
+        version: 4,
         canonicalId: identity.canonicalId,
         facts: serverFns,
       } satisfies ServerFnBuildInfo

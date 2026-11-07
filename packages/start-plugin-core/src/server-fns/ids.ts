@@ -1,23 +1,22 @@
 /**
- * Server-function ids: the stable key of a
- * server fn, the default production id, the dev id, the custom-id
- * placeholder and the global occupied-id allocator.
+ * Server-function ids: the stable key of a server fn, the dev id, the
+ * custom-id placeholder and the global occupied-id allocator. What a
+ * production build prints (the default id, `functionName`, literals,
+ * collision order, which custom ids it accepts): `./format`.
  */
-import { hash } from 'node:crypto'
+import {
+  collisionOrder,
+  customIdCheck,
+  customIdError,
+  customIdWarning,
+  defaultFunctionId,
+} from './format'
 
 export interface ServerFnKey {
   /** Root-relative path of the defining file (forward slashes). */
   rootRel: string
   /** Export name, variable name or structural path. */
   stableKey: string
-}
-
-/** The default production id: base64url of a sha256 prefix (no path leak, ~22 chars). */
-export function defaultFunctionId(key: ServerFnKey): string {
-  return hash('sha256', `${key.rootRel}#${key.stableKey}`, 'base64url').slice(
-    0,
-    22,
-  )
 }
 
 /** The dev id: an opaque encoding of the defining file and key the dev resolver decodes. */
@@ -57,95 +56,54 @@ export function placeholderId(key: ServerFnKey): string {
   return `${PLACEHOLDER_PREFIX}${placeholderToken(key)}${PLACEHOLDER_SUFFIX}`
 }
 
-/**
- * The `functionName` a custom generator receives: the handler name earlier
- * Start versions generated (so custom ids survive an upgrade),
- * `<name>_createServerFn_handler`, then `_1`, `_2`… for a name taken earlier
- * in the module (`taken`: the module's names so far, in source order).
- * Characters outside `[A-Za-z0-9_$]` (a non-ASCII identifier, a string
- * property key) become `_`, so an id that embeds the name stays a URL path
- * segment.
- */
-export function handlerFunctionName(base: string, taken: Set<string>): string {
-  let name = `${base.replace(/[^A-Za-z0-9_$]/g, '_')}_createServerFn_handler`
-  while (taken.has(name)) {
-    const [stem, count] = name.split(/_(\d+)$/)
-    name = `${identifierSafe(stem!)}_${Number(count || '0') + 1}`
-  }
-  taken.add(name)
-  return name
-}
-
-/** What the earlier versions applied to an incremented name. */
-function identifierSafe(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9_$]/g, '_')
-    .replace(/^[0-9]/, '_$&')
-    .replace(/^\$/, '_$')
-    .replace(/_{2,}/g, '_')
-    .replace(/^_|_$/g, '')
-}
-
 export type GenerateFunctionId = (opts: {
   filename: string
   functionName: string
 }) => string | undefined
 
 /**
- * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
- * unencoded; the server reads the segment back as is): RFC 3986 unreserved
- * characters, which no client, proxy or server encodes, decodes or
- * normalises, and `$`, which `functionName` can hold; not a dot segment,
- * which URL parsing removes.
- */
-const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
-
-function isUrlSegmentId(id: string): boolean {
-  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
-}
-
-/**
  * One immutable allocation of final ids against a global occupied set:
- * the client rank first (sorted stable keys, frozen; under RSC the provider
- * builds first and allocates its entries first: deterministic, not
- * client-first), then server-only
- * entries appended; custom bases and suffix candidates are both checked.
+ * the client rank first (frozen; under RSC the provider builds first and
+ * allocates its entries first: deterministic, not client-first), then
+ * server-only entries appended, each rank in `collisionOrder`; custom bases
+ * and suffix candidates are both checked.
  */
 export class FunctionIdAllocator {
   private readonly occupied = new Set<string>()
   private readonly final = new Map<string, string>()
-  /** The error of each placeholder token whose custom id is not a URL path segment. */
+  /** The error of each placeholder token whose custom id `customIdCheck` refuses. */
   private readonly invalid = new Map<string, string>()
 
   constructor(private readonly generate: GenerateFunctionId | undefined) {}
 
   /**
-   * Allocates the entries of one rank (those not yet allocated), in sorted
-   * key order. Returns an error for each entry of the rank whose custom id
-   * is not a URL path segment (also when an earlier call allocated it: a
-   * rebuild reports it again).
+   * Allocates the entries of one rank (those not yet allocated). Returns an
+   * error for each entry of the rank whose custom id `customIdCheck`
+   * refuses (also when an earlier call allocated it: a rebuild reports it
+   * again), and a warning for each entry this call allocates whose custom
+   * id it deprecates (once per session).
    */
   allocate(
-    entries: Array<ServerFnKey & { functionName: string; name: string }>,
-  ): Array<string> {
-    const sorted = [...entries].sort(
-      (a, b) =>
-        (a.rootRel < b.rootRel ? -1 : a.rootRel > b.rootRel ? 1 : 0) ||
-        (a.stableKey < b.stableKey ? -1 : a.stableKey > b.stableKey ? 1 : 0),
-    )
+    entries: Array<
+      ServerFnKey & { functionName: string; name: string; ordinal: number }
+    >,
+  ): { errors: Array<string>; warnings: Array<string> } {
     const errors: Array<string> = []
-    for (const e of sorted) {
+    const warnings: Array<string> = []
+    for (const e of [...entries].sort(collisionOrder)) {
       const token = placeholderToken(e)
       if (!this.final.has(token)) {
-        const custom = this.generate?.({
-          filename: e.rootRel,
-          functionName: e.functionName,
-        })
-        if (custom !== undefined && !isUrlSegmentId(custom)) {
-          this.invalid.set(
-            token,
-            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(custom)} for the server function ${e.name} (functionName "${e.functionName}") of ${e.rootRel}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
-          )
+        // (an empty id falls back to the default, as it always did)
+        const custom =
+          this.generate?.({
+            filename: e.rootRel,
+            functionName: e.functionName,
+          }) || undefined
+        const check = custom === undefined ? 'ok' : customIdCheck(custom)
+        if (check === 'error') {
+          this.invalid.set(token, customIdError(e, custom!))
+        } else if (check === 'deprecated') {
+          warnings.push(customIdWarning(e, custom!))
         }
         const base = custom ?? defaultFunctionId(e)
         let cand = base
@@ -161,10 +119,14 @@ export class FunctionIdAllocator {
         errors.push(error)
       }
     }
-    return errors
+    return { errors, warnings }
   }
 
-  /** Replaces every placeholder of `code`; unknown tokens are left (a diagnostic for the host). */
+  /**
+   * Replaces every placeholder of `code`, escaped for the string literal
+   * it is in (the character before it is the quote); unknown tokens are
+   * left (a diagnostic for the host).
+   */
   patch(code: string): {
     code: string
     edits: Array<{ start: number; end: number; text: string }>
@@ -182,11 +144,21 @@ export class FunctionIdAllocator {
         missing.push(m[1]!)
         continue
       }
-      edits.push({ start: m.index, end: m.index + m[0].length, text: id })
-      out += code.slice(last, m.index) + id
+      const text = escapeFor(code[m.index - 1], id)
+      edits.push({ start: m.index, end: m.index + m[0].length, text })
+      out += code.slice(last, m.index) + text
       last = m.index + m[0].length
     }
     out += code.slice(last)
     return { code: out, edits, missing }
   }
+}
+
+/** `id` as the text of a string literal quoted with `quote`. */
+function escapeFor(quote: string | undefined, id: string): string {
+  if (quote !== "'" && quote !== '"' && quote !== '`') {
+    return id
+  }
+  const escaped = id.replace(/\\/g, '\\\\').replaceAll(quote, `\\${quote}`)
+  return quote === '`' ? escaped.replace(/\$\{/g, '\\${') : escaped
 }

@@ -1034,9 +1034,12 @@ export function startCompilerPlugin(
         if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
           return null
         }
-        const { allocator, errors } = s.start.allocateIds(env.type)
+        const { allocator, errors, warnings } = s.start.allocateIds(env.type)
         if (errors.length > 0) {
           this.error({ message: errors.join('\n') })
+        }
+        for (const warning of warnings) {
+          this.warn(warning)
         }
         const patched = allocator.patch(code)
         if (patched.missing.length > 0) {

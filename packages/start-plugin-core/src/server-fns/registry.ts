@@ -11,6 +11,8 @@ import type { ServerFnKey } from './ids'
 export interface ServerFnEntry extends ServerFnKey {
   /** What a custom `generateFunctionId` receives as `functionName` (`handlerFunctionName`). */
   functionName: string
+  /** The server fn's position among its module's, in source order (`collisionOrder`). */
+  ordinal: number
   /** The id as printed in the outputs: a dev id, a default id or a placeholder. */
   id: string
   /** The export name of the `createServerRpc` wrapper in the provider module. */
@@ -29,6 +31,7 @@ export interface ServerFnFact {
   rootRel: string
   stableKey: string
   functionName: string
+  ordinal: number
   id: string
   exportName: string
   name: string
@@ -145,6 +148,7 @@ export class ServerFnRegistry {
             rootRel: f.rootRel,
             stableKey: f.stableKey,
             functionName: f.functionName,
+            ordinal: f.ordinal,
             id: f.id,
             exportName: f.exportName,
             name: f.name,

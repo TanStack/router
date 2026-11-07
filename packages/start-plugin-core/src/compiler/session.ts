@@ -507,20 +507,22 @@ export class StartCompilerSession {
    * The id allocator with an environment's rank allocated (a custom
    * generator): a client build's client-referenced functions first, the
    * rest after. `errors`: the rank's custom ids that are not a URL path
-   * segment (the host fails the build with them).
+   * segment (the host fails the build with them); `warnings`: the
+   * deprecated custom ids this call allocated (the host reports them).
    */
   allocateIds(envType: 'client' | 'server'): {
     allocator: FunctionIdAllocator
     errors: Array<string>
+    warnings: Array<string>
   } {
     const allocator = this.allocator!
     const entries = this.registry.entries()
-    const errors = allocator.allocate(
+    const { errors, warnings } = allocator.allocate(
       envType === 'client'
         ? entries.filter((e) => e.clientReferenced)
         : entries,
     )
-    return { allocator, errors }
+    return { allocator, errors, warnings }
   }
 
   /**
