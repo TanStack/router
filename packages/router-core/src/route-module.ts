@@ -536,8 +536,18 @@ function scopeLocationOptions<
     _nearestRoute?: string
   },
 >(router: AnyRouter, opts: TOptions): TOptions {
-  // Only called with `_module` set (see `RouterCore.buildLocation`); module
-  // routes and scoped APIs, which create such options, installed it.
+  // Called with `_module` set on the options or on their mask (see
+  // `RouterCore.buildLocation`); module roots and mounts installed it.
+  if (opts._module === undefined) {
+    // A mask is built in the scope of its destination: a module mask of an
+    // application destination has no module to resolve its paths in.
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: The mask of an application destination cannot come from route module "${scopeTarget(opts.mask!._module!)}". Build the destination and its mask in the same scope.`,
+      )
+    }
+    invariant()
+  }
   // Route/RouteApi consumers retain their authored origin even when reusable
   // options supply a destination stamp.
   if (opts._fromRoute) {
@@ -574,9 +584,10 @@ function scopeLocationOptions<
     invariant()
   }
   if (opts.mask?._module !== undefined) {
-    bindRouteScopeOptions(
+    // The mask shares the scope of its destination.
+    resolveRouteScope(
       rootId.slice(0, -1),
-      opts.mask,
+      opts.mask._module,
       router,
       opts._nearestRoute,
     )
@@ -727,14 +738,21 @@ function resolveRouteScopeConstraint(
   return scope.target
 }
 
-/** Internal generated/framework wiring: Bind options without silently replacing an incompatible scope. */
-export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
+function scopeTarget(scope: RouteModuleScope): string {
+  return typeof scope === 'object' ? scope.target : scope
+}
+
+/**
+ * The scope of options an API of `moduleId` receives: the options' own scope
+ * (`scope`) must be compatible with it, and an installation chosen by either
+ * is kept.
+ */
+function resolveRouteScope(
   moduleId: string,
-  options: T,
+  scope: RouteModuleScope | undefined,
   router?: AnyRouter,
   nearestRouteId?: string,
-): Omit<T, '_module'> & { _module: RouteModuleScope } {
-  let scope = options._module
+): RouteModuleScope {
   if (typeof scope === 'object' && router) {
     const target = resolveRouteScopeConstraint(
       router,
@@ -744,7 +762,7 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
     // The deferred receiver is already this API's scope, so the resolved
     // constraint has also established its installation ownership.
     if (scope.receiver === moduleId) {
-      return { ...options, _module: target }
+      return target
     }
     scope = target
   }
@@ -766,14 +784,28 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
       }
     }
   }
+  return typeof scope === 'object'
+    ? scope
+    : incoming?.includes('#')
+      ? incoming
+      : moduleId
+}
+
+/** Internal generated/framework wiring: Bind options without silently replacing an incompatible scope. */
+export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
+  moduleId: string,
+  options: T,
+  router?: AnyRouter,
+  nearestRouteId?: string,
+): Omit<T, '_module'> & { _module: RouteModuleScope } {
   return {
     ...options,
-    _module:
-      typeof scope === 'object'
-        ? scope
-        : incoming?.includes('#')
-          ? incoming
-          : moduleId,
+    _module: resolveRouteScope(
+      moduleId,
+      options._module,
+      router,
+      nearestRouteId,
+    ),
   }
 }
 

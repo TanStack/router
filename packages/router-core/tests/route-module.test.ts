@@ -316,6 +316,28 @@ describe('module-local navigation', () => {
     expect(location.maskedLocation?.pathname).toBe('/shop/products')
   })
 
+  test('a mask is built in the scope of its destination', () => {
+    const { router } = setup()
+
+    expect(() =>
+      router.buildLocation({
+        to: '/shop',
+        mask: { _module: '@acme/products', to: '/$productId' },
+      } as any),
+    ).toThrow(
+      'The mask of an application destination cannot come from route module "@acme/products". Build the destination and its mask in the same scope.',
+    )
+    expect(() =>
+      router.buildLocation({
+        _module: '@acme/products',
+        to: '/',
+        mask: { _module: '@acme/other', to: '/' },
+      } as any),
+    ).toThrow(
+      'Cannot use route scope "@acme/other" options in route scope "@acme/products".',
+    )
+  })
+
   test('navigating to a module that is not installed fails', () => {
     const { router } = setup()
 

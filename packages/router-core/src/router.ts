@@ -2214,18 +2214,16 @@ export class RouterCore<
     // translation before the router is created. The caller's options stay
     // the cache key.
     let cacheKey: typeof opts | undefined
-    if (routeModules && opts._module !== undefined) {
+    const scope = opts._module ?? opts.mask?._module
+    if (routeModules && scope !== undefined) {
       cacheKey = opts
       opts = routeModules.scopeLocation(this, opts)
-    } else if (
-      process.env.NODE_ENV !== 'production' &&
-      opts._module !== undefined
-    ) {
+    } else if (process.env.NODE_ENV !== 'production' && scope !== undefined) {
       // Nothing installed the behavior: no module root was created or mounted
       // in this process, so the option comes from a module that is not
       // installed. Production has no check, which would cost every application.
       throw new Error(
-        `Invariant failed: Route module "${typeof opts._module === 'object' ? opts._module.target : opts._module}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
+        `Invariant failed: Route module "${typeof scope === 'object' ? scope.target : scope}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
       )
     }
     const next = build(opts)
