@@ -182,7 +182,12 @@ export class Workspace {
 
   /** Type-checks the application against the published modules. */
   checkApp() {
-    return this.compile('web', ['-p', 'tsconfig.json', '--noEmit'])
+    return this.check('web')
+  }
+
+  /** Type-checks a package's sources against the published contracts it uses. */
+  check(name: string) {
+    return this.compile(name, ['-p', 'tsconfig.json', '--noEmit'])
   }
 
   private compile(name: string, args: Array<string>) {

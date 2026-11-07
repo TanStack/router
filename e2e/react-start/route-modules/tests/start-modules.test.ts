@@ -352,14 +352,26 @@ declare module '@tanstack/react-start' {
 export const ownLink = linkOptions({ to: '/' })
 export const dependencyLink = ${alias}.linkOptions({ to: '/profile' })
 export const serverFn = createServerFn().handler(() => 'ok')
-// @ts-expect-error The dependency namespace retains its provider's local paths.
-${alias}.linkOptions({ to: '/outside' })
 `,
       )
       for (const name of ['settings', 'team']) {
         const result = await workspace.publish(name)
         expect(result.diagnostics, name).toEqual([])
       }
+      // The dependency namespace retains its provider's local paths. The
+      // source check reads the real contract; the declaration build above
+      // compiled against a stand-in.
+      writeFileSync(
+        path.join(workspace.pkg('team'), 'src/outside.ts'),
+        `import { ${alias} } from './routeScope.gen'
+export const outside = ${alias}.linkOptions({ to: '/outside' })
+`,
+      )
+      const check = await workspace.check('team')
+      expect(check.ok).toBe(false)
+      expect(errorsIn(check.diagnostics, 'src/outside.ts').join('\n')).toMatch(
+        /outside/,
+      )
     },
   )
 })
