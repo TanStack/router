@@ -4,7 +4,8 @@
  * segment back. An id a custom `generateFunctionId` returns that the URL
  * never carried whole (a `/` or `#` that splits or ends it, `?`, `"`, `\`,
  * whitespace, a control or non-ASCII character a client percent-encodes,
- * a dot segment) fails the build with an error naming the defining file,
+ * a dot segment, a percent-encoding the server reads as another id or
+ * rejects) fails the build with an error naming the defining file,
  * instead of a client that calls another function or none. An id with
  * other ASCII characters outside the unreserved set and `$` (`%`, `:`,
  * `'`, `+`, `@`, `|`, `[`…) builds and reaches its handler, as it did, with
@@ -37,11 +38,17 @@ const refused: Record<string, string> = {
   'src/control.ts': 'users\u0007get',
   'src/non-ascii.ts': 'utilisateurs-é',
   'src/dot.ts': '..',
+  // a percent-encoding the server decodes to another id, or rejects
+  'src/decoded.ts': 'users%41get',
+  'src/lowercase.ts': 'x%c3%a9',
+  'src/encoded-dot.ts': '%2E',
+  'src/malformed.ts': 'users%zz',
 }
 
 /** Ids that reach their handler, deprecated, by file. */
 const deprecated: Record<string, string> = {
   'src/percent.ts': 'users%2Fget',
+  'src/encoded-space.ts': 'users%20get',
   'src/colon.ts': 'users:get',
   'src/apostrophe.ts': "users'get",
   'src/plus.ts': 'users+get',
