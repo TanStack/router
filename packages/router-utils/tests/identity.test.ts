@@ -4,6 +4,7 @@ import {
   SAME_FILE_SPECIFIER_RE,
   deriveId,
   identify,
+  isSplitGroupValue,
   langFromId,
   resolveSameFileSpecifier,
   revision,
@@ -95,6 +96,22 @@ describe('identity', () => {
     expect(parsed.derived?.kind).toBe('shared')
     // the id it parses to is the id
     expect(deriveId(parsed.canonicalId, parsed.derived!)).toBe(shared)
+  })
+
+  it('tells a split group value from a shared or an extracted-export value of the same key', () => {
+    for (const q of [
+      { kind: 'split', value: 'component' },
+      { kind: 'split', value: 'component~loader' },
+      { kind: 'shared', value: 'component+errorComponent' },
+      { kind: 'export', value: 'Card' },
+      { kind: 'export', value: 'a---b' },
+    ] as const) {
+      const id = deriveId('/app/page.tsx', q)
+      const value = new URLSearchParams(id.slice(id.indexOf('?') + 1)).get(
+        'tsr-split',
+      )!
+      expect(isSplitGroupValue(value)).toBe(q.kind === 'split')
+    }
   })
 
   it("names an extracted export after 'export', anything but a word character percent-encoded", () => {

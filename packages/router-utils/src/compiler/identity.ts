@@ -123,6 +123,15 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
   return null
 }
 
+/**
+ * Whether a decoded `tsr-split` value names a split group (`component---loader`),
+ * not a module the file's outputs share (`shared---…`) or an extracted
+ * export (`export---…`).
+ */
+export function isSplitGroupValue(value: string): boolean {
+  return parseDerived(OWNED_QUERY_KEYS.split, value)?.kind === 'split'
+}
+
 /** `a---b` → the planners' `a~b`. */
 function splitKeys(value: string): string {
   return value.split(KEY_SEPARATOR).join('~')
