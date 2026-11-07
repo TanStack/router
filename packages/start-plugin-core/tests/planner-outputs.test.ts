@@ -679,8 +679,8 @@ describe('start-env: escape messages name the shape and a fix that compiles', ()
 const a = createMiddleware({ type: 'function' }).server(({ next }) => next())
 const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
 `
-  const openMiddleware = (name: string, places: string, extra = '') =>
-    `\`${name}\` is a middleware without \`.server()\`, used where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${extra}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with \`.server(({ next }) => next())\`.`
+  const openMiddleware = (name: string, places: string) =>
+    `\`${name}\` is a middleware without \`.server()\`, used where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with \`.server(({ next }) => next())\`.`
 
   test('an open middleware returned from an isomorphic implementation', async () => {
     const code = `${mwHead}const mws = createIsomorphicFn().server(() => [a, b]).client(() => [b])
@@ -726,11 +726,9 @@ export const startInstance = createStart(() => ({ functionMiddleware: mws() }))
         severity: 'error',
         at: code.lastIndexOf('[b]') + 1,
         text: 'b',
-        message: openMiddleware(
-          'b',
-          'returned from a `createClientOnlyFn` implementation, whose calls the compiler does not follow',
-          '`createClientOnlyFn` throws when called on the server, where Start reads middleware lists. ',
-        ),
+        // (a `.server()` of its own compiles, but such a list reaching Start throws on the server)
+        message:
+          "`b` is a middleware without `.server()`, used where the compiler cannot follow it (returned from a `createClientOnlyFn` implementation, whose calls the compiler does not follow), so the compiler cannot be sure no `.server()` is attached to it there, which would ship server code to the client. `createClientOnlyFn` throws when called on the server, and Start reads middleware lists there too: pass the middleware to `.middleware([…])` or to `createStart`'s `functionMiddleware` / `requestMiddleware` directly (or in an unexported `const` array only they read).",
       },
     ])
   })

@@ -1262,11 +1262,13 @@ function flowMessage(e: Escape): string {
     e.returnedFrom ? RETURNED_FROM[e.returnedFrom] : FLOW_PLACES
   })`
   if (isOpenMiddleware(v)) {
-    const throws =
-      e.returnedFrom === 'clientOnlyFn'
-        ? '`createClientOnlyFn` throws when called on the server, where Start reads middleware lists. '
-        : ''
-    return `${is(describeOpen(v))} ${where}, so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${throws}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with ${FINISH_MIDDLEWARE}.`
+    const open = `${is(describeOpen(v))} ${where}, so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client.`
+    const direct =
+      "to `.middleware([…])` or to `createStart`'s `functionMiddleware` / `requestMiddleware` directly (or in an unexported `const` array only they read)"
+    // a `.server()` of its own compiles there, but such a list reaching Start throws on the server
+    return e.returnedFrom === 'clientOnlyFn'
+      ? `${open} \`createClientOnlyFn\` throws when called on the server, and Start reads middleware lists there too: pass the middleware ${direct}.`
+      : `${open} Pass it ${direct}, or end its chain with ${FINISH_MIDDLEWARE}.`
   }
   if (isIsoFnWithoutServer(v)) {
     return `${is(describeOpen(v))} ${where}, so the compiler cannot be sure no \`.server()\` implementation is attached to it there, which would ship server code to the client. Give it one where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`
