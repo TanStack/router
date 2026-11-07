@@ -201,12 +201,6 @@ export function getConfig(
 }
 
 function validateConfig(config: Config) {
-  if (config.disableTypes && config.routeModules) {
-    throw new Error(
-      `Route modules require TypeScript: "routeModules" cannot be used with "disableTypes".`,
-    )
-  }
-
   if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
     const message = `
 ------

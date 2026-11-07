@@ -6,8 +6,19 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { RouteModuleRouter } from './routeScope.gen'
+import type { ScopeRouter } from '@tanstack/react-router'
 import type { FileRoutesById, routeTree } from './routeTree.gen'
+
+/** The router of "@fixture/catalog": module-local paths, qualified ids. */
+export type RouteModuleRouter = ScopeRouter<
+  typeof routeTree,
+  '@fixture/catalog'
+>
+
+/** The register of "@fixture/catalog": the scope its route factories and route-bound APIs are typed against. */
+export interface RouteModuleRegister {
+  router: RouteModuleRouter
+}
 
 /** The route tree of "@fixture/catalog": its module root with all its routes. */
 export type RouteModuleTree = typeof routeTree

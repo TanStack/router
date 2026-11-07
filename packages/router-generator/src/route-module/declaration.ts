@@ -71,13 +71,17 @@ export interface RouteModuleDeclaration {
   includes: Array<ModuleInclude>
   /** Modules whose routing APIs this package explicitly consumes. */
   uses: Array<ModuleReference>
+  /** `dependencies` and `peerDependencies`: what the package needs at runtime. */
   dependencies: Array<string>
+  /** `devDependencies`: enough to resolve a module the package only uses. */
+  devDependencies: Array<string>
 }
 
 interface PackageJson {
   name?: string
   dependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
   tanstack?: { router?: { module?: unknown } }
 }
 
@@ -174,6 +178,7 @@ export function readRouteModuleDeclaration(
     ...Object.keys(packageJson.dependencies ?? {}),
     ...Object.keys(packageJson.peerDependencies ?? {}),
   ]
+  const devDependencies = Object.keys(packageJson.devDependencies ?? {})
 
   if (rawDeclaration !== undefined) {
     if (inlineOption !== undefined) {
@@ -196,6 +201,7 @@ export function readRouteModuleDeclaration(
       includes: (declaration.includes ?? []).map(toInclude),
       uses: (declaration.uses ?? []).map(toReference),
       dependencies,
+      devDependencies,
     }
   }
 
@@ -212,6 +218,7 @@ export function readRouteModuleDeclaration(
     includes: (parsed.data.includes ?? []).map(toInclude),
     uses: (parsed.data.uses ?? []).map(toReference),
     dependencies,
+    devDependencies,
   }
 }
 
@@ -246,7 +253,10 @@ export function resolveModulePackageRoot(
   }
 }
 
-/** Whether a package declares itself a route module. */
-export function isRouteModulePackage(packageRoot: string): boolean {
-  return readPackageJson(packageRoot).tanstack?.router?.module !== undefined
+/**
+ * The identity of an installation: the module id, or `<moduleId>#<as>` when
+ * the include names it.
+ */
+export function getInstallationKey(moduleId: string, as: string | undefined) {
+  return as === undefined ? moduleId : `${moduleId}#${as}`
 }

@@ -10,15 +10,19 @@ import { bindCreateModuleRoot } from '@tanstack/react-router/_internal/route-mod
 
 import { createFileRoute as createFrameworkFileRoute } from '@tanstack/react-router'
 
-import type { ScopeRouter, FileRouteScope } from '@tanstack/react-router'
+import type { FileRouteScope } from '@tanstack/react-router'
 
-import type { FileRoutesByPath, routeTree } from './routeTree.gen'
+import type { FileRoutesByPath } from './routeTree.gen'
 
-export type RouteModuleRouter = ScopeRouter<typeof routeTree, '@fixture/shop'>
+import type {
+  RouteModuleRouter,
+  RouteModuleRegister,
+} from './routeContract.gen'
 
-export interface RouteModuleRegister {
-  router: RouteModuleRouter
-}
+export type {
+  RouteModuleRouter,
+  RouteModuleRegister,
+} from './routeContract.gen'
 
 export const createFileRoute = createFrameworkFileRoute as FileRouteScope<
   FileRoutesByPath,

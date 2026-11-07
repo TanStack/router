@@ -1,6 +1,5 @@
 import path from 'node:path'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import * as fsp from 'node:fs/promises'
+import { existsSync, readFileSync } from 'node:fs'
 import crypto from 'node:crypto'
 
 export const ROUTE_MODULE_MANIFEST_VERSION = 2
@@ -80,30 +79,10 @@ function readVersioned<T>(file: string, what: string): T | undefined {
   return value as T
 }
 
-/** Writes `value` as JSON if the content changed. Returns whether it wrote. */
-async function writeJson(file: string, value: unknown): Promise<boolean> {
-  const content = `${JSON.stringify(value, null, 2)}\n`
-  if (existsSync(file) && readFileSync(file, 'utf8') === content) {
-    return false
-  }
-  mkdirSync(path.dirname(file), { recursive: true })
-  const tmp = `${file}.${process.pid}.tmp`
-  await fsp.writeFile(tmp, content)
-  await fsp.rename(tmp, file)
-  return true
-}
-
 export function readManifest(
   packageRoot: string,
 ): RouteModuleManifest | undefined {
   return readVersioned(getManifestPath(packageRoot), 'route module manifest')
-}
-
-export function writeManifest(
-  packageRoot: string,
-  manifest: RouteModuleManifest,
-): Promise<boolean> {
-  return writeJson(getManifestPath(packageRoot), manifest)
 }
 
 export function computeTopologyToken(

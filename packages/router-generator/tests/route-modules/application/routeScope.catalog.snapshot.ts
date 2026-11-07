@@ -6,7 +6,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { ScopedRouter, HostedRouter } from '@tanstack/react-router'
+import type { ScopedRouter } from '@tanstack/react-router'
 
 import type { Router as FixtureCatalogRouter } from '@fixture/catalog/route-types'
 

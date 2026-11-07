@@ -6,17 +6,24 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { RouteModuleRouter } from './routeScope.gen'
+import type { ScopeRouter } from '@tanstack/react-router'
 import type {
   FileRoutesById,
   MountedModuleHostParams,
   routeTree,
 } from './routeTree.gen'
 import type {
-  InstalledHostParams as FixtureCatalogInstalledHostParams,
   InstalledRoutesById as FixtureCatalogInstalledRoutesById,
   InstalledRouters as FixtureCatalogInstalledRouters,
 } from '@fixture/catalog/route-types'
+
+/** The router of "@fixture/shop": module-local paths, qualified ids. */
+export type RouteModuleRouter = ScopeRouter<typeof routeTree, '@fixture/shop'>
+
+/** The register of "@fixture/shop": the scope its route factories and route-bound APIs are typed against. */
+export interface RouteModuleRegister {
+  router: RouteModuleRouter
+}
 
 /** The route tree of "@fixture/shop": its module root with all its routes. */
 export type RouteModuleTree = typeof routeTree
@@ -32,10 +39,7 @@ export interface InstalledRoutesById
   extends FileRoutesById, FixtureCatalogInstalledRoutesById {}
 
 /** The routers of "@fixture/shop" and of every module it mounts, by module id. */
-export interface InstalledRouters extends Omit<
-  FixtureCatalogInstalledRouters,
-  '@fixture/catalog'
-> {
+export interface InstalledRouters extends FixtureCatalogInstalledRouters {
   '@fixture/shop': Router
   '@fixture/catalog': FixtureCatalogInstalledRouters['@fixture/catalog']
 }

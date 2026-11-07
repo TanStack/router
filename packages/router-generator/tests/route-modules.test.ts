@@ -120,6 +120,7 @@ async function checkConsumerTypes(
         moduleResolution: 'Bundler',
         jsx: 'react-jsx',
         strict: true,
+        noUnusedLocals: true,
         skipLibCheck: false,
         noEmit: true,
         types: [],
@@ -1049,6 +1050,76 @@ export const Route = createFileRoute('@fixture/catalog:/nested/moved')({})
   })
 })
 
+describe('generated file upkeep', () => {
+  const generated = [
+    'src/routeScope.gen.ts',
+    'src/routeContract.gen.ts',
+    'src/routeModule.gen.ts',
+    'src/routeTree.gen.client.ts',
+    '.tanstack/route-module.json',
+    '.tanstack/route-types-stubs.d.ts',
+  ]
+
+  it('removes the generated files when a package stops being a route module', async () => {
+    const root = await writePackage(catalogPackage())
+    await generate(root)
+    for (const file of generated) {
+      expect(existsSync(path.join(root, file)), file).toBe(true)
+    }
+
+    await fs.rm(path.join(root, 'src/routes'), { recursive: true })
+    await writePackage({
+      name: '@fixture/catalog',
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({})
+`,
+      },
+    })
+    await generate(root)
+    for (const file of generated) {
+      expect(existsSync(path.join(root, file)), file).toBe(false)
+    }
+    expect(read(root, 'src/routeTree.gen.ts')).toContain(
+      "'/': typeof IndexRoute",
+    )
+  })
+
+  it('regenerates a generated file that was removed or edited', async () => {
+    const root = await writePackage(catalogPackage())
+    const config = getConfig(
+      {
+        disableLogging: true,
+        tmpDir: path.join(workspace, '.tmp'),
+        routesDirectory: './src/routes',
+        generatedRouteTree: './src/routeTree.gen.ts',
+      },
+      root,
+    )
+    const generator = new Generator({ config, root })
+    await generator.run()
+    const scope = path.join(root, 'src/routeScope.gen.ts')
+    const expected = read(root, 'src/routeScope.gen.ts')
+
+    await fs.rm(scope)
+    await generator.run({ type: 'delete', path: scope })
+    expect(read(root, 'src/routeScope.gen.ts')).toBe(expected)
+
+    // Changes are detected by mtime, in milliseconds: an edit right after
+    // the generation gets a later one, as any edit by hand has.
+    await fs.writeFile(scope, '// edited\n')
+    const later = new Date(Date.now() + 1000)
+    await fs.utimes(scope, later, later)
+    await generator.run({ type: 'update', path: scope })
+    expect(read(root, 'src/routeScope.gen.ts')).toBe(expected)
+  })
+})
+
 describe('mounting route modules', () => {
   async function writeCatalog() {
     const catalog = await writePackage(catalogPackage())
@@ -1570,6 +1641,69 @@ export const Route = createRootRoute()
     )
   })
 
+  it('names a single named installation in its diagnostics', async () => {
+    const app = await writeApp()
+
+    await expect(
+      generate(app, {
+        routeModules: {
+          includes: [
+            installations[0],
+            { module: '@fixture/account', at: '/account' },
+          ],
+        },
+      }),
+    ).rejects.toThrow(
+      '"@fixture/account" links into "@fixture/catalog", which is installed as "orgCatalog", but it cannot take path params from "/account". Mount "@fixture/account" below the routes with the path params of that installation.',
+    )
+  })
+
+  it('rejects a module that links into a named installation from inside another module', async () => {
+    await writeApp()
+    const shop = await writePackage({
+      name: '@fixture/shop',
+      packageJson: {
+        tanstack: {
+          router: {
+            module: {
+              includes: [{ module: '@fixture/account', at: '/account' }],
+            },
+          },
+        },
+      },
+      dependencies: ['@fixture/account'],
+      files: {
+        'src/routes/__root.tsx': moduleRoot,
+        'src/routes/index.tsx': route('@fixture/shop:/'),
+      },
+    })
+    await generate(shop)
+    const host = await writePackage({
+      name: '@fixture/host',
+      dependencies: ['@fixture/catalog', '@fixture/shop'],
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`,
+        'src/routes/orgs.$orgId.tsx': appRoute('/orgs/$orgId'),
+      },
+    })
+
+    await expect(
+      generate(host, {
+        routeModules: {
+          includes: [
+            installations[0],
+            { module: '@fixture/shop', parent: '/orgs/$orgId', at: '/shop' },
+          ],
+        },
+      }),
+    ).rejects.toThrow(
+      '"@fixture/account" links into "@fixture/catalog", which this application installs as "orgCatalog", but "@fixture/account" is installed by "@fixture/shop", which cannot choose an installation. Install "@fixture/account" in this application.',
+    )
+  })
+
   it('lets only applications install a module several times', async () => {
     const catalog = await writePackage(catalogPackage())
     await generate(catalog)
@@ -1812,10 +1946,15 @@ export const startInstance = createStart(() => ({ extends: startModules }))
   it('registers a Start module without a fragment for server rendering only', async () => {
     const catalog = await writeStartCatalog(false)
 
+    // The register lives in the contract, so the module's emitted route
+    // declarations never reach the scope file and its namespaces.
+    const contract = read(catalog, 'src/routeContract.gen.ts')
+    expect(contract).toContain('  ssr: true\n}')
+    expect(contract).not.toContain('StartModuleConfig')
     const scope = read(catalog, 'src/routeScope.gen.ts')
-    expect(scope).toContain('  ssr: true\n}')
     expect(scope).toContain('export const createServerFn')
     expect(scope).not.toContain('StartModuleConfig')
+    expect(scope).not.toContain("from './start'")
     expect(read(catalog, 'src/routeModule.gen.ts')).not.toContain(
       'startModules',
     )
@@ -1937,6 +2076,280 @@ export const startInstance = createStart(() => ({ extends: startModules }))
       }),
     ).rejects.toThrow(
       /Install it in a TanStack Start application, which depends on "@tanstack\/react-start"/,
+    )
+  })
+})
+
+describe('linking in both directions', () => {
+  const productsRoutes = {
+    'src/routes/__root.tsx': moduleRoot,
+    'src/routes/index.tsx': route('@fixture/products:/'),
+    'src/routes/$productId.tsx': route('@fixture/products:/$productId'),
+  }
+  const accountRoutes = {
+    'src/routes/__root.tsx': moduleRoot,
+    'src/routes/index.tsx': route('@fixture/account:/'),
+    'src/routes/orders.$orderId.tsx': route(
+      '@fixture/account:/orders/$orderId',
+    ),
+  }
+  const usesPackage = (
+    name: string,
+    uses: Array<string>,
+    files: Record<string, string>,
+    field:
+      | 'dependencies'
+      | 'devDependencies'
+      | 'peerDependencies' = 'peerDependencies',
+  ): PackageSpec => ({
+    name,
+    packageJson: {
+      tanstack: { router: { module: { uses } } },
+      dependencies: {},
+      [field]: Object.fromEntries(uses.map((used) => [used, '*'])),
+    },
+    dependencies: uses,
+    files,
+  })
+  const generatedFiles = (root: string) =>
+    Object.fromEntries(
+      [
+        'src/routeTree.gen.ts',
+        'src/routeScope.gen.ts',
+        'src/routeScope.gen.namespace0.ts',
+        'src/routeContract.gen.ts',
+        'src/routeModule.gen.ts',
+        '.tanstack/route-module.json',
+        '.tanstack/route-types-stubs.d.ts',
+      ].map((file) => [file, read(root, file)]),
+    )
+
+  it('generates modules that use each other in either order', async () => {
+    const products = await writePackage(
+      usesPackage('@fixture/products', ['@fixture/account'], productsRoutes),
+    )
+    const account = await writePackage(
+      usesPackage('@fixture/account', ['@fixture/products'], accountRoutes),
+    )
+
+    // Neither module has generated yet: a used module is read from its
+    // package.json, never from its manifest.
+    await generate(products)
+    const beforeAccount = generatedFiles(products)
+    expect(existsSync(path.join(account, '.tanstack'))).toBe(false)
+    await generate(account)
+    await generate(products)
+    expect(generatedFiles(products)).toEqual(beforeAccount)
+
+    // The contract reaches the module's own files only; the namespace file
+    // carries the type dependency on the used contract.
+    const routeTree = read(products, 'src/routeTree.gen.ts')
+    expect(routeTree).not.toContain('@fixture/account/route-types')
+    expect(routeTree).not.toContain('MountedRoutesById')
+    expect(read(products, 'src/routeContract.gen.ts')).not.toContain(
+      './routeScope.gen',
+    )
+    expect(readNamespace(products, 'account')).toContain(
+      "import type { Router as FixtureAccountRouter } from '@fixture/account/route-types'",
+    )
+    await expect(
+      read(products, '.tanstack/route-types-stubs.d.ts'),
+    ).toMatchFileSnapshot('route-modules/cycle/route-types-stubs.snapshot.d.ts')
+    expect(readRouteModuleManifest(products)!.modules[0]!.uses).toEqual([
+      '@fixture/account',
+    ])
+    expect(readRouteModuleManifest(account)!.modules[0]!.uses).toEqual([
+      '@fixture/products',
+    ])
+  })
+
+  it.each(['dependencies', 'devDependencies', 'peerDependencies'] as const)(
+    'resolves a used module declared in %s',
+    async (field) => {
+      await writePackage({
+        name: '@fixture/account',
+        packageJson: { tanstack: { router: { module: true } } },
+        files: accountRoutes,
+      })
+      const products = await writePackage(
+        usesPackage(
+          '@fixture/products',
+          ['@fixture/account'],
+          productsRoutes,
+          field,
+        ),
+      )
+      await generate(products)
+      expect(read(products, 'src/routeScope.gen.ts')).toContain(
+        'export * as account from',
+      )
+    },
+  )
+
+  it('rejects a used module that is not declared', async () => {
+    await writePackage({
+      name: '@fixture/account',
+      packageJson: { tanstack: { router: { module: true } } },
+      files: accountRoutes,
+    })
+    const products = await writePackage({
+      name: '@fixture/products',
+      packageJson: {
+        tanstack: { router: { module: { uses: ['@fixture/account'] } } },
+        dependencies: {},
+      },
+      dependencies: ['@fixture/account'],
+      files: productsRoutes,
+    })
+    await expect(generate(products)).rejects.toThrow(
+      /"@fixture\/account" is listed in "uses" but is not a dependency\. Add it to "dependencies", "devDependencies" or "peerDependencies"/,
+    )
+  })
+
+  it('writes an empty stub file for a module that uses nothing', async () => {
+    const products = await writePackage({
+      name: '@fixture/products',
+      packageJson: { tanstack: { router: { module: true } } },
+      files: productsRoutes,
+    })
+    await generate(products)
+    const stubs = read(products, '.tanstack/route-types-stubs.d.ts')
+    expect(stubs).toContain('declaration build only')
+    expect(stubs).not.toContain('declare module')
+  })
+
+  it('links back into the module that includes it', async () => {
+    // storefront includes products at /products; products links to the cart
+    // of whatever storefront mounts it.
+    const products = await writePackage(
+      usesPackage('@fixture/products', ['@fixture/storefront'], productsRoutes),
+    )
+    const storefront = await writePackage({
+      name: '@fixture/storefront',
+      packageJson: {
+        tanstack: {
+          router: {
+            module: {
+              includes: [{ module: '@fixture/products', at: '/products' }],
+            },
+          },
+        },
+      },
+      dependencies: ['@fixture/products'],
+      files: {
+        'src/routes/__root.tsx': moduleRoot,
+        'src/routes/index.tsx': route('@fixture/storefront:/'),
+        'src/routes/cart.tsx': route('@fixture/storefront:/cart'),
+      },
+    })
+    await generate(products)
+    await generate(storefront)
+    await generate(products)
+
+    // The module is not a namespace of itself, and its own scope does not
+    // import the including module's contract.
+    const scope = read(products, 'src/routeScope.gen.ts')
+    expect(scope).toContain('export * as storefront from')
+    expect(scope).not.toContain('export * as products from')
+    expect(read(products, 'src/routeTree.gen.ts')).not.toContain(
+      '@fixture/storefront/route-types',
+    )
+    expect(compact(readNamespace(products, 'storefront'))).toContain(
+      "localRouteId.startsWith('@fixture/storefront:')",
+    )
+    expect(readRouteModuleManifest(storefront)!.modules).toEqual([
+      expect.objectContaining({ id: '@fixture/storefront' }),
+      expect.objectContaining({
+        id: '@fixture/products',
+        uses: ['@fixture/storefront'],
+        mountPath: '/products/',
+      }),
+    ])
+  })
+
+  it('exposes the modules a used module installs through its contract', async () => {
+    const products = await writePackage({
+      name: '@fixture/products',
+      packageJson: { tanstack: { router: { module: true } } },
+      files: productsRoutes,
+    })
+    const storefront = await writePackage({
+      name: '@fixture/storefront',
+      packageJson: {
+        tanstack: {
+          router: {
+            module: {
+              includes: [{ module: '@fixture/products', at: '/products' }],
+            },
+          },
+        },
+      },
+      dependencies: ['@fixture/products'],
+      files: {
+        'src/routes/__root.tsx': moduleRoot,
+        'src/routes/cart.tsx': route('@fixture/storefront:/cart'),
+      },
+    })
+    const account = await writePackage(
+      usesPackage('@fixture/account', ['@fixture/storefront'], accountRoutes),
+    )
+    // Only account has generated: the installed modules of the used
+    // storefront come from the package.json files of storefront and products.
+    await generate(account)
+    expect(existsSync(path.join(storefront, '.tanstack'))).toBe(false)
+    expect(existsSync(path.join(products, '.tanstack'))).toBe(false)
+    const scope = read(account, 'src/routeScope.gen.ts')
+    expect(scope).toContain('export * as storefront from')
+    expect(scope).toContain('export * as products from')
+    expect(compact(readNamespace(account, 'products'))).toContain(
+      "import type { InstalledRouters as FixtureStorefrontInstalledRouters } from '@fixture/storefront/route-types'",
+    )
+    const guard = compact(readNamespace(account, 'storefront'))
+    expect(guard).toContain("localRouteId.startsWith('@fixture/storefront:')")
+    expect(guard).toContain("localRouteId.startsWith('@fixture/products:')")
+    const stubs = read(account, '.tanstack/route-types-stubs.d.ts')
+    expect(stubs).toContain("declare module '@fixture/storefront/route-types'")
+    expect(stubs).not.toContain(
+      "declare module '@fixture/products/route-types'",
+    )
+    // The stand-in declares every name the namespaces import from the contract.
+    const imported = [
+      ...[
+        readNamespace(account, 'storefront'),
+        readNamespace(account, 'products'),
+      ]
+        .join('\n')
+        .matchAll(
+          /import type \{ ([^}]+) \} from '@fixture\/storefront\/route-types'/g,
+        ),
+    ].flatMap(([, names]) =>
+      names!.split(',').map((name) => name.trim().split(' as ')[0]!),
+    )
+    expect(imported).toEqual(['Router', 'InstalledRouters'])
+    for (const name of imported) {
+      expect(stubs).toMatch(new RegExp(`export (?:type|interface) ${name}\\b`))
+    }
+  })
+
+  it('rejects modules that include each other', async () => {
+    await writePackage({
+      name: '@fixture/a',
+      packageJson: {
+        tanstack: { router: { module: { includes: ['@fixture/b'] } } },
+      },
+      dependencies: ['@fixture/b'],
+      files: { 'src/routes/__root.tsx': moduleRoot },
+    })
+    const b = await writePackage({
+      name: '@fixture/b',
+      packageJson: {
+        tanstack: { router: { module: { includes: ['@fixture/a'] } } },
+      },
+      dependencies: ['@fixture/a'],
+      files: { 'src/routes/__root.tsx': moduleRoot },
+    })
+    await expect(generate(b)).rejects.toThrow(
+      /"@fixture\/b" includes "@fixture\/a", which includes "@fixture\/b"\. Route modules cannot include each other; link into another module's routes with "uses"\./,
     )
   })
 })
