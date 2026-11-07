@@ -31,12 +31,15 @@ export function registerRouterPlugins(
 ): void {
   const routerPluginContext = createRouterPluginContext()
   const clientTree = createClientRouteTree(opts.onClientTreeInvalidated)
+  let generatedRouteTreePath: string | undefined
 
   api.transform(
     {
       test: (id: string) =>
         path.normalize(cleanId(id)) ===
-        path.resolve(opts.getConfig().startConfig.router.generatedRouteTree),
+        (generatedRouteTreePath ??= path.resolve(
+          opts.getConfig().startConfig.router.generatedRouteTree,
+        )),
       environments: [RSBUILD_ENVIRONMENT_NAMES.client],
       order: 'pre',
     },
@@ -70,7 +73,7 @@ export function registerRouterPlugins(
         new utils.rspack.NormalModuleReplacementPlugin(/./, (data) => {
           // afterResolve provides the physical resource; beforeResolve only has
           // the request. Leave package/alias resolution to Rspack itself.
-          if (!data.createData) {
+          if (!data.createData || !clientTree.hasModuleTrees()) {
             return
           }
           const clientId = clientTree.getModuleClientTree(

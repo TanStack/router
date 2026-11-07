@@ -71,7 +71,12 @@ export function tanStackStartRouter(
     },
 
     async resolveId(source, importer, options) {
-      if (!source.startsWith('.') && !path.isAbsolute(source)) {
+      // Only relative imports of a mounted module's route tree are redirected
+      // to its client view; without route modules nothing is resolved twice.
+      if (
+        !clientTree.hasModuleTrees() ||
+        (!source.startsWith('.') && !path.isAbsolute(source))
+      ) {
         return null
       }
       const resolved = await this.resolve(source, importer, {

@@ -64,6 +64,10 @@ export function createClientRouteTree(invalidate: () => void = () => {}) {
 
   return {
     generatorPlugin,
+    /** Whether any mounted module has a client view to resolve imports to. */
+    hasModuleTrees() {
+      return moduleTrees.size > 0
+    },
     getModuleClientTree(id: string) {
       // The suffix belongs to the bundler's module identity. Only the physical
       // filename participates in matching the provider's generated tree.
