@@ -2213,15 +2213,23 @@ export class RouterCore<
     // and route masks all see final paths. Module roots and mounts install the
     // translation before the router is created. The caller's options stay
     // the cache key.
+    // Every read of the scope stays behind the binding, so an application
+    // without route modules drops these branches entirely.
     let cacheKey: typeof opts | undefined
-    const scope = opts._module ?? opts.mask?._module
-    if (routeModules && scope !== undefined) {
+    if (
+      routeModules &&
+      (opts._module !== undefined || opts.mask?._module !== undefined)
+    ) {
       cacheKey = opts
       opts = routeModules.scopeLocation(this, opts)
-    } else if (process.env.NODE_ENV !== 'production' && scope !== undefined) {
+    } else if (
+      process.env.NODE_ENV !== 'production' &&
+      (opts._module !== undefined || opts.mask?._module !== undefined)
+    ) {
       // Nothing installed the behavior: no module root was created or mounted
       // in this process, so the option comes from a module that is not
       // installed. Production has no check, which would cost every application.
+      const scope = opts._module ?? opts.mask!._module!
       throw new Error(
         `Invariant failed: Route module "${typeof scope === 'object' ? scope.target : scope}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
       )
