@@ -152,6 +152,7 @@ const sorted = (values: Iterable<string>) => [...new Set(values)].sort()
 async function webpackIds(
   bundler: 'rspack' | 'webpack',
   pluginOptions: RouterPluginOptions | undefined,
+  prefix?: string,
 ): Promise<{ app: BuildResult; ids: Ids }> {
   let json: StatsJson | undefined
   const app = await build({
@@ -160,6 +161,7 @@ async function webpackIds(
     minify: false,
     files,
     pluginOptions,
+    prefix,
     configure: (options) => {
       // every module listed on its own (a concatenated module lists its
       // members only on webpack)
@@ -214,8 +216,9 @@ async function webpackIds(
       ),
       modules: routes.map((m) => {
         const query = m.name!.indexOf('?')
+        // (the bundlers' `#` escapes: webpack `\0#`, Rspack `\u200b#`)
         return (
-          m.nameForCondition!.replace(/\\/g, '/') +
+          m.nameForCondition!.replace(/\\/g, '/').replace(/[\0\u200b]#/g, '#') +
           (query === -1 ? '' : m.name!.slice(query))
         )
       }),
@@ -226,6 +229,7 @@ async function webpackIds(
 
 async function viteIds(
   pluginOptions: RouterPluginOptions | undefined,
+  prefix?: string,
 ): Promise<{ app: BuildResult; ids: Ids }> {
   const modules: Array<string> = []
   const requests: Array<string> = []
@@ -250,6 +254,7 @@ async function viteIds(
     minify: false,
     files,
     pluginOptions,
+    prefix,
     routerPlugins: (config) => [tanstackRouter(config), observe],
   })
   return {
@@ -333,4 +338,84 @@ describe.each(Object.keys(configurations) as Array<keyof typeof splitGroups>)(
       )
     })
   },
+)
+
+// A `#` of the project path (`C#`, `project #2`) is escaped in the request as
+// webpack-family requests read it (`\0#`); every output still reaches the one
+// module of its file, the route module included (its split component reads
+// `Route`).
+describe('under a path with #', () => {
+  const prefix = '.split-module-ids-C# project #2-'
+  const groups = splitGroups.default
+  const all = sorted([...groups, ...otherModules.default])
+  const escaped = (ids: Array<string>) =>
+    ids.map((id) => id.replace(/#/g, '\0#'))
+
+  describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
+    let built: ReturnType<typeof webpackIds> | undefined
+    const ids = async () =>
+      (await (built ??= webpackIds(bundler, undefined, prefix))).ids
+    afterAll(async () => {
+      await (await built)?.app.dispose()
+    })
+
+    test(
+      "a split group's chunk origin is the route file's escaped absolute path, one module per route file",
+      async () => {
+        const { root, requests, modules } = await ids()
+        expect(root).toContain('C# project #2')
+        expect(requests).toEqual(sorted(escaped(expand(root, groups))))
+        expect(sorted(modules)).toEqual(
+          sorted(expand(root, [...routeFiles, ...all])),
+        )
+        expect(modules).toHaveLength(routeFiles.length + all.length)
+      },
+      timeout,
+    )
+  })
+
+  describe('vite', () => {
+    let built: ReturnType<typeof viteIds> | undefined
+    const ids = async () => (await (built ??= viteIds(undefined, prefix))).ids
+    afterAll(async () => {
+      await (await built)?.app.dispose()
+    })
+
+    test(
+      "a split group's chunk facade is the route file's absolute path, one module per route file",
+      async () => {
+        const { root, requests, modules } = await ids()
+        expect(root).toContain('C# project #2')
+        expect(requests).toEqual(sorted(expand(root, groups)))
+        expect(sorted(modules)).toEqual(
+          sorted(expand(root, [...routeFiles, ...all])),
+        )
+        expect(modules).toHaveLength(routeFiles.length + all.length)
+      },
+      timeout,
+    )
+  })
+})
+
+// The absolute specifiers are module requests only: a minified production
+// client build names no path of the checkout.
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'a production client build holds no path of the checkout (%s)',
+  async (bundler) => {
+    const app = await build({ bundler, env: 'client', files })
+    try {
+      const withRoot = app.chunks
+        .filter(
+          (chunk) =>
+            chunk.code.includes(app.root) ||
+            chunk.code.includes(app.root.replace(/\\/g, '/')),
+        )
+        .map((chunk) => chunk.fileName)
+      expect(withRoot).toEqual([])
+      expect(app.where(/grouped error/)).toBe('lazy')
+    } finally {
+      await app.dispose()
+    }
+  },
+  timeout,
 )

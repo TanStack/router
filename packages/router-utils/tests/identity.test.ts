@@ -191,11 +191,35 @@ describe('identity', () => {
       resolveSameFileSpecifier('/app/src/a.tsx?tsr-split=component', undefined),
     ).toBeNull()
     expect(
-      resolveSameFileSpecifier('./a.tsx?tsr-split=component', '/app/src/a.tsx'),
+      resolveSameFileSpecifier('./b.tsx?tsr-split=component', '/app/src/a.tsx'),
     ).toBeNull()
     // a specifier of ours carries an owned key or an escaped `#`
     expect(SAME_FILE_SPECIFIER_RE.test('/app/src/a.tsx')).toBe(false)
     expect(SAME_FILE_SPECIFIER_RE.test('/app/src/a.tsx?raw')).toBe(false)
+  })
+
+  // A `!` separates loaders in a webpack-family request and has no escape:
+  // such a path is imported by its basename, relative to its own file.
+  it('imports an output of a file under a path with ! by its basename', () => {
+    const route = '/home/me/my!app/src/routes/a#b.tsx'
+    const chunk = deriveId(route, { kind: 'split', value: 'component~loader' })
+    expect(sameFileSpecifier(chunk)).toBe(
+      './a\0#b.tsx?tsr-split=component---loader',
+    )
+    expect(sameFileSpecifier(route)).toBe('./a\0#b.tsx')
+    expect(resolveSameFileSpecifier(sameFileSpecifier(chunk), route)).toBe(
+      chunk,
+    )
+    expect(resolveSameFileSpecifier(sameFileSpecifier(route), chunk)).toBe(
+      route,
+    )
+    // another file of the directory, or below it: not ours
+    expect(
+      resolveSameFileSpecifier('./other.tsx?tsr-split=component', route),
+    ).toBeNull()
+    expect(
+      resolveSameFileSpecifier('./x/a#b.tsx?tsr-split=component', route),
+    ).toBeNull()
   })
 
   // Windows: Vite's ids have forward slashes (`C:/…`), webpack's resources

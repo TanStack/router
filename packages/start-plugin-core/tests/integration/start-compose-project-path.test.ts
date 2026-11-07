@@ -146,11 +146,18 @@ export const Route = createFileRoute('/')({
   component: () => 'MARK_INDEX',
 })
 `,
+          // the handler of `readLabel` reads a binding its module writes:
+          // its lazy handler module imports the module itself
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+let label = 'MARK_LABEL_INITIAL'
+export function setLabel(value: string) {
+  label = value
+}
 export const greet = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+export const readLabel = createServerFn().handler(async () => label)
 `,
           'src/entry.ts': `export { getRouter } from './router'
-export { greet } from './fns'
+export { greet, readLabel, setLabel } from './fns'
 export { renderPath } from '../harness/render'
 `,
         },
@@ -180,6 +187,16 @@ export { renderPath } from '../harness/render'
 
     test('the route component is code-split', () => {
       expect(build.client.where('MARK_INDEX')).toBe('lazy')
+    })
+
+    test("a server function handler reads its module's one instance", async () => {
+      expect(
+        (
+          await build.ssr.run(
+            `entry.setLabel('MARK_LABEL_SET')\nreturn await entry.readLabel()`,
+          )
+        ).result,
+      ).toBe('MARK_LABEL_SET')
     })
   })
 })

@@ -11,8 +11,9 @@ import { build, head, rootRoute, ssrRenderEntry } from '../build-harness'
 
 type BundlerName = 'vite' | 'rspack' | 'webpack'
 
+// the split component reads `Route`: its chunk imports the route module itself
 const route = `${head}function Page() {
-  return <p>MARK_COMPONENT</p>
+  return <p>{'MARK_COMPONENT ' + typeof Route}</p>
 }
 export const Route = createFileRoute('/')({
   loader: () => 'MARK_LOADER',
@@ -43,18 +44,30 @@ async function buildUnder(bundler: BundlerName, prefix: string) {
   }
 }
 
-const directories = [
+const all = ['vite', 'rspack', 'webpack'] as const
+const directories: Array<{
+  name: string
+  prefix: string
+  bundlers?: ReadonlyArray<BundlerName>
+}> = [
   { name: 'a # (C#, project #2)', prefix: '.project-path-C# project #2-' },
   { name: 'a %', prefix: '.project-path-100%-' },
   {
     name: 'spaces, parentheses and non-ASCII',
     prefix: '.project-path-café 日本語 (2)+-',
   },
+  // a `!` separates loaders in a webpack-family request; webpack refuses
+  // such a `context` in its configuration schema, Rspack builds it
+  {
+    name: 'a !',
+    prefix: '.project-path-my!app-',
+    bundlers: ['vite', 'rspack'],
+  },
 ]
 
 test.each(
-  directories.flatMap(({ name, prefix }) =>
-    (['vite', 'rspack', 'webpack'] as const).map((bundler) => ({
+  directories.flatMap(({ name, prefix, bundlers = all }) =>
+    bundlers.map((bundler) => ({
       name,
       prefix,
       bundler,
@@ -67,7 +80,7 @@ test.each(
     expect(result.root).toContain(prefix.slice(1, -1))
     expect(result).toMatchObject({
       component: 'lazy',
-      rendered: ['<p>MARK_COMPONENT</p>', 'MARK_LOADER'],
+      rendered: ['<p>MARK_COMPONENT object</p>', 'MARK_LOADER'],
     })
   },
   120_000,
