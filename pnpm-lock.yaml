@@ -1625,6 +1625,9 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))

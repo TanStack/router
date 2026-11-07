@@ -12,8 +12,9 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@types/node": "catalog:",
-    "vitest": "catalog:",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.14",
+    "vite-plugin-solid": "^2.11.11",
+    "vitest": "catalog:"
   },
   "nx": {
     "implicitDependencies": [
