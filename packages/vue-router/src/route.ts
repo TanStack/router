@@ -4,7 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
-import { getRouteNavigationScope } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import * as Vue from 'vue'
 import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
@@ -144,7 +144,7 @@ export class RouteApi<
     const router = useRouter()
     return useNavigate({
       from: router.routesById[this.id as string]?.fullPath,
-      ...getRouteNavigationScope?.(this.id as string),
+      ...routeModules?.navigationScope(this.id as string),
     } as any) as any
   }
 
@@ -162,7 +162,7 @@ export class RouteApi<
       Link as any,
       {
         from: fullPath,
-        ...(getRouteNavigationScope?.(this.id as string) as any),
+        ...(routeModules?.navigationScope(this.id as string) as any),
         ...(props as any),
       },
       ctx?.slots,
@@ -295,7 +295,7 @@ export class Route<
   useNavigate = (): UseNavigateResult<TFullPath, TRegister> => {
     return useNavigate({
       from: this.fullPath,
-      ...getRouteNavigationScope?.(this.id),
+      ...routeModules?.navigationScope(this.id),
     } as any) as any
   }
 
@@ -307,7 +307,7 @@ export class Route<
       Link as any,
       {
         from: this.fullPath,
-        ...(getRouteNavigationScope?.(this.id) as any),
+        ...(routeModules?.navigationScope(this.id) as any),
         ...(props as any),
       },
       ctx?.slots,

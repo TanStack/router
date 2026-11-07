@@ -13,7 +13,7 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { nearestMatchContext } from './matchContext'
 
@@ -107,7 +107,7 @@ function createLinkProps(
     }
     // The nearest route resolves module destinations to the installation the
     // Link renders under. Only the route-module translation reads it.
-    if (scopeLocationOptions) {
+    if (routeModules) {
       dest._nearestRoute = routeId
     }
     return dest

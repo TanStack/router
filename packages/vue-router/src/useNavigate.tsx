@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -36,13 +36,13 @@ export function useNavigate<
   const { navigate } = useRouter()
   // Only the route-module translation reads the nearest route, which route
   // modules install before any component sets up.
-  const routeId = scopeLocationOptions
+  const routeId = routeModules
     ? Vue.inject(routeIdContext, undefined)
     : undefined
 
   return ((options: NavigateOptions) => {
     return navigate(
-      scopeLocationOptions
+      routeModules
         ? {
             // Route-module APIs also pass their internal `_module` and
             // `_fromRoute` scope; it resolves to the installation of the

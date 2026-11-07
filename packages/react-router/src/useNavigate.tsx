@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { matchContext } from './matchContext'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
@@ -54,7 +54,7 @@ export function useNavigate<
   // Only the route-module translation reads the nearest route. Route modules
   // install it when the route tree is created, before the first render, so
   // the condition is the same in every render of an application.
-  const routeId = scopeLocationOptions
+  const routeId = routeModules
     ? // eslint-disable-next-line react-hooks/rules-of-hooks -- see above
       React.useContext(matchContext)
     : undefined
@@ -62,7 +62,7 @@ export function useNavigate<
   return React.useCallback(
     (options: NavigateOptions) => {
       return router.navigate(
-        scopeLocationOptions
+        routeModules
           ? {
               // Route-module APIs also pass their internal `_module` and
               // `_fromRoute` scope, constant for a route or scoped API.
@@ -75,7 +75,7 @@ export function useNavigate<
       )
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope of the defaults is constant
-    scopeLocationOptions
+    routeModules
       ? [_defaultOpts?.from, routeId, router]
       : [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom, { router: TRouter }>

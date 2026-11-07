@@ -10,7 +10,7 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { resolveRouteId } from './route-module-hooks'
+import { routeModules } from './route-module-hooks'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -134,8 +134,8 @@ function materializeRedirect(
   try {
     outcome[1].options._fromLocation = lane.location
     // Module redirects resolve in the installation of the route that threw.
-    // Only route modules, which install `resolveRouteId`, read it.
-    if (resolveRouteId) {
+    // Only route modules, which install the behavior, read it.
+    if (routeModules) {
       outcome[1].options._nearestRoute ??= route.id
     }
     router.resolveRedirect(outcome[1])
@@ -514,8 +514,12 @@ async function getNotFoundBoundary(
   let routeId = cause?.routeId
   // Module-local ids of a route module installed several times resolve in
   // the installation of the match that threw.
-  if (resolveRouteId && routeId) {
-    routeId = resolveRouteId(router, routeId, matches[indexed![0]]?.routeId)
+  if (routeModules && routeId) {
+    routeId = routeModules.resolveRouteId(
+      router,
+      routeId,
+      matches[indexed![0]]?.routeId,
+    )
   }
   let index = routeId
     ? matches.findIndex((match) => match.routeId === routeId)

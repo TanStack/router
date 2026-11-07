@@ -10,7 +10,7 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
 import type {
@@ -298,7 +298,7 @@ export function useLinkProps<
     const dest = { ...options } as any
     // The nearest route resolves module destinations to the installation
     // the link renders under. Only the route-module translation reads it.
-    if (scopeLocationOptions) {
+    if (routeModules) {
       dest._nearestRoute = routeId
     }
     let source: ParsedLocation | undefined
@@ -370,7 +370,7 @@ export function useLinkProps<
     // Spread route-module link options can change the scope of the same
     // destination. The `_fromRoute` of a route's own `Link` is constant.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the condition is constant for an application
-    ...(scopeLocationOptions
+    ...(routeModules
       ? [(options as { _module?: RouteModuleScope })._module]
       : []),
   ])
@@ -490,7 +490,7 @@ export function useLinkProps<
       // module destination. Navigation builds again to run `validateSearch`
       // before committing.
       router.navigate(
-        scopeLocationOptions
+        routeModules
           ? {
               ...options,
               _fromLocation: dest._fromLocation,

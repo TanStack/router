@@ -39,7 +39,7 @@ import {
 } from './path'
 import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
-import { resolveRouteId, scopeLocationOptions } from './route-module-hooks'
+import { routeModules } from './route-module-hooks'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -1775,9 +1775,9 @@ export class RouterCore<
           staticData: route.options.staticData || {},
           fullPath: route.fullPath,
         }
-        // The resolver is installed only by route-module composition, so an
+        // The behavior is installed only by route-module composition, so an
         // application without modules can eliminate this identity work.
-        if (resolveRouteId && route.id[0] !== '/') {
+        if (routeModules && route.id[0] !== '/') {
           const separator = route.id.indexOf(':')
           if (separator > 0) {
             const installation = route.id.indexOf('#')
@@ -2210,13 +2210,23 @@ export class RouterCore<
 
     // Route-module APIs pass module-local destinations (`_fromRoute` always
     // comes with `_module`); translate them once so the destination, its mask
-    // and route masks all see final paths. Route-module code installs the
-    // translation before it creates such options. The caller's options stay
+    // and route masks all see final paths. Module roots and mounts install the
+    // translation before the router is created. The caller's options stay
     // the cache key.
     let cacheKey: typeof opts | undefined
-    if (scopeLocationOptions && opts._module !== undefined) {
+    if (routeModules && opts._module !== undefined) {
       cacheKey = opts
-      opts = scopeLocationOptions(this, opts)
+      opts = routeModules.scopeLocation(this, opts)
+    } else if (
+      process.env.NODE_ENV !== 'production' &&
+      opts._module !== undefined
+    ) {
+      // Nothing installed the behavior: no module root was created or mounted
+      // in this process, so the option comes from a module that is not
+      // installed. Production has no check, which would cost every application.
+      throw new Error(
+        `Invariant failed: Route module "${typeof opts._module === 'object' ? opts._module.target : opts._module}" is not installed in this router. Mount it with mountRouteModule() in the route tree of the app.`,
+      )
     }
     const next = build(opts)
 

@@ -9,7 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { scopeLocationOptions } from '@tanstack/router-core/_internal/route-module'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { linkLocationContext, routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
@@ -197,7 +197,7 @@ export function useLinkPropsImpl(
   // The nearest route resolves module destinations to the installation the
   // Link renders under. Only the route-module translation reads it, which
   // route modules install before any component sets up.
-  const routeId = scopeLocationOptions
+  const routeId = routeModules
     ? Vue.inject(routeIdContext, undefined)
     : undefined
   const dest = Vue.computed((prev?: Record<string, any>) => {
@@ -215,7 +215,7 @@ export function useLinkPropsImpl(
       }
       same &&= prev![key] === value
     }
-    if (scopeLocationOptions) {
+    if (routeModules) {
       dest._nearestRoute = routeId
     }
     return same ? prev! : dest
