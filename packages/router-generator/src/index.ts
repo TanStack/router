@@ -76,4 +76,7 @@ export type {
   RouteScopeNamespaceFiles,
 } from './route-module/emit'
 
-export { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
+export {
+  isServerOnlyNode,
+  pruneServerOnlySubtrees,
+} from './pruneServerOnlySubtrees'

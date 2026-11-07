@@ -1,19 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { pruneServerOnlySubtrees } from '@tanstack/router-generator'
-import { normalize } from 'pathe'
-import { SERVER_PROP } from './constants'
-import type {
-  Generator,
-  GeneratorPlugin,
-  RouteNode,
+import {
+  isServerOnlyNode,
+  pruneServerOnlySubtrees,
 } from '@tanstack/router-generator'
-
-function isServerOnlyNode(node: RouteNode | undefined) {
-  return (
-    node?.createFileRouteProps?.has(SERVER_PROP) === true &&
-    node.createFileRouteProps.size === 1
-  )
-}
+import { normalize } from 'pathe'
+import type { Generator, GeneratorPlugin } from '@tanstack/router-generator'
 
 /** Shared client-tree generation and provider views for both bundlers. */
 export function createClientRouteTree(invalidate: () => void = () => {}) {

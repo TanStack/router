@@ -1,5 +1,13 @@
 import type { HandleNodeAccumulator, RouteNode } from './types'
 
+/** A route with a `server` option and nothing else: it has no client part. */
+export function isServerOnlyNode(node: RouteNode | undefined): boolean {
+  return (
+    node?.createFileRouteProps?.has('server') === true &&
+    node.createFileRouteProps.size === 1
+  )
+}
+
 export function pruneServerOnlySubtrees({
   rootRouteNode,
   acc,
@@ -34,10 +42,7 @@ function prune(
     }
   }
 
-  const allServerOnly =
-    node.createFileRouteProps?.has('server') &&
-    node.createFileRouteProps.size === 1 &&
-    allChildrenServerOnly
+  const allServerOnly = isServerOnlyNode(node) && allChildrenServerOnly
   // prune this subtree
   if (allServerOnly) {
     return null
