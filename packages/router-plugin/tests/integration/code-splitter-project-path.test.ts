@@ -33,6 +33,14 @@ async function buildUnder(bundler: BundlerName, prefix: string) {
       'routes/index.tsx': route,
       'entry.ts': ssrRenderEntry,
     },
+    // the harness's entry is an absolute path; a `!` in it would read as
+    // loader syntax, so name it relative to the context, as an app does
+    configure:
+      bundler === 'vite'
+        ? undefined
+        : (options) => {
+            options.entry = { entry: './entry.ts' }
+          },
   })
   const run = await app.run(
     `return [await entry.render(entry.Route.options.component), await entry.Route.options.loader({})]`,
