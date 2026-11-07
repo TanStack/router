@@ -13,6 +13,7 @@ import {
   originalPositionFor,
 } from '../../src/import-protection/locate'
 import { DevReporter } from '../../src/import-protection/report'
+import { formatViolation } from '../../src/import-protection/trace'
 import { violationInfo } from '../../src/import-protection/violations'
 import type { ImportGraphView } from '../../src/import-protection/graph-trace'
 import type { EdgeViolation } from '../../src/import-protection/violations'
@@ -189,6 +190,24 @@ describe('traces', () => {
     })
     expect(info.pattern).toBe('**/*.server.*')
     expect(info.resolved).toBe('/app/src/secret.server.ts')
+  })
+})
+
+describe('suggestions', () => {
+  test('a server-environment report says a `createClientOnlyFn` function throws when called on the server', () => {
+    const v = violation({
+      env: 'ssr',
+      envType: 'server',
+      specifier: './win.client',
+      resolved: '/app/src/win.client.ts',
+    })
+    const text = formatViolation(
+      violationInfo(v, config(), () => [{ file: '/app/src/b.ts' }]),
+      '/app',
+    )
+    expect(text).toContain(
+      'Use createClientOnlyFn(() => ...) to mark it as client-only (it will throw if called on the server)',
+    )
   })
 })
 
