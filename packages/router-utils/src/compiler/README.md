@@ -272,7 +272,8 @@ group is `<path>?tsr-split=<a>---<b>` (the options sorted); the modules main had
 after a first key no route option has (`tsr-split=shared---<keys>`, `tsr-split=export---<name>`,
 `EXTRACTED_EXPORT_QUERY_RE`); Hydrate is `?tss-hydrate=<id>`. An output imports another output of its file (and the
 route module itself) by the file's absolute path (`sameFileSpecifier`), a `#` of the path escaped as `\0#` (the
-webpack-family request escape). webpack and Rspack resolve it themselves; the Vite hosts resolve it with
+webpack-family request escape); under a path with a `!` (loader syntax there, no escape), by its basename
+(`./route.tsx?…`). webpack and Rspack resolve it themselves; the Vite hosts resolve it with
 `resolveSameFileSpecifier`, only for the importer's own file (a browser URL `/src/…?tsr-split=…` looks absolute too).
 
 Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
