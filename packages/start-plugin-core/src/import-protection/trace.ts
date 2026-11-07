@@ -56,7 +56,7 @@ export const CLIENT_ENV_SUGGESTIONS = [
  * The JSX-specific suggestion is conditionally prepended by `formatViolation`.
  */
 export const SERVER_ENV_SUGGESTIONS = [
-  'Use createClientOnlyFn(() => ...) to mark it as client-only (returns undefined on the server)',
+  'Use createClientOnlyFn(() => ...) to mark it as client-only (it will throw if called on the server)',
   'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
   'Move the client-only import out of this file into a separate .client.ts module that is not imported by any server code',
 ] as const
