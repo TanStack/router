@@ -160,7 +160,7 @@ export const Route = createFileRoute('/${name}')({
  * app writes them; the Rsbuild harnesses' test entries render nothing) and
  * its router.
  */
-const rsbuildEntries = {
+export const rsbuildEntries = {
   'src/client.tsx': `import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start/client'
 hydrateRoot(document, <StartClient />)
