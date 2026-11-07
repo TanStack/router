@@ -801,6 +801,10 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
   router?: AnyRouter,
   nearestRouteId?: string,
 ): Omit<T, '_module'> & { _module: RouteModuleScope } {
+  if (options._module === moduleId) {
+    // Already bound to this scope.
+    return options as any
+  }
   return {
     ...options,
     _module: resolveRouteScope(
