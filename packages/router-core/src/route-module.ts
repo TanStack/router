@@ -564,7 +564,8 @@ function scopeLocationOptions<
   const moduleId =
     typeof opts._module === 'object'
       ? resolveRouteScopeConstraint(router, opts._module, opts._nearestRoute)
-      : opts._module
+      : // Checked above; a `_fromRoute` rebinding keeps it set.
+        opts._module!
   const rootId = resolveModuleRouteId(
     router,
     `${moduleId}:`,
