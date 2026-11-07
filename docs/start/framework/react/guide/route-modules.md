@@ -49,7 +49,9 @@ The two fields are optional and independent:
 - `requestContext` is available during requests and server functions. The application can supply it through `handler.fetch` context or request middleware.
 - `functionContext` is required by server functions and their server middleware. Global function middleware can provide it, in addition to the request context already available at that stage. It does not describe client middleware or context sent over the transport.
 
-The generated application assertion selects installed route modules. An application's unrelated dependency does not impose a requirement merely because TypeScript loads its types. Installing a module more than once reuses its package's requirement. Explicitly consuming module middleware also checks its requirements at that consumer.
+The generated application assertion selects installed route modules. An application's unrelated dependency does not impose a requirement merely because TypeScript loads its types. Installing a module more than once reuses its package's requirement. Explicitly consuming module middleware in a server function or in another middleware also checks its requirements at that consumer; the `server.middleware` list of a route does not.
+
+A field typed `any` or `never` cannot certify a requirement: the context a provider establishes must be typed. Only declared requirements are checked. The context a module's own fragment middleware produces is visible to the module's server functions, but another module installed later may overwrite it; declare it as a requirement when the module depends on it.
 
 These declarations emit no JavaScript and need no runtime marker, middleware entry or empty Start fragment. They are separate from `Register.server.requestContext`, which describes context supplied by the host.
 

@@ -325,7 +325,7 @@ Only `includes` must stay acyclic: a module cannot include a module that include
 
 Namespaces are read-only generated ESM namespaces. Each API and namespace can be tree-shaken independently: using `products.Link` should not retain every routing helper. Do not mutate namespace members.
 
-Options created by a scope retain their ownership. Reuse `products.linkOptions(...)` with the products APIs; passing them to a conflicting scope is rejected instead of silently changing their destination.
+Options created by a scope retain their ownership. Reuse `products.linkOptions(...)` with the products APIs; passing them to a conflicting scope is rejected instead of silently changing their destination. A `mask` is built in the scope of its destination: a module mask on an application destination, or on a destination of another module, is rejected the same way.
 
 ### Match identity and whole-router state
 
