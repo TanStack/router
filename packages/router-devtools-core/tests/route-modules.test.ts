@@ -78,6 +78,54 @@ function setup(pathname: string) {
   return container
 }
 
+/**
+ * root
+ * ├── /orgs/$orgId
+ * │   └── @acme/settings#org      (mounted at /settings)
+ * └── /people/$personId
+ *     └── @acme/settings#person  (mounted at /settings)
+ */
+function setupNamed(pathname: string) {
+  const root = new BaseRootRoute({})
+  const orgs = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/orgs/$orgId',
+  })
+  const people = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/people/$personId',
+  })
+  const settings = createModuleRoot('@acme/settings')
+  settings.addChildren([
+    new BaseRoute({ getParentRoute: () => settings, path: '/' }),
+    new BaseRoute({ getParentRoute: () => settings, path: '/profile' }),
+  ])
+  const mount = (parent: AnyRoute, as: string) =>
+    mountRouteModule(settings, {
+      parent: () => parent,
+      at: '/settings',
+      as,
+    } as any)
+  const routeTree = root.addChildren([
+    orgs.addChildren([mount(orgs, 'org')]),
+    people.addChildren([mount(people, 'person')]),
+  ])
+  const router = new RouterCore({ routeTree, isServer: false }, () => ({
+    createMutableStore: createNonReactiveMutableStore,
+    createReadonlyStore: createNonReactiveReadonlyStore,
+    batch: (fn) => fn(),
+  }))
+  const panel = new TanStackRouterDevtoolsPanelCore({
+    router,
+    routerState: { ...router.state, matches: router.matchRoutes(pathname, {}) },
+  })
+  const container = document.createElement('div')
+  document.body.append(container)
+  panel.mount(container)
+  panels.push(panel)
+  return container
+}
+
 function find(container: HTMLElement, label: string) {
   return container.querySelector<HTMLElement>(`[aria-label="${label}"]`)
 }
@@ -157,7 +205,13 @@ test('shows a module with its mount, parent module, routes and matches', async (
   expect(text).toContain('@acme/reviews')
   expect(text).toContain('Mount path:/shop/products/reviews')
   expect(text).toContain('Parent module:@acme/products')
-  // The module's own routes, with the local and the final path.
+  // The module's own routes, with the local and the final path. The root is
+  // the mount path, not a route row.
+  expect(
+    [...details.querySelectorAll('[title^="@acme/reviews:"]')].map((row) =>
+      row.getAttribute('title'),
+    ),
+  ).toEqual(['@acme/reviews:/'])
   const route = details.querySelector('[title="@acme/reviews:/"]')!
   expect(
     [...route.querySelectorAll('code')].map((code) => code.textContent),
@@ -193,6 +247,36 @@ test('badges matches with their module and shows local and final paths', async (
   expect(
     details.querySelector(
       '[aria-label="Open module details for @acme/products"]',
+    ),
+  ).not.toBeNull()
+})
+
+test('shows every installation of a module installed several times', async () => {
+  const container = setupNamed('/orgs/acme/settings/profile')
+  await waitFor(container, 'Route module @acme/settings#org')
+  expect(find(container, 'Route module @acme/settings#person')).not.toBeNull()
+  const filter = (await waitFor(
+    container,
+    'Show routes of',
+  )) as HTMLSelectElement
+  expect([...filter.options].map((option) => option.value)).toEqual([
+    '',
+    '@acme/settings#org',
+    '@acme/settings#person',
+  ])
+  ;(
+    await waitFor(container, 'Open module details for @acme/settings#org')
+  ).click()
+  const details = await waitFor(container, 'Module details')
+  expect(details.textContent).toContain('Mount path:/orgs/$orgId/settings')
+  expect(
+    [...details.querySelectorAll('[title^="@acme/settings"]')].map((row) =>
+      row.getAttribute('title'),
+    ),
+  ).toEqual(['@acme/settings#org:/', '@acme/settings#org:/profile'])
+  expect(
+    details.querySelector(
+      '[aria-label^="Open match details for @acme/settings#org:/profile"]',
     ),
   ).not.toBeNull()
 })

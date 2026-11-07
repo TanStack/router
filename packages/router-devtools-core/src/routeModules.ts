@@ -46,13 +46,17 @@ export function getParentModuleId(
   return undefined
 }
 
-/** The routes a module owns, without those of modules it mounts. */
+/**
+ * The routes a module owns, without its root (shown as the mount path) and
+ * without the routes of modules it mounts.
+ */
 export function getModuleRoutes(
   router: AnyRouter,
   moduleId: string,
 ): Array<AnyRoute> {
   return (Object.values(router.routesById) as Array<AnyRoute>).filter(
-    (route) => getRouteModuleId(route.id) === moduleId,
+    (route) =>
+      route.id !== `${moduleId}:` && getRouteModuleId(route.id) === moduleId,
   )
 }
 

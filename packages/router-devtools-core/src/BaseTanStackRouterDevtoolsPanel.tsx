@@ -982,10 +982,11 @@ function ModuleDetails(props: {
   const root = () => getModuleRoot(props.router(), props.moduleId)!
   const parentModuleId = () => getParentModuleId(props.router(), props.moduleId)
   const routes = () => getModuleRoutes(props.router(), props.moduleId)
-  const matches = () =>
+  const matches = createMemo(() =>
     (props.routerState().matches as Array<AnyRouteMatch>).filter(
       (match) => getRouteModuleId(match.routeId) === props.moduleId,
-    )
+    ),
+  )
   return (
     <div
       class={styles().thirdContainer}
