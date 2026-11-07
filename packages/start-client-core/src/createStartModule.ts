@@ -175,17 +175,30 @@ type InstanceTypes<TInstance extends AnyStartInstance> = Awaited<
 
 type IsAny<T> = 0 extends 1 & T ? true : false
 
-type ProvenModuleId<TModule, TId extends string> = [TModule] extends [
-  AnyStartModule,
-]
+type UnionToIntersection<T> = (
+  T extends unknown ? (value: T) => void : never
+) extends (value: infer TIntersection) => void
+  ? TIntersection
+  : never
+
+/**
+ * The id a module proves it installs: one literal, as the generated scopes
+ * pass their package name. `any`, `string` and unions prove nothing.
+ */
+type ProvenModuleId<TModule> = [TModule] extends [AnyStartModule]
   ? IsAny<TModule['id']> extends true
     ? never
-    : [TModule['id']] extends [TId]
-      ? TId extends TModule['id']
-        ? TId
+    : string extends TModule['id']
+      ? never
+      : [TModule['id']] extends [UnionToIntersection<TModule['id']>]
+        ? TModule['id']
         : never
-      : never
   : never
+
+/** The ids a module list proves installed, computed once per list. */
+type ProvenModuleIds<TModules extends ReadonlyArray<unknown>> = {
+  [K in keyof TModules]: ProvenModuleId<TModules[K]>
+}[number]
 
 type Installed<TModules, TId extends string> =
   IsAny<TModules> extends true
@@ -193,9 +206,7 @@ type Installed<TModules, TId extends string> =
     : TModules extends ReadonlyArray<AnyStartModule>
       ? number extends TModules['length']
         ? 'Cannot establish route module installation from a non-tuple extends list'
-        : TId extends {
-              [K in keyof TModules]: ProvenModuleId<TModules[K], TId>
-            }[number]
+        : TId extends ProvenModuleIds<TModules>
           ? true
           : `Route module '${TId}' is not installed: add 'extends: startModules' to createStart()`
       : 'Cannot establish route module installation from an unknown extends list'
@@ -308,12 +319,9 @@ type RequiredContextKeysFor<TId> = TId extends string
       | RequiredContextKeys<StartModuleRequiredContext<TId, 'functionContext'>>
   : never
 
+/** The module ids among `TId` that require any context. */
 type ConsumerIds<TId> = TId extends string
-  ?
-      | RequiredContextKeys<StartModuleRequiredContext<TId, 'requestContext'>>
-      | RequiredContextKeys<
-          StartModuleRequiredContext<TId, 'functionContext'>
-        > extends never
+  ? [RequiredContextKeysFor<TId>] extends [never]
     ? never
     : TId
   : never
@@ -602,41 +610,40 @@ type LocalMiddlewareOwners<TList> =
         : never
     : never
 
-/** Check a completed local chain only when attaching its server-side consumer. */
+/**
+ * Check a completed local chain only when attaching its server-side consumer.
+ * Applications without any module requirement skip the walk entirely.
+ */
 export type ValidateModuleMiddlewareConsumer<
   TRegister,
   TMiddlewares,
   TPhase extends 'request' | 'function',
-> = [
-  ConsumerIds<StartModuleIdOf<TRegister> | LocalMiddlewareOwners<TMiddlewares>>,
-] extends [never]
+> = [keyof StartModuleRequirements] extends [never]
   ? unknown
-  : Walk<
-        TagList<TMiddlewares, 'local middleware'>,
-        LocalContextState<
-          TRegister,
-          TPhase,
-          RequiredContextKeysFor<
-            StartModuleIdOf<TRegister> | LocalMiddlewareOwners<TMiddlewares>
-          >
-        >,
-        TPhase,
-        RequiredContextKeysFor<
-          StartModuleIdOf<TRegister> | LocalMiddlewareOwners<TMiddlewares>
-        >
-      > extends infer TResult
-    ? [TResult] extends [ContextState]
-      ? ValidateConsumer<
-          StartModuleIdOf<TRegister>,
-          TPhase,
-          TResult['context'],
-          ' before the local server callback'
-        > extends infer TCheck
-        ? [TCheck] extends [true]
-          ? unknown
-          : TCheck
+  :
+        | StartModuleIdOf<TRegister>
+        | LocalMiddlewareOwners<TMiddlewares> extends infer TIds
+    ? [ConsumerIds<TIds>] extends [never]
+      ? unknown
+      : Walk<
+            TagList<TMiddlewares, 'local middleware'>,
+            LocalContextState<TRegister, TPhase, RequiredContextKeysFor<TIds>>,
+            TPhase,
+            RequiredContextKeysFor<TIds>
+          > extends infer TResult
+        ? [TResult] extends [ContextState]
+          ? ValidateConsumer<
+              StartModuleIdOf<TRegister>,
+              TPhase,
+              TResult['context'],
+              ' before the local server callback'
+            > extends infer TCheck
+            ? [TCheck] extends [true]
+              ? unknown
+              : TCheck
+            : never
+          : TResult
         : never
-      : TResult
     : never
 
 type ValidateConsumers<
