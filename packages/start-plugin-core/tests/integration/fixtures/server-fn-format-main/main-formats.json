@@ -29,6 +29,10 @@
             "functionName": "\"café_createServerFn_handler\""
           },
           {
+            "key": "\"7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877\"",
+            "functionName": "\"viaDefault_createServerFn_handler\""
+          },
+          {
             "key": "\"7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57\"",
             "functionName": "\"dupB_createServerFn_handler\""
           },
@@ -119,6 +123,11 @@
             "filename": "\"src/compat/fns.ts\""
           },
           {
+            "id": "\"7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877\"",
+            "name": "\"viaDefault\"",
+            "filename": "\"src/compat/default.ts\""
+          },
+          {
             "id": "\"7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0\"",
             "name": "\"zOrder\"",
             "filename": "\"src/compat/fns.ts\""
@@ -131,6 +140,7 @@
           "35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a",
           "443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28",
           "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877",
           "7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57",
           "7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0",
           "85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4",
@@ -169,6 +179,10 @@
           {
             "key": "\"compat-order_1\"",
             "functionName": "\"aOrder_createServerFn_handler\""
+          },
+          {
+            "key": "\"compat-src-compat-default-ts-viaDefault_createServerFn_handler\"",
+            "functionName": "\"viaDefault_createServerFn_handler\""
           },
           {
             "key": "\"compat-src-compat-fns-ts-$dollar_createServerFn_handler\"",
@@ -257,6 +271,11 @@
             "filename": "\"src/compat/fns.ts\""
           },
           {
+            "id": "\"compat-src-compat-default-ts-viaDefault_createServerFn_handler\"",
+            "name": "\"viaDefault\"",
+            "filename": "\"src/compat/default.ts\""
+          },
+          {
             "id": "\"compat-order\"",
             "name": "\"zOrder\"",
             "filename": "\"src/compat/fns.ts\""
@@ -270,6 +289,7 @@
           "compat-dup_1",
           "compat-order",
           "compat-order_1",
+          "compat-src-compat-default-ts-viaDefault_createServerFn_handler",
           "compat-src-compat-fns-ts-$dollar_createServerFn_handler",
           "compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler",
           "compat-src-compat-fns-ts-innerName_createServerFn_handler",
@@ -305,6 +325,10 @@
           {
             "key": "'46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720'",
             "functionName": "'café_createServerFn_handler'"
+          },
+          {
+            "key": "'7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877'",
+            "functionName": "'viaDefault_createServerFn_handler'"
           },
           {
             "key": "'7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57'",
@@ -406,6 +430,11 @@
             "filename": "\"src/compat/server-only.ts\""
           },
           {
+            "id": "\"7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877\"",
+            "name": "\"viaDefault\"",
+            "filename": "\"src/compat/default.ts\""
+          },
+          {
             "id": "\"7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0\"",
             "name": "\"zOrder\"",
             "filename": "\"src/compat/fns.ts\""
@@ -418,6 +447,7 @@
           "35366cc67f8153a1842d8e878cbc803c8c8dc59ea101601941dde617dbb13a1a",
           "443087e917fdee73550d1e5823855c770a1a414434ac360f2df12e4d07160a28",
           "46fb1f27db5bc925f0b8895dcf36efbf9abf703b903b75ff680af40f9f492720",
+          "7b6066af32ee6d8bb99653468b0903118759076dcc3fc3ff8ef9e46b5dc12877",
           "7c10271639820db2fc3180712ac0fec11a25c00db97011277ebe05ad8ed96d57",
           "7c775d15236f044c34af81c57c18dafa61c0a74ee045c7ba59e10bdc11c3f4e0",
           "85b6d3e918f2dbe3bed08ef0bc51d63ad2e292b2eb9b338762ff881b620b6ff4",
@@ -456,6 +486,10 @@
           {
             "key": "'compat-order_1'",
             "functionName": "'aOrder_createServerFn_handler'"
+          },
+          {
+            "key": "'compat-src-compat-default-ts-viaDefault_createServerFn_handler'",
+            "functionName": "'viaDefault_createServerFn_handler'"
           },
           {
             "key": "'compat-src-compat-fns-ts-$dollar_createServerFn_handler'",
@@ -553,6 +587,11 @@
             "filename": "\"src/compat/server-only.ts\""
           },
           {
+            "id": "\"compat-src-compat-default-ts-viaDefault_createServerFn_handler\"",
+            "name": "\"viaDefault\"",
+            "filename": "\"src/compat/default.ts\""
+          },
+          {
             "id": "\"compat-order\"",
             "name": "\"zOrder\"",
             "filename": "\"src/compat/fns.ts\""
@@ -566,6 +605,7 @@
           "compat-dup_1",
           "compat-order",
           "compat-order_1",
+          "compat-src-compat-default-ts-viaDefault_createServerFn_handler",
           "compat-src-compat-fns-ts-$dollar_createServerFn_handler",
           "compat-src-compat-fns-ts-callsServerOnly_createServerFn_handler",
           "compat-src-compat-fns-ts-innerName_createServerFn_handler",

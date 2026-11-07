@@ -47,7 +47,9 @@ for (const [file, code] of Object.entries(goldenFiles)) {
   writeFileSync(path.join(app, file), code)
 }
 const imports = Object.entries(goldenClientImports)
-const calls = imports.flatMap(([, names]) => names.map((n) => `${n}()`))
+const calls = imports.flatMap(([, names]) =>
+  names.map((n) => `${n.split(' ').at(-1)}()`),
+)
 writeFileSync(
   path.join(app, 'src/routes/compat.tsx'),
   `import { createFileRoute } from '@tanstack/react-router'
@@ -66,7 +68,10 @@ function Compat() {
 )
 const original = execFileSync(
   'git',
-  ['show', 'HEAD:e2e/react-start/server-functions/start-mode-config.ts'],
+  [
+    'show',
+    `HEAD:${execFileSync('git', ['rev-parse', '--show-prefix'], { cwd: app }).toString().trim()}start-mode-config.ts`,
+  ],
   { cwd: app },
 ).toString()
 writeFileSync(
@@ -113,6 +118,22 @@ for (const bundler of ['vite', 'rsbuild']) {
       jsFiles(path.join(app, outDir, 'server')),
       jsFiles(path.join(app, outDir, 'client')),
     )
+  }
+}
+// what the golden app holds: an extraction that found nothing would compare
+// equal to another that found nothing
+const fns = Object.values(goldenClientImports).flat().length
+for (const [bundler, modes] of Object.entries(records)) {
+  for (const [mode, r] of Object.entries(modes)) {
+    if (
+      r.clientIds.length !== fns ||
+      r.meta.length < fns ||
+      r.manifest.length < fns
+    ) {
+      throw new Error(
+        `${bundler} ${mode}: ${r.clientIds.length} client ids, ${r.meta.length} metadata, ${r.manifest.length} manifest entries for ${fns} client server fns`,
+      )
+    }
   }
 }
 writeFileSync(

@@ -51,13 +51,22 @@ export const deepFn = createServerFn().handler(() => 'deep')
 
 export const crossB = createServerFn().handler(() => 'crossB')
 `,
+  'src/compat/default.ts': `import { createServerFn } from '@tanstack/react-start'
+
+// a server fn exported as the default export of its module
+const viaDefault = createServerFn().handler(() => 'via default')
+export default viaDefault
+`,
   'src/compat/server-only.ts': `import { createServerFn } from '@tanstack/react-start'
 
 export const serverOnlyFn = createServerFn().handler(() => 'server only')
 `,
 }
 
-/** The server fns client code calls, by module (relative to `src/`). */
+/**
+ * The server fns client code calls, by module (relative to `src/`): import
+ * specifiers (`default as viaDefault`; the last word is the local name).
+ */
 export const goldenClientImports: Record<string, Array<string>> = {
   './compat/fns': [
     '$dollar',
@@ -73,6 +82,7 @@ export const goldenClientImports: Record<string, Array<string>> = {
     'zOrder',
   ],
   './compat/sub/deep': ['crossB', 'deepFn'],
+  './compat/default': ['default as viaDefault'],
 }
 
 /**
