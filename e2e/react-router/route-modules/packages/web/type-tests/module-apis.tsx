@@ -154,10 +154,17 @@ describe('a module that uses another module', () => {
     ;<products.Link to="/" />
   })
 
-  test('used module routes are visible by qualified id', () => {
+  test('used module routes are addressed through the namespace, not the own scope', () => {
+    // The module's own scope knows its own routes and the modules it
+    // includes; the routes of a used module come through its namespace, so
+    // the module's contract never reaches the contracts it links into.
     expectTypeOf(
-      accountGetRouteApi('@route-modules/products:/$productId').useLoaderData(),
+      products
+        .getRouteApi('@route-modules/products:/$productId')
+        .useLoaderData(),
     ).toEqualTypeOf<Product>()
+    // @ts-expect-error a used module's id is not part of the own scope
+    accountGetRouteApi('@route-modules/products:/$productId')
     expectTypeOf(
       accountGetRouteApi(
         '@route-modules/account:/orders/$orderId',

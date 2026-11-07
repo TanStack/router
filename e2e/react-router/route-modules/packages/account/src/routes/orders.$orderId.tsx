@@ -1,6 +1,4 @@
-import { createFileRoute, getRouteApi, products } from '../routeScope.gen'
-
-const productRoute = getRouteApi('@route-modules/products:/$productId')
+import { createFileRoute, products } from '../routeScope.gen'
 
 export const Route = createFileRoute('@route-modules/account:/orders/$orderId')(
   {
@@ -11,6 +9,8 @@ export const Route = createFileRoute('@route-modules/account:/orders/$orderId')(
 
 function OrderPage() {
   const order = Route.useLoaderData()
+  // Routes of a used module are addressed through its namespace: the module's
+  // own scope only knows its own routes and the modules it includes.
   const navigateToProduct = products.useNavigate()
   return (
     <div>
@@ -37,8 +37,4 @@ function OrderPage() {
       </button>
     </div>
   )
-}
-
-export function useOrderedProduct() {
-  return productRoute.useLoaderData()
 }

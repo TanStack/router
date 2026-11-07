@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { Workspace, errorsIn } from './workspace'
 
 /**
- * The fixture is a diamond:
+ * The fixture is a diamond with links in both directions:
  *
- *   web ──► storefront ──► products   (storefront mounts products)
- *    └────► account ─────► products   (account only links to products)
+ *   web ──► storefront ──► products   (storefront mounts products,
+ *    └────► account ◄────► products    products links back to its cart;
+ *                                      account and products link to each other)
  *
  * and modules web mounts below `/orgs/$orgId`, one of them twice:
  *
@@ -114,6 +115,10 @@ describe('clean checkout', () => {
   ])(
     'emits portable client-view declarations with a $name header',
     async ({ header }) => {
+      // products links into account: its source check reads account's
+      // contract (its declaration build does not).
+      await ws.generate('account')
+      expect((await ws.emitTypes('account')).ok).toBe(true)
       for (const name of ['products', 'storefront']) {
         if (header !== undefined) {
           ws.write(
@@ -335,7 +340,7 @@ describe('the declaration boundary', () => {
       'account',
       'src/type-assertions.tsx',
       `import { Route as AccountIndexRoute } from './routes/index'
-import { getRouteApi, products } from './routeScope.gen'
+import { products } from './routeScope.gen'
 import type { Price, Product } from '@route-modules/products/api'
 
 type Equal<A, B> =
@@ -344,7 +349,8 @@ type Equal<A, B> =
     : false
 type IsAny<T> = 0 extends 1 & T ? true : false
 
-const productApi = getRouteApi('@route-modules/products:/$productId')
+// A used module's routes are addressed through its namespace.
+const productApi = products.getRouteApi('@route-modules/products:/$productId')
 
 export function useAssertions() {
   const product = productApi.useLoaderData()

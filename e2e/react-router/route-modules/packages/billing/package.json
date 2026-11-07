@@ -28,8 +28,6 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@route-modules/settings": "workspace:*",
-    "@route-modules/team": "workspace:*",
     "@tanstack/react-router": "workspace:^",
     "react": "^19.0.0"
   },
@@ -42,15 +40,30 @@
     "targets": {
       "generate": {
         "dependsOn": [
-          "^build",
-          "^emit-types"
+          "^build"
         ]
       },
       "emit-types": {
         "dependsOn": [
           "generate"
         ]
+      },
+      "check": {
+        "dependsOn": [
+          "generate",
+          {
+            "projects": [
+              "@route-modules/settings",
+              "@route-modules/team"
+            ],
+            "target": "emit-types"
+          }
+        ]
       }
     }
+  },
+  "peerDependencies": {
+    "@route-modules/settings": "workspace:*",
+    "@route-modules/team": "workspace:*"
   }
 }

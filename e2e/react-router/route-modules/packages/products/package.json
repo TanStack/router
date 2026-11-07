@@ -4,7 +4,12 @@
   "type": "module",
   "tanstack": {
     "router": {
-      "module": true
+      "module": {
+        "uses": [
+          "@route-modules/account",
+          "@route-modules/storefront"
+        ]
+      }
     }
   },
   "exports": {
@@ -44,15 +49,30 @@
     "targets": {
       "generate": {
         "dependsOn": [
-          "^build",
-          "^emit-types"
+          "^build"
         ]
       },
       "emit-types": {
         "dependsOn": [
           "generate"
         ]
+      },
+      "check": {
+        "dependsOn": [
+          "generate",
+          {
+            "projects": [
+              "@route-modules/account",
+              "@route-modules/storefront"
+            ],
+            "target": "emit-types"
+          }
+        ]
       }
     }
+  },
+  "peerDependencies": {
+    "@route-modules/account": "workspace:*",
+    "@route-modules/storefront": "workspace:*"
   }
 }

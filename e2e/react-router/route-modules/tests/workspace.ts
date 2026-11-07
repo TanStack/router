@@ -163,14 +163,17 @@ export class Workspace {
     }
   }
 
-  /** The fixture package's ordinary clean TypeScript declaration build. */
-  async emitTypes(name: string) {
-    const project = JSON.parse(this.read(name, 'tsconfig.route-types.json'))
+  /**
+   * The fixture package's ordinary clean TypeScript declaration build, with
+   * its `tsconfig.route-types.json` unless another project file is given.
+   */
+  async emitTypes(name: string, projectFile = 'tsconfig.route-types.json') {
+    const project = JSON.parse(this.read(name, projectFile))
     this.remove(
       name,
       project.compilerOptions.declarationDir ?? project.compilerOptions.outDir,
     )
-    const result = this.compile(name, ['-p', 'tsconfig.route-types.json'])
+    const result = this.compile(name, ['-p', projectFile])
     this.log.push({ operation: 'emit-types', pkg: name, ok: result.ok })
     return result
   }
