@@ -1,9 +1,9 @@
 import { mergeProps, useContext } from 'solid-js'
 import { notFound } from '@tanstack/router-core'
 import {
+  bindRouteScopeIdApi,
   bindRouteScopeOptions,
   createScopedRedirect,
-  getInstallationRouteIdMapper,
   getScopedRouterView,
   installRouteModules,
   resolveRouteScope,
@@ -58,14 +58,6 @@ import type { UseParamsFn } from './useParams'
 import type { UseRouteContextFn } from './useRouteContext'
 import type { UseLocationFn } from './useLocation'
 import type { UseRouterStateFn } from './useRouterState'
-
-/** An entry of a generated module-local `FileRoutesByPath` interface. */
-export interface FileRoutesByPathEntry {
-  id: string
-  path: string
-  fullPath: string
-  parentRoute: AnyRoute
-}
 
 // Entries reference the route files, whose types depend on these factories:
 // read one property at a time and never constrain or check whole entries.
@@ -252,14 +244,6 @@ function bindProps(moduleId: string, props: { _module?: RouteModuleScope }) {
   })
 }
 
-function bindIdHook(moduleId: string, hook: (options: any) => any) {
-  const toInstallation = getInstallationRouteIdMapper(moduleId)
-  return toInstallation
-    ? (options?: { from?: string }) =>
-        hook({ ...options, from: toInstallation(options?.from) })
-    : hook
-}
-
 export function bindRouteScopeLink<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['Link'] {
@@ -359,58 +343,47 @@ export function bindRouteScopeUseRouter<TRouter extends AnyRouter>(
 export function bindRouteScopeGetRouteApi<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['getRouteApi'] {
-  const toInstallation = getInstallationRouteIdMapper(moduleId)
-  return (
-    toInstallation
-      ? (id: string) => getRouteApi(toInstallation(id) as never)
-      : getRouteApi
-  ) as any
+  return bindRouteScopeIdApi(moduleId, getRouteApi) as any
 }
 
 export function bindRouteScopeUseMatch<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useMatch'] {
-  return bindIdHook(moduleId, useMatch) as any
+  return bindRouteScopeIdApi(moduleId, useMatch, 'from') as any
 }
 
 export function bindRouteScopeUseLoaderData<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useLoaderData'] {
-  return bindIdHook(moduleId, useLoaderData) as any
+  return bindRouteScopeIdApi(moduleId, useLoaderData, 'from') as any
 }
 
 export function bindRouteScopeUseLoaderDeps<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useLoaderDeps'] {
-  return bindIdHook(moduleId, useLoaderDeps) as any
+  return bindRouteScopeIdApi(moduleId, useLoaderDeps, 'from') as any
 }
 
 export function bindRouteScopeUseSearch<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useSearch'] {
-  return bindIdHook(moduleId, useSearch) as any
+  return bindRouteScopeIdApi(moduleId, useSearch, 'from') as any
 }
 
 export function bindRouteScopeUseParams<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useParams'] {
-  return bindIdHook(moduleId, useParams) as any
+  return bindRouteScopeIdApi(moduleId, useParams, 'from') as any
 }
 
 export function bindRouteScopeUseRouteContext<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useRouteContext'] {
-  return bindIdHook(moduleId, useRouteContext) as any
+  return bindRouteScopeIdApi(moduleId, useRouteContext, 'from') as any
 }
 
 export function bindRouteScopeNotFound<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['notFound'] {
-  const toInstallation = getInstallationRouteIdMapper(moduleId)
-  return ((options?: any) =>
-    notFound(
-      toInstallation && options?.routeId
-        ? { ...options, routeId: toInstallation(options.routeId) }
-        : options,
-    )) as any
+  return bindRouteScopeIdApi(moduleId, notFound, 'routeId') as any
 }

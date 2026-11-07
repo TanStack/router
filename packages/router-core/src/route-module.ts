@@ -818,6 +818,33 @@ export function bindRouteScopeOptions<T extends { _module?: RouteModuleScope }>(
 }
 
 /**
+ * Internal generated/framework wiring: binds an id-based API (`getRouteApi`,
+ * `useMatch`, `notFound`, ...) to one installation of a module installed
+ * several times. The module-local ids it receives, as its argument or as the
+ * `key` of its options, map to the installation's. Any other scope uses the
+ * API itself.
+ */
+export function bindRouteScopeIdApi<TApi extends (...args: Array<any>) => any>(
+  moduleId: string,
+  api: TApi,
+  key?: 'from' | 'routeId',
+): TApi {
+  const toInstallation = getInstallationRouteIdMapper(moduleId)
+  if (!toInstallation) {
+    return api
+  }
+  if (key === undefined) {
+    return ((id: unknown) => api(toInstallation(id))) as TApi
+  }
+  return ((options?: Record<string, unknown>) =>
+    api(
+      options?.[key] === undefined
+        ? options
+        : { ...options, [key]: toInstallation(options[key]) },
+    )) as TApi
+}
+
+/**
  * Creates the `redirect` of a route module: absolute destinations are local to
  * the module, wherever it is mounted.
  */

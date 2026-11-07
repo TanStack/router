@@ -274,11 +274,7 @@ export type { Route as RouteCore } from '@tanstack/router-core'
 
 export { createRouter, Router } from './router'
 
-export type {
-  FileRoutesByPathEntry,
-  FileRouteScope,
-  RouteScope,
-} from './routeModule'
+export type { FileRouteScope, RouteScope } from './routeModule'
 export type { FileRouteFactory } from './fileRoute'
 export type {
   HostedRouter,
