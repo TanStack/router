@@ -6,6 +6,7 @@ import {
   getInstallationRouteIdMapper,
   getScopedRouterView,
   installRouteModules,
+  resolveRouteScope,
 } from '@tanstack/router-core/_internal/route-module'
 import { Route, getRouteApi } from './route'
 import { Link, addRouteModuleLinkOptions, useLinkProps } from './link'
@@ -21,6 +22,7 @@ import { useParams } from './useParams'
 import { useRouteContext } from './useRouteContext'
 import type { UseBlockerFn } from './useBlocker'
 import type * as Solid from 'solid-js'
+import type { RouteModuleScope } from '@tanstack/router-core/_internal/route-module'
 import type {
   AnyContext,
   AnyRoute,
@@ -234,6 +236,22 @@ function bindOptions(moduleId: string): (options: any) => any {
     bindRouteScopeOptions(moduleId, options ?? {}, router, routeId)
 }
 
+/**
+ * The props of a scoped component with the module's scope merged in. The
+ * props are a proxy: spreading it would read every prop, children included,
+ * in one memo and re-create them all on any change. A lazy getter keeps each
+ * prop's own reactivity.
+ */
+function bindProps(moduleId: string, props: { _module?: RouteModuleScope }) {
+  const router = useRouter()
+  const routeId = useContext(nearestMatchContext)[0 /* route id */]()
+  return mergeProps(props, {
+    get _module() {
+      return resolveRouteScope(moduleId, props._module, router, routeId)
+    },
+  })
+}
+
 function bindIdHook(moduleId: string, hook: (options: any) => any) {
   const toInstallation = getInstallationRouteIdMapper(moduleId)
   return toInstallation
@@ -247,8 +265,8 @@ export function bindRouteScopeLink<TRouter extends AnyRouter>(
 ): RouteScope<TRouter>['Link'] {
   const AnyLink = Link as (props: any) => Solid.JSX.Element
   return ((props: object) => {
-    const bind = bindOptions(moduleId)
-    return <AnyLink {...bind(props)} />
+    const bound = bindProps(moduleId, props)
+    return <AnyLink {...bound} />
   }) as any
 }
 
@@ -257,8 +275,8 @@ export function bindRouteScopeCreateLink<TRouter extends AnyRouter>(
 ): RouteScope<TRouter>['createLink'] {
   const AnyLink = Link as (props: any) => Solid.JSX.Element
   return ((Comp: unknown) => (props: object) => {
-    const bind = bindOptions(moduleId)
-    return <AnyLink {...bind(props)} _asChild={Comp} />
+    const bound = bindProps(moduleId, props)
+    return <AnyLink {...bound} _asChild={Comp} />
   }) as any
 }
 
@@ -267,8 +285,8 @@ export function bindRouteScopeNavigate<TRouter extends AnyRouter>(
 ): RouteScope<TRouter>['Navigate'] {
   const AnyNavigate = Navigate as (props: any) => null
   return ((props: object) => {
-    const bind = bindOptions(moduleId)
-    return <AnyNavigate {...bind(props)} />
+    const bound = bindProps(moduleId, props)
+    return <AnyNavigate {...bound} />
   }) as any
 }
 
@@ -277,25 +295,17 @@ export function bindRouteScopeMatchRoute<TRouter extends AnyRouter>(
 ): RouteScope<TRouter>['MatchRoute'] {
   const AnyMatchRoute = MatchRoute as (props: any) => any
   return ((props: object) => {
-    const bind = bindOptions(moduleId)
+    const bound = bindProps(moduleId, props)
     const routeId = useContext(nearestMatchContext)[0 /* route id */]()
-    return <AnyMatchRoute {...bind(props)} _nearestRoute={routeId} />
+    return <AnyMatchRoute {...bound} _nearestRoute={routeId} />
   }) as any
 }
 
 export function bindRouteScopeUseLinkProps<TRouter extends AnyRouter>(
   moduleId: string,
 ): RouteScope<TRouter>['useLinkProps'] {
-  return ((options: any) => {
-    const bind = bindOptions(moduleId)
-    return useLinkProps(
-      mergeProps(options, {
-        get _module() {
-          return bind(options)._module
-        },
-      }) as any,
-    )
-  }) as any
+  return ((options: any) =>
+    useLinkProps(bindProps(moduleId, options) as any)) as any
 }
 
 export function bindRouteScopeLinkOptions<TRouter extends AnyRouter>(

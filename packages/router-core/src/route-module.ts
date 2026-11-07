@@ -747,11 +747,11 @@ function scopeTarget(scope: RouteModuleScope): string {
 }
 
 /**
- * The scope of options an API of `moduleId` receives: the options' own scope
- * (`scope`) must be compatible with it, and an installation chosen by either
- * is kept.
+ * Internal generated/framework wiring: the scope of options an API of
+ * `moduleId` receives. The options' own scope (`scope`) must be compatible
+ * with it, and an installation chosen by either is kept.
  */
-function resolveRouteScope(
+export function resolveRouteScope(
   moduleId: string,
   scope: RouteModuleScope | undefined,
   router?: AnyRouter,
