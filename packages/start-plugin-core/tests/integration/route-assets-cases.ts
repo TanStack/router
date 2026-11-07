@@ -24,12 +24,20 @@
  * importers rather than carrying a copy), `Tile` (by a lazily loaded module
  * of `/other`) and `Banner` (by the root route, which every page loads).
  * `/shared` has two split options reading the same helper, and `/hyd` two
- * `<Hydrate>` boundaries whose children do.
+ * `<Hydrate>` boundaries whose children do; the boundaries also render
+ * `Gem` and `Glyph`, exports of `/hyd` (`Gem` counts its renders; `Glyph`
+ * is imported by `/third` too). The root route renders its own export
+ * `Sidebar` inside a boundary, and `/third` imports it. `/paged`'s
+ * `component` is its export `Paged`, which `/third` imports. `/twice` renders
+ * one component, holding a boundary, as `component` and `errorComponent`.
+ * The layout `/posts` renders its export `PostCard`, which its child
+ * `/posts/$id` imports; its sibling `/posts/new` does not.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { rsbuildEntries } from './route-css-cases'
+import type { RsbuildConfig } from '@rsbuild/core'
 import type { StartBundler } from '../build-harness'
 
 const timeout = 60_000
@@ -52,7 +60,12 @@ const exportedNames = ['Card', 'Chip', 'Badge', 'Tile', 'Banner']
 
 const files: Record<string, string> = {
   'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
 import { Banner } from './exported'
+export function Sidebar() {
+  return <aside>MARK_JS_SIDEBAR</aside>
+}
 export const Route = createRootRoute({
   component: Root,
   notFoundComponent: () => <p>not found</p>,
@@ -65,6 +78,9 @@ function Root() {
       </head>
       <body>
         <Banner />
+        <Hydrate when={interaction()}>
+          <Sidebar />
+        </Hydrate>
         <Outlet />
         <Scripts />
       </body>
@@ -95,8 +111,15 @@ export const Route = createFileRoute('/')({
 `,
   'src/routes/third.tsx': `${head}import pageCss from './third.module.css'
 import { Chip } from './exported'
+import { Glyph } from './hyd'
+import { Paged } from './paged'
+import { Sidebar } from './__root'
 export const Route = createFileRoute('/third')({
-  component: () => <p className={pageCss.m}>MARK_JS_THIRD<Chip /></p>,
+  component: () => (
+    <p className={pageCss.m}>
+      MARK_JS_THIRD<Chip /><Glyph /><Paged /><Sidebar />
+    </p>
+  ),
 })
 `,
   'src/routes/other.tsx': `${head}import { Suspense, lazy } from 'react'
@@ -136,6 +159,16 @@ export const Route = createFileRoute('/shared')({
   'src/routes/hyd.tsx': `${head}import { Hydrate } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 import boundaryCss from './boundary.module.css'
+import gemCss from './gem.module.css'
+import glyphCss from './glyph.module.css'
+let gemRenders = 0
+export function Gem() {
+  gemRenders++
+  return <b className={gemCss.m}>MARK_JS_GEM</b>
+}
+export function Glyph() {
+  return <b className={glyphCss.m}>MARK_JS_GLYPH</b>
+}
 function helper(label: string) {
   return <u className={boundaryCss.m}>MARK_JS_BOUNDARY {label}</u>
 }
@@ -144,13 +177,63 @@ export const Route = createFileRoute('/hyd')({
     <section>
       MARK_JS_HYD
       <Hydrate when={interaction()}>
-        <b>{helper('a')}</b>
+        <b>{helper('a')}<Gem /></b>
       </Hydrate>
       <Hydrate when={interaction()}>
-        <i>{helper('b')}</i>
+        <i>{helper('b')}<Glyph /></i>
       </Hydrate>
     </section>
   ),
+})
+`,
+  'src/routes/paged.tsx': `${head}import pagedCss from './paged.module.css'
+export function Paged() {
+  return <p className={pagedCss.m}>MARK_JS_PAGED</p>
+}
+export const Route = createFileRoute('/paged')({ component: Paged })
+`,
+  'src/routes/twice.tsx': `${head}import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import childCss from './twicechild.module.css'
+function Page() {
+  return (
+    <section>
+      MARK_JS_TWICE
+      <Hydrate when={interaction()}>
+        <u className={childCss.m}>MARK_JS_TWICECHILD</u>
+      </Hydrate>
+    </section>
+  )
+}
+export const Route = createFileRoute('/twice')({
+  component: Page,
+  errorComponent: Page,
+})
+`,
+  'src/routes/posts.tsx': `${head}import { Outlet } from '@tanstack/react-router'
+import postsCss from './posts.module.css'
+import cardCss from './postcard.module.css'
+export function PostCard() {
+  return <b className={cardCss.m}>MARK_JS_POSTCARD</b>
+}
+export const Route = createFileRoute('/posts')({
+  component: () => (
+    <div className={postsCss.m}>
+      MARK_JS_POSTS<PostCard />
+      <Outlet />
+    </div>
+  ),
+})
+`,
+  'src/routes/posts.$id.tsx': `${head}import pageCss from './postid.module.css'
+import { PostCard } from './posts'
+export const Route = createFileRoute('/posts/$id')({
+  component: () => <p className={pageCss.m}>MARK_JS_POSTID<PostCard /></p>,
+})
+`,
+  'src/routes/posts.new.tsx': `${head}import pageCss from './postnew.module.css'
+export const Route = createFileRoute('/posts/new')({
+  component: () => <p className={pageCss.m}>MARK_JS_POSTNEW</p>,
 })
 `,
   ...Object.fromEntries(
@@ -163,6 +246,14 @@ export const Route = createFileRoute('/hyd')({
       'Plain',
       'SharedHelper',
       'Boundary',
+      'Gem',
+      'Glyph',
+      'Paged',
+      'TwiceChild',
+      'Posts',
+      'PostCard',
+      'PostId',
+      'PostNew',
     ].map((name) => [
       `src/routes/${name.toLowerCase()}.module.css`,
       cssModule(name.toUpperCase()),
@@ -196,8 +287,8 @@ const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
   },
   '/third': {
     needs: {
-      js: ['THIRD', 'CHIP', 'BANNER'],
-      css: ['THIRD', 'CHIP', 'BANNER'],
+      js: ['THIRD', 'CHIP', 'GLYPH', 'PAGED', 'SIDEBAR', 'BANNER'],
+      css: ['THIRD', 'CHIP', 'GLYPH', 'PAGED', 'BANNER'],
     },
   },
   '/other': {
@@ -219,9 +310,55 @@ const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
   // The boundaries' children render on the server with their CSS (J5.7);
   // their code loads when they hydrate, not with the route (J5.6).
   '/hyd': {
-    needs: { js: ['HYD', 'BANNER'], css: ['BOUNDARY', 'BANNER'] },
+    needs: {
+      js: ['HYD', 'BANNER'],
+      css: ['BOUNDARY', 'GEM', 'GLYPH', 'BANNER'],
+    },
+  },
+  '/paged': {
+    needs: { js: ['PAGED', 'BANNER'], css: ['PAGED', 'BANNER'] },
+  },
+  // (one component in a module both options read, J2.20)
+  '/twice': {
+    needs: { js: ['TWICE', 'BANNER'], css: ['TWICECHILD', 'BANNER'] },
+  },
+  '/posts/1': {
+    needs: {
+      js: ['POSTS', 'POSTCARD', 'POSTID', 'BANNER'],
+      css: ['POSTS', 'POSTCARD', 'POSTID', 'BANNER'],
+    },
+  },
+  '/posts/new': {
+    needs: {
+      js: ['POSTS', 'POSTCARD', 'POSTNEW', 'BANNER'],
+      css: ['POSTS', 'POSTCARD', 'POSTNEW', 'BANNER'],
+    },
   },
 }
+
+/**
+ * The markers of code only a route's split options or a lazy boundary
+ * import (no other module imports it through a route file, which a bundler
+ * may keep with the entry: SPEC J2.8): the app shell never links them.
+ */
+const routeOnly = [
+  'EXPORTED',
+  'INDEX',
+  'THIRD',
+  'OTHER',
+  'WIDGET',
+  'PLAIN',
+  'SHAREDPAGE',
+  'SHAREDERROR',
+  'HYD',
+  'BOUNDARY',
+  'GEM',
+  'TWICE',
+  'TWICECHILD',
+  'POSTS',
+  'POSTID',
+  'POSTNEW',
+]
 
 /** The markers of the files the server-rendered page at `pathname` links, by kind. */
 async function linkedMarkers(url: string, pathname: string): Promise<Assets> {
@@ -253,9 +390,26 @@ async function linkedMarkers(url: string, pathname: string): Promise<Assets> {
 
 const bundlerName = { vite: 'Vite', rsbuild: 'Rsbuild' } as const
 
-/** The rows of `bundler`'s production build (`sideEffects`: the app's `package.json` field). */
-export function routeAssetsSuite(bundler: StartBundler, sideEffects?: false) {
-  describe(`${bundlerName[bundler]} build${sideEffects === false ? ' with "sideEffects": false' : ''}`, () => {
+/**
+ * The rows of `bundler`'s production build: `sideEffects`, the app's
+ * `package.json` field; `rsbuildConfig`, Rsbuild configuration of the app
+ * (`label` names it).
+ */
+export function routeAssetsSuite(
+  bundler: StartBundler,
+  options: {
+    sideEffects?: false
+    rsbuildConfig?: RsbuildConfig
+    label?: string
+  } = {},
+) {
+  const { sideEffects, rsbuildConfig } = options
+  const name = [
+    `${bundlerName[bundler]} build`,
+    ...(sideEffects === false ? ['with "sideEffects": false'] : []),
+    ...(options.label ? [options.label] : []),
+  ].join(' ')
+  describe(name, () => {
     const cleanups: Array<() => Promise<void>> = []
     let url: string
     let shell: Assets
@@ -285,6 +439,7 @@ export function routeAssetsSuite(bundler: StartBundler, sideEffects?: false) {
           bundler,
           registerCleanup,
           sideEffects,
+          rsbuildConfig,
           files: { ...rsbuildEntries, ...files },
         })
         url = (await build.preview(registerCleanup)).url
@@ -295,6 +450,13 @@ export function routeAssetsSuite(bundler: StartBundler, sideEffects?: false) {
       for (const cleanup of cleanups.reverse()) {
         await cleanup()
       }
+    })
+
+    test('the page of an unknown path links no code or CSS only a route or a boundary needs', () => {
+      expect({
+        js: shell.js.filter((name) => routeOnly.includes(name)),
+        css: shell.css.filter((name) => routeOnly.includes(name)),
+      }).toEqual({ js: [], css: [] })
     })
 
     for (const [pathname, { needs, may }] of Object.entries(routes)) {

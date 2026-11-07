@@ -5,4 +5,4 @@
 import { routeAssetsSuite } from './route-assets-cases'
 
 routeAssetsSuite('vite')
-routeAssetsSuite('vite', false)
+routeAssetsSuite('vite', { sideEffects: false })
