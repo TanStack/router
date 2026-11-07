@@ -533,14 +533,17 @@ dir)` is not a conflict by itself.
   absolute) is not specified: tests derive the expected id from the arguments received. `functionName` is the
   generated handler name of earlier versions (`<name>_createServerFn_handler`, `_1`, `_2`… for a name the module
   repeats, in source order; C5), so custom ids survive an upgrade; it keeps an identifier's characters (non-ASCII
-  ones too), and a name that is no identifier (a string property key) holds only `[A-Za-z0-9_$]`. An id the
+  ones too) except in a numbered name (only `[A-Za-z0-9_$]`, no leading or trailing `_`, as earlier versions), and a
+  name that is no identifier (a string property key) holds only `[A-Za-z0-9_$]`. An id the
   generator returns is one URL path segment: one with a character that never reached the server whole (whitespace,
-  control and non-ASCII characters, ``" # / < > ? \ ^ ` { }``) or that is `.` or `..` fails the build, naming the
-  file; other characters outside RFC 3986's unreserved set and `$` build with a deprecation warning naming the file,
+  control and non-ASCII characters, ``" # / < > ? \ ^ ` { }``), that is `.` or `..`, or whose percent-encoding the
+  server reads as another id or rejects (`%41`, lowercase hex, `%2E`, `%zz`) fails the build, naming the file; other characters outside RFC 3986's unreserved set and `$` build with a deprecation warning naming the file,
   and reach their handler. An empty id is the default id. Edits change the input, so ids need not survive edits.
   _Output formats_ (a compatibility requirement until the next major, owned by `server-fns/format.ts`: tooling reads
-  them from the server bundle): the default id is the SHA256 hex of `<filename>--<functionName>`; collisions are
-  numbered by file, then source order within the file (client-referenced functions first); the resolver
+  them from the server bundle): the default id is the SHA256 hex of `<path>--<functionName>`, `<path>` the
+  defining file relative to the project root with `/` separators; collisions are numbered by file, then source
+  order within the file, in the order the environments allocate (the client's references first; under RSC the
+  provider environment, which builds first); the resolver
   manifest's keys and `functionName`s are single-quoted, the `createServerRpc` metadata and the rpc ids
   double-quoted, escaped as Babel printed them (seen only where the bundler keeps module text: Rsbuild's server
   bundle); `serverFnMeta.name` is the variable's name, also when it is exported under another one. The golden test

@@ -1,12 +1,14 @@
 /**
  * Everything a build prints or hashes about server-fn ids and metadata,
  * in the formats earlier Start versions printed: tooling reads them from
- * the server bundle (the manifest's keys and `functionName`s, the
- * `createServerRpc` metadata, the client's and SSR's rpc ids), so they
- * stay until a major version changes them here, and only here
- * (FOLLOW-UPS "server-fn output formats"). The rest of the compiler keys
- * a server fn by its stable key (registry, placeholders, dev ids, wrapper
- * names), never by these.
+ * the server bundle (the manifest's keys and quoting, the `createServerRpc`
+ * metadata, the client's and SSR's rpc ids), so they stay until a major
+ * version changes them here, and only here (FOLLOW-UPS "server-fn output
+ * formats"). The rest of the compiler keys a server fn by its stable key
+ * (registry, placeholders, dev ids, wrapper names), never by these. The
+ * manifest's `functionName` is the provider's wrapper export: for the
+ * shapes earlier versions compiled (a module-level variable) it equals
+ * `handlerFunctionName`; it is not printed here.
  *
  * Fixes of what earlier versions got wrong act only on the inputs they got
  * wrong: names that are no identifier (shapes they refused), collisions
