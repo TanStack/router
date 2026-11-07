@@ -61,7 +61,7 @@ describe('slice gates: loading', () => {
     expect(env!.code).toBe(
       dedent(`
       import { lazyRouteComponent } from 'toy-router'
-      const tsrImportComponent = () => import('./route.tsx?tsr-split=component')
+      const tsrImportComponent = () => import('/app/route.tsx?tsr-split=component')
       import { createFileRoute } from 'toy-router'
       import { helper } from './helper'
       export const Route = createFileRoute('/')({
@@ -142,7 +142,7 @@ describe('slice gates: loading', () => {
     )
     expect(host.caches.plans.get('client')!.stats(false).plans).toBe(2)
     expect(b!.code).toContain(
-      "import('./page.tsx?flavour=b&tsr-split=component')",
+      "import('/app/page.tsx?flavour=b&tsr-split=component')",
     )
     expect(chunk!.output).toBe(
       'derived:/app/page.tsx?flavour=b&tsr-split=component',

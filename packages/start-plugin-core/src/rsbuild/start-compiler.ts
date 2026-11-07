@@ -9,7 +9,11 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
+import {
+  ASSET_QUERY_RE,
+  EXTRACTED_EXPORT_QUERY_RE,
+  identify,
+} from '@tanstack/router-utils/compiler'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -121,7 +125,7 @@ export function registerStartCompiler(
       // matches the regex against the query with its leading `?`)
       {
         test: JS_FILE_RE,
-        resourceQuery: /tsr-split=export~/,
+        resourceQuery: EXTRACTED_EXPORT_QUERY_RE,
         sideEffects: false,
       },
     ]

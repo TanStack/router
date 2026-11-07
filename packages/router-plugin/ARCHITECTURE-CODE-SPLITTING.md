@@ -25,12 +25,15 @@ core; read the
 
 For `posts.tsx` in a client environment:
 
-| id                                 | contents                                                                                                                                                                                                                      |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts.tsx`                        | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads                                                             |
-| `posts.tsx?tsr-split=component`    | one chunk per split group (group key: sorted option names joined by `~`, e.g. `component~loader`) exporting the option's value                                                                                                |
-| `posts.tsx?tsr-split=shared~<a+b>` | code several chunks need and the route module does not (key: the needing groups joined by `+`), loaded lazily by those chunks                                                                                                 |
-| `posts.tsx?tsr-split=export~Name`  | build only: an exported, pure, unwritten declaration that only chunks need; the route module re-exports it for other importers; a chunk copies it when the copy is a function or primitive closure, else imports it from here |
+| id                                    | contents                                                                                                                                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads                                                             |
+| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                                                                            |
+| `posts.tsx?tsr-split=shared---<keys>` | code several chunks need and the route module does not (keys: the options of the needing groups, sorted, joined by `---`), loaded lazily by those chunks                                                                      |
+| `posts.tsx?tsr-split=export---Name`   | build only: an exported, pure, unwritten declaration that only chunks need; the route module re-exports it for other importers; a chunk copies it when the copy is a function or primitive closure, else imports it from here |
+
+The ids and the specifiers importing them (the route file's absolute path) keep the format of the Babel splitter,
+which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it (core README, "Hosts").
 
 All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. Placement
 is decided by the core from what each output reads; the planners only say which option values are roots of which

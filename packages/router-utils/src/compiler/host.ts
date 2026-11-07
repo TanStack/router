@@ -4,13 +4,7 @@
  */
 import { stat } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
-import { posix } from 'node:path'
-import {
-  OWNED_QUERY_KEYS,
-  identify,
-  normalizePath,
-  planKeyString,
-} from './identity'
+import { OWNED_QUERY_KEYS, identify, planKeyString } from './identity'
 import {
   PlanCache,
   UNRESOLVED_DEPENDENCY,
@@ -246,31 +240,6 @@ export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
 export const OWNED_QUERY_RE = new RegExp(
   `(?:^|[?&])(?:${Object.values(OWNED_QUERY_KEYS).join('|')})(?:=|&|$)`,
 )
-
-/**
- * Resolves a compiler-derived specifier (`./route.tsx?tsr-split=…`, as glue
- * emits it) to the importer's sibling with the query verbatim, without the
- * file system: the derived module is the importer's own file. Null for any
- * other specifier.
- */
-export function resolveDerivedSibling(
-  specifier: string,
-  importer: string | undefined,
-): string | null {
-  if (!importer || !specifier.startsWith('./')) {
-    return null
-  }
-  const q = specifier.indexOf('?')
-  if (q === -1 || !OWNED_QUERY_RE.test(specifier.slice(q))) {
-    return null
-  }
-  const basename = specifier.slice(2, q)
-  if (basename.includes('/')) {
-    return null
-  }
-  const dir = posix.dirname(normalizePath(identify(importer).path))
-  return `${dir}/${basename}${specifier.slice(q)}`
-}
 
 export interface InvalidateChange {
   path: string

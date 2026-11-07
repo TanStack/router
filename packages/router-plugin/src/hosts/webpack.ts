@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  EXTRACTED_EXPORT_QUERY_RE,
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
@@ -190,7 +191,7 @@ export function createRouterCompilerWebpackPlugin(
         },
         {
           test: JS_FILE_RE,
-          resourceQuery: /tsr-split=export~/,
+          resourceQuery: EXTRACTED_EXPORT_QUERY_RE,
           sideEffects: false,
         },
       )

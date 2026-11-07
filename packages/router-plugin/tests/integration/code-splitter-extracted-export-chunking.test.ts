@@ -3,7 +3,7 @@
  * own chunk configuration groups the routes directory with the entry (SPEC
  * J2.5, J2.8). A class (an object, a call result) an exported binding is
  * exists once: the chunk imports its extracted module
- * (`?tsr-split=export~Name`) instead of carrying a copy, and that module is
+ * (`?tsr-split=export---Name`) instead of carrying a copy, and that module is
  * reachable from the entry (the route module re-exports it) and from the
  * chunk. A `manualChunks` function or a `cacheGroups` entry matching the
  * route files (not the split chunks) puts it in a chunk the entry loads: the
@@ -54,7 +54,7 @@ export async function render(component: any) {
 
 const routesDir = /[\\/]routes[\\/]/
 /** A split chunk's id (the group leaves the lazy chunks alone). */
-const splitChunk = /[?&]tsr-split=(?!export~)/
+const splitChunk = /[?&]tsr-split=(?!export---)/
 const groups = (id: string) => routesDir.test(id) && !splitChunk.test(id)
 const cacheGroupTest = (module: { resource?: string }) =>
   groups(module.resource ?? '')
@@ -228,7 +228,7 @@ export const Route = createFileRoute('/')({
 test.each(['vite', 'rspack', 'webpack'] as const)(
   'a module named like an extracted export builds and is no extracted export on %s',
   async (bundler) => {
-    const name = 'a&tsr-split=export~%'
+    const name = 'a&tsr-split=export---%'
     const app = await build({
       bundler,
       env: 'client',

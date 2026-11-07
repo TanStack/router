@@ -99,7 +99,10 @@ describe.each([
 
   it("resolves an output's import of another output of its file to one module of that file", async () => {
     // the route module, as the app's route tree imports it
-    const resource = await resolve(path.win32.join(root, 'src'), './routes/posts')
+    const resource = await resolve(
+      path.win32.join(root, 'src'),
+      './routes/posts',
+    )
     const routeId = webpackResourceId(resource)
     expect(routeId).toBe(route.replace(/\\/g, '/'))
 

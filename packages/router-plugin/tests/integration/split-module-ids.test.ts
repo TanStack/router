@@ -208,9 +208,9 @@ async function webpackIds(
     ids: {
       root: app.root,
       requests: sorted(
-        json!.chunks!.filter((c) => !c.initial).flatMap((c) =>
-          (c.origins ?? []).map((o) => o.request!),
-        ),
+        json!
+          .chunks!.filter((c) => !c.initial)
+          .flatMap((c) => (c.origins ?? []).map((o) => o.request!)),
       ),
       modules: routes.map((m) => {
         const query = m.name!.indexOf('?')
@@ -273,7 +273,8 @@ describe.each(Object.keys(configurations) as Array<keyof typeof splitGroups>)(
 
     describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
       let built: ReturnType<typeof webpackIds> | undefined
-      const ids = async () => (await (built ??= webpackIds(bundler, pluginOptions))).ids
+      const ids = async () =>
+        (await (built ??= webpackIds(bundler, pluginOptions))).ids
       afterAll(async () => {
         await (await built)?.app.dispose()
       })

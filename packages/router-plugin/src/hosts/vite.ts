@@ -13,6 +13,7 @@ import path from 'node:path'
 import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
+  SAME_FILE_SPECIFIER_RE,
   applyViteInvalidation,
   identify,
   isFinalBuild,
@@ -20,7 +21,7 @@ import {
   loadDerivedSource,
   normalizePath,
   releaseEnvironment,
-  resolveDerivedSibling,
+  resolveSameFileSpecifier,
   rollupEntryModuleIds,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
@@ -273,9 +274,9 @@ export function createRouterCompilerVitePlugin(
     },
 
     resolveId: {
-      filter: { id: OWNED_QUERY_RE },
+      filter: { id: SAME_FILE_SPECIFIER_RE },
       handler(source, importer) {
-        return resolveDerivedSibling(source, importer)
+        return resolveSameFileSpecifier(source, importer)
       },
     },
 

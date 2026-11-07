@@ -774,8 +774,10 @@ A compiler may do any of these and still be correct; tests must not fail on them
   the envs of one build, and overridable in build (J4.4, G4); dev may use another id. Equal opaque ids between builds
   of one project at different roots are not required.
 - **§5.3 Module layout**: virtual-module ids and query strings (`?tsr-split=`, `?tss-hydrate=`,
-  `?server-fn-module-lookup`), chunk count and shape, shared-dependency chunks, where shared bindings live (shared
-  module, chunk re-import, entry re-export), copying _pure, unexported, identity-unobservable_ helpers (and, by the
+  `?server-fn-module-lookup`; except that split groups keep main's ids and absolute `import()` specifiers,
+  `<file>?tsr-split=<a>---<b>`, which apps' chunk naming reads: router-plugin `split-module-ids.test.ts`), chunk
+  count and shape, shared-dependency chunks, where shared bindings live (shared module, chunk re-import, entry
+  re-export), copying _pure, unexported, identity-unobservable_ helpers (and, by the
   J2.4 amendment, exported functions whose closure is functions and primitives) into a chunk or
   importing them (J2.4), as long as group semantics hold: a group is available together (J2.2; forwarding modules
   allowed), separately configured groups are neither made eager nor loaded together when one is needed, and no chunk

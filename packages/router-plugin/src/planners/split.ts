@@ -12,7 +12,7 @@
 import {
   listEnd,
   removeListItems,
-  siblingSpecifier,
+  sameFileSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
 import { identifierSymbol, isMemberOfImport, pascal } from './route'
@@ -150,7 +150,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     const importer = names.alloc(
       `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
     )
-    const spec = siblingSpecifier(derivedId)
+    const spec = sameFileSpecifier(derivedId)
     ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: [`const ${importer.name} = () => import(`] },
