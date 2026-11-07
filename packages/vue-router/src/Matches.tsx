@@ -7,8 +7,7 @@ import { useTransitionerSetup } from './Transitioner'
 import { routeIdContext } from './matchContext'
 import { Match } from './Match'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
-import type {
-  AnyRouter,
+import type { AnyRouter,
   DeepPartial,
   ErrorComponentProps,
   MakeOptionalPathParams,
@@ -20,8 +19,8 @@ import type {
   RegisteredRouter,
   RegisteredRouterOf,
   ResolveRoute,
-  ToSubOptionsProps,
-} from '@tanstack/router-core'
+  RouteModuleScope,
+  ToSubOptionsProps } from '@tanstack/router-core'
 
 // Define a type for the error component function
 type ErrorRouteComponentType = (props: ErrorComponentProps) => Vue.VNode
@@ -244,9 +243,10 @@ export const MatchRoute = Vue.defineComponent({
       type: Boolean,
       required: false,
     },
-    // Internal route-module scope, set by the `MatchRoute` of a route module.
+    // Internal route-module scope, set by the `MatchRoute` of a route module:
+    // a module id, or an object for options that resolve their scope later.
     _module: {
-      type: String,
+      type: [String, Object] as Vue.PropType<RouteModuleScope>,
       required: false,
     },
     _nearestRoute: {
