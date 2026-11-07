@@ -99,6 +99,8 @@ export interface Escape {
   node: Node
   reason: EscapeReason
   value: AbstractValue
+  /** A `flow` escape inside what an isomorphic implementation or a `createClientOnlyFn` function returns (for its message). */
+  returnedFrom?: 'isoFn' | 'clientOnlyFn'
 }
 
 export interface StartAnalysis {
@@ -193,10 +195,20 @@ export function startAnalysisOf(
   }
 
   const escaped = new Set<Node>()
-  const escape = (node: Node, value: AbstractValue, reason: EscapeReason) => {
+  const escape = (
+    node: Node,
+    value: AbstractValue,
+    reason: EscapeReason,
+    returnedFrom?: Escape['returnedFrom'],
+  ) => {
     if (takesServerCode(table, value) && !escaped.has(node)) {
       escaped.add(node)
-      result.escapes.push({ node, reason, value })
+      result.escapes.push({
+        node,
+        reason,
+        value,
+        ...(returnedFrom && { returnedFrom }),
+      })
     }
   }
 
@@ -253,12 +265,12 @@ export function startAnalysisOf(
   }
 
   /**
-   * Whether a value inside array and object literals, a join of them (and
-   * the function returning them, or a `const` list only such uses read)
-   * reaches a Start call's argument: `.middleware([mw])`, `.middleware(common)`,
-   * `createStart(() => ({ functionMiddleware: [mw] }))`.
+   * Where a value inside array and object literals, a join of them and the
+   * function expression returning them lands: `p`, the first other parent,
+   * with `n`, its child the climb came from (null: a function declaration's
+   * or a top-level return, or the program).
    */
-  const reachesStartSink = (from: Node, seen = new Set<Node>()): boolean => {
+  const landingOf = (from: Node): { p: Node; n: Node } | null => {
     let n: Node = from
     for (let p = parentOf(n); p; p = parentOf(n)) {
       if (
@@ -275,16 +287,52 @@ export function startAnalysisOf(
       } else if (p.type === 'ReturnStatement') {
         const fn = enclosingFunction(p)
         if (!fn || fn.type === 'FunctionDeclaration') {
-          return false
+          return null
         }
         n = fn
-      } else if (p.type === 'VariableDeclarator') {
-        return constListReachesSink(p, seen)
       } else {
-        return p.type === 'CallExpression' && p.callee !== n && isStartSink(p)
+        return { p, n }
       }
     }
-    return false
+    return null
+  }
+
+  /**
+   * Whether a value inside array and object literals, a join of them (and
+   * the function returning them, or a `const` list only such uses read)
+   * reaches a Start call's argument: `.middleware([mw])`, `.middleware(common)`,
+   * `createStart(() => ({ functionMiddleware: [mw] }))`.
+   */
+  const reachesStartSink = (from: Node, seen = new Set<Node>()): boolean => {
+    const landing = landingOf(from)
+    if (!landing) {
+      return false
+    }
+    const { p, n } = landing
+    return p.type === 'VariableDeclarator'
+      ? constListReachesSink(p, seen)
+      : p.type === 'CallExpression' && p.callee !== n && isStartSink(p)
+  }
+
+  /** The implementation whose return a value in literals ends in, when it is an isomorphic fn's or a `createClientOnlyFn` function's. */
+  const returnedFrom = (from: Node): Escape['returnedFrom'] => {
+    const landing = landingOf(from)
+    if (
+      !landing ||
+      landing.p.type !== 'CallExpression' ||
+      !isFunctionNode(landing.n) ||
+      landing.p.callee === landing.n
+    ) {
+      return undefined
+    }
+    const call = landing.p
+    if (isIsoFnLink(call)) {
+      return 'isoFn'
+    }
+    const v = values.valueOf(call.callee)
+    return v.t === 'factory' && table.envOnlyKinds[v.kind] === 'client'
+      ? 'clientOnlyFn'
+      : undefined
   }
 
   /** Whether every read of the unexported `const` that `declarator` declares reaches a Start call's argument. */
@@ -472,7 +520,7 @@ export function startAnalysisOf(
         return
     }
     if (takesServerCode(table, value) && !isDataUse(p, outer, value)) {
-      escape(outer, value, 'flow')
+      escape(outer, value, 'flow', returnedFrom(outer))
     }
   }
 

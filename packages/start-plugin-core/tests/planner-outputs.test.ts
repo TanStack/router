@@ -659,3 +659,115 @@ export const Route = createFileRoute('/posts')({
     expect(out.code).toContain(`export { ${facts.serverFns[0]!.exportName} }`)
   })
 })
+
+/** The client output's diagnostics of `code`: severity, the source text each is at, and the message. */
+async function clientDiagnostics(code: string) {
+  const out = (await compile({ '/app/module.tsx': code }, 'client'))!
+  return out.diagnostics.map((d) => ({
+    severity: d.severity,
+    at: d.range!.start,
+    text: code.slice(d.range!.start, d.range!.end),
+    message: d.message,
+  }))
+}
+
+const FLOW_PLACES =
+  'passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…'
+
+describe('start-env: escape messages name the shape and a fix that compiles', () => {
+  const mwHead = `import { createClientOnlyFn, createIsomorphicFn, createMiddleware, createServerFn, createStart } from '@tanstack/react-start'
+const a = createMiddleware({ type: 'function' }).server(({ next }) => next())
+const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
+`
+  const openMiddleware = (name: string, places: string, extra = '') =>
+    `\`${name}\` is a middleware without \`.server()\`, used where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${extra}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with \`.server(({ next }) => next())\`.`
+
+  test('an open middleware returned from an isomorphic implementation', async () => {
+    const code = `${mwHead}const mws = createIsomorphicFn().server(() => [a, b]).client(() => [b])
+export const startInstance = createStart(() => ({ functionMiddleware: mws() }))
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.lastIndexOf('[b]') + 1,
+        text: 'b',
+        message: openMiddleware(
+          'b',
+          'returned from an isomorphic implementation, whose calls the compiler does not follow',
+        ),
+      },
+    ])
+  })
+
+  test('an open middleware composed of others, returned from an isomorphic implementation', async () => {
+    const code = `${mwHead}const both = createMiddleware({ type: 'function' }).middleware([a, b])
+const mws = createIsomorphicFn().server(() => [a, b]).client(() => [both])
+export const startInstance = createStart(() => ({ functionMiddleware: mws() }))
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('[both]') + 1,
+        text: 'both',
+        message: openMiddleware(
+          'both',
+          'returned from an isomorphic implementation, whose calls the compiler does not follow',
+        ),
+      },
+    ])
+  })
+
+  test('an open middleware returned from a `createClientOnlyFn` implementation', async () => {
+    const code = `${mwHead}const mws = createClientOnlyFn(() => [b])
+export const startInstance = createStart(() => ({ functionMiddleware: mws() }))
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.lastIndexOf('[b]') + 1,
+        text: 'b',
+        message: openMiddleware(
+          'b',
+          'returned from a `createClientOnlyFn` implementation, whose calls the compiler does not follow',
+          '`createClientOnlyFn` throws when called on the server, where Start reads middleware lists. ',
+        ),
+      },
+    ])
+  })
+
+  test('an open middleware stored in an object', async () => {
+    const code = `${mwHead}const cfg = { list: [b] }
+export const fn = createServerFn().middleware(cfg.list).handler(async () => 'x')
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('[b]') + 1,
+        text: 'b',
+        message: openMiddleware('b', FLOW_PLACES),
+      },
+    ])
+  })
+
+  test('an open middleware returned from a function the compiler cannot summarise', async () => {
+    const code = `${mwHead}function makeB(on: boolean) {
+  if (!on) { return createMiddleware({ type: 'function' }).client(({ next }) => next()) }
+  return b
+}
+export const fn = createServerFn().middleware([makeB(true)]).handler(async () => 'x')
+`
+    const diagnostics = await clientDiagnostics(code)
+    expect(diagnostics.map((d) => [d.severity, d.text])).toEqual([
+      [
+        'error',
+        "createMiddleware({ type: 'function' }).client(({ next }) => next())",
+      ],
+      ['error', 'b'],
+    ])
+    for (const d of diagnostics) {
+      expect(d.message).toBe(
+        "A function that returns a TanStack Start builder must return it from its single top-level `return` (or an arrow body) and must not be async, a generator, a method or a getter: the compiler cannot follow it otherwise, so server code attached to the builder would ship to the client. Split it into one factory per builder. Or end the middleware's chain with `.server(({ next }) => next())`.",
+      )
+    }
+  })
+})

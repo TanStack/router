@@ -41,6 +41,7 @@ import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
+  AbstractValue,
   EditScope,
   Frag,
   GenUnitId,
@@ -1121,6 +1122,18 @@ function parameterOf(
 const LATE_MESSAGE =
   'Another plugin compiles this module from a file that is not JavaScript (`.mdx`, `.vue`, `.svelte`, …), so the TanStack Start compiler only sees its output and cannot keep the server code of a TanStack Start builder or factory used here out of the client. Define it in a `.ts`/`.tsx` module and import what it creates.'
 
+const FLOW_PLACES =
+  'passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…'
+
+const RETURNED_FROM: Record<NonNullable<Escape['returnedFrom']>, string> = {
+  isoFn:
+    'returned from an isomorphic implementation, whose calls the compiler does not follow',
+  clientOnlyFn:
+    'returned from a `createClientOnlyFn` implementation, whose calls the compiler does not follow',
+}
+
+const FINISH_MIDDLEWARE = '`.server(({ next }) => next())`'
+
 const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
   flow: 'A TanStack Start builder or factory is used where the compiler cannot follow it (passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…), so server code attached to it there would ship to the client. Keep builders in `const` bindings and call `.handler()` / `.server()` on them directly.',
   computed:
@@ -1179,11 +1192,46 @@ function lateEscapesOf(
 const INPUT_VALIDATOR_MESSAGE =
   '`.inputValidator()` was renamed to `.validator()` (#7566) and has since been removed (#8694): call `.validator(…)` instead. When a dependency calls it, update that package to a version that uses `.validator()`.'
 
+/** A middleware builder without `.server()`: server code can still be attached to it. */
+function isOpenMiddleware(v: AbstractValue): boolean {
+  return (
+    v.t === 'builder' &&
+    v.kind === START_KINDS.middleware &&
+    !v.links.some((l) => l.method === 'server')
+  )
+}
+
 function escapeMessage(e: Escape): string {
   const message = ESCAPE_MESSAGES[e.reason]
+  if (isOpenMiddleware(e.value)) {
+    if (e.reason === 'flow') {
+      return openMiddlewareFlowMessage(e)
+    }
+    return e.reason === 'computed' || e.reason === 'member'
+      ? message
+      : `${message} Or end the middleware's chain with ${FINISH_MIDDLEWARE}.`
+  }
   return isClientOnlyPartial(e.value) && e.reason !== 'computed'
     ? `${message} For client-only code, use \`createClientOnlyFn(fn)\`, or give it a \`.server()\` implementation.`
     : message
+}
+
+/**
+ * An open middleware used where the compiler cannot follow it: a `.server()`
+ * could still be attached there. Where Start reads it as data, or with a
+ * `.server()` of its own, it compiles.
+ */
+function openMiddlewareFlowMessage(e: Escape): string {
+  const subject =
+    e.node.type === 'Identifier'
+      ? `\`${e.node.name}\` is a middleware without \`.server()\`, used`
+      : 'A middleware without `.server()` is used'
+  const places = e.returnedFrom ? RETURNED_FROM[e.returnedFrom] : FLOW_PLACES
+  const throws =
+    e.returnedFrom === 'clientOnlyFn'
+      ? '`createClientOnlyFn` throws when called on the server, where Start reads middleware lists. '
+      : ''
+  return `${subject} where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${throws}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with ${FINISH_MIDDLEWARE}.`
 }
 
 /** The `inputValidator` name of `.inputValidator` read off a server fn or middleware builder. */
