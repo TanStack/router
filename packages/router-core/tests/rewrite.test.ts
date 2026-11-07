@@ -237,6 +237,30 @@ describe('router rewrites', () => {
     },
   )
 
+  test.each([
+    { trailingSlash: 'never' as const, root: '/app', nested: '/app/posts' },
+    { trailingSlash: 'always' as const, root: '/app/', nested: '/app/posts/' },
+    { trailingSlash: 'preserve' as const, root: '/app/', nested: '/app/posts' },
+  ])(
+    'applies trailingSlash=$trailingSlash to the rewritten basepath publicHref',
+    ({ trailingSlash, root, nested }) => {
+      const router = createTestRouter({
+        routeTree: new BaseRootRoute({}),
+        history: createMemoryHistory({ initialEntries: ['/app'] }),
+        basepath: '/app',
+        trailingSlash,
+      })
+
+      // The bare basepath is where the SSR redirect check used to see
+      // '/app' !== '/app/' and answer with a spurious 308.
+      expect(router.buildLocation({ to: '/' }).publicHref).toBe(root)
+      expect(router.buildLocation({ to: '/posts' }).publicHref).toBe(nested)
+      expect(
+        router.buildLocation({ to: '/posts', search: { page: 2 } }).publicHref,
+      ).toBe(`${nested}?page=2`)
+    },
+  )
+
   test('rebuilds rewrites and stored locations when basepath or custom rewrite changes', () => {
     const router = createTestRouter({
       routeTree: new BaseRootRoute({}),
