@@ -6,7 +6,8 @@ name: Compiler Platforms
 # checks run in pages of a headless Chromium), a small integration smoke set
 # (test:integration:smoke: real Vite, Rspack, webpack and Rsbuild builds,
 # including apps under paths with `#`, `%`, spaces and non-ASCII characters,
-# and modules the compiler cannot parse) and a Vite and Rsbuild production
+# modules the compiler cannot parse, and the split-module ids and import
+# specifiers apps' chunk naming reads, one module per route file) and a Vite and Rsbuild production
 # build on the other platforms we ship to. The rest of the slow tier
 # (test:integration) runs on Linux x64 in the main PR workflow.
 #

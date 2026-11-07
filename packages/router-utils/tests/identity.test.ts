@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EXTRACTED_EXPORT_QUERY_RE,
+  SAME_FILE_SPECIFIER_RE,
   deriveId,
   identify,
   langFromId,
+  resolveSameFileSpecifier,
   revision,
-  siblingSpecifier,
+  sameFileSpecifier,
 } from '../src/compiler'
 
 describe('identity', () => {
@@ -46,43 +49,79 @@ describe('identity', () => {
         value: 'component',
       }),
     ).toBe('/app/page.tsx?flavour=b&tsr-split=component')
-    expect(deriveId('/app/page.tsx', { kind: 'shared', value: 'a+b' })).toBe(
-      '/app/page.tsx?tsr-split=shared~a+b',
-    )
-    expect(deriveId('/app/page.tsx', { kind: 'export', value: 'x' })).toBe(
-      '/app/page.tsx?tsr-split=export~x',
-    )
-    expect(
-      identify(deriveId('/app/page.tsx', { kind: 'export', value: 'a&b%?#c' }))
-        .derived,
-    ).toEqual({ kind: 'export', value: 'a&b%?#c' })
-    expect(
-      deriveId('/app/page.tsx', { kind: 'export', value: 'a/b.css!é' }),
-    ).toBe('/app/page.tsx?tsr-split=export~a%2fb%2ecss%21%c3%a9')
-    expect(
-      identify(
-        deriveId('/app/page.tsx', { kind: 'export', value: 'a/b.css!é' }),
-      ).derived,
-    ).toEqual({ kind: 'export', value: 'a/b.css!é' })
-    expect(identify('/app/page.tsx?tsr-split=%').derived).toEqual({
-      kind: 'split',
-      value: '%',
-    })
     expect(deriveId('/app/page.tsx', { kind: 'hydrate', value: 'h1' })).toBe(
       '/app/page.tsx?tss-hydrate=h1',
     )
     expect(deriveId('/app/page.tsx', { kind: 'provider', value: '' })).toBe(
       '/app/page.tsx?tss-serverfn-split',
     )
-    expect(
-      identify(
-        deriveId('/app/page.tsx?flavour=b', { kind: 'shared', value: 'a+b' }),
-      ).derived,
-    ).toEqual({ kind: 'shared', value: 'a+b' })
     expect(identify('/app/page.tsx?tss-serverfn-split').derived).toEqual({
       kind: 'provider',
       value: '',
     })
+    expect(identify('/app/page.tsx?tsr-split=%').derived).toEqual({
+      kind: 'split',
+      value: '%',
+    })
+  })
+
+  // The format of the Babel splitter, which apps' chunk naming reads
+  // (`/routes/<file>.tsx?tsr-split=<a>---<b>`): a group's options sorted and
+  // joined by `---`. The modules it had no counterpart for are named in the
+  // same style, after a first key that no route option has.
+  it("names a split group as main did: the options joined by '---'", () => {
+    const grouped = deriveId('/app/page.tsx', {
+      kind: 'split',
+      value: 'component~loader',
+    })
+    expect(grouped).toBe('/app/page.tsx?tsr-split=component---loader')
+    expect(identify(grouped).derived).toEqual({
+      kind: 'split',
+      value: 'component~loader',
+    })
+  })
+
+  it("names a shared module after the options of the groups needing it, after 'shared'", () => {
+    // the groups `component~loader` and `errorComponent`, and a Hydrate chunk
+    const shared = deriveId('/app/page.tsx?flavour=b', {
+      kind: 'shared',
+      value: 'errorComponent+component~loader+a1_0123456789',
+    })
+    expect(shared).toBe(
+      '/app/page.tsx?flavour=b&tsr-split=shared---a1_0123456789---component---errorComponent---loader',
+    )
+    const parsed = identify(shared)
+    expect(parsed.canonicalId).toBe('/app/page.tsx?flavour=b')
+    expect(parsed.derived?.kind).toBe('shared')
+    // the id it parses to is the id
+    expect(deriveId(parsed.canonicalId, parsed.derived!)).toBe(shared)
+  })
+
+  it("names an extracted export after 'export', anything but a word character percent-encoded", () => {
+    expect(deriveId('/app/page.tsx', { kind: 'export', value: 'Card' })).toBe(
+      '/app/page.tsx?tsr-split=export---Card',
+    )
+    for (const [name, printed] of [
+      ['a/b.css!é', 'export---a%2fb%2ecss%21%c3%a9'],
+      ['a---b', 'export---a%2d%2d%2db'],
+      ['a~b+c', 'export---a%7eb%2bc'],
+      ['$x_1', 'export---$x_1'],
+      ['a&b%?#c', 'export---a%26b%25%3f%23c'],
+    ] as const) {
+      const id = deriveId('/app/page.tsx', { kind: 'export', value: name })
+      expect(id).toBe(`/app/page.tsx?tsr-split=${printed}`)
+      expect(identify(id).derived).toEqual({ kind: 'export', value: name })
+    }
+    expect(EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=export---Card')).toBe(
+      true,
+    )
+    expect(EXTRACTED_EXPORT_QUERY_RE.test('?x=1&tsr-split=export---a')).toBe(
+      true,
+    )
+    expect(EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=component')).toBe(false)
+    expect(
+      EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=shared---component'),
+    ).toBe(false)
   })
 
   it('keeps a trailing language key of a foreign query last', () => {
@@ -105,11 +144,84 @@ describe('identity', () => {
     )
   })
 
-  it('builds sibling specifiers with the query verbatim', () => {
+  // An output imports another output of its file by the file's absolute
+  // path, as main did; the `#` of a project path (`C#`, `project #2`) is
+  // escaped as webpack-family requests read it (`\0#`), and the Vite hosts
+  // resolve such a specifier only for the importer's own file (a browser
+  // URL `/src/…?tsr-split=…` is Vite's).
+  it("imports an output of the importer's own file by its absolute path", () => {
     expect(
-      siblingSpecifier('/app/dir/page.tsx?flavour=b&tsr-split=component'),
-    ).toBe('./page.tsx?flavour=b&tsr-split=component')
-    expect(siblingSpecifier('/app/dir/page.tsx')).toBe('./page.tsx')
+      sameFileSpecifier('/app/dir/page.tsx?flavour=b&tsr-split=component'),
+    ).toBe('/app/dir/page.tsx?flavour=b&tsr-split=component')
+    expect(sameFileSpecifier('/app/dir/page.tsx')).toBe('/app/dir/page.tsx')
+    expect(
+      sameFileSpecifier('/home/me/C#/src/a#b.tsx?tsr-split=component#frag'),
+    ).toBe('/home/me/C\0#/src/a\0#b.tsx?tsr-split=component#frag')
+    expect(sameFileSpecifier('C:/Users/me/C#/src/a.tsx?tss-hydrate=h1')).toBe(
+      'C:/Users/me/C\0#/src/a.tsx?tss-hydrate=h1',
+    )
+
+    const importer = '/home/me/C#/src/a.tsx?tsr-split=component'
+    for (const target of [
+      '/home/me/C#/src/a.tsx?tsr-split=shared---component---loader',
+      '/home/me/C#/src/a.tsx',
+      '/home/me/C#/src/a.tsx?tss-hydrate=h1',
+    ]) {
+      const specifier = sameFileSpecifier(target)
+      expect(SAME_FILE_SPECIFIER_RE.test(specifier)).toBe(true)
+      expect(resolveSameFileSpecifier(specifier, importer)).toBe(target)
+      expect(resolveSameFileSpecifier(specifier, '/home/me/C#/src/a.tsx')).toBe(
+        target,
+      )
+    }
+    // another file, a browser URL, no importer: not ours to resolve
+    expect(
+      resolveSameFileSpecifier(
+        '/home/me/C#/src/b.tsx?tsr-split=component',
+        importer,
+      ),
+    ).toBeNull()
+    expect(
+      resolveSameFileSpecifier(
+        '/src/a.tsx?tsr-split=component',
+        '/app/src/a.tsx',
+      ),
+    ).toBeNull()
+    expect(
+      resolveSameFileSpecifier('/app/src/a.tsx?tsr-split=component', undefined),
+    ).toBeNull()
+    expect(
+      resolveSameFileSpecifier('./a.tsx?tsr-split=component', '/app/src/a.tsx'),
+    ).toBeNull()
+    // a specifier of ours carries an owned key or an escaped `#`
+    expect(SAME_FILE_SPECIFIER_RE.test('/app/src/a.tsx')).toBe(false)
+    expect(SAME_FILE_SPECIFIER_RE.test('/app/src/a.tsx?raw')).toBe(false)
+  })
+
+  // Windows: Vite's ids have forward slashes (`C:/…`), webpack's resources
+  // backslashes; the hosts normalise both to forward slashes.
+  it('resolves the own-file specifier of a Windows path to the derived id', () => {
+    const route = 'C:/Users/me/app/src/routes/posts.tsx'
+    const chunk = deriveId(route, { kind: 'split', value: 'component~loader' })
+    expect(chunk).toBe(
+      'C:/Users/me/app/src/routes/posts.tsx?tsr-split=component---loader',
+    )
+    expect(sameFileSpecifier(chunk)).toBe(chunk)
+    expect(resolveSameFileSpecifier(sameFileSpecifier(chunk), route)).toBe(
+      chunk,
+    )
+    expect(
+      resolveSameFileSpecifier(
+        sameFileSpecifier(route),
+        'C:\\Users\\me\\app\\src\\routes\\posts.tsx?tsr-split=component---loader',
+      ),
+    ).toBe(route)
+    expect(
+      resolveSameFileSpecifier(
+        sameFileSpecifier(chunk),
+        'C:/Users/me/app/src/routes/other.tsx',
+      ),
+    ).toBeNull()
   })
 
   it('derives the language from the id, query-aware', () => {
@@ -140,9 +252,6 @@ describe('identity', () => {
     expect(
       deriveId('/home/me/C#/src/a.tsx', { kind: 'split', value: 'component' }),
     ).toBe('/home/me/C#/src/a.tsx?tsr-split=component')
-    expect(
-      siblingSpecifier('/home/me/C#/src/a#b.tsx?tsr-split=component'),
-    ).toBe('./a#b.tsx?tsr-split=component')
 
     const fragment = identify(
       '/app/page.tsx?flavour=b&tsr-split=component#frag',
