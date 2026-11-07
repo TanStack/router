@@ -105,8 +105,10 @@ describe('a custom generateFunctionId', () => {
             }
             if (filename.includes('named-ids')) {
               namesReceived.add(functionName)
-              // the documented inputs, readable: the file and the name
-              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName}`
+              // the documented inputs, readable: the file and the name (a
+              // non-ASCII name replaced: an id is ASCII,
+              // start-build-function-id-url.test.ts)
+              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName.replace(/[^\x21-\x7e]/g, '_')}`
             }
             return undefined
           },
@@ -250,16 +252,15 @@ export function outer() {
   })
 
   // functionName is the handler name earlier versions generated (a custom
-  // generator's ids survive the upgrade): the variable's name, numbered in
-  // source order when the module repeats it (a numbered name loses its
-  // leading `_`, as it did), with `_` for a character outside
-  // [A-Za-z0-9_$], so that an id embedding it is a URL path segment.
+  // generator's ids survive the upgrade): the variable's name, a non-ASCII
+  // one included, numbered in source order when the module repeats it (a
+  // numbered name loses its leading `_`, as it did).
   test('functionName is the generated handler name of earlier versions', () => {
     expect([...namesReceived].sort()).toEqual(
       [
         '$dollar_createServerFn_handler',
         '_under_createServerFn_handler',
-        'caf__createServerFn_handler',
+        'café_createServerFn_handler',
         'fn_createServerFn_handler',
         'fn_createServerFn_handler_1',
         'twice_createServerFn_handler',

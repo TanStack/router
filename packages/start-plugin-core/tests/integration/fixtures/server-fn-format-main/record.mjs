@@ -1,3 +1,4 @@
+// @ts-nocheck: a Node script run against a checkout of main (type stripping loads the .ts golden module)
 // Records main's server-fn output formats for the golden app
 // (`tests/server-fn-format-golden.ts`) into `main-formats.json`, which
 // `tests/integration/start-build-server-fn-format.test.ts` compares with.

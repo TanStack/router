@@ -87,15 +87,17 @@ export const config: Register['config'] = { brand: 'OTHER' }`
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // Source: review (serverFns.generateFunctionId returning undefined was
-  // never exercised).
-  test(
-    'serverFns.generateFunctionId returning undefined: the default id, which the SSR build resolves',
-    async () => {
+  // never exercised). The default id is a SHA256 hash (documented), printed
+  // as earlier versions printed it: 64 hex digits. An empty id falls back to
+  // it too, as it always did.
+  test.each([undefined, ''])(
+    'serverFns.generateFunctionId returning %j: the default id, which the SSR build resolves',
+    async (returned) => {
       const { client, ssr } = await buildStart({
         bundler,
         files: greetFiles,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: { serverFns: { generateFunctionId: () => undefined } },
+        start: { serverFns: { generateFunctionId: () => returned } },
       })
       // (the client's server fn, by its public URL: base, then id)
       const url = (await client.run(`return entry.greet.url`)).result
@@ -106,7 +108,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
 return { id, value: await callById(id) }`,
           )
         ).result,
-      ).toEqual({ id: expect.stringMatching(/./), value: 'MARK_HANDLER' })
+      ).toEqual({
+        id: expect.stringMatching(/^[0-9a-f]{64}$/),
+        value: 'MARK_HANDLER',
+      })
     },
     timeout,
   )
