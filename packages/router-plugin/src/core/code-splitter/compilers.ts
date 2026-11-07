@@ -133,6 +133,7 @@ const splittableCreateRouteFns = ['createFileRoute']
 const unsplittableCreateRouteFns = [
   'createRootRoute',
   'createRootRouteWithContext',
+  'createModuleRoot',
 ]
 const allCreateRouteFns = [
   ...splittableCreateRouteFns,
@@ -1379,12 +1380,10 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
+            if (!(
+              path.node.callee.name === 'createRoute' ||
+              path.node.callee.name === 'createFileRoute'
+            )) {
               return
             }
 
