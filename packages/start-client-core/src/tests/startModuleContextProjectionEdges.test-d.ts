@@ -1,6 +1,8 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware, createStart } from '../index'
 import type { AssertStartModules, ValidateStartModules } from '../index'
+import type { CreateMiddlewareFn } from '../createMiddleware'
+import type { StartModuleRegister } from '../createStartModule'
 
 declare module '../createStartModule' {
   interface StartModuleRequirements {
@@ -17,8 +19,53 @@ declare module '../createStartModule' {
     '@review/independent-optional-fields': {
       functionContext: { value: string; other?: string }
     }
+    '@review/any-field': { requestContext: { user: { id: string } } }
+    '@review/never-field': { requestContext: { token: string } }
   }
 }
+
+// `any` and `never` are assignable to every field: a field so typed cannot
+// certify a requirement, at the application and before a local consumer.
+const anyField = createMiddleware().server(({ next }) =>
+  next({ context: { user: undefined as any } }),
+)
+const neverField = createMiddleware().server(({ next }) =>
+  next({ context: { token: null as never } }),
+)
+
+test('an any or never field cannot establish a required field', () => {
+  const anyStart = createStart(() => ({ requestMiddleware: [anyField] }))
+  const neverStart = createStart(() => ({ requestMiddleware: [neverField] }))
+  expectTypeOf<
+    ValidateStartModules<typeof anyStart, [], ['@review/any-field']>
+  >().toEqualTypeOf<"Cannot establish request context field 'user' for route module '@review/any-field' from any or never from application middleware">()
+  expectTypeOf<
+    ValidateStartModules<typeof neverStart, [], ['@review/never-field']>
+  >().toEqualTypeOf<"Cannot establish request context field 'token' for route module '@review/never-field' from any or never from application middleware">()
+  const typed = createMiddleware().server(({ next }) =>
+    next({ context: { user: { id: 'u1' }, token: 't' } }),
+  )
+  const typedStart = createStart(() => ({ requestMiddleware: [typed] }))
+  expectTypeOf<
+    ValidateStartModules<
+      typeof typedStart,
+      [],
+      ['@review/any-field', '@review/never-field']
+    >
+  >().toEqualTypeOf<true>()
+})
+
+test('local middleware cannot establish a consumer field from any', () => {
+  const moduleMiddleware = createMiddleware as unknown as CreateMiddlewareFn<
+    StartModuleRegister<'@review/any-field'>
+  >
+  moduleMiddleware()
+    .middleware([anyField])
+    .server(
+      // @ts-expect-error an any field does not establish the required context
+      ({ next }) => next(),
+    )
+})
 
 // JavaScript has the same own property for these two spellings. Each provider
 // must satisfy either spelling of the requirement, without changing its value.

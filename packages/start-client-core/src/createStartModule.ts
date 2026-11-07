@@ -231,6 +231,18 @@ type IncompatibleKeys<THave, TNeed> = {
 }[keyof TNeed] &
   string
 
+/** Required fields the provided context cannot certify: typed `any` or `never`. */
+type UnprovableKeys<THave, TNeed> = {
+  [K in keyof TNeed]-?: K extends keyof THave
+    ? IsAny<THave[K]> extends true
+      ? K
+      : [THave[K]] extends [never]
+        ? K
+        : never
+    : never
+}[keyof TNeed] &
+  string
+
 type ValidateContext<
   TId extends string,
   TPhase extends string,
@@ -243,13 +255,15 @@ type ValidateContext<
     ? true
     : IsAny<TProvided> extends true
       ? `Cannot establish ${TPhase} context for route module '${TId}' from any${TWhere}`
-      : [TProvided] extends [TRequired]
-        ? true
-        : [MissingKeys<TProvided, TRequired>] extends [never]
-          ? [IncompatibleKeys<TProvided, TRequired>] extends [never]
-            ? `Route module '${TId}' requires compatible ${TPhase} context${TWhere}`
-            : `Route module '${TId}' requires ${TPhase} context with incompatible field '${IncompatibleKeys<TProvided, TRequired>}'${TWhere}`
-          : `Route module '${TId}' requires ${TPhase} context '${MissingKeys<TProvided, TRequired>}' that is not provided${TWhere}`
+      : [UnprovableKeys<TProvided, TRequired>] extends [never]
+        ? [TProvided] extends [TRequired]
+          ? true
+          : [MissingKeys<TProvided, TRequired>] extends [never]
+            ? [IncompatibleKeys<TProvided, TRequired>] extends [never]
+              ? `Route module '${TId}' requires compatible ${TPhase} context${TWhere}`
+              : `Route module '${TId}' requires ${TPhase} context with incompatible field '${IncompatibleKeys<TProvided, TRequired>}'${TWhere}`
+            : `Route module '${TId}' requires ${TPhase} context '${MissingKeys<TProvided, TRequired>}' that is not provided${TWhere}`
+        : `Cannot establish ${TPhase} context field '${UnprovableKeys<TProvided, TRequired>}' for route module '${TId}' from any or never${TWhere}`
 
 type ValidateConsumer<
   TId extends string,
