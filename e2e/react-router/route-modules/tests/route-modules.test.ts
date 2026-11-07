@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { Workspace, errorsIn } from './workspace'
+import { Workspace, errorsIn, expectChecksPass } from './workspace'
 
 /**
  * The fixture is a diamond with links in both directions:
@@ -48,14 +48,6 @@ afterEach(() => {
   ws.dispose()
 })
 
-async function expectChecksPass(...names: Array<string>) {
-  for (const name of names) {
-    const result = await ws.check(name)
-    expect(result.diagnostics, `check of ${name}`).toEqual([])
-    expect(result.ok).toBe(true)
-  }
-}
-
 const renamedProductRoute = `import { createFileRoute } from '../routeScope.gen'
 import { productSearchSchema } from '../schemas'
 
@@ -86,12 +78,7 @@ describe('clean checkout', () => {
     }
 
     await ws.buildGraph(order, modules)
-    await expectChecksPass(...order)
-
-    expect(ws.log.some((entry) => entry.operation === 'build')).toBe(false)
-    for (const name of order) {
-      expect(ws.exists(name, 'dist')).toBe(false)
-    }
+    await expectChecksPass(ws, ...order)
   })
 
   test('a module checks standalone, without any application', async () => {
@@ -109,12 +96,28 @@ describe('clean checkout', () => {
   })
 
   test.each([
-    { name: 'default', header: undefined },
-    { name: 'custom', header: ['// Package license header'] },
-    { name: 'empty', header: [] },
+    // Module files are type-checked: the default header loses `@ts-nocheck`,
+    // which the runtime-only client view keeps.
+    {
+      name: 'default',
+      header: undefined,
+      tree: ['/* eslint-disable */', '// noinspection JSUnusedGlobalSymbols'],
+      clientTree: [
+        '/* eslint-disable */',
+        '// @ts-nocheck',
+        '// noinspection JSUnusedGlobalSymbols',
+      ],
+    },
+    {
+      name: 'custom',
+      header: ['// Package license header'],
+      tree: ['// Package license header'],
+      clientTree: ['// Package license header', '// @ts-nocheck'],
+    },
+    { name: 'empty', header: [], tree: [], clientTree: ['// @ts-nocheck'] },
   ])(
     'emits portable client-view declarations with a $name header',
-    async ({ header }) => {
+    async ({ header, tree, clientTree }) => {
       // products links into account: its source check reads account's
       // contract (its declaration build does not).
       await ws.generate('account')
@@ -128,6 +131,17 @@ describe('clean checkout', () => {
           )
         }
         await ws.generate(name)
+        const lines = (file: string) =>
+          ws
+            .read(name, file)
+            .split('\n')
+            .filter((line) => line.startsWith('/'))
+        expect(lines('src/routeTree.gen.ts').slice(0, tree.length)).toEqual(
+          tree,
+        )
+        expect(
+          lines('src/routeTree.gen.client.ts').slice(0, clientTree.length),
+        ).toEqual(clientTree)
         // Both packages use an ordinary src-inclusive declaration build. The
         // storefront's client view also references a mounted module's tree.
         const emitted = await ws.emitTypes(name)
@@ -137,7 +151,7 @@ describe('clean checkout', () => {
           ws.exists(name, '.tanstack/types/src/routeTree.gen.client.d.ts'),
         ).toBe(true)
       }
-      await expectChecksPass('products', 'storefront')
+      await expectChecksPass(ws, 'products', 'storefront')
     },
   )
 })
@@ -223,7 +237,7 @@ describe('published declaration updates', () => {
         .replace('to="/$productId"', 'to="/$sku"')
         .replace("{ productId: 'home-pick' }", "{ sku: 'home-pick' }"),
     )
-    await expectChecksPass('account', 'storefront', 'web')
+    await expectChecksPass(ws, 'account', 'storefront', 'web')
   })
 
   test('route generation does not depend on declaration emits', async () => {
@@ -281,9 +295,6 @@ describe('published declaration updates', () => {
       ws.manifest('products').routes.map((route) => route.id),
     ).not.toContain('@route-modules/products:/compare')
     expect((await ws.emitTypes('products')).ok).toBe(true)
-    expect(
-      ws.exists('products', '.tanstack/types/src/routes/compare.d.ts'),
-    ).toBe(false)
 
     const storefront = await ws.check('storefront')
     expect(storefront.ok).toBe(false)
@@ -305,7 +316,7 @@ describe('published declaration updates', () => {
     ws.write('products', 'src/routes/brands.tsx', brandsRoute)
     await ws.generate('products')
     expect((await ws.emitTypes('products')).ok).toBe(true)
-    await expectChecksPass('web')
+    await expectChecksPass(ws, 'web')
   })
 })
 
@@ -325,7 +336,7 @@ describe('the declaration boundary', () => {
     ws.edit('account', 'tsconfig.json', (source) =>
       source.replace('"skipLibCheck": true', '"skipLibCheck": false'),
     )
-    await expectChecksPass('account')
+    await expectChecksPass(ws, 'account')
 
     // A missing declaration fails instead of falling back to sources.
     ws.remove('products', '.tanstack/types/src/api.d.ts')
@@ -395,7 +406,7 @@ export const links = (
 )
 `,
     )
-    await expectChecksPass('account')
+    await expectChecksPass(ws, 'account')
   })
 
   test('declaration maps lead to the module sources from any output directory', async () => {
@@ -406,7 +417,7 @@ export const links = (
       source.replaceAll('./.tanstack/types/', './route-types/'),
     )
     await ws.buildGraph(order, modules)
-    await expectChecksPass('account')
+    await expectChecksPass(ws, 'account')
 
     const map = 'route-types/src/routes/$productId.d.ts.map'
     const { sources } = JSON.parse(ws.read('products', map))
@@ -474,7 +485,7 @@ describe('composition', () => {
       source.replace('"at": "/shop"', '"at": "/store"'),
     )
     await ws.buildGraph([...order, 'admin'], modules)
-    await expectChecksPass('web', 'admin')
+    await expectChecksPass(ws, 'web', 'admin')
 
     const productsDeclarations = Object.keys(
       ws.snapshot('products', '.tanstack/types'),

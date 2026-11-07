@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { Workspace } from './workspace'
+import { Workspace, expectChecksPass, expectEmitsPass } from './workspace'
 
 /**
  * products uses account and account uses products (a `uses` cycle), and
@@ -21,14 +21,8 @@ afterEach(() => {
   ws.dispose()
 })
 
-/** Content hashes of every emitted declaration file, independent of mtimes. */
-function declarations(name: string) {
-  return Object.fromEntries(
-    Object.entries(ws.snapshot(name, '.tanstack/types')).map(
-      ([file, stamp]) => [file, stamp.split('@')[0]],
-    ),
-  )
-}
+/** Content hashes of every emitted declaration file. */
+const declarations = (name: string) => ws.hashes(name, '.tanstack/types')
 
 describe('route modules that link to each other', () => {
   test.each([
@@ -80,16 +74,8 @@ describe('route modules that link to each other', () => {
       for (const name of ['products', 'account', 'storefront']) {
         await ws.generate(name)
       }
-      for (const name of order) {
-        const emitted = await ws.emitTypes(name)
-        expect(emitted.diagnostics, `declarations of ${name}`).toEqual([])
-        expect(emitted.ok).toBe(true)
-      }
-      for (const name of packages) {
-        const result = await ws.check(name)
-        expect(result.diagnostics, `check of ${name}`).toEqual([])
-        expect(result.ok).toBe(true)
-      }
+      await expectEmitsPass(ws, ...order)
+      await expectChecksPass(ws, ...packages)
     },
   )
 
@@ -97,28 +83,17 @@ describe('route modules that link to each other', () => {
     for (const name of packages) {
       await ws.generate(name)
     }
-    for (const name of ['products', 'account', 'storefront']) {
-      expect((await ws.emitTypes(name)).ok).toBe(true)
-    }
+    await expectEmitsPass(ws, ...packages)
     const withStubs = {
       products: declarations('products'),
       account: declarations('account'),
     }
     // Every contract exists now: build the two using modules against the
     // real contracts instead of the stand-ins.
-    for (const name of ['products', 'account']) {
-      ws.write(
-        name,
-        'tsconfig.route-types.real.json',
-        JSON.stringify({
-          extends: './tsconfig.route-types.json',
-          compilerOptions: { outDir: '.tanstack/types' },
-          include: ['src'],
-        }),
-      )
-      const emitted = await ws.emitTypes(name, 'tsconfig.route-types.real.json')
+    for (const name of ['products', 'account'] as const) {
+      const emitted = await ws.emitTypesAgainstContracts(name)
       expect(emitted.diagnostics, `declarations of ${name}`).toEqual([])
-      expect(declarations(name)).toEqual(withStubs[name as 'products'])
+      expect(declarations(name)).toEqual(withStubs[name])
     }
   })
 
@@ -141,22 +116,9 @@ export function useOrderedProduct() {
     for (const name of packages) {
       await ws.generate(name)
     }
-    for (const name of ['products', 'account']) {
-      expect((await ws.emitTypes(name)).ok).toBe(true)
-    }
+    await expectEmitsPass(ws, 'products', 'account')
     const withStubs = declarations('account')
-    ws.write(
-      'account',
-      'tsconfig.route-types.real.json',
-      JSON.stringify({
-        extends: './tsconfig.route-types.json',
-        compilerOptions: { outDir: '.tanstack/types' },
-        include: ['src'],
-      }),
-    )
-    expect(
-      (await ws.emitTypes('account', 'tsconfig.route-types.real.json')).ok,
-    ).toBe(true)
+    expect((await ws.emitTypesAgainstContracts('account')).ok).toBe(true)
     const real = declarations('account')
     const changed = Object.keys(real).filter(
       (file) => real[file] !== withStubs[file],

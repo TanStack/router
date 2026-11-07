@@ -1,6 +1,8 @@
 import path from 'node:path'
 import os from 'node:os'
 import crypto from 'node:crypto'
+import type { Stats } from 'node:fs'
+import { expect } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import {
   existsSync,
@@ -31,7 +33,7 @@ export const tsc = path.join(repoRoot, 'node_modules', '.bin', 'tsc')
 const workspaceScope = '@route-modules/'
 const generatedFile = /\.gen(?:\.[^.]+)?\.tsx?$/
 
-export type Operation = 'generate' | 'emit-types' | 'check' | 'build'
+export type Operation = 'generate' | 'emit-types' | 'check'
 
 export interface LoggedOperation {
   operation: Operation
@@ -165,7 +167,7 @@ export class Workspace {
 
   /**
    * The fixture package's ordinary clean TypeScript declaration build, with
-   * its `tsconfig.route-types.json` unless another project file is given.
+   * its `tsconfig.route-types.json`.
    */
   async emitTypes(name: string, projectFile = 'tsconfig.route-types.json') {
     const project = JSON.parse(this.read(name, projectFile))
@@ -176,6 +178,23 @@ export class Workspace {
     const result = this.compile(name, ['-p', projectFile])
     this.log.push({ operation: 'emit-types', pkg: name, ok: result.ok })
     return result
+  }
+
+  /**
+   * The declaration build against the real contracts of the used modules,
+   * without the generated stand-ins: every used module must have emitted.
+   */
+  async emitTypesAgainstContracts(name: string) {
+    this.write(
+      name,
+      'tsconfig.route-types.contracts.json',
+      JSON.stringify({
+        extends: './tsconfig.route-types.json',
+        compilerOptions: { outDir: '.tanstack/types' },
+        include: ['src'],
+      }),
+    )
+    return this.emitTypes(name, 'tsconfig.route-types.contracts.json')
   }
 
   /** Source check of one package against current module declarations. */
@@ -218,26 +237,36 @@ export class Workspace {
   }
 
   /** Content hash and modification time of every file below `dir`. */
+  /** Content hash and mtime of every file below `dir`: unchanged files keep both. */
   snapshot(name: string, dir: string): Record<string, string> {
+    return this.walk(name, dir, (file, stat) => `${hash(file)}@${stat.mtimeMs}`)
+  }
+
+  /** Content hash of every file below `dir`, independent of mtimes. */
+  hashes(name: string, dir: string): Record<string, string> {
+    return this.walk(name, dir, (file) => hash(file))
+  }
+
+  private walk(
+    name: string,
+    dir: string,
+    stamp: (file: string, stat: Stats) => string,
+  ): Record<string, string> {
     const base = this.file(name, dir)
     const result: Record<string, string> = {}
-    const walk = (current: string) => {
+    const visit = (current: string) => {
       for (const entry of readdirSync(current)) {
         const full = path.join(current, entry)
         const stat = statSync(full)
         if (stat.isDirectory()) {
-          walk(full)
+          visit(full)
         } else {
-          result[path.relative(base, full)] = `${crypto
-            .createHash('sha256')
-            .update(readFileSync(full))
-            .digest('hex')
-            .slice(0, 12)}@${stat.mtimeMs}`
+          result[path.relative(base, full)] = stamp(full, stat)
         }
       }
     }
     if (existsSync(base)) {
-      walk(base)
+      visit(base)
     }
     return result
   }
@@ -287,4 +316,30 @@ export function errorsIn(diagnostics: Array<string>, file: string) {
     errors.push(current)
   }
   return errors
+}
+
+function hash(file: string) {
+  return crypto
+    .createHash('sha256')
+    .update(readFileSync(file))
+    .digest('hex')
+    .slice(0, 12)
+}
+
+/** Every named package checks without diagnostics. */
+export async function expectChecksPass(ws: Workspace, ...names: Array<string>) {
+  for (const name of names) {
+    const result = await ws.check(name)
+    expect(result.diagnostics, `check of ${name}`).toEqual([])
+    expect(result.ok).toBe(true)
+  }
+}
+
+/** Every named package emits its declarations without diagnostics. */
+export async function expectEmitsPass(ws: Workspace, ...names: Array<string>) {
+  for (const name of names) {
+    const result = await ws.emitTypes(name)
+    expect(result.diagnostics, `declarations of ${name}`).toEqual([])
+    expect(result.ok).toBe(true)
+  }
 }

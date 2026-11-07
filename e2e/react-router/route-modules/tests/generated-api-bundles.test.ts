@@ -226,6 +226,9 @@ async function bundle(
   }
 }
 
+// The scope APIs with a runtime binder (`bindRouteScope<Api>` of the
+// framework's `_internal/route-module` entry). The others are the framework's
+// own APIs, re-exported by the generated scope.
 const scopedApis = [
   'Link',
   'CreateLink',
@@ -238,21 +241,16 @@ const scopedApis = [
   'UseRouter',
   'GetRouteApi',
   'UseMatch',
-  'UseMatches',
-  'UseParentMatches',
-  'UseChildMatches',
   'UseLoaderData',
   'UseLoaderDeps',
   'UseSearch',
   'UseParams',
   'UseRouteContext',
-  'UseLocation',
-  'UseRouterState',
   'UseLinkProps',
-  'UseBlocker',
   'NotFound',
 ]
 
+/** No binder but the one of `retained`, if any, survives in the bundle. */
 function expectIndependentApi(result: Bundle, retained?: string) {
   for (const api of scopedApis) {
     if (api !== retained) {
@@ -345,6 +343,11 @@ test.each(['react', 'solid', 'vue'] as const)(
         `import { ${api} } from ${own}; globalThis.__routeModuleBundleProbe = ${api}`,
       )
       expectIndependentApi(result, suffix)
+      if (api === 'Link') {
+        // One-line binders can be inlined away; the Link binder stays and
+        // proves that the names the checks above look for are current.
+        expect(result.source).toMatch(/\bfunction\s+bindRouteScopeLink\b/)
+      }
       if (framework === 'solid' && api === 'Link') {
         // Real Solid applications select source exports and compile their JSX.
         expect(result.moduleIds).toContain(

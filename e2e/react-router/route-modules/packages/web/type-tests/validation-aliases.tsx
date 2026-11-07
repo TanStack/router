@@ -74,16 +74,16 @@ test('every generated validation alias preserves its namespace contract', () => 
     typeof foreignPaths
   > = foreignPaths
   // @ts-expect-error A route origin must be a path in the module.
-  const invalidFrom: orgSettings.ValidateFromPath<'/profile'> = '/orgs/$orgId'
+  const invalidFrom: orgSettings.ValidateFromPath<'/orgs/$orgId'> =
+    '/orgs/$orgId'
   // @ts-expect-error A destination must be a path in the module.
-  const invalidTo: orgSettings.ValidateToPath<'/profile'> = '/orgs/$orgId'
+  const invalidTo: orgSettings.ValidateToPath<'/orgs/$orgId'> = '/orgs/$orgId'
   // @ts-expect-error Search validation follows the generated route schema.
   const invalidSearch: orgSettings.ValidateSearch<'/search'> = wrongSearch
   // @ts-expect-error The named installation requires its own host parameter.
   const invalidParams: orgSettings.ValidateParams<'/profile'> = wrongParams
   // @ts-expect-error A foreign route ID is not a module route.
-  const invalidId: orgSettings.ValidateId<'@route-modules/settings:/profile'> =
-    '/orgs/$orgId'
+  const invalidId: orgSettings.ValidateId<'/orgs/$orgId'> = '/orgs/$orgId'
   // @ts-expect-error Search selectors must name a route in this module.
   const invalidUseSearch: orgSettings.ValidateUseSearchOptions<
     typeof foreignOrigin
