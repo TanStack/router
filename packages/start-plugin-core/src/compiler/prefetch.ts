@@ -166,15 +166,6 @@ export function isPlainRead(
   }
 }
 
-/** An isomorphic fn or a middleware with a `.client()` and no `.server()` (`createClientOnlyFn` is the API for client-only code). */
-export function isClientOnlyPartial(v: AbstractValue): boolean {
-  return (
-    (v.t === 'isoFn' || v.t === 'builder') &&
-    v.links.some((l) => l.method === 'client') &&
-    !v.links.some((l) => l.method === 'server')
-  )
-}
-
 interface ValueReaderOptions {
   table: RecognizerTable
   /** `TSR_COMPILER_NO_CACHE=registry` turns it off: the route file's summary answers. */

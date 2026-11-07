@@ -29,7 +29,7 @@ import {
   runtimeSpecifiers,
   startRecognizer,
 } from '../compiler/recognizer'
-import { isClientOnlyPartial, prefetchStartValues } from '../compiler/prefetch'
+import { prefetchStartValues } from '../compiler/prefetch'
 import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import {
   defaultFunctionId,
@@ -1134,6 +1134,9 @@ const RETURNED_FROM: Record<NonNullable<Escape['returnedFrom']>, string> = {
 
 const FINISH_MIDDLEWARE = '`.server(({ next }) => next())`'
 
+const KEEPS_SERVER_BEHAVIOUR =
+  '`.server(() => undefined)` keeps what it does on the server now (without one, it returns `undefined` there).'
+
 const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
   flow: 'A TanStack Start builder or factory is used where the compiler cannot follow it (passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…), so server code attached to it there would ship to the client. Keep builders in `const` bindings and call `.handler()` / `.server()` on them directly.',
   computed:
@@ -1211,9 +1214,41 @@ function escapeMessage(e: Escape): string {
       ? message
       : `${message} Or end the middleware's chain with ${FINISH_MIDDLEWARE}.`
   }
-  return isClientOnlyPartial(e.value) && e.reason !== 'computed'
-    ? `${message} For client-only code, use \`createClientOnlyFn(fn)\`, or give it a \`.server()\` implementation.`
-    : message
+  if (isIsoFnWithoutServer(e.value)) {
+    if (e.reason === 'flow') {
+      return isoFnFlowMessage(e)
+    }
+    return e.reason === 'computed' || e.reason === 'member'
+      ? message
+      : `${message} Or give the isomorphic fn a \`.server()\` implementation where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`
+  }
+  return message
+}
+
+/** An isomorphic fn without a `.server()` implementation: one can still be attached to it. */
+function isIsoFnWithoutServer(v: AbstractValue): boolean {
+  return (
+    (v.t === 'isoFn' || (v.t === 'builder' && v.kind === START_KINDS.isoFn)) &&
+    !v.links.some((l) => l.method === 'server')
+  )
+}
+
+/**
+ * An isomorphic fn without `.server()` used where the compiler cannot follow
+ * it. Not `createClientOnlyFn`: where the fn goes, the compiler cannot tell
+ * whether it is called on the server, where that throws instead of returning
+ * `undefined`.
+ */
+function isoFnFlowMessage(e: Escape): string {
+  const subject =
+    e.node.type === 'Identifier'
+      ? `\`${e.node.name}\` is an isomorphic fn without a \`.server()\` implementation, used`
+      : 'An isomorphic fn without a `.server()` implementation is used'
+  return `${subject} where the compiler cannot follow it (${flowPlaces(e)}), so the compiler cannot be sure no \`.server()\` implementation is attached to it there, which would ship server code to the client. Give it one where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`
+}
+
+function flowPlaces(e: Escape): string {
+  return e.returnedFrom ? RETURNED_FROM[e.returnedFrom] : FLOW_PLACES
 }
 
 /**
@@ -1226,12 +1261,11 @@ function openMiddlewareFlowMessage(e: Escape): string {
     e.node.type === 'Identifier'
       ? `\`${e.node.name}\` is a middleware without \`.server()\`, used`
       : 'A middleware without `.server()` is used'
-  const places = e.returnedFrom ? RETURNED_FROM[e.returnedFrom] : FLOW_PLACES
   const throws =
     e.returnedFrom === 'clientOnlyFn'
       ? '`createClientOnlyFn` throws when called on the server, where Start reads middleware lists. '
       : ''
-  return `${subject} where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${throws}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with ${FINISH_MIDDLEWARE}.`
+  return `${subject} where the compiler cannot follow it (${flowPlaces(e)}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${throws}Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with ${FINISH_MIDDLEWARE}.`
 }
 
 /** The `inputValidator` name of `.inputValidator` read off a server fn or middleware builder. */

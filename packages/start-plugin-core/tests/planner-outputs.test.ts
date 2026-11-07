@@ -749,6 +749,57 @@ export const fn = createServerFn().middleware(cfg.list).handler(async () => 'x')
     ])
   })
 
+  const isoHead = `import { createIsomorphicFn } from '@tanstack/react-start'
+import { QueryCache } from 'some-lib'
+`
+  const keepsServerBehaviour =
+    '`.server(() => undefined)` keeps what it does on the server now (without one, it returns `undefined` there).'
+  const isoFnFlow = (subject: string) =>
+    `${subject} where the compiler cannot follow it (${FLOW_PLACES}), so the compiler cannot be sure no \`.server()\` implementation is attached to it there, which would ship server code to the client. Give it one where it is defined: ${keepsServerBehaviour}`
+
+  test('a client-only isomorphic fn passed to code the compiler does not see', async () => {
+    const code = `${isoHead}export const cache = new QueryCache({ onError: createIsomorphicFn().client(() => 'client') })
+const tick = createIsomorphicFn().client(() => 'tick')
+setTimeout(tick, 0)
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('createIsomorphicFn().client('),
+        text: "createIsomorphicFn().client(() => 'client')",
+        message: isoFnFlow(
+          'An isomorphic fn without a `.server()` implementation is used',
+        ),
+      },
+      {
+        severity: 'error',
+        at: code.indexOf('tick, 0'),
+        text: 'tick',
+        message: isoFnFlow(
+          '`tick` is an isomorphic fn without a `.server()` implementation, used',
+        ),
+      },
+    ])
+  })
+
+  test('a client-only isomorphic fn returned from a function the compiler cannot summarise', async () => {
+    const code = `${isoHead}export function pick(on: boolean) {
+  if (on) { return createIsomorphicFn().client(() => 1) }
+  return createIsomorphicFn().client(() => 2)
+}
+`
+    const diagnostics = await clientDiagnostics(code)
+    expect(diagnostics.map((d) => [d.severity, d.text])).toEqual([
+      ['error', 'createIsomorphicFn().client(() => 1)'],
+      ['error', 'createIsomorphicFn().client(() => 2)'],
+    ])
+    for (const d of diagnostics) {
+      expect(d.message).toBe(
+        `A function that returns a TanStack Start builder must return it from its single top-level \`return\` (or an arrow body) and must not be async, a generator, a method or a getter: the compiler cannot follow it otherwise, so server code attached to the builder would ship to the client. Split it into one factory per builder. Or give the isomorphic fn a \`.server()\` implementation where it is defined: ${keepsServerBehaviour}`,
+      )
+    }
+  })
+
   test('an open middleware returned from a function the compiler cannot summarise', async () => {
     const code = `${mwHead}function makeB(on: boolean) {
   if (!on) { return createMiddleware({ type: 'function' }).client(({ next }) => next()) }
