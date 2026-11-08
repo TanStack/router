@@ -1001,7 +1001,9 @@ const require = __createRequire(import.meta.url)`,
 
 /** Error or warning messages of a compilation's stats. */
 export function statsMessages(
-  items: Array<{ message: string; moduleName?: string }> | undefined,
+  items:
+    | Array<{ message: string; moduleName?: string; loc?: string }>
+    | undefined,
 ): Array<string> {
   return (items ?? []).map(statsMessage)
 }
@@ -1011,7 +1013,9 @@ export function statsMessages(
  * `BuildResult` (source `bundler`).
  */
 export function statsDiagnostics(
-  items: Array<{ message: string; moduleName?: string }> | undefined,
+  items:
+    | Array<{ message: string; moduleName?: string; loc?: string }>
+    | undefined,
   severity: Severity,
 ): Array<ChannelDiagnostic> {
   return (items ?? []).map((item) => ({
@@ -1904,10 +1908,20 @@ interface WebpackCompiler {
   close: (callback: () => void) => void
 }
 
-function statsMessage(item: { message: string; moduleName?: string }) {
+/** A stats error or warning as the bundler prints it: `./src/a.tsx 3:7: message` (its `loc` when it has one). */
+function statsMessage(item: {
+  message: string
+  moduleName?: string
+  loc?: string
+}) {
   // Rspack colours messages when the terminal supports it
   const message = stripAnsi(item.message)
-  return item.moduleName ? `${item.moduleName}: ${message}` : message
+  if (!item.moduleName) {
+    return message
+  }
+  return item.loc
+    ? `${item.moduleName} ${item.loc}: ${message}`
+    : `${item.moduleName}: ${message}`
 }
 
 interface EsbuildMessage {
