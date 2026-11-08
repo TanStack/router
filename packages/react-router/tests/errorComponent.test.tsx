@@ -1072,3 +1072,40 @@ test('CatchBoundary tracks reset keys while healthy', () => {
   rerender(<App />)
   expect(screen.getByText('Caught error')).toBeInTheDocument()
 })
+
+test('#8792: router.load() resolves with ancestor code-split errorComponent already loaded when child throws', async () => {
+  let lazyLoaded = false
+  const rootRoute = createRootRoute({ component: Outlet })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: () => <Outlet />,
+  }).lazy(async () => {
+    lazyLoaded = true
+    return createLazyRoute('/parent')({
+      errorComponent: () => <div>Ancestor errorComponent</div>,
+    })
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: () => {
+      throw new Error('child loader failed')
+    },
+    component: () => <div>Child</div>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+  })
+
+  await router.load()
+  expect(lazyLoaded).toBe(true)
+
+  render(<RouterProvider router={router} />)
+  expect(screen.getByText('Ancestor errorComponent')).toBeInTheDocument()
+})
+
