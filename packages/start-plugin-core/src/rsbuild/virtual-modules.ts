@@ -42,6 +42,8 @@ function virtualPath(root: string, moduleId: string): string {
 export interface VirtualModuleState {
   /** Call to update manifest content after client build completes */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
+  /** Number of times the dev manifest module was written */
+  getDevManifestWriteCount: () => number
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
   /** Write explicit server resolver content; queues if env not ready */
@@ -270,6 +272,7 @@ export function registerVirtualModules(
 
   let clientBuild: NormalizedClientBuild | undefined
   let lastDevManifestContent: string | undefined
+  let devManifestWriteCount = 0
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
   const resolverWriteCountByEnvironment: Record<string, number> = {}
@@ -573,6 +576,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       // Only rewrite on change: each write rebuilds the server environment.
       if (content !== lastDevManifestContent) {
         lastDevManifestContent = content
+        devManifestWriteCount++
         tryWriteModule(
           RSBUILD_ENVIRONMENT_NAMES.server,
           paths.manifest,
@@ -601,6 +605,10 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     tryUpdateServerFnResolver(content: string) {
       writeResolverContent(RSBUILD_ENVIRONMENT_NAMES.server, content)
+    },
+
+    getDevManifestWriteCount(): number {
+      return devManifestWriteCount
     },
 
     getServerFnResolverWriteCount(environmentName: string): number {
