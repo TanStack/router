@@ -232,6 +232,49 @@ export const fn = createServerFn().handler(async () => label)
     timeout,
   )
 
+  // (a plugin after Start's late pass compiles the Markdown: the late pass
+  // sees the text, which no JavaScript parser accepts)
+  test(
+    'leaves text another plugin compiles later to the bundler, though it names a router package',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/readme.md': `# Usage
+
+To link: \`import { Link } from '@tanstack/react-router'\`.
+`,
+          'src/entry.ts': `import readme from './readme.md'\nexport const text = readme\n`,
+        },
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: [
+            {
+              name: 'markdown-as-text',
+              enforce: 'post',
+              transform: {
+                filter: { id: /\.md$/ },
+                handler: (code: string) => ({
+                  code: `export default ${JSON.stringify(code)}`,
+                }),
+              },
+            },
+          ],
+        },
+      })
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/readme.md',
+          root: build.root,
+        }),
+      ).toEqual([])
+      expect((await build.client.run('return entry.text')).result).toContain(
+        '# Usage',
+      )
+    },
+    timeout,
+  )
+
   test(
     'leaves it to the bundler when it names none',
     async () => {
