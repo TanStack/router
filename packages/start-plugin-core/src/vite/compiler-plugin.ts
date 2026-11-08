@@ -1095,11 +1095,17 @@ export function startCompilerPlugin(
           live,
           rolldownGraphView((id) => this.getModuleInfo(id)),
         )
+        // every report first: the build fails once, with all of its errors
+        const errors: Array<string> = []
         for (const report of reports) {
           if (report.severity === 'error') {
-            this.error(report.message)
+            errors.push(report.message)
+          } else {
+            this.warn(report.message)
           }
-          this.warn(report.message)
+        }
+        if (errors.length > 0) {
+          this.error(errors.join('\n'))
         }
       },
     }
