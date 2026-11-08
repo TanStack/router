@@ -2,7 +2,9 @@
  * `@tanstack/router-utils/compiler` — the shared compiler core on Yuku (see
  * README.md). Planners live in `@tanstack/router-plugin` and
  * `@tanstack/start-plugin-core`; hosts compose them through `compileModule`.
- * Not a public API: it exports what those packages use.
+ * Not a public API: an internal subpath for those packages, without semver.
+ * Most modules are re-exported whole (`export *`), so it also exports
+ * helpers only the core itself uses.
  */
 export * from './identity'
 export * from './source'
