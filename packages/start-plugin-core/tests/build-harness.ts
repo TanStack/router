@@ -320,6 +320,26 @@ export interface StartBuildOptions {
    */
   cwd?: string
   /**
+   * The bundler's `root` as the app configures it (`vite build <root>`,
+   * Rsbuild's `root`), from the app's directory (default: that directory),
+   * e.g. a path through a symbolic link of `workspace` or with a trailing
+   * separator. A relative root (`root: '.'`) is set through `viteConfig`
+   * or `rsbuildConfig`: the build runs in the app's directory.
+   */
+  root?: (appDirectory: string) => string
+  /**
+   * An app of a monorepo: `files`, `packageJson`, `symlinks` and the
+   * entries are the app's, in the directory `app` of a temporary workspace
+   * whose own files and symbolic links (by path relative to the workspace)
+   * are these, e.g. a library hoisted to the workspace's `node_modules`.
+   * Start's runtime is linked in the workspace's `node_modules`.
+   */
+  workspace?: {
+    app: string
+    files: Record<string, string>
+    symlinks?: Record<string, string>
+  }
+  /**
    * Directory name prefix of the temporary app (default
    * `.start-build-harness-<bundler>-`), e.g. one with characters a project
    * path may carry.
@@ -489,21 +509,63 @@ export async function buildStart(
   const { bundler = 'vite', entry = 'entry.ts', files } = options
   const entries =
     typeof entry === 'object' ? entry : { client: entry, ssr: entry }
-  const app = await createApp({
+  const { workspace } = options
+  /** Paths of the app as paths of the temporary directory. */
+  const inApp = (paths: Record<string, string> = {}) =>
+    workspace
+      ? Object.fromEntries(
+          Object.entries(paths).map(([file, value]) => [
+            path.posix.join(workspace.app, file),
+            value,
+          ]),
+        )
+      : paths
+  const appFiles = {
+    ...harnessFiles(entries, files, options.framework ?? 'react'),
+    ...files,
+  }
+  const created = await createApp({
     dir: harnessDir,
     prefix: options.prefix ?? `.start-build-harness-${bundler}-`,
     registerCleanup: options.registerCleanup ?? onTestFinished,
-    packageJson: options.packageJson,
+    // (a workspace's package.json is one of its files)
+    packageJson: workspace ? null : options.packageJson,
     sideEffects: options.sideEffects,
-    files: {
-      ...harnessFiles(entries, files, options.framework ?? 'react'),
-      ...files,
-    },
+    files: workspace
+      ? {
+          ...workspace.files,
+          ...inApp({
+            'package.json': JSON.stringify({
+              name: 'app',
+              private: true,
+              type: 'module',
+              ...options.packageJson,
+              ...(options.sideEffects !== undefined && {
+                sideEffects: options.sideEffects,
+              }),
+            }),
+            ...appFiles,
+          }),
+        }
+      : appFiles,
     symlinks: {
       ...startRuntimeLinks(options.framework),
-      ...options.symlinks,
+      ...workspace?.symlinks,
+      ...(workspace
+        ? Object.fromEntries(
+            Object.entries(options.symlinks ?? {}).map(([link, target]) => [
+              path.posix.join(workspace.app, link),
+              path.isAbsolute(target)
+                ? target
+                : path.posix.join(workspace.app, target),
+            ]),
+          )
+        : options.symlinks),
     },
   })
+  const app = workspace
+    ? { ...created, root: path.join(created.root, workspace.app) }
+    : created
   const mode = options.mode ?? 'production'
   const violations: Array<ViolationInfo> = []
   const start = options.start ?? {}
@@ -530,6 +592,7 @@ export async function buildStart(
     viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
     cwd: options.cwd,
+    configuredRoot: options.root?.(app.root),
   }
   return buildAt(app, bundler, target, options.builds ?? 1)
 }
@@ -713,6 +776,8 @@ interface BuildTarget {
   viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
   cwd?: string
+  /** The bundler's `root` as configured (`StartBuildOptions.root`). */
+  configuredRoot?: string
 }
 
 type Outputs = Record<
@@ -823,7 +888,7 @@ async function buildWithVite(
     const builder = await createBuilder(
       mergeConfig<InlineConfig, InlineConfig>(
         {
-          root: target.root,
+          root: target.configuredRoot ?? target.root,
           configFile: false,
           envDir: false,
           publicDir: false,
@@ -1142,7 +1207,7 @@ async function buildWithRsbuild(
       loadEnv: false,
       rsbuildConfig: mergeRsbuildConfig(
         {
-          root: target.root,
+          root: target.configuredRoot ?? target.root,
           mode: target.mode,
           // Rsbuild prints nothing; its logger feeds the channel
           logLevel: 'silent',

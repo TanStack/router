@@ -17,4 +17,24 @@ describe('webpack', () => {
     },
     timeout,
   )
+
+  // Bug: the router plugin reads the compiler's `mode` when it is applied,
+  // before webpack fills in its default (`production`): a configuration
+  // without `mode` built in the plugin's dev mode.
+  // Source: src/hosts/webpack.ts (`compiler.options.mode === 'production'`).
+  // Impact: the production bundle ships route HMR code (`$$tsrRefreshId`
+  // strings with the build machine's absolute paths).
+  test(
+    'a production react client bundle of a configuration without mode has no dev-only code',
+    async () => {
+      await expectProductionClientBundle(
+        'webpack',
+        'react',
+        true,
+        undefined,
+        true,
+      )
+    },
+    timeout,
+  )
 })

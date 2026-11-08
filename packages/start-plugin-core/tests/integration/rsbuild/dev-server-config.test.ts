@@ -74,6 +74,27 @@ describe('Rsbuild dev server options', () => {
     timeout,
   )
 
+  // Bug: Start's plugin turns compression off only when the config it
+  // receives has no `server.compress`, but Rsbuild fills in its default
+  // (`true`) before plugins see the config.
+  // Source: src/rsbuild/plugin.ts (`rsbuildConfig.server?.compress ===
+  // undefined`, read from the normalized config).
+  // Impact: dev compresses every response by default, and a compressed
+  // streamed page reaches the browser only once its stream ends.
+  test(
+    'without server.compress, the server-rendered page is not compressed',
+    async () => {
+      const server = await startApp()
+      const response = await fetch(new URL('/', server.url), {
+        headers: { 'accept-encoding': 'gzip' },
+      })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-encoding')).toBeNull()
+      expect(await response.text()).toContain('MARK_SERVER')
+    },
+    timeout,
+  )
+
   // Bug: Start's plugin sets `server.compress: false` over the app's
   // config, so `server.compress: true` has no effect.
   // Source: src/rsbuild/plugin.ts (`compress: false` merged last; it worked

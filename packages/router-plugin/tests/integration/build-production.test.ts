@@ -22,6 +22,28 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
     timeout,
   )
 
+  // Bug (Rspack): the router plugin reads the compiler's `mode` when it is
+  // applied, before Rspack fills in its default (`production`): a
+  // configuration without `mode` built in the plugin's dev mode.
+  // Source: src/hosts/webpack.ts (`compiler.options.mode === 'production'`).
+  // Impact: the production bundle ships route HMR code (`$$tsrRefreshId`
+  // strings with the build machine's absolute paths).
+  if (bundler === 'rspack') {
+    test(
+      'a production react client bundle of a configuration without mode has no dev-only code',
+      async () => {
+        await expectProductionClientBundle(
+          bundler,
+          'react',
+          true,
+          undefined,
+          true,
+        )
+      },
+      timeout,
+    )
+  }
+
   // Routes whose route HMR compile differs from the plain route's (SPEC
   // J3.7, G7)
   test.each(
