@@ -170,6 +170,12 @@ export interface PolicyContext {
   host: HostServices
   /** The input text of this compile (the plan's offsets index it). */
   code: string
+  /**
+   * The analysis of `code`, for a policy's rare paths (a reported edge: how
+   * the importer uses its bindings). Only while the policy runs: nothing of
+   * it goes into facts.
+   */
+  analysis: ModuleAnalysis
   /** The input text's map to the original source (read lazily; null when none). */
   inputMap: () => InputSourceMap | null
   resolve: (

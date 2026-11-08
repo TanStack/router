@@ -40,6 +40,7 @@ import { runsAgainLater } from './vue'
 import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { LoaderChainLike } from './vue'
 import type { CompiledOutputLike } from '../import-protection/session'
+import type { DevViolationError } from '../import-protection/report'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -543,7 +544,8 @@ export class StartRsbuildCompilerSession {
       env.compiled.add(ctx.resource)
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
-        throw error
+        // (it fails the edge module: Rspack reports it there, not at the importer)
+        throwLocated(ctx, error as DevViolationError)
       }
       return { code: ip?.load(ctx.resource)?.code ?? source, map: null }
     }
@@ -653,7 +655,7 @@ export class StartRsbuildCompilerSession {
     const outcome = this.start.afterCompile(env, id, out)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
-      throw error
+      throwLocated(ctx, error as DevViolationError)
     }
     const buildInfo = ctx._module?.buildInfo
     const ipEnv = this.start.ip?.env(env.name, env.type)
@@ -769,6 +771,27 @@ export class StartRsbuildCompilerSession {
         .sort(),
     )
   }
+}
+
+/**
+ * Fails the module with dev `error` violations, located like compile
+ * errors: a record per report in the module's `buildInfo`, and the failure
+ * the host replaces with them (no loader wrapper, no stack frames).
+ */
+function throwLocated(ctx: LoaderContextLike, error: DevViolationError): never {
+  const buildInfo = ctx._module?.buildInfo
+  if (buildInfo) {
+    const records = (buildInfo[LOCATED_DIAGNOSTICS.field] ??
+      []) as Array<LocatedDiagnostic>
+    for (const report of error.reports) {
+      records.push({ severity: 'error', message: report.message, ...report.at })
+    }
+    buildInfo[LOCATED_DIAGNOSTICS.field] = records
+  }
+  const failure = new Error(error.message)
+  failure.name = LOCATED_DIAGNOSTICS.errorName
+  failure.stack = `${failure.name}: ${error.message}`
+  throw failure
 }
 
 /** A file event of a compilation: an edit, a creation, a removal. */

@@ -5,12 +5,14 @@
  */
 import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { edgeModuleKey } from './edge-modules'
+import { cutTrace } from './graph-trace'
 import { patternOf, relativeTargetPath, rulesFor } from './rules'
 import type { EdgeModuleContent } from './edge-modules'
 import type { ImportProtectionConfig } from './config'
 import type { EnvType, RuleRef } from './rules'
 import type { CodeFrame, OriginalLocation } from './locate'
-import type { IndexedEdge } from './graph-trace'
+import type { IndexedEdge, Trace } from './graph-trace'
+import type { PatternImport } from './pattern-imports'
 import type { AllowImportInfo, TraceStep, ViolationInfo } from './trace'
 
 export const IMPORT_EDGES_PLANNER = 'import-edges'
@@ -48,6 +50,30 @@ export interface EdgeViolation {
    * literal `import()`): `importer` is the module itself, `module` its mock.
    */
   self?: true
+  /**
+   * Server environment: the importer renders a binding of the import as a
+   * component (a JSX element, a route's `component` option), so the fix is
+   * `<ClientOnly>`, never `createClientOnlyFn` (it throws while rendering on
+   * the server). `at`: the first such use, in the original source.
+   */
+  rendered?: RenderedUse
+  /** Server environment, a Vue SFC importer: the import's binding (a template's component is no JSX the compiler can see). */
+  binding?: string
+  /** The edge is a re-export (`export … from`): a barrel passes the module on. */
+  reexport?: true
+  /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */
+  pattern?: PatternImport | null
+}
+
+/** How an importer renders an import as a component (`EdgeViolation.rendered`). */
+export interface RenderedUse {
+  /** The binding as the importer names it. */
+  name: string
+  /** `jsx`: `<Name …>`; `option`: a route option such as `component: Name`. */
+  via: 'jsx' | 'option'
+  /** The option's key (`via: 'option'`). */
+  key?: string
+  at: OriginalLocation | null
 }
 
 /** The edge key of a module's own violation (`EdgeViolation.self`) in an environment. */
@@ -149,19 +175,26 @@ export function allowImportInfo(
   }
 }
 
+/** A violation's `ViolationInfo`, with the whole trace a report prints (`freezeTrace`). */
+export type ReportedInfo = ViolationInfo & {
+  /** Reads the trace from the graph as it is now, once: later reads (and `trace`) see the same steps. */
+  freezeTrace: () => Trace
+}
+
 /**
  * The `ViolationInfo` of a violation. `trace` is read from the bundler's
  * graph when it is first read (dev: the graph may not know the importer's
- * importers yet when `onViolation` runs; a report freezes it when printed).
+ * importers yet when `onViolation` runs; a report freezes it when printed),
+ * cut at `maxTraceDepth`.
  */
 export function violationInfo(
   v: EdgeViolation,
   config: ImportProtectionConfig,
-  trace: () => Array<TraceStep>,
-): ViolationInfo & { freezeTrace: () => Array<TraceStep> } {
-  let frozen: Array<TraceStep> | null = null
-  const withImporterStep = (steps: Array<TraceStep>): Array<TraceStep> => {
-    const last = steps[steps.length - 1]
+  trace: () => Trace,
+): ReportedInfo {
+  let frozen: Trace | null = null
+  const withImporterStep = (t: Trace): Trace => {
+    const last = t.steps[t.steps.length - 1]
     if (last && identify(last.file).path === v.importer) {
       last.specifier = v.specifier
       if (v.loc && v.loc.file === v.importer) {
@@ -169,18 +202,22 @@ export function violationInfo(
         last.column = v.loc.column
       }
     }
-    return steps
+    return t
   }
   const info = {
     ...allowImportInfo(v, config),
     ...(v.snippet && {
       snippet: { ...v.snippet, lines: [...v.snippet.lines] },
     }),
-  } as ViolationInfo & { freezeTrace: () => Array<TraceStep> }
+  } as ReportedInfo
   Object.defineProperty(info, 'trace', {
     enumerable: true,
     configurable: true,
-    get: () => frozen ?? withImporterStep(trace()),
+    get: (): Array<TraceStep> =>
+      cutTrace(
+        (frozen ?? withImporterStep(trace())).steps,
+        config.maxTraceDepth,
+      ),
   })
   Object.defineProperty(info, 'freezeTrace', {
     enumerable: false,

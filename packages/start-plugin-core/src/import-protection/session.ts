@@ -17,7 +17,15 @@ import {
   mockRuntimeCode,
   viteEdgeModuleIds,
 } from './edge-modules'
-import { EdgeIndex, IdsByFile, buildTrace, traceFile } from './graph-trace'
+import {
+  EdgeIndex,
+  IdsByFile,
+  readSourceFile,
+  traceFile,
+  traceOf,
+} from './graph-trace'
+import { Locator } from './locate'
+import { findPatternImport } from './pattern-imports'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
 import { fileOrMarkerRule, importerInScope } from './rules'
@@ -44,16 +52,17 @@ import type {
   EdgeModuleIds,
   EdgeModuleRef,
 } from './edge-modules'
-import type { ImportGraphView, SourceReader } from './graph-trace'
-import type { DevReporterOptions, ReportSink } from './report'
+import type { ImportGraphView, SourceReader, Trace } from './graph-trace'
+import type { DevReport, DevReporterOptions, ReportSink } from './report'
 import type { EnvType } from './rules'
 import type {
   EdgeViolation,
   RspackImportProtectionBuildInfo,
 } from './violations'
 import type { WitnessLookup } from './witness'
-import type { TraceStep, ViolationInfo } from './trace'
+import type { ReportContext, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
+import type { CompileStartFrameworkOptions } from '../types'
 
 export interface CreateImportProtectionOptions {
   /** The user's `importProtection` option. */
@@ -74,6 +83,8 @@ export interface CreateImportProtectionOptions {
    * own violation (nothing else explains its presence). Default: none.
    */
   isEntry?: (path: string) => boolean
+  /** The app's framework: the package reports name for `<ClientOnly>` (default `react`). */
+  framework?: CompileStartFrameworkOptions
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -105,6 +116,7 @@ export function createImportProtection(
         opts.readFile ?? readFileOrNull,
         opts.isEntry ?? (() => false),
         opts.readSource,
+        opts.framework,
       )
     : null
 }
@@ -139,6 +151,8 @@ export class ImportProtection {
     server: new Set(),
   }
   private warnedOnViolationFalse = false
+  /** How reports are formatted. */
+  readonly report: ReportContext
 
   constructor(
     readonly config: ImportProtectionConfig,
@@ -147,9 +161,11 @@ export class ImportProtection {
     /** Whether a path is an app entry (`CreateImportProtectionOptions.isEntry`). */
     readonly isEntry: (path: string) => boolean,
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
-    readonly readSource?: SourceReader,
+    readonly readSource: SourceReader = readSourceFile,
+    readonly framework: CompileStartFrameworkOptions = 'react',
   ) {
     this.planner = importEdgesPlanner(this)
+    this.report = { config, readSource, framework }
   }
 
   /** The marker specifiers to give the session's `RawFactsCache` (every analysis must agree on markers). */
@@ -300,7 +316,12 @@ export class ImportProtection {
   /** @internal */
   runtimeLoad(): EdgeModuleLoad {
     return {
-      code: mockRuntimeCode(this.config.mockAccess),
+      code: mockRuntimeCode(
+        this.config.mockAccess,
+        this.framework,
+        // (the session's own: what the bundler builds the app's modules with)
+        process.env.NODE_ENV === 'production',
+      ),
       moduleSideEffects: false,
     }
   }
@@ -470,6 +491,7 @@ class ImportProtectionEnv {
     this.reporter?.close()
     this.reporter = new DevReporter({
       config: this.ip.config,
+      report: this.ip.report,
       sink,
       reachable: (id) => this.reachable(id),
       ...options,
@@ -524,14 +546,9 @@ class ImportProtectionEnv {
     return false
   }
 
-  /** The trace of an importer from the graph as it is now. */
-  trace(importerId: string, graph = this.graph): Array<TraceStep> {
-    return buildTrace(
-      importerId,
-      graph,
-      this.edges,
-      this.ip.config.maxTraceDepth,
-    )
+  /** The whole trace of an importer from the graph as it is now. */
+  trace(importerId: string, graph = this.graph): Trace {
+    return traceOf(importerId, graph, this.edges)
   }
 
   /**
@@ -637,7 +654,7 @@ class ImportProtectionEnv {
   private async reportDev(
     violations: Array<EdgeViolation>,
   ): Promise<CompileOutcome> {
-    const errors: Array<ViolationInfo> = []
+    const errors: Array<DevReport> = []
     for (const v of violations) {
       if (v.env === this.name && !v.pending && !(await this.allows(v))) {
         await this.notify(v)
@@ -848,32 +865,22 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Dev: queues a mock report; returns the info of an `error` violation (the importer must fail). */
-  private report(v: EdgeViolation): Array<ViolationInfo> {
+  /** Dev: queues a mock report; returns the report of an `error` violation (the importer must fail). */
+  private report(v: EdgeViolation): Array<DevReport> {
     const info = violationInfo(v, this.ip.config, () =>
       this.trace(v.importerId),
     )
     if (v.behavior === 'error') {
-      return [info]
+      return [{ violation: v, info }]
     }
     this.reporter?.enqueue({ violation: v, info })
     return []
   }
 
-  private errorOf(errors: Array<ViolationInfo>): Error | null {
-    if (errors.length === 0) {
-      return null
-    }
-    for (const info of errors) {
-      ;(info as ViolationInfo & { freezeTrace: () => unknown }).freezeTrace()
-    }
-    const error = devViolationError(errors[0]!, this.ip.config)
-    if (errors.length > 1) {
-      error.message = errors
-        .map((info) => formatViolation(info, this.ip.config.root))
-        .join('\n')
-    }
-    return error
+  private errorOf(errors: Array<DevReport>): Error | null {
+    return errors.length === 0
+      ? null
+      : devViolationError(errors, this.ip.report)
   }
 
   /**
@@ -924,7 +931,7 @@ class ImportProtectionEnv {
         }
         return null
       }
-      const errors: Array<ViolationInfo> = []
+      const errors: Array<DevReport> = []
       for (const [key, v] of pending) {
         this.confirmed.add(key)
         await this.notify(v)
@@ -1116,17 +1123,19 @@ class ImportProtectionEnv {
       const info = violationInfo(v, this.ip.config, () =>
         this.trace(v.importerId, graph),
       )
-      info.freezeTrace()
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
-        message: formatViolation(info, this.ip.config.root),
+        message: formatViolation(v, info, this.ip.report),
         info: info as ViolationInfo,
       })
     }
     // not violations (no `onViolation`, no failure): a warning per module
     for (const [v, importers] of this.unchecked.values()) {
-      const info = violationInfo(v, this.ip.config, () => [])
+      const info = violationInfo(v, this.ip.config, () => ({
+        steps: [],
+        fromEntry: false,
+      }))
       const { root } = this.ip.config
       const message = formatUncheckedImporters(info, importers, root)
       reports.push({
@@ -1162,8 +1171,36 @@ class ImportProtectionEnv {
         edgeKey: `${self.edgeKey}\u0000${importerId}`,
         importer,
         importerId,
+        ...this.patternImportOf(importer, self.resolved!),
       })
     }
     return out
+  }
+
+  /**
+   * Where an importer's pattern import reached a module that is its own
+   * violation: the call in its raw text (`import.meta.glob`, …), its
+   * position and code frame. Read once the violation survived (a report).
+   */
+  private patternImportOf(
+    importer: string,
+    resolved: string,
+  ): Pick<EdgeViolation, 'pattern' | 'loc' | 'snippet'> {
+    const text = this.ip.readSource(importer)
+    const found =
+      text === null
+        ? null
+        : findPatternImport(
+            text,
+            importer,
+            identify(resolved).path,
+            this.ip.config.root,
+          )
+    if (text === null || found === null) {
+      return { pattern: found, loc: null, snippet: null }
+    }
+    const locator = new Locator(text, importer, () => null)
+    const loc = locator.at(found.offset)
+    return { pattern: found, loc, snippet: loc && locator.frame(loc) }
   }
 }

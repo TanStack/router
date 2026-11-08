@@ -632,6 +632,7 @@ async function runAttempt(
         env,
         host,
         code: input.code,
+        analysis: t0,
         inputMap: readInputMap,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,

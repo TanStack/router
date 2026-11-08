@@ -23,9 +23,15 @@ import {
   normalizePath,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
-import { CLIENT_ENV_SUGGESTIONS, SERVER_ENV_SUGGESTIONS } from './trace'
+import {
+  CLIENT_ENV_SUGGESTIONS,
+  PATTERN_IMPORT_SUGGESTION,
+  SPECIFIER_SLOT,
+  serverEnvSuggestions,
+} from './trace'
 import type { MockAccess } from './config'
 import type { RuleRef } from './rules'
+import type { CompileStartFrameworkOptions } from '../types'
 
 const EDGE_MODULE_PREFIX = 'tanstack-start-ip:'
 
@@ -262,38 +268,57 @@ export function allowedModuleCode(
 
 /**
  * The mock runtime of an environment. `__mk` creates the recursive mock
- * (reads, calls, `new`, conversions never throw; `mockAccess` reports a
- * call, a construction, a conversion or a write once per access path).
+ * (reads, calls, `new`, conversions never throw; `mockAccess` reports the
+ * first call, construction, conversion or write of each mocked import: a
+ * renderer probing a mock, as React does a component, makes many). In
+ * production (`production`: the session's `process.env.NODE_ENV`) the report
+ * is one line and the runtime holds none of the longer text; the runtime
+ * reads no `process` of its own.
  * `mock.foo().then(…)` runs its callback, with a mock that is not itself
  * thenable: a thenable resolving to itself makes `await` loop in microtasks,
  * freezing the tab or the whole server;
  * `__fx` is the effect witness (a call no bundler can prove pure; no
  * global, nothing logged).
  */
-export function mockRuntimeCode(mockAccess: MockAccess): string {
+export function mockRuntimeCode(
+  mockAccess: MockAccess,
+  framework: CompileStartFrameworkOptions = 'react',
+  production = false,
+): string {
   const suggestions = {
-    client: `Fix: ${CLIENT_ENV_SUGGESTIONS.join('. ')}.`,
-    server: `Fix: ${SERVER_ENV_SUGGESTIONS.join('. ')}.`,
+    client: CLIENT_ENV_SUGGESTIONS.map((s) => `- ${s}`).join('\n'),
+    server: serverEnvSuggestions(framework)
+      .map((s) => `- ${s}`)
+      .join('\n'),
+    pattern: `- ${PATTERN_IMPORT_SUGGESTION}`,
   }
   return `const MODE = ${stringLiteral(mockAccess, '"')};
-const SUGGESTIONS = ${JSON.stringify(suggestions)};
 const seen = new Set();
 const evaluated = [];
 function report(meta, action, path) {
   if (MODE === "off") return;
-  const key = meta + "\\u0000" + action + "\\u0000" + path;
-  if (seen.has(key)) return;
-  seen.add(key);
-  let info = {};
-  try { info = JSON.parse(meta); } catch {}
-  const message =
-    "[import-protection] Mocked import used in the " + info.e + " environment\\n\\n" +
-    "Denied import: \\"" + info.s + "\\"\\n" +
-    (info.f ? "Denied file: " + info.f + "\\n" : "") +
-    "Importer: " + info.i + "\\n" +
-    "Access: " + path + " (" + action + ")\\n\\n" +
-    (info.e === "client" ? SUGGESTIONS.client : SUGGESTIONS.server) +
-    " To disable these runtime diagnostics, set importProtection.mockAccess: \\"off\\".";
+  if (seen.has(meta)) return;
+  seen.add(meta);
+  const info = JSON.parse(meta);
+  const env = info.e === "client" ? "client" : "server";
+  // a module that is its own violation: no importer, the denied file (an unknown edge module has neither)
+  const pattern = !info.i && info.f;
+  let message = "[import-protection] Mocked import used in the " + env + " environment: " + (info.f || info.s);
+  ${
+    production
+      ? ''
+      : `{
+    const SUGGESTIONS = ${JSON.stringify(suggestions)};
+    message =
+      "[import-protection] Mocked import used in the " + env + " environment" + (info.e !== env ? " (" + info.e + ")" : "") + "\\n\\n" +
+      (pattern ? "" : "Denied import: \\"" + info.s + "\\"\\n") +
+      (info.f ? "Denied file: " + info.f + "\\n" : "") +
+      (pattern ? "Importer: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext)\\n" : info.i ? "Importer: " + info.i + "\\n" : "") +
+      "Access: " + path + " (" + action + ")\\n\\n" +
+      "Suggestions:\\n" + SUGGESTIONS[pattern ? "pattern" : env].split(${JSON.stringify(SPECIFIER_SLOT)}).join(info.s.replace(/[\\\\']/g, "\\\\$&")) + "\\n\\n" +
+      "Further uses of this mock are not reported. To disable these runtime diagnostics, set importProtection.mockAccess: \\"off\\".";
+  }`
+  }
   const error = new Error(message);
   if (MODE === "warn") console.warn(error);
   else console.error(error);

@@ -321,7 +321,10 @@ const warnings = (unchecked: Array<string>, uses: Array<Use>) => {
   }
 }
 
-/** What `warnings` gives when each of `uses` is warned about (Rspack prefixes each line with `│`). */
+/**
+ * What `warnings` gives when each of `uses` is warned about (Rspack prefixes each line with `│`).
+ * (The fix's wording, adjusted with R101's message fixes: the warning now also says the file then ships.)
+ */
 const warningsNaming = (uses: Array<Use>) => ({
   count: uses.length,
   byFile: Object.fromEntries(
@@ -329,7 +332,7 @@ const warningsNaming = (uses: Array<Use>) => ({
       denied,
       expect.stringMatching(
         new RegExp(
-          `\n[│ ]* {4}- ${escaped(importer)}\n[^]*${escaped('import the file statically from an exempt module inside the scope')}`,
+          `\n[│ ]* {4}- ${escaped(importer)}\n[^]*${escaped('import the file statically from a module that exclude/ignoreImporters exempts inside the scope')}`,
         ),
       ),
     ]),

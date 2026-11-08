@@ -53,6 +53,14 @@ Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and
 const modules = import.meta.glob('../lib/*.ts')
 ```
 
+The report names the pattern import and the denied file. To leave the file out, add a negative pattern:
+
+```ts
+const modules = import.meta.glob(['../lib/*.ts', '!../lib/db.server.ts'])
+```
+
+For `import.meta.webpackContext`, narrow its `regExp` so it does not match the file; for a template literal `import()`, move the file out of the directory it reads.
+
 ## Type-Only Imports
 
 Type-only imports and re-exports are ignored by import protection because they are erased from the runtime bundle and cannot leak environment-specific code.
@@ -352,75 +360,95 @@ This example shows a `*.server.*` file being imported transitively in the client
 [import-protection] Import denied in client environment
 
   Denied by file pattern: **/*.server.*
-  Importer: src/features/auth/session.ts:5:27
-  Import: "../db/queries.server"
+  Importer: src/features/auth/session.ts:3:26
+  Import: "../../db/queries.server"
   Resolved: src/db/queries.server.ts
 
   Trace:
-    1. src/routes/index.tsx:2:34 (entry) (import "../features/auth/session")
-    2. src/features/auth/session.ts:5:27 (import "../db/queries.server")
+    1. src/router.tsx:2:27 (entry) (import "./routeTree.gen")
+    2. src/routeTree.gen.ts (import "./routes/index")
+    3. src/routes/index.tsx:2:26 (import "../features/auth/session")
+    4. src/features/auth/session.ts:3:26 (import "../../db/queries.server")
 
   Code:
-     3 | import { logger } from '../utils/logger'
-     4 |
-  >  5 | import { getUsers } from '../db/queries.server'
-       |                           ^
-     6 |
-     7 | export function loadAuth() {
+    1 | import { logger } from '../../utils/logger'
+    2 |
+  > 3 | import { getUsers } from '../../db/queries.server'
+      |                          ^
+    4 |
+    5 | export function loadAuth() {
 
-  src/features/auth/session.ts:5:27
+  src/features/auth/session.ts:3:26
 
   Suggestions:
-    - Wrap in createServerFn().handler(() => ...) to make it callable from the client via RPC
-    - Wrap in createServerOnlyFn(() => ...) if it should not be callable from the client
-    - Use createIsomorphicFn().client(() => ...).server(() => ...) for environment-specific implementations
-    - Split the file so client-safe exports are separate
+    - Use createServerFn().handler(() => ...) to keep the logic on the server and call it from the client via an RPC bridge
+    - Use createServerOnlyFn(() => ...) to mark it as server-only (it will throw if accidentally called from the client)
+    - Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations
+    - Split the file: move the code that uses this import into a .server.ts module, and import that module only from server code (server functions, server routes, middleware .server())
 ```
+
+With `behavior: 'mock'` the header says `Import mocked` instead: the build or dev server goes on, and the importer gets the mock.
 
 ### Client-only code on the server
 
-This example shows a `*.client.*` file imported in the SSR environment. Because the code snippet contains JSX, the `<ClientOnly>` suggestion is shown first:
+This example shows a `*.client.*` component imported in the SSR environment. The importer renders it as a component (`<BrowserWidget />`), so the suggestion is `<ClientOnly>`, which keeps it out of the server render. `createClientOnlyFn` would throw there: it is suggested only for imports used as functions (an effect, an event handler).
 
 ```text
 [import-protection] Import denied in server environment
 
   Denied by file pattern: **/*.client.*
-  Importer: src/components/dashboard.tsx:3:30
+  Importer: src/components/dashboard.tsx:1:31
   Import: "./browser-widget.client"
   Resolved: src/components/browser-widget.client.tsx
 
   Trace:
-    1. src/routes/dashboard.tsx:1:32 (entry) (import "../components/dashboard")
-    2. src/components/dashboard.tsx:3:30 (import "./browser-widget.client")
+    1. src/router.tsx:2:27 (entry) (import "./routeTree.gen")
+    2. src/routeTree.gen.ts:10:47 (import "./routes/dashboard")
+    3. src/routes/dashboard.tsx:2:27 (import "../components/dashboard")
+    4. src/components/dashboard.tsx:1:31 (import "./browser-widget.client")
 
   Code:
-     1 | import { BrowserWidget } from './browser-widget.client'
-     2 |
-  >  3 | export function Dashboard() { return <BrowserWidget /> }
-       |                              ^
-     4 |
+  > 1 | import { BrowserWidget } from './browser-widget.client'
+      |                               ^
+    2 |
+    3 | export function Dashboard() {
 
-  src/components/dashboard.tsx:3:30
+  src/components/dashboard.tsx:1:31
 
   Suggestions:
-    - Wrap in <ClientOnly fallback={...}>...</ClientOnly> to render only after hydration
-    - Wrap in createClientOnlyFn(() => ...) if it should only run in the browser
-    - Use createIsomorphicFn().client(() => ...).server(() => ...) for environment-specific implementations
-    - Split the file so server-safe exports are separate
+    - <BrowserWidget> renders it on the server (src/components/dashboard.tsx:4:11): render it inside <ClientOnly fallback={...}><BrowserWidget /></ClientOnly> (ClientOnly from @tanstack/react-router), so the server renders the fallback and the browser the component after hydration
+```
+
+In a Vue SFC, a component the template renders stays imported on the server even inside `<ClientOnly>`. Load it in the browser only, and render it inside `<ClientOnly>`:
+
+```vue
+<script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import { ClientOnly } from '@tanstack/vue-router'
+import { createClientOnlyFn } from '@tanstack/vue-start'
+
+const BrowserWidget = defineAsyncComponent(
+  createClientOnlyFn(() => import('./BrowserWidget.client.vue')),
+)
+</script>
+
+<template>
+  <ClientOnly><BrowserWidget /></ClientOnly>
+</template>
 ```
 
 ### How to read the output
 
 Each violation message has these sections:
 
-| Section                          | Description                                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Header**                       | Environment type where the violation occurred (`"client"` or `"server"`)                                                                                         |
-| **Denied by**                    | The rule that matched: file pattern, specifier pattern, or marker                                                                                                |
-| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path                                                                   |
-| **Trace**                        | The full import chain from the entry point to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is always the entry point |
-| **Code**                         | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column                                                       |
-| **Suggestions**                  | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server)                                                          |
+| Section                          | Description                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**                       | Environment type where the violation occurred (`"client"` or `"server"`)                                                                                                                                                                                                                                                                    |
+| **Denied by**                    | The rule that matched: file pattern, specifier pattern, or marker                                                                                                                                                                                                                                                                           |
+| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path                                                                                                                                                                                                                                              |
+| **Trace**                        | The import chain from the app's first module (your router or entry; the framework's own entry modules are left out) to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is tagged `(entry)` when it is an entry; a chain longer than `maxTraceDepth` starts with a line counting the steps left out |
+| **Code**                         | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column                                                                                                                                                                                                                                  |
+| **Suggestions**                  | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server)                                                                                                                                                                                                                                     |
 
 The trace reads top-to-bottom, from the entry point to the denied module. This helps you find where the chain starts so you can restructure your code.
 
