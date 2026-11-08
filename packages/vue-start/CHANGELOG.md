@@ -1,5 +1,23 @@
 # @tanstack/vue-start
 
+## 1.169.6
+
+### Patch Changes
+
+- Updated dependencies [[`3f22686`](https://github.com/TanStack/router/commit/3f226869e0af211ff7f1de5d7343e43462dbb101), [`559c7de`](https://github.com/TanStack/router/commit/559c7ded6e2a6eeda3f91c80d8c03f4cfeb9a206)]:
+  - @tanstack/start-plugin-core@1.171.57
+
+## 1.169.5
+
+### Patch Changes
+
+- [#8863](https://github.com/TanStack/router/pull/8863) [`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c) - The Rsbuild plugin keeps the app's `server.compress` setting instead of always setting it to `false`. Compression stays off by default: a compressed streamed page reaches the browser only once the stream ends. The optional `@rsbuild/core` peer is now `^2.0.5`, the first version whose compression keeps SSR response headers intact.
+
+- [#8869](https://github.com/TanStack/router/pull/8869) [`d05c6c6`](https://github.com/TanStack/router/commit/d05c6c66e7efc659286f37a56b3b1d4d267139e7) - Vite dev: Vue Start pre-bundles `@tanstack/vue-router > @tanstack/vue-store`, as React Start does for `@tanstack/react-store`. The first page load on a cold dependency cache no longer re-optimizes `vue` and reloads the page.
+
+- Updated dependencies [[`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c), [`c5320d7`](https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02), [`545a8d3`](https://github.com/TanStack/router/commit/545a8d3790989ca502153c3292c6b1e8063257f4), [`da8c28c`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1)]:
+  - @tanstack/start-plugin-core@1.171.56
+
 ## 1.169.4
 
 ### Patch Changes

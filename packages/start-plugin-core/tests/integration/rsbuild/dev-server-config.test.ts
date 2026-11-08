@@ -1,7 +1,7 @@
 /**
- * Start's Rsbuild plugin on a running dev server honours the app's Start and
- * Rsbuild options that shape what the server answers (SPA mode, response
- * compression).
+ * Start's Rsbuild plugin on a running dev server honours the app's Rsbuild
+ * options that shape what the server answers (response compression). (SPA
+ * mode in dev: e2e/react-start/basic `tests/spa-shell.spec.ts`.)
  */
 import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
@@ -12,21 +12,14 @@ import {
   startPageEntries,
 } from '../start-compose-app'
 import type { RsbuildConfig } from '@rsbuild/core'
-import type { TanStackStartRsbuildInputConfig } from '../../../src/rsbuild/schema'
 
 const timeout = 30_000
 
 /** A dev server of an app whose `/` route tells where its loader ran. */
-function startApp(
-  options: {
-    start?: TanStackStartRsbuildInputConfig
-    config?: RsbuildConfig
-  } = {},
-) {
+function startApp(options: { config?: RsbuildConfig } = {}) {
   return startRsbuildStartDevServer({
     browser: true,
     hmr: false,
-    start: options.start,
     config: { ...options.config, plugins: [pluginReact()] },
     files: {
       ...startPageEntries,
@@ -45,35 +38,6 @@ export const Route = createFileRoute('/')({
 }
 
 describe('Rsbuild dev server options', () => {
-  // Control: without SPA mode, the dev server renders the route (and runs
-  // its loader) on the server.
-  test(
-    'without SPA mode, the dev server renders the route on the server',
-    async () => {
-      const server = await startApp()
-      const response = await fetch(new URL('/', server.url))
-      expect(await response.text()).toContain('MARK_SERVER')
-    },
-    timeout,
-  )
-
-  // Bug: with SPA mode, the Rsbuild dev server renders the matched route
-  // and runs its loader on the server; Vite's dev server answers the shell.
-  // Source: src/rsbuild/plugin.ts (`TSS_SHELL` not defined in dev, unlike
-  // src/vite/planning.ts `createViteDefineConfig`).
-  // Impact: #8543: an SPA app's loaders run on the dev server (server-only
-  // failures, wrong data) though they never do in production.
-  test(
-    'with SPA mode, the dev server answers the shell without running the loader',
-    async () => {
-      const server = await startApp({ start: { spa: { enabled: true } } })
-      const response = await fetch(new URL('/', server.url))
-      expect(response.status).toBe(200)
-      expect(await response.text()).not.toContain('MARK_SERVER')
-    },
-    timeout,
-  )
-
   // Bug: Start's plugin turns compression off only when the config it
   // receives has no `server.compress`, but Rsbuild fills in its default
   // (`true`) before plugins see the config.

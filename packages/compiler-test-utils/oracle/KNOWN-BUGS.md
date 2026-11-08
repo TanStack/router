@@ -443,18 +443,10 @@ SPLITTING.md`): a chunk never imports the extracted module of a copyable export 
 - **The not-split warning is printed only when the splitter changed the module.** SPEC J2.8.
   `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported component ($name) that is the only split candidate is
   split or reported as not code-split".
-- **Decorators after `export` and parameter decorators do not parse.** SPEC §2.1, G1.
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "a decorator after `export` compiles"; "a class with a parameter
-  decorator that the split component uses compiles into parseable modules".
+- **Parameter decorators do not parse.** SPEC §2.1, G1. `pages/known-bugs-code-splitter-bindings.test.ts`: "a class
+  with a parameter decorator that the split component uses compiles into parseable modules".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
-- **Rsbuild: a route's manifest entry lists the chunks and CSS of a sibling route** when the routes share a module in
-  a chunk of its own: Start's Rsbuild manifest counts a chunk as available when any one of the importing chunk's groups
-  has it, not every one, so the shared chunk depends on each route's copy of the module it imports (#8780). SPEC J2.22.
-  `start-plugin-core/tests/integration/known-bugs-route-css-rsbuild.test.ts`, rows of `route-css-cases.ts`: "the CSS
-  of the /${name} route applies only once the route matches" (`shares-module-a`, `shares-module-c`; dev and build;
-  Vite passes). Cause: `computeStaticDependencyChunks`, `start-plugin-core/src/rsbuild/normalized-client-build.ts`.
-  Fix: the page of a route links only the CSS of the chunks that route loads.
 - **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**
   (`index.tsx?tsr-split=component`), so a debugger sees another file than the route file. SPEC G6.
   `integration/dev-source-maps.test.ts`: "a throw in $name maps to its line in the route file, which its module names

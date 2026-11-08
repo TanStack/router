@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
-    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/core": "^2.3.1",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",

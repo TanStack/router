@@ -22,7 +22,8 @@ const routeModuleCss = [
 // had it, so the chunk of the module both routes share depended on each
 // route's copy of the module it imports, and each route's manifest entry
 // listed the other route's chunk and its CSS. Fixed in
-// computeStaticDependencyChunks, src/rsbuild/normalized-client-build.ts.)
+// computeStaticDependencyChunks, src/rsbuild/normalized-client-build.ts,
+// on main too: #8876.)
 
 routeCssSuite('rsbuild', {
   dev: routeModuleCss,

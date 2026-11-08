@@ -146,13 +146,15 @@ export const Route = createFileRoute('/')(options)`,
    * Refresh): those of a module that is not a route, with components, served
    * by the same dev server.
    */
-  async function candidateNames() {
+  async function candidateNames(autoCodeSplitting: boolean) {
     const code = `${head}const marker = 'marker'
 export const Route = createFileRoute('/')({
   component: () => <p>{marker}</p>,
 })`
+    const pluginOptions = { autoCodeSplitting }
     const hmr = await loadRoute(code, {
       hmr: true,
+      pluginOptions,
       files: {
         'widgets.tsx': ['A', 'B', 'C', 'D']
           .map((name) => `export function ${name}() { return <p>${name}</p> }`)
@@ -162,7 +164,7 @@ export const Route = createFileRoute('/')({
     const withHmr = await hmr.transform()
     const tools = topLevelNames(await hmr.transform('/widgets.tsx'))
     const without = topLevelNames(
-      await (await loadRoute(code, { hmr: false })).transform(),
+      await (await loadRoute(code, { hmr: false, pluginOptions })).transform(),
     )
     return [
       ...new Set([
@@ -178,14 +180,27 @@ export const Route = createFileRoute('/')({
   // top-level `const hot = import.meta.hot` that collides with a user's
   // top-level `hot` binding (compile error `Duplicate declaration "hot"`).
   // Impact: the route cannot be served in development.
+  // (Split, a constant only the component reads moves to the component's
+  // chunk: unsplit, it stays in the route module with the HMR code.)
   test.each([
-    { name: 'a constant', keyword: 'const', exported: false },
-    { name: 'an exported constant', keyword: 'export const', exported: true },
+    { name: 'a constant', keyword: 'const', exported: false, split: true },
+    {
+      name: 'an exported constant',
+      keyword: 'export const',
+      exported: true,
+      split: true,
+    },
+    {
+      name: 'a constant, unsplit',
+      keyword: 'const',
+      exported: false,
+      split: false,
+    },
   ])(
     'a user binding named hot ($name) does not collide with the injected HMR code',
-    async ({ keyword, exported }) => {
+    async ({ keyword, exported, split }) => {
       const results: Record<string, unknown> = {}
-      for (const name of await candidateNames()) {
+      for (const name of await candidateNames(split)) {
         const route = await loadRoute(
           `${head}${keyword} ${name} = 'hot'
 export const Route = createFileRoute('/')({
@@ -193,6 +208,7 @@ export const Route = createFileRoute('/')({
 })`,
           {
             hmr: true,
+            pluginOptions: { autoCodeSplitting: split },
             files: exported
               ? { 'importer.ts': `export { ${name} } from './route'\n` }
               : {},

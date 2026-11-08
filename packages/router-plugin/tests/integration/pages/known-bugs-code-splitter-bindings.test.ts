@@ -620,9 +620,9 @@ return render('errorComponent')`)
 })
 
 describe('TypeScript-only syntax', () => {
-  // Bug: the code splitter rejects an ES decorator after `export` (`export
-  // @dec class`, valid since TypeScript 5.0): "Decorators must be placed
-  // before the export keyword".
+  // Bug (fixed on main too, #8867): the code splitter rejected an ES
+  // decorator after `export` (`export @dec class`, valid since TypeScript
+  // 5.0): "Decorators must be placed before the export keyword".
   // A real bug (SPEC §2.1, G1): the syntax is valid TypeScript. The pin reads
   // the compiled module without running the page (whether a browser runs
   // the decorator syntax is not the compiler's).

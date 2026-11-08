@@ -13,6 +13,8 @@ import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
 import { Route as AuthDocsRouteImport } from './routes/auth-docs'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as ExecutionLocalRouteImport } from './routes/execution-local'
+import { Route as ExecutionRpcRouteImport } from './routes/execution-rpc'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -109,6 +111,16 @@ const ClientOnlyRoute = ClientOnlyRouteImport.update({
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecutionLocalRoute = ExecutionLocalRouteImport.update({
+  id: '/execution-local',
+  path: '/execution-local',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecutionRpcRoute = ExecutionRpcRouteImport.update({
+  id: '/execution-rpc',
+  path: '/execution-rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
@@ -460,6 +472,8 @@ export interface FileRoutesByFullPath {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -532,6 +546,8 @@ export interface FileRoutesByTo {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -601,6 +617,8 @@ export interface FileRoutesById {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -669,10 +687,10 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/not-found' | '/search-params' | '/specialChars' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/posts' | '/primitive-beforeload-error' | '/raw-stream' | '/scripts' | '/stream' | '/type-only-reexport' | '/users' | '/not-found/deep' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/not-found/deep/b' | '/layout-a' | '/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep/' | '/not-found/parent-boundary/' | '/redirect/$target/' | '/not-found/deep/b/c' | '/foo/$bar/$qux' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux/'
+  fullPaths: '/' | '/not-found' | '/search-params' | '/specialChars' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/execution-local' | '/execution-rpc' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/posts' | '/primitive-beforeload-error' | '/raw-stream' | '/scripts' | '/stream' | '/type-only-reexport' | '/users' | '/not-found/deep' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/not-found/deep/b' | '/layout-a' | '/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep/' | '/not-found/parent-boundary/' | '/redirect/$target/' | '/not-found/deep/b/c' | '/foo/$bar/$qux' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/specialChars' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/primitive-beforeload-error' | '/scripts' | '/stream' | '/type-only-reexport' | '/specialChars/malformed' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect' | '/not-found' | '/posts' | '/raw-stream' | '/redirect' | '/search-params' | '/users' | '/not-found/deep/b' | '/layout-a' | '/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep' | '/not-found/parent-boundary' | '/redirect/$target' | '/not-found/deep/b/c' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux'
-  id: '__root__' | '/' | '/not-found' | '/search-params' | '/specialChars' | '/_layout' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/posts' | '/primitive-beforeload-error' | '/raw-stream' | '/scripts' | '/stream' | '/type-only-reexport' | '/users' | '/not-found/deep' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/_layout/_layout-2' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/not-found/deep/b' | '/_layout/_layout-2/layout-a' | '/_layout/_layout-2/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts_/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep/' | '/not-found/parent-boundary/' | '/redirect/$target/' | '/not-found/deep/b/c' | '/foo/$bar/$qux/_here' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux/_here/'
+  to: '/' | '/specialChars' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/execution-local' | '/execution-rpc' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/primitive-beforeload-error' | '/scripts' | '/stream' | '/type-only-reexport' | '/specialChars/malformed' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect' | '/not-found' | '/posts' | '/raw-stream' | '/redirect' | '/search-params' | '/users' | '/not-found/deep/b' | '/layout-a' | '/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep' | '/not-found/parent-boundary' | '/redirect/$target' | '/not-found/deep/b/c' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux'
+  id: '__root__' | '/' | '/not-found' | '/search-params' | '/specialChars' | '/_layout' | '/async-scripts' | '/auth-docs' | '/client-only' | '/deferred' | '/execution-local' | '/execution-rpc' | '/inline-scripts' | '/links' | '/plain-ts-type-assertion' | '/posts' | '/primitive-beforeload-error' | '/raw-stream' | '/scripts' | '/stream' | '/type-only-reexport' | '/users' | '/not-found/deep' | '/not-found/parent-boundary' | '/specialChars/malformed' | '/_layout/_layout-2' | '/api/users' | '/auth-docs/private' | '/issue-6221/dashboard' | '/multi-cookie-redirect/target' | '/not-found/via-beforeLoad' | '/not-found/via-beforeLoad-target-root' | '/not-found/via-loader' | '/posts/$postId' | '/raw-stream/client-call' | '/raw-stream/ssr-binary-hint' | '/raw-stream/ssr-mixed' | '/raw-stream/ssr-multiple' | '/raw-stream/ssr-single' | '/raw-stream/ssr-text-hint' | '/redirect/$target' | '/search-params/default' | '/search-params/loader-throws-redirect' | '/specialChars/$param' | '/specialChars/hash' | '/specialChars/search' | '/specialChars/대한민국' | '/users/$userId' | '/multi-cookie-redirect/' | '/not-found/' | '/posts/' | '/raw-stream/' | '/redirect/' | '/search-params/' | '/users/' | '/not-found/deep/b' | '/_layout/_layout-2/layout-a' | '/_layout/_layout-2/layout-b' | '/api/users/$id' | '/issue-6221/article/$id' | '/not-found/parent-boundary/via-beforeLoad' | '/posts_/$postId/deep' | '/redirect/$target/via-beforeLoad' | '/redirect/$target/via-loader' | '/specialChars/malformed/$param' | '/specialChars/malformed/search' | '/not-found/deep/' | '/not-found/parent-boundary/' | '/redirect/$target/' | '/not-found/deep/b/c' | '/foo/$bar/$qux/_here' | '/redirect/$target/serverFn/via-beforeLoad' | '/redirect/$target/serverFn/via-loader' | '/redirect/$target/serverFn/via-useServerFn' | '/redirect/$target/serverFn/' | '/not-found/deep/b/c/d' | '/foo/$bar/$qux/_here/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -685,6 +703,8 @@ export interface RootRouteChildren {
   AuthDocsRoute: typeof AuthDocsRouteWithChildren
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
+  ExecutionLocalRoute: typeof ExecutionLocalRoute
+  ExecutionRpcRoute: typeof ExecutionRpcRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
@@ -748,6 +768,20 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execution-local': {
+      id: '/execution-local'
+      path: '/execution-local'
+      fullPath: '/execution-local'
+      preLoaderRoute: typeof ExecutionLocalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execution-rpc': {
+      id: '/execution-rpc'
+      path: '/execution-rpc'
+      fullPath: '/execution-rpc'
+      preLoaderRoute: typeof ExecutionRpcRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inline-scripts': {
@@ -1467,6 +1501,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthDocsRoute: AuthDocsRouteWithChildren,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
+  ExecutionLocalRoute: ExecutionLocalRoute,
+  ExecutionRpcRoute: ExecutionRpcRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
