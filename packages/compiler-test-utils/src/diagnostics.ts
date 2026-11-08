@@ -369,6 +369,9 @@ function indent(text: string) {
  * With a root, a longer path ending with it must be the end of the absolute
  * path (a path relative to the working directory names it, `/other/src/a.ts`
  * does not); what follows `./`, `../` or a leading `/` counts on its own.
+ * An absolute `file` without a root is also named by the end of its path
+ * from one of its directories on (`src/a.ts`, as messages name files
+ * relative to the project root).
  */
 export function mentionsFile(
   text: string,
@@ -405,6 +408,37 @@ function fileMention(
     .map((spelling) => (spelling ? said.indexOf(posix(spelling)) : -1))
     .filter((index) => index !== -1)
   if (relative === undefined) {
+    // an absolute file is also named by its path from a directory of it on
+    // (`src/routes/a.tsx`, how messages name files relative to the root)
+    const name =
+      absolute === undefined ? '' : path.posix.basename(posix(absolute))
+    for (
+      let at = name === '' ? -1 : said.indexOf(name);
+      at !== -1;
+      at = said.indexOf(name, at + 1)
+    ) {
+      const end = at + name.length
+      if (/[\w/-]/.test(said[end] ?? '')) {
+        continue
+      }
+      let start = at
+      while (start > 0 && /[\w.@$~+%#/-]/.test(said[start - 1]!)) {
+        start--
+      }
+      const token = said.slice(start, end).replace(/^(?:\.{1,2}\/)+/, '')
+      if (
+        token.includes('/') &&
+        spellings.some(
+          (spelling) =>
+            spelling &&
+            (posix(spelling) === token ||
+              posix(spelling).endsWith(`/${token.replace(/^\/+/, '')}`)),
+        )
+      ) {
+        starts.push(start)
+        break
+      }
+    }
     return starts.length > 0 ? said.slice(Math.min(...starts)) : undefined
   }
   for (

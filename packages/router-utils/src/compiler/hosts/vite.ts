@@ -1,8 +1,8 @@
 /** Helpers of the Vite hosts (router and Start). */
 import { readFile } from 'node:fs/promises'
 import { deriveId, identify } from '../identity'
-import { pathsOf } from './rebuild'
 import { positionSuffix } from '../diagnostics'
+import { pathsOf } from './rebuild'
 import type { DiagnosticPosition } from '../diagnostics'
 import type { CompilerCaches, InvalidateChange } from '../host'
 import type { PlanKey } from '../identity'
