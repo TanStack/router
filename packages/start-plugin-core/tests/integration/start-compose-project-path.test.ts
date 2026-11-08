@@ -15,7 +15,12 @@
  * untransformed, silently: the client would ship the handlers.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import {
+  buildStart,
+  callByIdExports,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -199,4 +204,62 @@ export { renderPath } from '../harness/render'
       ).toBe('MARK_LABEL_SET')
     })
   })
+})
+
+/** `path` with its drive letter in the other case (`C:\app` → `c:\app`). */
+const flipDriveLetter = (path: string) =>
+  path.replace(/^[a-zA-Z](?=:)/, (letter) =>
+    letter === letter.toUpperCase()
+      ? letter.toLowerCase()
+      : letter.toUpperCase(),
+  )
+
+// Windows: the app's root (Vite's `root`, `process.cwd()`) can carry a
+// lowercase drive letter while the bundler's module ids carry the file
+// system's (`C:`). Server fn default ids hash the file's path relative to the
+// root, so the root must be read as the same directory whatever the case of
+// its drive letter.
+describe.each(startBundlers)('%s build', (bundler) => {
+  describe.runIf(process.platform === 'win32')(
+    'of an app whose path is configured with the drive letter in the other case',
+    () => {
+      const files = {
+        ...routes,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'MARK_GREETING')
+`,
+        'src/client-entry.ts': `export { greet } from './fns'\n`,
+        'src/ssr-entry.ts': `export { greet } from './fns'
+${callByIdExports}`,
+      }
+      /** The server fn's id in the SSR build, what a call by that id answers, and whether the client build holds it. */
+      const ids = async (root?: (appDirectory: string) => string) => {
+        const build = await buildStart({
+          bundler,
+          files,
+          entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+          root,
+        })
+        const { result } = await build.ssr.run(`${callByIdPrelude}
+const id = serverFnId(entry.greet)
+return { id, answer: await callById(id) }`)
+        const { id, answer } = result as { id: string; answer: unknown }
+        return { id, answer, inClient: build.client.where(id) !== 'nowhere' }
+      }
+
+      test(
+        'server fn default ids are those of the root as the file system spells it',
+        async () => {
+          const spelled = await ids()
+          expect(spelled).toEqual({
+            id: expect.any(String),
+            answer: 'MARK_GREETING',
+            inClient: true,
+          })
+          expect(await ids(flipDriveLetter)).toEqual(spelled)
+        },
+        timeout,
+      )
+    },
+  )
 })
