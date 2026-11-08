@@ -104,6 +104,74 @@ describe('clusters and the single-writer rule', () => {
     expect(r.env).toContain('component: () => { count++; return count }')
     expect(r.chunks.component).toBe('export {}\n')
   })
+
+  // the same rule for a component declared on its own: a top-level writer
+  // joins the binding it writes, which the route module keeps for its
+  // other reader, so the option would only re-export it from there
+  it.each([
+    [
+      'updates a binding the loader reads',
+      'let count = 0\nfunction Page() { count++; return count }',
+      'loader: () => count,',
+    ],
+    [
+      'assigns a binding beforeLoad reads',
+      "let last: string | undefined\nfunction Page() { last = 'seen'; return 'a' }",
+      'beforeLoad: () => ({ last }),',
+    ],
+  ])(
+    'falls back for a declared component that %s (shared-writer)',
+    async (_, decl, option) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decl.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          ${option}
+          component: Page,
+        })
+      `)
+      const r = await split(code)
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'shared-writer' },
+      })
+      expect(r.env).toContain('component: Page,')
+      expect(r.env).toContain('function Page()')
+    },
+  )
+
+  it('falls back for a declared component writing a binding the route module only writes', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let count = 0
+      function Page() { count++; return 'page' }
+      export const Route = createFileRoute('/')({
+        loader: () => { count = 0; return 'data' },
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { component: 'shared-writer' },
+    })
+  })
+
+  it('moves a declared component with the binding only it writes and reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let count = 0
+      function Page() { count++; return count }
+      export const Route = createFileRoute('/')({
+        loader: () => 'data',
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+    expect(r.env).not.toContain('let count')
+    expect(r.chunks.component).toContain('let count = 0')
+    expect(r.chunks.component).toContain('function Page()')
+  })
 })
 
 describe('copyable clusters', () => {
@@ -645,13 +713,9 @@ describe('extracted-export outputs', () => {
     expect(r.chunk).toContain('function Page() { return Card() }')
     expect(r.chunk).toContain('const TsrSplitComponent = Page')
     expect(r.chunk).not.toContain('helper')
-    // `Card` stays in the route module because the loader reads it
-    expect(r.diagnostics).toMatchObject([
-      {
-        code: 'eager-export:live',
-        range: { start: code.indexOf('export function Card') },
-      },
-    ])
+    // `Card` stays in the route module because the loader reads it: it
+    // would stay there without the chunk, so that is no news (R101)
+    expect(r.diagnostics).toEqual([])
     const page = await r.extracted('Page')
     expect(page?.code).toContain("import { Card } from '/app/route.tsx'")
     expect(page?.code).toContain('function Page() { return Card() }')
@@ -1946,6 +2010,108 @@ describe('extracted-export outputs', () => {
     })
   })
 
+  // R101: an exported declaration the route module needs anyway is not
+  // reported, whatever keeps it there: the loader reads it (the shape of
+  // webdevcody/tanstack-course-platform `learn/$slug/_layout.tsx`), split
+  // code reaches it only through `Route` (`Route.useLoaderData()`), or it
+  // writes state the route module keeps
+  it.each([
+    [
+      'its initialiser has effects and the loader reads it',
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { queryOptions } from './query'
+        export const postOpts = queryOptions({ queryKey: ['p'] })
+        function Page() { return postOpts.queryKey[0] }
+        export const Route = createFileRoute('/')({
+          loader: () => postOpts.queryKey,
+          component: Page,
+        })
+      `),
+    ],
+    [
+      'the loader reads it and split code reads `Route`',
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        export const fetchPost = async () => ({ title: 'a' })
+        function Page() { return Route.useLoaderData().title }
+        export const Route = createFileRoute('/')({
+          loader: () => fetchPost(),
+          component: Page,
+        })
+      `),
+    ],
+    [
+      'it writes a binding split code reads',
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        let base = 'x'
+        export const setBase = (b) => { base = b }
+        function Page() { return base }
+        export const Route = createFileRoute('/')({ component: Page })
+      `),
+    ],
+  ])(
+    'does not report an exported declaration the route module needs anyway: %s',
+    async (_, code) => {
+      const r = await extract(code)
+      expect(r.diagnostics).toEqual([])
+    },
+  )
+
+  it('does not report an export the route module needs through a declaration it re-exports', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make, wrap } from './lib'
+      export const api = make()
+      const plugin = wrap(api)
+      export { plugin }
+      function Page() { return api.x }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics).toEqual([])
+  })
+
+  it('reports each exported cause with its own reason, also one another cause reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './lib'
+      export const base = make()
+      export const options = { base }
+      function Page() { return [options.base, base] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics.map((d) => [d.code, d.range?.start]).sort()).toEqual(
+      [
+        ['eager-export:effects', code.indexOf('base = make')],
+        ['eager-export:reads', code.indexOf('options = {')],
+      ].sort(),
+    )
+  })
+
+  it('reports an exported declaration with effects only split code reads, also next to `Route`', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { queryOptions } from './query'
+      export const postOpts = queryOptions({ queryKey: ['p'] })
+      function Page() { return [Route.useLoaderData(), postOpts.queryKey[0]] }
+      export const Route = createFileRoute('/')({
+        loader: () => 'data',
+        component: Page,
+      })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics).toMatchObject([
+      {
+        severity: 'warning',
+        code: 'eager-export:effects',
+        range: { start: code.indexOf('postOpts = queryOptions') },
+      },
+    ])
+  })
+
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
   // declaration; a route file exporting only `Route` reports nothing
@@ -1961,7 +2127,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        'The exports `value`, `alias` of "/app/route.tsx" stay in the route module (',
+        'The exports `value`, `alias` of /app/route.tsx are used only by the split `component`, but stay in the route module because ',
       ),
     ])
   })
@@ -4323,7 +4489,7 @@ describe('declarations only split code needs that stay in the route module', () 
     }
     // the route planner names the module: tagged like its own warnings
     expect(message).toMatch(
-      /^\[tanstack-router\] `confetti` in "\/app\/route\.tsx" stays in the route module because /,
+      /^\[tanstack-router\] `confetti` in \/app\/route\.tsx stays in the route module because /,
     )
   })
 
@@ -4343,7 +4509,7 @@ describe('declarations only split code needs that stay in the route module', () 
     })
     expect(out!.diagnostics).toMatchObject([{ code: 'eager-split:order' }])
     expect(out!.diagnostics[0]!.message).toMatch(
-      /^`confetti` in "\/app\/mod\.tsx" stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
+      /^`confetti` in \/app\/mod\.tsx stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
     )
   })
 
@@ -4434,7 +4600,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code, ['component', 'errorComponent'])
     const byName: Record<string, (typeof r.diagnostics)[number]> =
       Object.fromEntries(
-        r.diagnostics.map((d) => [/`(\w+)` in "/.exec(d.message)![1]!, d]),
+        r.diagnostics.map((d) => [/`(\w+)` in \//.exec(d.message)![1]!, d]),
       )
     expect(Object.keys(byName).sort()).toEqual([
       'api',
@@ -4485,7 +4651,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `HOME` in "/app/route.tsx" stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
+        '`homeUrl`, `HOME` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
       ),
     ])
   })
@@ -4505,11 +4671,102 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code, ['component', 'errorComponent'])
     const byCode = Object.fromEntries(r.diagnostics.map((d) => [d.code, d]))
     expect(byCode['eager-split:written']!.message).toContain(
-      '`registry`, `index` in "/app/route.tsx" stay in the route module because the module changes them outside their declaration when it loads (line 4); move `registry`, `index` and what writes them to their own module, or mark their initialiser `/* @__PURE__ */` if it has no side effects',
+      '`registry`, `index` in /app/route.tsx stay in the route module because the module changes them outside their declaration when it loads (line 4); move `registry`, `index` and what writes them to their own module, or mark their initialiser `/* @__PURE__ */` if it has no side effects',
     )
     expect(byCode['eager-split:needers']!.message).toContain(
       'because several split options read them (`component`, `errorComponent`) and their initialiser has side effects, which run once; move `one`, `two` to their own module, or mark their initialiser `/* @__PURE__ */` if it has none',
     )
+  })
+
+  // R101 (R3): the reader stays because the route module keeps the state it
+  // reads (the loader reads `n`), reported as one the module writes
+  it('reports a reader of state the module writes at load and the route module keeps', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      n++
+      const label = 'n=' + n
+      function Page() { return label }
+      export const Route = createFileRoute('/')({
+        loader: () => n,
+        component: Page,
+      })
+    `)
+    const r = await kept(code)
+    expect(r.env).toContain("const label = 'n=' + n")
+    expect(r.diagnostics).toMatchObject([
+      {
+        severity: 'warning',
+        code: 'eager-split:state',
+        range: { start: code.indexOf('label = ') },
+      },
+    ])
+  })
+
+  it('does not report a reader of written state the route module also writes', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      n++
+      let label = 'n=' + n
+      function reset() { label = '' }
+      function Page() { return label }
+      export const Route = createFileRoute('/')({
+        loader: () => { reset(); return n },
+        component: Page,
+      })
+    `)
+    const r = await kept(code)
+    expect(r.diagnostics).toEqual([])
+  })
+
+  it.each([
+    [
+      'the state is exported',
+      "export let n = 0\nn++\nconst label = 'n=' + n\nfunction Page() { return label }",
+      'component: Page,',
+    ],
+    [
+      'the reader is inline',
+      "let n = 0\nn++\nconst label = 'n=' + n",
+      'component: () => label,',
+    ],
+  ])(
+    'reports a reader of state the module writes at load and keeps when %s',
+    async (_, decls, option) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => n,
+          ${option}
+        })
+      `)
+      const r = await kept(code)
+      expect(r.diagnostics).toMatchObject([
+        {
+          code: 'eager-split:state',
+          range: { start: code.indexOf('label = ') },
+        },
+      ])
+    },
+  )
+
+  it('moves a reader of state the module writes at load with that state when only split code reads both', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      n++
+      const label = 'n=' + n
+      function Page() { return label }
+      export const Route = createFileRoute('/')({
+        loader: () => 'data',
+        component: Page,
+      })
+    `)
+    const r = await kept(code)
+    expect(r.env).not.toContain('const label')
+    expect(r.diagnostics).toEqual([])
   })
 
   it('reports a reader of mutable state several split options need as such', async () => {
@@ -4594,7 +4851,7 @@ describe('pure calls of known packages', () => {
       chunk: chunk?.code ?? '',
       kept: (main?.diagnostics ?? [])
         .filter((d) => d.code?.startsWith('eager-'))
-        .map((d) => /`(\w+)` in "/.exec(d.message)![1]!),
+        .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
     }
   }
   // tamery: `validateSearch: type({…})` stays and runs after both

@@ -9,6 +9,7 @@ import {
   isExpressionWrapper,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
+import { groupingsProblem } from '../core/config'
 import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
@@ -248,41 +249,50 @@ export function liveInEnv(ctx: PlanContext): (ref: ClassifiedRef) => boolean {
   return ctx.liveness('env').live
 }
 
+/**
+ * The `codeSplitGroupings` the route file writes (an array literal, or a
+ * local `const` holding one), or what keeps the compiler from reading it.
+ */
 function readGroupings(
   ctx: PlanContext,
   value: Node,
-  fail: (message: string) => never,
-): CodeSplitGroupings {
+): CodeSplitGroupings | { problem: string } {
+  const shape =
+    "must be an array of groups, each an array of option names (`[['component'], ['errorComponent', 'notFoundComponent']]`)"
   let node = unwrapExpression(value)
   if (node.type === 'Identifier') {
     const b = ctx.analysis.file.referenceOf(node)?.binding ?? null
     const decl = b ? declaratorOf(ctx, ctx.symbols.ofBinding(b)) : null
     if (!decl) {
-      return fail(
-        'You must provide an array of arrays for the codeSplitGroupings.',
-      )
+      return {
+        problem:
+          'must be written in the route file, as an array literal or a local `const`: the compiler cannot read an imported or computed value',
+      }
     }
     node = unwrapExpression(decl.init)
   }
   if (node.type !== 'ArrayExpression') {
-    return fail(
-      'You must provide an array of arrays for the codeSplitGroupings.',
-    )
+    return { problem: shape }
   }
-  return node.elements.map((group) => {
+  const groups: CodeSplitGroupings = []
+  for (const group of node.elements) {
     if (!group || group.type !== 'ArrayExpression') {
-      return fail('You must provide arrays with codeSplitGroupings options.')
+      return { problem: shape }
     }
-    return group.elements.map((item) => {
+    const keys: Array<string> = []
+    for (const item of group.elements) {
       const el = item ? unwrapExpression(item) : null
       if (!el || el.type !== 'Literal' || typeof el.value !== 'string') {
-        return fail(
-          'You must provide a string literal for the codeSplitGroupings',
-        )
+        return {
+          problem: "must name each option as a string literal (`'component'`)",
+        }
       }
-      return el.value
-    }) as CodeSplitGroupings[number]
-  })
+      keys.push(el.value)
+    }
+    groups.push(keys as CodeSplitGroupings[number])
+  }
+  const problem = groupingsProblem(groups)
+  return problem === null ? groups : { problem }
 }
 
 /**
@@ -313,11 +323,11 @@ export function recognizeRoute(
       code,
     })
   }
-  const fileName = identity.path
+  const fileName = ctx.displayPath
   const notFactoryCall = (range?: Range) => {
     if (entry !== null && importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of "${fileName}" is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         range,
         'route-unrecognized',
       )
@@ -341,7 +351,7 @@ export function recognizeRoute(
   if (outer.type !== 'CallExpression') {
     if (importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of "${fileName}" is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         { start: routeUnit.node.start, end: routeUnit.node.end },
         'route-unrecognized',
       )
@@ -372,7 +382,7 @@ export function recognizeRoute(
       )
     } else if (importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of "${fileName}" is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         { start: routeUnit.node.start, end: routeUnit.node.end },
         'route-unrecognized',
       )
@@ -396,7 +406,7 @@ export function recognizeRoute(
   if (calls.length > 1) {
     const other = calls.find((c) => c.range.start !== factoryNode.start)
     warn(
-      `[tanstack-router] "${fileName}" calls ${factory.name} more than once; only the call bound to its \`Route\` export is code-split and hot-updated.`,
+      `[tanstack-router] ${fileName} calls ${factory.name} more than once; only the call bound to its \`Route\` export is code-split and hot-updated.`,
       other?.range,
       'route-several-calls',
     )
@@ -441,11 +451,23 @@ export function recognizeRoute(
       p.key === 'codeSplitGroupings' && p.value !== null && p.kind !== 'spread',
   )
   if (groupingsProp && groupingsProp.value) {
-    fileGroupings = readGroupings(ctx, groupingsProp.value, (message) => {
-      throw new Error(
-        `The groupings for the route "${fileName}" are invalid.\n${message}`,
-      )
-    })
+    const read = readGroupings(ctx, groupingsProp.value)
+    if ('problem' in read) {
+      // the module fails, positioned at the value (J2.8: what the user wrote
+      // cannot be honoured, so nothing is guessed)
+      warnings.push({
+        severity: 'error',
+        message: `[tanstack-router] The \`codeSplitGroupings\` of ${fileName} ${read.problem}.`,
+        range: {
+          start: groupingsProp.value.start,
+          end: groupingsProp.value.end,
+        },
+        by: ROUTER_PLANNER,
+        code: 'groupings-invalid',
+      })
+    } else {
+      fileGroupings = read
+    }
   }
   return {
     route: {
@@ -522,7 +544,7 @@ function foreignFactoryDiagnostic(
     severity: cfg.deleteNodes.length > 0 ? 'error' : 'warning',
     code: 'route-factory-foreign',
     by: ROUTER_PLANNER,
-    message: `[tanstack-router] The route of "${fileName}" calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? ` and the options ${deleted} cannot be removed from this build` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
+    message: `[tanstack-router] The route of ${fileName} calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? `, and the options ${deleted} are not removed from the client code` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
     range,
   }
 }
@@ -611,7 +633,7 @@ export function unownedRouteOptions(
         severity: 'error',
         code: 'route-unowned-options',
         by: ROUTER_PLANNER,
-        message: `[tanstack-router] "${ctx.identity.path}" holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so they cannot be removed from this build. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
+        message: `[tanstack-router] ${ctx.displayPath} holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so ${deleted.length === 1 ? 'it is' : 'they are'} not removed from the client code. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
         range: { start: call.start, end: call.end },
       })
     } else if (unread && takesOptions) {
@@ -619,7 +641,7 @@ export function unownedRouteOptions(
         severity: 'warning',
         code: 'route-unowned-unread',
         by: ROUTER_PLANNER,
-        message: `[tanstack-router] "${ctx.identity.path}" has a route factory call that is not bound directly to its \`Route\` export, with options the compiler cannot read: any \`${cfg.deleteNodes.join('`, `')}\` in them are not removed, so any server code in them ships to the client. Write what to remove as properties of an object literal, in a call of the form \`export const Route = createFileRoute(path)({ ... })\`, or move it to its own route file.`,
+        message: `[tanstack-router] ${ctx.displayPath} has a route factory call that is not bound directly to its \`Route\` export, with options the compiler cannot read: any \`${cfg.deleteNodes.join('`, `')}\` in them are not removed, so any server code in them ships to the client. Write what to remove as properties of an object literal, in a call of the form \`export const Route = createFileRoute(path)({ ... })\`, or move it to its own route file.`,
         range: { start: call.start, end: call.end },
       })
     }

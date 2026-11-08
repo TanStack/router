@@ -247,17 +247,18 @@ function getErrorFile(lines: Array<string>): string | null {
   return lines[0]?.match(/^File: (.+?)(?::\d+:\d+)?$/)?.[1] ?? null
 }
 
-// The error's line, from a `(line:column)` message suffix or a code frame
-// header `[line:column]`, after the block's `File:` line.
-// A position in the message: SWC's `(line:col)`, the TanStack compilers'
-// `(file:line:col)`, or the header of Rspack's SWC code frame: `[line:col]`
-// since Rspack 2.1.6, `[file:line:col]` before.
+// The error's line: a position in the message after the block's `File:`
+// line (SWC's `(line:col)`, or the header of Rspack's SWC code frame:
+// `[line:col]` since Rspack 2.1.6, `[file:line:col]` before), else that of
+// the `File:` line itself, where the TanStack compilers' errors carry it
+// (R101; Rsbuild prints `:1:1` for an error that has none).
 function getErrorLine(lines: Array<string>): number | null {
   const match = lines
     .slice(1)
     .join('\n')
     .match(/\((?:[^()\s]+:)?(\d+):\d+\)|\[(?:[^\]\s]+:)?(\d+):\d+\]/)
-  const line = match?.[1] ?? match?.[2]
+  const line =
+    match?.[1] ?? match?.[2] ?? lines[0]?.match(/^File: .+?:(\d+):\d+$/)?.[1]
 
   return line === undefined ? null : Number(line)
 }

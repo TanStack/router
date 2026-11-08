@@ -43,6 +43,29 @@ export interface DiagnosticPosition {
   column: number
 }
 
+/**
+ * How every message names a file (router, Start, import protection): its
+ * path relative to the project root, `/`-separated, without `./`
+ * (`src/routes/a.tsx`); a file outside the root by its absolute path.
+ */
+export function displayPath(path: string, root: string | undefined): string {
+  if (root === undefined || root === '') {
+    return path
+  }
+  const base = root.replace(/\\/g, '/').replace(/\/+$/, '')
+  const file = path.replace(/\\/g, '/')
+  return file.startsWith(`${base}/`) ? file.slice(base.length + 1) : file
+}
+
+/**
+ * The one position of a message whose host prints none of its own (a Vite
+ * build's warnings, any Vite message: `loc` is 0-based there), appended to
+ * it: ` (src/routes/a.tsx:3:7)`, 1-based line and column.
+ */
+export function positionSuffix(file: string, at: DiagnosticPosition): string {
+  return ` (${file}:${at.line}:${at.column + 1})`
+}
+
 /** Where a host reports: an error fails the module (a sink may throw), a warning is printed. */
 export interface DiagnosticSink {
   error: (d: Diagnostic, at: DiagnosticPosition | undefined) => void

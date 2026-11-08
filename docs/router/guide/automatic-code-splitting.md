@@ -82,13 +82,14 @@ For automatic code splitting to work, there are some rules in place to make sure
 
 A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a function or component that uses only functions and constants, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle. A class, an object, or a value a call returns exists once: the chunk and other modules importing it from the route file share that small module.
 
-Three cases keep an exported binding in the main bundle, and the build warns once, naming the file (the dev server warns for the first):
+An exported binding stays in the main bundle in these cases, and the build warns once, naming the file and what to do (the dev server warns for the first):
 
-- the binding has state or effects (an initialiser with side effects, a `let` the module reassigns, a value read from mutable state when the module loads, a component the file augments with `Page.displayName = …`), so one instance must exist and the route module keeps it;
-- another module loaded with the entry imports the binding through the route file, so the bundler keeps it with the route module;
-- the binding is a class, an object or a call result the chunk must share, and the bundler's chunk configuration (a `manualChunks` or `cacheGroups` group that lands in the entry, Rolldown < 1.1.5) placed its module with the entry.
+- only split code uses it, but it has state or effects (an initialiser with side effects, a `let` the module reassigns, a value read from mutable state when the module loads, a component the file augments with `Page.displayName = …`), so one instance must exist and the route module keeps it. Move it to its own module and import it from there, or mark a call that has no side effects `/* @__PURE__ */`;
+- a module loaded with the entry imports a function or constant through the route file while the chunk carries its own copy, so the build ships it twice. Move it to its own module and import it from there in both;
+- another route's split code imports it through the route file, and webpack or Rspack keep the route file's re-export with the entry. Import it from its own module, or declare `"sideEffects": false` in package.json;
+- it is a class, an object or a call result only split code imports, and the bundler's chunk configuration (a `manualChunks` or `cacheGroups` group that lands in the entry, Rolldown < 1.1.5) placed its module with the entry. Keep the routes directory out of such groups.
 
-In every case, move the binding to its own module and import it from there.
+A binding the route module needs anyway (its `loader` reads it, or a module loaded with the entry imports an object from the route file) stays there without a warning: it would load with the route even without the split code.
 
 ```tsx
 export const Route = createRoute('/posts')({
@@ -110,11 +111,13 @@ export const store = createStore()
 A top-level declaration with side effects that only split code reads (for example `const confetti = new JSConfetti()`, used only by the component) moves into the split chunk and runs when the chunk loads. It stays in the main bundle, and runs when the route file loads, if a side effect written after it stays in the route file, such as an inline call in an option that is not split (`validateSearch: z.object({ … })`). Moving the declaration would run it after that call, and the route file's side effects keep the order they are written in. The same declaration also stays when several split properties read it (its side effects run once), when the route file changes it at the top level (`registry.add(…)`), or when it reads, as the file loads, a value that has side effects and stays, or that the file changes later. The build (and the dev server) warns once for each such declaration, naming it, what keeps it and the line, for example:
 
 ```
-`confetti` in "src/routes/account.tsx" stays in the route module because the call `type(…)` in
-`validateSearch` (line 14) runs after it and stays; declare `confetti` after `Route`, create that value
-in a `const` before `confetti`, or mark the call `/* @__PURE__ */` if it has no side effects, so
-`confetti` can load with the split `component`.
+[tanstack-router] `confetti` in src/routes/account.tsx stays in the route module because the call
+`type(…)` in `validateSearch` (line 14) runs after it and stays; declare `confetti` after `Route`,
+create that value in a `const` before `confetti`, or mark the call `/* @__PURE__ */` if it has no side
+effects, so `confetti` can load with the split `component`. (src/routes/account.tsx:12:7)
 ```
+
+Every host prints the file and one position: a Vite build at the end of the message, as above (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
 
 Any of these lets the declaration load with the split chunk, from the least to the most effort:
 
@@ -159,7 +162,11 @@ These do not change what the route file keeps, because the route file is split w
 
 #### Route callbacks that read `this` are not split
 
-A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. Write such callbacks as arrow functions (or without `this`) to have them split.
+A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. The router calls these callbacks without a `this` (it is `undefined`); only code calling `Route.options.loader()` itself passes the route options, which a split chunk would not. Write such callbacks as arrow functions (or without `this`) to have them split.
+
+#### Module state written by split code
+
+A split option cannot write a module binding the route module also uses (`let count = 0` read by the `loader` and incremented by the component, inline or declared as `function Page() { count++ }`), nor one another split option writes: a split chunk cannot assign another module's binding. Such an option stays in the route file, and the build warns once, naming the binding. Keep that state in an object (`const state = { count: 0 }`, then `state.count++`) or in a module of its own to have it split.
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
@@ -240,6 +247,8 @@ function PostsComponent() {
   // ...
 }
 ```
+
+Write the groupings in the route file, as an array literal or a `const` declared there: the compiler reads them from the file and cannot read an imported value. Each group lists options that can be split (`loader`, `component`, `pendingComponent`, `errorComponent`, `notFoundComponent`), each option in one group at most. Groupings that break these rules fail the build, positioned at the value, and so do invalid ones returned by `splitBehavior` or set as `defaultBehavior`.
 
 This will create a single chunk that includes both the `loader` and the `component` for this specific route, overriding both the default behavior and any programmatic split behavior defined in your bundler config.
 

@@ -15,6 +15,7 @@ import {
   OWNED_QUERY_RE,
   SAME_FILE_SPECIFIER_RE,
   applyViteInvalidation,
+  displayPath,
   identify,
   isFinalBuild,
   liveModules,
@@ -23,6 +24,7 @@ import {
   releaseEnvironment,
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
+  viteLog,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -33,11 +35,7 @@ import {
 import { JS_ID_RE, RouterCompiler } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type {
-  Diagnostic,
-  DiagnosticPosition,
-  ModuleGraphLike,
-} from '@tanstack/router-utils/compiler'
+import type { ModuleGraphLike } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
 
 export const CODE_SPLITTER_PLUGIN_NAME =
@@ -88,16 +86,6 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 
 export type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
-function logOf(
-  d: Diagnostic,
-  at: DiagnosticPosition | undefined,
-  file: string,
-) {
-  return at
-    ? { message: d.message, id: file, loc: { file, ...at } }
-    : { message: d.message, id: file }
-}
-
 /**
  * The router compiler as a Vite plugin: route splitting (`autoCodeSplitting`)
  * and route HMR (`codeSplittingOptions.addHmr`, dev client envs only).
@@ -107,6 +95,7 @@ export function createRouterCompilerVitePlugin(
   routerPluginContext: RouterPluginContext,
 ): Plugin {
   let ROOT: string = process.cwd()
+  let bundledDev = false
   let userConfig: Config
   let compiler: RouterCompiler
   let server: ViteDevServer | null = null
@@ -160,10 +149,15 @@ export function createRouterCompilerVitePlugin(
     configResolved(config) {
       firstEnvironment = Object.keys(config.environments)[0]
       ROOT = config.root
+      bundledDev =
+        config.command === 'serve' &&
+        !!(config.experimental as { bundledDev?: boolean } | undefined)
+          ?.bundledDev
       userConfig = resolveUserConfig()
       compiler = new RouterCompiler({
         context: routerPluginContext,
         config: userConfig,
+        root: ROOT,
         bundler: 'vite',
         mode: config.command === 'build' ? 'build' : 'dev',
       })
@@ -270,6 +264,7 @@ export function createRouterCompilerVitePlugin(
         compiler.warnings,
         (m) => this.warn(m),
         (id) => this.getModuleInfo(id)?.importers ?? [],
+        { root: ROOT, routeTree: userConfig.generatedRouteTree },
       )
     },
 
@@ -322,9 +317,14 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
+        const name = displayPath(identity.path, ROOT)
+        // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
+        const dev = compiler.mode === 'dev' && !bundledDev
         compiler.report(out, file, code, {
-          error: (d, at) => this.error(logOf(d, at, identity.path)),
-          warn: (d, at) => this.warn(logOf(d, at, identity.path)),
+          error: (d, at) =>
+            this.error(viteLog(d.message, at, code, name, identity.path, dev)),
+          warn: (d, at) =>
+            this.warn(viteLog(d.message, at, code, name, identity.path, dev)),
         })
         if (identity.derived === null && out.code === code) {
           return null

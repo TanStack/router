@@ -9,13 +9,18 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
-import { describeCluster, isDuplicable, symRefsOf } from './clusters'
+import {
+  READ_KINDS,
+  describeCluster,
+  isDuplicable,
+  symRefsOf,
+} from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
-import type { RegionId, UnitId } from '../units'
+import type { RegionId, Unit, UnitId } from '../units'
 import type { Frag, OutputId } from '../rewrite'
 import type { Fallback, Home, OutputDecl, PlacementInput } from '../reach'
 
@@ -239,6 +244,12 @@ export function assignHomes(
 
   // ---- single-writer rule ------------------------------------------------------
   const fallbacks: Array<Fallback> = []
+  /** The binding of cluster `c` region `w` writes (the fallback names it). */
+  const writtenBy = (w: RegionId, c: ClusterId): SymbolId | undefined =>
+    graph.writes.find(
+      (x) =>
+        x.owner === w && x.live && !x.member && clusterOfSym.get(x.sym) === c,
+    )?.sym
   for (const { cluster: c, writers } of graph.subRegionWriters) {
     const writerHomes = new Map<OutputId, RegionId>()
     for (const w of [...writers].sort(
@@ -254,7 +265,11 @@ export function assignHomes(
       if (!writerHomes.has(o)) {
         writerHomes.set(o, w)
       } else {
-        fallbacks.push({ region: w, reason: 'multi-writer' })
+        fallbacks.push({
+          region: w,
+          reason: 'multi-writer',
+          binding: writtenBy(w, c),
+        })
       }
     }
     const derivedHomes = [...writerHomes].filter(([o]) => o !== 'env')
@@ -263,7 +278,11 @@ export function assignHomes(
     }
     if (derivedHomes.length > 1) {
       for (const [, w] of derivedHomes.slice(1)) {
-        fallbacks.push({ region: w, reason: 'multi-writer' })
+        fallbacks.push({
+          region: w,
+          reason: 'multi-writer',
+          binding: writtenBy(w, c),
+        })
       }
     }
     const [[g, w]] = derivedHomes as [[OutputId, RegionId]]
@@ -272,6 +291,7 @@ export function assignHomes(
       fallbacks.push({
         region: w,
         reason: kind === 'hydrate' ? 'hydrate-writer' : 'shared-writer',
+        binding: writtenBy(w, c),
       })
     } else {
       home.set(c, g)
@@ -282,7 +302,44 @@ export function assignHomes(
   // A derived output whose root value is a binding declared by an effect the
   // route module keeps (destructured from a call, written at the top level
   // where the route module needs it) would only import it: the planner is
-  // told, keeps the option in place and reports it.
+  // told, keeps the option in place and reports it. So is one declared on
+  // its own that writes a binding the route module also reads: a top-level
+  // writer joins what it writes, so the env module keeps it with that
+  // binding (the single-writer rule's `shared-writer`, as for a value
+  // written inline).
+  const writesShared = (unit: Unit, d: ClusterId): SymbolId | null => {
+    for (const w of graph.writes) {
+      if (
+        !w.live ||
+        w.member ||
+        w.augment ||
+        w.owner !== unit.region ||
+        unit.declares.includes(w.sym) ||
+        clusterOfSym.get(w.sym) !== d
+      ) {
+        continue
+      }
+      // a read, or a write, the route module evaluates elsewhere
+      const uses: Array<RegionId | null> = []
+      for (const ref of t1.refs.valueRefsOf(w.sym)) {
+        if (READ_KINDS.has(ref.kind) && liveInEnv(ref)) {
+          uses.push(t1.ownerOf(ref))
+        }
+      }
+      for (const other of graph.writesOfSym.get(w.sym) ?? []) {
+        if (other.live) {
+          uses.push(other.owner)
+        }
+      }
+      for (const owner of uses) {
+        const user = owner === null ? undefined : clusterOfRegion.get(owner)
+        if (owner !== unit.region && user !== undefined && liveEnv.has(user)) {
+          return w.sym
+        }
+      }
+    }
+    return null
+  }
   for (const [id, decl] of outputs) {
     if (id === 'env') {
       continue
@@ -304,12 +361,19 @@ export function assignHomes(
       // writer of module state the route module exports); the value being
       // the exported declaration itself is imported from the env module (no report)
       const unit = units[declaring[0]!]!
-      if (
-        unit.kind === 'declaration' &&
-        !unit.effectful &&
-        (!clusters[d]!.exported || unit.exported.length > 0)
-      ) {
-        continue
+      if (unit.kind === 'declaration' && !unit.effectful) {
+        const written = writesShared(unit, d)
+        if (written !== null) {
+          fallbacks.push({
+            region: unit.region,
+            reason: 'shared-writer',
+            binding: written,
+          })
+          continue
+        }
+        if (!clusters[d]!.exported || unit.exported.length > 0) {
+          continue
+        }
       }
       fallbacks.push({ region: unit.region, reason: 'env-declared' })
     }

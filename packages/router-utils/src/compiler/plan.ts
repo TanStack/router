@@ -108,6 +108,8 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
+  /** The name of the binding a writer fallback writes. */
+  binding?: string
 }
 
 interface OutputSpec {
@@ -135,6 +137,8 @@ export interface PlanContext {
   readonly analysis: ModuleAnalysis
   readonly t1: Tier1
   readonly identity: SourceIdentity
+  /** The module as messages name it: relative to the project root (`displayPath`). */
+  readonly displayPath: string
   readonly env: EnvInfo
   readonly config: unknown
   readonly rewrites: RewriteSet
@@ -248,6 +252,8 @@ export class AnalysisPlan implements PlanContext {
     readonly env: EnvInfo,
     readonly prefetched: ReadonlyMap<string, unknown>,
     readonly fallbacks: ReadonlyArray<FallbackRecord>,
+    /** The module as messages name it (`displayPath`). */
+    readonly displayPath: string = identity.path,
   ) {
     this.t1 = analysis.t1()
     this.symbols = this.t1.symbols
@@ -579,7 +585,14 @@ export class AnalysisPlan implements PlanContext {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
       const r = this.t1.regions.get(f.region)
-      out.push({ range: r.range, kind: r.kind, reason: f.reason })
+      out.push({
+        range: r.range,
+        kind: r.kind,
+        reason: f.reason,
+        ...(f.binding !== undefined && {
+          binding: this.symbols.name(f.binding),
+        }),
+      })
     }
     return out
   }

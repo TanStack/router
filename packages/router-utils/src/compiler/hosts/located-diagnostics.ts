@@ -7,13 +7,14 @@
  * loader records each diagnostic with its position in the module's
  * `buildInfo` (fresh per build, kept for a failed module), and the host
  * replaces what the loader reported with errors and warnings located there
- * after the seal (`locateDiagnostics`).
+ * after the seal (`locateDiagnostics`). The bundler prints that position, so
+ * the message carries none (one position per message, 1-based).
  */
 import type { DiagnosticPosition } from '../diagnostics'
 
 export interface LocatedDiagnostic {
   severity: 'error' | 'warning'
-  /** The reported message, with the position in the Vite host's form. */
+  /** The reported message (the loader's error or warning has this text). */
   message: string
   /** 1-based line and column. */
   line?: number
@@ -34,12 +35,20 @@ export interface LocatedDiagnosticsOptions {
    * matched to its record as a warning is.
    */
   failureName?: string
+  /**
+   * A derived module's (a split chunk's) located diagnostics name the file
+   * without its query (`file`): Rsbuild then prints `File:` with it instead
+   * of the module id. webpack and Rspack print `file` next to the module, so
+   * their own hosts leave it out.
+   */
+  fileOfDerived?: boolean
 }
 
 /** What the helpers use of a webpack / Rspack module. */
 export interface LocatedModuleLike {
   buildInfo?: Record<string, unknown>
   identifier: () => string
+  resource?: string
 }
 
 /** What the helpers use of a compilation's error or warning. */
@@ -50,24 +59,14 @@ interface ReportedLike {
 
 type ErrorClass = new (message: string) => Error
 
-/**
- * A diagnostic's record: its message with the position in the Vite host's
- * form, `message (file:line:col)` (the text the loader reports), and the
- * 1-based position.
- */
+/** A diagnostic's record: its message and its 1-based position. */
 export function locatedDiagnostic(
   severity: LocatedDiagnostic['severity'],
   message: string,
   at: DiagnosticPosition | undefined,
-  file: string,
 ): LocatedDiagnostic {
   return at
-    ? {
-        severity,
-        message: `${message} (${file}:${at.line}:${at.column + 1})`,
-        line: at.line,
-        column: at.column + 1,
-      }
+    ? { severity, message, line: at.line, column: at.column + 1 }
     : { severity, message }
 }
 
@@ -135,14 +134,26 @@ export function locatedError(
   WebpackError: ErrorClass,
   module: LocatedModuleLike,
   d: LocatedDiagnostic,
-  options: Pick<LocatedDiagnosticsOptions, 'errorName' | 'warningName'>,
+  options: Pick<
+    LocatedDiagnosticsOptions,
+    'errorName' | 'warningName' | 'fileOfDerived'
+  >,
 ): Error {
   const error = new WebpackError(d.message) as Error & {
     module?: unknown
+    file?: string
     loc?: { start: { line: number; column?: number } }
   }
   error.name = d.severity === 'error' ? options.errorName : options.warningName
   error.module = module
+  // a derived module (a split chunk) is the user's file: Rsbuild prints the
+  // error's `file` instead of the module's id with its query
+  const query = options.fileOfDerived
+    ? (module.resource?.indexOf('?') ?? -1)
+    : -1
+  if (query > 0) {
+    error.file = module.resource!.slice(0, query)
+  }
   if (d.line !== undefined) {
     error.loc = { start: { line: d.line, column: d.column } }
   }

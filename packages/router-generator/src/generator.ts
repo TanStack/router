@@ -5,6 +5,7 @@ import { isVirtualConfigFile } from './filesystem/physical/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import { scanRoutes } from './filesystem/scan'
 import { replaceBackslash } from './utils'
+import { RouteGenerationError, displayFile } from './errors'
 import { analyzeRouteFile, routeFileErrors } from './analyze/route-file'
 import { routerPackageOf, scaffoldRouteFile } from './scaffold/templates'
 import { buildTreeModel, checkRouteFullPathUniqueness } from './model/build'
@@ -168,9 +169,8 @@ function sameProps(a: RouteProps | undefined, b: RouteProps | undefined) {
 }
 
 /** A route file no earlier read of the generator knows does not parse: it fails a build that does not watch (R86). */
-export class UnparsableRouteFileError extends Error {
-  override name = 'UnparsableRouteFileError'
-}
+export class UnparsableRouteFileError extends RouteGenerationError {}
+UnparsableRouteFileError.prototype.name = 'UnparsableRouteFileError'
 
 function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
   const position =
@@ -572,7 +572,7 @@ export class Generator {
       read.status === 'rejected' ? [read.reason as unknown] : [],
     )
     const unparsable = failures.flatMap((failure) =>
-      failure instanceof UnparsableRouteFileError ? [failure.message] : [],
+      failure instanceof UnparsableRouteFileError ? [failure.detail] : [],
     )
     if (build) {
       for (const [file, state] of [...this.files].sort(([a], [b]) =>
@@ -583,7 +583,7 @@ export class Generator {
           (await readIfExists(file).catch(() => null)) === state.content
         ) {
           unparsable.push(
-            `Cannot generate the route of ${file}:\n${state.unparsable}`,
+            `Cannot generate the route of ${displayFile(file, this.root)}:\n${state.unparsable}`,
           )
         }
       }
@@ -610,7 +610,7 @@ export class Generator {
         return facts?.included ? facts.props : undefined
       },
     })
-    checkRouteFullPathUniqueness(model)
+    checkRouteFullPathUniqueness(model, this.root)
     this.model = model
   }
 
@@ -715,7 +715,9 @@ export class Generator {
     const content = stamp ? await readIfExists(file) : null
     if (content === null) {
       if (isRoot) {
-        throw new Error(`⚠️ expected root route to exist at ${file}`)
+        throw new RouteGenerationError(
+          `The root route file ${displayFile(file, this.root)} does not exist: create it, with \`export const Route = createRootRoute()\`.`,
+        )
       }
       this.files.set(key, { content: '', facts: { included: false }, role })
       return
@@ -823,7 +825,9 @@ export class Generator {
     }
 
     for (const diagnostic of analysis.diagnostics) {
-      console.warn(formatDiagnostic(file, diagnostic))
+      console.warn(
+        `[tanstack-router] ${formatDiagnostic(displayFile(file, this.root), diagnostic)}`,
+      )
     }
     const output = analysis.output ?? source
     return {
@@ -851,14 +855,17 @@ export class Generator {
     diagnostics: ReadonlyArray<FileDiagnostic>,
     previous: FileState | undefined,
   ): Omit<FileState, 'role'> {
-    const messages = diagnostics.map((d) => formatDiagnostic(file, d))
+    const name = displayFile(file, this.root)
+    const messages = diagnostics.map((d) => formatDiagnostic(name, d))
     if (!previous) {
       throw new UnparsableRouteFileError(
-        `Cannot generate the route of ${file}:\n${messages.join('\n')}`,
+        `Cannot generate the route of ${name}:\n${messages.join('\n')}`,
       )
     }
     for (const message of messages) {
-      console.warn(message)
+      console.warn(
+        `[tanstack-router] ${message} The route tree keeps this file's last good route until it parses.`,
+      )
     }
     return {
       content,
@@ -874,9 +881,9 @@ export class Generator {
     const ignorePattern = this.config.routeFileIgnorePattern
     const suggestedFullPath = path.join(dirName, `${ignorePrefix}${fileName}`)
 
-    let message = `Warning: Route file "${file}" does not export a Route. This file will not be included in the route tree.`
+    let message = `[tanstack-router] The route file ${displayFile(file, this.root)} does not export a \`Route\`, so it is not in the route tree. If it is a route, export it as \`Route\` (\`export const Route = createFileRoute(…)(…)\`).`
     message += `\n\nIf this file is not intended to be a route, you can exclude it using one of these options:`
-    message += `\n  1. Rename the file to "${suggestedFullPath}" (prefix with "${ignorePrefix}")`
+    message += `\n  1. Rename the file to ${displayFile(suggestedFullPath, this.root)} (prefix with "${ignorePrefix}")`
     message += `\n  2. Use 'routeFileIgnorePattern' in your config to match this file`
     message += `\n\nCurrent configuration:`
     message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`

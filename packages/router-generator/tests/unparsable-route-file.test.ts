@@ -165,34 +165,96 @@ export const Route = createRootRoute()
   ).rejects.toThrow('posts.tsx')
 })
 
-// Other failures of a build's generation (here two routes with one URL) are
-// reported and the build goes on with the tree on disk, as on main.
-test('a build whose generation fails for another reason reports it and goes on', async () => {
-  const route = (
-    id: string,
-  ) => `import { createFileRoute } from '@tanstack/react-router'
+// Other failures of a generation fail a build too (R101): two route files for
+// one route, two routes with one URL, an empty path. The build never goes on
+// with a tree that leaves the new file out.
+const fileRoute = (
+  id: string,
+) => `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('${id}')({})
 `
-  const root = await createApp({
-    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+const brokenTrees: Array<[string, Record<string, string>, string]> = [
+  [
+    'two route files for one route',
+    {
+      'src/routes/posts.tsx': fileRoute('/posts'),
+      'src/routes/posts/index.tsx': fileRoute('/posts/'),
+      'src/routes/posts/route.tsx': fileRoute('/posts'),
+    },
+    'src/routes/posts/route.tsx',
+  ],
+  [
+    'two routes with one URL',
+    {
+      'src/routes/index.tsx': fileRoute('/'),
+      'src/routes/_auth/index.tsx': fileRoute('/_auth/'),
+    },
+    'src/routes/_auth/index.tsx',
+  ],
+]
+
+test.each(brokenTrees)(
+  'a build whose route tree cannot be generated (%s) fails, naming the files',
+  async (_, files, named) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 
 export const Route = createRootRoute()
 `,
-    'src/routes/index.tsx': route('/'),
-    'src/routes/_auth/index.tsx': route('/_auth/'),
-  })
-  const reports: Array<unknown> = []
-  const generator = new Generator({ config: configOf(root), root })
-  await createGeneratorSession({
-    generator: () => generator,
-    report: (error) => reports.push(error),
-  }).build()
-  // (the error names files in the platform's own spelling)
-  expect(reports.map(String)).toEqual([
-    expect.stringContaining(path.join('_auth', 'index.tsx')),
-  ])
-})
+      ...files,
+    })
+    const reports: Array<unknown> = []
+    const generator = new Generator({ config: configOf(root), root })
+    // (the error names files relative to the root, `/`-separated)
+    await expect(
+      createGeneratorSession({
+        generator: () => generator,
+        report: (error) => reports.push(error),
+      }).build(),
+    ).rejects.toThrow(named)
+    expect(reports).toEqual([])
+  },
+)
+
+// In dev and watch the same failure is reported, and the routes and the
+// tree of the last good generation stay.
+test.each(brokenTrees)(
+  'a dev run whose route tree cannot be generated (%s) reports it and keeps the last good tree',
+  async (_, files, named) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()
+`,
+    })
+    const config = configOf(root)
+    const generator = new Generator({ config, root })
+    const reports: Array<unknown> = []
+    const session = createGeneratorSession({
+      generator: () => generator,
+      report: (error) => reports.push(error),
+    })
+    await session.run()
+    // every file but the last generates; the last one breaks the tree
+    const entries = Object.entries(files)
+    const add = async ([file, content]: [string, string]) => {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true })
+      await writeFile(path.join(root, file), content)
+      await session.run({ type: 'create', path: path.join(root, file) })
+    }
+    for (const entry of entries.slice(0, -1)) {
+      await add(entry)
+    }
+    expect(reports).toEqual([])
+    const tree = await readFile(config.generatedRouteTree, 'utf8')
+    const known = routeFiles(generator)
+    await add(entries.at(-1)!)
+    expect(reports.map(String)).toContainEqual(expect.stringContaining(named))
+    expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
+    expect(routeFiles(generator)).toEqual(known)
+  },
+)
 
 const rootRoute = `import { createRootRoute } from '@tanstack/react-router'
 
@@ -433,12 +495,13 @@ test('a build fails on a route file known not to parse when the root route is go
 })
 
 // The scan failed, so the build read nothing: the file is known broken only
-// while it still holds what broke it.
+// while it still holds what broke it; the gone root route fails the build
+// (R101), not the route file.
 test.each([
   ['fixed', (posts: string) => writeFile(posts, postsRoute)],
   ['deleted', (posts: string) => rm(posts)],
 ])(
-  'a build reports a gone root route when the route file known not to parse was %s',
+  'a build fails on a gone root route when the route file known not to parse was %s',
   async (_, change) => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute,
@@ -456,8 +519,13 @@ test.each([
     await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
     await change(posts)
     await rm(path.join(root, 'src/routes/__root.tsx'))
-    await session.build()
-    expect(reports).toHaveLength(1)
+    const failure = await session.build().then(
+      () => null,
+      (error: unknown) => String(error),
+    )
+    expect(failure).toContain('__root')
+    expect(failure).not.toContain('posts.tsx')
+    expect(reports).toEqual([])
   },
 )
 

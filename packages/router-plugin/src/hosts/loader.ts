@@ -104,13 +104,9 @@ export function createLoaderImpl(
     }
     compiler.report(out, file, source, {
       error: (d, at) =>
-        ctx.emitError(
-          locate(locatedDiagnostic('error', d.message, at, ctx.resourcePath)),
-        ),
+        ctx.emitError(locate(locatedDiagnostic('error', d.message, at))),
       warn: (d, at) =>
-        ctx.emitWarning(
-          locate(locatedDiagnostic('warning', d.message, at, ctx.resourcePath)),
-        ),
+        ctx.emitWarning(locate(locatedDiagnostic('warning', d.message, at))),
     })
     const buildInfo = ctx._module?.buildInfo
     if (located.length > 0 && buildInfo) {

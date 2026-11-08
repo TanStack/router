@@ -1,4 +1,3 @@
-import path from 'node:path'
 import {
   cleanPath,
   rootRouteId,
@@ -6,6 +5,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core/tooling'
 import { rootPathId } from '../filesystem/physical/rootPathId'
+import { RouteGenerationError, displayFile } from '../errors'
 import {
   RoutePrefixMap,
   countRoutePathSegments,
@@ -510,8 +510,8 @@ function ownersLast(routes: Array<ModelRoute>) {
  * `foo.tsx`) gets the directory's path, and matches it like a route there.
  * The error names the files.
  */
-export function checkRouteFullPathUniqueness(model: TreeModel) {
-  checkRouteIdUniqueness(model)
+export function checkRouteFullPathUniqueness(model: TreeModel, root: string) {
+  checkRouteIdUniqueness(model, root)
 
   const routes = model.routes.filter(
     (route) =>
@@ -520,13 +520,14 @@ export function checkRouteFullPathUniqueness(model: TreeModel) {
       route.pathOption !== undefined,
   )
   const fileOf = (route: ModelRoute) =>
-    path.normalize(
+    displayFile(
       route.file ?? Object.values(route.pieces)[0] ?? route.routePath,
+      root,
     )
 
   const emptyPathRoutes = routes.filter((route) => route.routePath === '')
   if (emptyPathRoutes.length) {
-    throw new Error(
+    throw new RouteGenerationError(
       `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
 Conflicting files: \n ${emptyPathRoutes.map(fileOf).join('\n ')}\n`,
     )
@@ -542,7 +543,7 @@ Conflicting files: \n ${emptyPathRoutes.map(fileOf).join('\n ')}\n`,
     .filter((list) => list.length > 1)
     .flat()
   if (conflicting.length) {
-    throw new Error(
+    throw new RouteGenerationError(
       `Conflicting configuration paths were found for the following route${conflicting.length > 1 ? 's' : ''}: ${conflicting
         .map((route) => `"${route.fullPath}"`)
         .join(', ')}.
@@ -557,7 +558,7 @@ Conflicting files: \n ${conflicting.map(fileOf).join('\n ')}\n`,
  * route nests under one of them) are an error naming their files: the
  * router would reject the tree at startup without naming any (SPEC J1.7).
  */
-function checkRouteIdUniqueness(model: TreeModel) {
+function checkRouteIdUniqueness(model: TreeModel, root: string) {
   const byId = new Map<string, Array<ModelRoute>>()
   for (const route of model.routes) {
     const list = byId.get(route.id) ?? []
@@ -566,13 +567,13 @@ function checkRouteIdUniqueness(model: TreeModel) {
   }
   const duplicates = [...byId].filter(([, list]) => list.length > 1)
   if (duplicates.length) {
-    throw new Error(
+    throw new RouteGenerationError(
       `Several route files were found for the route${duplicates.length > 1 ? 's' : ''} ${duplicates
         .map(([id]) => `"${id}"`)
         .join(', ')}. Please keep one route file per route.
 Conflicting files: \n ${duplicates
         .flatMap(([, list]) =>
-          list.map((route) => path.normalize(route.file ?? route.routePath)),
+          list.map((route) => displayFile(route.file ?? route.routePath, root)),
         )
         .join('\n ')}\n`,
     )

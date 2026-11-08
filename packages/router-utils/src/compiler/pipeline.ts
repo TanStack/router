@@ -20,6 +20,7 @@ import { DependencyLedger, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
+import { displayPath } from './diagnostics'
 import { ExportResolver } from './resolve'
 import {
   dependencyPaths,
@@ -156,7 +157,9 @@ export async function compileModule(
       // another request of this text is compiling it: its outcome answers this request too
       const settled = await flight.settled.catch(() => null)
       if (settled) {
-        return noted(emitSettled(settled, requested, input, caches))
+        return noted(
+          emitSettled(settled, requested, input, caches, identity, host),
+        )
       }
       // it threw: its request reports the error, this one compiles on its own
       continue
@@ -167,7 +170,16 @@ export async function compileModule(
     }
     cache.inFlight.set(keyString, record)
     try {
-      return noted(emitSettled(await record.settled, requested, input, caches))
+      return noted(
+        emitSettled(
+          await record.settled,
+          requested,
+          input,
+          caches,
+          identity,
+          host,
+        ),
+      )
     } finally {
       if (cache.inFlight.get(keyString) === record) {
         cache.inFlight.delete(keyString)
@@ -221,7 +233,7 @@ async function textDiffers(
     severity: 'warning',
     by: 'core',
     code: 'input-text-differs',
-    message: `The code of "${identity.path}" that reaches the compiler differs between its module ids: a plugin that runs before the compiler handles them differently (an id filter ending in \`$\` skips ids with a query, such as the route's split chunks). They are compiled from different code and can disagree at runtime. Let the plugin's filter accept queries, or run it after the compiler.`,
+    message: `${tagOf(host)}${displayPath(identity.path, host.root)} reaches the compiler with different code under its module ids: a plugin that runs before the compiler transforms only some of them (an id filter ending in \`$\` skips ids with a query, such as the route's split chunks), so they are compiled from different code and can disagree at runtime. Let that plugin's id filter accept ids with a query (\`/\\.tsx(\\?|$)/\`).`,
   }
 }
 
@@ -306,6 +318,8 @@ function emitSettled(
   requested: OutputId,
   input: CompileInput,
   caches: CompilerCaches,
+  identity: SourceIdentity,
+  host: HostServices,
 ): CompileOutput | null {
   if (settled.kind === 'untouched') {
     return null
@@ -335,7 +349,7 @@ function emitSettled(
         severity: 'warning',
         code: 'compile-overtaken',
         by: 'core',
-        message: `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts); served from the last attempt and not cached`,
+        message: `${tagOf(host)}The files ${displayPath(identity.path, host.root)} depends on kept changing while it was compiled (${MAX_ATTEMPTS} times), so the result may be stale. Save the file again if the page looks wrong.`,
       },
     ],
   }
@@ -417,6 +431,7 @@ async function runAttempt(
   if (cjs || tier0Only) {
     planners = planners.filter((p) => p.tier === 0)
   }
+  const displayFile = displayPath(identity.path, host.root)
   if (planners.length === 0) {
     return { kind: 'untouched' }
   }
@@ -542,6 +557,7 @@ async function runAttempt(
         fallbacks,
         planners,
         input,
+        displayFile,
       )
       const fresh = plan
         .fallbackRecords()
@@ -570,11 +586,11 @@ async function runAttempt(
           fallbacks,
           planners,
           input,
+          displayFile,
         )
         plan.diagnostic({
           severity: 'warning',
-          message:
-            'The compiler could not settle which parts of this module can be split: nothing of it is split.',
+          message: `${tagOf(host)}The compiler could not settle which parts of ${displayFile} can be split, so nothing of it is split.`,
           range: fresh[0]!.range,
           by: 'core',
           code: 'fallback-rounds-exhausted',
@@ -682,8 +698,16 @@ function planRound(
   fallbacks: ReadonlyArray<FallbackRecord>,
   planners: ReadonlyArray<Planner>,
   input: CompileInput,
+  displayFile: string,
 ): AnalysisPlan {
-  const plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
+  const plan = new AnalysisPlan(
+    t0,
+    identity,
+    env,
+    prefetched,
+    fallbacks,
+    displayFile,
+  )
   for (const p of planners) {
     p.plan(withConfig(plan, input.config.perPlanner[p.name]))
   }
@@ -697,6 +721,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     analysis: plan.analysis,
     t1: plan.t1,
     identity: plan.identity,
+    displayPath: plan.displayPath,
     env: plan.env,
     config,
     rewrites: plan.rewrites,
@@ -722,4 +747,9 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     liveDiagnostic: (d, when) => plan.liveDiagnostic(d, when),
     edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),
   }
+}
+
+/** The prefix of the core's own messages (`HostServices.tag`), with its space. */
+function tagOf(host: HostServices): string {
+  return host.tag === undefined ? '' : `${host.tag} `
 }

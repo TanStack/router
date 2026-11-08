@@ -166,14 +166,24 @@ function describe(record: Record<string, unknown>, depth = 0): string {
     }
   }
   const loc = (record.loc ?? record.location) as
-    | { file?: unknown; line?: unknown; column?: unknown }
+    | {
+        file?: unknown
+        line?: unknown
+        column?: unknown
+        start?: { line?: unknown; column?: unknown }
+      }
     | string
     | undefined
+  const module = record.module as { resource?: unknown } | null | undefined
   const file = [
     typeof loc === 'object' ? loc.file : undefined,
     record.id,
     record.file,
     record.moduleName,
+    // a webpack / Rspack compilation error's module (Rsbuild prints its file)
+    typeof module?.resource === 'string'
+      ? module.resource.split('?')[0]
+      : undefined,
   ].find(
     (candidate): candidate is string =>
       typeof candidate === 'string' && candidate !== '',
@@ -182,6 +192,13 @@ function describe(record: Record<string, unknown>, depth = 0): string {
     // Rollup, Vite, Babel and esbuild locations have 0-based columns.
     const column = typeof loc.column === 'number' ? `:${loc.column + 1}` : ''
     lines.push(`${file ?? ''}:${loc.line}${column}`)
+  } else if (typeof loc === 'object' && typeof loc.start?.line === 'number') {
+    // a webpack / Rspack error's `loc` (`DependencyLocation`), printed as
+    // given: `./src/a.tsx 3:7`
+    const { line, column } = loc.start
+    lines.push(
+      `${file ?? ''} ${line}${typeof column === 'number' ? `:${column}` : ''}`,
+    )
   } else if (typeof loc === 'string') {
     // webpack: `line:column-column`.
     lines.push(`${file ?? ''} ${loc}`)
@@ -271,7 +288,7 @@ export function mismatches(
   const named =
     expected.file === undefined
       ? diagnostic.text
-      : fileMention(diagnostic.text, expected.file, expected)
+      : fileMention(diagnostic.text, expected.file, { ...expected, tail: true })
   if (named === undefined) {
     reasons.push(`does not name ${expected.file}`)
   }
@@ -369,6 +386,8 @@ function indent(text: string) {
  * With a root, a longer path ending with it must be the end of the absolute
  * path (a path relative to the working directory names it, `/other/src/a.ts`
  * does not); what follows `./`, `../` or a leading `/` counts on its own.
+ * Source-map sources and other texts name an absolute file only by its
+ * absolute path when no root is given.
  */
 export function mentionsFile(
   text: string,
@@ -382,10 +401,15 @@ export function mentionsFile(
  * The text (ANSI colours removed, `\\` as `/`) from its first naming of
  * `file` on (`mentionsFile`), or `undefined` when it does not name it.
  */
+/**
+ * With `tail` (diagnostics), an absolute `file` without a root is also named
+ * by the end of its path from one of its directories on (`src/a.ts`, as
+ * messages name files relative to the project root).
+ */
 function fileMention(
   text: string,
   file: string,
-  options: { root?: string },
+  options: { root?: string; tail?: boolean },
 ): string | undefined {
   const posix = (value: string) => value.replaceAll('\\', '/')
   const said = posix(stripVTControlCharacters(text))
@@ -405,6 +429,40 @@ function fileMention(
     .map((spelling) => (spelling ? said.indexOf(posix(spelling)) : -1))
     .filter((index) => index !== -1)
   if (relative === undefined) {
+    // a diagnostic also names an absolute file by its path from a directory
+    // of it on (`src/routes/a.tsx`, how messages name files relative to the
+    // root)
+    const name =
+      absolute === undefined || !options.tail
+        ? ''
+        : path.posix.basename(posix(absolute))
+    for (
+      let at = name === '' ? -1 : said.indexOf(name);
+      at !== -1;
+      at = said.indexOf(name, at + 1)
+    ) {
+      const end = at + name.length
+      if (/[\w/-]/.test(said[end] ?? '')) {
+        continue
+      }
+      let start = at
+      while (start > 0 && /[\w.@$~+%#/-]/.test(said[start - 1]!)) {
+        start--
+      }
+      const token = said.slice(start, end).replace(/^(?:\.{1,2}\/)+/, '')
+      if (
+        token.includes('/') &&
+        spellings.some(
+          (spelling) =>
+            spelling &&
+            (posix(spelling) === token ||
+              posix(spelling).endsWith(`/${token.replace(/^\/+/, '')}`)),
+        )
+      ) {
+        starts.push(start)
+        break
+      }
+    }
     return starts.length > 0 ? said.slice(Math.min(...starts)) : undefined
   }
   for (

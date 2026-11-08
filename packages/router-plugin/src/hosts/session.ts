@@ -13,6 +13,7 @@ import {
   compileModule,
   createCompilerCaches,
   digestOf,
+  displayPath,
   fileModifiedAt,
   identify,
   invalidate,
@@ -50,6 +51,8 @@ export type Bundler = 'vite' | 'rspack' | 'webpack'
 export interface RouterCompilerOptions {
   context: RouterPluginContext
   config: Config
+  /** The project root: messages name files relative to it. */
+  root: string
   bundler: Bundler
   mode: 'dev' | 'build'
 }
@@ -133,6 +136,8 @@ export class RouterCompiler {
       // the router planner resolves nothing: route options are read from the module itself
       resolve: () => Promise.resolve(null),
       rawFacts,
+      root: opts.root,
+      tag: '[tanstack-router]',
       routes: this.registry,
       modifiedAt: fileModifiedAt,
     }
@@ -203,7 +208,7 @@ export class RouterCompiler {
       // correct split, or unsplit plus a warning naming the file)
       (d) => ({
         severity: 'warning',
-        message: `[tanstack-router] The compiler cannot parse the route module "${file}", so it is not code-split or hot-updated: ${d.message}`,
+        message: `[tanstack-router] The compiler cannot parse the route module ${displayPath(file, this.host.root)}, so it is not code-split or hot-updated: ${d.message}`,
         range: d.range,
         by: 'parse',
         code: 'parse',

@@ -21,6 +21,7 @@ import {
   SourceText,
   applyViteInvalidation,
   collectionSizes,
+  displayPath,
   identify,
   invalidate,
   isAnalyzableSpecifier,
@@ -32,6 +33,7 @@ import {
   resolveSameFileSpecifier,
   revision,
   rollupEntryModuleIds,
+  viteLog,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import {
@@ -604,24 +606,24 @@ export function startCompilerPlugin(
     },
     out: CompileOutput,
     filePath: string,
-    id: string,
     code: string,
     envType: 'client' | 'server',
     lateInputMap?: () => InputSourceMap | null,
   ) => {
-    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) => ({
-      message: at
-        ? `${d.message} (${filePath}:${at.line}:${at.column + 1})`
-        : d.message,
-      loc: at && { file: filePath, ...at },
-    })
+    // a Vue SFC's late refusals are positioned in the SFC, not in `code`
+    const frameOf = lateInputMap ? null : code
+    const name = displayPath(filePath, s.start.opts.root)
+    // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
+    const dev = s.start.opts.mode === 'dev' && !s.bundledDev
+    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) =>
+      viteLog(d.message, at, frameOf, name, filePath, dev)
     s.start.report(
       out,
       filePath,
       code,
       envType,
       {
-        error: (d, at) => ctx.error({ ...log(d, at), id }),
+        error: (d, at) => ctx.error(log(d, at)),
         warn: (d, at) => ctx.warn(log(d, at)),
       },
       lateInputMap,
@@ -697,7 +699,7 @@ export function startCompilerPlugin(
       if (!out) {
         return null
       }
-      reportDiagnostics(s, this, out, identity.path, id, code, env.type)
+      reportDiagnostics(s, this, out, identity.path, code, env.type)
       let mock = afterCompile(s, env, id, out, (error) => this.error(error))
       if (mock instanceof Promise) {
         mock = await mock
@@ -1084,6 +1086,10 @@ export function startCompilerPlugin(
             s.start.warnings,
             (m) => this.warn(m),
             (id) => this.getModuleInfo(id)?.importers ?? [],
+            {
+              root: s.start.opts.root,
+              routeTree: opts.getConfig().startConfig.router.generatedRouteTree,
+            },
           )
         }
         if (!s.start.ip) {
@@ -1171,7 +1177,6 @@ export function startCompilerPlugin(
           this,
           out,
           identify(id).path,
-          id,
           code,
           env.type,
           readInputMap,

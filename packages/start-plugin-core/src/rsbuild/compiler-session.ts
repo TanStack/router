@@ -71,6 +71,8 @@ export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
   errorName: 'TanStackStartCompilerError',
   warningName: 'TanStackStartCompilerWarning',
   failureName: 'TanStackStartCompilerError',
+  // Start builds through Rsbuild, which prints a located error's `file`
+  fileOfDerived: true,
 }
 
 export interface ServerFnBuildInfo {
@@ -689,7 +691,7 @@ export class StartRsbuildCompilerSession {
       message: string,
       at: DiagnosticPosition | undefined,
     ) => {
-      const d = locatedDiagnostic(severity, message, at, file)
+      const d = locatedDiagnostic(severity, message, at)
       located.push(d)
       return d.message
     }
