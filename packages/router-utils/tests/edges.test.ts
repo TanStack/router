@@ -100,6 +100,60 @@ describe('edge names (J6)', () => {
     expect(edges['static ./kept']).toEqual(['binding', ['kept']])
   })
 
+  // the output prints the statement anew with the specifiers it keeps: the
+  // import is still an edge of the output, named by what it keeps, and a
+  // substitution reaches its specifier
+  it.each([
+    [
+      'named',
+      `import { handlerOnly, everywhere } from './x'`,
+      `import { everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'default and named',
+      `import handlerOnly, { everywhere } from './x'`,
+      `import { everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'named and default',
+      `import everywhere, { handlerOnly } from './x'`,
+      `import everywhere from './y'`,
+      ['default'],
+    ],
+    [
+      'default and namespace',
+      `import handlerOnly, * as everywhere from './x'`,
+      `import * as everywhere from './y'`,
+      ['*'],
+    ],
+  ])(
+    'tier 1: a %s import whose other specifiers the output prunes is an edge, substituted',
+    async (_shape, statement, printed, names) => {
+      const host = new MemoryHost({
+        files: {
+          '/app/m.ts': dedent(`
+            import { wrapServer } from 'toy-start'
+            ${statement}
+            export const fn = wrapServer(() => handlerOnly())
+            export const read = () => everywhere
+          `),
+        },
+      })
+      const rec = edgeRecorder((edges, ctx) => {
+        const x = edges.find((e) => e.specifier === './x')
+        if (x) {
+          ctx.substitute(x.edgeKey, './y')
+        }
+      })
+      const out = await host.compile('/app/m.ts', [toyEnvPlanner(), rec])
+      expect(byspec(rec.edges.env!)['static ./x']).toEqual(['binding', names])
+      expect(out!.code).toContain(printed)
+      expect(out!.code).not.toContain(`'./x'`)
+    },
+  )
+
   // Both tiers build an output's edges alike: a planned module (Tier 1) and
   // one only the edge planner reads (Tier 0, its source as written)
   const tiers = {
