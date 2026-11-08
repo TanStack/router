@@ -28,7 +28,7 @@ export function keptDiagnostic(
   const { analysis, symbols } = plan
   const tag = plan.moduleWords === null ? '' : `${plan.moduleWords.tag} `
   const module = plan.moduleWords?.name ?? 'module'
-  const file = plan.identity.path
+  const file = plan.displayPath
   const code = analysis.source.code
   const text = (n: Node) => {
     const t = code.slice(n.start, n.end)
@@ -50,28 +50,69 @@ export function keptDiagnostic(
         return `\`${text(node)}\`${where}`
     }
   }
+  const split = k.needers
+    .map((o) => {
+      const decl = plan.outputs.get(o)!
+      if (decl.kind === 'export') {
+        return `the module of the export \`${decl.key.slice('export~'.length)}\``
+      }
+      return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
+    })
+    .join(', ')
+  const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
   if (k.exported) {
     const names = analysis.exports.flatMap((e) =>
       e.kind === 'local' && e.local === k.syms[0] && !e.typeOnly
         ? [`\`${e.name}\``]
         : [],
     )
-    const effect = k.effect === undefined ? null : effectAt(plan, k.effect)
-    const why: Partial<Record<KeptDeclaration['reason'], string>> = {
-      effects:
-        'its initialiser, or a statement setting a property of it, has side effects',
-      reassigned: 'it is reassigned',
-      live: `the ${module} itself reads it`,
-      reads: 'it reads, when it loads, a binding the module keeps',
-      // its extracted module would evaluate before the module's body
-      order:
-        effect === null
-          ? 'an effect of the module keeps it in place'
-          : `${describe(effect)} (line ${analysis.source.locate(effect.node.start).line + 1}) runs before it and ${k.effectStays ? 'stays' : 'does not move with it'}`,
+    const one = names.length === 1
+    const declaring = (plan.t1.declaringUnits.get(k.syms[0]!) ?? [])[0]
+    const unit = declaring === undefined ? null : plan.t1.units[declaring]!
+    const init =
+      unit?.node.type === 'VariableDeclarator' && unit.node.init
+        ? unwrapExpression(unit.node.init)
+        : null
+    const call =
+      init?.type === 'CallExpression' || init?.type === 'NewExpression'
+    let why: string
+    let fix: string
+    switch (k.reason) {
+      case 'effects':
+        if (unit?.effectful) {
+          why = 'its initialiser has side effects'
+          fix = `Move it to its own module and import it from there${call ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
+        } else {
+          why = 'a statement setting a property of it has side effects'
+          fix =
+            'Move it and the statements setting its properties to their own module and import it from there.'
+        }
+        break
+      case 'reassigned':
+        why = 'it is reassigned'
+        fix =
+          'Move it and the code assigning it to their own module and import it from there, or stop exporting it if no other file imports it.'
+        break
+      case 'reads':
+        why = `it reads, when it loads, a binding the ${module} keeps`
+        fix =
+          'Move it, with the bindings it reads when it loads, to their own module and import it from there.'
+        break
+      default: {
+        // `order`: its extracted module would evaluate before the module's body
+        const effect = k.effect === undefined ? null : effectAt(plan, k.effect)
+        why =
+          effect === null
+            ? 'an effect of the module keeps it in place'
+            : `${describe(effect)} (${line(effect.node.start)}) runs before it and ${k.effectStays ? 'stays' : 'does not move with it'}`
+        fix =
+          'Move it and the statements setting its properties to their own module and import it from there.'
+        break
+      }
     }
     return {
       severity: 'warning',
-      message: `${tag}The export${names.length === 1 ? '' : 's'} ${names.join(', ')} of "${file}" stay${names.length === 1 ? 's' : ''} in the ${module} (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
+      message: `${tag}The export${one ? '' : 's'} ${names.join(', ')} of ${file} ${one ? 'is' : 'are'} used only by the split ${split}, but ${one ? 'stays' : 'stay'} in the ${module} because ${why}, so ${one ? 'it loads' : 'they load'} with the ${module} instead of with that code. ${fix}`,
       range: k.range,
       by: 'core',
       code: `eager-export:${k.reason}`,
@@ -90,16 +131,6 @@ export function keptDiagnostic(
   const several = declarations > 1
   const initialiser = several ? `${own} initialisers` : `${own} initialiser`
   const itHas = several ? 'they have' : 'it has'
-  const split = k.needers
-    .map((o) => {
-      const decl = plan.outputs.get(o)!
-      if (decl.kind === 'export') {
-        return `the module of the export \`${decl.key.slice('export~'.length)}\``
-      }
-      return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
-    })
-    .join(', ')
-  const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
   const read = k.read === undefined ? '' : `\`${symbols.name(k.read)}\``
   let because: string
   let fix: string
@@ -165,7 +196,7 @@ export function keptDiagnostic(
   }
   return {
     severity: 'warning',
-    message: `${tag}${subject} in "${file}" stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${fix}, so ${subject} can load with the split ${split}.`,
+    message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${fix}, so ${subject} can load with the split ${split}.`,
     range: k.range,
     by: 'core',
     code: `eager-split:${k.reason}`,

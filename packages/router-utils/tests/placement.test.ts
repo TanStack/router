@@ -2079,7 +2079,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        'The exports `value`, `alias` of "/app/route.tsx" stay in the route module (',
+        'The exports `value`, `alias` of /app/route.tsx are used only by the split `component`, but stay in the route module because ',
       ),
     ])
   })
@@ -4441,7 +4441,7 @@ describe('declarations only split code needs that stay in the route module', () 
     }
     // the route planner names the module: tagged like its own warnings
     expect(message).toMatch(
-      /^\[tanstack-router\] `confetti` in "\/app\/route\.tsx" stays in the route module because /,
+      /^\[tanstack-router\] `confetti` in \/app\/route\.tsx stays in the route module because /,
     )
   })
 
@@ -4461,7 +4461,7 @@ describe('declarations only split code needs that stay in the route module', () 
     })
     expect(out!.diagnostics).toMatchObject([{ code: 'eager-split:order' }])
     expect(out!.diagnostics[0]!.message).toMatch(
-      /^`confetti` in "\/app\/mod\.tsx" stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
+      /^`confetti` in \/app\/mod\.tsx stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
     )
   })
 
@@ -4552,7 +4552,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code, ['component', 'errorComponent'])
     const byName: Record<string, (typeof r.diagnostics)[number]> =
       Object.fromEntries(
-        r.diagnostics.map((d) => [/`(\w+)` in "/.exec(d.message)![1]!, d]),
+        r.diagnostics.map((d) => [/`(\w+)` in \//.exec(d.message)![1]!, d]),
       )
     expect(Object.keys(byName).sort()).toEqual([
       'api',
@@ -4603,7 +4603,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `HOME` in "/app/route.tsx" stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
+        '`homeUrl`, `HOME` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
       ),
     ])
   })
@@ -4623,7 +4623,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code, ['component', 'errorComponent'])
     const byCode = Object.fromEntries(r.diagnostics.map((d) => [d.code, d]))
     expect(byCode['eager-split:written']!.message).toContain(
-      '`registry`, `index` in "/app/route.tsx" stay in the route module because the module changes them outside their declaration when it loads (line 4); move `registry`, `index` and what writes them to their own module, or mark their initialiser `/* @__PURE__ */` if it has no side effects',
+      '`registry`, `index` in /app/route.tsx stay in the route module because the module changes them outside their declaration when it loads (line 4); move `registry`, `index` and what writes them to their own module, or mark their initialiser `/* @__PURE__ */` if it has no side effects',
     )
     expect(byCode['eager-split:needers']!.message).toContain(
       'because several split options read them (`component`, `errorComponent`) and their initialiser has side effects, which run once; move `one`, `two` to their own module, or mark their initialiser `/* @__PURE__ */` if it has none',
@@ -4754,7 +4754,7 @@ describe('pure calls of known packages', () => {
       chunk: chunk?.code ?? '',
       kept: (main?.diagnostics ?? [])
         .filter((d) => d.code?.startsWith('eager-'))
-        .map((d) => /`(\w+)` in "/.exec(d.message)![1]!),
+        .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
     }
   }
   // tamery: `validateSearch: type({…})` stays and runs after both
