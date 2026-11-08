@@ -64,6 +64,11 @@ export function makeNested() {
   return nested
 }
 `,
+  // two handlers writing one binding nothing else of the module uses
+  'writers.ts': `${head}let calls = 0
+export const addOne = createServerFn().handler(async () => ++calls)
+export const addTen = createServerFn().handler(async () => (calls += 10))
+`,
   'broken.ts': `${head}import { value } from './broken.server'
 export const callBroken = createServerFn().handler(async () => value)
 `,
@@ -114,6 +119,7 @@ function Page() {
 export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
   'client-entry.ts': `export * from './fns'
+export * from './writers'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
@@ -202,6 +208,20 @@ return { label, overHttp, count: entry.readCount() }`)
         overHttp: 'changed',
         count: 2,
       })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: two handlers writing one binding share one instance of it',
+    async () => {
+      const { result } = await build.ssr.run(`${callByIdPrelude}return [
+  await entry.addOne(),
+  await callById(serverFnId(entry.addTen)),
+  await entry.addTen(),
+  await callById(serverFnId(entry.addOne)),
+]`)
+      expect(result).toEqual([1, 11, 21, 22])
     },
     timeout,
   )

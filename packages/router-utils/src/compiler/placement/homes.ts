@@ -251,7 +251,9 @@ export function assignHomes(
         x.owner === w && x.live && !x.member && clusterOfSym.get(x.sym) === c,
     )?.sym
   for (const { cluster: c, writers } of graph.subRegionWriters) {
-    const writerHomes = new Map<OutputId, RegionId>()
+    // the writers by the output they land in: writers in one output share
+    // its instance of the binding
+    const writerHomes = new Map<OutputId, Array<RegionId>>()
     for (const w of [...writers].sort(
       (a, b) => regions.get(a).range.start - regions.get(b).range.start,
     )) {
@@ -262,22 +264,20 @@ export function assignHomes(
       const h = home.get(wc)
       const o: OutputId =
         h === undefined || h === 'duplicate' || h === 'removed' ? 'env' : h
-      if (!writerHomes.has(o)) {
-        writerHomes.set(o, w)
+      const ws = writerHomes.get(o)
+      if (ws) {
+        ws.push(w)
       } else {
-        fallbacks.push({
-          region: w,
-          reason: 'multi-writer',
-          binding: writtenBy(w, c),
-        })
+        writerHomes.set(o, [w])
       }
     }
     const derivedHomes = [...writerHomes].filter(([o]) => o !== 'env')
     if (derivedHomes.length === 0) {
       continue
     }
-    if (derivedHomes.length > 1) {
-      for (const [, w] of derivedHomes.slice(1)) {
+    // one output takes the binding; the writers of the others fall back
+    for (const [, ws] of derivedHomes.slice(1)) {
+      for (const w of ws) {
         fallbacks.push({
           region: w,
           reason: 'multi-writer',
@@ -285,14 +285,16 @@ export function assignHomes(
         })
       }
     }
-    const [[g, w]] = derivedHomes as [[OutputId, RegionId]]
+    const [[g, ws]] = derivedHomes as [[OutputId, Array<RegionId>]]
     if (liveEnv.has(c) || writerHomes.has('env')) {
       const kind = outputs.get(g)?.kind
-      fallbacks.push({
-        region: w,
-        reason: kind === 'hydrate' ? 'hydrate-writer' : 'shared-writer',
-        binding: writtenBy(w, c),
-      })
+      for (const w of ws) {
+        fallbacks.push({
+          region: w,
+          reason: kind === 'hydrate' ? 'hydrate-writer' : 'shared-writer',
+          binding: writtenBy(w, c),
+        })
+      }
     } else {
       home.set(c, g)
     }
