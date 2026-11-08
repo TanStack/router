@@ -529,11 +529,12 @@ function describeReason(
   binding?: string,
 ): string {
   const written = binding === undefined ? 'a module binding' : `\`${binding}\``
+  const inObject = `\`state.${binding ?? 'count'}++\``
   switch (reason) {
     case 'shared-writer':
-      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (\`state.count++\`) or in its own module.`
+      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
     case 'multi-writer':
-      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (\`state.count++\`) or in its own module.`
+      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
     case 'ordered-effect':
       return 'it reads a module binding that top-level code changes after it. Read that binding inside the option, or move both to their own module.'
     case 'hydrate-writer':
