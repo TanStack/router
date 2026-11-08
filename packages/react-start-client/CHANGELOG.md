@@ -1,5 +1,11 @@
 # @tanstack/react-start-client
 
+## 1.168.45
+
+### Patch Changes
+
+- [#8653](https://github.com/TanStack/router/pull/8653) [`d66a84b`](https://github.com/TanStack/router/commit/d66a84ba0a74ffd03e22b57ccd90796274c96244) - fix: a `visible()` boundary keeps its server HTML when the intersection arrives while React waits to replay the boundary's render
+
 ## 1.168.44
 
 ### Patch Changes
