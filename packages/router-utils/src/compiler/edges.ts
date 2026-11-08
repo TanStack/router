@@ -66,8 +66,11 @@ export function sourceEdges(
     if (imp.typeOnly) {
       continue
     }
+    // an import is an edge of the output where its specifier renders: an
+    // output that keeps some of its specifiers prints the statement anew
+    // around the source's specifier
     const locals = view.importLocals(imp)
-    if (locals === null || view.erasedAt(imp.declRange.start)) {
+    if (locals === null || view.erasedAt(imp.specifierRange.start)) {
       continue
     }
     // binding edge iff a specifier is used as a value (an import whose
@@ -98,7 +101,7 @@ export function sourceEdges(
   for (const re of analysis.reexports) {
     if (
       re.typeOnly ||
-      view.erasedAt(re.statementRange.start) ||
+      view.erasedAt(re.specifierRange.start) ||
       !view.reexports(re.statementRange)
     ) {
       continue
