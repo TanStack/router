@@ -815,7 +815,10 @@ function validate(
         }
         break
       case 'CallExpression':
-        if (!fn) {
+        // React's rules of hooks: the call would move into another
+        // component. Solid has none: a `use*` call in the chunk runs under
+        // the boundary's owner, with its context
+        if (!fn && !solid) {
           const hook = hookName(node.callee)
           if (hook !== null) {
             fail(
