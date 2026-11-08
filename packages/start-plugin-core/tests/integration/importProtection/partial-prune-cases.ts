@@ -12,10 +12,15 @@
  * package `server-sdk` (a configured specifier rule) and the file
  * `src/secret.server.ts` (the default file rule). A real denied module
  * records that it ran (`globalThis.realLoaded`); a mock runs none of it.
+ * On the server, `src/widget.client.ts` (the default file rule) is denied:
+ * `src/cases/client-only.ts` keeps part of its import there.
  */
 
 /** Text of every real denied module (`server-sdk`, `src/secret.server.ts`). */
 export const realMark = 'REAL_DENIED'
+
+/** Text of the real client-only module (`src/widget.client.ts`). */
+export const clientMark = 'REAL_CLIENT_ONLY'
 
 const denied = (name: string) => `;(globalThis as any).realLoaded = '${name}'
 export const a = () => '${realMark} ${name} a'
@@ -34,6 +39,9 @@ const deniedFiles = {
     '',
   ),
   'src/secret.server.ts': denied('secret.server'),
+  'src/widget.client.ts': `export const a = () => '${clientMark} a'
+export const b = () => '${clientMark} b'
+`,
 }
 
 const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -74,6 +82,13 @@ export { b as leak } from 'server-sdk'
 export const fn = createServerFn().handler(() => a())
 export const leak = () => b
 `,
+  // a second import of the binding the first one keeps: both are one edge,
+  // both get the one mock
+  'sibling.ts': `${serverFn}import { a, b } from 'server-sdk'
+import { b as b2 } from 'server-sdk'
+export const fn = createServerFn().handler(() => a())
+export const leak = () => (b === b2 ? b : 'two modules')
+`,
   // the children move to the boundary's own output, the rest stays
   'hydrate.tsx': `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -84,6 +99,27 @@ export function Page() {
 export const leak = () => b
 `,
 }
+
+/**
+ * Cases the entry imports for what they do (each exports `use`, which the
+ * entry keeps, `globalThis.partialUses`), not for a `leak`: no client report. A kept specifier used only as a type: the bundler's TypeScript
+ * transform erases the import. The server's case: the client keeps the
+ * whole import of `src/widget.client.ts`, which it may.
+ */
+export const unreportedCases: Record<string, string> = {
+  'type-kept.ts': `${serverFn}import { a, b } from 'server-sdk'
+export const fn = createServerFn().handler(() => a())
+export const use = (x: typeof b): string => typeof x
+`,
+  'client-only.ts': `import { createClientOnlyFn } from '@tanstack/react-start'
+import { a, b } from '../widget.client'
+export const fn = createClientOnlyFn(() => a())
+export const use = () => b()
+`,
+}
+
+/** The importers the server build must report. */
+export const expectedServerImporters = ['src/cases/client-only.ts']
 
 /** Route files: the route module keeps part of the import, or its split chunk does. */
 export const routeCases: Record<string, string> = {
@@ -121,12 +157,21 @@ const entry = `${Object.keys(moduleCases)
       `import { leak as c${index} } from './cases/${file.replace(/\.tsx?$/, '')}'`,
   )
   .join('\n')}
+${Object.keys(unreportedCases)
+  .map(
+    (file, index) =>
+      `import { use as u${index} } from './cases/${file.replace(/\.tsx?$/, '')}'`,
+  )
+  .join('\n')}
 import { routeTree } from './routeTree.gen'
 export const leaks = { ${Object.keys(moduleCases)
   .map((file, index) => `${JSON.stringify(file)}: c${index}`)
   .join(', ')} }
 ;(globalThis as any).partialLeaks = leaks
 ;(globalThis as any).partialRouteTree = routeTree
+;(globalThis as any).partialUses = [${Object.keys(unreportedCases)
+  .map((_, index) => `u${index}`)
+  .join(', ')}]
 export { getRouter } from './router'
 `
 
@@ -135,6 +180,12 @@ export const partialPruneApp: Record<string, string> = {
   ...deniedFiles,
   ...Object.fromEntries(
     Object.entries(moduleCases).map(([file, code]) => [
+      `src/cases/${file}`,
+      code,
+    ]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(unreportedCases).map(([file, code]) => [
       `src/cases/${file}`,
       code,
     ]),
@@ -149,6 +200,16 @@ export const partialPruneApp: Record<string, string> = {
   'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
+}
+
+/**
+ * The server's case alone (`src/entry.ts` keeps its `use`): a client build
+ * that fails stops a Vite build before its server environment.
+ */
+export const serverCaseApp: Record<string, string> = {
+  ...deniedFiles,
+  'src/cases/client-only.ts': unreportedCases['client-only.ts']!,
+  'src/entry.ts': `export { use } from './cases/client-only'\n`,
 }
 
 /** The configured rule of `server-sdk`; reports silent at run time. */

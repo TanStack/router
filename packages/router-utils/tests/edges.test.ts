@@ -128,8 +128,32 @@ describe('edge names (J6)', () => {
       `import * as everywhere from './y'`,
       ['*'],
     ],
+    [
+      'named and type',
+      `import { type T, handlerOnly, everywhere } from './x'`,
+      `import { type T, everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'string-named',
+      `import { 'a-b' as handlerOnly, 'c-d' as everywhere } from './x'`,
+      `import { 'c-d' as everywhere } from './y'`,
+      ['c-d'],
+    ],
+    [
+      'named, commented',
+      `import { handlerOnly /* a */, /* b */ everywhere } /* c */ from /* d */ './x' /* e */`,
+      `import { everywhere } from './y' /* e */`,
+      ['everywhere'],
+    ],
+    [
+      'named, with attributes',
+      `import { handlerOnly, everywhere } from './x' assert { type: 'json' }`,
+      `import { everywhere } from './y' with { type: 'json' }`,
+      ['everywhere'],
+    ],
   ])(
-    'tier 1: a %s import whose other specifiers the output prunes is an edge, substituted',
+    'tier 1: an import (%s) whose other specifiers the output prunes is an edge, substituted',
     async (_shape, statement, printed, names) => {
       const host = new MemoryHost({
         files: {
@@ -153,6 +177,71 @@ describe('edge names (J6)', () => {
       expect(out!.code).not.toContain(`'./x'`)
     },
   )
+
+  it('tier 1: an import kept whole and one kept in part are one edge, substituted at both', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          import { wrapServer } from 'toy-start'
+          import { handlerOnly, a } from './x'
+          import { b } from './x'
+          export const fn = wrapServer(() => handlerOnly())
+          export const read = () => a + b
+        `),
+      },
+    })
+    const rec = edgeRecorder((edges, ctx) => {
+      ctx.substitute(edges.find((e) => e.specifier === './x')!.edgeKey, './y')
+    })
+    const out = await host.compile('/app/m.ts', [toyEnvPlanner(), rec])
+    const [x, ...others] = rec.edges.env!.filter((e) => e.specifier === './x')
+    expect(others).toEqual([])
+    expect([x!.kind, x!.names, x!.locations.length]).toEqual([
+      'binding',
+      ['a', 'b'],
+      2,
+    ])
+    expect(out!.code).toContain(
+      `import { a } from './y'\nimport { b } from './y'`,
+    )
+  })
+
+  // a route module whose split option reads one specifier of an import and
+  // whose kept options read another: each output is an edge of the import
+  // with what it reads, and both are substituted
+  it('tier 1: a route module and its split chunk each keep part of an import', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { inChunk, inRoute, unused } from './x'
+          export const Route = createFileRoute('/')({
+            component: () => inChunk,
+            loader: () => inRoute,
+          })
+        `),
+      },
+    })
+    const rec = edgeRecorder((edges, ctx) => {
+      const x = edges.find((e) => e.specifier === './x')
+      if (x) {
+        ctx.substitute(x.edgeKey, './y')
+      }
+    })
+    const planners = [toySplitPlanner(), rec]
+    const route = await host.compile('/app/route.tsx', planners)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+    )
+    const { env, ...derived } = rec.edges
+    expect(byspec(env!)['static ./x']).toEqual(['binding', ['inRoute']])
+    expect(
+      Object.values(derived).map((edges) => byspec(edges)['static ./x']),
+    ).toEqual([['binding', ['inChunk']]])
+    expect(route!.code).toContain(`import { inRoute, unused } from './y'`)
+    expect(chunk!.code).toContain(`import { inChunk } from './y'`)
+  })
 
   // Both tiers build an output's edges alike: a planned module (Tier 1) and
   // one only the edge planner reads (Tier 0, its source as written)
