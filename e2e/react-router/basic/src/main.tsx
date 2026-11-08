@@ -9,10 +9,15 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import {
+  TanStackRouterDevtoolsInProd as TanStackRouterDevtools,
+  TanStackRouterDevtoolsPanelInProd as TanStackRouterDevtoolsPanel,
+} from '@tanstack/react-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+
+const devtoolsMode = new URLSearchParams(window.location.search).get('devtools')
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -88,7 +93,7 @@ function RootComponent() {
         </div>
       </div>
       <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
+      {devtoolsMode ? null : <TanStackRouterDevtools position="bottom-right" />}
     </>
   )
 }
@@ -450,7 +455,24 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
+  const shadowRoot =
+    devtoolsMode === 'shadow'
+      ? rootElement.attachShadow({ mode: 'open' })
+      : undefined
+  const mountElement = shadowRoot
+    ? shadowRoot.appendChild(document.createElement('div'))
+    : rootElement
+  const root = ReactDOM.createRoot(mountElement)
 
-  root.render(<RouterProvider router={router} />)
+  root.render(
+    <>
+      <RouterProvider router={router} />
+      {devtoolsMode ? (
+        <TanStackRouterDevtoolsPanel
+          router={router}
+          shadowDOMTarget={shadowRoot}
+        />
+      ) : null}
+    </>,
+  )
 }
