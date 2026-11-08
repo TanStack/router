@@ -257,20 +257,19 @@ export function findPatternImport(
   return candidate
 }
 
+/** A `require()` whose path has a variable part (webpack and Rspack read it as a context). */
+const REQUIRE_VARIABLE_RE = new RegExp(
+  String.raw`\brequire\s*\(\s*(?:\x60|(?:'[^'\n]*'|"[^"\n]*")\s*\+)`,
+)
+
 /**
- * Whether `text` holds any pattern import (outside comments and strings).
- * An importer without one reached a file through an import another
- * plugin's transform added to it (an auto-import).
+ * Whether `text` may hold a pattern import: any call text of one, comments
+ * and strings included (a quote the tokenizer misreads, in a regular
+ * expression or JSX text, hides nothing here). An importer without one
+ * reached a file through an import another plugin's transform added to it.
  */
-export function hasPatternImport(text: string): boolean {
-  const inert = inertRanges(text)
-  const re = new RegExp(CALL_RE.source, 'g')
-  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
-    if (!inside(inert, m.index)) {
-      return true
-    }
-  }
-  return false
+export function mayHavePatternImport(text: string): boolean {
+  return new RegExp(CALL_RE.source).test(text) || REQUIRE_VARIABLE_RE.test(text)
 }
 
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */
