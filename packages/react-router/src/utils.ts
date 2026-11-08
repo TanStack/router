@@ -14,8 +14,9 @@ let REACT_USE = 'use'
  * Use dynamic lookup to avoid Webpack compilation errors with React 18.
  */
 export const reactUse:
-  | (<T>(usable: Promise<T> | React.Context<T>) => T)
-  | undefined = (React as any)[REACT_USE]
+  (<T>(usable: Promise<T> | React.Context<T>) => T) | undefined = (
+  React as any
+)[REACT_USE]
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,

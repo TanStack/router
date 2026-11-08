@@ -25,8 +25,7 @@ function handleRouteUpdate(
 ) {
   const router = window.__TSR_ROUTER__ as AnyRouterWithPrivateState
   const oldRoute = router.routesById[routeId] as
-    | AnyRouteWithPrivateProps
-    | undefined
+    AnyRouteWithPrivateProps | undefined
 
   if (!oldRoute) {
     return

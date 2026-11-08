@@ -1,9 +1,7 @@
 import * as Vue from 'vue'
 
 export type NonRouteComponent =
-  | 'pendingComponent'
-  | 'errorComponent'
-  | 'notFoundComponent'
+  'pendingComponent' | 'errorComponent' | 'notFoundComponent'
 
 export const nonRouteComponentContext =
   process.env.NODE_ENV !== 'production'
