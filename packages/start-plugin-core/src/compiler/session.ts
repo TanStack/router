@@ -17,6 +17,7 @@ import {
   compileModule,
   createCompilerCaches,
   digestOf,
+  displayPath,
   fileModifiedAt,
   identify,
   langFromId,
@@ -501,7 +502,7 @@ export class StartCompilerSession {
         if (namesStartSpecifier(code)) {
           return {
             severity: envType === 'client' ? 'error' : 'warning',
-            message: `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}`,
+            message: `[tanstack-start] The compiler cannot parse ${displayPath(file, this.opts.root)}, which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}`,
             range: d.range,
             by: 'parse',
             code: 'parse',
@@ -513,7 +514,7 @@ export class StartCompilerSession {
         ) {
           return {
             severity: 'error',
-            message: `[tanstack-start] The compiler cannot parse "${file}", so it cannot remove server code from it for the client: ${d.message}`,
+            message: `[tanstack-start] The compiler cannot parse ${displayPath(file, this.opts.root)}, so it cannot remove server code from it for the client: ${d.message}`,
             range: d.range,
             by: 'parse',
             code: 'parse',
