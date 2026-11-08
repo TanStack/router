@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
 import {
@@ -113,10 +113,15 @@ export function tanStackStartRsbuild(
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
       api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
-        const root =
-          typeof rsbuildConfig.root === 'string'
+        // Rsbuild passes `root` on as written; its resolved root (against its
+        // `cwd`) is `rootPath`. Canonical (no trailing separator), as the
+        // virtual modules' paths must match Rspack's module paths.
+        const root = resolve(
+          typeof rsbuildConfig.root === 'string' &&
+            isAbsolute(rsbuildConfig.root)
             ? rsbuildConfig.root
-            : process.cwd()
+            : api.context.rootPath,
+        )
 
         const serverBase = rsbuildConfig.server?.base
         const assetPrefix = rsbuildConfig.output?.assetPrefix
@@ -339,7 +344,7 @@ export function tanStackStartRsbuild(
       //    RSC runtime, RSC HMR
       // ---------------------------------------------------------------
       const virtualModuleState = registerVirtualModules(api, {
-        root: resolvedStartConfig.root || process.cwd(),
+        getRoot: () => resolvedStartConfig.root,
         getConfig,
         serverFnsById,
         providerEnvName: serverFnProviderEnv,
@@ -398,11 +403,9 @@ export function tanStackStartRsbuild(
       //     patching emitted server assets afterwards.
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev') {
-        const normalizedManifestPath = normalizePath(
-          virtualModuleState.manifestPath,
-        )
+        // (read when a module is transformed: the virtual paths need the resolved root)
         const matchesManifestPath = (id: string) =>
-          normalizePath(id) === normalizedManifestPath
+          normalizePath(id) === normalizePath(virtualModuleState.manifestPath)
 
         api.transform(
           {
