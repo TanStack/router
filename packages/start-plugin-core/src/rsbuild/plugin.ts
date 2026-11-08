@@ -578,36 +578,50 @@ export function tanStackStartRsbuild(
               },
             })
 
-            if (api.context.action !== 'dev') {
-              config.plugins.push({
-                apply(compiler: RspackCompiler) {
-                  compiler.hooks.finishMake.tapPromise(
-                    {
-                      name: 'TanStackStartRscManifestRebuild',
-                      // The native RSC ServerPlugin completes the client-entry
-                      // handoff during its finishMake hook. Rebuild the manifest
-                      // after that point so the transform hook can emit the final
-                      // manifest source instead of the placeholder.
-                      stage: 10,
-                    },
-                    async (compilation: RspackCompilationExtended) => {
-                      const clientBuild = getClientBuild()
+            config.plugins.push({
+              apply(compiler: RspackCompiler) {
+                // Dev manifest write count this compiler last rebuilt from.
+                let rebuiltAtWriteCount: number | undefined
 
-                      if (!clientBuild) {
+                compiler.hooks.finishMake.tapPromise(
+                  {
+                    name: 'TanStackStartRscManifestRebuild',
+                    // The native RSC ServerPlugin completes the client-entry
+                    // handoff during its finishMake hook. Rebuild the manifest
+                    // after that point so it reflects the client build: the
+                    // build transform emits the final source instead of the
+                    // placeholder, and dev picks up a manifest written while
+                    // this compilation was already running.
+                    stage: 10,
+                  },
+                  async (compilation: RspackCompilationExtended) => {
+                    const clientBuild = getClientBuild()
+
+                    if (!clientBuild) {
+                      return
+                    }
+
+                    virtualModuleState.updateManifest(clientBuild)
+
+                    if (api.context.action === 'dev') {
+                      // Only rebuild when the manifest changed: rebuilding an
+                      // unchanged module can rebuild the whole chunk graph.
+                      const writeCount =
+                        virtualModuleState.getDevManifestWriteCount()
+                      if (writeCount === rebuiltAtWriteCount) {
                         return
                       }
+                      rebuiltAtWriteCount = writeCount
+                    }
 
-                      virtualModuleState.updateManifest(clientBuild)
-
-                      await rebuildModulesContaining(
-                        compilation,
-                        virtualModuleState.manifestPath,
-                      )
-                    },
-                  )
-                },
-              })
-            }
+                    await rebuildModulesContaining(
+                      compilation,
+                      virtualModuleState.manifestPath,
+                    )
+                  },
+                )
+              },
+            })
           }
 
           if (isClientEnv) {
