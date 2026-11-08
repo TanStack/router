@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793820835403,
+  "lastUpdate": 1794099503516,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "t.zlak@hotmail.com",
-            "name": "Alem Tuzlak",
-            "username": "AlemTuzlak"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b5e540d74ae22f29bc17daee965cfe65d2782c7c",
-          "message": "docs: use the dynamic README header endpoint (#7940)\n\n* docs: use the dynamic README header endpoint\n\n* docs: add README header banners to the framework adapter packages",
-          "timestamp": "2026-08-03T21:03:29+02:00",
-          "tree_id": "3795c778b984b94e4b78e1921a2e3e798d1872d4",
-          "url": "https://github.com/TanStack/router/commit/b5e540d74ae22f29bc17daee965cfe65d2782c7c"
-        },
-        "date": 1785784001124,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89443,
-            "unit": "bytes",
-            "extra": "raw=280269; brotli=77834; initial_gzip=89302"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93248,
-            "unit": "bytes",
-            "extra": "raw=292449; brotli=81092; initial_gzip=93107"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36378,
-            "unit": "bytes",
-            "extra": "raw=108438; brotli=32709; initial_gzip=36253"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41556,
-            "unit": "bytes",
-            "extra": "raw=124021; brotli=37386; initial_gzip=41426"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54271,
-            "unit": "bytes",
-            "extra": "raw=153537; brotli=48769; initial_gzip=54141"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60351,
-            "unit": "bytes",
-            "extra": "raw=172746; brotli=54031; initial_gzip=60218"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104433,
-            "unit": "bytes",
-            "extra": "raw=329860; brotli=90343; initial_gzip=104292"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105187,
-            "unit": "bytes",
-            "extra": "raw=331268; brotli=91009; initial_gzip=104315"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107892,
-            "unit": "bytes",
-            "extra": "raw=340028; brotli=93311; initial_gzip=107751"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102087,
-            "unit": "bytes",
-            "extra": "raw=324176; brotli=87840; initial_gzip=101912"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102497,
-            "unit": "bytes",
-            "extra": "raw=325135; brotli=88183; initial_gzip=102328"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105373,
-            "unit": "bytes",
-            "extra": "raw=334474; brotli=90696; initial_gzip=105198"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50799,
-            "unit": "bytes",
-            "extra": "raw=155721; brotli=44878; initial_gzip=50665"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54138,
-            "unit": "bytes",
-            "extra": "raw=163953; brotli=48016; initial_gzip=50722"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56751,
-            "unit": "bytes",
-            "extra": "raw=173177; brotli=50072; initial_gzip=56619"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72734,
-            "unit": "bytes",
-            "extra": "raw=212163; brotli=64396; initial_gzip=72601"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76833,
-            "unit": "bytes",
-            "extra": "raw=225102; brotli=67965; initial_gzip=76702"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -26047,6 +25921,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02"
         },
         "date": 1793820832659,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86048,
+            "unit": "bytes",
+            "extra": "raw=267729; brotli=75041; initial_gzip=85907"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89678,
+            "unit": "bytes",
+            "extra": "raw=279899; brotli=78231; initial_gzip=89538"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34131,
+            "unit": "bytes",
+            "extra": "raw=97503; brotli=30895; initial_gzip=34004"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39172,
+            "unit": "bytes",
+            "extra": "raw=112668; brotli=35317; initial_gzip=39044"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50603,
+            "unit": "bytes",
+            "extra": "raw=139733; brotli=45875; initial_gzip=50476"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56325,
+            "unit": "bytes",
+            "extra": "raw=158343; brotli=50891; initial_gzip=56198"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99109,
+            "unit": "bytes",
+            "extra": "raw=309641; brotli=86129; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106710,
+            "unit": "bytes",
+            "extra": "raw=336860; brotli=92658; initial_gzip=106568"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99831,
+            "unit": "bytes",
+            "extra": "raw=311028; brotli=86742; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102249,
+            "unit": "bytes",
+            "extra": "raw=319111; brotli=88633; initial_gzip=102108"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102763,
+            "unit": "bytes",
+            "extra": "raw=320769; brotli=88727; initial_gzip=102589"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103184,
+            "unit": "bytes",
+            "extra": "raw=321745; brotli=89063; initial_gzip=103016"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106020,
+            "unit": "bytes",
+            "extra": "raw=330671; brotli=91408; initial_gzip=105846"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47268,
+            "unit": "bytes",
+            "extra": "raw=138294; brotli=42120; initial_gzip=47141"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50387,
+            "unit": "bytes",
+            "extra": "raw=145802; brotli=44953; initial_gzip=47202"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52405,
+            "unit": "bytes",
+            "extra": "raw=153612; brotli=46552; initial_gzip=52278"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 66954,
+            "unit": "bytes",
+            "extra": "raw=190147; brotli=59850; initial_gzip=66825"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70768,
+            "unit": "bytes",
+            "extra": "raw=202293; brotli=63102; initial_gzip=70643"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6340397+schiller-manuel@users.noreply.github.com",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbf9b75808d8eee497a6dd1663f0cf08426512e0",
+          "message": "fix(router-devtools-core): restore embedded panel styling (#8888)\n\n* fix(router-devtools-core): restore embedded panel styling\n\nAll devtools size tokens are `calc(var(--tsrd-font-size) * n)`, but only the\nfloating devtools set `--tsrd-font-size` (via JS). The embedded\nTanStackRouterDevtoolsPanel never had it defined, so every size declaration\nwas dropped: inherited font sizes, zero padding/gap/indentation and invisible\nroute status dots. Regressed in #1222 (v1.17.0).\n\nFall back to `1rem` when the variable is unset. Floating behavior is unchanged.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(react-router): read devtools mode from a validated search param\n\nUse root route validateSearch + useSearch instead of raw URLSearchParams,\nand render the shadow DOM panel through a portal instead of mounting the\nwhole app in a shadow root.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(react-router): validate devtools search param with zod\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(react-router): add links to switch devtools variants\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-08T01:55:41+01:00",
+          "tree_id": "baca60bf71343ae03e35d7f02376fb32147e8671",
+          "url": "https://github.com/TanStack/router/commit/bbf9b75808d8eee497a6dd1663f0cf08426512e0"
+        },
+        "date": 1794099500759,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
