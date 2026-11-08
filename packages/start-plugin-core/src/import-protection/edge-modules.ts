@@ -270,9 +270,10 @@ export function allowedModuleCode(
  * The mock runtime of an environment. `__mk` creates the recursive mock
  * (reads, calls, `new`, conversions never throw; `mockAccess` reports the
  * first call, construction, conversion or write of each mocked import: a
- * renderer probing a mock, as React does a component, makes many). The
- * report's text is built only outside production (`process.env.NODE_ENV`,
- * which the bundlers replace in every environment's modules).
+ * renderer probing a mock, as React does a component, makes many). In
+ * production (`production`: the session's `process.env.NODE_ENV`) the report
+ * is one line and the runtime holds none of the longer text; the runtime
+ * reads no `process` of its own.
  * `mock.foo().then(…)` runs its callback, with a mock that is not itself
  * thenable: a thenable resolving to itself makes `await` loop in microtasks,
  * freezing the tab or the whole server;
@@ -282,6 +283,7 @@ export function allowedModuleCode(
 export function mockRuntimeCode(
   mockAccess: MockAccess,
   framework: CompileStartFrameworkOptions = 'react',
+  production = false,
 ): string {
   const suggestions = {
     client: CLIENT_ENV_SUGGESTIONS.map((s) => `- ${s}`).join('\n'),
@@ -302,7 +304,10 @@ function report(meta, action, path) {
   // a module that is its own violation: no importer, the denied file (an unknown edge module has neither)
   const pattern = !info.i && info.f;
   let message = "[import-protection] Mocked import used in the " + env + " environment: " + (info.f || info.s);
-  if (process.env.NODE_ENV !== "production") {
+  ${
+    production
+      ? ''
+      : `{
     const SUGGESTIONS = ${JSON.stringify(suggestions)};
     message =
       "[import-protection] Mocked import used in the " + env + " environment" + (info.e !== env ? " (" + info.e + ")" : "") + "\\n\\n" +
@@ -312,6 +317,7 @@ function report(meta, action, path) {
       "Access: " + path + " (" + action + ")\\n\\n" +
       "Suggestions:\\n" + SUGGESTIONS[pattern ? "pattern" : env].split(${JSON.stringify(SPECIFIER_SLOT)}).join(info.s.replace(/[\\\\']/g, "\\\\$&")) + "\\n\\n" +
       "Further uses of this mock are not reported. To disable these runtime diagnostics, set importProtection.mockAccess: \\"off\\".";
+  }`
   }
   const error = new Error(message);
   if (MODE === "warn") console.warn(error);

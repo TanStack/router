@@ -57,12 +57,19 @@ async function importMock(
 async function importMocks(
   cs: Array<EdgeModuleContent>,
   mockAccess: MockAccess,
-  options: { keepEnv?: boolean; framework?: 'react' | 'solid' | 'vue' } = {},
+  options: {
+    keepEnv?: boolean
+    framework?: 'react' | 'solid' | 'vue'
+    production?: boolean
+  } = {},
 ): Promise<Array<Record<string, unknown>>> {
   const dirEnv = `e${counter++}`
   const runtime = ids.specifier({ env: dirEnv, kind: 'runtime' })
   fs.mkdirSync(path.dirname(runtime), { recursive: true })
-  fs.writeFileSync(runtime, mockRuntimeCode(mockAccess, options.framework))
+  fs.writeFileSync(
+    runtime,
+    mockRuntimeCode(mockAccess, options.framework, options.production),
+  )
   const mocks: Array<Record<string, unknown>> = []
   for (const [i, c] of cs.entries()) {
     const ec = options.keepEnv ? c : { ...c, env: dirEnv }
@@ -174,25 +181,24 @@ describe('mock', () => {
     ])
   })
 
-  test('in production the report is one line naming the denied file (or import)', async () => {
-    vi.stubEnv('NODE_ENV', 'production')
-    try {
-      const messages = await reported(async () => {
-        const [file, specifier] = await importMocks(
-          [content({ names: ['x'] }), content({ file: null, names: ['x'] })],
-          'error',
-        )
-        ;(file!.x as () => unknown)()
-        ;(specifier!.x as () => unknown)()
-      })
-      expect(messages.map((m) => m.split(': ').slice(1).join(': '))).toEqual([
-        'src/secret.server.ts',
-        './secret.server',
-      ])
-      expect(messages.every((m) => !m.includes('\n'))).toBe(true)
-    } finally {
-      vi.unstubAllEnvs()
-    }
+  test('in production the report is one line naming the denied file (or import), and the runtime holds no longer text', async () => {
+    const messages = await reported(async () => {
+      const [file, specifier] = await importMocks(
+        [content({ names: ['x'] }), content({ file: null, names: ['x'] })],
+        'error',
+        { production: true },
+      )
+      ;(file!.x as () => unknown)()
+      ;(specifier!.x as () => unknown)()
+    })
+    expect(messages.map((m) => m.split(': ').slice(1).join(': '))).toEqual([
+      'src/secret.server.ts',
+      './secret.server',
+    ])
+    expect(messages.every((m) => !m.includes('\n'))).toBe(true)
+    const runtime = mockRuntimeCode('error', 'react', true)
+    expect(runtime).not.toContain('Suggestions')
+    expect(runtime).not.toMatch(/\bprocess\b/)
   })
 
   test('a module that is its own violation names no import; an unknown edge module names its import', async () => {

@@ -316,7 +316,12 @@ export class ImportProtection {
   /** @internal */
   runtimeLoad(): EdgeModuleLoad {
     return {
-      code: mockRuntimeCode(this.config.mockAccess, this.framework),
+      code: mockRuntimeCode(
+        this.config.mockAccess,
+        this.framework,
+        // (the session's own: what the bundler builds the app's modules with)
+        process.env.NODE_ENV === 'production',
+      ),
       moduleSideEffects: false,
     }
   }
