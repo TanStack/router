@@ -117,7 +117,7 @@ create that value in a `const` before `confetti`, or mark the call `/* @__PURE__
 effects, so `confetti` can load with the split `component`. (src/routes/account.tsx:12:7)
 ```
 
-Every host prints the file and one position (line and column, counted from 1): Vite at the end of the message, as above; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
+Every host prints the file and one position: a Vite build at the end of the message, as above (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
 
 Any of these lets the declaration load with the split chunk, from the least to the most effort:
 
