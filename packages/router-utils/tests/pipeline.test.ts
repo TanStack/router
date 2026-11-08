@@ -466,7 +466,7 @@ describe('slice gates: edges and policy', () => {
       tier: 0,
       gate: (t0) => t0.hasImportOrExport,
       plan() {},
-      async policy(_plan, _output, edges, ctx) {
+      policy(_plan, _output, edges, ctx) {
         for (const e of edges) {
           const imp = ctx.analysis.imports.find(
             (i) => i.specifierRange.start === e.locations[0]?.range.start,
@@ -480,6 +480,7 @@ describe('slice gates: edges and policy', () => {
             }
           }
         }
+        return Promise.resolve()
       },
     }
     await host.compile('/app/page.tsx', [planner])
