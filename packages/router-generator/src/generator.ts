@@ -825,7 +825,7 @@ export class Generator {
     }
 
     for (const diagnostic of analysis.diagnostics) {
-      console.warn(
+      this.logger.warn(
         `[tanstack-router] ${formatDiagnostic(displayFile(file, this.root), diagnostic)}`,
       )
     }
@@ -863,7 +863,7 @@ export class Generator {
       )
     }
     for (const message of messages) {
-      console.warn(
+      this.logger.warn(
         `[tanstack-router] ${message} The route tree keeps this file's last good route until it parses.`,
       )
     }
@@ -888,7 +888,7 @@ export class Generator {
     message += `\n\nCurrent configuration:`
     message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`
     message += `\n  routeFileIgnorePattern: ${ignorePattern ? `"${ignorePattern}"` : 'undefined'}`
-    console.warn(message)
+    this.logger.warn(message)
   }
 
   private computeRoutesByFile(): GetRoutesByFileMapResult {

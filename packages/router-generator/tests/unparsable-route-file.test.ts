@@ -99,7 +99,8 @@ export const Route = createRootRoute()
 export const Route = createFileRoute('/posts')({})
 `,
   })
-  const config = configOf(root)
+  // (the warning is a log: `disableLogging` silences it)
+  const config = configOf(root, { disableLogging: false })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config, root })
   await generator.run()
@@ -290,7 +291,8 @@ test('a root route file an edit breaks in a running generator keeps the tree and
     'src/routes/__root.tsx': rootRoute,
     'src/routes/posts.tsx': postsRoute,
   })
-  const config = configOf(root)
+  // (the warning is a log: `disableLogging` silences it)
+  const config = configOf(root, { disableLogging: false })
   const rootFile = path.join(root, 'src/routes/__root.tsx')
   const generator = new Generator({ config, root })
   await generator.run()
