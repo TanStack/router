@@ -304,4 +304,57 @@ describe('createBrowserHistory', () => {
     expect(event.returnValue).toBe('')
     history.destroy()
   })
+
+  test('does not allow a stale blocker resolution to corrupt subsequent back navigation after a push', async () => {
+    const { history, window } = createBrowserHistoryHarness()
+
+    let resolveBlocker!: (blocked: boolean) => void
+    history.block({
+      blockerFn: ({ action }) => {
+        if (action === 'BACK') {
+          return new Promise((resolve) => {
+            resolveBlocker = resolve
+          })
+        }
+        return false
+      },
+      enableBeforeUnload: false,
+    })
+
+    // Setup: navigate to /second (index 1)
+    history.push('/second')
+    await Promise.resolve()
+    history.flush()
+    window.location.pathname = '/second'
+    window.history.state = { __TSR_index: 1, __TSR_key: 'second' }
+
+    // User navigates back to / (index 0), triggering async blocker
+    window.location.pathname = '/'
+    window.history.state = { __TSR_index: 0, __TSR_key: 'initial' }
+    const popPromise = window.dispatchEvent({ type: 'popstate' })
+
+    // While blocker is waiting, a new push to /new occurs
+    history.push('/new')
+    await Promise.resolve()
+    history.flush()
+    window.location.pathname = '/new'
+    window.history.state = { __TSR_index: 1, __TSR_key: 'new' }
+
+    // Stale blocker answers "stay" (blocked = true)
+    resolveBlocker(true)
+    await popPromise
+
+    // The stale blocker should not call win.history.go(+1)
+    expect(window.history.go).not.toHaveBeenCalled()
+
+    // Subsequent user back navigation to / (index 0)
+    window.location.pathname = '/'
+    window.history.state = { __TSR_index: 0, __TSR_key: 'initial' }
+    await window.dispatchEvent({ type: 'popstate' })
+
+    // History location must update and not be ignored
+    expect(history.location.pathname).toBe('/')
+
+    history.destroy()
+  })
 })

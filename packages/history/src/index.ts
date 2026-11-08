@@ -345,6 +345,7 @@ export function createBrowserHistory(opts?: {
 
   let nextPopIsGo = false
   let ignoreNextPop = false
+  let currentNavigationId = 0
   // TODO: An ignored traversal past a history boundary emits neither popstate
   // nor beforeunload, leaving these bypasses active for a later navigation.
   // The History API provides no completion signal for such no-op traversals.
@@ -394,6 +395,9 @@ export function createBrowserHistory(opts?: {
     destHref: string,
     state: any,
   ) => {
+    currentNavigationId++
+    ignoreNextPop = false
+
     // A formatter changes the URL space and must receive the original input.
     // Otherwise parseHref below already produces the browser destination.
     const href = opts?.createHref ? createHref(destHref) : undefined
@@ -435,6 +439,8 @@ export function createBrowserHistory(opts?: {
       return
     }
 
+    const navigationId = ++currentNavigationId
+
     const nextLocation = parseLocation()
     const delta =
       nextLocation.state[stateIndexKey] - currentLocation.state[stateIndexKey]
@@ -464,6 +470,9 @@ export function createBrowserHistory(opts?: {
             nextLocation,
             action,
           })
+          if (navigationId !== currentNavigationId) {
+            return
+          }
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(-delta)
@@ -472,6 +481,10 @@ export function createBrowserHistory(opts?: {
           }
         }
       }
+    }
+
+    if (navigationId !== currentNavigationId) {
+      return
     }
 
     currentLocation = parseLocation()
