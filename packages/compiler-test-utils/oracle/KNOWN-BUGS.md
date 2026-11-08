@@ -68,7 +68,7 @@ code.test.ts`: "a root route's %s loads lazily".
   refusal is right and no server code ships. Hit by a JavaScript block importing a builder or factory, and by any block
   whose local holds an open builder. The refusal names the binding at its declaration in the SFC when the input map
   maps it (dev; a build with `build.sourcemap`), with the recipe: `lang="ts"`, builders and middleware in a `.ts` module
-  or a module-scope `<script lang="ts">`, finished server fns imported. Accepted, R92 amendment 3: a fix must not need a
+  (a module-scope `<script lang="ts">` fails the same way in dev), one chain, or the value passed as input. Accepted, R92 amendment 3: a fix must not need a
   special case for the plugin's output (skipping `__returned__` ships a template-attached handler). Upstream option:
   compiler-sfc exposing only the template's imports for JavaScript as for TypeScript. SPEC J4.5.
   `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles"; must stay
