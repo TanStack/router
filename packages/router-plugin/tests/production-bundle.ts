@@ -74,9 +74,10 @@ function appOf(routeFile: string, framework: Framework) {
 
 /**
  * Builds the route for production: as an app builds it (`NODE_ENV` unset,
- * the plugin's default `addHmr`; webpack and Rspack: with `mode` left out
- * when `modeLeftOut`, which builds for production), or as the control with
- * route HMR off.
+ * the plugin's default `addHmr`), or as the control with route HMR off.
+ * `modeLeftOut` (webpack and Rspack): the configuration has no `mode`,
+ * which builds for production (the control's neither: Rspack's own output
+ * differs without it).
  */
 async function productionBuild(
   bundler: Bundler | 'rsbuild',
@@ -101,12 +102,11 @@ async function productionBuild(
         nodeEnv,
         pluginOptions,
         files,
-        ...(modeLeftOut &&
-          !control && {
-            configure: (options: Record<string, unknown>) => {
-              delete options.mode
-            },
-          }),
+        ...(modeLeftOut && {
+          configure: (options: Record<string, unknown>) => {
+            delete options.mode
+          },
+        }),
       })
 }
 
@@ -144,6 +144,7 @@ export async function expectProductionClientBundle(
     autoCodeSplitting,
     true,
     routeFile,
+    modeLeftOut,
   )
   const run = await app.run(
     'const { component } = entry.Route.options\nif (component) await entry.mount(component)',

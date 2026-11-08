@@ -162,7 +162,14 @@ export const Route = createFileRoute('/')({
       },
     })
     const withHmr = await hmr.transform()
-    const tools = topLevelNames(await hmr.transform('/widgets.tsx'))
+    // (Vite numbers its CommonJS interop bindings by import position:
+    // `__vite__cjsImport2_react_jsxDevRuntime` is a tool's name whatever
+    // its number)
+    const tool = (name: string) =>
+      name.replace(/^__vite__cjsImport\d+_/, '__vite__cjsImport_')
+    const tools = new Set(
+      [...topLevelNames(await hmr.transform('/widgets.tsx'))].map(tool),
+    )
     const without = topLevelNames(
       await (await loadRoute(code, { hmr: false, pluginOptions })).transform(),
     )
@@ -170,7 +177,7 @@ export const Route = createFileRoute('/')({
       ...new Set([
         'hot',
         ...[...topLevelNames(withHmr)].filter(
-          (name) => !without.has(name) && !tools.has(name),
+          (name) => !without.has(name) && !tools.has(tool(name)),
         ),
       ]),
     ]
