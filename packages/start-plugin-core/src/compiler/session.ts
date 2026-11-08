@@ -10,6 +10,7 @@
  */
 import {
   RawFactsCache,
+  SourceText,
   WarningLedger,
   collectionSizes,
   compileModule,
@@ -21,7 +22,6 @@ import {
   parseModule,
   registerCompilerStats,
   releaseEnvironment,
-  SourceText,
   reportCompileDiagnostics,
 } from '@tanstack/router-utils/compiler'
 import {
@@ -38,9 +38,9 @@ import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
+import { Locator } from '../import-protection/locate'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
-import { Locator } from '../import-protection/locate'
 import { isVueSfc, vueLocator, vueReport } from './vue'
 import type {
   CompileOutcome,

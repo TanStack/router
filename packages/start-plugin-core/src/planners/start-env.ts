@@ -1250,26 +1250,24 @@ function assignedTo(
   node: Node,
 ): string | null {
   let child = node
-  for (let a = file.parentOf(node); a; a = file.parentOf(a)) {
-    if (
-      a.type === 'ParenthesizedExpression' ||
-      a.type === 'TSAsExpression' ||
-      a.type === 'TSSatisfiesExpression' ||
-      a.type === 'TSNonNullExpression' ||
-      a.type === 'TSTypeAssertion'
-    ) {
-      child = a
-      continue
-    }
-    return a.type === 'AssignmentExpression' &&
-      a.operator === '=' &&
-      a.right.start === child.start &&
-      a.right.end === child.end &&
-      a.left.type === 'Identifier'
-      ? a.left.name
-      : null
+  let a = file.parentOf(node)
+  while (
+    a?.type === 'ParenthesizedExpression' ||
+    a?.type === 'TSAsExpression' ||
+    a?.type === 'TSSatisfiesExpression' ||
+    a?.type === 'TSNonNullExpression' ||
+    a?.type === 'TSTypeAssertion'
+  ) {
+    child = a
+    a = file.parentOf(a)
   }
-  return null
+  return a?.type === 'AssignmentExpression' &&
+    a.operator === '=' &&
+    a.right.start === child.start &&
+    a.right.end === child.end &&
+    a.left.type === 'Identifier'
+    ? a.left.name
+    : null
 }
 
 /** A middleware builder without `.server()`: server code can still be attached to it. */

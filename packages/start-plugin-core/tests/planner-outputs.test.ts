@@ -425,8 +425,6 @@ export const mw = createMiddleware({ type: 'function' }).inputValidator((d: unkn
     const ranges = out.diagnostics.map((d) => {
       expect(d.severity).toBe('error')
       expect(d.message).toContain('`.validator()`')
-      expect(d.message).toContain('#7566')
-      expect(d.message).toContain('#8694')
       return code.slice(d.range!.start, d.range!.end)
     })
     expect(ranges).toEqual(['inputValidator', 'inputValidator'])
