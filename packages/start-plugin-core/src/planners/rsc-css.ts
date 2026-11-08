@@ -83,7 +83,8 @@ function planRscCss(
       warned = true
       ctx.diagnostic({
         severity: 'warning',
-        message: `renderToReadableStream(...) in ${ctx.identity.path}: the CSS of the server components cannot be delivered when the argument is not JSX the compiler can see (a variable, a spread). Pass the JSX element directly.`,
+        message:
+          '`renderToReadableStream(…)`: the compiler cannot see the JSX of this argument (a variable or a spread), so the CSS its server components import is not delivered. Pass the JSX element directly: `renderToReadableStream(<Part />)`.',
         range: rangeOf(arg),
         by,
         code: 'rsc-css-opaque-argument',

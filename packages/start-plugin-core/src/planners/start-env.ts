@@ -1250,7 +1250,7 @@ function assignedTo(
   node: Node,
 ): string | null {
   let child = node
-  for (const a of file.ancestors(node)) {
+  for (let a = file.parentOf(node); a; a = file.parentOf(a)) {
     if (
       a.type === 'ParenthesizedExpression' ||
       a.type === 'TSAsExpression' ||
@@ -1263,7 +1263,8 @@ function assignedTo(
     }
     return a.type === 'AssignmentExpression' &&
       a.operator === '=' &&
-      a.right === child &&
+      a.right.start === child.start &&
+      a.right.end === child.end &&
       a.left.type === 'Identifier'
       ? a.left.name
       : null
