@@ -10,6 +10,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { ModuleAnalysis, runsAtLoad } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
+import { resolveSameFileSpecifier } from './identity'
 import { parseModule } from './source'
 import { hasRuntimeValue } from './symbols'
 import type { SourceIdentity } from './identity'
@@ -22,14 +23,6 @@ export const VERIFY_OUTPUTS = process.env.TSR_COMPILER_VERIFY === '1'
 
 /** An output that copies what it reaches (another layer's instance of the module), not one importing from the env module. */
 const copies = (kind: OutputKind) => kind === 'provider'
-
-const tailOf = (id: string) => id.slice(id.lastIndexOf('/') + 1)
-
-/** The tail of a specifier naming a module of this directory (`./name?query`: how glue imports name the module's outputs), else null. */
-const siblingTailOf = (specifier: string) =>
-  specifier.startsWith('./') && !specifier.slice(2).split('?')[0]!.includes('/')
-    ? specifier.slice(2)
-    : null
 
 export function verifyPlan(
   plan: AnalysisPlan,
@@ -45,10 +38,11 @@ export function verifyPlan(
     OutputId,
     { analysis: ModuleAnalysis; recipe: OutputRecipe }
   >()
-  const outputByTail = new Map<string, OutputId>()
+  /** Each output by the id its glue imports name it by (`sameFileSpecifier`). */
+  const outputById = new Map<string, OutputId>()
   for (const [key, recipe] of Object.entries(emitPlan.outputs)) {
     const id = key as OutputId
-    outputByTail.set(tailOf(recipe.derivedId ?? identity.canonicalId), id)
+    outputById.set(recipe.derivedId ?? identity.canonicalId, id)
     const emitted = emitRecipe(recipe, source, false).code
     const parsed = parseModule(emitted, {
       lang: identity.lang!,
@@ -96,11 +90,14 @@ export function verifyPlan(
       }
     }
     for (const imp of analysis.imports) {
-      const tail = siblingTailOf(imp.specifier)
-      if (tail === null) {
+      const named = resolveSameFileSpecifier(
+        imp.specifier,
+        identity.canonicalId,
+      )
+      if (named === null) {
         continue
       }
-      const target = outputByTail.get(tail)
+      const target = outputById.get(named)
       const home = target === undefined ? undefined : outputs.get(target)
       if (home === undefined) {
         continue
