@@ -1203,10 +1203,11 @@ export function startCompilerPlugin(
             this.resolve(source, imp, options),
           ),
         )
-        if (!out || out.diagnostics.some((d) => d.by === 'parse')) {
-          // not JavaScript after all: nothing to judge
+        if (!out) {
           return null
         }
+        // (output the compiler cannot parse fails the client build only
+        // when it names a Start package: `StartCompilerSession.report`)
         reportDiagnostics(
           s,
           this,
