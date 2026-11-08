@@ -27,7 +27,8 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
   dangling-name check (SPEC G8).
 - `./dev-server`, `./rsbuild-dev-server`: dev servers on a temp app with `edit`/`settle`; `closeViteServer`.
 - `./browser`: Chromium pages; `runInPage` (bounded run pages, a fresh document per run), `openPage`.
-- `./hmr-sync` (`settlePage`): whether a page reloaded or updated in place, told by the page.
+- `./hmr-sync` (`settlePage`): whether a page reloaded or updated in place, told by the page;
+  `errorsOutsideReloads`: a page's errors but for a document's after Vite announced its reload.
 - `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound.
 - `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoProblems`): every reporting channel merged;
   checks by severity, file and position.
