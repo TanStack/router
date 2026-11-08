@@ -150,16 +150,25 @@ export class DevReporter {
 export interface DevViolationError extends Error {
   id?: string
   at?: { line: number; column: number }
+  /** Each report and its position (a host recording one diagnostic per report). */
+  reports: Array<{ message: string; at?: { line: number; column: number } }>
 }
 
 export function devViolationError(
   reports: Array<DevReport>,
   ctx: ReportContext,
 ): DevViolationError {
-  const message = reports
-    .map((r) => formatViolation(r.violation, r.info, ctx))
-    .join('\n')
-  const error: DevViolationError = new Error(message)
+  const each = reports.map((r) => {
+    const loc = r.info.importerLoc
+    return {
+      message: formatViolation(r.violation, r.info, ctx),
+      ...(loc && { at: { line: loc.line, column: loc.column } }),
+    }
+  })
+  const message = each.map((r) => r.message).join('\n')
+  const error = Object.assign(new Error(message), {
+    reports: each,
+  }) as DevViolationError
   error.stack = message
   const [first] = reports
   if (first) {

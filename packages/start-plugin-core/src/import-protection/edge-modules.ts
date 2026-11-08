@@ -297,19 +297,20 @@ function report(meta, action, path) {
   if (MODE === "off") return;
   if (seen.has(meta)) return;
   seen.add(meta);
-  let info = {};
-  try { info = JSON.parse(meta); } catch {}
+  const info = JSON.parse(meta);
   const env = info.e === "client" ? "client" : "server";
+  // a module that is its own violation: no importer, the denied file (an unknown edge module has neither)
+  const pattern = !info.i && info.f;
   let message = "[import-protection] Mocked import used in the " + env + " environment: " + (info.f || info.s);
   if (process.env.NODE_ENV !== "production") {
     const SUGGESTIONS = ${JSON.stringify(suggestions)};
     message =
       "[import-protection] Mocked import used in the " + env + " environment" + (info.e !== env ? " (" + info.e + ")" : "") + "\\n\\n" +
-      (info.i ? "Denied import: \\"" + info.s + "\\"\\n" : "") +
+      (pattern ? "" : "Denied import: \\"" + info.s + "\\"\\n") +
       (info.f ? "Denied file: " + info.f + "\\n" : "") +
-      "Importer: " + (info.i || "a pattern import (import.meta.glob, a template literal import(), import.meta.webpackContext)") + "\\n" +
+      (pattern ? "Importer: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext)\\n" : info.i ? "Importer: " + info.i + "\\n" : "") +
       "Access: " + path + " (" + action + ")\\n\\n" +
-      "Suggestions:\\n" + SUGGESTIONS[info.i ? env : "pattern"].replace(${JSON.stringify(SPECIFIER_SLOT)}, info.s) + "\\n\\n" +
+      "Suggestions:\\n" + SUGGESTIONS[pattern ? "pattern" : env].split(${JSON.stringify(SPECIFIER_SLOT)}).join(info.s.replace(/[\\\\']/g, "\\\\$&")) + "\\n\\n" +
       "Further uses of this mock are not reported. To disable these runtime diagnostics, set importProtection.mockAccess: \\"off\\".";
   }
   const error = new Error(message);

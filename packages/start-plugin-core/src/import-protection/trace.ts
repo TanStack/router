@@ -120,20 +120,23 @@ export interface ReportContext {
   framework: CompileStartFrameworkOptions
 }
 
-/** The raw text of `file` located: the 1-based position of `offset` and its code frame. */
-function locateIn(
+/**
+ * What `find` finds in the raw text of `file` (an offset and a value),
+ * located: the 1-based position of the offset and its code frame.
+ */
+function locateIn<T>(
   readSource: SourceReader,
   file: string,
-  offset: (text: string) => number | null,
-): { loc: OriginalLocation; frame: CodeFrame | null } | null {
+  find: (text: string) => { offset: number; value: T } | null,
+): { loc: OriginalLocation | null; frame: CodeFrame | null; value: T } | null {
   const text = readSource(file)
-  const at = text === null ? null : offset(text)
-  if (text === null || at === null) {
+  const found = text === null ? null : find(text)
+  if (text === null || found === null) {
     return null
   }
   const locator = new Locator(text, file, () => null)
-  const loc = locator.at(at)
-  return loc && { loc, frame: locator.frame(loc) }
+  const loc = locator.at(found.offset)
+  return { loc, frame: loc && locator.frame(loc), value: found.value }
 }
 
 /** The marker import that restricts `file` (the kind a violation in `envType` is denied by), with its line. */
@@ -146,23 +149,19 @@ function markerOf(
   const specifiers = Object.entries(ctx.config.markerSpecifiers)
     .filter(([, k]) => k === kind)
     .map(([s]) => s)
-  let found: string | null = null
   const site = locateIn(ctx.readSource, file, (text) => {
-    let best: number | null = null
+    let best: { offset: number; value: string } | null = null
     for (const s of specifiers) {
       for (const quote of ["'", '"']) {
         const i = text.indexOf(`${quote}${s}${quote}`)
-        if (i >= 0 && (best === null || i < best)) {
-          best = i
-          found = s
+        if (i >= 0 && (best === null || i < best.offset)) {
+          best = { offset: i, value: s }
         }
       }
     }
     return best
   })
-  return found === null
-    ? null
-    : { specifier: found, line: site?.loc.line ?? null }
+  return site && { specifier: site.value, line: site.loc?.line ?? null }
 }
 
 function deniedBy(info: ViolationInfo, ctx: ReportContext): string {
@@ -233,16 +232,19 @@ function patternSiteOf(
   const denied = info.resolved ?? info.importer
   const before = [...trace.steps]
     .reverse()
-    .find((s) => identify(s.file).path !== denied)
+    .find(
+      (s) =>
+        identify(s.file).path !== denied && isAppFile(s.file, ctx.config.root),
+    )
   if (!v.self || !before) {
     return null
   }
   const importer = identify(before.file).path
-  let found: PatternImport | null = null
   const site = locateIn(ctx.readSource, importer, (text) => {
-    found = findPatternImport(text, importer, denied, ctx.config.root)
-    return (found as PatternImport | null)?.offset ?? null
+    const found = findPatternImport(text, importer, denied, ctx.config.root)
+    return found && { offset: found.offset, value: found }
   })
+  const found = site?.value ?? null
   return {
     importer,
     found,
@@ -283,7 +285,7 @@ function patternSuggestions(
       ]
     case 'import()':
       return [
-        'Move the file out of the directory the template literal reads, or import the modules it needs by name',
+        'Move the file out of the directory that import() reads, or import the modules it needs by name',
       ]
   }
 }
@@ -345,23 +347,30 @@ function suggestionsOf(
 }
 
 /** Whether a trace step's file is the app's own (not a package's, not virtual). */
-const isAppFile = (file: string, root: string) =>
-  file.startsWith(`${root}/`) && !file.includes('/node_modules/')
+function isAppFile(file: string, root: string): boolean {
+  const prefix = root.endsWith('/') ? root : `${root}/`
+  return (
+    file.startsWith(prefix) &&
+    !`/${file.slice(prefix.length)}`.includes('/node_modules/')
+  )
+}
 
 /**
  * The steps a report prints: from the first file of the app (the framework's
- * own entry modules left out), each file once in a row (a route module and
- * its split module), cut at `maxTraceDepth` on the entry side.
+ * own entry modules left out; every step when none is the app's), each file
+ * once in a row (a route module and its split module), cut at
+ * `maxTraceDepth` on the entry side. The first app module reached from an
+ * entry is where the app's code starts: its entry.
  */
 function printedSteps(
   trace: Trace,
   root: string,
   maxDepth: number,
 ): { steps: Array<TraceStep>; first: number; entry: boolean } {
-  let start = trace.steps.findIndex((s) => isAppFile(s.file, root))
-  if (start < 0) {
-    start = trace.steps.length - 1
-  }
+  const start = Math.max(
+    0,
+    trace.steps.findIndex((s) => isAppFile(s.file, root)),
+  )
   const steps = trace.steps
     .slice(start)
     .filter((s, i, all) => all[i + 1]?.file !== s.file)
@@ -398,10 +407,10 @@ export function formatViolation(
     lines.push(`  Denied file: ${rel(info.resolved ?? info.importer)}`)
     lines.push(
       site?.found
-        ? `  Matched by: ${site.found.kind === 'import()' ? 'a template literal import()' : site.found.kind} in ${at(site.importer, site.loc)}`
+        ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
         : site
-          ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, a template literal import(), import.meta.webpackContext)`
-          : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, a template literal import(), import.meta.webpackContext) or a request of the file itself (a server.warmup glob)`,
+          ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+          : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext) or a request of the file itself (a server.warmup glob)`,
     )
   } else {
     const loc = info.importerLoc
@@ -416,7 +425,7 @@ export function formatViolation(
 
   const printed = printedSteps(trace, root, ctx.config.maxTraceDepth)
   // a lone step is the importer the lines above name: the graph knew nothing more
-  if (printed.steps.length > 1 || printed.entry) {
+  if (printed.steps.length > 1) {
     lines.push(``)
     lines.push(`  Trace:`)
     if (printed.first > 1) {
@@ -438,7 +447,7 @@ export function formatViolation(
         // the step of the pattern import's importer: the call, not a specifier
         loc = site.loc
         spec = site.found
-          ? ` (${site.found.kind === 'import()' ? 'a template literal import()' : site.found.kind})`
+          ? ` (${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind})`
           : ''
       } else if (v.self && last) {
         spec = ''

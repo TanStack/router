@@ -195,8 +195,7 @@ export function violationInfo(
   let frozen: Trace | null = null
   const withImporterStep = (t: Trace): Trace => {
     const last = t.steps[t.steps.length - 1]
-    // (a module that is its own violation imports nothing of itself)
-    if (!v.self && last && identify(last.file).path === v.importer) {
+    if (last && identify(last.file).path === v.importer) {
       last.specifier = v.specifier
       if (v.loc && v.loc.file === v.importer) {
         last.line = v.loc.line

@@ -129,66 +129,107 @@ const COMPONENT_OPTIONS = new Set([
   'shellComponent',
 ])
 
-/**
- * How the module renders a binding of the import whose specifier starts at
- * `offset`: its first use as a JSX element (`<Widget />`, `<ns.Widget />`),
- * else as a route's component option (`component: Widget`). A query of the
- * bindings' references, read only for a violation (a reference's node is
- * built when read).
- */
-function renderedUse(
-  analysis: ModuleAnalysis,
-  offset: number,
-): {
+/** Expression wrappers a value passes through unchanged (`Chart as any`, `(Chart)`). */
+const TRANSPARENT = new Set([
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'ParenthesizedExpression',
+])
+
+interface RenderedAt {
   name: string
   via: RenderedUse['via']
   key?: string
   start: number
-} | null {
-  const imp = analysis.imports.find((i) => i.specifierRange.start === offset)
-  if (!imp || imp.typeOnly) {
-    return null
-  }
-  let option: {
-    name: string
-    via: 'option'
-    key: string
-    start: number
-  } | null = null
-  for (const spec of imp.specifiers) {
-    const binding =
-      spec.typeOnly || (spec.local as number) < 0
-        ? undefined
-        : analysis.file.bindings[spec.local]
-    for (const ref of binding?.references ?? []) {
-      if (ref.inTypePosition || ref.isWrite) {
-        continue
-      }
-      const node = ref.node
-      if (node.type === 'JSXIdentifier') {
-        return { name: spec.localName, via: 'jsx', start: node.start }
-      }
-      if (option !== null) {
-        continue
-      }
-      const parent = analysis.file.parentOf(node)
-      if (
-        parent?.type === 'Property' &&
-        parent.value === node &&
-        !parent.computed &&
-        parent.key.type === 'Identifier' &&
-        COMPONENT_OPTIONS.has(parent.key.name)
-      ) {
-        option = {
-          name: spec.localName,
-          via: 'option',
-          key: parent.key.name,
-          start: node.start,
+}
+
+type NodeLike = { type: string; start: number; end: number } & Record<
+  string,
+  unknown
+>
+
+/**
+ * How the module renders a binding of the imports whose specifiers start at
+ * `offsets` (one logical edge, possibly several statements), in the code
+ * `kept` keeps (an output erases `<ClientOnly>` children on the server): its
+ * first use as a JSX element (`<Widget />`, `<UI.Chart />`), else as a
+ * route's component option (`component: Widget`, `component: UI.Chart`). A
+ * query of the bindings' references, read only for a violation (a
+ * reference's node is built when read).
+ */
+function renderedUse(
+  analysis: ModuleAnalysis,
+  code: string,
+  offsets: ReadonlyArray<number>,
+  kept: (start: number) => boolean,
+): RenderedAt | null {
+  const { file } = analysis
+  const parentOf = (n: NodeLike) =>
+    file.parentOf(n as never) as unknown as NodeLike | null
+  let jsx: RenderedAt | null = null
+  let option: RenderedAt | null = null
+  for (const imp of analysis.imports) {
+    if (imp.typeOnly || !offsets.includes(imp.specifierRange.start)) {
+      continue
+    }
+    for (const spec of imp.specifiers) {
+      const binding =
+        spec.typeOnly || (spec.local as number) < 0
+          ? undefined
+          : file.bindings[spec.local]
+      for (const ref of binding?.references ?? []) {
+        if (ref.inTypePosition || ref.isWrite) {
+          continue
+        }
+        const node = ref.node as unknown as NodeLike
+        if (!kept(node.start) || (jsx && jsx.start < node.start)) {
+          continue
+        }
+        // the whole tag or value: `UI.Chart` of `<UI.Chart />`
+        let outer = node
+        let parent = parentOf(node)
+        while (
+          parent &&
+          (parent.type === 'JSXMemberExpression' ||
+            parent.type === 'MemberExpression') &&
+          parent.object === outer
+        ) {
+          outer = parent
+          parent = parentOf(parent)
+        }
+        const name = code.slice(outer.start, outer.end)
+        if (node.type === 'JSXIdentifier') {
+          jsx = { name, via: 'jsx', start: node.start }
+          continue
+        }
+        if (jsx || (option && option.start < node.start)) {
+          continue
+        }
+        while (parent && TRANSPARENT.has(parent.type)) {
+          outer = parent
+          parent = parentOf(parent)
+        }
+        const key = parent?.key as NodeLike | undefined
+        if (
+          parent?.type === 'Property' &&
+          parent.value === outer &&
+          !parent.computed &&
+          key?.type === 'Identifier' &&
+          COMPONENT_OPTIONS.has(key.name as string)
+        ) {
+          option = {
+            name,
+            via: 'option',
+            key: key.name as string,
+            start: node.start,
+          }
         }
       }
     }
   }
-  return option
+  return jsx ?? option
 }
 
 /** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
@@ -382,14 +423,26 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           envType === 'server' &&
           j.offset !== undefined &&
           j.edge.provenance.origin !== 'forwarded'
-        const rendered = ownStatic ? renderedUse(ctx.analysis, j.offset!) : null
-        // a Vue template renders a component through no JSX: its binding names the fix
-        const binding =
+        const offsets = j.edge.locations.map((l) => l.range.start)
+        const rendered = ownStatic
+          ? renderedUse(ctx.analysis, ctx.code, offsets, (start) =>
+              (recipe?.segments ?? []).some(
+                (seg) =>
+                  seg.k === 'slice' && seg.start <= start && start < seg.end,
+              ),
+            )
+          : null
+        // a Vue template renders a component through no JSX: its binding names
+        // the fix (a capitalised one: a component's)
+        const specs =
           ownStatic && !rendered && ctx.identity.path.endsWith('.vue')
             ? ctx.analysis.imports
-                .find((i) => i.specifierRange.start === j.offset)
-                ?.specifiers.find((spec) => !spec.typeOnly)?.localName
-            : undefined
+                .filter((i) => offsets.includes(i.specifierRange.start))
+                .flatMap((i) => i.specifiers.filter((spec) => !spec.typeOnly))
+            : []
+        const binding = (
+          specs.find((spec) => /^[A-Z]/.test(spec.localName)) ?? specs[0]
+        )?.localName
         const base: EdgeViolation = {
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
@@ -444,15 +497,19 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
    * marker, naming both.
    */
   function markerConflict(ctx: PolicyContext) {
-    const markers = ctx.analysis.imports.filter(
-      (i) => ip.markerSpecifiers[i.specifier] !== undefined,
-    )
+    const { analysis } = ctx
+    const kind = (specifier: string) => ownEntry(ip.markerSpecifiers, specifier)
+    // (an import, a re-export, a top-level import() or require(): what marks a module)
+    const markers = [
+      ...analysis.imports,
+      ...analysis.reexports,
+      ...analysis.dynamicEdges,
+    ]
+      .filter((i) => kind(i.specifier) !== undefined)
+      .sort((a, b) => a.specifierRange.start - b.specifierRange.start)
     const first = markers[0]
     const second = markers.find(
-      (i) =>
-        first !== undefined &&
-        ip.markerSpecifiers[i.specifier] !==
-          ip.markerSpecifiers[first.specifier],
+      (i) => first !== undefined && kind(i.specifier) !== kind(first.specifier),
     )
     const file = relativizePath(ctx.identity.path, config.root)
     const line =
