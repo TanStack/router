@@ -182,7 +182,7 @@ const brokenTrees: Array<[string, Record<string, string>, string]> = [
       'src/routes/posts/index.tsx': fileRoute('/posts/'),
       'src/routes/posts/route.tsx': fileRoute('/posts'),
     },
-    path.join('posts', 'route.tsx'),
+    'src/routes/posts/route.tsx',
   ],
   [
     'two routes with one URL',
@@ -190,7 +190,7 @@ const brokenTrees: Array<[string, Record<string, string>, string]> = [
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/_auth/index.tsx': fileRoute('/_auth/'),
     },
-    path.join('_auth', 'index.tsx'),
+    'src/routes/_auth/index.tsx',
   ],
 ]
 
@@ -206,7 +206,7 @@ export const Route = createRootRoute()
     })
     const reports: Array<unknown> = []
     const generator = new Generator({ config: configOf(root), root })
-    // (the error names files in the platform's own spelling)
+    // (the error names files relative to the root, `/`-separated)
     await expect(
       createGeneratorSession({
         generator: () => generator,

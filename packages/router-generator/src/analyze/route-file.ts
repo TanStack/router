@@ -403,7 +403,7 @@ export function analyzeRouteFile(
         diagnosticAt(
           file,
           idArg.start,
-          `The Route of ${filePath} ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
+          `The \`Route\` export ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
         ),
       ])
     }
@@ -466,7 +466,7 @@ export function analyzeRouteFile(
           diagnosticAt(
             file,
             idArg.start,
-            `The route id of ${filePath} is not a string literal, so it cannot be kept up: use ${lit(expected.routeId)}.`,
+            `The route id is not a string literal, so the generator cannot keep it in sync with the file's path: write ${lit(expected.routeId)}.`,
           ),
         ],
       }
