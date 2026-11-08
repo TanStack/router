@@ -41,6 +41,7 @@ export interface LocatedDiagnosticsOptions {
 export interface LocatedModuleLike {
   buildInfo?: Record<string, unknown>
   identifier: () => string
+  resource?: string
 }
 
 /** What the helpers use of a compilation's error or warning. */
@@ -130,10 +131,17 @@ export function locatedError(
 ): Error {
   const error = new WebpackError(d.message) as Error & {
     module?: unknown
+    file?: string
     loc?: { start: { line: number; column?: number } }
   }
   error.name = d.severity === 'error' ? options.errorName : options.warningName
   error.module = module
+  // a derived module (a split chunk) is the user's file: Rsbuild prints the
+  // error's `file` instead of the module's id with its query
+  const query = module.resource?.indexOf('?') ?? -1
+  if (query > 0) {
+    error.file = module.resource!.slice(0, query)
+  }
   if (d.line !== undefined) {
     error.loc = { start: { line: d.line, column: d.column } }
   }
