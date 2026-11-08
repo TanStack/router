@@ -1,7 +1,11 @@
 import path from 'node:path'
 import { identify } from '@tanstack/router-utils/compiler'
 import { Locator } from './locate'
-import { findPatternImport, relativeSpecifier } from './pattern-imports'
+import {
+  findPatternImport,
+  hasPatternImport,
+  relativeSpecifier,
+} from './pattern-imports'
 import { relativizePath } from './utils'
 import type { ImportProtectionConfig } from './config'
 import type { CodeFrame, OriginalLocation } from './locate'
@@ -70,7 +74,7 @@ const SERVER_FN_SUGGESTIONS = [
 
 /** A mocked module that is its own violation (the mock runtime: its importer is not known there). */
 export const PATTERN_IMPORT_SUGGESTION =
-  "Exclude it from the pattern import that matches it (for import.meta.glob, a negative pattern: '!' and the file's path relative to the importer), or move the file out of the directory the pattern reads"
+  "Exclude it from the pattern import that matches it (for import.meta.glob, a negative pattern: '!' and the file's path relative to the importer), or move the file out of the directory the pattern reads. If another plugin added the import (an auto-import), configure it so it does not add it here"
 
 const quoted = (s: string) =>
   `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
@@ -206,8 +210,23 @@ export function formatUncheckedImporters(
 interface PatternSite {
   importer: string
   found: PatternImport | null
+  /** The importer's source holds no pattern import: another plugin's transform added the import. */
+  added: boolean
   loc: OriginalLocation | null
   frame: CodeFrame | null
+}
+
+/** Whether the importer's source holds no pattern import (`PatternSite.added`); false when it cannot be read. */
+function addedByPlugin(
+  readSource: SourceReader,
+  importer: string,
+  found: PatternImport | null,
+): boolean {
+  if (found !== null) {
+    return false
+  }
+  const text = readSource(importer)
+  return text !== null && !hasPatternImport(text)
 }
 
 /**
@@ -225,6 +244,7 @@ function patternSiteOf(
     return {
       importer: info.importer,
       found: v.pattern,
+      added: addedByPlugin(ctx.readSource, info.importer, v.pattern),
       loc: v.loc,
       frame: v.snippet,
     }
@@ -248,6 +268,7 @@ function patternSiteOf(
   return {
     importer,
     found,
+    added: addedByPlugin(ctx.readSource, importer, found),
     loc: site?.loc ?? null,
     frame: site?.frame ?? null,
   }
@@ -258,7 +279,14 @@ function patternSuggestions(
   denied: string,
   site: PatternSite | null,
   mode: 'dev' | 'build',
+  envType: 'client' | 'server',
+  root: string,
 ): Array<string> {
+  if (site?.added) {
+    return [
+      `Configure the plugin that adds this import to ${relativizePath(site.importer, root)} (an auto-import, for example) so it does not add it to ${envType} code`,
+    ]
+  }
   if (!site?.found) {
     return [
       `Exclude it from the pattern import that matches it (for import.meta.glob, add a negative pattern such as '!./${path.posix.basename(denied)}', relative to the importer), or move the file out of the directory the pattern reads`,
@@ -320,6 +348,8 @@ function suggestionsOf(
       identify(info.resolved ?? info.importer).path,
       site,
       ctx.config.mode,
+      info.envType,
+      ctx.config.root,
     )
   }
   const barrel = v.reexport
@@ -408,9 +438,11 @@ export function formatViolation(
     lines.push(
       site?.found
         ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
-        : site
-          ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
-          : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext) or a request of the file itself (a server.warmup glob)`,
+        : site?.added
+          ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
+          : site
+            ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+            : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
     )
   } else {
     const loc = info.importerLoc

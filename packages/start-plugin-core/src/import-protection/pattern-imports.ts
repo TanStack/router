@@ -257,6 +257,22 @@ export function findPatternImport(
   return candidate
 }
 
+/**
+ * Whether `text` holds any pattern import (outside comments and strings).
+ * An importer without one reached a file through an import another
+ * plugin's transform added to it (an auto-import).
+ */
+export function hasPatternImport(text: string): boolean {
+  const inert = inertRanges(text)
+  const re = new RegExp(CALL_RE.source, 'g')
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    if (!inside(inert, m.index)) {
+      return true
+    }
+  }
+  return false
+}
+
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */
 export function relativeSpecifier(importer: string, file: string): string {
   const rel = path.posix.relative(path.posix.dirname(importer), file)
