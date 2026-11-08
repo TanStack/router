@@ -105,7 +105,7 @@ describe('locateDiagnostics', () => {
 
   // Rsbuild prints a located error's `file` when it has one, else the
   // module's identifier: a split chunk's diagnostic names the user's file
-  it("names the file of a derived module without its query, and leaves a plain module's to the bundler", () => {
+  it("names the file of a derived module without its query where the host asks (Rsbuild), and leaves a plain module's to the bundler", () => {
     const d = locatedDiagnostic('error', 'denied', { line: 3, column: 19 })
     const split = locatedError(
       WebpackError,
@@ -114,14 +114,25 @@ describe('locateDiagnostics', () => {
         resource: '/app/src/routes/index.tsx?tsr-split=component',
       },
       d,
-      options,
+      { ...options, fileOfDerived: true },
     ) as Error & { file?: string }
     expect(split.file).toBe('/app/src/routes/index.tsx')
+    // webpack and Rspack print `file` next to the module: not set there
+    const webpackSplit = locatedError(
+      WebpackError,
+      {
+        identifier: () => 'x',
+        resource: '/app/src/routes/index.tsx?tsr-split=component',
+      },
+      d,
+      options,
+    ) as Error & { file?: string }
+    expect(webpackSplit.file).toBeUndefined()
     const plain = locatedError(
       WebpackError,
       { identifier: () => 'y', resource: '/app/src/a.ts' },
       d,
-      options,
+      { ...options, fileOfDerived: true },
     ) as Error & { file?: string }
     expect(plain.file).toBeUndefined()
   })

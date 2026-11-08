@@ -35,6 +35,13 @@ export interface LocatedDiagnosticsOptions {
    * matched to its record as a warning is.
    */
   failureName?: string
+  /**
+   * A derived module's (a split chunk's) located diagnostics name the file
+   * without its query (`file`): Rsbuild then prints `File:` with it instead
+   * of the module id. webpack and Rspack print `file` next to the module, so
+   * their own hosts leave it out.
+   */
+  fileOfDerived?: boolean
 }
 
 /** What the helpers use of a webpack / Rspack module. */
@@ -127,7 +134,10 @@ export function locatedError(
   WebpackError: ErrorClass,
   module: LocatedModuleLike,
   d: LocatedDiagnostic,
-  options: Pick<LocatedDiagnosticsOptions, 'errorName' | 'warningName'>,
+  options: Pick<
+    LocatedDiagnosticsOptions,
+    'errorName' | 'warningName' | 'fileOfDerived'
+  >,
 ): Error {
   const error = new WebpackError(d.message) as Error & {
     module?: unknown
@@ -138,7 +148,9 @@ export function locatedError(
   error.module = module
   // a derived module (a split chunk) is the user's file: Rsbuild prints the
   // error's `file` instead of the module's id with its query
-  const query = module.resource?.indexOf('?') ?? -1
+  const query = options.fileOfDerived
+    ? (module.resource?.indexOf('?') ?? -1)
+    : -1
   if (query > 0) {
     error.file = module.resource!.slice(0, query)
   }
