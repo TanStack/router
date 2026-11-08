@@ -4723,6 +4723,110 @@ describe('declarations only split code needs that stay in the route module', () 
     )
   })
 
+  // R101: every suggested fix works. `/* @__PURE__ */` frees a call or
+  // `new` with pure arguments only: on any other initialiser (openstory's
+  // `const MCP_URL = \`${SITE_CONFIG.url}/mcp\``) it does nothing, so only
+  // the move is offered
+  describe('offers the annotation only for an initialiser that is a call or `new`', () => {
+    async function report(code: string) {
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const planners = [
+        toySplitPlanner({
+          keys: ['component', 'errorComponent'],
+          extractExports: true,
+        }),
+      ]
+      const out = await host.compile('/app/route.tsx', planners, {
+        env: envInfo({ mode: 'build' }),
+      })
+      return (out?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      )
+    }
+    const route = (body: Array<string>, options: Array<string>) =>
+      [
+        "import { createFileRoute } from 'toy-router'",
+        "import { CONFIG, make } from './lib'",
+        ...body,
+        "export const Route = createFileRoute('/')({",
+        ...options,
+        '})',
+        '',
+      ].join('\n')
+    it.each([
+      {
+        code: 'eager-split:needers',
+        name: 'BASE',
+        body: (init: string) => [`const BASE = ${init}`],
+        options: ['component: () => BASE,', 'errorComponent: () => BASE,'],
+      },
+      {
+        code: 'eager-split:written',
+        name: 'links',
+        body: (init: string) => [`const links = ${init}`, "links.extra = 'x'"],
+        options: ['component: () => links,'],
+      },
+      {
+        // `BASE` is a `let` the route module keeps (the loader reads it)
+        code: 'eager-split:reads',
+        name: 'LINK',
+        body: (init: string) => [
+          `let BASE = ${init}`,
+          'const LINK = make(BASE)',
+        ],
+        options: ['loader: () => BASE,', 'component: () => LINK,'],
+      },
+      {
+        code: 'eager-export:effects',
+        name: 'BASE',
+        body: (init: string) => [`export const BASE = ${init}`],
+        options: ['component: () => BASE,'],
+      },
+    ])('$code', async ({ code, name, body, options }) => {
+      const at = (source: string) => (d: { range?: { start: number } }) =>
+        d.range?.start === source.indexOf(`${name} = `)
+      // a template literal (openstory), or a call the annotation cannot
+      // free (an argument has effects): only the move
+      for (const init of ['`${CONFIG.url}/mcp`', 'make(CONFIG.url)']) {
+        const source = route(body(init), options)
+        const d = (await report(source)).find(at(source))
+        expect(d, source).toMatchObject({ code })
+        expect(d!.message, source).not.toContain('@__PURE__')
+        expect(d!.message, source).toContain('own module')
+      }
+      // a call or `new`: the annotation too, and it works
+      for (const init of ['make()', "new URL('https://x')"]) {
+        const source = route(body(init), options)
+        const d = (await report(source)).find(at(source))
+        expect(d, source).toMatchObject({ code })
+        expect(d!.message, source).toContain('@__PURE__')
+        expect(d!.message, source).toContain('own module')
+        const annotated = route(body(`/* @__PURE__ */ ${init}`), options)
+        expect(await report(annotated), annotated).toEqual([])
+      }
+    })
+  })
+
+  it('offers no annotation for an effect after it whose arguments have effects', async () => {
+    const effect = (args: string) =>
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { CONFIG, make, log } from './lib'
+        const first = make()
+        log(${args})
+        export const Route = createFileRoute('/')({
+          component: () => first,
+        })
+      `)
+    const [freed] = (await kept(effect("'ready'"))).diagnostics
+    expect(freed).toMatchObject({ code: 'eager-split:order' })
+    expect(freed!.message).toContain('mark the call `/* @__PURE__ */`')
+    const [kept_] = (await kept(effect('CONFIG.url'))).diagnostics
+    expect(kept_).toMatchObject({ code: 'eager-split:order' })
+    expect(kept_!.message).not.toContain('@__PURE__')
+    expect(kept_!.message).toContain('declare `first` after it')
+  })
+
   // R101 (R3): the reader stays because the route module keeps the state it
   // reads (the loader reads `n`), reported as one the module writes
   it('reports a reader of state the module writes at load and the route module keeps', async () => {
