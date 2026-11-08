@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
@@ -17,9 +19,15 @@ import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-const devtoolsMode = new URLSearchParams(window.location.search).get('devtools')
+type DevtoolsMode = 'panel' | 'shadow'
 
 const rootRoute = createRootRoute({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { devtools?: DevtoolsMode } =>
+    search.devtools === 'panel' || search.devtools === 'shadow'
+      ? { devtools: search.devtools }
+      : {},
   component: RootComponent,
   notFoundComponent: () => {
     return (
@@ -32,6 +40,8 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  const { devtools } = rootRoute.useSearch()
+
   return (
     <>
       <div className="p-2 flex gap-2 text-lg border-b">
@@ -93,8 +103,35 @@ function RootComponent() {
         </div>
       </div>
       <Outlet />
-      {devtoolsMode ? null : <TanStackRouterDevtools position="bottom-right" />}
+      {devtools === 'panel' ? (
+        <TanStackRouterDevtoolsPanel />
+      ) : devtools === 'shadow' ? (
+        <ShadowDevtoolsPanel />
+      ) : (
+        <TanStackRouterDevtools position="bottom-right" />
+      )}
     </>
+  )
+}
+
+function ShadowDevtoolsPanel() {
+  const [shadowRoot, setShadowRoot] = useState<ShadowRoot>()
+
+  return (
+    <div
+      ref={(host) => {
+        if (host) {
+          setShadowRoot(host.shadowRoot ?? host.attachShadow({ mode: 'open' }))
+        }
+      }}
+    >
+      {shadowRoot
+        ? createPortal(
+            <TanStackRouterDevtoolsPanel shadowDOMTarget={shadowRoot} />,
+            shadowRoot,
+          )
+        : null}
+    </div>
   )
 }
 const indexRoute = createRoute({
@@ -455,24 +492,7 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
-  const shadowRoot =
-    devtoolsMode === 'shadow'
-      ? rootElement.attachShadow({ mode: 'open' })
-      : undefined
-  const mountElement = shadowRoot
-    ? shadowRoot.appendChild(document.createElement('div'))
-    : rootElement
-  const root = ReactDOM.createRoot(mountElement)
+  const root = ReactDOM.createRoot(rootElement)
 
-  root.render(
-    <>
-      <RouterProvider router={router} />
-      {devtoolsMode ? (
-        <TanStackRouterDevtoolsPanel
-          router={router}
-          shadowDOMTarget={shadowRoot}
-        />
-      ) : null}
-    </>,
-  )
+  root.render(<RouterProvider router={router} />)
 }
