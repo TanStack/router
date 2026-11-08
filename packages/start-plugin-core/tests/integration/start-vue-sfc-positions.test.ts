@@ -54,6 +54,25 @@ const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET' + props.t
   },
 ]
 
+/**
+ * Refused in development only: a JavaScript block hands its imports to the
+ * template through generated code; refused at the import.
+ */
+const refusedInDev = {
+  name: 'a factory a JavaScript block imports',
+  sfc: `<script setup>
+import { createServerFn } from '@tanstack/vue-start'
+const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+defineExpose({ getX })
+</script>
+
+<template>
+  <p>page</p>
+</template>
+`,
+  at: 'createServerFn }',
+}
+
 /** The fixes the refusals give: one chain; the value passed in the input. */
 const fixes = [
   {
@@ -175,7 +194,7 @@ describe('vite dev', () => {
     })
   }
 
-  test.each(refused)(
+  test.each([...refused, refusedInDev])(
     '$name is refused at its position in the SFC',
     async (row) => {
       const startCase = await sfcCase(row.sfc)
@@ -209,7 +228,10 @@ describe('rsbuild dev', () => {
     async () => {
       const files = {
         ...Object.fromEntries(
-          refused.map((row, i) => [`src/Refused${i}.vue`, row.sfc]),
+          [...refused, refusedInDev].map((row, i) => [
+            `src/Refused${i}.vue`,
+            row.sfc,
+          ]),
         ),
         ...Object.fromEntries(
           fixes.map((fix, i) => [`src/Fix${i}.vue`, fix.sfc]),
@@ -227,18 +249,18 @@ describe('rsbuild dev', () => {
           ...files,
           // (the refused blocks only behind an import the page never runs)
           'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]
-globalThis.__refused = () => [${refused.map((_, i) => `import('./Refused${i}.vue')`).join(', ')}]
+globalThis.__refused = () => [${[...refused, refusedInDev].map((_, i) => `import('./Refused${i}.vue')`).join(', ')}]
 `,
         },
       })
-      refused.forEach((row, i) => {
+      for (const [i, row] of [...refused, refusedInDev].entries()) {
         expectAtRefusal(
           server.diagnostics,
           `src/Refused${i}.vue`,
           row,
           server.root,
         )
-      })
+      }
       for (const [i] of fixes.entries()) {
         expect(
           findDiagnostics(server.diagnostics, {
