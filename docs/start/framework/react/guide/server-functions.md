@@ -77,7 +77,7 @@ Call server functions from:
 - **Event handlers** - Handle form submissions, clicks, etc.
 
 > [!NOTE]
-> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
+> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
 
 ```tsx
 // In a route loader

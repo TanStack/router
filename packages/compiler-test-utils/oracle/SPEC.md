@@ -518,7 +518,9 @@ dir)` is not a conflict by itself.
   is registered under its id, so an HTTP call by id (with validation and middleware) runs it; the defining module's
   top-level code runs once in that env, even when the handler is extracted into a provider module. In a production
   build, only server functions the client references are HTTP-callable: a function no client code references must
-  not answer a direct HTTP call by id. In dev, an HTTP call by id may run any server function. Calling a server
+  not answer a direct HTTP call by id. What the compile adds to the defining module's exports is unique to that file, so
+  server functions of several modules behind one `export *` barrel build and run without a conflicting name, also
+  when the modules use the same names (`usersApi.get`, `postsApi.get`). In dev, an HTTP call by id may run any server function. Calling a server
   function from server code is documented: a server function only server code calls (another handler, a middleware
   `.server()`, an SSR-only module) works for those callers in every production build, whether or not the client
   build found it, in any module processing order (G4). A server function defined in code the provider erases but the

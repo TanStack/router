@@ -1058,6 +1058,36 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  // A planner whose glue joins the exports of a module user code imports
+  // tags them with the file (`tagGlueExports`): an `export *` barrel of two
+  // such modules sees no generated name twice. The derived output imports
+  // the tagged names; `glueExportName` names them ahead the same way.
+  it('tags glue exports when a planner asks, in the env module and the derived output', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const store = new Map([['k', 'v']])
+      export const Route = createFileRoute('/')({
+        loader: () => store.get('k'),
+        component: () => store.get('k'),
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toySplitPlanner({ glueNames: ['store'], glueTag: 'f00d' }),
+    ]
+    const env = await host.compile('/app/route.tsx', planners, build)
+    expect(env?.code).toContain('export { store as store$f00d }')
+    expect(env?.code).toContain('export const glueNames = ["store$f00d"]')
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      build,
+    )
+    expect(chunk?.code).toContain(
+      "import { store$f00d as store } from '/app/route.tsx'",
+    )
+  })
+
   it('puts exports that read each other in one module and keeps a one-way read apart', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

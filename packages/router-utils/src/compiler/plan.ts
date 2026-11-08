@@ -182,6 +182,14 @@ export interface PlanContext {
    * name another binding's glue took first.
    */
   glueExportName: (sym: SymbolId) => string
+  /**
+   * Appends `$<tag>` to the env module's glue export names. A planner whose
+   * glue joins the exports of a module user code imports (an in-place
+   * server-fn provider) passes a tag of the file: a barrel's `export *` of
+   * two such modules would otherwise see one generated name twice. Called
+   * before any `glueExportName` of the module.
+   */
+  tagGlueExports: (tag: string) => void
   renameRefs: (
     sym: SymbolId,
     to: RefTarget,
@@ -234,6 +242,8 @@ export class AnalysisPlan implements PlanContext {
   private readonly keptSyms = new Set<SymbolId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
   private starExports: boolean | undefined
+  /** `tagGlueExports` (`glueExportBase`). */
+  private glueTag: string | null = null
   routeModule = false
   moduleWords: ModuleWords | null = null
   placement: Placement | null = null
@@ -418,7 +428,12 @@ export class AnalysisPlan implements PlanContext {
     this.starExports ??= this.analysis.exports.some(
       (e) => e.kind === 'star' && !e.typeOnly,
     )
-    return this.starExports ? `tsr$${this.nameOf(sym)}` : this.nameOf(sym)
+    const base = this.starExports ? `tsr$${this.nameOf(sym)}` : this.nameOf(sym)
+    return this.glueTag === null ? base : `${base}$${this.glueTag}`
+  }
+
+  tagGlueExports(tag: string): void {
+    this.glueTag = tag
   }
 
   /** Renames every reference and declaration of `sym` (context-aware; exports keep their public names). */
