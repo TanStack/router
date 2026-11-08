@@ -19,7 +19,7 @@
     "@hono/session": "0.2.1",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/react-start": "workspace:*",
-    "hono": "4.13.9",
+    "hono": "4.13.11",
     "hono-sessions": "0.8.1",
     "iron-session": "9.0.1",
     "react": "^19.2.3",
