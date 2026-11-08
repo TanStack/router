@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { locateDiagnostics, locatedDiagnostic } from '../src/compiler'
+import {
+  locateDiagnostics,
+  locatedDiagnostic,
+  locatedError,
+} from '../src/compiler'
 import type { LocatedDiagnosticsOptions } from '../src/compiler'
 
 class WebpackError extends Error {}
@@ -97,5 +101,28 @@ describe('locateDiagnostics', () => {
       },
       { name: 'TestError', loc: undefined, message: 'two' },
     ])
+  })
+
+  // Rsbuild prints a located error's `file` when it has one, else the
+  // module's identifier: a split chunk's diagnostic names the user's file
+  it("names the file of a derived module without its query, and leaves a plain module's to the bundler", () => {
+    const d = locatedDiagnostic('error', 'denied', { line: 3, column: 19 })
+    const split = locatedError(
+      WebpackError,
+      {
+        identifier: () => 'x',
+        resource: '/app/src/routes/index.tsx?tsr-split=component',
+      },
+      d,
+      options,
+    ) as Error & { file?: string }
+    expect(split.file).toBe('/app/src/routes/index.tsx')
+    const plain = locatedError(
+      WebpackError,
+      { identifier: () => 'y', resource: '/app/src/a.ts' },
+      d,
+      options,
+    ) as Error & { file?: string }
+    expect(plain.file).toBeUndefined()
   })
 })
