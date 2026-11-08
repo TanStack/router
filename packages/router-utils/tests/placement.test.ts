@@ -16,6 +16,7 @@ async function split(
   code: string,
   opts: {
     keys?: Array<string>
+    groups?: Array<Array<string>>
     env?: 'client' | 'server'
     identifierEdits?: boolean
     files?: Record<string, string>
@@ -26,14 +27,23 @@ async function split(
   })
   const planners = [
     toyEnvPlanner(),
-    toySplitPlanner({ keys: opts.keys, identifierEdits: opts.identifierEdits }),
+    toySplitPlanner({
+      keys: opts.keys,
+      groups: opts.groups,
+      identifierEdits: opts.identifierEdits,
+    }),
   ]
   const env = envInfo(
     opts.env === 'server' ? { name: 'ssr', type: 'server' } : {},
   )
   const main = await host.compile('/app/route.tsx', planners, { env })
   const chunks: Record<string, string> = {}
-  for (const key of opts.keys ?? ['component']) {
+  const chunkKeys = new Set(
+    (opts.keys ?? ['component']).map(
+      (key) => opts.groups?.find((g) => g.includes(key))?.join('---') ?? key,
+    ),
+  )
+  for (const key of chunkKeys) {
     const c = await host.compile(`/app/route.tsx?tsr-split=${key}`, planners, {
       env,
     })
@@ -153,6 +163,41 @@ describe('clusters and the single-writer rule', () => {
     const r = await split(code)
     expect(r.main?.facts.planners['toy-split']).toMatchObject({
       reasons: { component: 'shared-writer' },
+    })
+  })
+
+  it('moves a binding two options of one chunk write into that chunk', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let renders = 0
+      export const Route = createFileRoute('/')({
+        component: () => { renders++; return renders },
+        pendingComponent: () => { renders++; return renders },
+      })
+    `)
+    const r = await split(code, {
+      keys: ['component', 'pendingComponent'],
+      groups: [['component', 'pendingComponent']],
+    })
+    expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+    expect(r.env).not.toContain('let renders')
+    const chunk = r.chunks['component---pendingComponent']!
+    expect(chunk).toContain('let renders = 0')
+    expect(chunk.match(/renders\+\+/g)).toHaveLength(2)
+  })
+
+  it('falls back for the second of two chunks writing one binding (multi-writer)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let renders = 0
+      export const Route = createFileRoute('/')({
+        component: () => { renders++; return renders },
+        pendingComponent: () => { renders++; return renders },
+      })
+    `)
+    const r = await split(code, { keys: ['component', 'pendingComponent'] })
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { pendingComponent: 'multi-writer' },
     })
   })
 

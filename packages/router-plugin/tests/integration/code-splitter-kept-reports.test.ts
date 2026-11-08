@@ -8,7 +8,8 @@
  * is reported, and so are a declared component writing a binding the
  * loader reads and a declaration reading state the module writes at load
  * that the loader keeps; their fixes build without the report and load
- * the code with its chunk. Vite, Rspack, webpack and Rsbuild client builds.
+ * the code with its chunk. Options of one split group writing one binding
+ * are not reported: the binding goes to their chunk. Vite, Rspack, webpack and Rsbuild client builds.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -91,6 +92,14 @@ export const Route = createFileRoute('/writer-fixed')({
 })
 `,
   'counter.ts': 'export const counter = { n: 0 }\n',
+  // two options of one split group writing one binding: it goes with them
+  'routes/group-writers.tsx': `${head}let renders = 0
+export const Route = createFileRoute('/group-writers')({
+  codeSplitGroupings: [['component', 'pendingComponent']],
+  component: () => { renders++; return <p>MARK_group-writers_END{renders}</p> },
+  pendingComponent: () => { renders++; return <p>MARK_group-writers-pending_END{renders}</p> },
+})
+`,
   // a reader of state the module writes at load, which the loader keeps
   'routes/state.tsx': `${head}let n = 0
 n++
@@ -140,6 +149,7 @@ const silent = [
   'routes/eager-export-module.tsx',
   'routes/writer-fixed.tsx',
   'routes/state-fixed.tsx',
+  'routes/group-writers.tsx',
 ]
 
 const builds: Array<[string, () => Promise<BuildResult>]> = [
@@ -179,6 +189,8 @@ describe.each(builds)('a %s client build', (_name, create) => {
         'eager-export-module',
         'writer-fixed',
         'state-fixed',
+        'group-writers',
+        'group-writers-pending',
       ]) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
       }

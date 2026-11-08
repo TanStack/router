@@ -107,6 +107,8 @@ export function propertyRangeWithComma(options: Node, prop: Node): Range {
 export interface ToySplitOptions {
   /** Option keys to split (default ['component']). */
   keys?: Array<string>
+  /** Keys split into one chunk (`?tsr-split=<a>---<b>`); any other key has its own. */
+  groups?: Array<Array<string>>
   /** Option keys erased from the env output only (deleteNodes). */
   deleteNodes?: Array<string>
   /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
@@ -201,10 +203,12 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
         }
+        const group =
+          opts.groups?.find((g) => g.includes(key))?.join('~') ?? key
         const output = ctx.declareOutput({
           kind: 'split',
-          key,
-          derived: { kind: 'split', value: key },
+          key: group,
+          derived: { kind: 'split', value: group },
         })
         const derivedId = output.slice('derived:'.length)
         const pascal = key.charAt(0).toUpperCase() + key.slice(1)
