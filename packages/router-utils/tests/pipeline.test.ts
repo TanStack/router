@@ -454,6 +454,38 @@ describe('slice gates: edges and policy', () => {
     ])
   })
 
+  it("a policy reads its compile's analysis: the importer's use of an edge's bindings, at the plan's offsets", async () => {
+    const code = dedent(`
+      import { Widget } from './widget.client'
+      export const Page = () => <Widget />
+    `)
+    const host = new MemoryHost({ files: { '/app/page.tsx': code } })
+    const seen: Array<string> = []
+    const planner: Planner = {
+      name: 'reads-analysis',
+      tier: 0,
+      gate: (t0) => t0.hasImportOrExport,
+      plan() {},
+      async policy(_plan, _output, edges, ctx) {
+        for (const e of edges) {
+          const imp = ctx.analysis.imports.find(
+            (i) => i.specifierRange.start === e.locations[0]?.range.start,
+          )
+          for (const spec of imp?.specifiers ?? []) {
+            for (const ref of ctx.analysis.file.bindings[spec.local]!
+              .references) {
+              seen.push(
+                `${ref.node.type} ${ctx.code.slice(ref.node.start, ref.node.end)}`,
+              )
+            }
+          }
+        }
+      },
+    }
+    await host.compile('/app/page.tsx', [planner])
+    expect(seen).toEqual(['JSXIdentifier Widget'])
+  })
+
   it('substitution maps the literal to its original offset', async () => {
     const host = new MemoryHost({
       files: {
