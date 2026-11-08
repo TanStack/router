@@ -495,12 +495,13 @@ test('a build fails on a route file known not to parse when the root route is go
 })
 
 // The scan failed, so the build read nothing: the file is known broken only
-// while it still holds what broke it.
+// while it still holds what broke it; the gone root route fails the build
+// (R101), not the route file.
 test.each([
   ['fixed', (posts: string) => writeFile(posts, postsRoute)],
   ['deleted', (posts: string) => rm(posts)],
 ])(
-  'a build reports a gone root route when the route file known not to parse was %s',
+  'a build fails on a gone root route when the route file known not to parse was %s',
   async (_, change) => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute,
@@ -518,8 +519,13 @@ test.each([
     await captureDiagnostics(() => session.run({ type: 'update', path: posts }))
     await change(posts)
     await rm(path.join(root, 'src/routes/__root.tsx'))
-    await session.build()
-    expect(reports).toHaveLength(1)
+    const failure = await session.build().then(
+      () => null,
+      (error: unknown) => String(error),
+    )
+    expect(failure).toContain('__root')
+    expect(failure).not.toContain('posts.tsx')
+    expect(reports).toEqual([])
   },
 )
 
