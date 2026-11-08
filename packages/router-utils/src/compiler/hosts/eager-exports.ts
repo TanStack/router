@@ -11,9 +11,11 @@
  * module the entry re-exports and a chunk imports into the entry (Rolldown
  * < 1.1.5, a user `manualChunks` group merging into the entry). The export
  * is then eager: the build warns once per (file, export) per run, in every
- * host (J2.8: the user is told, the build goes on).
+ * host, when there is something to fix (J2.8: the user is told, the build
+ * goes on); one instance a module of the entry imports is as it should be.
  */
 import { identify, normalizePath } from '../identity'
+import { displayPath } from '../diagnostics'
 import type { WarningLedger } from '../diagnostics'
 
 interface EagerExtractedExport {
@@ -136,16 +138,18 @@ function isSplitCode(id: string): boolean {
 export interface WebpackModuleGraphLike {
   modules: Iterable<ModuleLike>
   moduleGraph: {
-    getIncomingConnections: (
-      module: ModuleLike,
-    ) => Iterable<{ originModule?: ModuleLike | null }>
+    getIncomingConnections: (module: ModuleLike) => Iterable<{
+      originModule?: ModuleLike | null
+      /** The importer before module concatenation (the original module, not the concatenated one holding it). */
+      resolvedOriginModule?: ModuleLike | null
+    }>
   }
 }
 
 /**
  * The importers of each extracted-export module of a webpack/Rspack
- * compilation (`idOf` names a module's resource the way `moduleIds` are
- * named), for `warnEagerExports`.
+ * compilation, and of the route modules re-exporting them (`idOf` names a
+ * module's resource the way `moduleIds` are named), for `warnEagerExports`.
  */
 export function webpackImporters(
   compilation: WebpackModuleGraphLike,
@@ -153,80 +157,123 @@ export function webpackImporters(
 ): (id: string) => Array<string> {
   const importers = new Map<string, Array<string>>()
   const resourceOf = (m: ModuleLike) => m.resource ?? m.identifier?.() ?? ''
-  for (const m of compilation.modules) {
-    for (const inner of [m, ...(m.modules ?? [])]) {
-      const resource = resourceOf(inner)
-      if (identify(resource).derived?.kind !== 'export') {
-        continue
-      }
-      const list: Array<string> = []
-      for (const c of compilation.moduleGraph.getIncomingConnections(inner)) {
-        const origin = c.originModule ? resourceOf(c.originModule) : ''
-        if (origin !== '') {
-          list.push(idOf(origin))
-        }
-      }
-      importers.set(idOf(resource), list)
+  const modules = [...compilation.modules].flatMap((m) => [
+    m,
+    ...(m.modules ?? []),
+  ])
+  // the extracted modules, and the route modules re-exporting them
+  const routeFiles = new Set<string>()
+  for (const m of modules) {
+    const { path, derived } = identify(resourceOf(m))
+    if (derived?.kind === 'export') {
+      routeFiles.add(path)
     }
+  }
+  if (routeFiles.size === 0) {
+    return () => []
+  }
+  for (const m of modules) {
+    const resource = resourceOf(m)
+    const { path, derived } = identify(resource)
+    if (
+      derived?.kind !== 'export' &&
+      !(derived === null && routeFiles.has(path))
+    ) {
+      continue
+    }
+    const list: Array<string> = []
+    for (const c of compilation.moduleGraph.getIncomingConnections(m)) {
+      // the module that imports, not a concatenated module holding it (Rspack
+      // lists both; such a wrapper has no resource of its own)
+      const from = c.resolvedOriginModule ?? c.originModule
+      if (from?.resource) {
+        list.push(idOf(from.resource))
+      }
+    }
+    importers.set(idOf(resource), list)
   }
   return (id) => importers.get(id) ?? []
 }
 
 /**
  * Warns once per (route file, export) per run (`ledger`) of each extracted
- * export among `moduleIds`: the module ids of what a client build loads
- * with its entries (`rollupEntryModuleIds`, `initialChunkResources`).
- * `importersOf` (the bundler's module graph) tells the two causes apart:
- * split code importing the module (the export is not copied) under a chunk
- * configuration that placed it with the entry, or another module importing
- * the binding through the route file.
+ * export among `moduleIds`, the module ids of what a client build loads
+ * with its entries (`rollupEntryModuleIds`, `initialChunkResources`), when
+ * there is something to fix. `importersOf` (the bundler's module graph) of
+ * the extracted module tells whether split code imports it (one instance)
+ * or copies it, and of the route file who imports it through the route
+ * file: a module loaded with the entry (the export is needed there: a
+ * copied export then ships twice), another route's split code (webpack and
+ * Rspack keep the route file's re-export), or nobody (the bundler's chunk
+ * configuration placed it with the entry). `routeTree` is the generated
+ * route tree, which imports every route file.
  */
 export function warnEagerExports(
   moduleIds: Iterable<string>,
   bundler: 'rollup' | 'webpack',
   ledger: WarningLedger,
   warn: (message: string) => void,
-  importersOf?: (id: string) => Iterable<string>,
+  importersOf: (id: string) => Iterable<string>,
+  where: { root?: string; routeTree?: string } = {},
 ): void {
-  for (const e of eagerExtractedExports(moduleIds)) {
-    const cause =
-      importersOf === undefined
-        ? 'unknown'
-        : [...importersOf(e.id)].some(isSplitCode)
-          ? 'chunk'
-          : 'importer'
-    const message = eagerExportWarning(e, bundler, cause)
+  const ids = [...moduleIds]
+  const exports = eagerExtractedExports(ids)
+  if (exports.length === 0) {
+    return
+  }
+  const eager = new Set(ids)
+  const tree =
+    where.routeTree === undefined ? null : normalizePath(where.routeTree)
+  for (const e of exports) {
+    const copied = ![...importersOf(e.id)].some(isSplitCode)
+    let eagerImporter = false
+    let otherImporter = false
+    for (const importer of importersOf(e.file)) {
+      const path = normalizePath(identify(importer).path)
+      if (path === e.file || path === tree) {
+        continue
+      }
+      if (eager.has(importer)) {
+        eagerImporter = true
+      } else {
+        otherImporter = true
+      }
+    }
+    const cause = eagerImporter
+      ? copied
+        ? 'copied'
+        : null
+      : bundler === 'webpack' && otherImporter
+        ? 'reexport'
+        : 'chunk'
+    if (cause === null) {
+      // one instance, which a module of the entry needs: as it should be
+      continue
+    }
+    const message = eagerExportWarning(
+      e,
+      displayPath(e.file, where.root),
+      cause,
+    )
     if (ledger.once(e.file, { code: 'eager-export', message })) {
       warn(message)
     }
   }
 }
 
-/**
- * The warning of an eager extracted export. The webpack family can bypass
- * the route module's re-export only for a side-effect-free package: its
- * message says so.
- */
+/** The warning of an eager extracted export, by what keeps it with the entry. */
 function eagerExportWarning(
   e: EagerExtractedExport,
-  bundler: 'rollup' | 'webpack',
-  cause: 'chunk' | 'importer' | 'unknown',
+  file: string,
+  cause: 'copied' | 'reexport' | 'chunk',
 ): string {
-  const share =
-    bundler === 'webpack'
-      ? 'Move it to its own module and import it from there, or declare "sideEffects": false in package.json so the bundler can bypass the route file, so the importer and the route share one instance.'
-      : 'Move it to its own module and import it from there, so the importer and the route share one instance.'
-  const head = `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk:`
+  const head = `[tanstack-router] The export \`${e.name}\` of ${file}`
   switch (cause) {
+    case 'copied':
+      return `${head} is imported through the route file by a module that loads with the entry chunk, and the route's split code carries its own copy, so the build ships it twice. Move it to its own module and import it from there, in that module and in the route.`
+    case 'reexport':
+      return `${head} loads with the entry chunk: another route's split code imports it through the route file, and the bundler keeps the route file's re-export, which loads with the entry. Import it from its own module, or declare \`"sideEffects": false\` in package.json so the bundler can bypass the route file.`
     case 'chunk':
-      // split code imports the module (the export is not copied); it landed
-      // with the entry through an importer of the route file (which the
-      // extracted module's own importers do not show) or the bundler's chunk
-      // configuration: both fixes are named
-      return `${head} the route's split code imports it (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy), and another module imports it through the route file or the bundler's chunk configuration placed its module with the entry. Move the export to its own module and import it from there, so every importer and the route's chunk share one instance, or keep the routes directory out of chunk groups that load with the entry.`
-    case 'importer':
-      return `${head} another module imports it through the route file, so the bundler keeps it with the route module instead of leaving it to the split code that needs it. ${share}`
-    default:
-      return `${head} another module imports it through the route file, or the bundler's chunk configuration placed the module the route's split code imports with the entry (a class, an object, a call result or a written binding exists once, so the chunk cannot carry a copy). ${share}`
+      return `${head} loads with the entry chunk, although only split code imports it: the bundler's chunk configuration groups its module with the entry (\`manualChunks\`, \`advancedChunks\`, \`splitChunks\`). Keep the routes directory out of chunk groups that load with the entry.`
   }
 }

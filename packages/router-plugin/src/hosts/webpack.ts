@@ -255,6 +255,10 @@ export function createRouterCompilerWebpackPlugin(
               session.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
               webpackImporters(compilation as never, webpackResourceId),
+              {
+                root: compiler.context,
+                routeTree: userConfig.generatedRouteTree,
+              },
             )
           })
         }

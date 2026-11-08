@@ -259,6 +259,7 @@ export function createRouterCompilerVitePlugin(
         compiler.warnings,
         (m) => this.warn(m),
         (id) => this.getModuleInfo(id)?.importers ?? [],
+        { root: ROOT, routeTree: userConfig.generatedRouteTree },
       )
     },
 

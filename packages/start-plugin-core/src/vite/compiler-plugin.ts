@@ -1085,6 +1085,10 @@ export function startCompilerPlugin(
             s.start.warnings,
             (m) => this.warn(m),
             (id) => this.getModuleInfo(id)?.importers ?? [],
+            {
+              root: s.start.opts.root,
+              routeTree: opts.getConfig().startConfig.router.generatedRouteTree,
+            },
           )
         }
         if (!s.start.ip) {

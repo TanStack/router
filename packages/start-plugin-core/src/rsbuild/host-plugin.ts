@@ -425,6 +425,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               session.start.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
               webpackImporters(compilation as never, canonicalResource),
+              {
+                root: session.start.opts.root,
+                routeTree: opts.generator.clientRouteTree.path(),
+              },
             )
           })
         }
