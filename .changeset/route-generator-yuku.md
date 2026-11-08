@@ -15,5 +15,3 @@ Rebuild the route generator without Babel.
 - `disableLogging` silences the generator's warnings about route files too (a file without a `Route` export, a route id it reports instead of fixing, a file an edit broke in a running dev server); a run that fails still throws.
 - Writes are atomic per write (also when `tmpDir` is on another filesystem); the generator's own writes no longer regenerate.
 - `tsr watch` and the Rspack/webpack plugins watch every route root, including `physical()` mounts.
-- `GeneratorPlugin.onRouteTreeChanged` receives the tree model (`{ model }`). The internal helpers `format`, `inferFullPath`, `checkRouteFullPathUniqueness` and `writeIfDifferent` are no longer exported.
-- The `GeneratorPlugin.afterTransform` hook is removed: a plugin reads every route from the tree model `onRouteTreeChanged` receives.
