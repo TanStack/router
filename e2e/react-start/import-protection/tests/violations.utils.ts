@@ -44,19 +44,21 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
       .replace(/^\s*\|\s?/, '')
       .trimEnd()
 
+  // (a report's header: `Import denied in …`, or `Import mocked in …` in mock mode)
+  const header = /\[import-protection\] Import (?:denied|mocked) in/
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? ''
-    if (!line.includes('[import-protection] Import denied in')) continue
+    if (!header.test(line)) continue
 
     const envTypeMatch = line.match(
-      /Import denied in\s+(client|server)\s+environment/,
+      /Import (?:denied|mocked) in\s+(client|server)\s+environment/,
     )
     const envType = envTypeMatch?.[1]
 
     const block: Array<string> = [line]
     for (let j = i + 1; j < Math.min(lines.length, i + 200); j++) {
       const l = lines[j] ?? ''
-      if (l.includes('[import-protection] Import denied in') && j !== i + 1) {
+      if (header.test(l) && j !== i + 1) {
         break
       }
       block.push(l)
