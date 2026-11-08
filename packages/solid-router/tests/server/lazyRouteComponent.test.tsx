@@ -17,11 +17,10 @@ describe('lazyRouteComponent (server)', () => {
     'renders a missing $exportName export as blank in production (preload: $preload)',
     async ({ exportName, preload }) => {
       vi.stubEnv('NODE_ENV', 'production')
-      const importer = vi.fn(
-        (): Promise<Record<string, () => null>> =>
-          Promise.resolve({
-            Other: () => null,
-          }),
+      const importer = vi.fn((): Promise<Record<string, () => null>> =>
+        Promise.resolve({
+          Other: () => null,
+        }),
       )
       const Page = lazyRouteComponent(importer, exportName)
       const onError = vi.fn()
