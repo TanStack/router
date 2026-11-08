@@ -387,10 +387,22 @@ export async function invalidate(
           shadowed.push(path)
         }
       }
-      // (a plan under many of those paths: its resolutions are asked once)
+      // only those resolutions are asked again, once per plan under many of
+      // those paths: the plan's others found files the new one can't take
       const seen = new Set<string>()
       for (const path of shadowed) {
-        await revalidate(cache, path, (fp) => fp.kind === 'resolution', seen)
+        await revalidate(
+          cache,
+          path,
+          (fp) => {
+            if (fp.kind !== 'resolution') {
+              return false
+            }
+            const found = fingerprintPath(fp)
+            return found !== null && found !== change.path && shadows(found)
+          },
+          seen,
+        )
       }
     }
   }
