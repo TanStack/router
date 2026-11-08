@@ -108,6 +108,8 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
+  /** The name of the binding a writer fallback writes. */
+  binding?: string
 }
 
 interface OutputSpec {
@@ -583,7 +585,14 @@ export class AnalysisPlan implements PlanContext {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
       const r = this.t1.regions.get(f.region)
-      out.push({ range: r.range, kind: r.kind, reason: f.reason })
+      out.push({
+        range: r.range,
+        kind: r.kind,
+        reason: f.reason,
+        ...(f.binding !== undefined && {
+          binding: this.symbols.name(f.binding),
+        }),
+      })
     }
     return out
   }

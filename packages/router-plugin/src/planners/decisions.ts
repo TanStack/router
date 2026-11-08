@@ -70,6 +70,8 @@ export interface NotSplit {
   key: string
   reason: NotSplitReason
   range: Range
+  /** The module binding a writer fallback writes. */
+  binding?: string
 }
 
 export interface SplitPlan {
@@ -358,7 +360,7 @@ export function splitPlanOf(
         message:
           deleteNodes.size > 0
             ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, server })\`).`
-            : `[tanstack-router] The route options of ${file} are ${how}, so the route is not code-split.`,
+            : `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them and the route is not code-split. Write them as an object literal in the call (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, … })\`).`,
         range: {
           start: route.optionsCall.start,
           end: route.optionsCall.end,
@@ -480,6 +482,7 @@ export function splitPlanOf(
           key,
           reason: fallback.reason,
           range: target.region,
+          ...(fallback.binding !== undefined && { binding: fallback.binding }),
         })
         continue
       }
@@ -507,7 +510,7 @@ export function splitPlanOf(
       severity: 'warning',
       code: `not-split:${n.reason}`,
       by: ROUTER_PLANNER,
-      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason)}`,
+      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding)}`,
       range: n.range,
     })
   }
@@ -520,26 +523,31 @@ export function splitPlanOf(
   }
 }
 
-function describeReason(reason: NotSplitReason): string {
+function describeReason(
+  reason: NotSplitReason,
+  key: string,
+  binding?: string,
+): string {
+  const written = binding === undefined ? 'a module binding' : `\`${binding}\``
   switch (reason) {
     case 'shared-writer':
-      return 'it writes a module binding the route module also reads.'
+      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (\`state.count++\`) or in its own module.`
     case 'multi-writer':
-      return 'it writes a module binding another split option also writes.'
+      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (\`state.count++\`) or in its own module.`
     case 'ordered-effect':
-      return 'it reads a module binding that top-level code mutates after it.'
+      return 'it reads a module binding that top-level code changes after it. Read that binding inside the option, or move both to their own module.'
     case 'hydrate-writer':
-      return 'it writes a binding captured by a hydration boundary.'
+      return 'it writes a binding a hydration boundary also uses. Keep that state in an object or in its own module.'
     case 'env-declared':
-      return 'its value stays in the route module (declared by a top-level call or destructuring, or one with an exported binding it writes); a split chunk could only import it.'
+      return 'its value is created by a statement the route module keeps (a call or a destructuring, or one writing an exported binding), so a split chunk could only import it. Declare the value on its own (`function Component() { … }`) to have it split.'
     case 'exhausted':
       return 'the compiler could not settle which options of this route can be split; nothing of it is split.'
     case 'this-reference':
-      return 'it reads `this`, the route options object it is called on, which a split chunk would not see. Write it as an arrow function or read the route instead.'
+      return `it reads \`this\`, which a split chunk cannot keep: the router calls it without one (\`this\` is \`undefined\`), and only code calling \`Route.options.${key}()\` passes the route options. Write it without \`this\`, for example as an arrow function.`
     case 'reassigned':
       return 'its value names a binding that is reassigned, and the route keeps the value it had when it was created; a split chunk would load the latest value. Assign the binding once.'
     case 'loader-object':
-      return 'its value names an object with options next to `handler` that other code also reads; only the handler of an object-form loader is code-split, in an object nothing else reads.'
+      return 'its value names an object with options next to `handler` that other code also reads, and only the handler of an object-form loader nothing else reads is code-split. Write the object inline in the route options (`loader: { handler, … }`), or keep what other code reads out of it.'
   }
 }
 

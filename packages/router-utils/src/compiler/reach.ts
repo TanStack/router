@@ -68,6 +68,8 @@ export type Home = OutputId | 'duplicate' | 'removed'
 
 export interface Fallback {
   region: RegionId
+  /** `shared-writer`, `multi-writer`: the module binding the region writes. */
+  binding?: SymbolId
   reason:
     | 'shared-writer'
     | 'multi-writer'

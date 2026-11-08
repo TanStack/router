@@ -244,6 +244,11 @@ export function assignHomes(
 
   // ---- single-writer rule ------------------------------------------------------
   const fallbacks: Array<Fallback> = []
+  /** The binding of cluster `c` region `w` writes (the fallback names it). */
+  const writtenBy = (w: RegionId, c: ClusterId): SymbolId | undefined =>
+    graph.writes.find(
+      (x) => x.owner === w && !x.member && clusterOfSym.get(x.sym) === c,
+    )?.sym
   for (const { cluster: c, writers } of graph.subRegionWriters) {
     const writerHomes = new Map<OutputId, RegionId>()
     for (const w of [...writers].sort(
@@ -259,7 +264,11 @@ export function assignHomes(
       if (!writerHomes.has(o)) {
         writerHomes.set(o, w)
       } else {
-        fallbacks.push({ region: w, reason: 'multi-writer' })
+        fallbacks.push({
+          region: w,
+          reason: 'multi-writer',
+          binding: writtenBy(w, c),
+        })
       }
     }
     const derivedHomes = [...writerHomes].filter(([o]) => o !== 'env')
@@ -268,7 +277,11 @@ export function assignHomes(
     }
     if (derivedHomes.length > 1) {
       for (const [, w] of derivedHomes.slice(1)) {
-        fallbacks.push({ region: w, reason: 'multi-writer' })
+        fallbacks.push({
+          region: w,
+          reason: 'multi-writer',
+          binding: writtenBy(w, c),
+        })
       }
     }
     const [[g, w]] = derivedHomes as [[OutputId, RegionId]]
@@ -277,6 +290,7 @@ export function assignHomes(
       fallbacks.push({
         region: w,
         reason: kind === 'hydrate' ? 'hydrate-writer' : 'shared-writer',
+        binding: writtenBy(w, c),
       })
     } else {
       home.set(c, g)
@@ -292,7 +306,7 @@ export function assignHomes(
   // writer joins what it writes, so the env module keeps it with that
   // binding (the single-writer rule's `shared-writer`, as for a value
   // written inline).
-  const writesShared = (unit: Unit, d: ClusterId): boolean => {
+  const writesShared = (unit: Unit, d: ClusterId): SymbolId | null => {
     for (const w of graph.writes) {
       if (
         !w.live ||
@@ -315,11 +329,11 @@ export function assignHomes(
           reader !== undefined &&
           liveEnv.has(reader)
         ) {
-          return true
+          return w.sym
         }
       }
     }
-    return false
+    return null
   }
   for (const [id, decl] of outputs) {
     if (id === 'env') {
@@ -347,8 +361,13 @@ export function assignHomes(
         !unit.effectful &&
         (!clusters[d]!.exported || unit.exported.length > 0)
       ) {
-        if (!clusters[d]!.exported && writesShared(unit, d)) {
-          fallbacks.push({ region: unit.region, reason: 'shared-writer' })
+        const written = clusters[d]!.exported ? null : writesShared(unit, d)
+        if (written !== null) {
+          fallbacks.push({
+            region: unit.region,
+            reason: 'shared-writer',
+            binding: written,
+          })
         }
         continue
       }

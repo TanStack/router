@@ -327,7 +327,7 @@ export function recognizeRoute(
   const notFactoryCall = (range?: Range) => {
     if (entry !== null && importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         range,
         'route-unrecognized',
       )
@@ -351,7 +351,7 @@ export function recognizeRoute(
   if (outer.type !== 'CallExpression') {
     if (importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         { start: routeUnit.node.start, end: routeUnit.node.end },
         'route-unrecognized',
       )
@@ -382,7 +382,7 @@ export function recognizeRoute(
       )
     } else if (importsFactory(analysis)) {
       warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated.`,
+        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
         { start: routeUnit.node.start, end: routeUnit.node.end },
         'route-unrecognized',
       )
@@ -544,7 +544,7 @@ function foreignFactoryDiagnostic(
     severity: cfg.deleteNodes.length > 0 ? 'error' : 'warning',
     code: 'route-factory-foreign',
     by: ROUTER_PLANNER,
-    message: `[tanstack-router] The route of ${fileName} calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? ` and the options ${deleted} cannot be removed from this build` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
+    message: `[tanstack-router] The route of ${fileName} calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? `, and the options ${deleted} are not removed from the client code` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
     range,
   }
 }
@@ -633,7 +633,7 @@ export function unownedRouteOptions(
         severity: 'error',
         code: 'route-unowned-options',
         by: ROUTER_PLANNER,
-        message: `[tanstack-router] ${ctx.displayPath} holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so they cannot be removed from this build. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
+        message: `[tanstack-router] ${ctx.displayPath} holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so ${deleted.length === 1 ? 'it is' : 'they are'} not removed from the client code. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
         range: { start: call.start, end: call.end },
       })
     } else if (unread && takesOptions) {
