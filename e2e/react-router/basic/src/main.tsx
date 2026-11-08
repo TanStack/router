@@ -15,19 +15,15 @@ import {
   TanStackRouterDevtoolsInProd as TanStackRouterDevtools,
   TanStackRouterDevtoolsPanelInProd as TanStackRouterDevtoolsPanel,
 } from '@tanstack/react-router-devtools'
+import { z } from 'zod'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-type DevtoolsMode = 'panel' | 'shadow'
-
 const rootRoute = createRootRoute({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { devtools?: DevtoolsMode } =>
-    search.devtools === 'panel' || search.devtools === 'shadow'
-      ? { devtools: search.devtools }
-      : {},
+  validateSearch: z.object({
+    devtools: z.enum(['panel', 'shadow']).optional().catch(undefined),
+  }),
   component: RootComponent,
   notFoundComponent: () => {
     return (
