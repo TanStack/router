@@ -101,13 +101,7 @@ export type ValidateReactSerializable<T> = ValidateSerializable<
 >
 
 export type ReactSerializable =
-  | number
-  | string
-  | bigint
-  | boolean
-  | null
-  | undefined
-  | React.ReactNode
+  number | string | bigint | boolean | null | undefined | React.ReactNode
 
 export type ValidateCompositeComponentReturnType<TComp> = unknown extends TComp
   ? React.ReactNode

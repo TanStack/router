@@ -25,9 +25,7 @@ export type SegmentKind =
  * All the kinds of segments that can be present in the segment tree.
  */
 type ExtendedSegmentKind =
-  | SegmentKind
-  | typeof SEGMENT_TYPE_INDEX
-  | typeof SEGMENT_TYPE_PATHLESS
+  SegmentKind | typeof SEGMENT_TYPE_INDEX | typeof SEGMENT_TYPE_PATHLESS
 
 export type DynamicPathSegment = [
   kind: Exclude<SegmentKind, typeof SEGMENT_TYPE_PATHNAME>,
@@ -393,8 +391,7 @@ type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
 }
 
 type AnySegmentNode<T extends RouteLike> =
-  | StaticSegmentNode<T>
-  | DynamicSegmentNode<T>
+  StaticSegmentNode<T> | DynamicSegmentNode<T>
 
 type SegmentNode<T extends RouteLike> = {
   kind: ExtendedSegmentKind
@@ -456,7 +453,8 @@ type RouteLike = {
   }
 } &
   // router tree
-  (| { fullPath: string; from?: never } // full path from the root
+  (
+    | { fullPath: string; from?: never } // full path from the root
     // flat route masks list
     | { fullPath?: never; from: string } // full path from the root
   )

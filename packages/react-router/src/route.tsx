@@ -616,8 +616,7 @@ export function createRouteMask<
 
 export interface DefaultRouteTypes<TProps> {
   component:
-    | ((props: TProps) => any)
-    | React.LazyExoticComponent<(props: TProps) => any>
+    ((props: TProps) => any) | React.LazyExoticComponent<(props: TProps) => any>
 }
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
