@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   RoutePrefixMap,
   cleanPath,
+  format,
   createLiteralRoutePathSegmentMetadata,
   createRoutePathSegmentMetadata,
   createRouteNodesByFullPath,
@@ -1068,5 +1069,16 @@ describe('sortRouteNodes', () => {
     for (const permutation of permutations(routePaths)) {
       expect(sortPaths(permutation)).toEqual(reference)
     }
+  })
+})
+
+describe('format', () => {
+  it('formats code using lazily loaded prettier', async () => {
+    const unformatted = 'const   x :  string = "hello" ; '
+    const formatted = await format(unformatted, {
+      quoteStyle: 'single',
+      semicolons: false,
+    })
+    expect(formatted.trim()).toBe("const x: string = 'hello'")
   })
 })
