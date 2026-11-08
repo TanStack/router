@@ -17,6 +17,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 - **Exported route components and helpers split in Start apps too** (see the router plugin's changeset): each split chunk carries its own copy of an exported function whose closure is functions and primitives nothing writes and imports anything with an identity or state, importers of the route file share one instance, and both Start hosts (Vite and Rsbuild) warn after a client build when a module loaded with the entry imports such a binding through the route file.
 - **`routeTree.gen.ts` formatting changes once**: `enableRouteTreeFormatting` now defaults to `false` and the tree is printed in your `quoteStyle` and `semicolons`; commit the one-time diff.
 - **Removed (experimental, Babel-typed):** the `compilerTransforms` and `serverFnProviderModuleDirectives` options and the `StartCompilerPlugin`, `StartCompilerImportTransform`, `StartCompilerTransformContext` and `StartCompilerTransformCandidate` types. RSC integrations pass `rsc: { loadCssExpression, providerDirective }` instead.
+- **`@babel/core` no longer comes with Start.** If your app runs Babel itself (for example for the React Compiler), declare `@babel/core` in your own `devDependencies`.
 
 **Server functions**
 
