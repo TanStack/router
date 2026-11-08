@@ -104,23 +104,19 @@ const lazyRoutes = [
 ]
 
 /**
- * The warning of the pinned route, once: positioned at the declaration
- * (where the channel prints positions: Vite's build log prints the
- * message only, while the warning carries its `loc`), naming the
- * declaration, the effect, its option and line, and the fix.
+ * The warning of the pinned route, once, positioned at the declaration on
+ * every host (a Vite build's log prints a warning's message only: the
+ * message carries the position there).
  */
 function expectPinnedWarning(
   diagnostics: BuildResult['warnings'],
   root: string,
-  positioned: boolean,
 ) {
   expectDiagnostic(diagnostics, {
     severity: 'warning',
     file: 'routes/pinned.tsx',
     root,
-    ...(positioned && {
-      position: diagnosticPosition(pinned, 'marker = new'),
-    }),
+    position: diagnosticPosition(pinned, 'marker = new'),
     times: 1,
   })
 }
@@ -132,14 +128,14 @@ const builds: Array<[string, () => Promise<BuildResult>]> = [
   ['rsbuild', () => buildWithRsbuild({ files, registerCleanup: () => {} })],
 ]
 
-describe.each(builds)('a %s client build', (name, create) => {
+describe.each(builds)('a %s client build', (_name, create) => {
   test(
     'keeps a declaration an effect after it pins in the route module and warns once; loads the others with their chunk, unreported',
     async () => {
       const app = await create()
       const reported = [...app.warnings, ...app.consoleMessages]
       expect(app.where('MARK_pinned_END')).toBe('eager')
-      expectPinnedWarning(reported, app.root, name !== 'vite')
+      expectPinnedWarning(reported, app.root)
       for (const lazy of lazyRoutes) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
         expect(
@@ -164,7 +160,7 @@ describe('the Vite dev server', () => {
       for (const name of lazyRoutes) {
         await server.transform(`/routes/${name}.tsx`)
       }
-      expectPinnedWarning(server.diagnostics, server.root, true)
+      expectPinnedWarning(server.diagnostics, server.root)
       for (const name of lazyRoutes) {
         expect(
           findDiagnostics(server.diagnostics, {
