@@ -845,7 +845,7 @@ test.describe('Hydrate CSS delivery', () => {
     'production hydration coverage runs against the preview server',
   )
 
-  test('ships CSS for deferred, never, shared, and nested boundaries without JavaScript', async ({
+  test('ships CSS for root, deferred, never, shared, and nested boundaries without JavaScript', async ({
     browser,
     request,
   }) => {
@@ -857,6 +857,7 @@ test.describe('Hydrate CSS delivery', () => {
     htmlContainsText(html, 'Deferred CSS')
     htmlContainsText(html, 'Never CSS')
     htmlContainsText(html, 'Nested CSS')
+    htmlContainsText(html, 'Root deferred CSS')
 
     const context = await browser.newContext({ javaScriptEnabled: false })
     const page = await context.newPage()
@@ -871,6 +872,12 @@ test.describe('Hydrate CSS delivery', () => {
       await expect(page.getByTestId('css-never')).toHaveText('Never CSS')
       await expect(page.getByTestId('css-nested')).toHaveText('Nested CSS')
 
+      await expectCssProperty(
+        page,
+        'css-root-never',
+        'color',
+        'rgb(21, 43, 65)',
+      )
       await expectCssProperty(page, 'css-outer', 'color', 'rgb(12, 34, 56)')
       await expectCssProperty(
         page,

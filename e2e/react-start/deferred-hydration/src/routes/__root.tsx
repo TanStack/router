@@ -7,6 +7,9 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { never } from '@tanstack/react-start/hydration'
+import rootDeferredStyles from '../shared/root-deferred.module.css'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -173,6 +176,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link to="/scroll-restoration">Scroll</Link>
         </nav>
         {children}
+        <Hydrate when={never()}>
+          <div
+            data-testid="css-root-never"
+            className={rootDeferredStyles.panel}
+          >
+            Root deferred CSS
+          </div>
+        </Hydrate>
         <Scripts />
       </body>
     </html>
