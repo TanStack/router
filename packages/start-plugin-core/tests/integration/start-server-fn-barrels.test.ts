@@ -1,9 +1,9 @@
 /**
  * Server fns of several modules behind one `export *` barrel (SPEC J4.2,
  * J4.4): API objects whose server fns share property names across modules
- * (`usersApi.get`, `postsApi.get`), and unexported server fns of the same
- * name in two modules, re-exported again by a second barrel. Only the
- * user's own names are exported, and none of them collide, so the app
+ * (`usersApi.get`, `postsApi.get`) and whose handlers read module state of
+ * the same name (`store`), and unexported server fns of the same
+ * name in two modules, re-exported again by a second barrel. The app
  * builds and runs with no diagnostic about the barrels, in builds and on
  * dev servers, and every server fn answers its own client's call.
  */
@@ -26,10 +26,16 @@ const timeout = 90_000
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
-/** An API object of server fns, as apps group them by resource. */
-const api = (resource: string) => `${head}export const ${resource}Api = {
-  get: createServerFn().handler(async () => 'MARK_${resource}_get'),
-  list: createServerFn().handler(async () => 'MARK_${resource}_list'),
+/**
+ * An API object of server fns, as apps group them by resource, whose
+ * handlers read module state (the same name in every such module).
+ */
+const api = (
+  resource: string,
+) => `${head}const store = new Map([['get', 'MARK_${resource}_get'], ['list', 'MARK_${resource}_list']])
+export const ${resource}Api = {
+  get: createServerFn().handler(async () => store.get('get')),
+  list: createServerFn().handler(async () => store.get('list')),
 }
 `
 

@@ -1,7 +1,8 @@
 /**
  * With RSC, on Vite and on Rsbuild: server fns of several modules behind
  * one `export *` barrel (SPEC J4.2, J4.4), as API objects whose server fns
- * share property names across modules and as unexported server fns of the
+ * share property names across modules (their handlers reading module state
+ * of the same name) and as unexported server fns of the
  * same name in two modules. The production build reports nothing about the
  * barrel, and each server fn answers its own call from the page and from
  * the route's loader on the server.
@@ -17,10 +18,16 @@ import {
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
-/** An API object of server fns, as apps group them by resource. */
-const api = (resource: string) => `${head}export const ${resource}Api = {
-  get: createServerFn().handler(async () => 'MARK_${resource}_get'),
-  list: createServerFn().handler(async () => 'MARK_${resource}_list'),
+/**
+ * An API object of server fns, as apps group them by resource, whose
+ * handlers read module state (the same name in every such module).
+ */
+const api = (
+  resource: string,
+) => `${head}const store = new Map([['get', 'MARK_${resource}_get'], ['list', 'MARK_${resource}_list']])
+export const ${resource}Api = {
+  get: createServerFn().handler(async () => store.get('get')),
+  list: createServerFn().handler(async () => store.get('list')),
 }
 `
 
