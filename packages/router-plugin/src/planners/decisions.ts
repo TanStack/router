@@ -5,7 +5,7 @@
  * split part applies them, its HMR part hoists only what stays.
  */
 import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
-import { splitGroupingsSchema } from '../core/config'
+import { groupingsProblem } from '../core/config'
 import { ROUTER_PLANNER } from './config'
 import {
   declaratorOf,
@@ -108,27 +108,24 @@ function effectiveGroupings(
   ctx: PlanContext,
   cfg: RouterPlannerConfig,
   route: RouteModuleInfo,
+  warnings: Array<Diagnostic>,
 ): CodeSplitGroupings {
-  const file = ctx.displayPath
+  // (the route file's own groupings are checked where they are read)
   if (route.fileGroupings) {
-    const res = splitGroupingsSchema.safeParse(route.fileGroupings)
-    if (!res.success) {
-      const message = res.error.issues.map((e) => e.message).join('. ')
-      throw new Error(
-        `The groupings for the route ${file} are invalid.\n${message}`,
-      )
-    }
     return route.fileGroupings
   }
   if (cfg.splitBehavior && route.routeId !== null) {
     const fromPlugin = cfg.splitBehavior({ routeId: route.routeId })
     if (fromPlugin) {
-      const res = splitGroupingsSchema.safeParse(fromPlugin)
-      if (!res.success) {
-        const message = res.error.issues.map((e) => e.message).join('. ')
-        throw new Error(
-          `The groupings returned when using \`splitBehavior\` for the route ${file} are invalid.\n${message}`,
-        )
+      const problem = groupingsProblem(fromPlugin)
+      if (problem !== null) {
+        warnings.push({
+          severity: 'error',
+          message: `[tanstack-router] The groupings \`codeSplittingOptions.splitBehavior\` returns for ${ctx.displayPath} (route ${JSON.stringify(route.routeId)}): ${problem}.`,
+          by: ROUTER_PLANNER,
+          code: 'groupings-invalid',
+        })
+        return cfg.defaultGroupings
       }
       return fromPlugin
     }
@@ -338,7 +335,9 @@ export function splitPlanOf(
   // error and not-found responses, where a lazy chunk only adds a round trip
   // (and the manifest preloads it on every page anyway)
   const splitting = cfg.split && route.kind === 'file'
-  const groupings = splitting ? effectiveGroupings(ctx, cfg, route) : []
+  const groupings = splitting
+    ? effectiveGroupings(ctx, cfg, route, warnings)
+    : []
 
   const deletedNames = () => [...deleteNodes].map((k) => `\`${k}\``).join(', ')
 
