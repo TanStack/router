@@ -27,6 +27,7 @@ import {
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
+import { isVueSfc } from '../compiler/vue'
 import { providerModuleId } from '../server-fns/registry'
 import {
   CLIENT_REFERENCED_IDS_PLACEHOLDER,
@@ -601,7 +602,7 @@ export class StartRsbuildCompilerSession {
       identity.path,
       source,
       env.type,
-      late ? readInputMap : undefined,
+      late || isVueSfc(identity.path) ? readInputMap : undefined,
     )
     const mock = await this.protect(ctx, env, id, out)
     const buildInfo = ctx._module?.buildInfo
@@ -683,7 +684,7 @@ export class StartRsbuildCompilerSession {
     file: string,
     code: string,
     envType: 'client' | 'server',
-    lateInputMap?: () => InputSourceMap | null,
+    inputMap?: () => InputSourceMap | null,
   ): void {
     const located: Array<LocatedDiagnostic> = []
     const locate = (
@@ -709,7 +710,7 @@ export class StartRsbuildCompilerSession {
           ctx.emitWarning(warning)
         },
       },
-      lateInputMap,
+      inputMap,
     )
     const buildInfo = ctx._module?.buildInfo
     if (located.length > 0 && buildInfo) {

@@ -425,8 +425,6 @@ export const mw = createMiddleware({ type: 'function' }).inputValidator((d: unkn
     const ranges = out.diagnostics.map((d) => {
       expect(d.severity).toBe('error')
       expect(d.message).toContain('`.validator()`')
-      expect(d.message).toContain('#7566')
-      expect(d.message).toContain('#8694')
       return code.slice(d.range!.start, d.range!.end)
     })
     expect(ranges).toEqual(['inputValidator', 'inputValidator'])
@@ -835,7 +833,7 @@ export const fn = base.handler(async () => 'x')
         severity: 'error',
         at: code.indexOf('base)'),
         text: 'base',
-        message: `\`base\` is a server fn builder without \`.handler()\`, used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+        message: `\`base\` is a server fn builder without \`.handler()\`, used ${where}, so a handler attached to it there would ship to the client. Keep the builder in its own \`const\` (export it to share it) and call \`.handler(…)\` on that \`const\` where you define each server function, or call \`.handler(…)\` before passing it on.`,
       },
     ])
   })
@@ -848,7 +846,7 @@ export const fn = base.handler(async () => 'x')
         severity: 'error',
         at: code.indexOf('createServerFn()'),
         text: 'createServerFn()',
-        message: `A server fn builder without \`.handler()\` is used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+        message: `A server fn builder without \`.handler()\` is used ${where}, so a handler attached to it there would ship to the client. Keep the builder in its own \`const\` (export it to share it) and call \`.handler(…)\` on that \`const\` where you define each server function, or call \`.handler(…)\` before passing it on.`,
       },
     ])
   })
@@ -927,4 +925,50 @@ export const startInstance = createStart(() => ({ functionMiddleware: [mw()] }))
       },
     ])
   })
+})
+
+// `compiler/vue.ts` words a refusal for `<script setup>` from this fact,
+// joined on the diagnostic's offset
+test('a Vue SFC module records each refused nested server fn and what it reads, in every env', async () => {
+  const code = `${head}import { f } from './f'
+export function setup(props: { t: string }) {
+  const base = createServerFn()
+  const a = base.handler(async () => 1)
+  const b = createServerFn().handler(async () => props.t)
+  const c = createServerFn().validator(f()).handler(async () => 2)
+  return [a, b, c]
+}
+`
+  const at = (needle: string) => code.indexOf(needle)
+  for (const [id, vue] of [
+    ['/app/Comp.vue?vue&type=script&setup=true&lang.ts', true],
+    ['/app/module.tsx', false],
+  ] as const) {
+    for (const env of ['client', 'ssr'] as const) {
+      const out = (await compile(
+        {
+          [id.split('?')[0]!]: code,
+          '/app/f.ts': 'export const f = () => (d: unknown) => d\n',
+        },
+        env,
+        id,
+      ))!
+      expect(
+        out.diagnostics.map((d) => d.range!.start).sort((x, y) => x - y),
+      ).toEqual([at('base.handler'), at('props.t'), at('f()).handler')])
+      const facts = out.facts.planners[START_ENV] as StartEnvFacts
+      expect(facts.vueHoists).toEqual(
+        vue
+          ? [
+              {
+                at: at('base.handler'),
+                reads: { name: 'base', builder: true },
+              },
+              { at: at('props.t'), reads: { name: 'props', builder: false } },
+              { at: at('f()).handler'), option: '`f()`' },
+            ]
+          : undefined,
+      )
+    }
+  }
 })

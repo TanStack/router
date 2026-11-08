@@ -10,8 +10,10 @@
  * other ASCII characters outside the unreserved set and `$` (`%`, `:`,
  * `'`, `+`, `@`, `|`, `[`…) builds and reaches its handler, as it did, with
  * a deprecation warning naming the file. An id of unreserved characters
- * and `$` builds without one.
+ * and `$` builds without one. An id embedding `filename` (which holds `/`)
+ * fails; hashed, as the error suggests, it builds and reaches its handler.
  */
+import { createHash } from 'node:crypto'
 import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
@@ -161,4 +163,63 @@ return called`,
     },
     timeout,
   )
+
+  test.each([
+    {
+      name: 'an id embedding filename fails the build, naming the file',
+      id: ({ filename, functionName }: IdInput) =>
+        `${filename}--${functionName}`,
+      builds: false,
+    },
+    {
+      name: 'that id hashed builds and reaches its handler',
+      id: ({ filename, functionName }: IdInput) =>
+        createHash('sha1').update(`${filename}--${functionName}`).digest('hex'),
+      builds: true,
+    },
+  ])(
+    '$name',
+    async ({ id, builds }) => {
+      const files = app({ 'src/named.ts': 'unused' })
+      const built = await buildStart({
+        bundler,
+        ...files,
+        start: { serverFns: { generateFunctionId: id } },
+      }).then(
+        (build) => build,
+        (error: unknown) => {
+          if (!(error instanceof StartBuildError)) {
+            throw error
+          }
+          return error
+        },
+      )
+      if (!builds) {
+        expect(built).toBeInstanceOf(StartBuildError)
+        expectDiagnostic((built as StartBuildError).diagnostics, {
+          severity: 'error',
+          file: 'src/named.ts',
+          root: (built as StartBuildError).root,
+        })
+        return
+      }
+      if (built instanceof StartBuildError) {
+        throw built
+      }
+      const url = (await built.client.run(`return entry.fn0.url`)).result
+      expect(
+        (
+          await built.ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+        ).result,
+      ).toBe('src/named.ts')
+    },
+    timeout,
+  )
 })
+
+interface IdInput {
+  filename: string
+  functionName: string
+}
