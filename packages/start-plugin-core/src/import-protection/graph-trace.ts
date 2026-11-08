@@ -37,7 +37,7 @@ export interface IndexedEdge {
 /** The raw text of a source file for trace positions, or null (a virtual id, a missing file). */
 export type SourceReader = (path: string) => string | null
 
-function readSourceFile(path: string): string | null {
+export function readSourceFile(path: string): string | null {
   try {
     return fs.readFileSync(path, 'utf8')
   } catch {
@@ -188,10 +188,17 @@ export function traceFile(id: string): string {
   return id.startsWith('\0') ? id : identify(id).path
 }
 
+/** A violation's whole chain (`traceOf`), as a report prints it. */
+export interface Trace {
+  /** Entry first, importer last. */
+  steps: Array<TraceStep>
+  /** Whether the first step is an entry of the graph (not a module nothing is known to import). */
+  fromEntry: boolean
+}
+
 /**
- * The trace of `importerId`: entry first, importer last; at most
- * `maxDepth + 1` steps (a deeper chain is cut on the entry side). Each step
- * names its import of the next module (and where it is) when known.
+ * The trace of `importerId` (`traceOf`) as `onViolation` receives it: at most
+ * `maxDepth + 1` steps (a deeper chain is cut on the entry side).
  */
 export function buildTrace(
   importerId: string,
@@ -199,6 +206,24 @@ export function buildTrace(
   index: EdgeIndex | null,
   maxDepth: number,
 ): Array<TraceStep> {
+  return cutTrace(traceOf(importerId, graph, index).steps, maxDepth)
+}
+
+/** The last `maxDepth + 1` steps of a trace (at least the importer). */
+export function cutTrace<T>(steps: Array<T>, maxDepth: number): Array<T> {
+  const keep = Math.max(1, maxDepth + 1)
+  return steps.length > keep ? steps.slice(steps.length - keep) : steps
+}
+
+/**
+ * The whole trace of `importerId`: entry first, importer last. Each step
+ * names its import of the next module (and where it is) when known.
+ */
+export function traceOf(
+  importerId: string,
+  graph: ImportGraphView | null,
+  index: EdgeIndex | null,
+): Trace {
   const next = new Map<string, string>()
   const seen = new Set<string>([importerId])
   let queue = [importerId]
@@ -246,6 +271,7 @@ export function buildTrace(
     queue = level
   }
   root ??= firstRootless ?? importerId
+  const fromEntry = graph?.isEntry(root) === true
   const chain: Array<string> = [root]
   for (let id = root; id !== importerId; ) {
     const n = next.get(id)
@@ -269,8 +295,7 @@ export function buildTrace(
     }
     return step
   })
-  const keep = Math.max(1, maxDepth + 1)
-  return steps.length > keep ? steps.slice(steps.length - keep) : steps
+  return { steps, fromEntry }
 }
 
 /** A Vite dev environment's module graph (structural: `environment.moduleGraph`). */

@@ -68,7 +68,7 @@ describe('mock', () => {
     }
   })
 
-  test("mockAccess 'error'/'warn' report a call naming the import and the denied file; 'off' reports nothing", async () => {
+  test("mockAccess 'error'/'warn' report the first use naming the import and the denied file; 'off' reports nothing", async () => {
     for (const mode of ['error', 'warn', 'off'] as const) {
       const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -85,8 +85,9 @@ describe('mock', () => {
           expect(warn).not.toHaveBeenCalled()
           continue
         }
-        // the call (once per access path) and the conversion
-        expect(calls).toHaveLength(2)
+        // the first use of the mocked import only (R101: a renderer probing a
+        // mock made many reports; the call and the conversion were two)
+        expect(calls).toHaveLength(1)
         const message = String((calls[0]![0] as Error).message)
         expect(message).toContain('"./secret.server"')
         expect(message).toContain('src/secret.server.ts')

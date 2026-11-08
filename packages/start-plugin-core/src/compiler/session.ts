@@ -166,6 +166,7 @@ export class StartCompilerSession {
       ids: opts.edgeModuleIds,
       readFile: opts.readFile,
       isEntry: opts.isEntry,
+      framework: opts.framework,
     })
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)

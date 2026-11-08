@@ -7,7 +7,11 @@ import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { revision } from '@tanstack/router-utils/compiler'
 import { resolveImportProtectionConfig } from '../../src/import-protection/config'
-import { EdgeIndex, buildTrace } from '../../src/import-protection/graph-trace'
+import {
+  EdgeIndex,
+  buildTrace,
+  traceOf,
+} from '../../src/import-protection/graph-trace'
 import {
   Locator,
   originalPositionFor,
@@ -178,10 +182,13 @@ describe('traces', () => {
   })
 
   test('the importer step of a violation names the denied import and its location', () => {
-    const info = violationInfo(violation(), config(), () => [
-      { file: '/app/src/a.ts', specifier: './b' },
-      { file: '/app/src/b.ts' },
-    ])
+    const info = violationInfo(violation(), config(), () => ({
+      steps: [
+        { file: '/app/src/a.ts', specifier: './b' },
+        { file: '/app/src/b.ts' },
+      ],
+      fromEntry: false,
+    }))
     expect(info.trace.at(-1)).toEqual({
       file: '/app/src/b.ts',
       specifier: './secret.server',
@@ -202,11 +209,16 @@ describe('suggestions', () => {
       resolved: '/app/src/win.client.ts',
     })
     const text = formatViolation(
-      violationInfo(v, config(), () => [{ file: '/app/src/b.ts' }]),
-      '/app',
+      v,
+      violationInfo(v, config(), () => ({
+        steps: [{ file: '/app/src/b.ts' }],
+        fromEntry: false,
+      })),
+      { config: config(), readSource: () => null, framework: 'react' },
     )
+    // (the text changed with R101's message fixes: still names the throw)
     expect(text).toContain(
-      'Use createClientOnlyFn(() => ...) to mark it as client-only (it will throw if called on the server)',
+      'wrap it in createClientOnlyFn(() => ...): it throws if called on the server',
     )
   })
 })
@@ -219,6 +231,11 @@ describe('dev reports', () => {
     const g = graph({})
     const reporter = new DevReporter({
       config: config(options),
+      report: {
+        config: config(options),
+        readSource: () => null,
+        framework: 'react',
+      },
       sink: {
         warn: (_m, r) =>
           printed.push(r.info.trace.map((s) => s.file).join(' > ')),
@@ -243,7 +260,7 @@ describe('dev reports', () => {
       reporter.enqueue({
         violation: v,
         info: violationInfo(v, config(options), () =>
-          buildTrace(v.importerId, g, null, 20),
+          traceOf(v.importerId, g, null),
         ),
       })
     return { reporter, printed, timers, tick, enqueue, g }

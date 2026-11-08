@@ -61,6 +61,7 @@ import {
 import type {
   EdgeRecord,
   EmitPlan,
+  ModuleAnalysis,
   Planner,
   PolicyContext,
 } from '@tanstack/router-utils/compiler'
@@ -72,6 +73,7 @@ import type { ImportProtection } from '../import-protection/session'
 import type {
   EdgeViolation,
   ImportEdgesFacts,
+  RenderedUse,
 } from '../import-protection/violations'
 
 /**
@@ -116,6 +118,77 @@ function markerIdOf(envType: EnvType, target: string): string {
     !target.startsWith('\0')
     ? identify(target).path
     : target
+}
+
+/** Route options whose value the router renders as a component. */
+const COMPONENT_OPTIONS = new Set([
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+  'shellComponent',
+])
+
+/**
+ * How the module renders a binding of the import whose specifier starts at
+ * `offset`: its first use as a JSX element (`<Widget />`, `<ns.Widget />`),
+ * else as a route's component option (`component: Widget`). A query of the
+ * bindings' references, read only for a violation (a reference's node is
+ * built when read).
+ */
+function renderedUse(
+  analysis: ModuleAnalysis,
+  offset: number,
+): {
+  name: string
+  via: RenderedUse['via']
+  key?: string
+  start: number
+} | null {
+  const imp = analysis.imports.find((i) => i.specifierRange.start === offset)
+  if (!imp || imp.typeOnly) {
+    return null
+  }
+  let option: {
+    name: string
+    via: 'option'
+    key: string
+    start: number
+  } | null = null
+  for (const spec of imp.specifiers) {
+    const binding =
+      spec.typeOnly || (spec.local as number) < 0
+        ? undefined
+        : analysis.file.bindings[spec.local]
+    for (const ref of binding?.references ?? []) {
+      if (ref.inTypePosition || ref.isWrite) {
+        continue
+      }
+      const node = ref.node
+      if (node.type === 'JSXIdentifier') {
+        return { name: spec.localName, via: 'jsx', start: node.start }
+      }
+      if (option !== null) {
+        continue
+      }
+      const parent = analysis.file.parentOf(node)
+      if (
+        parent?.type === 'Property' &&
+        parent.value === node &&
+        !parent.computed &&
+        parent.key.type === 'Identifier' &&
+        COMPONENT_OPTIONS.has(parent.key.name)
+      ) {
+        option = {
+          name: spec.localName,
+          via: 'option',
+          key: parent.key.name,
+          start: node.start,
+        }
+      }
+    }
+  }
+  return option
 }
 
 /** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
@@ -171,12 +244,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         | ImportEdgesFacts
         | undefined) ??= { violations: {} })
       if (output === 'env' && plan.facts.marker === 'conflict') {
-        ctx.diagnostic({
-          severity: 'error',
-          message: `[import-protection] ${relativizePath(ctx.identity.path, config.root)} imports both a server-only and a client-only marker: a module can be restricted to one environment only`,
-          by: IMPORT_EDGES_PLANNER,
-          code: 'import-protection-marker-conflict',
-        })
+        ctx.diagnostic(markerConflict(ctx))
       }
       // an exempt importer's imports are only indexed: a denied module it
       // imports is allowed (`ImportProtectionEnv.allowsSelf`)
@@ -309,6 +377,19 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           j.edge.kind === 'evaluation'
         const substitute =
           config.mode === 'build' || behavior === 'mock' || pending
+        // a server rendering client-only code: whether it renders it as a component
+        const ownStatic =
+          envType === 'server' &&
+          j.offset !== undefined &&
+          j.edge.provenance.origin !== 'forwarded'
+        const rendered = ownStatic ? renderedUse(ctx.analysis, j.offset!) : null
+        // a Vue template renders a component through no JSX: its binding names the fix
+        const binding =
+          ownStatic && !rendered && ctx.identity.path.endsWith('.vue')
+            ? ctx.analysis.imports
+                .find((i) => i.specifierRange.start === j.offset)
+                ?.specifiers.find((spec) => !spec.typeOnly)?.localName
+            : undefined
         const base: EdgeViolation = {
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
@@ -323,6 +404,16 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           behavior,
           module: null,
           ...(pending && { pending: true }),
+          ...(rendered && {
+            rendered: {
+              name: rendered.name,
+              via: rendered.via,
+              ...(rendered.key !== undefined && { key: rendered.key }),
+              at: locator.at(rendered.start),
+            },
+          }),
+          ...(binding !== undefined && { binding }),
+          ...(j.edge.form === 'reexport' && { reexport: true }),
         }
         if (substitute) {
           const content = await edgeModuleContent(plan, j, ctx)
@@ -346,6 +437,44 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         delete facts.violations[output]
       }
     },
+  }
+
+  /**
+   * A module importing both markers: the error, at the import of the second
+   * marker, naming both.
+   */
+  function markerConflict(ctx: PolicyContext) {
+    const markers = ctx.analysis.imports.filter(
+      (i) => ip.markerSpecifiers[i.specifier] !== undefined,
+    )
+    const first = markers[0]
+    const second = markers.find(
+      (i) =>
+        first !== undefined &&
+        ip.markerSpecifiers[i.specifier] !==
+          ip.markerSpecifiers[first.specifier],
+    )
+    const file = relativizePath(ctx.identity.path, config.root)
+    const line =
+      first &&
+      new Locator(ctx.code, ctx.identity.path, ctx.inputMap).at(
+        first.specifierRange.start,
+      )?.line
+    return {
+      severity: 'error' as const,
+      message:
+        first && second
+          ? `[import-protection] ${file} imports both "${first.specifier}"${line ? ` (line ${line})` : ''} and "${second.specifier}": a module can be restricted to one environment only. Remove one of the two imports`
+          : `[import-protection] ${file} imports both a server-only and a client-only marker: a module can be restricted to one environment only. Remove one of the two imports`,
+      ...(second && {
+        range: {
+          start: second.specifierRange.start,
+          end: second.specifierRange.end,
+        },
+      }),
+      by: IMPORT_EDGES_PLANNER,
+      code: 'import-protection-marker-conflict',
+    }
   }
 
   /** The edge module of a violation: names, effect witness and allowed form. */

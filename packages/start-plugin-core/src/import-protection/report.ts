@@ -11,12 +11,12 @@
 import { formatViolation } from './trace'
 import { dedupeKey } from './violations'
 import type { ImportProtectionConfig } from './config'
-import type { EdgeViolation } from './violations'
-import type { ViolationInfo } from './trace'
+import type { EdgeViolation, ReportedInfo } from './violations'
+import type { ReportContext } from './trace'
 
-interface DevReport {
+export interface DevReport {
   violation: EdgeViolation
-  info: ViolationInfo & { freezeTrace: () => ViolationInfo['trace'] }
+  info: ReportedInfo
 }
 
 export interface ReportSink {
@@ -26,6 +26,8 @@ export interface ReportSink {
 
 export interface DevReporterOptions {
   config: ImportProtectionConfig
+  /** How reports are formatted (`formatViolation`). */
+  report: ReportContext
   sink: ReportSink
   /** Whether the graph knows how `importerId` is reached (it has importers or is an entry). */
   reachable: (importerId: string) => boolean
@@ -96,8 +98,10 @@ export class DevReporter {
         this.opts.reachable(r.violation.importerId) ||
         now - r.at >= MAX_WAIT
       ) {
-        r.info.freezeTrace()
-        this.opts.sink.warn(formatViolation(r.info, this.opts.config.root), r)
+        this.opts.sink.warn(
+          formatViolation(r.violation, r.info, this.opts.report),
+          r,
+        )
       } else {
         keep.push(r)
       }
@@ -135,19 +139,34 @@ export class DevReporter {
   }
 }
 
-/** The error a dev `error` violation fails its importer's transform with. */
+/**
+ * The error dev `error` violations fail their importer's transform with: the
+ * reports, without the frames of the code that made it (the reports say all
+ * there is). `id`: the importer's file. No `loc`: the report names the
+ * first one's position, 1-based, with its code frame (Vite prints a Rollup
+ * `loc`'s 0-based column as given); `at` is that position for a host that
+ * records it (Rsbuild's located diagnostics).
+ */
+export interface DevViolationError extends Error {
+  id?: string
+  at?: { line: number; column: number }
+}
+
 export function devViolationError(
-  info: ViolationInfo,
-  config: ImportProtectionConfig,
-): Error & { loc?: { file: string; line: number; column: number } } {
-  const error = new Error(formatViolation(info, config.root)) as Error & {
-    loc?: { file: string; line: number; column: number }
-  }
-  if (info.importerLoc) {
-    error.loc = {
-      file: info.importerLoc.file ?? info.importer,
-      line: info.importerLoc.line,
-      column: info.importerLoc.column - 1,
+  reports: Array<DevReport>,
+  ctx: ReportContext,
+): DevViolationError {
+  const message = reports
+    .map((r) => formatViolation(r.violation, r.info, ctx))
+    .join('\n')
+  const error: DevViolationError = new Error(message)
+  error.stack = message
+  const [first] = reports
+  if (first) {
+    const loc = first.info.importerLoc
+    error.id = loc?.file ?? first.info.importer
+    if (loc) {
+      error.at = { line: loc.line, column: loc.column }
     }
   }
   return error
