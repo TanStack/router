@@ -434,6 +434,8 @@ export {
   getElementScrollRestorationEntry,
   storageKey,
   setupScrollRestoration,
+  teardownScrollRestoration,
+  disposeRouter,
 } from './scroll-restoration'
 
 export type {

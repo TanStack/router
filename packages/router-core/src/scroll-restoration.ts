@@ -148,13 +148,20 @@ function getScrollToTopElements(
   return elements
 }
 
-export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
+export function setupScrollRestoration(
+  router: AnyRouter,
+  force?: boolean,
+): (() => void) | undefined {
   // Keep hash/top scrolling active even when sessionStorage is unavailable.
   const shouldSetupScrollRestoration = force ?? router.options.scrollRestoration
   const scroll = router._scroll
 
   if (shouldSetupScrollRestoration) {
     scroll.e = true
+  }
+
+  if (scroll.r && (!shouldSetupScrollRestoration || scroll.s)) {
+    return scroll.c
   }
 
   if (isServer ?? router.isServer) {
@@ -164,6 +171,12 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
   const trackedScrollTargets = new Set<Document | Element>()
+
+  let onScroll: ((event: Event) => void) | undefined
+  let onPageHide: (() => void) | undefined
+  let onPageShow: ((event: PageTransitionEvent) => void) | undefined
+  let unsubBeforeLoad: (() => void) | undefined
+  let unsubRendered: (() => void) | undefined
 
   // Snapshot the current page's tracked scroll targets before navigation or unload.
   const snapshotCurrentScrollTargets = (restoreKey: string) => {
@@ -188,23 +201,23 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
     history.scrollRestoration = 'manual'
 
-    document.addEventListener(
-      'scroll',
-      (event) => {
-        if (ignoreScroll) {
-          return
-        }
-        trackedScrollTargets.add(event.target as Document | Element)
-      },
-      true,
-    )
-    router.subscribe('onBeforeLoad', (event) => {
+    onScroll = (event) => {
+      if (ignoreScroll) {
+        return
+      }
+      trackedScrollTargets.add(event.target as Document | Element)
+    }
+
+    document.addEventListener('scroll', onScroll, true)
+
+    unsubBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
       if (event.fromLocation) {
         snapshotCurrentScrollTargets(getKey(event.fromLocation))
       }
       trackedScrollTargets.clear()
     })
-    addEventListener('pagehide', () => {
+
+    onPageHide = () => {
       // Allow native restoration on reload or a later return to this entry.
       // Reset even when entering BFCache: the cached document may be evicted.
       // Do this first so a failing getKey/snapshot cannot leave it in manual mode.
@@ -228,26 +241,27 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
           )
         }
       }
-    })
+    }
 
-    addEventListener('pageshow', (event) => {
+    addEventListener('pagehide', onPageHide)
+
+    onPageShow = (event) => {
       if (event.persisted) {
         // BFCache resumes the existing document without rerunning router setup.
         // Reclaim restoration so the browser and router don't both control it.
         // Fresh documents already set manual mode during setup.
         history.scrollRestoration = 'manual'
       }
-    })
+    }
+
+    addEventListener('pageshow', onPageShow)
   }
 
-  if (scroll.r) {
-    return
-  }
+  if (!scroll.r) {
+    scroll.r = true
 
-  scroll.r = true
-
-  // Restore destination scroll after the new route has rendered.
-  router.subscribe('onRendered', (event) => {
+    // Restore destination scroll after the new route has rendered.
+    unsubRendered = router.subscribe('onRendered', (event) => {
     const behavior = router.options.scrollRestorationBehavior
     const scrollToTopSelectors = router.options.scrollToTopSelectors
     const shouldResetScroll = scroll.n
@@ -375,4 +389,37 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       ignoreScroll = false
     }
   })
+}
+
+  const prevCleanup = scroll.c
+  const cleanup = () => {
+    prevCleanup?.()
+    if (onScroll) {
+      document.removeEventListener('scroll', onScroll, true)
+    }
+    if (onPageHide) {
+      removeEventListener('pagehide', onPageHide)
+    }
+    if (onPageShow) {
+      removeEventListener('pageshow', onPageShow)
+    }
+    unsubBeforeLoad?.()
+    unsubRendered?.()
+    trackedScrollTargets.clear()
+    scroll.s = false
+    scroll.r = false
+    scroll.e = false
+    scroll.c = undefined
+  }
+
+  scroll.c = cleanup
+  return cleanup
+}
+
+export function teardownScrollRestoration(router: AnyRouter): void {
+  router._scroll.c?.()
+}
+
+export function disposeRouter(router: AnyRouter): void {
+  teardownScrollRestoration(router)
 }
