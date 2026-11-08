@@ -166,14 +166,24 @@ function describe(record: Record<string, unknown>, depth = 0): string {
     }
   }
   const loc = (record.loc ?? record.location) as
-    | { file?: unknown; line?: unknown; column?: unknown }
+    | {
+        file?: unknown
+        line?: unknown
+        column?: unknown
+        start?: { line?: unknown; column?: unknown }
+      }
     | string
     | undefined
+  const module = record.module as { resource?: unknown } | null | undefined
   const file = [
     typeof loc === 'object' ? loc.file : undefined,
     record.id,
     record.file,
     record.moduleName,
+    // a webpack / Rspack compilation error's module (Rsbuild prints its file)
+    typeof module?.resource === 'string'
+      ? module.resource.split('?')[0]
+      : undefined,
   ].find(
     (candidate): candidate is string =>
       typeof candidate === 'string' && candidate !== '',
@@ -182,6 +192,13 @@ function describe(record: Record<string, unknown>, depth = 0): string {
     // Rollup, Vite, Babel and esbuild locations have 0-based columns.
     const column = typeof loc.column === 'number' ? `:${loc.column + 1}` : ''
     lines.push(`${file ?? ''}:${loc.line}${column}`)
+  } else if (typeof loc === 'object' && typeof loc.start?.line === 'number') {
+    // a webpack / Rspack error's `loc` (`DependencyLocation`), printed as
+    // given: `./src/a.tsx 3:7`
+    const { line, column } = loc.start
+    lines.push(
+      `${file ?? ''} ${line}${typeof column === 'number' ? `:${column}` : ''}`,
+    )
   } else if (typeof loc === 'string') {
     // webpack: `line:column-column`.
     lines.push(`${file ?? ''} ${loc}`)
