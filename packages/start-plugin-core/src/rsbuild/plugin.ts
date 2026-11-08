@@ -255,7 +255,9 @@ export function tanStackStartRsbuild(
             // reach the browser only when they end (the SSR middleware's
             // srvx response does not flush the compression middleware), and
             // @rsbuild/core < 2.0.5 corrupted the SSR response headers.
-            ...(rsbuildConfig.server?.compress === undefined
+            // `rsbuildConfig` already holds Rsbuild's default (`true`), so
+            // read the app's own config.
+            ...(api.getRsbuildConfig('original').server?.compress === undefined
               ? { compress: false }
               : {}),
             // SSR apps render every route on the server — disable HTML
