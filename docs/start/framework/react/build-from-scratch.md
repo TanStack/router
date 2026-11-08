@@ -143,7 +143,7 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart(),
-    // react's vite plugin must come after start's vite plugin
+    // react's vite plugin can come before or after start's vite plugin
     viteReact(),
   ],
 })

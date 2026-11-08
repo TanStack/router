@@ -301,8 +301,8 @@ export async function invalidate(
   // `imports` and `exports` decide what specifiers resolve to, as files
   // appearing do. (A resolution from a package to a target outside its
   // directory stays until its importer compiles again.)
-  const manifest =
-    change.kind === 'change' && change.path.endsWith('/package.json')
+  const manifestAt = change.path.endsWith('/package.json')
+  const manifest = change.kind === 'change' && manifestAt
   const fileSetMoved =
     change.kind === 'add' || change.kind === 'unlink' || manifest
   if (fileSetMoved) {
@@ -387,10 +387,28 @@ export async function invalidate(
           shadowed.push(path)
         }
       }
-      // (a plan under many of those paths: its resolutions are asked once)
+      // only those resolutions are asked again, once per plan under many of
+      // those paths: the plan's others found files the new one can't take.
+      // A `package.json` decides more than the files it is next to (its
+      // `imports` may name a target outside its directory): every resolution
+      // of those plans is asked again
       const seen = new Set<string>()
       for (const path of shadowed) {
-        await revalidate(cache, path, (fp) => fp.kind === 'resolution', seen)
+        await revalidate(
+          cache,
+          path,
+          (fp) => {
+            if (fp.kind !== 'resolution') {
+              return false
+            }
+            if (manifestAt) {
+              return true
+            }
+            const found = fingerprintPath(fp)
+            return found !== null && found !== change.path && shadows(found)
+          },
+          seen,
+        )
       }
     }
   }

@@ -177,3 +177,128 @@ export const fn = base.handler(async () => 'MARK_MDX_FINISHED')
     timeout,
   )
 })
+
+// Vite only: a plugin may hand another language's output to the bundler as
+// TypeScript (`moduleType: 'ts'`), which Rolldown compiles and the late pass
+// cannot parse (it reads JavaScript). One naming a Start package fails the
+// client build at its file; one naming none is left to the bundler (SPEC
+// J4.12, J4.16).
+describe('vite build of a module another plugin hands over as TypeScript', () => {
+  const asTypeScript = {
+    viteConfig: {
+      plugins: [
+        {
+          name: 'foo-as-typescript',
+          transform: {
+            filter: { id: /\.foo$/ },
+            handler: (code: string) => ({ code, moduleType: 'ts' }),
+          },
+        },
+      ],
+    },
+  } satisfies Pick<StartBuildOptions, 'viteConfig'>
+
+  test(
+    'fails the client build when it names a Start package',
+    async () => {
+      const source = `import { createServerFn } from '@tanstack/react-start'
+const label: string = 'MARK_FOO_HANDLER'
+export const fn = createServerFn().handler(async () => label)
+`
+      const error: unknown = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/page.foo': source,
+          'src/entry.ts': `export { fn } from './page.foo'\n`,
+        },
+        entry: 'src/entry.ts',
+        ...asTypeScript,
+      }).then(
+        (build) =>
+          expect.fail(
+            `the build succeeded; the handler's text is ${build.client.where('MARK_FOO_HANDLER')} in the client bundle`,
+          ),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/page.foo',
+        root: error.root,
+      })
+    },
+    timeout,
+  )
+
+  // (a plugin after Start's late pass compiles the Markdown: the late pass
+  // sees the text, which no JavaScript parser accepts)
+  test(
+    'leaves text another plugin compiles later to the bundler, though it names a router package',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/readme.md': `# Usage
+
+To link: \`import { Link } from '@tanstack/react-router'\`.
+`,
+          'src/entry.ts': `import readme from './readme.md'\nexport const text = readme\n`,
+        },
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: [
+            {
+              name: 'markdown-as-text',
+              enforce: 'post',
+              transform: {
+                filter: { id: /\.md$/ },
+                handler: (code: string) => ({
+                  code: `export default ${JSON.stringify(code)}`,
+                }),
+              },
+            },
+          ],
+        },
+      })
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/readme.md',
+          root: build.root,
+        }),
+      ).toEqual([])
+      expect((await build.client.run('return entry.text')).result).toContain(
+        '# Usage',
+      )
+    },
+    timeout,
+  )
+
+  test(
+    'leaves it to the bundler when it names none',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/page.foo': `const label: string = 'MARK_FOO_VALUE'
+export const value = label
+`,
+          'src/entry.ts': `export { value } from './page.foo'\n`,
+        },
+        entry: 'src/entry.ts',
+        ...asTypeScript,
+      })
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/page.foo',
+          root: build.root,
+        }),
+      ).toEqual([])
+      expect((await build.client.run('return entry.value')).result).toBe(
+        'MARK_FOO_VALUE',
+      )
+    },
+    timeout,
+  )
+})

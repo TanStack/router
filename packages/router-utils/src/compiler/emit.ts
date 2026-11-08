@@ -41,7 +41,11 @@ export function emitRecipe(
 /**
  * Replaces an edge's specifier literals with a new one (phase C
  * substitution): the generated segments carrying its key, and the source
- * literals at its locations, cut out of the slice holding them.
+ * literals at its locations, cut out of the slice holding them. A location
+ * that no slice holds whole must be printed by the edge's own generated
+ * segments alone; when a slice prints part of it (an edit split it) or no
+ * segment of the edge exists, the compile fails rather than keep the
+ * original specifier (a denied import would stay).
  */
 export function substituteSpecifier(
   recipe: OutputRecipe,
@@ -51,9 +55,11 @@ export function substituteSpecifier(
 ): void {
   const { edgeKey } = edge
   const segments = recipe.segments
+  let generated = false
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]!
     if (seg.k === 'text' && seg.edgeKey === edgeKey) {
+      generated = true
       segments[i] = {
         k: 'text',
         text: specifierLiteral(specifier, seg.text),
@@ -68,6 +74,14 @@ export function substituteSpecifier(
       (s) => s.k === 'slice' && s.start <= start && s.end >= end,
     )
     if (i === -1) {
+      const partly = segments.some(
+        (s) => s.k === 'slice' && s.start < end && s.end > start,
+      )
+      if (partly || !generated) {
+        throw new Error(
+          `Internal compiler error: the import "${edge.specifier}" of ${edge.importerId}:${lineColumn(code, start)} could not be replaced, because an edit of the module covers part of it. Please report this at https://github.com/TanStack/router/issues`,
+        )
+      }
       continue
     }
     const s = segments[i]! as Extract<Segment, { k: 'slice' }>
@@ -86,4 +100,11 @@ export function substituteSpecifier(
     }
     segments.splice(i, 1, ...parts)
   }
+}
+
+/** The 1-based `line:column` of an offset of `code`. */
+function lineColumn(code: string, offset: number): string {
+  const before = code.slice(0, offset)
+  const lineStart = before.lastIndexOf('\n') + 1
+  return `${before.split('\n').length}:${offset - lineStart + 1}`
 }

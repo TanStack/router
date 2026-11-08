@@ -107,6 +107,8 @@ export function propertyRangeWithComma(options: Node, prop: Node): Range {
 export interface ToySplitOptions {
   /** Option keys to split (default ['component']). */
   keys?: Array<string>
+  /** Keys split into one chunk (`?tsr-split=<a>---<b>`); any other key has its own. */
+  groups?: Array<Array<string>>
   /** Option keys erased from the env output only (deleteNodes). */
   deleteNodes?: Array<string>
   /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
@@ -123,6 +125,8 @@ export interface ToySplitOptions {
   homeIds?: boolean
   /** List, in the env module, the glue export names of these module-level bindings (`export const glueNames = […]`, `glueExportName`). */
   glueNames?: ReadonlyArray<string>
+  /** Tag the env module's glue exports (`tagGlueExports`). */
+  glueTag?: string
 }
 
 /**
@@ -144,6 +148,9 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       ctx.setRouteModule()
       ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
       ctx.markBenignEffect(found.unit.id)
+      if (opts.glueTag !== undefined) {
+        ctx.tagGlueExports(opts.glueTag)
+      }
       const { options, unit } = found
       if (opts.extractExports) {
         for (const e of ctx.analysis.exports) {
@@ -201,10 +208,12 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
         }
+        const group =
+          opts.groups?.find((g) => g.includes(key))?.join('~') ?? key
         const output = ctx.declareOutput({
           kind: 'split',
-          key,
-          derived: { kind: 'split', value: key },
+          key: group,
+          derived: { kind: 'split', value: group },
         })
         const derivedId = output.slice('derived:'.length)
         const pascal = key.charAt(0).toUpperCase() + key.slice(1)
@@ -470,15 +479,23 @@ export function toyEdgePolicyPlanner(
  * records a fact per import (`kind` of `make` export), so a consumer's plan
  * depends on its dependencies' export facts.
  */
-export function toySummaryPlanner(): Planner {
+export function toySummaryPlanner(
+  opts: {
+    /** Also read `#name` imports (a `package.json` `imports` entry). */
+    subpathImports?: boolean
+  } = {},
+): Planner {
+  const reads = (specifier: string) =>
+    specifier.startsWith('.') ||
+    (opts.subpathImports === true && specifier.startsWith('#'))
   return {
     name: 'toy-summary',
     tier: 1,
-    gate: (t0) => t0.imports.some((i) => i.specifier.startsWith('.')),
+    gate: (t0) => t0.imports.some((i) => reads(i.specifier)),
     async prefetch(t0, ctx) {
       const facts: Record<string, unknown> = {}
       for (const imp of t0.imports) {
-        if (!imp.specifier.startsWith('.')) {
+        if (!reads(imp.specifier)) {
           continue
         }
         const target = await ctx.resolve(imp.specifier)

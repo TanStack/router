@@ -62,6 +62,12 @@ export interface StartDevServerOptions extends Omit<
    * `@vitejs/plugin-vue(-jsx)`, comes from `plugins`).
    */
   framework?: StartFramework
+  /**
+   * Lists Start's plugin after the app's other plugins (the framework's own
+   * included), as an app whose `vite.config.ts` lists `tanstackStart()`
+   * last. Default: first.
+   */
+  startLast?: boolean
 }
 
 /**
@@ -196,6 +202,7 @@ export function startDevServer(
     plugins = [],
     start = {},
     framework = 'react',
+    startLast = false,
     ...devServerOptions
   } = options
   return createDevServer({
@@ -214,8 +221,7 @@ export function startDevServer(
     plugins: ({ root }) => {
       const appPlugins =
         typeof plugins === 'function' ? plugins({ root }) : plugins
-      return [
-        startPlugin(root, start, framework),
+      const others = [
         // A React app's own Vite plugin, as in every React Start app,
         // unless the test gives it
         ...(framework === 'react' &&
@@ -224,6 +230,8 @@ export function startDevServer(
           : []),
         ...appPlugins,
       ]
+      const startPlugins = startPlugin(root, start, framework)
+      return startLast ? [...others, startPlugins] : [startPlugins, ...others]
     },
   })
 }

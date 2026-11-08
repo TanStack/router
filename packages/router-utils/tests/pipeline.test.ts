@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
 import { compileModule, invalidate, revision } from '../src/compiler'
@@ -402,6 +403,128 @@ describe('resolution for analysis', () => {
     expect(fourth!.dependencies).toEqual([
       '/app/service/index.ts',
       '/app/helper.tsx',
+    ])
+  })
+
+  // `./service` found `service/index.ts`, which `service.web.ts` may shadow;
+  // `./helper` found a file the new one can't take, and is not asked again:
+  // an answer that changed meanwhile without a file event (Rspack's
+  // resolver, under Yarn PnP, finds no package from a file in Yarn's global
+  // cache at the start of a compile) makes no plan stale.
+  // Source: release check, real installs F1 (an edit under a directory
+  // Tailwind's Rsbuild plugin watches broke Start's Rsbuild dev server).
+  it('a file that appears asks again only the resolutions it may take', async () => {
+    let helperAnswers = true
+    const files = {
+      '/app/page.tsx': dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from './service'
+        import { helper } from './helper'
+        export const Route = createFileRoute('/')({
+          component: () => helper(make()),
+        })
+      `),
+      '/app/service/index.ts': 'export const make = () => "index"\n',
+      '/app/helper.ts': 'export const helper = (x: unknown) => x\n',
+    }
+    const host = new MemoryHost({
+      files,
+      resolve: (specifier, importer, all) => {
+        if (specifier === './helper' && !helperAnswers) {
+          return null
+        }
+        const joined = path.posix.join(path.posix.dirname(importer), specifier)
+        return (
+          [`${joined}.ts`, `${joined}/index.ts`].find((c) => c in all) ?? null
+        )
+      },
+    })
+    const planners: Array<Planner> = [toySplitPlanner(), toySummaryPlanner()]
+    const first = await host.compile('/app/page.tsx', planners)
+    expect(first!.dependencies).toEqual([
+      '/app/service/index.ts',
+      '/app/helper.ts',
+    ])
+    helperAnswers = false
+    host.write('/app/service.web.ts', 'export const make = () => "web"\n')
+    host.resolveCalls.length = 0
+    const added = await invalidate(
+      host.caches,
+      { path: '/app/service.web.ts', kind: 'add' },
+      host,
+    )
+    expect(added.dependents).toEqual([])
+    expect(host.resolveCalls).toEqual([
+      { specifier: './service', importer: '/app/page.tsx' },
+    ])
+  })
+
+  // a `package.json` nearer the importer takes its `#imports` from the
+  // root's: the target `#foo` found (outside the new file's directory) is no
+  // file the new one shadows, but the manifest decides what `#foo` names
+  it('a package.json that appears asks again every resolution of the plans under its directory', async () => {
+    const files = {
+      '/app/package.json': JSON.stringify({
+        imports: { '#foo': './lib/foo.ts' },
+      }),
+      '/app/lib/foo.ts': 'export const make = () => "root"\n',
+      '/app/src/foo.ts': 'export const make = () => "nested"\n',
+      '/app/src/helper.ts': 'export const helper = (x: unknown) => x\n',
+      '/app/src/page.tsx': dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from '#foo'
+        import { helper } from './helper'
+        export const Route = createFileRoute('/')({
+          component: () => helper(make()),
+        })
+      `),
+    }
+    const host = new MemoryHost({
+      files,
+      resolve: (specifier, importer, all) => {
+        let dir = path.posix.dirname(importer)
+        if (specifier.startsWith('#')) {
+          for (;;) {
+            const manifest = all[`${dir}/package.json`]
+            if (manifest !== undefined) {
+              const target = JSON.parse(manifest).imports?.[specifier]
+              return target ? path.posix.join(dir, target) : null
+            }
+            if (dir === '/') {
+              return null
+            }
+            dir = path.posix.dirname(dir)
+          }
+        }
+        const joined = path.posix.join(dir, specifier)
+        return [`${joined}.ts`].find((c) => c in all) ?? null
+      },
+    })
+    const planners: Array<Planner> = [
+      toySplitPlanner(),
+      toySummaryPlanner({ subpathImports: true }),
+    ]
+    const first = await host.compile('/app/src/page.tsx', planners)
+    expect(first!.dependencies).toEqual([
+      '/app/lib/foo.ts',
+      '/app/src/helper.ts',
+    ])
+    host.write(
+      '/app/src/package.json',
+      JSON.stringify({ imports: { '#foo': './foo.ts' } }),
+    )
+    const added = await invalidate(
+      host.caches,
+      { path: '/app/src/package.json', kind: 'add' },
+      host,
+    )
+    expect(added.dependents.map((k) => k.canonicalId)).toEqual([
+      '/app/src/page.tsx',
+    ])
+    const second = await host.compile('/app/src/page.tsx', planners)
+    expect(second!.dependencies).toEqual([
+      '/app/src/foo.ts',
+      '/app/src/helper.ts',
     ])
   })
 })

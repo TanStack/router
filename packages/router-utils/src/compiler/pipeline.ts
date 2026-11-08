@@ -741,6 +741,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     liveness: (output) => plan.liveness(output),
     nameOf: (sym) => plan.nameOf(sym),
     glueExportName: (sym) => plan.glueExportName(sym),
+    tagGlueExports: (tag) => plan.tagGlueExports(tag),
     renameRefs: (sym, to, scope, by, except) =>
       plan.renameRefs(sym, to, scope, by, except),
     setFacts: (planner, data) => plan.setFacts(planner, data),

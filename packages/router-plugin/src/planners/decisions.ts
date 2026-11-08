@@ -6,6 +6,7 @@
  */
 import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { groupingsProblem } from '../core/config'
+import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
 import {
   declaratorOf,
@@ -87,20 +88,12 @@ export interface SplitPlan {
   shadowing: ReadonlySet<RouteOption>
 }
 
-export const SPLITTABLE_KEYS: ReadonlyArray<string> = [
-  'loader',
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-]
+const SPLITTABLE_KEYS: ReadonlyArray<string> = splitRouteIdentNodes
 
-export const COMPONENT_KEYS: ReadonlyArray<string> = [
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-]
+/** The splittable options that are components (every one but `loader`). */
+export const COMPONENT_KEYS: ReadonlyArray<string> = SPLITTABLE_KEYS.filter(
+  (key) => key !== 'loader',
+)
 
 function groupKeyOf(group: ReadonlyArray<string>): string {
   return [...new Set(group)].sort().join('~')

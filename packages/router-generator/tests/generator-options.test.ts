@@ -955,6 +955,50 @@ export const Route = createFileRoute('/')({})
       '/': 'routes/index.tsx',
     })
   })
+
+  // The generator's warnings about route files go through its logging, as on
+  // main: with `disableLogging` it reports none of them (a file without a
+  // Route export, a route id it reports instead of fixing, and a file an
+  // edit breaks in a running generator). With logging on, the same runs
+  // warn about each file, so the files do reach the warnings.
+  test.each([false, true])(
+    'with disableLogging: %s, warnings about route files follow the option',
+    async (disableLogging) => {
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/helpers.tsx': 'export const helper = 1\n',
+        'src/routes/old.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute(\`/\${'old'}\`)({})
+`,
+        'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+      })
+      const posts = path.join(root, 'src/routes/posts.tsx')
+      const config = configOf(root, { disableLogging })
+      const generator = new Generator({ config, root })
+
+      const { diagnostics } = await captureDiagnostics(async () => {
+        await generator.run()
+        await writeFile(posts, 'export const Route = (')
+        await generator.run({ type: 'update', path: posts })
+      })
+
+      if (disableLogging) {
+        expect(diagnostics).toEqual([])
+        return
+      }
+      for (const file of ['helpers.tsx', 'old.tsx', 'posts.tsx']) {
+        expectDiagnostic(diagnostics, {
+          severity: 'warning',
+          file: path.join(root, 'src/routes', file),
+          root,
+        })
+      }
+    },
+  )
 })
 
 /**

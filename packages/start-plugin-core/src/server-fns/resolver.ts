@@ -80,7 +80,12 @@ interface ManifestResolverOptions {
   clientOriginGate?: string
 }
 
-/** The production manifest: `id → { export, importer }` of the HTTP-callable functions. */
+/**
+ * The production manifest: `id → { functionName, importer, exportName }` of
+ * the HTTP-callable functions. `functionName` is what earlier Start versions
+ * printed there (tooling reads it from the server bundle); the lookup reads
+ * the provider module's export, `exportName`, which is unique per file.
+ */
 export function productionResolverModule(opts: {
   entries: ReadonlyArray<ServerFnEntry>
   providerModuleId: (entry: ServerFnEntry) => string
@@ -110,9 +115,11 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
         opts.warnUnreferenced && !e.clientReferenced
           ? `,\n    unreferenced: ${JSON.stringify(unreferencedWarning(e))}`
           : ''
+      // main's entry (key, `functionName`, `importer`) stays a byte-identical prefix
       return `${manifestLiteral(e.id)}: {
-    functionName: ${manifestLiteral(e.exportName)},
-    ${moduleAccess}${unreferenced}
+    functionName: ${manifestLiteral(e.functionName)},
+    ${moduleAccess},
+    exportName: ${manifestLiteral(e.exportName)}${unreferenced}
   }`
     })
     .join(',\n  ')
@@ -151,7 +158,7 @@ ${warnUnreferenced}
   if (!fnModule) {
     throw new Error('Server function module not resolved for ' + id)
   }
-  const action = fnModule[serverFnInfo.functionName]
+  const action = fnModule[serverFnInfo.exportName]
   if (!action) {
     throw new Error('Server function module export not resolved for serverFn ID: ' + id)
   }

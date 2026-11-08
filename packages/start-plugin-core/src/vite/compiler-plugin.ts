@@ -1179,7 +1179,7 @@ export function startCompilerPlugin(
         id: { exclude: LATE_PASS_EXCLUDE },
         code: { include: /\b(?:import|export)\b|\brequire\s*\(/ },
       },
-      async handler(code, id) {
+      async handler(code, id, options) {
         const s = requireSession()
         const env = envOf(this.environment.name)
         if (!env || identify(id).lang !== null) {
@@ -1203,10 +1203,18 @@ export function startCompilerPlugin(
             this.resolve(source, imp, options),
           ),
         )
-        if (!out || out.diagnostics.some((d) => d.by === 'parse')) {
-          // not JavaScript after all: nothing to judge
+        if (
+          !out ||
+          (out.diagnostics.some((d) => d.by === 'parse') &&
+            !bundlerParses(this, code, options?.moduleType))
+        ) {
+          // not JavaScript the bundler takes as it is: another plugin's
+          // input (Markdown a later plugin compiles), nothing to judge
           return null
         }
+        // (JavaScript the bundler parses and the compiler cannot fails the
+        // client build when it names a Start package:
+        // `StartCompilerSession.report`)
         reportDiagnostics(
           s,
           this,
@@ -1352,4 +1360,31 @@ export function startCompilerPlugin(
     forwardPlugin,
     resolverPlugin,
   ]
+}
+
+/**
+ * Whether the bundler's parser takes `code` as the module type it will parse
+ * the module as (`moduleType`, which a plugin may set: `ts` for another
+ * language compiled to TypeScript).
+ */
+function bundlerParses(
+  ctx: {
+    parse: (
+      code: string,
+      options?: { lang?: 'js' | 'jsx' | 'ts' | 'tsx' },
+    ) => unknown
+  },
+  code: string,
+  moduleType: string | undefined,
+): boolean {
+  const lang = moduleType ?? 'js'
+  if (lang !== 'js' && lang !== 'jsx' && lang !== 'ts' && lang !== 'tsx') {
+    return false
+  }
+  try {
+    ctx.parse(code, { lang })
+    return true
+  } catch {
+    return false
+  }
 }

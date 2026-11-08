@@ -3,6 +3,7 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
+import { splitRouteIdentNodes } from './constants'
 import type {
   CreateFileRoute,
   RegisteredRouter,
@@ -10,16 +11,8 @@ import type {
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
-/** The options a split grouping may name. */
-const SPLITTABLE_OPTIONS = [
-  'loader',
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-] as const
-
-const GROUPINGS_SHAPE =
+/** What a value given as split groupings must be (`must be …`). */
+export const GROUPINGS_SHAPE =
   "an array of groups, each an array of option names (`[['component'], ['errorComponent', 'notFoundComponent']]`)"
 
 /**
@@ -35,9 +28,9 @@ export function groupingsProblem(value: unknown): string | null {
     for (const key of group) {
       if (
         typeof key !== 'string' ||
-        !(SPLITTABLE_OPTIONS as ReadonlyArray<string>).includes(key)
+        !(splitRouteIdentNodes as ReadonlyArray<string>).includes(key)
       ) {
-        return `${JSON.stringify(key)} is not an option that can be split (${SPLITTABLE_OPTIONS.join(', ')})`
+        return `${JSON.stringify(key)} is not an option that can be split (${splitRouteIdentNodes.join(', ')})`
       }
       if (seen.has(key)) {
         return `lists "${key}" twice: each option may be in one group only`

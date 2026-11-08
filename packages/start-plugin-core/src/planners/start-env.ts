@@ -34,9 +34,11 @@ import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import { devFunctionId, placeholderId } from '../server-fns/ids'
 import {
   defaultFunctionId,
+  fileTag as fileTagOf,
   handlerFunctionName,
   metaName,
   moduleLiteral,
+  providerExportBase,
 } from '../server-fns/format'
 import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
@@ -466,6 +468,9 @@ function planStartEnv(
     })
   const specs = runtimeSpecifiers(config.framework)
   const rootRel = relativeRoot(config.root, ctx.identity.path)
+  // what the compile adds to an in-place provider's exports is tagged with the file (`fileTag`)
+  let fileTag: string | undefined
+  const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
   const facts: StartEnvFacts = { serverFns: [] }
 
   const diag = (message: string, range: Range) =>
@@ -713,6 +718,9 @@ function planStartEnv(
         lazySites.add(site)
       }
     }
+    if (lazySites.size > 0) {
+      ctx.tagGlueExports(tagOfFile())
+    }
   }
   /** An environment rewrite: it applies in every output, inside a moved handler too. */
   const envEdit = (range: Range, body: Array<Frag>) => {
@@ -858,8 +866,12 @@ function planStartEnv(
     const h = site.handler
     // the provider wrapper's name: a binding and an export of the same name (an export list
     // `export { name }` survives tools that re-export bindings by their local name), allocated
-    // identically in every env (the resolver is generated from the client's registry)
-    const wrapperBase = `${identifierBase(site.stableKey)}_createServerFn_handler`
+    // identically in every env (the resolver is generated from the client's registry), with
+    // the file's tag (`tagOfFile`); the manifest's `functionName` stays `site.functionName`
+    const wrapperBase = providerExportBase(
+      identifierBase(site.stableKey),
+      tagOfFile(),
+    )
     let wrapperName = wrapperBase
     for (
       let n = 1;
