@@ -62,6 +62,28 @@ try {
 }`
 
 describe.each(startBundlers)('%s build', (bundler) => {
+  // the report's fix, applied: no plugin adds the import; the module imports
+  // the file itself, inside createServerOnlyFn
+  test(
+    'the fixed app (the import written in the module, inside createServerOnlyFn) builds with the error behaviour, and the client has none of the file',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...files,
+          'src/inj.js': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { secret } from './db.server'
+export const read = createServerOnlyFn(() => secret())
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'error' } },
+      })
+      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
+    },
+    timeout,
+  )
+
   test(
     'mock: the client gets the mock, and the build reports the module the import was added to',
     async () => {
