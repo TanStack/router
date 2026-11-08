@@ -90,6 +90,22 @@ export interface StartEnvFacts {
    * code may hand it on: `compiler/vue.ts`). Absent when there is none.
    */
   lateEscapes?: Array<LateEscape>
+  /**
+   * A Vue SFC's module (its path ends with `.vue`): each nested server fn
+   * refused as not hoistable, by its diagnostic's offset, and the local it
+   * reads, if that is why (`compiler/vue.ts` words it for `<script setup>`).
+   */
+  vueHoists?: Array<VueHoist>
+}
+
+/** A nested server fn of a Vue SFC's module that cannot be hoisted. */
+export interface VueHoist {
+  /** Its diagnostic's range start. */
+  at: number
+  /** The local of the enclosing function it reads, and whether that local holds the server fn's builder. */
+  reads?: { name: string; builder: boolean }
+  /** The option it evaluates that may have side effects, quoted (`` `z.string()` ``), or `an expression`. */
+  option?: string
 }
 
 /** An escape of the late pass that hands on a binding of the module. */
@@ -557,7 +573,9 @@ function planStartEnv(
       }
       if (link.arg === null) {
         diag(
-          `.${link.method}() must be called with an argument`,
+          link.method === 'server'
+            ? "A middleware's `.server()` must be called with its server implementation: `.server(async ({ next }) => next())`."
+            : '`.validator()` must be called with a validator: a function (`.validator((data: string) => data)`) or a schema.',
           rangeOf(link.call),
         )
         continue
@@ -596,21 +614,21 @@ function planStartEnv(
     const described = describeServerFn(ctx, chain)
     if (described.destructured) {
       diag(
-        'createServerFn must be assigned to a simple identifier, not a destructuring pattern',
+        'Assign the server function to a variable (`const fn = createServerFn()…`), not a destructuring pattern.',
         rangeOf(described.destructured),
       )
       continue
     }
     if (handlerLink.arg === null) {
       diag(
-        'createServerFn must be called with a "handler" function',
+        "`.handler()` must be called with the server function's implementation: `.handler(async ({ data }) => …)`.",
         rangeOf(chain.terminal),
       )
       continue
     }
     if (handlerLink.argIsSpread) {
       diag(
-        'handler() must be called with a function, not a spread argument',
+        '`.handler()` must be called with a function, not a spread argument.',
         rangeOf(handlerLink.arg),
       )
       continue
@@ -781,7 +799,16 @@ function planStartEnv(
     // at the capture, or every env supports it); the hoist itself happens on the provider
     let hoisted: ReturnType<typeof hoist> = null
     if (site.nested) {
-      hoisted = hoist(ctx, site, providerOut ?? 'auto', role === 'provider', by)
+      hoisted = hoist(
+        ctx,
+        site,
+        providerOut ?? 'auto',
+        role === 'provider',
+        by,
+        ctx.identity.path.endsWith('.vue')
+          ? (refused) => (facts.vueHoists ??= []).push(refused)
+          : undefined,
+      )
       if (!hoisted) {
         continue
       }
@@ -982,7 +1009,9 @@ function planStartEnv(
       const inputValidator = inputValidatorRead(e)
       ctx.liveDiagnostic({
         severity: 'error',
-        message: inputValidator ? INPUT_VALIDATOR_MESSAGE : escapeMessage(e),
+        message: inputValidator
+          ? INPUT_VALIDATOR_MESSAGE
+          : escapeMessage(e, ma.file),
         range: rangeOf(inputValidator ?? e.node),
         by,
         code: `start-escape:${e.reason}`,
@@ -995,11 +1024,11 @@ function planStartEnv(
       diag(LATE_MESSAGE, range)
     }
     // an RSC primitive's argument is server code only a server fn's erasure removes
-    for (const { call } of analysis.rscCalls) {
+    for (const { call, kind } of analysis.rscCalls) {
+      const api = RSC_APIS[kind]
       ctx.liveDiagnostic({
         severity: 'error',
-        message:
-          'A server component is rendered outside a server function, so it and what it imports would ship to the client. Call this inside `createServerFn().handler()`.',
+        message: `\`${api}(…)\` is called outside a server function, so it and the components it renders would ship to the client. Call it inside a server function's \`.handler()\`, or in a helper wrapped in \`createServerOnlyFn(…)\` that only server code calls.`,
         range: rangeOf(call),
         by,
         code: 'start-escape:rsc',
@@ -1065,7 +1094,7 @@ function planStartEnv(
         ctx.liveDiagnostic(
           {
             severity: 'warning',
-            message: `The parameter \`${param}\` is read only by server-only code, but what callers pass for it still ships to the client: every call keeps its argument. Do not pass secrets or server code through it; read them inside the server code.`,
+            message: `The parameter \`${param}\` is read only by server-only code, but what each call passes for it stays in the client bundle. That is fine for values that are not secret (a role name, a flag); read secrets inside the server code instead of passing them.`,
             range: rangeOf(name),
             by,
             code: 'start-server-param',
@@ -1108,6 +1137,13 @@ function parameterOf(
   return null
 }
 
+/** The API of each RSC primitive a call is, for a message. */
+const RSC_APIS = {
+  'rsc:render': 'renderServerComponent',
+  'rsc:composite': 'createCompositeComponent',
+  'rsc:stream': 'renderToReadableStream',
+} as const
+
 const LATE_MESSAGE =
   'Another plugin compiles this module from a file that is not JavaScript (`.mdx`, `.vue`, `.svelte`, …), so the TanStack Start compiler only sees its output and cannot keep the server code of a TanStack Start builder or factory used here out of the client. Define it in a `.ts`/`.tsx` module and import what it creates.'
 
@@ -1129,7 +1165,7 @@ const KEEPS_SERVER_BEHAVIOUR =
 const ESCAPE_MESSAGES: Record<EscapeReason, string> = {
   flow: 'A TanStack Start builder or factory is used where the compiler cannot follow it (passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…), so server code attached to it there would ship to the client. Call its factories directly where you need them, and finish each builder (`.handler(…)`, `.server(…)`) on its chain or on the `const` holding it.',
   computed:
-    'Unsupported use of a TanStack Start builder: a computed member access cannot be compiled. Call its methods directly (`.handler(...)`, `.server(...)`).',
+    "A TanStack Start builder's method is read through a computed key (`b['handler']`), which the compiler cannot compile, so server code attached through it would ship to the client. Call it directly: `.handler(…)`, `.server(…)`.",
   member:
     'Call the methods of a TanStack Start builder directly (`.handler(…)`, `.server(…)`, `.middleware([…])`): a method read off the builder, `.call` / `.bind`, or another member cannot be compiled, so server code attached through it would ship to the client.',
   return:
@@ -1182,10 +1218,17 @@ function lateEscapesOf(
 }
 
 const INPUT_VALIDATOR_MESSAGE =
-  '`.inputValidator()` was renamed to `.validator()` (#7566) and has since been removed (#8694): call `.validator(…)` instead. When a dependency calls it, update that package to a version that uses `.validator()`.'
+  "`.inputValidator()` was renamed to `.validator()` (same arguments) and is no longer supported: call `.validator(…)`. See the 'Migrate from the Release Candidate' guide. When a dependency calls it, update that package to a version that uses `.validator()`."
 
-function escapeMessage(e: Escape): string {
+function escapeMessage(
+  e: Escape,
+  file: PlanContext['analysis']['file'],
+): string {
   if (e.reason === 'flow') {
+    const assigned = assignedTo(file, e.node)
+    if (assigned !== null && e.value.t === 'builder') {
+      return `\`${assigned}\` is assigned a TanStack Start builder after its declaration, so the compiler cannot tell what it holds where it is used, and server code attached to it would ship to the client. Declare it with the builder: \`const ${assigned} = …\`.`
+    }
     return flowMessage(e)
   }
   const message = ESCAPE_MESSAGES[e.reason]
@@ -1199,6 +1242,33 @@ function escapeMessage(e: Escape): string {
     return `${message} Or give the isomorphic fn a \`.server()\` implementation where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`
   }
   return message
+}
+
+/** The variable `node` is assigned to (`x = node`, through parentheses and TS wrappers), or null. */
+function assignedTo(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+): string | null {
+  let child = node
+  for (const a of file.ancestors(node)) {
+    if (
+      a.type === 'ParenthesizedExpression' ||
+      a.type === 'TSAsExpression' ||
+      a.type === 'TSSatisfiesExpression' ||
+      a.type === 'TSNonNullExpression' ||
+      a.type === 'TSTypeAssertion'
+    ) {
+      child = a
+      continue
+    }
+    return a.type === 'AssignmentExpression' &&
+      a.operator === '=' &&
+      a.right === child &&
+      a.left.type === 'Identifier'
+      ? a.left.name
+      : null
+  }
+  return null
 }
 
 /** A middleware builder without `.server()`: server code can still be attached to it. */
@@ -1264,7 +1334,7 @@ function flowMessage(e: Escape): string {
   }
   switch (v.t) {
     case 'builder':
-      return `${is(describeOpen(v))} ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`
+      return `${is(describeOpen(v))} ${where}, so a handler attached to it there would ship to the client. Keep the builder in its own \`const\` (export it to share it) and call \`.handler(…)\` on that \`const\` where you define each server function, or call \`.handler(…)\` before passing it on.`
     case 'factory':
       return `${is('a TanStack Start factory')} ${where}, so server code attached to what it creates there would ship to the client. Call it directly where you need what it creates: the compiler follows each call's chain, and the \`const\` holding it.`
     case 'startInstance':
@@ -1388,6 +1458,8 @@ function hoist(
   home: 'auto' | OutputId,
   provider: boolean,
   by: string,
+  /** Records a refusal (a Vue SFC's module: `StartEnvFacts.vueHoists`). */
+  recordRefusal?: (refused: VueHoist) => void,
 ): {
   sym: SymbolId
   anchor: { k: 'after-header' } | { k: 'after-unit'; unit: number }
@@ -1410,7 +1482,11 @@ function hoist(
   ) {
     return null
   }
-  const refuse = (message: string, range: Range) => {
+  const refuse = (
+    message: string,
+    range: Range,
+    why?: Omit<VueHoist, 'at'>,
+  ) => {
     ctx.diagnostic({
       severity: 'error',
       message,
@@ -1418,16 +1494,25 @@ function hoist(
       by,
       code: 'start-hoist',
     })
+    recordRefusal?.({ at: range.start, ...why })
     return null
   }
   // captures of enclosing functions
   const captures = t1.capturesOf(xRange)
   if (captures.length > 0) {
     const first = t1.refs.refsIn(xRange).find((r) => captures.includes(r.sym))
-    const name = symbols.name(captures[0]!)
+    const name = symbols.name(first ? first.sym : captures[0]!)
+    // `base.handler(…)` with `const base = createServerFn()` in the function
+    const builder =
+      !!first &&
+      !site.chain.headIsFactoryCall &&
+      first.range.start === site.chain.head.start
     return refuse(
-      `A server function nested in a function cannot be compiled when its code reads the local \`${name}\` of the enclosing function. Move the server function to the module top level or pass \`${name}\` through its data.`,
+      builder
+        ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define \`${name}\` at the module top level (export it to share it), or write the server function as one chain: \`createServerFn().handler(…)\`.`
+        : `A server function nested in a function cannot be compiled when its code reads \`${name}\`, a local of the enclosing function. Move the server function to the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
       first ? first.range : xRange,
+      { reads: { name, builder } },
     )
   }
   // this / arguments / super / new.target / await / yield owned by an enclosing function
@@ -1492,8 +1577,22 @@ function hoist(
   })
   if (found.node) {
     const o = found.node
+    const what =
+      o.type === 'ThisExpression'
+        ? 'this'
+        : o.type === 'Super'
+          ? 'super'
+          : o.type === 'MetaProperty'
+            ? 'new.target'
+            : o.type === 'AwaitExpression'
+              ? 'await'
+              : o.type === 'YieldExpression'
+                ? 'yield'
+                : 'arguments'
     return refuse(
-      'A server function nested in a function cannot be compiled when its code uses `this`, `arguments`, `super`, `new.target`, `await` or `yield` of the enclosing function. Move it to the module top level.',
+      what === 'await' || what === 'yield'
+        ? `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function outside its handler. Move it to the module top level.`
+        : `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function. Move it to the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
       rangeOf(o),
     )
   }
@@ -1513,9 +1612,17 @@ function hoist(
   }
   for (const a of eagerArgs) {
     if (!isPureExpression(ctx.analysis.purity, a)) {
+      const fn = enclosingFunctionNames(file, X).at(-1)
+      const fnText = fn === undefined ? 'the enclosing function' : `\`${fn}\``
+      const source = ctx.analysis.source.code.slice(a.start, a.end)
+      const expr =
+        source.length <= 40 && !source.includes('\n')
+          ? `\`${source}\``
+          : 'an expression'
       return refuse(
-        'A server function nested in a function cannot be hoisted: its options evaluate an expression with side effects at module level. Move the server function, or that expression, to the module top level.',
+        `A server function nested in ${fnText} is moved to the module top level when compiled, so ${expr} in its options would run when the module loads instead of when ${fnText} runs, and the compiler cannot tell that it is free of side effects. Move ${expr === 'an expression' ? 'that expression' : expr} into a module-level \`const\` and pass the \`const\` instead, or move the whole server function to the module top level.`,
         rangeOf(a),
+        { option: expr },
       )
     }
   }

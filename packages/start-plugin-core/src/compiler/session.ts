@@ -21,6 +21,7 @@ import {
   parseModule,
   registerCompilerStats,
   releaseEnvironment,
+  SourceText,
   reportCompileDiagnostics,
 } from '@tanstack/router-utils/compiler'
 import {
@@ -39,12 +40,14 @@ import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
-import { isVueSfc, vueLateReport } from './vue'
+import { Locator } from '../import-protection/locate'
+import { isVueSfc, vueLocator, vueReport } from './vue'
 import type {
   CompileOutcome,
   CompiledOutputLike,
   ImportProtection,
 } from '../import-protection/session'
+import type { SfcLocate } from './vue'
 import type { EdgeModuleIds } from '../import-protection/edge-modules'
 import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { ImportEdgesConfig } from '../planners/edges'
@@ -59,6 +62,8 @@ import type {
   CompileConfig,
   CompileOutput,
   CompilerCaches,
+  Diagnostic,
+  DiagnosticPosition,
   DiagnosticSink,
   EnvInfo,
   HostServices,
@@ -454,28 +459,37 @@ export class StartCompilerSession {
    * that is no JS/TS are nothing the compiler touches and are left as they
    * are (J4.16, SPEC §5.15). A server build warns when the module names a
    * Start package.
-   * `lateInputMap`: the input map of a late compile (a Vue SFC's refusals
-   * of generated code are reported in the SFC: `vue.ts`).
+   * `inputMap`: the input map of a compile of another plugin's output (the
+   * late pass; a Vue SFC's script): each position is reported in the
+   * original file (none where the map covers none; a Vue SFC's refusals of
+   * generated code are moved there: `vue.ts`), and the sink also gets the
+   * position in `code`.
    */
   report(
     out: CompileOutput,
     file: string,
     code: string,
     envType: 'client' | 'server',
-    sink: DiagnosticSink,
-    lateInputMap?: () => InputSourceMap | null,
+    sink: StartDiagnosticSink,
+    inputMap?: () => InputSourceMap | null,
   ): void {
     let commonJsScript: boolean | undefined
+    // the SFC's positions of a Vue SFC's script, else the input map's
+    const locate =
+      inputMap &&
+      (isVueSfc(file)
+        ? vueLocator(file, code, inputMap)
+        : mapLocate(file, code, inputMap))
     const vue =
-      lateInputMap && isVueSfc(file)
-        ? vueLateReport(out, file, code, lateInputMap)
+      inputMap && locate && isVueSfc(file)
+        ? vueReport(out, file, inputMap, locate)
         : null
     reportCompileDiagnostics(
       vue?.diagnostics ?? out.diagnostics,
       file,
       code,
       this.warnings,
-      vue?.sink(sink) ?? sink,
+      locate ? originalSink(sink, code, locate, vue?.moved) : sink,
       (d) => {
         if (namesStartSpecifier(code)) {
           return {
@@ -536,7 +550,74 @@ export class StartCompilerSession {
   }
 }
 
-/** Whether `code` parses as a CommonJS script (no ES module syntax). */
+/**
+ * A sink of what `StartCompilerSession.report` reports: `generated`, a
+ * compile of another plugin's output, is the position in that output (a
+ * host whose bundler maps positions itself reports that one).
+ */
+export interface StartDiagnosticSink {
+  error: (
+    d: Diagnostic,
+    at: DiagnosticPosition | undefined,
+    generated?: DiagnosticPosition,
+  ) => void
+  warn: (
+    d: Diagnostic,
+    at: DiagnosticPosition | undefined,
+    generated?: DiagnosticPosition,
+  ) => void
+}
+
+/** Positions in `file` of offsets of `code` through its input map (none where the map covers none or names another file). */
+function mapLocate(
+  file: string,
+  code: string,
+  inputMap: () => InputSourceMap | null,
+): SfcLocate {
+  const locator = new Locator(code, file, inputMap)
+  return (offset) => {
+    const at = locator.at(offset)
+    return at === null || at.file !== file ? null : at
+  }
+}
+
+/**
+ * `sink` with each position of a compile of another plugin's output in the
+ * original file (`locate`, none where it gives none); `moved`: the offsets
+ * of diagnostics reported elsewhere than their range.
+ */
+function originalSink(
+  sink: StartDiagnosticSink,
+  code: string,
+  locate: SfcLocate,
+  moved: Map<Diagnostic, number> | undefined,
+): DiagnosticSink {
+  let source: SourceText | null = null
+  const report =
+    (to: StartDiagnosticSink['error']) =>
+    (d: Diagnostic, at: DiagnosticPosition | undefined) => {
+      const offset = moved?.get(d) ?? d.range?.start
+      if (offset === undefined) {
+        return to(d, at)
+      }
+      const original = locate(offset)
+      if (original === null) {
+        return to(d, undefined)
+      }
+      let generated = at
+      if (moved?.has(d)) {
+        source ??= new SourceText(code)
+        const { line, column } = source.locate(offset)
+        generated = { line: line + 1, column }
+      }
+      to(d, { line: original.line, column: original.column - 1 }, generated)
+    }
+  return {
+    error: report((d, at, generated) => sink.error(d, at, generated)),
+    warn: report((d, at, generated) => sink.warn(d, at, generated)),
+  }
+}
+
 /**
  * Whether a module the compiler cannot parse is none of its business: a file
  * that is no JS/TS (an asset, or the text of a `.md` the late pass sees

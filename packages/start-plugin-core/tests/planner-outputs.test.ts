@@ -835,7 +835,7 @@ export const fn = base.handler(async () => 'x')
         severity: 'error',
         at: code.indexOf('base)'),
         text: 'base',
-        message: `\`base\` is a server fn builder without \`.handler()\`, used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+        message: `\`base\` is a server fn builder without \`.handler()\`, used ${where}, so a handler attached to it there would ship to the client. Keep the builder in its own \`const\` (export it to share it) and call \`.handler(…)\` on that \`const\` where you define each server function, or call \`.handler(…)\` before passing it on.`,
       },
     ])
   })
@@ -848,7 +848,7 @@ export const fn = base.handler(async () => 'x')
         severity: 'error',
         at: code.indexOf('createServerFn()'),
         text: 'createServerFn()',
-        message: `A server fn builder without \`.handler()\` is used ${where}, so a handler attached to it there would ship to the client. Call \`.handler(…)\` on it before it is passed on (on its chain, or on the \`const\` holding it), and pass on the server fn that returns.`,
+        message: `A server fn builder without \`.handler()\` is used ${where}, so a handler attached to it there would ship to the client. Keep the builder in its own \`const\` (export it to share it) and call \`.handler(…)\` on that \`const\` where you define each server function, or call \`.handler(…)\` before passing it on.`,
       },
     ])
   })

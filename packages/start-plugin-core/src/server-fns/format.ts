@@ -181,12 +181,12 @@ function readBack(id: string): string | undefined {
 
 /** The build error of a custom id `customIdCheck` refuses. */
 export function customIdError(fn: CustomIdSubject, id: string): string {
-  return `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function ${fn.name} (functionName "${fn.functionName}") of ${fn.rootRel}. A server function id is one path segment of its URL: it cannot hold whitespace, control or non-ASCII characters or any of " # / < > ? \\ ^ \` { }, cannot be "." or "..", and cannot hold a percent-encoding the server reads as another id ("%41") or rejects. Use ASCII letters, digits, "-", ".", "_", "~" and "$".`
+  return `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function ${fn.name} (functionName "${fn.functionName}") of ${fn.rootRel}. A server function id is one path segment of its URL: it cannot hold whitespace, control or non-ASCII characters or any of " # / < > ? \\ ^ \` { }, cannot be "." or "..", and cannot hold a percent-encoding the server reads as another id ("%41") or rejects. Use ASCII letters, digits, "-", ".", "_", "~" and "$".${id.includes('/') ? ` If the "/" comes from \`filename\`, hash it, e.g. \`createHash('sha1').update(\`\${filename}--\${functionName}\`).digest('hex')\` (\`node:crypto\`).` : ''}`
 }
 
 /** The build warning of a custom id `customIdCheck` deprecates. */
 export function customIdWarning(fn: CustomIdSubject, id: string): string {
-  return `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function ${fn.name} (functionName "${fn.functionName}") of ${fn.rootRel}. Server function ids with characters other than ASCII letters, digits, "-", ".", "_", "~" and "$" are deprecated, and the next major version of TanStack Start rejects them: proxies and servers may encode or normalise them in the URL.`
+  return `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function ${fn.name} (functionName "${fn.functionName}") of ${fn.rootRel}. Server function ids with characters other than ASCII letters, digits, "-", ".", "_", "~" and "$" are deprecated, and the next major version of TanStack Start rejects them: proxies and servers may encode or normalise them in the URL. Return an id made of those characters only.`
 }
 
 interface CustomIdSubject {

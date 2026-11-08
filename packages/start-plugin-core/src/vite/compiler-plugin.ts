@@ -46,6 +46,7 @@ import {
 } from '../constants'
 import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
 import { StartCompilerSession } from '../compiler/session'
+import { isVueSfc } from '../compiler/vue'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
 import {
@@ -588,10 +589,17 @@ export function startCompilerPlugin(
     }
   }
 
-  /** Reports a compile's diagnostics through a hook context (`ctx.error` throws). */
+  /**
+   * Reports a compile's diagnostics through a hook context (`ctx.error`
+   * throws). `inputMap`: a compile of another plugin's output (its
+   * positions are the original file's, `StartCompilerSession.report`). The
+   * dev server's hook context maps a `loc` through the module's combined
+   * source map itself: there, `loc` is the position in `code`.
+   */
   const reportDiagnostics = (
     s: Session,
     ctx: {
+      environment: { mode: string }
       warn: (w: {
         message: string
         loc?: { file: string; line: number; column: number }
@@ -607,24 +615,33 @@ export function startCompilerPlugin(
     id: string,
     code: string,
     envType: 'client' | 'server',
-    lateInputMap?: () => InputSourceMap | null,
+    inputMap?: () => InputSourceMap | null,
   ) => {
-    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) => ({
-      message: at
-        ? `${d.message} (${filePath}:${at.line}:${at.column + 1})`
-        : d.message,
-      loc: at && { file: filePath, ...at },
-    })
+    const mapsLoc = ctx.environment.mode === 'dev'
+    const log = (
+      d: Diagnostic,
+      at: DiagnosticPosition | undefined,
+      generated?: DiagnosticPosition,
+    ) => {
+      const locAt = mapsLoc && generated ? generated : at
+      return {
+        message: at
+          ? `${d.message} (${filePath}:${at.line}:${at.column + 1})`
+          : d.message,
+        loc: locAt && { file: filePath, ...locAt },
+      }
+    }
     s.start.report(
       out,
       filePath,
       code,
       envType,
       {
-        error: (d, at) => ctx.error({ ...log(d, at), id }),
-        warn: (d, at) => ctx.warn(log(d, at)),
+        error: (d, at, generated) =>
+          ctx.error({ ...log(d, at, generated), id }),
+        warn: (d, at, generated) => ctx.warn(log(d, at, generated)),
       },
-      lateInputMap,
+      inputMap,
     )
   }
 
@@ -680,12 +697,17 @@ export function startCompilerPlugin(
         return null
       }
       const environment = this.environment
+      let inputMap: InputSourceMap | null | undefined
+      const readInputMap = () =>
+        inputMap === undefined
+          ? (inputMap = inputMapOf(this, code, identity.path))
+          : inputMap
       const out = await s.start.compile(
         {
           id,
           code,
           env,
-          inputMap: () => inputMapOf(this, code, identity.path),
+          inputMap: readInputMap,
           wantMap:
             s.start.opts.mode === 'dev' ||
             environment.config.build.sourcemap !== false,
@@ -697,7 +719,17 @@ export function startCompilerPlugin(
       if (!out) {
         return null
       }
-      reportDiagnostics(s, this, out, identity.path, id, code, env.type)
+      reportDiagnostics(
+        s,
+        this,
+        out,
+        identity.path,
+        id,
+        code,
+        env.type,
+        // a Vue SFC's script block, Vue's output
+        isVueSfc(identity.path) ? readInputMap : undefined,
+      )
       let mock = afterCompile(s, env, id, out, (error) => this.error(error))
       if (mock instanceof Promise) {
         mock = await mock
@@ -1128,7 +1160,7 @@ export function startCompilerPlugin(
    * positions mapped through the combined source map.
    */
   const latePassPlugin: Plugin = {
-    name: 'tanstack-start:import-protection-late',
+    name: 'tanstack-start:compiler-late',
     enforce: 'post',
     applyToEnvironment(e) {
       return envNames.has(e.name)

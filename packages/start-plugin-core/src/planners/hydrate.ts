@@ -889,7 +889,7 @@ function validate(
     ) {
       fail(
         'hydrate-capture-write',
-        `Hydrate cannot code-split JSX that assigns \`${ctx.symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the state into a child component, or use split={false}.`,
+        `Hydrate cannot code-split JSX that assigns \`${ctx.symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the variable and the code that assigns it into a component rendered inside the boundary, or use split={false}.`,
       )
       break
     }
@@ -1010,7 +1010,7 @@ const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
   'hydrate-writer': {
     code: 'hydrate-module-write',
     message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses: the split code cannot assign a binding it imports. Move the state into a child component, or use split={false}.',
+      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses: split code cannot assign a binding it imports. Move the code that assigns it into a component defined outside the boundary, and render that component inside it, or use split={false}.',
   },
   'multi-writer': {
     code: 'hydrate-module-write',
@@ -1020,7 +1020,7 @@ const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
   'shared-writer': {
     code: 'hydrate-module-write',
     message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses. Move the state into a child component, or use split={false}.',
+      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses: split code cannot assign a binding it imports. Move the code that assigns it into a component defined outside the boundary, and render that component inside it, or use split={false}.',
   },
   'ordered-effect': {
     code: 'hydrate-ordered-effect',
