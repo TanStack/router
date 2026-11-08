@@ -26,7 +26,6 @@ const RSC_HMR_VIRTUAL_ID = 'virtual:tanstack-rsc-hmr'
 const RSC_BROWSER_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-browser-decode'
 const RSC_SSR_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-ssr-decode'
 export const START_MANIFEST_PLACEHOLDER = '__TSS_START_MANIFEST_PLACEHOLDER__'
-const DEV_START_MANIFEST_GLOBAL = '__TSS_DEV_START_MANIFEST__'
 /**
  * VirtualModulesPlugin resolves module paths relative to compiler.context.
  * Prefix them under the app root so they are unique and watcher-friendly.
@@ -34,6 +33,8 @@ const DEV_START_MANIFEST_GLOBAL = '__TSS_DEV_START_MANIFEST__'
 export interface VirtualModuleState {
   /** Call to update manifest content after client build completes */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
+  /** Number of times the dev manifest module was written (the server environment's) */
+  getDevManifestWriteCount: () => number
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
   /** Number of times the server fn resolver module was written (the server environment's) */
@@ -75,20 +76,25 @@ function getEntryScriptAttrs(
     : `{ async: true, src: '${entryUrl}' }`
 }
 
-function generateManifestModuleDev(
+/**
+ * The dev manifest until the first client build completes. The server bundle
+ * may run outside the build process (e.g. in workerd), so the real manifest is
+ * written into this module (`updateManifest`), not shared through a global of
+ * the build process.
+ */
+function generateFallbackManifestModuleDev(
   devClientEntryUrl: string,
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
-  return `const fallbackManifest = {
+  return `export const tsrStartManifest = () => ({
 ${scriptFormatProperty}  routes: {
     __root__: {
       preloads: ['${devClientEntryUrl}'],
       scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
     },
   },
-}
-export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
+})`
 }
 
 function buildStartManifestData(
@@ -285,6 +291,8 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
+  let lastDevManifestContent: string | undefined
+  let devManifestWriteCount = 0
   // the server fn resolver module lives in the server environment only
   let lastResolverContent: string | undefined
   let resolverWriteCount = 0
@@ -378,7 +386,10 @@ export function registerVirtualModules(
         resolvedStartConfig.basePaths.publicBase,
       )
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
+        ? generateFallbackManifestModuleDev(
+            devClientEntryUrl,
+            opts.scriptFormat,
+          )
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
@@ -546,20 +557,31 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
       clientBuild = newClientBuild
+      if (!isDev) {
+        return
+      }
       // Safe to call getConfig() here — runs after client build
       const { resolvedStartConfig } = opts.getConfig()
-      if (isDev) {
-        ;(
-          globalThis as typeof globalThis & {
-            [DEV_START_MANIFEST_GLOBAL]?: ReturnType<typeof buildStartManifest>
-          }
-        )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
-          clientBuild,
-          resolvedStartConfig.basePaths.publicBase,
-          { enabled: false, transformAssets: false },
-          opts.scriptFormat,
+      const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
+        clientBuild,
+        resolvedStartConfig.basePaths.publicBase,
+        { enabled: false, transformAssets: false },
+        opts.scriptFormat,
+      )})`
+      // only on a change: each write recompiles the server environment
+      if (content !== lastDevManifestContent) {
+        lastDevManifestContent = content
+        devManifestWriteCount++
+        tryWriteModule(
+          RSBUILD_ENVIRONMENT_NAMES.server,
+          pathsOf().manifest,
+          content,
         )
       }
+    },
+
+    getDevManifestWriteCount(): number {
+      return devManifestWriteCount
     },
 
     updateServerFnResolver() {
