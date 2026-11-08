@@ -5,7 +5,7 @@
  * the bundler decides on it. What the client keeps only as a type is erased
  * and the client build has none of the package; an import the client keeps
  * (whole, or through `verbatimModuleSyntax`) fails the build in the
- * bundler's own resolution. The cases: node-only-imports-cases.ts.
+ * bundler's own resolution (SPEC J6.1). The cases: node-only-imports-cases.ts.
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'

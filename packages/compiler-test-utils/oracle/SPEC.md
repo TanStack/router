@@ -702,7 +702,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. Vite and Rsbuild; every Start env
   (client-type and server-type). A specifier rule matches the specifier **the user wrote**: a bundler rewrite of the
   import (e.g. Rsbuild `source.transformImport` turning `ui-lib` into `ui-lib/button`) does not bypass a denial of the
-  original; file and marker checks apply to the rewritten edge's resolved target.
+  original; file and marker checks apply to the rewritten edge's resolved target. An import the env's resolver
+  cannot resolve (it fails, e.g. a package with only a `node` export on the client) has no resolved target: file and
+  marker checks skip it, specifier rules apply, and the bundler decides on it (it fails the build if it keeps the
+  import; nothing of it ships if it drops it). A denied file the bundler still loads through it is denied itself.
 - **J6.2 Type-only edges are ignored**; mixed imports count.
 - **J6.3 Behaviour.** Default dev `mock` (warn once, replace with a recursive-Proxy mock), default build `error`
   (fail the build); overridable globally or per mode, including `mock` in production builds; `enabled: false`

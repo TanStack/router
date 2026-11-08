@@ -369,7 +369,13 @@ export function startCompilerPlugin(
     ) => Promise<{ id: string; external?: boolean | string } | null>,
   ): HostServices =>
     s.start.host(async (specifier, importer) => {
-      const r = await resolve(specifier, importer, { skipSelf: true })
+      // a resolver that throws (a package with no export for this
+      // environment's conditions, e.g. only `node`) couldn't resolve the
+      // specifier, as Rspack's resolver answers: the bundler decides on the
+      // import, failing if it keeps it
+      const r = await resolve(specifier, importer, { skipSelf: true }).catch(
+        () => null,
+      )
       if (!r) {
         return null
       }
@@ -390,7 +396,7 @@ export function startCompilerPlugin(
     }),
     onInvalidationError: (error) => {
       environment.logger.warnOnce(
-        `[tanstack-start] a resolver failed while re-checking a module after a file change: ${String(error)}`,
+        `[tanstack-start] re-checking a module after a file change failed: ${String(error)}`,
       )
     },
   })
