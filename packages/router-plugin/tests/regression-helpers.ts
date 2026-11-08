@@ -171,9 +171,7 @@ function runTransform(plugin: UnpluginOptions, code: string, id: string) {
     throw new Error('Expected object transform')
   }
   const result = transform.handler.call({} as never, code, id) as
-    | TransformResult
-    | null
-    | undefined
+    TransformResult | null | undefined
   if (!result) {
     return null
   }

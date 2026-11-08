@@ -193,8 +193,7 @@ export function createRenderGraphBuilder(
 
           // Visit body with this component as context
           const funcNode = decl.initializer as
-            | ts.ArrowFunction
-            | ts.FunctionExpression
+            ts.ArrowFunction | ts.FunctionExpression
           tsLib.forEachChild(funcNode.body, (child) =>
             visitNode(child, sourceFile, key),
           )
