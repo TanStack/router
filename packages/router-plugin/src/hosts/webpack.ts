@@ -148,7 +148,12 @@ export function createRouterCompilerWebpackPlugin(
           ? options()
           : getConfig(options ?? {}, process.cwd())
       ) as Config
-      const mode = compiler.options.mode === 'production' ? 'build' : 'dev'
+      // (read before webpack and Rspack fill in their defaults: a
+      // configuration without `mode` builds for production)
+      const mode =
+        (compiler.options.mode ?? 'production') === 'production'
+          ? 'build'
+          : 'dev'
       const session = new RouterCompiler({
         context: routerPluginContext,
         config: userConfig,
