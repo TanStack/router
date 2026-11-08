@@ -52,19 +52,40 @@ export function keptDeclarations(
   }
   const effectStays = (effect: number) =>
     !movable.has(clusterOfRegion.get(units[effect]!.region)!)
-  /** An export statement re-exporting module bindings (`export { x as y }`, `export default x`): it evaluates nothing. */
-  const isExportGlue = (c: ClusterId) =>
-    clusters[c]!.kind === 'export' &&
-    clusters[c]!.units.every((u) => {
-      const { kind, node } = units[u]!
-      return (
-        kind === 'export-specifier' ||
-        kind === 'reexport' ||
-        (kind === 'export-default' &&
-          node.type === 'ExportDefaultDeclaration' &&
-          node.declaration.type === 'Identifier')
-      )
-    })
+  /**
+   * An export statement (`export { x as y }`, `export default x`) that
+   * re-exports only causes: it evaluates nothing, so it needs nothing beyond
+   * the export itself (one re-exporting anything else roots that).
+   */
+  const gluesCauses = (c: ClusterId): boolean => {
+    const cl = clusters[c]!
+    if (
+      cl.kind !== 'export' ||
+      !cl.units.every((u) => {
+        const { kind, node } = units[u]!
+        return (
+          kind === 'export-specifier' ||
+          (kind === 'export-default' &&
+            node.type === 'ExportDefaultDeclaration' &&
+            node.declaration.type === 'Identifier')
+        )
+      })
+    ) {
+      return false
+    }
+    let any = false
+    for (const s of reads.clusterReads(c, 'env', false).syms) {
+      const d = symbols.isModuleLevel(s) ? clusterOfSym.get(s) : undefined
+      if (d === undefined || d === c) {
+        continue
+      }
+      if (!causes.has(d)) {
+        return false
+      }
+      any = true
+    }
+    return any
+  }
 
   // The causes, reported once each: an exported declaration a chunk
   // reaches that is not extracted (no candidate: observable effects,
@@ -73,7 +94,8 @@ export function keptDeclarations(
   // (`written`). An exported declaration the env module reads (`live`)
   // would stay there without split code: nothing to report.
   const causes = new Map<ClusterId, Pin>()
-  const exported = new Map<ClusterId, Array<SymbolId>>()
+  /** The exported causes: each binding with its own reason. */
+  const exported = new Map<ClusterId, Array<{ sym: SymbolId; pin: Pin }>>()
   for (const [sym] of extractions) {
     const c = clusterOfSym.get(sym)
     if (c === undefined || remaining.has(c)) {
@@ -94,14 +116,16 @@ export function keptDeclarations(
     }
     const syms = exported.get(c)
     if (syms) {
-      syms.push(sym)
+      syms.push({ sym, pin: cause })
     } else {
       causes.set(c, cause)
-      exported.set(c, [sym])
+      exported.set(c, [{ sym, pin: cause }])
     }
   }
   for (const [c, pin] of roots.pinnedNeeded) {
-    causes.set(c, pin)
+    if (!exported.has(c)) {
+      causes.set(c, pin)
+    }
   }
   for (const [c, at] of seeds.augmentedRoots) {
     if (derivedNeeds(input, derivedReach, c)) {
@@ -109,8 +133,10 @@ export function keptDeclarations(
     }
   }
   const kept: Array<KeptDeclaration> = []
-  stateReaders(input, graph, roots, causes, kept)
+  /** The clusters reported below. */
+  const reported = new Set<ClusterId>()
   if (causes.size === 0) {
+    stateReaders(input, graph, roots, reported, kept)
     return kept
   }
   // reported once, at the cause: a cluster kept because another kept one
@@ -124,16 +150,15 @@ export function keptDeclarations(
   }
   const envOwn = reads.reach(
     'env',
-    [...envRoots].filter(
-      (c) => !causes.has(c) && !(exported.size > 0 && isExportGlue(c)),
-    ),
+    [...envRoots].filter((c) => !causes.has(c) && !gluesCauses(c)),
   )
   for (const [c, pin] of causes) {
     if (envOwn.has(c)) {
       continue
     }
+    // an exported cause stays for its own effects or writes, whoever reads it
     let cascade = false
-    for (const [d, set] of reachOf) {
+    for (const [d, set] of exported.has(c) ? [] : reachOf) {
       if (d !== c && set.has(c) && !reachOf.get(c)!.has(d)) {
         cascade = true
         break
@@ -145,21 +170,23 @@ export function keptDeclarations(
     const cl = clusters[c]!
     const exports = exported.get(c)
     if (exports !== undefined) {
-      // one per exported binding (a destructuring declares several)
+      // one per exported binding (a destructuring declares several), each
+      // with its own reason
       const needers = lazyNeeders(c)
-      for (const sym of exports) {
+      for (const { sym, pin: own } of exports) {
         kept.push({
           syms: [sym],
           exported: true,
-          reason: pin.reason,
+          reason: own.reason,
           range: declaringRange(cl, sym),
           needers,
-          ...(pin.effect !== undefined && {
-            effect: pin.effect,
-            effectStays: effectStays(pin.effect),
+          ...(own.effect !== undefined && {
+            effect: own.effect,
+            effectStays: effectStays(own.effect),
           }),
         })
       }
+      reported.add(c)
       continue
     }
     // split code only: a chunk or a Hydrate chunk (an extracted export's
@@ -195,7 +222,9 @@ export function keptDeclarations(
       ...(pin.at !== undefined && { at: pin.at }),
       ...(pin.read !== undefined && { read: pin.read }),
     })
+    reported.add(c)
   }
+  stateReaders(input, graph, roots, reported, kept)
   return kept
 }
 
@@ -210,7 +239,7 @@ function stateReaders(
   input: PlacementInput,
   graph: ClusterGraph,
   roots: Roots,
-  causes: ReadonlyMap<ClusterId, Pin>,
+  reported: ReadonlySet<ClusterId>,
   kept: Array<KeptDeclaration>,
 ): void {
   const { t1, outputs } = input
@@ -218,9 +247,12 @@ function stateReaders(
   const { clusterOfRegion, clusterOfSym } = graph
   const { liveEnv, derivedReach } = roots
   const mutated = new Set<SymbolId>()
+  const mutatedClusters = new Set<ClusterId>()
   for (const w of graph.writes) {
-    if (w.live && w.eager) {
+    const c = w.live && w.eager ? clusterOfSym.get(w.sym) : undefined
+    if (c !== undefined && liveEnv.has(c) && !reported.has(c)) {
       mutated.add(w.sym)
+      mutatedClusters.add(c)
     }
   }
   if (mutated.size === 0) {
@@ -235,11 +267,11 @@ function stateReaders(
       u.exported.length > 0 ||
       u.declares.length === 0 ||
       c === undefined ||
-      !liveEnv.has(c) ||
-      causes.has(c)
+      !mutatedClusters.has(c)
     ) {
       continue
     }
+    // the read ordered evaluation merged it for (clusters.ts)
     const read = refs
       .refsIn(u.range)
       .find(
@@ -248,29 +280,42 @@ function stateReaders(
           READ_KINDS.has(ref.kind) &&
           mutated.has(ref.sym) &&
           clusterOfSym.get(ref.sym) === c &&
-          !u.declares.includes(ref.sym),
+          !u.declares.includes(ref.sym) &&
+          liveInEnv(ref) &&
+          t1.ownerOf(ref) === u.region,
       )
     if (read === undefined) {
       continue
     }
-    // only split code (a chunk, a Hydrate chunk) reads what it declares
+    // only split code (a chunk, a Hydrate chunk) reads or writes what it
+    // declares: a use by a cluster the env module evaluates keeps it there
     const needers = new Set<OutputId>()
+    /** Records a use by cluster `d`; whether the env module evaluates it. */
+    const usedInEnv = (d: ClusterId | undefined, live: boolean): boolean => {
+      if (d === undefined) {
+        return false
+      }
+      if (liveEnv.has(d) && live) {
+        return true
+      }
+      for (const [id, set] of derivedReach) {
+        const kind = outputs.get(id)?.kind
+        if (set.has(d) && (kind === 'split' || kind === 'hydrate')) {
+          needers.add(id)
+        }
+      }
+      return false
+    }
     let envReads = false
     for (const s of u.declares) {
       for (const ref of refs.valueRefsOf(s)) {
-        const d = READ_KINDS.has(ref.kind) ? clusterOf(ref) : undefined
-        if (d === undefined) {
-          continue
+        if (READ_KINDS.has(ref.kind)) {
+          envReads ||= usedInEnv(clusterOf(ref), liveInEnv(ref))
         }
-        if (liveEnv.has(d) && liveInEnv(ref)) {
-          envReads = true
-          break
-        }
-        for (const [id, set] of derivedReach) {
-          const kind = outputs.get(id)?.kind
-          if (set.has(d) && (kind === 'split' || kind === 'hydrate')) {
-            needers.add(id)
-          }
+      }
+      for (const w of graph.writesOfSym.get(s) ?? []) {
+        if (w.owner !== null && w.owner !== u.region) {
+          envReads ||= usedInEnv(clusterOfRegion.get(w.owner), w.live)
         }
       }
     }

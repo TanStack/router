@@ -247,7 +247,8 @@ export function assignHomes(
   /** The binding of cluster `c` region `w` writes (the fallback names it). */
   const writtenBy = (w: RegionId, c: ClusterId): SymbolId | undefined =>
     graph.writes.find(
-      (x) => x.owner === w && !x.member && clusterOfSym.get(x.sym) === c,
+      (x) =>
+        x.owner === w && x.live && !x.member && clusterOfSym.get(x.sym) === c,
     )?.sym
   for (const { cluster: c, writers } of graph.subRegionWriters) {
     const writerHomes = new Map<OutputId, RegionId>()
@@ -318,17 +319,21 @@ export function assignHomes(
       ) {
         continue
       }
+      // a read, or a write, the route module evaluates elsewhere
+      const uses: Array<RegionId | null> = []
       for (const ref of t1.refs.valueRefsOf(w.sym)) {
-        if (!READ_KINDS.has(ref.kind) || !liveInEnv(ref)) {
-          continue
+        if (READ_KINDS.has(ref.kind) && liveInEnv(ref)) {
+          uses.push(t1.ownerOf(ref))
         }
-        const owner = t1.ownerOf(ref)
-        const reader = clusterOfRegion.get(owner)
-        if (
-          owner !== unit.region &&
-          reader !== undefined &&
-          liveEnv.has(reader)
-        ) {
+      }
+      for (const other of graph.writesOfSym.get(w.sym) ?? []) {
+        if (other.live) {
+          uses.push(other.owner)
+        }
+      }
+      for (const owner of uses) {
+        const user = owner === null ? undefined : clusterOfRegion.get(owner)
+        if (owner !== unit.region && user !== undefined && liveEnv.has(user)) {
           return w.sym
         }
       }
@@ -356,20 +361,19 @@ export function assignHomes(
       // writer of module state the route module exports); the value being
       // the exported declaration itself is imported from the env module (no report)
       const unit = units[declaring[0]!]!
-      if (
-        unit.kind === 'declaration' &&
-        !unit.effectful &&
-        (!clusters[d]!.exported || unit.exported.length > 0)
-      ) {
-        const written = clusters[d]!.exported ? null : writesShared(unit, d)
+      if (unit.kind === 'declaration' && !unit.effectful) {
+        const written = writesShared(unit, d)
         if (written !== null) {
           fallbacks.push({
             region: unit.region,
             reason: 'shared-writer',
             binding: written,
           })
+          continue
         }
-        continue
+        if (!clusters[d]!.exported || unit.exported.length > 0) {
+          continue
+        }
       }
       fallbacks.push({ region: unit.region, reason: 'env-declared' })
     }

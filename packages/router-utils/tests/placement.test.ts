@@ -140,6 +140,22 @@ describe('clusters and the single-writer rule', () => {
     },
   )
 
+  it('falls back for a declared component writing a binding the route module only writes', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let count = 0
+      function Page() { count++; return 'page' }
+      export const Route = createFileRoute('/')({
+        loader: () => { count = 0; return 'data' },
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { component: 'shared-writer' },
+    })
+  })
+
   it('moves a declared component with the binding only it writes and reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2042,6 +2058,38 @@ describe('extracted-export outputs', () => {
       expect(r.diagnostics).toEqual([])
     },
   )
+
+  it('does not report an export the route module needs through a declaration it re-exports', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make, wrap } from './lib'
+      export const api = make()
+      const plugin = wrap(api)
+      export { plugin }
+      function Page() { return api.x }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics).toEqual([])
+  })
+
+  it('reports each exported cause with its own reason, also one another cause reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './lib'
+      export const base = make()
+      export const options = { base }
+      function Page() { return [options.base, base] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics.map((d) => [d.code, d.range?.start]).sort()).toEqual(
+      [
+        ['eager-export:effects', code.indexOf('base = make')],
+        ['eager-export:reads', code.indexOf('options = {')],
+      ].sort(),
+    )
+  })
 
   it('reports an exported declaration with effects only split code reads, also next to `Route`', async () => {
     const code = dedent(`
@@ -4654,6 +4702,55 @@ describe('declarations only split code needs that stay in the route module', () 
       },
     ])
   })
+
+  it('does not report a reader of written state the route module also writes', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      n++
+      let label = 'n=' + n
+      function reset() { label = '' }
+      function Page() { return label }
+      export const Route = createFileRoute('/')({
+        loader: () => { reset(); return n },
+        component: Page,
+      })
+    `)
+    const r = await kept(code)
+    expect(r.diagnostics).toEqual([])
+  })
+
+  it.each([
+    [
+      'the state is exported',
+      "export let n = 0\nn++\nconst label = 'n=' + n\nfunction Page() { return label }",
+      'component: Page,',
+    ],
+    [
+      'the reader is inline',
+      "let n = 0\nn++\nconst label = 'n=' + n",
+      'component: () => label,',
+    ],
+  ])(
+    'reports a reader of state the module writes at load and keeps when %s',
+    async (_, decls, option) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => n,
+          ${option}
+        })
+      `)
+      const r = await kept(code)
+      expect(r.diagnostics).toMatchObject([
+        {
+          code: 'eager-split:state',
+          range: { start: code.indexOf('label = ') },
+        },
+      ])
+    },
+  )
 
   it('moves a reader of state the module writes at load with that state when only split code reads both', async () => {
     const code = dedent(`

@@ -529,7 +529,7 @@ function describeReason(
   binding?: string,
 ): string {
   const written = binding === undefined ? 'a module binding' : `\`${binding}\``
-  const inObject = `\`state.${binding ?? 'count'}++\``
+  const inObject = `\`state.${binding ?? 'count'}\``
   switch (reason) {
     case 'shared-writer':
       return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
