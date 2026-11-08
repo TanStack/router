@@ -474,15 +474,23 @@ export function toyEdgePolicyPlanner(
  * records a fact per import (`kind` of `make` export), so a consumer's plan
  * depends on its dependencies' export facts.
  */
-export function toySummaryPlanner(): Planner {
+export function toySummaryPlanner(
+  opts: {
+    /** Also read `#name` imports (a `package.json` `imports` entry). */
+    subpathImports?: boolean
+  } = {},
+): Planner {
+  const reads = (specifier: string) =>
+    specifier.startsWith('.') ||
+    (opts.subpathImports === true && specifier.startsWith('#'))
   return {
     name: 'toy-summary',
     tier: 1,
-    gate: (t0) => t0.imports.some((i) => i.specifier.startsWith('.')),
+    gate: (t0) => t0.imports.some((i) => reads(i.specifier)),
     async prefetch(t0, ctx) {
       const facts: Record<string, unknown> = {}
       for (const imp of t0.imports) {
-        if (!imp.specifier.startsWith('.')) {
+        if (!reads(imp.specifier)) {
           continue
         }
         const target = await ctx.resolve(imp.specifier)

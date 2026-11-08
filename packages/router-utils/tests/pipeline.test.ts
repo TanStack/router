@@ -458,6 +458,75 @@ describe('resolution for analysis', () => {
       { specifier: './service', importer: '/app/page.tsx' },
     ])
   })
+
+  // a `package.json` nearer the importer takes its `#imports` from the
+  // root's: the target `#foo` found (outside the new file's directory) is no
+  // file the new one shadows, but the manifest decides what `#foo` names
+  it('a package.json that appears asks again every resolution of the plans under its directory', async () => {
+    const files = {
+      '/app/package.json': JSON.stringify({
+        imports: { '#foo': './lib/foo.ts' },
+      }),
+      '/app/lib/foo.ts': 'export const make = () => "root"\n',
+      '/app/src/foo.ts': 'export const make = () => "nested"\n',
+      '/app/src/helper.ts': 'export const helper = (x: unknown) => x\n',
+      '/app/src/page.tsx': dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from '#foo'
+        import { helper } from './helper'
+        export const Route = createFileRoute('/')({
+          component: () => helper(make()),
+        })
+      `),
+    }
+    const host = new MemoryHost({
+      files,
+      resolve: (specifier, importer, all) => {
+        let dir = path.posix.dirname(importer)
+        if (specifier.startsWith('#')) {
+          for (;;) {
+            const manifest = all[`${dir}/package.json`]
+            if (manifest !== undefined) {
+              const target = JSON.parse(manifest).imports?.[specifier]
+              return target ? path.posix.join(dir, target) : null
+            }
+            if (dir === '/') {
+              return null
+            }
+            dir = path.posix.dirname(dir)
+          }
+        }
+        const joined = path.posix.join(dir, specifier)
+        return [`${joined}.ts`].find((c) => c in all) ?? null
+      },
+    })
+    const planners: Array<Planner> = [
+      toySplitPlanner(),
+      toySummaryPlanner({ subpathImports: true }),
+    ]
+    const first = await host.compile('/app/src/page.tsx', planners)
+    expect(first!.dependencies).toEqual([
+      '/app/lib/foo.ts',
+      '/app/src/helper.ts',
+    ])
+    host.write(
+      '/app/src/package.json',
+      JSON.stringify({ imports: { '#foo': './foo.ts' } }),
+    )
+    const added = await invalidate(
+      host.caches,
+      { path: '/app/src/package.json', kind: 'add' },
+      host,
+    )
+    expect(added.dependents.map((k) => k.canonicalId)).toEqual([
+      '/app/src/page.tsx',
+    ])
+    const second = await host.compile('/app/src/page.tsx', planners)
+    expect(second!.dependencies).toEqual([
+      '/app/src/foo.ts',
+      '/app/src/helper.ts',
+    ])
+  })
 })
 
 describe('slice gates: edges and policy', () => {
