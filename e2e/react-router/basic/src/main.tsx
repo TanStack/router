@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
@@ -9,12 +11,19 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import {
+  TanStackRouterDevtoolsInProd as TanStackRouterDevtools,
+  TanStackRouterDevtoolsPanelInProd as TanStackRouterDevtoolsPanel,
+} from '@tanstack/react-router-devtools'
+import { z } from 'zod'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute({
+  validateSearch: z.object({
+    devtools: z.enum(['panel', 'shadow']).optional().catch(undefined),
+  }),
   component: RootComponent,
   notFoundComponent: () => {
     return (
@@ -27,6 +36,8 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  const { devtools } = rootRoute.useSearch()
+
   return (
     <>
       <div className="p-2 flex gap-2 text-lg border-b">
@@ -86,10 +97,55 @@ function RootComponent() {
             </Link>
           </svg>
         </div>
+        <div className="ml-auto flex gap-2 text-sm items-center">
+          Devtools:
+          {(['floating', 'panel', 'shadow'] as const).map((mode) => (
+            <Link
+              key={mode}
+              to="."
+              search={(prev) => ({
+                ...prev,
+                devtools: mode === 'floating' ? undefined : mode,
+              })}
+              className={
+                (devtools ?? 'floating') === mode ? 'font-bold' : undefined
+              }
+            >
+              {mode}
+            </Link>
+          ))}
+        </div>
       </div>
       <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
+      {devtools === 'panel' ? (
+        <TanStackRouterDevtoolsPanel />
+      ) : devtools === 'shadow' ? (
+        <ShadowDevtoolsPanel />
+      ) : (
+        <TanStackRouterDevtools position="bottom-right" />
+      )}
     </>
+  )
+}
+
+function ShadowDevtoolsPanel() {
+  const [shadowRoot, setShadowRoot] = useState<ShadowRoot>()
+
+  return (
+    <div
+      ref={(host) => {
+        if (host) {
+          setShadowRoot(host.shadowRoot ?? host.attachShadow({ mode: 'open' }))
+        }
+      }}
+    >
+      {shadowRoot
+        ? createPortal(
+            <TanStackRouterDevtoolsPanel shadowDOMTarget={shadowRoot} />,
+            shadowRoot,
+          )
+        : null}
+    </div>
   )
 }
 const indexRoute = createRoute({

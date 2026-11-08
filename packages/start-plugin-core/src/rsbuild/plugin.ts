@@ -210,6 +210,18 @@ export function tanStackStartRsbuild(
               'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(routerBasepath),
               'import.meta.env.TSS_ROUTER_BASEPATH':
                 JSON.stringify(routerBasepath),
+              // In dev, SPA mode answers the shell (as Vite's dev server);
+              // a build leaves it to the prerendered shell (#8543)
+              ...(isDev
+                ? {
+                    'process.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                    'import.meta.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                  }
+                : {}),
               'process.env.TSS_DEV_SERVER': JSON.stringify(
                 isDev ? 'true' : 'false',
               ),

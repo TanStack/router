@@ -50,6 +50,18 @@
     "zod": "^4.4.3"
   },
   "nx": {
+    "targets": {
+      "test:e2e--vite-spa--dev": {
+        "dependsOn": [
+          "^build"
+        ]
+      },
+      "test:e2e--rsbuild-spa--dev": {
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    },
     "metadata": {
       "playwrightModes": [
         {
@@ -59,6 +71,14 @@
         {
           "toolchain": "vite",
           "mode": "spa"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "spa",
+          "name": "dev",
+          "env": {
+            "E2E_DEV_SERVER": "true"
+          }
         },
         {
           "toolchain": "vite",
@@ -86,6 +106,14 @@
         {
           "toolchain": "rsbuild",
           "mode": "spa"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "spa",
+          "name": "dev",
+          "env": {
+            "E2E_DEV_SERVER": "true"
+          }
         },
         {
           "toolchain": "rsbuild",
