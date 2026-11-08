@@ -832,6 +832,50 @@ export function Page({ flag }) {
     },
   )
 
+  // R101: Solid has no rules of hooks, and a `use*` call in the split
+  // children runs under the boundary's owner, with its context
+  it.each([
+    ['a use* call', '<p>{useThing()}</p>'],
+    ['a namespace use* call', '<p>{Solid.useContext(Theme)}</p>'],
+    ['Route.useParams()', '<p>{Route.useParams()().id}</p>'],
+  ])(
+    'Solid: %s in the children is split, in both envs',
+    async (_, children) => {
+      const source = `${SOLID}import * as Solid from 'solid-js'
+import { useThing, Theme } from './hooks'
+import { Route } from './route'
+export function Page() {
+  return <Hydrate when={1}>${children}</Hydrate>
+}
+`
+      const { client, server } = await both(source)
+      expect(client.errors).toEqual([])
+      expect(server.errors).toEqual([])
+      expect(Object.keys(client.chunks)).toHaveLength(1)
+    },
+  )
+
+  it.each([
+    ['an arrow child', '{() => <p />}', 'hydrate-function-children'],
+    [
+      'new.target of the component',
+      '<p>{String(new.target === undefined)}</p>',
+      'hydrate-this',
+    ],
+  ])(
+    'Solid: %s is still rejected at the boundary, in both envs',
+    async (_, children, code) => {
+      const source = `${SOLID}export function Page() {
+  return <Hydrate when={1}>${children}</Hydrate>
+}
+`
+      const { client, server } = await both(source)
+      const expected = [{ code, start: source.indexOf('<Hydrate') }]
+      expect(client.errors).toEqual(expected)
+      expect(server.errors).toEqual(expected)
+    },
+  )
+
   it('rejects await in the children of an async component', async () => {
     const code = `${REACT}export async function Page({ load }) {
   return <Hydrate><p>{await load()}</p></Hydrate>

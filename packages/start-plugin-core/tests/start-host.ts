@@ -247,7 +247,7 @@ const serverCaseGlob = `['${caseGlob}', '!../cases/*/*.client.*']`
 /**
  * The app files of a host: the router, its root route and the probe server
  * route, which runs a callback of the test (by token) inside a real Start
- * request. A host for production builds (`serve: false`, React) also gets
+ * request. A host for production builds (`serve: false`, React or Solid) also gets
  * a document shell and a page route, which give the page every case module
  * through a lazy `import.meta.glob` (each one a chunk of the build, loaded
  * on demand like any lazy import), and its probe route gives the callback
@@ -269,7 +269,7 @@ function appFiles(
         }),
   }
   if (!serve && framework === 'vue') {
-    // A build-only Vue host (`build()`; `preview()` serves React apps only):
+    // A build-only Vue host (`build()`; `preview()` serves React and Solid apps):
     // the client build takes every case module through a page route
     files['src/routes/harness-page.ts'] =
       `import { createFileRoute } from '${router}'
@@ -283,36 +283,33 @@ export const Route = createFileRoute('${pageRoutePath}')({
 `
   }
   if (!serve && framework !== 'vue') {
-    if (framework !== 'react') {
-      throw new Error(
-        `production build hosts are React or Vue apps (not ${framework})`,
-      )
-    }
+    const solid = framework === 'solid'
     files['src/routes/__root.tsx'] =
       `import { HeadContent, Outlet, Scripts, createRootRoute } from '${router}'
-export const Route = createRootRoute({
+${solid ? `import { HydrationScript } from 'solid-js/web'\n` : ''}export const Route = createRootRoute({
   component: () => <Outlet />,
-  shellComponent: ({ children }) => (
+  shellComponent: ${solid ? '(props)' : '({ children })'} => (
     <html>
       <head>
-        <HeadContent />
+        ${solid ? '<HydrationScript />\n        ' : ''}<HeadContent />
       </head>
       <body>
-        {children}
+        {${solid ? 'props.children' : 'children'}}
         <Scripts />
       </body>
     </html>
   ),
 })
 `
-    files['src/routes/harness-page.tsx'] = `import { useEffect } from 'react'
+    files['src/routes/harness-page.tsx'] =
+      `import { ${solid ? 'onMount' : 'useEffect'} } from '${solid ? 'solid-js' : 'react'}'
 import { createFileRoute } from '${router}'
 const cases = import.meta.glob(${clientCaseGlob})
 export const Route = createFileRoute('${pageRoutePath}')({
   component: function HarnessPage() {
-    useEffect(() => {
+    ${solid ? 'onMount(() => {' : 'useEffect(() => {'}
       Object.assign(window, { __harnessCases: cases, __harnessReady: true })
-    }, [])
+    }${solid ? '' : ', []'})
     return <main>harness</main>
   },
 })
@@ -494,7 +491,7 @@ export interface StartHost {
   /** `vite build` of the app (`PluginHost.build`). */
   build: PluginHost['build']
   /**
-   * Production mode of a host created with `serve: false` (React): builds
+   * Production mode of a host created with `serve: false` (React or Solid): builds
    * the app as `vite build` does, with every case written so far, and serves
    * the build as `vite preview` does (Start's own preview server: the built
    * server entry handles requests). From then on the cases run against the
@@ -1085,9 +1082,9 @@ try {
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
       }
-      if (framework !== 'react') {
+      if (framework === 'vue') {
         throw new Error(
-          `preview() serves React apps (not ${framework}): use build()`,
+          'preview() serves React and Solid apps (not vue): use build()',
         )
       }
       if (previewState && previewOptions.rebuild) {
