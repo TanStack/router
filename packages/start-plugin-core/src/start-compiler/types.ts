@@ -90,6 +90,8 @@ export interface ServerFn {
 export type GenerateFunctionIdFn = (opts: {
   filename: string
   functionName: string
+  /** The server function's variable name, for diagnostics. */
+  variableName: string
   extractedFilename: string
 }) => string
 
@@ -97,7 +99,10 @@ export type GenerateFunctionIdFn = (opts: {
  * Optional version that allows returning undefined to use default ID generation.
  */
 export type GenerateFunctionIdFnOptional = (
-  opts: Omit<Parameters<GenerateFunctionIdFn>[0], 'extractedFilename'>,
+  opts: Omit<
+    Parameters<GenerateFunctionIdFn>[0],
+    'extractedFilename' | 'variableName'
+  >,
 ) => string | undefined
 
 /**
