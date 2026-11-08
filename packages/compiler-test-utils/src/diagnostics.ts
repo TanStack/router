@@ -271,7 +271,7 @@ export function mismatches(
   const named =
     expected.file === undefined
       ? diagnostic.text
-      : fileMention(diagnostic.text, expected.file, expected)
+      : fileMention(diagnostic.text, expected.file, { ...expected, tail: true })
   if (named === undefined) {
     reasons.push(`does not name ${expected.file}`)
   }
@@ -369,9 +369,8 @@ function indent(text: string) {
  * With a root, a longer path ending with it must be the end of the absolute
  * path (a path relative to the working directory names it, `/other/src/a.ts`
  * does not); what follows `./`, `../` or a leading `/` counts on its own.
- * An absolute `file` without a root is also named by the end of its path
- * from one of its directories on (`src/a.ts`, as messages name files
- * relative to the project root).
+ * Source-map sources and other texts name an absolute file only by its
+ * absolute path when no root is given.
  */
 export function mentionsFile(
   text: string,
@@ -385,10 +384,15 @@ export function mentionsFile(
  * The text (ANSI colours removed, `\\` as `/`) from its first naming of
  * `file` on (`mentionsFile`), or `undefined` when it does not name it.
  */
+/**
+ * With `tail` (diagnostics), an absolute `file` without a root is also named
+ * by the end of its path from one of its directories on (`src/a.ts`, as
+ * messages name files relative to the project root).
+ */
 function fileMention(
   text: string,
   file: string,
-  options: { root?: string },
+  options: { root?: string; tail?: boolean },
 ): string | undefined {
   const posix = (value: string) => value.replaceAll('\\', '/')
   const said = posix(stripVTControlCharacters(text))
@@ -408,10 +412,13 @@ function fileMention(
     .map((spelling) => (spelling ? said.indexOf(posix(spelling)) : -1))
     .filter((index) => index !== -1)
   if (relative === undefined) {
-    // an absolute file is also named by its path from a directory of it on
-    // (`src/routes/a.tsx`, how messages name files relative to the root)
+    // a diagnostic also names an absolute file by its path from a directory
+    // of it on (`src/routes/a.tsx`, how messages name files relative to the
+    // root)
     const name =
-      absolute === undefined ? '' : path.posix.basename(posix(absolute))
+      absolute === undefined || !options.tail
+        ? ''
+        : path.posix.basename(posix(absolute))
     for (
       let at = name === '' ? -1 : said.indexOf(name);
       at !== -1;
