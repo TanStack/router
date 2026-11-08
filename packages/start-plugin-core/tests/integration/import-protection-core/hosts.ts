@@ -68,7 +68,14 @@ async function materialize(c: WitnessCase, bundler: string): Promise<string> {
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, code)
   }
-  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}\n')
+  // A named package, as an app's: webpack and Rspack (≥ 2.3.0, webpack#21686)
+  // give an unnamed package.json without `sideEffects` the `sideEffects` of
+  // the package above it, here the stand-in of this package (`false`), which
+  // would make the app's modules side-effect free
+  fs.writeFileSync(
+    path.join(root, 'package.json'),
+    '{"name":"app","type":"module"}\n',
+  )
   return root
 }
 
