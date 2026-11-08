@@ -16,7 +16,10 @@ import {
   Locator,
   originalPositionFor,
 } from '../../src/import-protection/locate'
-import { DevReporter } from '../../src/import-protection/report'
+import {
+  DevReporter,
+  devViolationError,
+} from '../../src/import-protection/report'
 import { formatViolation } from '../../src/import-protection/trace'
 import { violationInfo } from '../../src/import-protection/violations'
 import type { ImportGraphView } from '../../src/import-protection/graph-trace'
@@ -371,5 +374,221 @@ describe('positions', () => {
       line: 5,
       column: 3,
     })
+  })
+})
+
+/** A report's printed trace as structure (step numbers, files and positions, the entry tag) and the steps it says it left out. */
+function printedTrace(
+  steps: Array<string>,
+  fromEntry: boolean,
+  o: {
+    root?: string
+    options?: ImportProtectionOptions
+    v?: EdgeViolation
+    readSource?: (file: string) => string | null
+  } = {},
+) {
+  const root = o.root ?? '/app'
+  const c = resolveImportProtectionConfig(o.options ?? {}, {
+    root,
+    srcDirectory: `${root.replace(/\/$/, '')}/src`,
+    mode: 'dev',
+  })!
+  const v = o.v ?? violation()
+  const text = formatViolation(
+    v,
+    violationInfo(v, c, () => ({
+      steps: steps.map((file) => ({ file })),
+      fromEntry,
+    })),
+    { config: c, readSource: o.readSource ?? (() => null), framework: 'react' },
+  )
+  const lines = text.split('\n')
+  const at = lines.indexOf('  Trace:')
+  if (at < 0) {
+    return null
+  }
+  const out: Array<[number, string, boolean]> = []
+  let left = 0
+  for (const line of lines.slice(at + 1)) {
+    if (!line.trim()) {
+      break
+    }
+    const m = /^\s+(\d+)\. (\S+)( \(entry\))?/.exec(line)
+    if (m) {
+      out.push([Number(m[1]), m[2]!, m[3] !== undefined])
+    } else {
+      left = Number(/\d+/.exec(line)?.[0])
+    }
+  }
+  return { steps: out, left, text }
+}
+
+const NM = '/app/node_modules/@tanstack/react-start/dist/client.js'
+
+describe('printed traces', () => {
+  test("start at the app's first file, which is the entry when an entry reaches it; a route module and its split module print once", () => {
+    expect(
+      printedTrace(
+        [
+          NM,
+          '/app/src/entry.ts',
+          '/app/src/r.tsx',
+          '/app/src/r.tsx',
+          '/app/src/b.ts',
+        ],
+        true,
+      )!.steps,
+    ).toEqual([
+      [1, 'src/entry.ts', true],
+      [2, 'src/r.tsx', false],
+      [3, 'src/b.ts:3:24', false],
+    ])
+  })
+
+  test('a lone importer step prints no trace (the lines above name it), entry or not', () => {
+    expect(printedTrace(['/app/src/b.ts'], false)).toBeNull()
+    expect(printedTrace(['/app/src/b.ts'], true)).toBeNull()
+    expect(printedTrace([NM, '/app/src/b.ts'], true)).toBeNull()
+  })
+
+  test('a trace not from an entry tags no step', () => {
+    expect(
+      printedTrace(['/app/src/a.ts', '/app/src/b.ts'], false)!.steps.map(
+        (s) => s[2],
+      ),
+    ).toEqual([false, false])
+  })
+
+  test('a cut keeps the last steps, numbered as in the whole trace, tags no entry and says how many it left out', () => {
+    const files = ['a', 'b', 'c', 'd', 'e'].map((n) => `/app/src/${n}.ts`)
+    const t = printedTrace([...files, '/app/src/b.ts'], true, {
+      options: { maxTraceDepth: 2 },
+    })!
+    expect(t.steps.map(([n, , entry]) => [n, entry])).toEqual([
+      [4, false],
+      [5, false],
+      [6, false],
+    ])
+    expect(t.left).toBe(3)
+  })
+
+  test('without any app file every step prints', () => {
+    const v = violation({
+      importer: '/lib/b.ts',
+      importerId: '/lib/b.ts',
+      loc: { file: '/lib/b.ts', line: 3, column: 24 },
+    })
+    expect(
+      printedTrace(['/lib/entry.ts', '/lib/a.ts', '/lib/b.ts'], true, { v })!
+        .steps.length,
+    ).toBe(3)
+  })
+
+  test("a module that is its own violation: the importer's step is its pattern import, its own step names no import", () => {
+    const denied = '/app/src/x.server.ts'
+    const v = violation({
+      self: true,
+      importer: denied,
+      importerId: denied,
+      resolved: denied,
+      specifier: 'src/x.server.ts',
+      loc: null,
+    })
+    const glob = `export const zero = 0\nexport const m = import.meta.glob('./*.server.ts')\n`
+    const t = printedTrace(['/app/src/glob.ts', denied], true, {
+      v,
+      readSource: (file) => (file === '/app/src/glob.ts' ? glob : null),
+    })!
+    expect(t.steps.map((s) => s[1])).toEqual([
+      'src/glob.ts:2:18',
+      'src/x.server.ts',
+    ])
+    expect(t.text).toMatch(/^\s+2\. src\/x\.server\.ts$/m)
+  })
+})
+
+describe('onViolation traces', () => {
+  test('are the whole chain cut at maxTraceDepth, framework steps and split modules included, the same once frozen', () => {
+    const c = config({ maxTraceDepth: 2 })
+    const info = violationInfo(violation(), c, () => ({
+      steps: [
+        NM,
+        '/app/src/r.tsx',
+        '/app/src/r.tsx?tsr-split=component',
+        '/app/src/b.ts',
+      ].map((file) => ({ file })),
+      fromEntry: true,
+    }))
+    const expected = [
+      { file: '/app/src/r.tsx' },
+      { file: '/app/src/r.tsx?tsr-split=component' },
+      {
+        file: '/app/src/b.ts',
+        specifier: './secret.server',
+        line: 3,
+        column: 24,
+      },
+    ]
+    expect(info.trace).toEqual(expected)
+    info.freezeTrace()
+    expect(info.trace).toEqual(expected)
+  })
+
+  test('a module that is its own violation: the last step names its own specifier, as before', () => {
+    const x = '/app/src/x.server.ts'
+    const info = violationInfo(
+      violation({
+        self: true,
+        importer: x,
+        importerId: x,
+        resolved: x,
+        specifier: 'src/x.server.ts',
+        loc: null,
+      }),
+      config(),
+      () => ({
+        steps: [{ file: '/app/src/glob.ts' }, { file: x }],
+        fromEntry: false,
+      }),
+    )
+    expect(info.trace.at(-1)).toEqual({ file: x, specifier: 'src/x.server.ts' })
+  })
+})
+
+describe('dev error', () => {
+  test("names every report, is positioned at the first one's import (1-based, no Rollup loc), and carries no stack frames", () => {
+    const first = violation({
+      importer: '/app/src/page.mdx',
+      importerId: '/app/src/page.mdx',
+      loc: { file: '/app/src/page.mdx', line: 4, column: 9 },
+    })
+    const second = violation({
+      importer: '/app/src/c.ts',
+      importerId: '/app/src/c.ts',
+      loc: null,
+    })
+    const ctx = {
+      config: config(),
+      readSource: () => null,
+      framework: 'react' as const,
+    }
+    const report = (v: EdgeViolation) => ({
+      violation: v,
+      info: violationInfo(v, ctx.config, () => ({
+        steps: [],
+        fromEntry: false,
+      })),
+    })
+    const error = devViolationError([report(first), report(second)], ctx)
+    expect(error.id).toBe('/app/src/page.mdx')
+    expect(error.at).toEqual({ line: 4, column: 9 })
+    expect('loc' in error).toBe(false)
+    expect(error.stack).toBe(error.message)
+    expect(error.message).toContain('src/page.mdx')
+    expect(error.message).toContain('src/c.ts')
+    const unlocated = devViolationError([report(second)], ctx)
+    expect(unlocated.id).toBe('/app/src/c.ts')
+    expect(unlocated.at).toBeUndefined()
   })
 })

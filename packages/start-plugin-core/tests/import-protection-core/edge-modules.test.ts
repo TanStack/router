@@ -45,17 +45,41 @@ async function importMock(
   c: EdgeModuleContent,
   mockAccess: MockAccess = 'off',
 ): Promise<Record<string, unknown>> {
-  const env = `e${counter++}`
-  const ec = { ...c, env }
-  const runtime = ids.specifier({ env, kind: 'runtime' })
-  const edge = ids.specifier({ env, kind: 'edge', key: edgeModuleKey(ec) })
+  const [m] = await importMocks([c], mockAccess, { keepEnv: false })
+  return m!
+}
+
+/**
+ * Writes one runtime and the mocks of `cs` under a fresh directory (the
+ * runtime's state is its own) and imports them. `keepEnv`: the mocks keep
+ * their contents' environment names (default: a fresh name per call).
+ */
+async function importMocks(
+  cs: Array<EdgeModuleContent>,
+  mockAccess: MockAccess,
+  options: { keepEnv?: boolean; framework?: 'react' | 'solid' | 'vue' } = {},
+): Promise<Array<Record<string, unknown>>> {
+  const dirEnv = `e${counter++}`
+  const runtime = ids.specifier({ env: dirEnv, kind: 'runtime' })
   fs.mkdirSync(path.dirname(runtime), { recursive: true })
-  fs.writeFileSync(runtime, mockRuntimeCode(mockAccess))
-  fs.writeFileSync(edge, mockModuleCode(ec, runtime))
-  return (await import(/* @vite-ignore */ pathToFileURL(edge).href)) as Record<
-    string,
-    unknown
-  >
+  fs.writeFileSync(runtime, mockRuntimeCode(mockAccess, options.framework))
+  const mocks: Array<Record<string, unknown>> = []
+  for (const [i, c] of cs.entries()) {
+    const ec = options.keepEnv ? c : { ...c, env: dirEnv }
+    const edge = ids.specifier({
+      env: dirEnv,
+      kind: 'edge',
+      key: `${i}.${edgeModuleKey(ec)}`,
+    })
+    fs.writeFileSync(edge, mockModuleCode(ec, runtime))
+    mocks.push(
+      (await import(/* @vite-ignore */ pathToFileURL(edge).href)) as Record<
+        string,
+        unknown
+      >,
+    )
+  }
+  return mocks
 }
 
 describe('mock', () => {
@@ -98,6 +122,115 @@ describe('mock', () => {
         warn.mockRestore()
       }
     }
+  })
+
+  /** The messages `console.error` received while `run` ran. */
+  async function reported(run: () => Promise<void>): Promise<Array<string>> {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await run()
+      return error.mock.calls.map(([e]) => String((e as Error).message))
+    } finally {
+      error.mockRestore()
+    }
+  }
+
+  test('each mocked import reports its first use once: two importers of one file, twice', async () => {
+    const messages = await reported(async () => {
+      const [a, b] = await importMocks(
+        [
+          content({ importer: 'src/a.ts', names: ['secret'] }),
+          content({ importer: 'src/b.ts', names: ['secret'] }),
+        ],
+        'error',
+      )
+      ;(a!.secret as () => unknown)()
+      String(a!.default)
+      ;(b!.secret as () => unknown)()
+      ;(b!.secret as () => unknown)()
+    })
+    expect(messages.map((m) => /Importer: (.*)/.exec(m)?.[1])).toEqual([
+      'src/a.ts',
+      'src/b.ts',
+    ])
+  })
+
+  test('the environment is named by its type, and by its name where they differ', async () => {
+    const messages = await reported(async () => {
+      const [client, ssr] = await importMocks(
+        [
+          content({ env: 'client', names: ['x'] }),
+          content({ env: 'ssr', names: ['x'] }),
+        ],
+        'error',
+        { keepEnv: true },
+      )
+      ;(client!.x as () => unknown)()
+      ;(ssr!.x as () => unknown)()
+    })
+    expect(messages.map((m) => m.split('\n')[0])).toEqual([
+      '[import-protection] Mocked import used in the client environment',
+      '[import-protection] Mocked import used in the server environment (ssr)',
+    ])
+  })
+
+  test('in production the report is one line naming the denied file (or import)', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const messages = await reported(async () => {
+        const [file, specifier] = await importMocks(
+          [content({ names: ['x'] }), content({ file: null, names: ['x'] })],
+          'error',
+        )
+        ;(file!.x as () => unknown)()
+        ;(specifier!.x as () => unknown)()
+      })
+      expect(messages.map((m) => m.split(': ').slice(1).join(': '))).toEqual([
+        'src/secret.server.ts',
+        './secret.server',
+      ])
+      expect(messages.every((m) => !m.includes('\n'))).toBe(true)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  test('a module that is its own violation names no import; an unknown edge module names its import', async () => {
+    const [own, unknown] = await reported(async () => {
+      const [a, b] = await importMocks(
+        [
+          // a pattern import brought the denied file (no importer)
+          content({
+            importer: '',
+            specifier: 'src/secret.server.ts',
+            names: ['x'],
+          }),
+          // an importer restored from a persistent cache (`unknownEdgeLoad`)
+          content({ importer: '', file: null, specifier: 'k1', names: ['x'] }),
+        ],
+        'error',
+      )
+      ;(a!.x as () => unknown)()
+      ;(b!.x as () => unknown)()
+    })
+    expect(own).toContain('Importer: a pattern import')
+    expect(own).not.toContain('Denied import:')
+    expect(unknown).toContain('Denied import: "k1"')
+    expect(unknown).not.toContain('a pattern import')
+  })
+
+  test("a Vue app's server report names the denied import in its component fix, as written", async () => {
+    const specifier = "./a$&'b.client.vue"
+    const [message] = await reported(async () => {
+      const [m] = await importMocks(
+        [content({ env: 'ssr', specifier, names: ['x'] })],
+        'error',
+        { keepEnv: true, framework: 'vue' },
+      )
+      ;(m!.x as () => unknown)()
+    })
+    expect(message).toContain(`import('./a$&\\'b.client.vue')`)
+    expect(message).not.toContain('__SPECIFIER__')
   })
 
   test('the effect witness of an effectful target defines no global and logs nothing', async () => {

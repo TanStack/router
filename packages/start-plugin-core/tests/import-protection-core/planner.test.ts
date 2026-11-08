@@ -423,10 +423,9 @@ describe('dev decisions', () => {
     const { out, outcome } = await a.compile('src/a.ts', 'client')
     expect(edgeImports(out!.code)).toEqual([])
     expect(outcome.error?.message).toContain('src/a.ts:1:24')
-    expect((outcome.error as { loc?: unknown }).loc).toEqual({
-      file: `${ROOT}/src/a.ts`,
-      line: 1,
-      column: 23,
+    expect(outcome.error).toMatchObject({
+      id: `${ROOT}/src/a.ts`,
+      at: { line: 1, column: 24 },
     })
     // a cached plan fails the module again
     const again = await a.compile('src/a.ts', 'client')
@@ -687,6 +686,19 @@ describe('forwarded glue and markers', () => {
     ).toEqual([['./secret.server', 1, 24]])
   })
 
+  test('a marker conflict is located at the second marker, also when it is a re-export', async () => {
+    for (const code of [
+      `import '@tanstack/react-start/server-only'\nimport '@tanstack/react-start/client-only'\n`,
+      `import '@tanstack/react-start/server-only'\nexport * from '@tanstack/react-start/client-only'\n`,
+    ]) {
+      const a = app({ 'src/both.ts': code })
+      const { out } = await a.compile('src/both.ts', 'client')
+      expect(out!.diagnostics.map((d) => d.range?.start)).toEqual([
+        code.indexOf("'@tanstack/react-start/client-only'"),
+      ])
+    }
+  })
+
   test('a module importing both markers is an error diagnostic in that module', async () => {
     const a = app({
       'src/both.ts': `import '@tanstack/react-start/server-only'\nimport '@tanstack/react-start/client-only'\nexport const v = 1\n`,
@@ -737,5 +749,83 @@ describe('ids', () => {
       expect(viteEdgeModuleIds.parse(id)).toEqual(ref)
     }
     expect(viteEdgeModuleIds.parse('/src/a.ts')).toBeNull()
+  })
+})
+
+/**
+ * How a server importer uses a client-only import (`EdgeViolation.rendered`,
+ * plain data the report's suggestion reads): rendered as a component, or not.
+ */
+describe('rendered client-only imports', () => {
+  const WIDGET = `export const Chart = () => null\nexport const useX = () => 1\n`
+  const renderedIn = async (page: string, env = 'ssr') => {
+    const a = app({ 'src/ui.client.tsx': WIDGET, 'src/page.tsx': page })
+    const { out } = await a.compile('src/page.tsx', env)
+    return violationsOf(out!).map((v) => v.rendered ?? null)
+  }
+
+  test.each([
+    {
+      name: 'a JSX element',
+      page: `import { Chart } from './ui.client'\nexport const P = () => <Chart />\n`,
+      rendered: {
+        via: 'jsx',
+        name: 'Chart',
+        at: expect.objectContaining({ line: 2, column: 25 }),
+      },
+    },
+    {
+      name: 'a member tag of a namespace',
+      page: `import * as UI from './ui.client'\nexport const P = () => <UI.Chart />\n`,
+      rendered: {
+        via: 'jsx',
+        name: 'UI.Chart',
+        at: expect.objectContaining({ line: 2, column: 25 }),
+      },
+    },
+    {
+      name: 'a route option',
+      page: `import { Chart } from './ui.client'\nexport const o = { component: Chart }\n`,
+      rendered: { via: 'option', key: 'component', name: 'Chart' },
+    },
+    {
+      name: 'a shorthand route option',
+      page: `import { Chart as component } from './ui.client'\nexport const o = { component }\n`,
+      rendered: { via: 'option', key: 'component', name: 'component' },
+    },
+    {
+      name: 'a member route option through a cast',
+      page: `import * as UI from './ui.client'\nexport const o = { pendingComponent: UI.Chart as any }\n`,
+      rendered: { via: 'option', key: 'pendingComponent', name: 'UI.Chart' },
+    },
+    {
+      name: 'an element of the second statement of one import',
+      page: `import { useX } from './ui.client'\nimport { Chart } from './ui.client'\nexport const P = () => { useX(); return <Chart /> }\n`,
+      rendered: { via: 'jsx', name: 'Chart' },
+    },
+  ])('$name is rendered', async ({ page, rendered }) => {
+    expect(await renderedIn(page)).toEqual([expect.objectContaining(rendered)])
+  })
+
+  test('a function call, a client environment and a re-export are not rendered', async () => {
+    expect(
+      await renderedIn(
+        `import { useX } from './ui.client'\nexport const P = () => useX()\n`,
+      ),
+    ).toEqual([null])
+    const a = app({
+      'src/db.server.ts': SECRET,
+      'src/page.tsx': `import { secret } from './db.server'\nexport const P = () => <div>{secret()}</div>\n`,
+      'src/ui.client.tsx': WIDGET,
+      'src/barrel.ts': `export { Chart } from './ui.client'\n`,
+    })
+    const client = await a.compile('src/page.tsx', 'client')
+    expect(violationsOf(client.out!).map((v) => v.rendered)).toEqual([
+      undefined,
+    ])
+    const barrel = await a.compile('src/barrel.ts', 'ssr')
+    expect(
+      violationsOf(barrel.out!).map((v) => [v.rendered, v.reexport]),
+    ).toEqual([[undefined, true]])
   })
 })

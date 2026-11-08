@@ -30,8 +30,41 @@ import {
   startBrowserRsbuildStartDevServer,
   startBrowserStartDevServer,
 } from './client-pages'
+import type { RsbuildPlugin } from '@rsbuild/core'
 
 const timeout = 60_000
+
+/**
+ * The location of each compilation error and warning, as Rsbuild reads it
+ * from its stats to print `File: <moduleName>:<loc>` (`:1:1` without one).
+ */
+function recordLocations() {
+  const seen: Array<{
+    severity: string
+    moduleName?: string
+    loc?: string
+    message: string
+  }> = []
+  const plugin: RsbuildPlugin = {
+    name: 'test:diagnostic-locations',
+    setup(api) {
+      api.onAfterEnvironmentCompile(({ stats }) => {
+        const json = stats?.toJson({ all: false, errors: true, warnings: true })
+        for (const severity of ['error', 'warning'] as const) {
+          for (const entry of json?.[`${severity}s`] ?? []) {
+            seen.push({
+              severity,
+              moduleName: entry.moduleName,
+              loc: entry.loc,
+              message: entry.message,
+            })
+          }
+        }
+      })
+    },
+  }
+  return { plugin, seen }
+}
 /** The built plugin's code (`packages/start-plugin-core/dist`). */
 const pluginDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -48,9 +81,11 @@ describe('rsbuild dev, behavior error', () => {
     "the importer's failure names the import's position and none of the plugin's own files",
     async () => {
       const recorder = violationRecorder({ behavior: 'error' })
+      const { plugin, seen } = recordLocations()
       const server = await startBrowserRsbuildDevServer({
         compileTimeout,
         importProtection: recorder.importProtection,
+        config: { plugins: [plugin] },
         files: {
           ...denied,
           'src/entry.ts': `export const one = 1
@@ -72,6 +107,16 @@ console.log(db())
           .map(({ text }) => text)
           .filter((text) => text.includes(pluginDist)),
       ).toEqual([])
+      // the compilation's location of the failure (Rsbuild's `File:` line)
+      expect(
+        seen
+          .filter(
+            (e) =>
+              e.moduleName?.replace(/^\.\//, '') === 'src/entry.ts' &&
+              e.message.includes('[import-protection]'),
+          )
+          .map(({ severity, loc }) => ({ severity, loc })),
+      ).toContainEqual({ severity: 'error', loc: '2:20' })
     },
     timeout,
   )
