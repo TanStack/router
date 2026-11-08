@@ -63,6 +63,10 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 - 4 workers by default (`maxWorkers` in each `vite.config.ts`).
 - No `|` inside `-t`; run one command per filter.
 - `--skip-nx-cache` only for measurements.
+- In router-plugin and start-plugin-core, Nx's `test:integration` runs the tier as shards
+  (`test:integration--shard-<i>-of-<n>`, Vitest `--shard`), one after another on a machine and spread over CI's agents;
+  each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
+  (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for budget measurements.
 - Slow tier: at most two `test:integration` runs on the machine at once:
   `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`.
 - Tiers: `test:unit` (in process, the inner loop); `test:integration` (`tests/integration/`: real builds, dev servers,
@@ -84,11 +88,13 @@ edit to result for one fast-tier file. `src/budget-reporter.ts` reports after ev
 on a quiet machine (1-minute load below 4, no other test run):
 
 ```sh
-COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:integration --outputStyle=stream --skipRemoteCache --skip-nx-cache
+COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:integration:whole --outputStyle=stream --skipRemoteCache --skip-nx-cache
 ```
 
-A run with a failed test or file is not a measurement. A tier over budget is fixed (shared hosts, bounded pages,
-moving page tests to `integration-pages`), not re-budgeted or sharded.
+(`test:integration:whole` where the package has CI shards, `test:integration` elsewhere; a shard is a partial run, which
+gets no tier budget.) A run with a failed test or file is not a measurement. A tier over budget is fixed (shared hosts,
+bounded pages, moving page tests to `integration-pages`), not re-budgeted or sharded: the CI shards cut CI's wall time
+and never count as a measurement.
 
 ## Setup facts
 

@@ -80,6 +80,34 @@
       ],
       "outputs": ["{projectRoot}/coverage"]
     },
+    "test:integration--shard-*": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "parallelism": false
+    },
+    "test:integration:whole": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "parallelism": false
+    },
     "test:integration:smoke": {
       "cache": true,
       "dependsOn": ["^build"],

@@ -8,11 +8,11 @@ import packageJson from './package.json'
  * (`tests/route-app.ts`): the tests of a file run concurrently, each on dev
  * servers it holds alone (a test leases a host of the test process; a
  * concurrent test of the same configuration gets another one) and on pages
- * of the process's bounded page pool (`@tanstack/compiler-test-utils/
- * browser`). A test process keeps its browser and its free hosts across
- * test files (`isolate: false`): a file starts only the hosts no earlier
- * file left free. Both are bounded (Chromium's shared memory limits how
- * many pages can be open at once).
+ * of the file's bounded page pool (`@tanstack/compiler-test-utils/
+ * browser`), closed when the file ended. A test process keeps its browser
+ * and its free hosts across test files (`isolate: false`): a file starts
+ * only the hosts no earlier file left free. Both are bounded (Chromium's
+ * shared memory limits how many pages can be open at once).
  */
 const pagesProject = {
   extends: true,
