@@ -6,16 +6,18 @@
  * the stack prints no generator internals).
  */
 export class RouteGenerationError extends Error {
-  override name = 'RouteGenerationError'
+  /** The message without its prefix. */
+  declare readonly detail: string
 
-  constructor(
-    /** The message without its prefix. */
-    readonly detail: string,
-  ) {
+  constructor(detail: string) {
     super(`[tanstack-router] ${detail}`)
+    // printed as its message alone (`console.error`, a bundler's report):
+    // no stack, no own enumerable fields
+    Object.defineProperty(this, 'detail', { value: detail })
     this.stack = this.message
   }
 }
+RouteGenerationError.prototype.name = 'RouteGenerationError'
 
 /** How the generator's messages name a file: relative to the project root, `/`-separated (as the compiler's `displayPath`). */
 export function displayFile(file: string, root: string): string {

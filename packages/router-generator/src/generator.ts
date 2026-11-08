@@ -169,9 +169,8 @@ function sameProps(a: RouteProps | undefined, b: RouteProps | undefined) {
 }
 
 /** A route file no earlier read of the generator knows does not parse: it fails a build that does not watch (R86). */
-export class UnparsableRouteFileError extends RouteGenerationError {
-  override name = 'UnparsableRouteFileError'
-}
+export class UnparsableRouteFileError extends RouteGenerationError {}
+UnparsableRouteFileError.prototype.name = 'UnparsableRouteFileError'
 
 function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
   const position =
