@@ -258,6 +258,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       /** The files of the last compilation (a modified file outside them is a created one: an `add`, which re-resolves
        * imports that failed to resolve before). */
       let knownFiles: ReadonlySet<string> | null = null
+      /**
+       * The directories the last compilation watched (`contextDependencies`:
+       * Tailwind CSS adds the ones it scans): Rspack reports such a directory
+       * as modified when anything below it changes, which creates no file of
+       * its name. A created file a resolution may take is reported itself (a
+       * missing dependency).
+       */
+      let knownDirectories: ReadonlySet<string> = new Set()
       let currentCompilation: Rspack.Compilation | null = null
       let reporterInstalled = false
       /**
@@ -329,7 +337,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.forgetMisses()
         await session.invalidateFileEvents(
           [...(compiler.modifiedFiles ?? [])]
-            .filter((file) => !isKnown(file) || isPackageManifest(file))
+            .filter(
+              (file) =>
+                (!isKnown(file) && !knownDirectories.has(file)) ||
+                isPackageManifest(file),
+            )
             .map((file) => ({
               file,
               kind: isPackageManifest(file)
@@ -374,6 +386,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.compiledOnce = true
         const deps = stats.compilation.fileDependencies
         knownFiles = new Set<string>(deps as Iterable<string>)
+        knownDirectories = new Set<string>(
+          stats.compilation.contextDependencies as Iterable<string>,
+        )
         if (session.start.opts.mode === 'dev') {
           session.retain(environment.name, knownFiles)
         } else if (!compiler.watchMode) {
