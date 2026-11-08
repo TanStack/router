@@ -39,6 +39,7 @@ import { runsAgainLater } from './vue'
 import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { LoaderChainLike } from './vue'
 import type { CompiledOutputLike } from '../import-protection/session'
+import type { DevViolationError } from '../import-protection/report'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -650,7 +651,18 @@ export class StartRsbuildCompilerSession {
     const outcome = this.start.afterCompile(env, id, out)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
-      throw error
+      // located like a compile error (the host replaces the failure with it)
+      const { at } = error as DevViolationError
+      const records = (ctx._module?.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
+        []) as Array<LocatedDiagnostic>
+      records.push({ severity: 'error', message: error.message, ...at })
+      if (ctx._module?.buildInfo) {
+        ctx._module.buildInfo[LOCATED_DIAGNOSTICS.field] = records
+      }
+      const failure = new Error(error.message)
+      failure.name = LOCATED_DIAGNOSTICS.errorName
+      failure.stack = `${failure.name}: ${error.message}`
+      throw failure
     }
     const buildInfo = ctx._module?.buildInfo
     const ipEnv = this.start.ip?.env(env.name, env.type)
