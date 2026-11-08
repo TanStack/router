@@ -16,6 +16,10 @@ const logged = []
 console.error = (...args) => logged.push(String(args[0]?.message ?? args[0]))
 const mock = entry.read()
 const awaited = await mock
+// (a mocked import reports its first use: this is it)
+const before = logged.length
+awaited.deep.used()
+const reportedAfterAwait = logged.length > before
 const resolved = await Promise.resolve(mock)
 const returned = await (async () => mock)()
 let received
@@ -28,8 +32,6 @@ let finallyRan = false
 await mock.finally(() => {
   finallyRan = true
 })
-const before = logged.length
-awaited.deep.used()
 return {
   awaited: describeValue(awaited, 'MARK_SECRET'),
   resolved: describeValue(resolved, 'MARK_SECRET'),
@@ -38,7 +40,7 @@ return {
   chained,
   caught: describeValue(caught, 'MARK_SECRET'),
   finallyRan,
-  reportedAfterAwait: logged.slice(before).some((text) => text.includes('deep.used')),
+  reportedAfterAwait,
 }`
 
 const safe = 'a safe mock'
