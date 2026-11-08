@@ -6,8 +6,10 @@
  * the chunk too, imported from that module (one instance: a class has an
  * identity). When a module loaded with the entry imports either through
  * the route file (here the app's router module), the bundler keeps that
- * module with the entry: the build warns once, naming the route file, on
- * Vite and on Rsbuild (SPEC J2.8; the router plugin's hosts do the same).
+ * module with the entry. The component then ships twice (the chunk's copy
+ * and the entry's), and the build warns once, naming the route file, on
+ * Vite and on Rsbuild (SPEC J2.8; the router plugin's hosts do the same);
+ * the class is one instance the entry needs, which is no news (R101).
  *
  * An unexported declaration only the split component reads that a later
  * effect pins in the route module (an inline
@@ -97,7 +99,7 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
   )
 
   test(
-    'an exported component the router module imports through the route file loads with the entry, and the build says so once',
+    'an exported component the router module imports through the route file ships twice, and the build says so once; a class it imports is one instance, unreported',
     async () => {
       const build = await buildStart({
         bundler,
@@ -113,12 +115,12 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
       // the class is one instance: the chunk imports the module the entry
       // keeps, so it is eager, not copied into the chunk as well
       expect(build.client.where('MARK_TAG')).toBe('eager')
-      expectDiagnostic(build.client.warnings, {
-        severity: 'warning',
-        file: 'src/routes/tag.tsx',
-        root: build.root,
-        times: 1,
-      })
+      expect(
+        findDiagnostics(build.client.warnings, {
+          file: 'src/routes/tag.tsx',
+          root: build.root,
+        }),
+      ).toEqual([])
     },
     timeout,
   )

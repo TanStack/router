@@ -14,6 +14,7 @@
  * host, when there is something to fix (J2.8: the user is told, the build
  * goes on); one instance a module of the entry imports is as it should be.
  */
+import { realpathSync } from 'node:fs'
 import { identify, normalizePath } from '../identity'
 import { displayPath } from '../diagnostics'
 import type { WarningLedger } from '../diagnostics'
@@ -222,15 +223,26 @@ export function warnEagerExports(
     return
   }
   const eager = new Set(ids)
-  const tree =
-    where.routeTree === undefined ? null : normalizePath(where.routeTree)
+  // the tree as the bundler may name it: as configured, or by its real path
+  const trees = new Set<string>()
+  if (where.routeTree !== undefined) {
+    trees.add(normalizePath(where.routeTree))
+    try {
+      trees.add(normalizePath(realpathSync(where.routeTree)))
+    } catch {
+      // not written (yet): the configured path only
+    }
+  }
   for (const e of exports) {
-    const copied = ![...importersOf(e.id)].some(isSplitCode)
+    // split code, or another extracted module, imports it: one instance
+    const copied = ![...importersOf(e.id)].some(
+      (id) => isSplitCode(id) || identify(id).derived?.kind === 'export',
+    )
     let eagerImporter = false
     let otherImporter = false
     for (const importer of importersOf(e.file)) {
       const path = normalizePath(identify(importer).path)
-      if (path === e.file || path === tree) {
+      if (path === e.file || trees.has(path)) {
         continue
       }
       if (eager.has(importer)) {
@@ -274,6 +286,6 @@ function eagerExportWarning(
     case 'reexport':
       return `${head} loads with the entry chunk: another route's split code imports it through the route file, and the bundler keeps the route file's re-export, which loads with the entry. Import it from its own module, or declare \`"sideEffects": false\` in package.json so the bundler can bypass the route file.`
     case 'chunk':
-      return `${head} loads with the entry chunk, although only split code imports it: the bundler's chunk configuration groups its module with the entry (\`manualChunks\`, \`advancedChunks\`, \`splitChunks\`). Keep the routes directory out of chunk groups that load with the entry.`
+      return `${head} loads with the entry chunk: nothing that loads with the entry imports it, and the bundler's chunk configuration groups its module with the entry (\`manualChunks\`, \`advancedChunks\`, \`splitChunks\`). Keep the routes directory out of chunk groups that load with the entry.`
   }
 }
