@@ -6,7 +6,8 @@
  * `createStartHost({ serve: false })` + `preview()`; Rsbuild: `buildStart` +
  * `preview()`) serves `/items/abc`; Chromium hydrates the page, the boundary
  * opens, and its children show the provider's value, an owner and the
- * route's param, and count a click.
+ * route's param, count a click, and follow a client-side navigation to
+ * another param.
  */
 import {
   afterAll,
@@ -28,7 +29,7 @@ const routeFiles = {
   'src/tone.ts': `import { createContext } from 'solid-js'
 export const Tone = createContext('no-provider')
 `,
-  'src/routes/items.$id.tsx': `import { createFileRoute } from '@tanstack/solid-router'
+  'src/routes/items.$id.tsx': `import { Link, createFileRoute } from '@tanstack/solid-router'
 import { Hydrate } from '@tanstack/solid-start'
 import { idle } from '@tanstack/solid-start/hydration'
 import { createSignal, getOwner, useContext } from 'solid-js'
@@ -41,6 +42,7 @@ function Page() {
   const [clicks, setClicks] = createSignal(0)
   return (
     <Tone.Provider value="provided">
+      <Link to="/items/$id" params={{ id: 'def' }} data-next>next</Link>
       <Hydrate when={idle()}>
         <p data-tone>{useTone()}</p>
         <p data-param>{Route.useParams()().id}</p>
@@ -114,6 +116,10 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
         param: await page.page.locator('[data-param]').textContent(),
         pageErrors: page.errors,
       }).toEqual({ tone: 'provided:owned', param: 'abc', pageErrors: [] })
+      // a client-side navigation to another param of the route
+      await page.page.locator('a[data-next]').click()
+      await page.waitForText('def', { selector: '[data-param]' })
+      expect(page.errors).toEqual([])
     },
     timeout,
   )

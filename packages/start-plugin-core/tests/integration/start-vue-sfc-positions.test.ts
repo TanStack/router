@@ -24,15 +24,17 @@ import type { StartHost } from '../regression-helpers'
 
 const timeout = 120_000
 
-const sfc = (setup: string) => `<script setup lang="ts">
+/** An SFC whose `<script setup>` block (after its template) holds `setup`; `pre`: text the template shows. */
+const sfc = (setup: string, pre = '') => `<template>
+  <p>page</p>${pre ? `\n  <pre>${pre}</pre>` : ''}
+</template>
+
+<!-- the script -->
+<script setup lang="ts">
 import { createServerFn } from '@tanstack/vue-start'
 ${setup}
 defineExpose({ getX })
 </script>
-
-<template>
-  <p>page</p>
-</template>
 `
 
 /** Refused SFCs, with the text the refusal points at. */
@@ -58,20 +60,40 @@ const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET' + props.t
  * Refused in development only: a JavaScript block hands its imports to the
  * template through generated code; refused at the import.
  */
-const refusedInDev = {
-  name: 'a factory a JavaScript block imports',
-  sfc: `<script setup>
+const refusedInDev = [
+  {
+    name: 'a factory a JavaScript block imports',
+    sfc: `<template>
+  <p>page</p>
+</template>
+
+<script setup>
 import { createServerFn } from '@tanstack/vue-start'
 const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
 defineExpose({ getX })
 </script>
-
-<template>
+`,
+    at: 'createServerFn }',
+  },
+  {
+    name: 'a builder a <script> block next to <script setup> keeps in a const',
+    sfc: `<template>
   <p>page</p>
 </template>
+
+<script lang="ts">
+import { createServerFn } from '@tanstack/vue-start'
+const base = createServerFn()
+export const getX = base.handler(async () => 'MARK_SERVER_SECRET')
+</script>
+
+<script setup lang="ts">
+defineExpose({ getX })
+</script>
 `,
-  at: 'createServerFn }',
-}
+    at: 'base = createServerFn',
+  },
+]
 
 /** The fixes the refusals give: one chain; the value passed in the input. */
 const fixes = [
@@ -124,10 +146,15 @@ const root = `import { createRootRoute } from '@tanstack/vue-router'
 export const Route = createRootRoute()
 `
 
-/** A production build of `sfcs` (`src/<name>.vue`) with `bundler`. */
-const build = (bundler: 'vite' | 'rsbuild', sfcs: Record<string, string>) =>
+/** A production build of `sfcs` (`src/<name>.vue`) with `bundler`, with source maps or not (the Vue plugins map the script only then). */
+const build = (
+  bundler: 'vite' | 'rsbuild',
+  sfcs: Record<string, string>,
+  sourcemap = false,
+) =>
   buildStart({
     bundler,
+    sourcemap,
     framework: 'vue',
     files: {
       'src/routes/__root.tsx': root,
@@ -144,36 +171,79 @@ const build = (bundler: 'vite' | 'rsbuild', sfcs: Record<string, string>) =>
       : { rsbuildConfig: { plugins: [pluginVue()] } }),
   })
 
-describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
-  test.each(refused)(
-    '$name fails the build at its position in the SFC',
-    async (row) => {
-      const error = await build(bundler, { Page: row.sfc }).then(
-        () => expect.fail('the build succeeded'),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectAtRefusal(error.diagnostics, 'src/Page.vue', row, error.root)
-    },
-    timeout,
-  )
+describe.each([
+  { bundler: 'vite', sourcemap: false },
+  { bundler: 'vite', sourcemap: true },
+  { bundler: 'rsbuild', sourcemap: false },
+  { bundler: 'rsbuild', sourcemap: true },
+] as const)(
+  '$bundler build, source maps $sourcemap',
+  ({ bundler, sourcemap }) => {
+    test.each(refused)(
+      '$name fails the build at its position in the SFC',
+      async (row) => {
+        const error = await build(bundler, { Page: row.sfc }, sourcemap).then(
+          () => expect.fail('the build succeeded'),
+          (e: unknown) => e,
+        )
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        expectAtRefusal(error.diagnostics, 'src/Page.vue', row, error.root)
+      },
+      timeout,
+    )
 
-  test(
-    'the fixes build, and their handlers stay on the server',
-    async () => {
-      const built = await build(
-        bundler,
-        Object.fromEntries(fixes.map((fix, i) => [`Fix${i}`, fix.sfc])),
-      )
-      for (const { mark } of fixes) {
-        expect(built.client.where(mark), mark).toBe('nowhere')
-      }
-    },
-    timeout,
-  )
-})
+    // Without a map, the statement's line is found by its text: text on two
+    // lines is no position, not either of them
+    test(
+      'a refused statement whose text the template shows too fails the build at no other line',
+      async () => {
+        const statement = `const getX = base.handler(async () => 'MARK_SERVER_SECRET')`
+        const text = sfc(
+          `const base = createServerFn()\n${statement}`,
+          statement,
+        )
+        const error = await build(bundler, { Page: text }, sourcemap).then(
+          () => expect.fail('the build succeeded'),
+          (e: unknown) => e,
+        )
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        expectDiagnostic(error.diagnostics, {
+          severity: 'error',
+          file: 'src/Page.vue',
+          root: error.root,
+        })
+        const template = diagnosticPosition(text, statement).line
+        expect(
+          findDiagnostics(error.diagnostics, {
+            severity: 'error',
+            file: 'src/Page.vue',
+            root: error.root,
+            position: { line: template },
+          }),
+        ).toEqual([])
+      },
+      timeout,
+    )
+
+    test(
+      'the fixes build, and their handlers stay on the server',
+      async () => {
+        const built = await build(
+          bundler,
+          Object.fromEntries(fixes.map((fix, i) => [`Fix${i}`, fix.sfc])),
+        )
+        for (const { mark } of fixes) {
+          expect(built.client.where(mark), mark).toBe('nowhere')
+        }
+      },
+      timeout,
+    )
+  },
+)
 
 describe('vite dev', () => {
   const hosts: Array<StartHost> = []
@@ -194,7 +264,7 @@ describe('vite dev', () => {
     })
   }
 
-  test.each([...refused, refusedInDev])(
+  test.each([...refused, ...refusedInDev])(
     '$name is refused at its position in the SFC',
     async (row) => {
       const startCase = await sfcCase(row.sfc)
@@ -228,7 +298,7 @@ describe('rsbuild dev', () => {
     async () => {
       const files = {
         ...Object.fromEntries(
-          [...refused, refusedInDev].map((row, i) => [
+          [...refused, ...refusedInDev].map((row, i) => [
             `src/Refused${i}.vue`,
             row.sfc,
           ]),
@@ -249,11 +319,11 @@ describe('rsbuild dev', () => {
           ...files,
           // (the refused blocks only behind an import the page never runs)
           'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]
-globalThis.__refused = () => [${[...refused, refusedInDev].map((_, i) => `import('./Refused${i}.vue')`).join(', ')}]
+globalThis.__refused = () => [${[...refused, ...refusedInDev].map((_, i) => `import('./Refused${i}.vue')`).join(', ')}]
 `,
         },
       })
-      for (const [i, row] of [...refused, refusedInDev].entries()) {
+      for (const [i, row] of [...refused, ...refusedInDev].entries()) {
         expectAtRefusal(
           server.diagnostics,
           `src/Refused${i}.vue`,

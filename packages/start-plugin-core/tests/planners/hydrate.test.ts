@@ -855,6 +855,45 @@ export function Page() {
     },
   )
 
+  it('Solid: the chunk reads a same-file route and does not create it again', async () => {
+    const source = `${SOLID}import { createFileRoute } from '@tanstack/solid-router'
+function useTone() {
+  return 'tone'
+}
+export const Route = createFileRoute('/x')({ component: Page })
+function Page() {
+  return <Hydrate when={1}><p>{useTone()}</p><p>{Route.useParams()().id}</p></Hydrate>
+}
+`
+    const { client, server } = await both(source)
+    expect(client.errors).toEqual([])
+    expect(server.errors).toEqual([])
+    const chunks = Object.values(client.chunks)
+    expect(chunks).toHaveLength(1)
+    expect(chunks[0]).not.toContain('createFileRoute(')
+  })
+
+  it.each([
+    [
+      'in a nested boundary, under a provider of the outer one',
+      `<Tone.Provider value="inner"><Hydrate when={1}><p>{useTone()}</p></Hydrate></Tone.Provider>`,
+      2,
+    ],
+    ['declared in the component', `<p>{useLabel()}</p>`, 1],
+  ])('Solid: a use* call %s is split', async (_, children, count) => {
+    const source = `${SOLID}import { useContext } from 'solid-js'
+import { Tone, useTone } from './hooks'
+export function Page(props: { suffix: string }) {
+  const useLabel = () => useContext(Tone) + props.suffix
+  return <Hydrate when={1}>${children}</Hydrate>
+}
+`
+    const { client, server } = await both(source)
+    expect(client.errors).toEqual([])
+    expect(server.errors).toEqual([])
+    expect(Object.keys(client.chunks)).toHaveLength(count)
+  })
+
   it.each([
     ['an arrow child', '{() => <p />}', 'hydrate-function-children'],
     [

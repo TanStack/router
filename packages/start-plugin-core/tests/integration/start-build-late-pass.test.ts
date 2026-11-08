@@ -11,7 +11,11 @@
 import { createRequire } from 'node:module'
 import mdx from '@mdx-js/rollup'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
   buildStart,
@@ -110,15 +114,19 @@ describe.each(startBundlers)('%s build', (bundler) => {
   test.each([
     {
       name: 'its own builder',
-      mdx: `import { createServerFn } from '@tanstack/react-start'
+      // (below a heading: the compiled JS puts it on another line)
+      mdx: `# Page
+
+import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
+      at: 'createServerFn()',
     },
     { name: 'a re-export of a builder', mdx: `export { base } from './b'\n` },
     { name: 'a star of a module with a builder', mdx: `export * from './b'\n` },
   ])(
     'a module exporting $name fails the client build: an importer cannot follow it',
-    async ({ mdx: source }) => {
+    async ({ mdx: source, at }: { mdx: string; at?: string }) => {
       const error: unknown = await buildStart({
         bundler,
         files: {
@@ -145,6 +153,26 @@ export const fn = base.handler(async () => 'MARK_MDX_FINISHED')
         file: 'src/page.mdx',
         root: error.root,
       })
+      // at its line in the MDX, or at none (a loader that makes no map in
+      // production), never at a line of the compiled JS
+      if (at !== undefined) {
+        const { line } = diagnosticPosition(source, at)
+        // (from line 2: Rsbuild prints `1:1` for a diagnostic without one;
+        // line 1 is the heading)
+        for (let other = 2; other <= 12; other++) {
+          if (other !== line) {
+            expect(
+              findDiagnostics(error.diagnostics, {
+                severity: 'error',
+                file: 'src/page.mdx',
+                root: error.root,
+                position: { line: other },
+              }),
+              `a diagnostic at line ${other}`,
+            ).toEqual([])
+          }
+        }
+      }
     },
     timeout,
   )
