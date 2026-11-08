@@ -90,6 +90,10 @@ export function verifyPlan(
       }
     }
     for (const imp of analysis.imports) {
+      // (the bundler erases a type-only import: it is no glue)
+      if (imp.typeOnly) {
+        continue
+      }
       const named = resolveSameFileSpecifier(
         imp.specifier,
         identity.canonicalId,
@@ -129,7 +133,7 @@ export function verifyPlan(
           }),
         )
         for (const s of imp.specifiers) {
-          if (s.imported !== '*' && !names.has(s.imported)) {
+          if (!s.typeOnly && s.imported !== '*' && !names.has(s.imported)) {
             problems.push(
               `${id}: imports ${s.imported} from ${target}, which does not export it`,
             )
