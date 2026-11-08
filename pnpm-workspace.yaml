@@ -168,4 +168,4 @@ allowBuilds:
   protobufjs: false # transitive dep
 minimumReleaseAgeExclude:
   # Renovate security update: @clerk/tanstack-react-start@0.29.11
-  - "@clerk/tanstack-react-start@0.29.11"
+  - '@clerk/tanstack-react-start@0.29.11'
