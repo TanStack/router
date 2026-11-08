@@ -69,6 +69,24 @@ export function makeNested() {
 export const addOne = createServerFn().handler(async () => ++calls)
 export const addTen = createServerFn().handler(async () => (calls += 10))
 `,
+  // state only handlers read, set by an effect in its declaration or in a
+  // statement after it, and by a pure value (the control)
+  'seed.ts': `;(globalThis as any).seeded = []
+;(globalThis as any).seed = (name: string) => {
+  ;(globalThis as any).seeded.push(name)
+  return 1
+}
+`,
+  'seeded.ts': `${head}import './seed'
+let initialised = globalThis.seed('initialiser')
+let assigned = 0
+assigned = globalThis.seed('assignment')
+let pure = 0
+pure = 5
+export const readInitialised = createServerFn().handler(async () => initialised)
+export const readAssigned = createServerFn().handler(async () => assigned)
+export const readPure = createServerFn().handler(async () => pure)
+`,
   'broken.ts': `${head}import { value } from './broken.server'
 export const callBroken = createServerFn().handler(async () => value)
 `,
@@ -120,6 +138,7 @@ export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
   'client-entry.ts': `export * from './fns'
 export * from './writers'
+export * from './seeded'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
@@ -222,6 +241,32 @@ return { label, overHttp, count: entry.readCount() }`)
   await callById(serverFnId(entry.addOne)),
 ]`)
       expect(result).toEqual([1, 11, 21, 22])
+    },
+    timeout,
+  )
+
+  // G3, DECISIONS R29/R31: either may run at load or at the first call,
+  // both at the same time
+  test(
+    'SSR: an effect setting state only handlers read runs at the same time, written in its declaration or after it',
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const atLoad = [...globalThis.seeded]
+const values = [
+  await entry.readInitialised(),
+  await entry.readAssigned(),
+  await callById(serverFnId(entry.readAssigned)),
+  await entry.readPure(),
+]
+return { atLoad, values, after: globalThis.seeded }`)
+      const { atLoad, values, after } = result as {
+        atLoad: Array<string>
+        values: Array<number>
+        after: Array<string>
+      }
+      expect(values).toEqual([1, 1, 1, 5])
+      expect([...after].sort()).toEqual(['assignment', 'initialiser'])
+      expect(atLoad.includes('assignment')).toBe(atLoad.includes('initialiser'))
     },
     timeout,
   )
