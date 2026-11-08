@@ -123,6 +123,8 @@ export interface ToySplitOptions {
   homeIds?: boolean
   /** List, in the env module, the glue export names of these module-level bindings (`export const glueNames = […]`, `glueExportName`). */
   glueNames?: ReadonlyArray<string>
+  /** Tag the env module's glue exports (`tagGlueExports`). */
+  glueTag?: string
 }
 
 /**
@@ -144,6 +146,9 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       ctx.setRouteModule()
       ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
       ctx.markBenignEffect(found.unit.id)
+      if (opts.glueTag !== undefined) {
+        ctx.tagGlueExports(opts.glueTag)
+      }
       const { options, unit } = found
       if (opts.extractExports) {
         for (const e of ctx.analysis.exports) {
