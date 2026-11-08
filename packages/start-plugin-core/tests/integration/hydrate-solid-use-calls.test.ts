@@ -56,8 +56,10 @@ function Page() {
 const rsbuildFiles = {
   ...routeFiles,
   'src/client.tsx': `import { hydrate } from 'solid-js/web'
-import { StartClient } from '@tanstack/solid-start/client'
-hydrate(() => <StartClient />, document)
+import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
+hydrateStart().then((router) => {
+  hydrate(() => <StartClient router={router} />, document)
+})
 `,
   'src/server.ts': `export { default } from '@tanstack/solid-start/server-entry'\n`,
   'src/router.ts': `import { createRouter } from '@tanstack/solid-router'
