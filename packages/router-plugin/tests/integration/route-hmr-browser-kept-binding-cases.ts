@@ -20,6 +20,9 @@
  * a kept binding. The webpack app has no refresh runtime (as the repo's
  * webpack example): its state isn't kept on these edits, before this change
  * either, and a component edit's update bubbles up to the route module.
+ *
+ * One test file per host (`route-hmr-browser-kept-binding.test.ts` for
+ * Rsbuild, `-webpack.test.ts`, `-webpack-maps.test.ts`).
  */
 import { describe, expect, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -638,46 +641,51 @@ const cases = (['react', 'solid'] as const).flatMap((fw) =>
   rows.filter((r) => !r.only || r.only === fw).map((row) => ({ fw, row })),
 )
 
-describe.concurrent(
-  'route HMR of a binding the route module keeps and a chunk reads',
-  { timeout: 90_000 },
-  () => {
-    test.for(cases)('rsbuild $fw: $row.name', ({ fw, row }, ctx) =>
-      runRow('rsbuild', fw, row, ctx),
-    )
-    test.for(cases)('webpack $fw: $row.name', ({ fw, row }, ctx) =>
-      runRow('webpack', fw, row, ctx),
-    )
-    test.for(cases)(
-      'webpack with source maps $fw: $row.name',
-      ({ fw, row }, ctx) => runRow('webpack-maps', fw, row, ctx),
-    )
-  },
-)
+/** The rows' test names: `<host> <framework>: <row>`. */
+const hosts = {
+  rsbuild: 'rsbuild',
+  webpack: 'webpack',
+  'webpack-maps': 'webpack with source maps',
+} as const
+
+/** Every row on one webpack-style host. */
+export function keptBindingSuite(bundler: keyof typeof hosts) {
+  describe.concurrent(
+    'route HMR of a binding the route module keeps and a chunk reads',
+    { timeout: 90_000 },
+    () => {
+      test.for(cases)(`${hosts[bundler]} $fw: $row.name`, ({ fw, row }, ctx) =>
+        runRow(bundler, fw, row, ctx),
+      )
+    },
+  )
+}
 
 /** The hot updates of an edit: no module but the edited one (the width at 5bc674ea80). */
-describe.concurrent('hot updates of a route with a kept binding', () => {
-  const route = (ui: Ui, label: string) => ({
-    [FILE]: `${ui.imports(`import { base } from '../shared'\n`)}const value = { text: base }
+export function keptBindingHotUpdatesSuite() {
+  describe.concurrent('hot updates of a route with a kept binding', () => {
+    const route = (ui: Ui, label: string) => ({
+      [FILE]: `${ui.imports(`import { base } from '../shared'\n`)}const value = { text: base }
 export const Route = createFileRoute('/')({
   loader: () => value.text,
   component: Page,
 })
 ${ui.page('value.text', label)}`,
-    'shared.ts': `export const base = 'v1'\n`,
+      'shared.ts': `export const base = 'v1'\n`,
+    })
+    test.for(['react', 'solid'] as const)(
+      'rsbuild %s: a component edit holds the chunk alone, a shared module edit the shared module alone',
+      async (fw, ctx) => {
+        const ui = uiOf(fw, true)
+        const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx)
+        await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
+        const component = app.hot.splice(0)
+        expect(component.flatMap((u) => u.modules)).toEqual([
+          `./${FILE}?tsr-split=component`,
+        ])
+        await app.edit({ 'shared.ts': `export const base = 'v2'\n` }, 'b v2')
+        expect(app.hot.flatMap((u) => u.modules)).toEqual(['./shared.ts'])
+      },
+    )
   })
-  test.for(['react', 'solid'] as const)(
-    'rsbuild %s: a component edit holds the chunk alone, a shared module edit the shared module alone',
-    async (fw, ctx) => {
-      const ui = uiOf(fw, true)
-      const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx)
-      await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
-      const component = app.hot.splice(0)
-      expect(component.flatMap((u) => u.modules)).toEqual([
-        `./${FILE}?tsr-split=component`,
-      ])
-      await app.edit({ 'shared.ts': `export const base = 'v2'\n` }, 'b v2')
-      expect(app.hot.flatMap((u) => u.modules)).toEqual(['./shared.ts'])
-    },
-  )
-})
+}

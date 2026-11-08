@@ -1,7 +1,8 @@
 /**
  * Builder shapes in a real client build, on each bundler (SPEC J4.5, J4.12,
  * G5): a shape either compiles, with its server code out of the client, or
- * fails the build at the use.
+ * fails the build at the use. One test file per bundler
+ * (`start-build-builder-shapes.test.ts`, `-rsbuild.test.ts`).
  */
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -10,7 +11,6 @@ import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
-  startBundlers,
 } from '../build-harness'
 import type { StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
@@ -1172,120 +1172,125 @@ export const Admin = part({
   },
 )
 
-describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',
-    async () => {
-      const module = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
-const serverMw = createMiddleware({ type: 'function' }).server(async ({ next }) => {
-  return next({ context: { from: 'MARK_SERVER_MW' } })
-})
-const open = createIsomorphicFn()
-  .server(() => createMiddleware({ type: 'function' }).middleware([serverMw]))
-  .client(() => createMiddleware({ type: 'function' }))
-const attached = open().server(async ({ next }) => {
-  console.log('MARK_ATTACHED')
-  return next({ context: { attached: 'yes' } })
-})
-export const fn = createServerFn()
-  .middleware([attached, open()])
-  .handler(async ({ context }) => [context.from, context.attached].join())
-`
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/fns.ts': module,
-          'src/entry.ts': `export { fn } from './fns'\n`,
-          'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect({
-        attached: build.client.where('MARK_ATTACHED'),
-        server: build.client.where('MARK_SERVER_MW'),
-      }).toEqual({ attached: 'nowhere', server: 'nowhere' })
-      const url = (await build.client.run(`return entry.fn.url`)).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_SERVER_MW,yes')
-    },
-    timeout,
-  )
+export function builderShapesSuite(bundler: StartBundler) {
+  describe(`${bundler} build`, () => {
+    test(
+      'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',
+      async () => {
+        const module = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
+  const serverMw = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+    return next({ context: { from: 'MARK_SERVER_MW' } })
+  })
+  const open = createIsomorphicFn()
+    .server(() => createMiddleware({ type: 'function' }).middleware([serverMw]))
+    .client(() => createMiddleware({ type: 'function' }))
+  const attached = open().server(async ({ next }) => {
+    console.log('MARK_ATTACHED')
+    return next({ context: { attached: 'yes' } })
+  })
+  export const fn = createServerFn()
+    .middleware([attached, open()])
+    .handler(async ({ context }) => [context.from, context.attached].join())
+  `
+        const build = await buildStart({
+          bundler,
+          files: {
+            'src/fns.ts': module,
+            'src/entry.ts': `export { fn } from './fns'\n`,
+            'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+          },
+          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        })
+        expect({
+          attached: build.client.where('MARK_ATTACHED'),
+          server: build.client.where('MARK_SERVER_MW'),
+        }).toEqual({ attached: 'nowhere', server: 'nowhere' })
+        const url = (await build.client.run(`return entry.fn.url`)).result
+        const { result } = await build.ssr.run(
+          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+        )
+        expect(result).toBe('MARK_SERVER_MW,yes')
+      },
+      timeout,
+    )
 
-  test(
-    'a written binding holding server fns: each id runs its own handler',
-    async () => {
-      const module = `import { createServerFn } from '@tanstack/react-start'
-let fn0 = createServerFn().handler(async () => 'MARK_FIRST')
-export const first = fn0
-fn0 = createServerFn().handler(async () => 'MARK_SECOND')
-export const second = fn0
-`
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/fns.ts': module,
-          'src/entry.ts': `export { first, second } from './fns'\n`,
-          'src/ssr-entry.ts': `export { first, second } from './fns'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      const call = async (name: string) => {
-        const url = (await build.client.run(`return entry.${name}.url`)).result
-        return (
-          await build.ssr.run(
-            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-          )
-        ).result
-      }
-      expect({
-        first: await call('first'),
-        second: await call('second'),
-      }).toEqual({ first: 'MARK_FIRST', second: 'MARK_SECOND' })
-    },
-    timeout,
-  )
+    test(
+      'a written binding holding server fns: each id runs its own handler',
+      async () => {
+        const module = `import { createServerFn } from '@tanstack/react-start'
+  let fn0 = createServerFn().handler(async () => 'MARK_FIRST')
+  export const first = fn0
+  fn0 = createServerFn().handler(async () => 'MARK_SECOND')
+  export const second = fn0
+  `
+        const build = await buildStart({
+          bundler,
+          files: {
+            'src/fns.ts': module,
+            'src/entry.ts': `export { first, second } from './fns'\n`,
+            'src/ssr-entry.ts': `export { first, second } from './fns'\n${callByIdExports}`,
+          },
+          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        })
+        const call = async (name: string) => {
+          const url = (await build.client.run(`return entry.${name}.url`))
+            .result
+          return (
+            await build.ssr.run(
+              `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+            )
+          ).result
+        }
+        expect({
+          first: await call('first'),
+          second: await call('second'),
+        }).toEqual({ first: 'MARK_FIRST', second: 'MARK_SECOND' })
+      },
+      timeout,
+    )
 
-  test.each(compiled.filter((row) => row.bundlers?.includes(bundler) ?? true))(
-    '$name compiles',
-    async (row) => {
-      const build = await buildStart({
-        bundler,
-        files: row.files,
-        viteConfig: row.viteConfig,
-        rsbuildConfig: row.rsbuildConfig,
-        entry: 'src/entry.ts',
-      })
-      expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-    },
-    timeout,
-  )
+    test.each(
+      compiled.filter((row) => row.bundlers?.includes(bundler) ?? true),
+    )(
+      '$name compiles',
+      async (row) => {
+        const build = await buildStart({
+          bundler,
+          files: row.files,
+          viteConfig: row.viteConfig,
+          rsbuildConfig: row.rsbuildConfig,
+          entry: 'src/entry.ts',
+        })
+        expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+      },
+      timeout,
+    )
 
-  test.each(refused)(
-    '$name fails the build at the use',
-    async ({ files, file, line }) => {
-      const error: unknown = await buildStart({
-        bundler,
-        files,
-        entry: 'src/entry.ts',
-      }).then(
-        (build) =>
-          expect.fail(
-            `the build succeeded; the handler's text is ${build.client.where('MARK_SERVER_SECRET')} in the client bundle`,
-          ),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file,
-        root: error.root,
-        position: { line },
-      })
-    },
-    timeout,
-  )
-})
+    test.each(refused)(
+      '$name fails the build at the use',
+      async ({ files, file, line }) => {
+        const error: unknown = await buildStart({
+          bundler,
+          files,
+          entry: 'src/entry.ts',
+        }).then(
+          (build) =>
+            expect.fail(
+              `the build succeeded; the handler's text is ${build.client.where('MARK_SERVER_SECRET')} in the client bundle`,
+            ),
+          (e: unknown) => e,
+        )
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        expectDiagnostic(error.diagnostics, {
+          severity: 'error',
+          file,
+          root: error.root,
+          position: { line },
+        })
+      },
+      timeout,
+    )
+  })
+}
