@@ -26,20 +26,23 @@ const pagesProject = {
 } as const
 
 /**
- * Tests of the Babel-based compiler's output and internals (file snapshots,
- * in-process runs of `handleRouteUpdate`) that the tests on real tools do
- * not replace yet. They run as they always did: one test at a time, each
- * file in its own module graph, with the generator's temporary files next to
- * the apps they write into the package.
+ * Main's own tests that the tests above do not replace yet (output
+ * snapshots of the Babel-based compiler, in-process runs of
+ * `handleRouteUpdate`, the production-warning and source-map builds of
+ * webpack and Rspack). They run as they always did: one test at a time,
+ * each file in its own module graph, with the generator's temporary files
+ * next to the apps they write into the package.
  */
-const babelCompilerFiles = [
+const mainFiles = [
   'add-hmr.test.ts',
   'code-splitter.test.ts',
   'code-splitter-plugin-pipeline.test.ts',
   'detect-route-codesplit-groupings.test.ts',
   'handle-route-update.test.ts',
+  'production-warnings.test.ts',
   'react-refresh-route-components.test.ts',
   'router-plugin-context.test.ts',
+  'source-maps.test.ts',
 ]
 
 const config = defineConfig({
@@ -71,11 +74,7 @@ const config = defineConfig({
         test: {
           ...pagesProject.test,
           name: 'unit',
-          exclude: [
-            ...configDefaults.exclude,
-            'integration/**',
-            ...babelCompilerFiles,
-          ],
+          exclude: [...configDefaults.exclude, 'integration/**', ...mainFiles],
           typecheck: { enabled: true },
         },
       },
@@ -83,8 +82,8 @@ const config = defineConfig({
         // Fast tier too (`test:unit` runs both projects)
         extends: true,
         test: {
-          name: 'unit-babel',
-          include: babelCompilerFiles,
+          name: 'unit-main',
+          include: mainFiles,
           typecheck: { enabled: true },
           // the generator's default temporary directory (`.tanstack/tmp`)
           env: { TSR_TMP_DIR: '' },
