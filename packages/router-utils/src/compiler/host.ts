@@ -118,7 +118,11 @@ export interface RouteRegistry {
 }
 
 export interface HostServices {
-  /** Full importer identity, passed to the bundler's resolver unchanged (a path alone would lose foreign queries and conditions). */
+  /**
+   * Full importer identity, passed to the bundler's resolver unchanged (a path alone would lose foreign queries and conditions).
+   * Null when the resolver can't resolve the specifier, its failure included: the bundler decides on the import (a kept one fails there);
+   * a rejection is a host's own error.
+   */
   resolve: (
     specifier: string,
     importerCanonicalId: string,
@@ -132,7 +136,7 @@ export interface HostServices {
   /** When a file last changed on disk (`mtimeMs`), null when it isn't known; without it, differing input texts of one file go unreported. */
   modifiedAt?: (path: string) => Promise<number | null>
   /**
-   * An invalidation could not re-validate a fingerprint (a resolver threw).
+   * An invalidation could not re-validate a fingerprint (reading its source threw).
    * The plan counts as stale, so the error comes back from its next compile;
    * this is for a module nothing requests again.
    */
@@ -621,7 +625,7 @@ export function resolveForAnalysis(
       return resolved
     })
   memo.set(specifier, asked)
-  // a failed resolver call is the caller's to report, and asked again next time
+  // a rejected host call (the host's own error) is the caller's to report, and asked again next time
   asked.catch(() => {
     if (memo.get(specifier) === asked) {
       memo.delete(specifier)

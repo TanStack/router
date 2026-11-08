@@ -613,11 +613,6 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     if (/\.json$/i.test(p) || ASSET_QUERY_RE.test(resolved)) {
       return { names: [], hasDefault: true, effectful: false }
     }
-    // this environment may not resolve what a denied module imports (a package
-    // with only `node` exports on the client: the Vite resolver throws): the
-    // module stays denied, and what is unknown of it counts as effectful
-    const resolve = (spec: string, importer: string) =>
-      ctx.resolve(spec, importer).catch(() => null)
     const names = new Set<string>()
     const top = await ctx.targetFacts(resolved)
     const visitedStars = new Set<string>()
@@ -634,7 +629,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         names.add(n)
       }
       for (const star of facts.stars) {
-        const r = await resolve(star, id)
+        const r = await ctx.resolve(star, id)
         if (r !== null) {
           await collect(r, false)
         }
@@ -667,7 +662,10 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         ) {
           continue
         }
-        const r = await resolve(spec, id)
+        // this environment may not resolve what a denied module imports (a
+        // package with only `node` exports on the client): the module stays
+        // denied, and what is unknown of it counts as effectful
+        const r = await ctx.resolve(spec, id)
         if (r === null || (await effectful(r))) {
           return true
         }
