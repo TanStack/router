@@ -5,7 +5,7 @@ const getEnv = createIsomorphicFn()
   .client(() => 'client')
 const getServerEnv_createServerFn_handler = createServerRpc(
   {
-    id: 'Jc6GTcykFaVJAwm-a0BofP',
+    id: '6049dd46bc00e0980e387f3e74924b40e92f37634a3fe74a1a1facda9e9207c2',
     name: 'getServerEnv',
     filename: 'src/test.ts',
   },
@@ -20,7 +20,7 @@ const getEcho = createIsomorphicFn()
   .client((input) => 'client received ' + input)
 const getServerEcho_createServerFn_handler = createServerRpc(
   {
-    id: 's0jNQTWKXVmb2EhbCIBxAU',
+    id: 'ebb82e0293952b7b1dde3f664dec4c139471c046d06d4dc4ca172f4f45e386d1',
     name: 'getServerEcho',
     filename: 'src/test.ts',
   },

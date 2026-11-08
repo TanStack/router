@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 const withUseServer_createServerFn_handler = createServerRpc(
   {
-    id: '80v0H7Z-40eAvJELD4yOZd',
+    id: 'b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320',
     name: 'withUseServer',
     filename: 'src/test.ts',
   },
@@ -21,7 +21,7 @@ const withUseServer = createServerFn({ method: 'GET' }).handler(
 )
 const withArrowFunction_createServerFn_handler = createServerRpc(
   {
-    id: '3CuVcIf56mXjOm391b0xfG',
+    id: 'a311dfd9a6554bc0bb9371ef4fbc72c852d0b5532829a2613a29157b8595a793',
     name: 'withArrowFunction',
     filename: 'src/test.ts',
   },
@@ -33,7 +33,7 @@ const withArrowFunction = createServerFn({ method: 'GET' }).handler(
 )
 const withArrowFunctionAndFunction_createServerFn_handler = createServerRpc(
   {
-    id: '7-JuMRVpFOk-B1xNtJ2lhL',
+    id: 'dbe1f77c6ea7590bce3212a75b06d3cee83b425bcf493014cb47462ef725e36e',
     name: 'withArrowFunctionAndFunction',
     filename: 'src/test.ts',
   },
@@ -45,7 +45,7 @@ const withArrowFunctionAndFunction = createServerFn({ method: 'GET' }).handler(
 )
 const withoutUseServer_createServerFn_handler = createServerRpc(
   {
-    id: 'XbUOHXbrBke2Xebq_cpd9s',
+    id: 'c0d9fdeb2b01aafecc782f439416b86f666cb5334ac9a934546b177e5698bbb2',
     name: 'withoutUseServer',
     filename: 'src/test.ts',
   },
@@ -63,7 +63,7 @@ const withoutUseServer = createServerFn({ method: 'GET' }).handler(
 )
 const withVariable_createServerFn_handler = createServerRpc(
   {
-    id: 'id9L9xtkvHA0G7YPmv4k5B',
+    id: '7d36cb30c30bd688b9773bd7f85a0d51d83f868255e127605e4f236615fefe70',
     name: 'withVariable',
     filename: 'src/test.ts',
   },
@@ -90,7 +90,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
 }
 const withZodValidator_createServerFn_handler = createServerRpc(
   {
-    id: 'Y0OXye37qmukl8eWdR6BXL',
+    id: '43606a369c85444a332f701d6399564b6a3691aabab63dfc9a0b7c341fb798f3',
     name: 'withZodValidator',
     filename: 'src/test.ts',
   },
@@ -104,7 +104,7 @@ const withZodValidator = createServerFn({ method: 'GET' }).handler(
 )
 const withValidatorFn_createServerFn_handler = createServerRpc(
   {
-    id: 'lJiDYujGD-4bdw-88mWATZ',
+    id: '5cf922ac733d835fee496964cbf0b4b4067cb43d51f2efa484d072e6bb7dae44',
     name: 'withValidatorFn',
     filename: 'src/test.ts',
   },

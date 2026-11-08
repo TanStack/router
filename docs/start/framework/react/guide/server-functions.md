@@ -418,21 +418,16 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-By default, IDs are short hashes (22 characters, from SHA256) of the file and function name, to keep bundles compact and avoid leaking file paths.
+By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
 If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
 
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
-The generator receives:
+Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-- `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
-- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. Characters of the name other than ASCII letters, digits, `_` and `$` become `_`, so `functionName` contains only those. When this gives more than one server function of a file the same name (a repeated variable name, or names like `café` and `caf_`, which both give `caf__createServerFn_handler`), the first keeps it and the later ones, in source order, get `_1`, `_2`, … appended; their name also loses its leading underscores and each run of underscores becomes one (a second `_x` gets `x_createServerFn_handler_1`, and `caf_` gets `caf_createServerFn_handler_1`).
-
-Return `undefined` to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
-
-The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so it may contain only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and may not be `.` or `..`. Any other ID fails the build with an error naming the file, the function and the ID. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41` for `A`, lowercase hex, `%2E`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.
 

@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 const withUseServer_createServerFn_handler = createServerRpc(
   {
-    id: '80v0H7Z-40eAvJELD4yOZd',
+    id: 'b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320',
     name: 'withUseServer',
     filename: 'src/test.ts',
   },

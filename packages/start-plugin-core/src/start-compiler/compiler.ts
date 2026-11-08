@@ -16,6 +16,11 @@ import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
 import { cleanId } from './utils'
+import {
+  customIdCheck,
+  customIdError,
+  customIdWarning,
+} from './server-fn-id-check'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
@@ -94,19 +99,6 @@ export function isStartCompilerPluginEnabledForEnv(
   env: StartCompilerEnvironment,
 ): boolean {
   return isStartCompilerEnvironmentEnabled(plugin.environment, env)
-}
-
-/**
- * An id the URL carries whole as one path segment (`TSS_SERVER_FN_BASE + id`
- * unencoded; the server reads the segment back as is): RFC 3986 unreserved
- * characters, which no client, proxy or server encodes, decodes or
- * normalises, and `$`, which `functionName` can hold; not a dot segment,
- * which URL parsing removes.
- */
-const URL_SEGMENT_ID = /^[A-Za-z0-9\-._~$]+$/
-
-function isUrlSegmentId(id: string): boolean {
-  return URL_SEGMENT_ID.test(id) && id !== '.' && id !== '..'
 }
 
 function isStartCompilerEnvironmentEnabled(
@@ -642,16 +634,17 @@ export class StartCompiler {
   /**
    * Generates a unique function ID for a server function.
    * In dev mode, uses a base64-encoded JSON with file path and export name.
-   * In build mode, uses a 22-character SHA256 hash or custom generator.
+   * In build mode, uses SHA256 hash or custom generator.
    */
-  private generateFunctionId(opts: {
-    filename: string
-    functionName: string
-    generatorFunctionName: string
-    stableKey: string
-    variableName: string
-    extractedFilename: string
-  }): string {
+  private generateFunctionId(
+    opts: {
+      filename: string
+      functionName: string
+      variableName: string
+      extractedFilename: string
+    },
+    warn: ((message: string) => void) | undefined,
+  ): string {
     if (this.mode === 'dev') {
       // In dev, encode the file path and export name for direct lookup.
       // Each bundler adapter supplies its own strategy for encoding
@@ -676,7 +669,7 @@ export class StartCompiler {
     }
 
     // Production build: use custom generator or hash
-    const entryId = `${opts.filename}#${opts.stableKey}`
+    const entryId = `${opts.filename}--${opts.functionName}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
       const knownFn = Object.values(this.options.getKnownServerFns()).find(
@@ -692,20 +685,25 @@ export class StartCompiler {
       if (functionId === undefined && this.options.generateFunctionId) {
         functionId = this.options.generateFunctionId({
           filename: opts.filename,
-          functionName: opts.generatorFunctionName,
+          functionName: opts.functionName,
         })
-        if (functionId !== undefined && !isUrlSegmentId(functionId)) {
-          throw new Error(
-            `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(functionId)} for the server function ${opts.variableName} (functionName "${opts.generatorFunctionName}") of ${opts.filename}. A server function id is one path segment of its URL: use only ASCII letters, digits, "-", ".", "_", "~" and "$" (not "." or "..").`,
-          )
+        if (functionId) {
+          const subject = {
+            name: opts.variableName,
+            functionName: opts.functionName,
+            rootRel: opts.filename,
+          }
+          const check = customIdCheck(functionId)
+          if (check === 'error') {
+            throw new Error(customIdError(subject, functionId))
+          }
+          if (check === 'deprecated') {
+            warn?.(customIdWarning(subject, functionId))
+          }
         }
       }
-      if (functionId === undefined) {
-        functionId = crypto
-          .createHash('sha256')
-          .update(entryId)
-          .digest('base64url')
-          .slice(0, 22)
+      if (!functionId) {
+        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {
@@ -1425,7 +1423,7 @@ export class StartCompiler {
           })(),
         warn: warnFn,
 
-        generateFunctionId: (opts) => this.generateFunctionId(opts),
+        generateFunctionId: (opts) => this.generateFunctionId(opts, warnFn),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

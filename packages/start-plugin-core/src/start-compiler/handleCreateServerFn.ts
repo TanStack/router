@@ -209,8 +209,6 @@ export function handleCreateServerFn(
 
   // Track function names to ensure uniqueness within this file
   const functionNameSet = new Set<string>()
-  const generatorFunctionNameSet = new Set<string>()
-  const stableKeyCount = new Map<string, number>()
 
   const exportNames = new Set<string>()
   const serverFnsById: Record<string, ServerFn> = {}
@@ -247,33 +245,16 @@ export function handleCreateServerFn(
 
     // Generate unique function name with _createServerFn_handler suffix
     // The function name is derived from the variable name
-    const functionName = allocateHandlerName(
-      existingVariableName,
-      functionNameSet,
-    )
-    // What a custom `generateFunctionId` receives: the same name, with
-    // characters outside `[A-Za-z0-9_$]` (a non-ASCII identifier) as `_`, so
-    // an id that embeds it stays a URL path segment
-    const generatorFunctionName = allocateHandlerName(
-      existingVariableName.replace(/[^A-Za-z0-9_$]/g, '_'),
-      generatorFunctionNameSet,
-    )
-
-    // The stable key seeds the default id: the variable name, with `#n` for
-    // repeats in the file
-    const keyCount = stableKeyCount.get(existingVariableName) ?? 0
-    stableKeyCount.set(existingVariableName, keyCount + 1)
-    const stableKey =
-      keyCount === 0
-        ? existingVariableName
-        : `${existingVariableName}#${keyCount}`
+    let functionName = `${existingVariableName}_createServerFn_handler`
+    while (functionNameSet.has(functionName)) {
+      functionName = incrementFunctionNameVersion(functionName)
+    }
+    functionNameSet.add(functionName)
 
     // Generate function ID using pre-computed relative filename
     const functionId = context.generateFunctionId({
       filename: relativeFilename,
       functionName,
-      generatorFunctionName,
-      stableKey,
       variableName: existingVariableName,
       extractedFilename,
     })
@@ -481,19 +462,6 @@ function makeIdentifierSafe(identifier: string): string {
     .replace(/^\$/, '_$') // Prefix leading $ with underscore
     .replace(/_{2,}/g, '_') // Collapse multiple underscores
     .replace(/^_|_$/g, '') // Trim leading/trailing underscores
-}
-
-/**
- * `<base>_createServerFn_handler`, then `_1`, `_2`… for a name taken earlier
- * in the file.
- */
-function allocateHandlerName(base: string, taken: Set<string>): string {
-  let name = `${base}_createServerFn_handler`
-  while (taken.has(name)) {
-    name = incrementFunctionNameVersion(name)
-  }
-  taken.add(name)
-  return name
 }
 
 /**
