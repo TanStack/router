@@ -226,6 +226,32 @@ export function tanStackStartVite(
           },
         }
       },
+      configResolved(config) {
+        // Both plugins are `pre`, so the app's order decides: listed first,
+        // vite-plugin-solid's dev transform wraps every component for its
+        // hot updates before Start's compiler reads the route module, and
+        // the dev client keeps route components out of the split the server
+        // makes (a hydration mismatch). React's and Vue's plugins transform
+        // after Start's in either order.
+        if (corePluginOpts.framework !== 'solid') {
+          return
+        }
+        const solidIndex = config.plugins.findIndex((p) => p.name === 'solid')
+        const startIndex = config.plugins.findIndex(
+          (p) => p.name === 'tanstack-start-core:config',
+        )
+        if (solidIndex !== -1 && solidIndex < startIndex) {
+          throw new Error(
+            `[tanstack-start] Plugin order error: 'vite-plugin-solid' is placed before '@tanstack/solid-start'.\n\n` +
+              `The TanStack Start plugin must come BEFORE vite-plugin-solid.\n\n` +
+              `Please update your Vite config:\n\n` +
+              `  plugins: [\n` +
+              `    tanstackStart(),\n` +
+              `    solid({ ssr: true }),\n` +
+              `  ]\n`,
+          )
+        }
+      },
     },
     createPostBuildPlugin({
       getConfig,

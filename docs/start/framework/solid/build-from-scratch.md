@@ -140,7 +140,7 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart(),
-    // solid's vite plugin can come before or after start's vite plugin
+    // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),
   ],
 })

@@ -1,8 +1,7 @@
 /**
  * Start's Vite host of the compiler core (see the core's README.md,
- * "Hosts"): one `enforce: 'pre'` plugin per Start env (its transform
- * ordered `pre` too, so where the app lists Start does not matter) compiling
- * every id it is handed text for through ONE `compileModule` (env and derived ids alike)
+ * "Hosts"): one `enforce: 'pre'` plugin per Start env compiling every id it is
+ * handed text for through ONE `compileModule` (env and derived ids alike)
  * with the planners in the core's fixed order — `start-env`, `hydrate`,
  * `rsc-css`, `router`, `import-edges` — the one
  * invalidation operation on `hotUpdate`, the server-fn registry shared by
@@ -959,11 +958,6 @@ export function startCompilerPlugin(
         },
       },
       transform: {
-        // the compiler reads the module as the author wrote it, wherever the
-        // app lists Start: ahead of the framework plugins' `pre` transforms
-        // (`vite-plugin-solid` wraps every component for its hot updates in
-        // dev, which would keep route components out of the client's split)
-        order: 'pre',
         filter: {
           id: {
             include: TRANSFORM_ID_REGEX,
@@ -1161,11 +1155,7 @@ export function startCompilerPlugin(
         applyToEnvironment(e) {
           return e.name === env.name
         },
-        transform: {
-          order: 'pre',
-          filter: dependencyFilter,
-          handler: compileTransform,
-        },
+        transform: { filter: dependencyFilter, handler: compileTransform },
       },
     ]
   }

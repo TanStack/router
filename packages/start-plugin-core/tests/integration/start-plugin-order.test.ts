@@ -1,24 +1,23 @@
 /**
- * Start's plugin listed after the framework's own plugin
- * (`plugins: [solidPlugin({ ssr: true }), tanstackStart()]`, likewise
- * `react()` and `vue()`): the order of the two must not matter. Found by the
- * plugin-ecosystem release check (F1): with Start after `vite-plugin-solid`,
- * Solid's dev transform (its hot-update wrapper around every component) ran
- * before Start's compiler, so the dev client kept each route component in
- * the route module while the server split it; the page never hydrated, a
- * route edit reloaded it and a server fn call failed. main refused the order
- * with a plugin-order error.
+ * Where an app lists Start's plugin relative to the framework's own plugin.
+ * Found by the plugin-ecosystem release check (F1): with
+ * `plugins: [solidPlugin({ ssr: true }), tanstackStart()]`, Solid's dev
+ * transform (its hot-update wrapper around every component) ran before
+ * Start's compiler, so the dev client kept each route component in the route
+ * module while the server split it; the page never hydrated, a route edit
+ * reloaded it and a server fn call failed. That order is refused, as on main,
+ * and the order the refusal asks for works (the Solid rows). React's and
+ * Vue's plugins transform after Start's whatever the order: Start listed
+ * last works there (main refused it after `react()`), and on Rsbuild, whose
+ * Start loader runs before Solid's Babel loader in any plugin order.
  *
  * Each app: an index route whose component imports a module of its own
  * (`src/home-dep.ts`, a load marker) and calls a server fn on a click, and
  * an `/other` route. On `/other` the index route's component must not have
  * loaded (the route is split in the client); on `/` the page hydrates (the
  * click answers with the server fn's result) without errors, and a route
- * edit applies in place. Vite dev for each framework, the Vite production
- * build for React and Solid, Rsbuild dev for Solid (`pluginSolid()` before
- * `tanstackStart()`).
- */
-import vue from '@vitejs/plugin-vue'
+ * edit applies in place.
+ */ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import react from '@vitejs/plugin-react'
 import solid from 'vite-plugin-solid'
@@ -260,23 +259,54 @@ async function expectHydratedHome(url: string, text: string) {
   return page
 }
 
-describe('Vite dev, Start listed after the framework plugin', () => {
-  test.each(['solid', 'react', 'vue'] as const)(
-    '%s: the route splits in the client, the page hydrates and a route edit applies in place',
-    async (framework) => {
-      const server = await startDevServer({
-        framework,
-        start: {},
-        browser: true,
-        plugins: frameworkPlugins(framework),
-        startLast: true,
-        files: {
-          ...devAppFiles[framework],
-          ...routeFiles(framework),
-          'src/hmr-sync.ts': hmrSyncModule,
-          'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
-        },
-      })
+/** A dev server of `framework`'s app, Start listed first or last. */
+const devServer = (framework: StartFramework, startLast: boolean) =>
+  startDevServer({
+    framework,
+    start: {},
+    browser: true,
+    plugins: frameworkPlugins(framework),
+    startLast,
+    files: {
+      ...devAppFiles[framework],
+      ...routeFiles(framework),
+      'src/hmr-sync.ts': hmrSyncModule,
+      'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
+    },
+  })
+
+/** A host building `framework`'s app, Start listed first or last. */
+const buildHost = async (framework: StartFramework, startLast: boolean) => {
+  const host = await createStartHost({
+    framework,
+    serve: false,
+    startLast,
+    files: {
+      ...routeFiles(framework),
+      'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
+    },
+  })
+  onTestFinished(() => host.close())
+  return host
+}
+
+describe('Vite dev', () => {
+  test(
+    'solid: Start listed after vite-plugin-solid is refused',
+    async () => {
+      await expect(devServer('solid', true)).rejects.toThrow()
+    },
+    timeout,
+  )
+
+  test.each([
+    ['solid', false],
+    ['react', true],
+    ['vue', true],
+  ] as const)(
+    '%s (Start last: %s): the route splits in the client, the page hydrates and a route edit applies in place',
+    async (framework, startLast) => {
+      const server = await devServer(framework, startLast)
       await expectSplitOnOther(server.url!)
       const page = await expectHydratedHome(server.url!, 'home-v1')
       const inFlight = trackRequests(page)
@@ -286,7 +316,9 @@ describe('Vite dev, Start listed after the framework plugin', () => {
         'src/routes/index.tsx': indexRoute(framework, 'home-v2'),
       })
       await settlePage(server, page, inFlight)
-      await page.waitForText('home-v2:dep', { selector: '[data-probe=home]' })
+      expect(await page.page.locator('[data-probe=home]').textContent()).toBe(
+        'home-v2:dep',
+      )
       expect(page.loads(), 'the route edit reloaded the page').toBe(loads)
       expect(page.errors).toEqual([])
       // nothing reported about the app's routes (the route is split)
@@ -300,20 +332,24 @@ describe('Vite dev, Start listed after the framework plugin', () => {
   )
 })
 
-describe('Vite build, Start listed after the framework plugin', () => {
-  test.each(['solid', 'react'] as const)(
-    '%s: the route splits in the client and the page hydrates',
-    async (framework) => {
-      const host = await createStartHost({
-        framework,
-        serve: false,
-        startLast: true,
-        files: {
-          ...routeFiles(framework),
-          'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
-        },
-      })
-      onTestFinished(() => host.close())
+describe('Vite build', () => {
+  test(
+    'solid: Start listed after vite-plugin-solid is refused',
+    async () => {
+      await expect(
+        buildHost('solid', true).then((host) => host.build()),
+      ).rejects.toThrow()
+    },
+    timeout,
+  )
+
+  test.each([
+    ['solid', false],
+    ['react', true],
+  ] as const)(
+    '%s (Start last: %s): the route splits in the client and the page hydrates',
+    async (framework, startLast) => {
+      const host = await buildHost(framework, startLast)
       const { url } = await host.preview()
       await expectSplitOnOther(url)
       await expectHydratedHome(url, 'home-v1')
@@ -359,6 +395,12 @@ describe('Rsbuild dev, Start listed after the framework plugin', () => {
       expect(page.loads(), 'the route edit reloaded the page').toBe(1)
       expect(page.errors).toEqual([])
       expect(reportedErrors(server)).toEqual([])
+      // nothing reported about the app's routes (the route is split)
+      expect(
+        routeFileNames.flatMap((file) =>
+          findDiagnostics(server.diagnostics, { file, root: server.root }),
+        ),
+      ).toEqual([])
     },
     timeout,
   )
