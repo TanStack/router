@@ -140,6 +140,27 @@ describe.each(['/app/src', '/app/s!rc'])('the verifier under %s', (dir) => {
     expect(out!.diagnostics).toEqual([])
   })
 
+  // the bundler erases a type-only import: no output needs the export
+  it.each([
+    ['relative', './route.tsx'],
+    ['absolute', `${dir}/route.tsx`],
+  ])('passes a type-only import of the module itself (%s)', async (_, from) => {
+    const host = new MemoryHost({
+      files: {
+        [path]: dedent(`
+          import { createFileRoute } from 'toy-router'
+          import type { Props } from '${from}'
+          export interface Props { n: number }
+          export const Route = createFileRoute('/')({ component: (p: Props) => p.n })
+        `),
+      },
+    })
+    const out = await host.compile(path, [toySplitPlanner()], {
+      env: envInfo({ mode: 'build' }),
+    })
+    expect(out!.diagnostics).toEqual([])
+  })
+
   it.each(CASES)('fails $check', async ({ edit, error }) => {
     await expect(compile(edit)).rejects.toThrow(error)
   })
