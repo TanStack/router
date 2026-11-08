@@ -9,7 +9,7 @@ import {
   isExpressionWrapper,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
-import { groupingsProblem } from '../core/config'
+import { GROUPINGS_SHAPE, groupingsProblem } from '../core/config'
 import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
@@ -257,8 +257,7 @@ function readGroupings(
   ctx: PlanContext,
   value: Node,
 ): CodeSplitGroupings | { problem: string } {
-  const shape =
-    "must be an array of groups, each an array of option names (`[['component'], ['errorComponent', 'notFoundComponent']]`)"
+  const shape = `must be ${GROUPINGS_SHAPE}`
   let node = unwrapExpression(value)
   if (node.type === 'Identifier') {
     const b = ctx.analysis.file.referenceOf(node)?.binding ?? null

@@ -1,5 +1,9 @@
 export const tsrSplit = 'tsr-split'
 
+/**
+ * The route options code splitting can split: what a split grouping may name
+ * (`groupingsProblem`) and what the planner splits. The one list.
+ */
 export const splitRouteIdentNodes = [
   'loader',
   'component',
