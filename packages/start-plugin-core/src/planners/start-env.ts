@@ -1358,9 +1358,17 @@ function serverFnFact(
   }
 }
 
+/**
+ * `path` relative to `root`, with forward slashes. A drive letter is
+ * compared in upper case, as pathe does: Windows paths name one directory
+ * whatever its case, and the root (`process.cwd()`, Vite's `root`) can carry a
+ * lowercase one while module ids carry the file system's.
+ */
 function relativeRoot(root: string, path: string): string {
-  const r = normalizePath(root).replace(/\/+$/, '')
-  const p = normalizePath(path)
+  const drive = (p: string) =>
+    p.replace(/^[a-z](?=:)/, (letter) => letter.toUpperCase())
+  const r = drive(normalizePath(root)).replace(/\/+$/, '')
+  const p = drive(normalizePath(path))
   if (p.startsWith(`${r}/`)) {
     return p.slice(r.length + 1)
   }
