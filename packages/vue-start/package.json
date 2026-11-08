@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-start",
-  "version": "1.169.4",
+  "version": "1.169.5",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -135,7 +135,7 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "@rsbuild/core": "^2.0.0",
+    "@rsbuild/core": "^2.0.5",
     "vite": ">=8.0.0",
     "vue": "^3.3.0"
   },

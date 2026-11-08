@@ -1,6 +1,7 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
+  buildAndRun,
   compileRouteModules,
   componentChunk,
   declarationOf,
@@ -326,5 +327,33 @@ export const Route = createFileRoute('/posts')({
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `).modules
     expect(reference).toMatch(/@observable\s+export class Store\b/)
+  })
+
+  it('compiles a decorator after `export`', async () => {
+    // TypeScript accepts `export @dec class` with or without
+    // `experimentalDecorators`; the tsconfig makes Vite lower the decorator
+    // so the built app runs in Node. The route file is read and its
+    // component split.
+    const result = await buildAndRun(
+      `${head}function tag(value: any) {
+  value.label = 'decorated'
+  return value
+}
+export @tag class Store {}
+export const Route = createFileRoute('/')({
+  component: () => <p>{(Store as any).label}</p>,
+})
+`,
+      `const component = entry.Route.options.component
+return [entry.Store.label, typeof component.preload, await entry.render(component)]`,
+      {
+        files: {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { experimentalDecorators: true },
+          }),
+        },
+      },
+    )
+    expect(result).toEqual(['decorated', 'function', '<p>decorated</p>'])
   })
 })

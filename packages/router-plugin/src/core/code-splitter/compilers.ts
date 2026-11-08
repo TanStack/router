@@ -364,6 +364,7 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions &
     CompileCodeSplitReferenceRouteOptions & {
+      isProduction?: boolean
       compilerPlugins?: Array<CodeSplitCompilerPlugin>
     },
 ): GeneratorResult | null {
@@ -847,8 +848,9 @@ export function compileCodeSplitReferenceRoute(
     )
     console.warn(warningMessage)
 
-    // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
+    // Development builds log it in the page too. The bundler's mode decides,
+    // not the build process's NODE_ENV, which webpack never sets.
+    if (!opts.isProduction) {
       const warningTemplate = template.statement(
         `console.warn(${JSON.stringify(warningMessage)})`,
       )()
