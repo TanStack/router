@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
@@ -153,7 +155,11 @@ export function tanStackStartVite(
           deps !== null &&
           (startPackageName in deps || '@tanstack/start-client-core' in deps)
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
-          root: viteConfig.root || process.cwd(),
+          // (the configured root, which can be relative: resolved as Vite does,
+          // then physical, as Vite resolves the app's imports from there)
+          root: realpathSync(
+            viteConfig.root ? resolve(viteConfig.root) : process.cwd(),
+          ),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
             return (
