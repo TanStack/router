@@ -168,4 +168,4 @@ allowBuilds:
   protobufjs: false # transitive dep
 minimumReleaseAgeExclude:
   # Renovate security update: @babel/core@7.29.6
-  - "@babel/core@7.29.6"
+  - '@babel/core@7.29.6'

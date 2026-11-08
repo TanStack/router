@@ -26,10 +26,7 @@ import type { RoutePaths } from './routeInfo'
 import type { RouterHistory } from '@tanstack/history'
 
 type RouteComponentType =
-  | 'component'
-  | 'pendingComponent'
-  | 'errorComponent'
-  | 'notFoundComponent'
+  'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'
 
 export function replaceRouteChunk(
   route: AnyRoute,
@@ -207,8 +204,7 @@ type NonRedirectOutcome =
   | [kind: typeof CANCELED]
 
 type RawLoaderOutcome =
-  | NonRedirectOutcome
-  | [kind: typeof REDIRECTED, redirect: AnyRedirect]
+  NonRedirectOutcome | [kind: typeof REDIRECTED, redirect: AnyRedirect]
 
 type LoaderOutcome = NonRedirectOutcome | RedirectOutcome
 
@@ -996,8 +992,7 @@ async function getNotFoundBoundary(
   fallback = 0,
 ): Promise<number> {
   const cause = indexed?.[1 /* outcome */][1 /* error or redirect */] as
-    | NotFoundError
-    | undefined
+    NotFoundError | undefined
   let index = cause?.routeId
     ? matches.findIndex((match) => match.routeId === cause.routeId)
     : (indexed?.[0 /* index */] ?? matches.length - 1)
@@ -1951,8 +1946,7 @@ export async function loadClientRoute(
   const previousLocation = resolvedLocation ?? router.stores.location.get()
   const location = router.latestLocation
   const pendingLocation = router._pendingLocation as
-    | (ParsedLocation & { _redirects?: number })
-    | undefined
+    (ParsedLocation & { _redirects?: number }) | undefined
   const redirects =
     pendingLocation?.href === location.href
       ? (pendingLocation._redirects ?? 0)
@@ -2225,8 +2219,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   router.options.ssr = {
     nonce: (
       document.querySelector('meta[property="csp-nonce"]') as
-        | HTMLMetaElement
-        | undefined
+        HTMLMetaElement | undefined
     )?.content,
   }
 
