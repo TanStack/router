@@ -152,22 +152,40 @@ type NodeLike = { type: string; start: number; end: number } & Record<
 
 /**
  * How the module renders a binding of the imports whose specifiers start at
- * `offsets` (one logical edge, possibly several statements), in the code
- * `kept` keeps (an output erases `<ClientOnly>` children on the server): its
- * first use as a JSX element (`<Widget />`, `<UI.Chart />`), else as a
- * route's component option (`component: Widget`, `component: UI.Chart`). A
- * query of the bindings' references, read only for a violation (a
- * reference's node is built when read).
+ * `offsets` (one logical edge, possibly several statements), outside the
+ * `<ClientOnly>` elements (the server erases their children): its first use
+ * as a JSX element (`<Widget />`, `<UI.Chart />`), else as a route's
+ * component option (`component: Widget`, `component: UI.Chart`). A query of
+ * the bindings' references, read only for a violation (a reference's node
+ * is built when read).
  */
 function renderedUse(
   analysis: ModuleAnalysis,
   code: string,
   offsets: ReadonlyArray<number>,
-  kept: (start: number) => boolean,
 ): RenderedAt | null {
   const { file } = analysis
   const parentOf = (n: NodeLike) =>
     file.parentOf(n as never) as unknown as NodeLike | null
+  // the names the module imports the router's <ClientOnly> under
+  const clientOnly = new Set(
+    analysis.imports.flatMap((i) =>
+      i.specifiers
+        .filter((spec) => spec.imported === 'ClientOnly')
+        .map((spec) => spec.localName),
+    ),
+  )
+  const insideClientOnly = (n: NodeLike) => {
+    for (let p = parentOf(n); clientOnly.size > 0 && p; p = parentOf(p)) {
+      const opening =
+        p.type === 'JSXElement' ? (p.openingElement as NodeLike) : null
+      const name = opening?.name as NodeLike | undefined
+      if (name && clientOnly.has(code.slice(name.start, name.end))) {
+        return true
+      }
+    }
+    return false
+  }
   let jsx: RenderedAt | null = null
   let option: RenderedAt | null = null
   for (const imp of analysis.imports) {
@@ -184,7 +202,7 @@ function renderedUse(
           continue
         }
         const node = ref.node as unknown as NodeLike
-        if (!kept(node.start) || (jsx && jsx.start < node.start)) {
+        if ((jsx && jsx.start < node.start) || insideClientOnly(node)) {
           continue
         }
         // the whole tag or value: `UI.Chart` of `<UI.Chart />`
@@ -425,12 +443,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           j.edge.provenance.origin !== 'forwarded'
         const offsets = j.edge.locations.map((l) => l.range.start)
         const rendered = ownStatic
-          ? renderedUse(ctx.analysis, ctx.code, offsets, (start) =>
-              (recipe?.segments ?? []).some(
-                (seg) =>
-                  seg.k === 'slice' && seg.start <= start && start < seg.end,
-              ),
-            )
+          ? renderedUse(ctx.analysis, ctx.code, offsets)
           : null
         // a Vue template renders a component through no JSX: its binding names
         // the fix (a capitalised one: a component's)

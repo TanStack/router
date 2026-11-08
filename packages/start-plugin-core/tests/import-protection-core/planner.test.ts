@@ -803,6 +803,15 @@ describe('rendered client-only imports', () => {
       page: `import { useX } from './ui.client'\nimport { Chart } from './ui.client'\nexport const P = () => { useX(); return <Chart /> }\n`,
       rendered: { via: 'jsx', name: 'Chart' },
     },
+    {
+      name: 'the use outside <ClientOnly> (the one inside it is the fix applied)',
+      page: `import { ClientOnly } from '@tanstack/react-router'\nimport { Chart } from './ui.client'\nexport const A = () => <ClientOnly><Chart /></ClientOnly>\nexport const B = () => <Chart />\n`,
+      rendered: {
+        via: 'jsx',
+        name: 'Chart',
+        at: expect.objectContaining({ line: 4 }),
+      },
+    },
   ])('$name is rendered', async ({ page, rendered }) => {
     expect(await renderedIn(page)).toEqual([expect.objectContaining(rendered)])
   })
