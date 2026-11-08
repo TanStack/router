@@ -11,6 +11,7 @@ import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
 import type { Unit, UnitId } from './units'
+import type { SymbolId } from './symbols'
 import type { Node } from 'yuku'
 
 /**
@@ -69,19 +70,13 @@ export function keptDiagnostic(
     const one = names.length === 1
     const declaring = (plan.t1.declaringUnits.get(k.syms[0]!) ?? [])[0]
     const unit = declaring === undefined ? null : plan.t1.units[declaring]!
-    const init =
-      unit?.node.type === 'VariableDeclarator' && unit.node.init
-        ? unwrapExpression(unit.node.init)
-        : null
-    const call =
-      init?.type === 'CallExpression' || init?.type === 'NewExpression'
     let why: string
     let fix: string
     switch (k.reason) {
       case 'effects':
         if (unit?.effectful) {
           why = 'its initialiser has side effects'
-          fix = `Move it to its own module and import it from there${call ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
+          fix = `Move it to its own module and import it from there${annotatable(plan, k.syms) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
         } else {
           why = 'a statement setting a property of it has side effects'
           fix =
@@ -151,8 +146,9 @@ export function keptDiagnostic(
         fixes.push(`create that value in a \`const\` before ${subject}`)
       }
       if (
-        effect.node.type === 'CallExpression' ||
-        effect.node.type === 'NewExpression'
+        (effect.node.type === 'CallExpression' ||
+          effect.node.type === 'NewExpression') &&
+        annotationFrees(plan, effect.node)
       ) {
         const local = localFunctionName(plan, effect.node.callee)
         const annotations = [
@@ -170,11 +166,11 @@ export function keptDiagnostic(
     }
     case 'needers':
       because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
-      fix = `move ${subject} to ${own} own module, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none`
+      fix = `move ${subject} to ${own} own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none` : ''}`
       break
     case 'written':
       because = `the module changes ${them} outside ${own} declaration${several ? 's' : ''} when it loads (${line(k.at!)})`
-      fix = `move ${subject} and what writes ${them} to their own module, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} no side effects`
+      fix = `move ${subject} and what writes ${them} to their own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} no side effects` : ''}`
       break
     case 'shared':
       // an exported binding's extracted module and other split code both
@@ -191,7 +187,7 @@ export function keptDiagnostic(
       break
     default:
       because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${symbols.isConst(k.read!) ? 'has side effects' : 'is a `let`'}`
-      fix = `move ${subject} and ${read} to their own module, or mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects`
+      fix = `move ${subject} and ${read} to their own module${annotatable(plan, [k.read!]) ? `, or mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects` : ''}`
       break
   }
   return {
@@ -201,6 +197,59 @@ export function keptDiagnostic(
     by: 'core',
     code: `eager-split:${k.reason}`,
   }
+}
+
+/**
+ * Whether `/* @__PURE__ *\/` (or `#__NO_SIDE_EFFECTS__` on its callee) frees
+ * an effect: it is a call or `new` whose arguments are pure. The purity
+ * model ignores the annotation anywhere else (a template literal, an
+ * object, a call with an argument that has effects), so a hint to add it
+ * would not work. The one gate of every annotation hint.
+ */
+function annotationFrees(plan: AnalysisPlan, node: Node | null): boolean {
+  const n = node === null ? null : unwrapExpression(node)
+  return (
+    (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
+    n.arguments.every(
+      (a) =>
+        a.type !== 'SpreadElement' && isPureExpression(plan.analysis.purity, a),
+    )
+  )
+}
+
+/**
+ * Whether marking the initialisers of the declarations of `syms` frees
+ * them: each one with effects is an initialiser `annotationFrees` (a `using`
+ * declaration's own effect no annotation removes).
+ */
+function annotatable(
+  plan: AnalysisPlan,
+  syms: ReadonlyArray<SymbolId>,
+): boolean {
+  const { t1, analysis } = plan
+  let any = false
+  for (const u of new Set(
+    syms.flatMap((s) => t1.declaringUnits.get(s) ?? []),
+  )) {
+    const unit = t1.units[u]!
+    if (!unit.effectful) {
+      continue
+    }
+    const decl =
+      unit.node.type === 'VariableDeclarator'
+        ? analysis.file.parentOf(unit.node)
+        : null
+    if (
+      unit.node.type !== 'VariableDeclarator' ||
+      (decl?.type === 'VariableDeclaration' &&
+        (decl.kind === 'using' || decl.kind === 'await using')) ||
+      !annotationFrees(plan, unit.node.init)
+    ) {
+      return false
+    }
+    any = true
+  }
+  return any
 }
 
 /** The name of a callee that is a function declared in this module (`function f`, `const f = () => …`), which `#__NO_SIDE_EFFECTS__` can mark. */

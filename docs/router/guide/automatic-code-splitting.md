@@ -152,7 +152,7 @@ Any of these lets the declaration load with the split chunk, from the least to t
   - `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
   - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not, declared before or after the call.
 
-  The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter.
+  The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter. An annotation frees only a call or `new` whose arguments have no side effects. A value that is not a call, such as a template literal (`` `${config.url}/mcp` ``) or an object, has nothing to annotate, so for those the warning offers only the other fixes.
 
 These do not change what the route file keeps, because the route file is split without reading the modules it imports or the bundler's options:
 
