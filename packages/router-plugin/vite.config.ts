@@ -22,6 +22,7 @@ export default mergeConfig(
       './src/rspack.ts',
       './src/webpack.ts',
       './src/esbuild.ts',
+      './src/bun.ts',
     ],
     srcDir: './src',
   }),
