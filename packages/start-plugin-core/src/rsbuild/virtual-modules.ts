@@ -28,7 +28,6 @@ const RSC_HMR_VIRTUAL_ID = 'virtual:tanstack-rsc-hmr'
 const RSC_BROWSER_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-browser-decode'
 const RSC_SSR_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-ssr-decode'
 export const START_MANIFEST_PLACEHOLDER = '__TSS_START_MANIFEST_PLACEHOLDER__'
-const DEV_START_MANIFEST_GLOBAL = '__TSS_DEV_START_MANIFEST__'
 /**
  * VirtualModulesPlugin resolves module paths relative to compiler.context.
  * Prefix them under the app root so they are unique and watcher-friendly.
@@ -83,36 +82,24 @@ function getEntryScriptAttrs(
     : `{ async: true, src: '${entryUrl}' }`
 }
 
-function generateManifestModuleDev(
+/**
+ * Dev manifest used until the first client build completes. The server bundle
+ * may run outside the build process (e.g. in workerd), so the real manifest is
+ * written into this module rather than shared through build-process globals.
+ */
+function generateFallbackManifestModuleDev(
   devClientEntryUrl: string,
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
-  return `const fallbackManifest = {
+  return `export const tsrStartManifest = () => ({
 ${scriptFormatProperty}  routes: {
     __root__: {
       preloads: ['${devClientEntryUrl}'],
       scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
     },
   },
-}
-export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
-}
-
-function buildStartManifestData(
-  clientBuild: NormalizedClientBuild,
-  publicBase: string,
-  inlineCss: InlineCssOptions,
-  scriptFormat: ScriptFormat,
-) {
-  const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
-  return buildStartManifest({
-    clientBuild,
-    routeTreeRoutes,
-    basePath: publicBase,
-    inlineCss,
-    scriptFormat,
-  })
+})`
 }
 
 function serializeStartManifestData(
@@ -122,7 +109,13 @@ function serializeStartManifestData(
   scriptFormat: ScriptFormat,
 ): string {
   return JSON.stringify(
-    buildStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat),
+    buildStartManifest({
+      clientBuild,
+      routeTreeRoutes: globalThis.TSS_ROUTES_MANIFEST,
+      basePath: publicBase,
+      inlineCss,
+      scriptFormat,
+    }),
   )
 }
 
@@ -276,6 +269,7 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
+  let lastDevManifestContent: string | undefined
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
   const resolverWriteCountByEnvironment: Record<string, number> = {}
@@ -385,7 +379,10 @@ export function registerVirtualModules(
         resolvedStartConfig.basePaths.publicBase,
       )
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
+        ? generateFallbackManifestModuleDev(
+            devClientEntryUrl,
+            opts.scriptFormat,
+          )
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
@@ -561,18 +558,25 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
       clientBuild = newClientBuild
+      if (!isDev) {
+        return
+      }
+
       // Safe to call getConfig() here — runs after client build
       const { resolvedStartConfig } = opts.getConfig()
-      if (isDev) {
-        ;(
-          globalThis as typeof globalThis & {
-            [DEV_START_MANIFEST_GLOBAL]?: ReturnType<typeof buildStartManifest>
-          }
-        )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
-          clientBuild,
-          resolvedStartConfig.basePaths.publicBase,
-          { enabled: false, transformAssets: false },
-          opts.scriptFormat,
+      const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
+        clientBuild,
+        resolvedStartConfig.basePaths.publicBase,
+        { enabled: false, transformAssets: false },
+        opts.scriptFormat,
+      )})`
+      // Only rewrite on change: each write rebuilds the server environment.
+      if (content !== lastDevManifestContent) {
+        lastDevManifestContent = content
+        tryWriteModule(
+          RSBUILD_ENVIRONMENT_NAMES.server,
+          paths.manifest,
+          content,
         )
       }
     },
