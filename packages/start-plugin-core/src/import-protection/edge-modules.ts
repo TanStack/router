@@ -313,7 +313,7 @@ function report(meta, action, path) {
       "[import-protection] Mocked import used in the " + env + " environment" + (info.e !== env ? " (" + info.e + ")" : "") + "\\n\\n" +
       (pattern ? "" : "Denied import: \\"" + info.s + "\\"\\n") +
       (info.f ? "Denied file: " + info.f + "\\n" : "") +
-      (pattern ? "Importer: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext)\\n" : info.i ? "Importer: " + info.i + "\\n" : "") +
+      (pattern ? "Importer: an import the compiler does not read (a pattern import: import.meta.glob, an import() with a variable path, import.meta.webpackContext; or an import another plugin added)\\n" : info.i ? "Importer: " + info.i + "\\n" : "") +
       "Access: " + path + " (" + action + ")\\n\\n" +
       "Suggestions:\\n" + SUGGESTIONS[pattern ? "pattern" : env].split(${JSON.stringify(SPECIFIER_SLOT)}).join(info.s.replace(/[\\\\']/g, "\\\\$&")) + "\\n\\n" +
       "Further uses of this mock are not reported. To disable these runtime diagnostics, set importProtection.mockAccess: \\"off\\".";

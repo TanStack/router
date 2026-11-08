@@ -226,6 +226,106 @@ describe('suggestions', () => {
   })
 })
 
+describe('an import another plugin added', () => {
+  // R101/R102.2: an importer whose source has no pattern import reached the
+  // denied file through an import a later plugin's transform added (an
+  // auto-import): the report names that, and its fix, not a pattern import
+  const denied = '/app/src/db.server.ts'
+  const inj = '/app/src/inj.ts'
+  const readSource = (file: string) =>
+    file === inj ? `export const read = () => 'x'\n` : null
+  const self = violation({
+    self: true,
+    importer: denied,
+    importerId: denied,
+    resolved: denied,
+    specifier: 'src/db.server.ts',
+    loc: null,
+  })
+  const shapes = {
+    // a build names each importer the bundle's graph has, after the pattern import found in its source
+    build: {
+      v: violation({
+        importer: inj,
+        importerId: inj,
+        resolved: denied,
+        specifier: 'src/db.server.ts',
+        loc: null,
+        pattern: null,
+      }),
+      steps: ['/app/src/entry.ts', inj],
+    },
+    // a dev server reports the denied file, the importer from the graph
+    dev: { v: self, steps: ['/app/src/entry.ts', inj, denied] },
+  }
+
+  test.each(Object.entries(shapes))(
+    '%s: the report says another plugin added the import, and to keep it from adding the file',
+    (_shape, { v, steps }) => {
+      const { text } = printedTrace(steps, true, { v, readSource })!
+      expect(text).toMatch(/^ {2}Imported by: src\/inj\.ts, .*another plugin/m)
+      expect(text).toMatch(/^ {4}- Keep the plugin that adds this import/m)
+      expect(text).not.toMatch(/^ {2}Matched by:/m)
+    },
+  )
+})
+
+describe('what brought a denied file nothing the compiler read imports', () => {
+  const denied = '/app/src/db.server.ts'
+  const self = violation({
+    self: true,
+    importer: denied,
+    importerId: denied,
+    resolved: denied,
+    specifier: 'src/db.server.ts',
+    loc: null,
+  })
+  const report = (steps: Array<string>, sources: Record<string, string>) =>
+    printedTrace(steps, true, {
+      v: self,
+      readSource: (file) => sources[file] ?? null,
+    })!.text
+
+  test('an importer outside the scope is named as unchecked, with the fixes of an unchecked importer', () => {
+    const text = report(['/app/lib/outside.ts', denied], {
+      '/app/lib/outside.ts': `import { db } from '../src/db.server'\n`,
+    })
+    expect(text).toMatch(
+      /^ {2}Imported by: lib\/outside\.ts, which import protection does not check/m,
+    )
+    expect(text).toMatch(/^ {4}- If lib\/outside\.ts should be checked/m)
+  })
+
+  // a quote the tokenizer misreads must not turn a real pattern import into "another plugin added it"
+  test.each([
+    [
+      'a glob after JSX text with an apostrophe',
+      `export const C = () => <p>Don't</p>\nexport const m = import.meta.glob('./*.server.ts')\n`,
+    ],
+    [
+      'a glob after a regular expression with a quote',
+      `const q = (s: string) => s.replace(/'/g, '')\nexport const m = import.meta.glob('./*.server.ts')\n`,
+    ],
+    [
+      'a require() with a variable path (a webpack context)',
+      `export const load = (n: string) => require('./' + n)\n`,
+    ],
+  ])('%s: still a pattern import', (_shape, source) => {
+    const text = report(['/app/src/entry.ts', '/app/src/a.tsx', denied], {
+      '/app/src/a.tsx': source,
+    })
+    expect(text).toMatch(/^ {2}Matched by: /m)
+    expect(text).not.toMatch(/another plugin/)
+  })
+
+  test('a module another plugin generates between the importer and the file: no claim about the importer', () => {
+    const text = report(['/app/src/main.tsx', '\0virtual:pages', denied], {
+      '/app/src/main.tsx': `import pages from 'virtual:pages'\n`,
+    })
+    expect(text).not.toMatch(/Imported by: src\/main\.tsx/)
+  })
+})
+
 describe('dev reports', () => {
   function setup(options: ImportProtectionOptions = {}) {
     let now = 0
