@@ -333,6 +333,42 @@ describe('policy context', () => {
     const out = await host.compile('/app/m.ts', [planner])
     expect(out!.code).toContain(`from 'x\\'y\\u2028z'`)
   })
+
+  // An edit that keeps an import but splits its specifier over two slices
+  // leaves no slice holding the literal: substituting it must fail the
+  // compile, never print the original specifier (a denied import kept).
+  it('fails a substitution whose specifier no slice holds whole', async () => {
+    const code = `import { a } from './a.server'\nexport const b = a\n`
+    const host = new MemoryHost({ files: { '/app/m.ts': code } })
+    const end = code.indexOf("'./a.server'") + "'./a.server'".length
+    const mid = code.indexOf('a.server')
+    const splitter: Planner = {
+      name: 'splitter',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        ctx.rewrites.add({
+          range: { start: 0, end },
+          body: [
+            { k: 'slice', range: { start: 0, end: mid } },
+            { k: 'slice', range: { start: mid, end } },
+          ],
+          scope: 'all-outputs',
+          by: 'splitter',
+        })
+      },
+    }
+    const policy: Planner = {
+      ...edgeRecorder(),
+      policy(_plan, _output, edges, ctx) {
+        ctx.substitute(edges[0]!.edgeKey, 'mock:a')
+        return Promise.resolve()
+      },
+    }
+    await expect(host.compile('/app/m.ts', [splitter, policy])).rejects.toThrow(
+      /\/app\/m\.ts:1:19/,
+    )
+  })
 })
 
 describe('target facts', () => {
