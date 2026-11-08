@@ -11,12 +11,17 @@
  * an unbounded number of pages and in-flight module requests made Chromium
  * fail requests with `ERR_INSUFFICIENT_RESOURCES`):
  * - `runInPage` runs on a pool of at most `runPageLimit` pages, which runs
- *   of concurrent tests share; a run beyond that waits for a free page;
+ *   of concurrent tests share; a run beyond that waits for a free page. The
+ *   pool and its browser context are the test file's: they close when the
+ *   file ended (`onFileFinished` of `./test-scope`), so that a later file
+ *   inherits none of their memory (renderers and HTTP cache grew with every
+ *   module a page loaded), cache or page state;
  * - `openPage` keeps at most `openPageLimit` pages (each with its own
  *   browser context) open at once; a test asking for more waits until one
  *   closes.
  */
 import { chromium } from '@playwright/test'
+import { onFileFinished } from './test-scope'
 import type {
   Browser,
   BrowserContext,
@@ -117,9 +122,9 @@ function faviconMiss(message: ConsoleMessage) {
 }
 
 // ---------------------------------------------------------------------------
-// The run pages: a pool per test process (one Vitest worker), reused
+// The run pages: a pool per test file, reused by the file's runs
 
-/** The context of the run pages: one HTTP cache for every run. */
+/** The context of the run pages: one HTTP cache for the file's runs. */
 let runContext: Promise<BrowserContext> | undefined
 /** Run pages no run holds, ready for the next one (each on `about:blank`). */
 const idlePages: Array<Page> = []
@@ -131,8 +136,33 @@ async function takeRunPage(): Promise<Page> {
   if (idle && !idle.isClosed()) {
     return idle
   }
-  runContext ??= launch().then((opened) => opened.newContext())
+  if (!runContext) {
+    const context = launch().then((opened) => opened.newContext())
+    runContext = context
+    onFileFinished(() => closeRunPages(context))
+  }
   return (await runContext).newPage()
+}
+
+/**
+ * Closes a file's run pages and their context, once no run holds a page
+ * (it takes every run slot first); the browser stays for the next file.
+ */
+async function closeRunPages(context: Promise<BrowserContext>) {
+  const releases = await Promise.all(
+    Array.from({ length: runPageLimit }, () => runSlot()),
+  )
+  try {
+    if (runContext === context) {
+      runContext = undefined
+      idlePages.length = 0
+    }
+    await (await context).close()
+  } finally {
+    for (const release of releases) {
+      release()
+    }
+  }
 }
 
 /**

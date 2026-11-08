@@ -54,3 +54,35 @@ export function onTestFinished(
   }
   onCurrentTestFinished(cleanup, timeout)
 }
+
+/** What the test file running now shares between its tests (`onFileFinished`). */
+const fileCleanups: Array<() => void | Promise<void>> = []
+
+/**
+ * Registers `cleanup` to run once the test file running now ended, after
+ * the file's own `afterAll` hooks (`./test-scope-setup`): for what a file's
+ * tests share, which a later file of the same process must not inherit.
+ * Without the setup, it never runs, and what it would release lives as long
+ * as the process.
+ */
+export function onFileFinished(cleanup: () => void | Promise<void>): void {
+  fileCleanups.push(cleanup)
+}
+
+/**
+ * Runs the cleanups of the file that ended, last registered first, every
+ * one of them also when one fails (`./test-scope-setup`).
+ */
+export async function runFileCleanups(): Promise<void> {
+  const errors: Array<unknown> = []
+  for (const cleanup of fileCleanups.splice(0).reverse()) {
+    try {
+      await cleanup()
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, 'a test file cleanup failed')
+  }
+}

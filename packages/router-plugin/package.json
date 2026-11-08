@@ -195,7 +195,28 @@
         "parallelism": false
       },
       "test:integration": {
-        "parallelism": false
+        "executor": "nx:noop",
+        "dependsOn": [
+          "test:integration--shard-1-of-4",
+          "test:integration--shard-2-of-4",
+          "test:integration--shard-3-of-4",
+          "test:integration--shard-4-of-4"
+        ]
+      },
+      "test:integration--shard-1-of-4": {
+        "command": "pnpm run test:integration --shard=1/4"
+      },
+      "test:integration--shard-2-of-4": {
+        "command": "pnpm run test:integration --shard=2/4"
+      },
+      "test:integration--shard-3-of-4": {
+        "command": "pnpm run test:integration --shard=3/4"
+      },
+      "test:integration--shard-4-of-4": {
+        "command": "pnpm run test:integration --shard=4/4"
+      },
+      "test:integration:whole": {
+        "command": "pnpm run test:integration"
       }
     }
   }
