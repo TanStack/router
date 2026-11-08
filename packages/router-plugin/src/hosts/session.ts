@@ -137,6 +137,7 @@ export class RouterCompiler {
       resolve: () => Promise.resolve(null),
       rawFacts,
       root: opts.root,
+      tag: '[tanstack-router]',
       routes: this.registry,
       modifiedAt: fileModifiedAt,
     }

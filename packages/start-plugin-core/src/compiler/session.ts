@@ -340,6 +340,7 @@ export class StartCompilerSession {
       resolve,
       rawFacts: this.rawFacts,
       root: this.opts.root,
+      tag: '[tanstack-start]',
       routes: this.opts.routes,
       modifiedAt: fileModifiedAt,
       ...(services && { services }),

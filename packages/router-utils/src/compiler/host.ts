@@ -126,6 +126,8 @@ export interface HostServices {
   rawFacts: RawFactsCache
   /** The project root: messages name a file relative to it (`displayPath`). */
   root?: string
+  /** The prefix of the core's own messages (`[tanstack-router]`, `[tanstack-start]`); a planner's words take its own (`describeModule`). */
+  tag?: string
   routes?: RouteRegistry
   /** When a file last changed on disk (`mtimeMs`), null when it isn't known; without it, differing input texts of one file go unreported. */
   modifiedAt?: (path: string) => Promise<number | null>
