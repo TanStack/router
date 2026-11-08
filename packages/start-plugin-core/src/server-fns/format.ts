@@ -6,9 +6,10 @@
  * version changes them here, and only here (FOLLOW-UPS "server-fn output
  * formats"). The rest of the compiler keys a server fn by its stable key
  * (registry, placeholders, dev ids, wrapper names), never by these. The
- * manifest's `functionName` is the provider's wrapper export: for the
- * shapes earlier versions compiled (a module-level variable) it equals
- * `handlerFunctionName`; it is not printed here.
+ * manifest's `functionName` is `handlerFunctionName`, as earlier versions
+ * printed it; the resolver reaches the provider's wrapper by its own export
+ * name (unique per file, not printed here), which the manifest lists next
+ * to it.
  *
  * Fixes of what earlier versions got wrong act only on the inputs they got
  * wrong: names that are no identifier (shapes they refused), collisions

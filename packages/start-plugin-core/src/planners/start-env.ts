@@ -12,6 +12,7 @@
  * the core: provenance-based placement at the module level, its orphan
  * cleanup for function-local declarators and destructured bindings.
  */
+import { hash } from 'node:crypto'
 import {
   cacheDisabled,
   identifierBase,
@@ -828,6 +829,7 @@ function planStartEnv(
   // the isomorphic and env-only implementations of steps 3-4, the
   // `<ClientOnly>` children of step 5.
   let devRevision: string | undefined
+  let fileTag: string | undefined
   for (const site of sites) {
     const key = { rootRel, stableKey: site.stableKey }
     // a nested server fn is checked for hoistability in every env (J4.6: every env refuses
@@ -858,8 +860,13 @@ function planStartEnv(
     const h = site.handler
     // the provider wrapper's name: a binding and an export of the same name (an export list
     // `export { name }` survives tools that re-export bindings by their local name), allocated
-    // identically in every env (the resolver is generated from the client's registry)
-    const wrapperBase = `${identifierBase(site.stableKey)}_createServerFn_handler`
+    // identically in every env (the resolver is generated from the client's registry). The
+    // export joins the user's own exports of an in-place provider, so it carries a tag of the
+    // file: two modules' server fns of the same name behind one `export *` barrel would
+    // otherwise export one name twice, which fails Rspack's build and Rolldown drops with a
+    // warning. The manifest's `functionName` stays `site.functionName`.
+    fileTag ??= hash('sha1', rootRel, 'hex').slice(0, 8)
+    const wrapperBase = `${identifierBase(site.stableKey)}_createServerFn_handler$${fileTag}`
     let wrapperName = wrapperBase
     for (
       let n = 1;
