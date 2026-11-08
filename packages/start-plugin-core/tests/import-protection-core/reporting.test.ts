@@ -226,6 +226,50 @@ describe('suggestions', () => {
   })
 })
 
+describe('an import another plugin added', () => {
+  // R101/R102.2: an importer whose source has no pattern import reached the
+  // denied file through an import a later plugin's transform added (an
+  // auto-import): the report names that, and its fix, not a pattern import
+  const denied = '/app/src/db.server.ts'
+  const inj = '/app/src/inj.ts'
+  const readSource = (file: string) =>
+    file === inj ? `export const read = () => 'x'\n` : null
+  const self = violation({
+    self: true,
+    importer: denied,
+    importerId: denied,
+    resolved: denied,
+    specifier: 'src/db.server.ts',
+    loc: null,
+  })
+  const shapes = {
+    // a build names each importer the bundle's graph has, after the pattern import found in its source
+    build: {
+      v: violation({
+        importer: inj,
+        importerId: inj,
+        resolved: denied,
+        specifier: 'src/db.server.ts',
+        loc: null,
+        pattern: null,
+      }),
+      steps: ['/app/src/entry.ts', inj],
+    },
+    // a dev server reports the denied file, the importer from the graph
+    dev: { v: self, steps: ['/app/src/entry.ts', inj, denied] },
+  }
+
+  test.each(Object.entries(shapes))(
+    '%s: the report says another plugin added the import, and to configure it',
+    (_shape, { v, steps }) => {
+      const { text } = printedTrace(steps, true, { v, readSource })!
+      expect(text).toMatch(/^ {2}Imported by: src\/inj\.ts, .*another plugin/m)
+      expect(text).toMatch(/^ {4}- Configure the plugin that adds/m)
+      expect(text).not.toMatch(/^ {2}Matched by:/m)
+    },
+  )
+})
+
 describe('dev reports', () => {
   function setup(options: ImportProtectionOptions = {}) {
     let now = 0
