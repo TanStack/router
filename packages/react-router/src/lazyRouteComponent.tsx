@@ -6,6 +6,9 @@ import { reactUse } from './utils'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
+// eslint-disable-next-line prefer-const -- Must be `let` to prevent bundler constant-folding
+let USE_SYNC_EXTERNAL_STORE = 'useSyncExternalStore'
+
 type ReactLazyRouteComponentHot = LazyRouteComponentHot & {
   subscribe: (listener: () => void) => () => void
   getVersion: () => number
@@ -76,8 +79,10 @@ export function lazyRouteComponent<
       if (hot) {
         // The slot exists on the client only and never changes, so the hook
         // order is stable. A hot swap re-renders through this subscription.
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        React.useSyncExternalStore(
+        // (looked up by a dynamic key, as `reactUse` is: React's
+        // react-server build has no `useSyncExternalStore`, and webpack and
+        // Rspack refuse a static read of a missing export in the RSC layer)
+        ;(React as any)[USE_SYNC_EXTERNAL_STORE](
           hot.subscribe,
           hot.getVersion,
           hot.getVersion,
