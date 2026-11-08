@@ -12,10 +12,14 @@
  *   `NODE_ENV=production` when it is unset, and a later dev server of the
  *   same process would then serve production code without React Refresh's
  *   page preamble), so with modules kept across files a file would see what
- *   an earlier file's tools left there.
+ *   an earlier file's tools left there;
+ * - what the file's tests shared (`onFileFinished` of `./test-scope`, e.g.
+ *   the run pages of `./browser`) is released once its tests ended, after
+ *   the file's own `afterAll` hooks (they ran first: hooks after the tests
+ *   run in reverse order, and this file registers its hooks first).
  */
 import { afterAll, aroundEach } from 'vitest'
-import { runInTestScope } from './test-scope'
+import { runFileCleanups, runInTestScope } from './test-scope'
 
 aroundEach(async (runTest, context) => {
   await runInTestScope(context, runTest)
@@ -23,12 +27,16 @@ aroundEach(async (runTest, context) => {
 
 const environment = { ...process.env }
 const cwd = process.cwd()
-afterAll(() => {
-  process.chdir(cwd)
-  for (const name of Object.keys(process.env)) {
-    if (!(name in environment)) {
-      delete process.env[name]
+afterAll(async () => {
+  try {
+    await runFileCleanups()
+  } finally {
+    process.chdir(cwd)
+    for (const name of Object.keys(process.env)) {
+      if (!(name in environment)) {
+        delete process.env[name]
+      }
     }
+    Object.assign(process.env, environment)
   }
-  Object.assign(process.env, environment)
 })
