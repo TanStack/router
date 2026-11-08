@@ -81,7 +81,7 @@ interface ManifestResolverOptions {
 }
 
 /**
- * The production manifest: `id → { functionName, exportName, importer }` of
+ * The production manifest: `id → { functionName, importer, exportName }` of
  * the HTTP-callable functions. `functionName` is what earlier Start versions
  * printed there (tooling reads it from the server bundle); the lookup reads
  * the provider module's export, `exportName`, which is unique per file.
@@ -115,10 +115,11 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
         opts.warnUnreferenced && !e.clientReferenced
           ? `,\n    unreferenced: ${JSON.stringify(unreferencedWarning(e))}`
           : ''
+      // main's entry (key, `functionName`, `importer`) stays a byte-identical prefix
       return `${manifestLiteral(e.id)}: {
     functionName: ${manifestLiteral(e.functionName)},
-    exportName: ${manifestLiteral(e.exportName)},
-    ${moduleAccess}${unreferenced}
+    ${moduleAccess},
+    exportName: ${manifestLiteral(e.exportName)}${unreferenced}
   }`
     })
     .join(',\n  ')

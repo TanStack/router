@@ -12,7 +12,6 @@
  * the core: provenance-based placement at the module level, its orphan
  * cleanup for function-local declarators and destructured bindings.
  */
-import { hash } from 'node:crypto'
 import {
   cacheDisabled,
   identifierBase,
@@ -35,9 +34,11 @@ import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
 import { devFunctionId, placeholderId } from '../server-fns/ids'
 import {
   defaultFunctionId,
+  fileTag as fileTagOf,
   handlerFunctionName,
   metaName,
   moduleLiteral,
+  providerExportBase,
 } from '../server-fns/format'
 import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
@@ -467,12 +468,9 @@ function planStartEnv(
     })
   const specs = runtimeSpecifiers(config.framework)
   const rootRel = relativeRoot(config.root, ctx.identity.path)
-  // An in-place provider is the user's own module: what the compile adds to its exports
-  // (the server fns' wrappers, the glue its handler module imports back) carries a tag of
-  // the file, or two modules adding the same name behind one `export *` barrel would
-  // export it twice (Rspack fails the build, Rolldown warns and drops it)
+  // what the compile adds to an in-place provider's exports is tagged with the file (`fileTag`)
   let fileTag: string | undefined
-  const tagOfFile = () => (fileTag ??= hash('sha1', rootRel, 'hex').slice(0, 8))
+  const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
   const facts: StartEnvFacts = { serverFns: [] }
 
   const diag = (message: string, range: Range) =>
@@ -870,7 +868,10 @@ function planStartEnv(
     // `export { name }` survives tools that re-export bindings by their local name), allocated
     // identically in every env (the resolver is generated from the client's registry), with
     // the file's tag (`tagOfFile`); the manifest's `functionName` stays `site.functionName`
-    const wrapperBase = `${identifierBase(site.stableKey)}_createServerFn_handler$${tagOfFile()}`
+    const wrapperBase = providerExportBase(
+      identifierBase(site.stableKey),
+      tagOfFile(),
+    )
     let wrapperName = wrapperBase
     for (
       let n = 1;

@@ -5,11 +5,11 @@
  * metadata, the client's and SSR's rpc ids), so they stay until a major
  * version changes them here, and only here (FOLLOW-UPS "server-fn output
  * formats"). The rest of the compiler keys a server fn by its stable key
- * (registry, placeholders, dev ids, wrapper names), never by these. The
- * manifest's `functionName` is `handlerFunctionName`, as earlier versions
- * printed it; the resolver reaches the provider's wrapper by its own export
- * name (unique per file, not printed here), which the manifest lists next
- * to it.
+ * (registry, placeholders, dev ids), never by these. The manifest's
+ * `functionName` is `handlerFunctionName`, as earlier versions printed it;
+ * the resolver reaches the provider's wrapper by its own export name
+ * (`providerExportBase`, unique per file), which the manifest lists after
+ * main's fields.
  *
  * Fixes of what earlier versions got wrong act only on the inputs they got
  * wrong: names that are no identifier (shapes they refused), collisions
@@ -60,6 +60,28 @@ function identifierSafe(name: string): string {
     .replace(/^\$/, '_$')
     .replace(/_{2,}/g, '_')
     .replace(/^_|_$/g, '')
+}
+
+/**
+ * A tag of the defining file (`rootRel`): the first 8 hex digits of its
+ * sha1. An in-place provider is the user's own module, so what the compile
+ * adds to its exports (the wrappers, the glue its handler module imports
+ * back) carries it: two modules adding the same name behind one `export *`
+ * barrel would otherwise export it twice (Rspack fails the build, Rolldown
+ * warns and drops it). Not a format of earlier versions, which exported
+ * nothing from the user's module.
+ */
+export function fileTag(rootRel: string): string {
+  return hash('sha1', rootRel, 'hex').slice(0, 8)
+}
+
+/**
+ * The base of a provider wrapper's binding and export name (the allocator
+ * adds `$n` on a clash with the file's own names): `base` is the server
+ * fn's identifier base (from its stable key), `tag` the file's `fileTag`.
+ */
+export function providerExportBase(base: string, tag: string): string {
+  return `${base}_createServerFn_handler$${tag}`
 }
 
 /**
