@@ -153,9 +153,26 @@ export async function startRsbuildStartDevServer(
     start?: TanStackStartRsbuildInputConfig
     /** The Start framework package of the app (default `react`). */
     framework?: StartFramework
+    /**
+     * Lists Start's plugin after the plugins of `config` (e.g. Solid's), as
+     * an app whose `rsbuild.config.ts` lists `tanstackStart()` last.
+     * Default: first.
+     */
+    startLast?: boolean
   },
 ): Promise<RsbuildDevServer> {
-  const { files, start, framework = 'react', ...devServerOptions } = options
+  const {
+    files,
+    start,
+    framework = 'react',
+    startLast = false,
+    ...devServerOptions
+  } = options
+  // Start last: the plugins of `config` go before it in the plugin list
+  // (the merged `config` would append them after it)
+  const { plugins: configPlugins, ...configRest } =
+    devServerOptions.config ?? {}
+  const config = startLast ? configRest : devServerOptions.config
   const entry: ClientEntry = { files: [], module: false }
   const tanstackStart = await startRsbuildPluginFactory(framework)
   return createRsbuildDevServer({
@@ -163,6 +180,7 @@ export async function startRsbuildStartDevServer(
     prefix: '.start-rsbuild-start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
+    config,
     symlinks: {
       ...startRuntimeLinks(framework),
       ...devServerOptions.symlinks,
@@ -190,6 +208,8 @@ export const Route = createRootRoute()
         !pluginNames(devServerOptions.config?.plugins).includes('rsbuild:react')
           ? [pluginReact()]
           : []),
+        // (the app's plugin instances, as `config` lists them)
+        ...(startLast ? ((configPlugins ?? []) as Array<RsbuildPlugin>) : []),
         tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
         recordClientEntry(entry),
       ]

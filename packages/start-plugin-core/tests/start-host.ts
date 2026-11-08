@@ -105,6 +105,12 @@ export interface StartHostOptions {
    * e.g. `{ jsxRuntime: 'classic' }`.
    */
   react?: Parameters<typeof react>[0]
+  /**
+   * Lists Start's plugin after the framework's own and the app's other
+   * plugins, as an app whose `vite.config.ts` lists `tanstackStart()` last.
+   * Default: first.
+   */
+  startLast?: boolean
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -582,6 +588,12 @@ export async function createStartHost(
     ...options.start,
   }
   const userPlugins = options.plugins ?? []
+  /** The plugins of the app's `vite.config.ts`: Start's, the framework's, the app's own. */
+  const appPlugins = (): Array<PluginOption> => {
+    const others = [...frameworkPlugins(framework, options), ...userPlugins]
+    const start = startFactory(startOptions)
+    return options.startLast ? [...others, start] : [start, ...others]
+  }
   const serve = options.serve ?? true
   /**
    * The output directory of the next build: a rebuild writes elsewhere, as
@@ -596,9 +608,7 @@ export async function createStartHost(
     serve,
     plugins: (app) => [
       ...(serve ? [] : [absoluteOutDir(app.root, () => outDirName)]),
-      startFactory(startOptions),
-      ...frameworkPlugins(framework, options),
-      ...userPlugins,
+      ...appPlugins(),
     ],
     config: {
       ...options.config,
@@ -1106,12 +1116,7 @@ try {
             envDir: false,
             publicDir: false,
             logLevel: 'silent',
-            plugins: [
-              absoluteOutDir(root, () => outDirName),
-              startFactory(startOptions),
-              ...frameworkPlugins(framework, options),
-              ...userPlugins,
-            ],
+            plugins: [absoluteOutDir(root, () => outDirName), ...appPlugins()],
             preview: { port: 0, host: '127.0.0.1' },
           } satisfies InlineConfig,
           options.config ?? {},
