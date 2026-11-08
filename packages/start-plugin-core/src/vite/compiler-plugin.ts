@@ -21,6 +21,7 @@ import {
   SourceText,
   applyViteInvalidation,
   collectionSizes,
+  displayPath,
   identify,
   invalidate,
   isAnalyzableSpecifier,
@@ -32,6 +33,7 @@ import {
   resolveSameFileSpecifier,
   revision,
   rollupEntryModuleIds,
+  viteLog,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import {
@@ -609,19 +611,18 @@ export function startCompilerPlugin(
     envType: 'client' | 'server',
     lateInputMap?: () => InputSourceMap | null,
   ) => {
-    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) => ({
-      message: at
-        ? `${d.message} (${filePath}:${at.line}:${at.column + 1})`
-        : d.message,
-      loc: at && { file: filePath, ...at },
-    })
+    // a Vue SFC's late refusals are positioned in the SFC, not in `code`
+    const frameOf = lateInputMap ? null : code
+    const name = displayPath(filePath, s.start.opts.root)
+    const log = (d: Diagnostic, at: DiagnosticPosition | undefined) =>
+      viteLog(d.message, at, frameOf, name, id)
     s.start.report(
       out,
       filePath,
       code,
       envType,
       {
-        error: (d, at) => ctx.error({ ...log(d, at), id }),
+        error: (d, at) => ctx.error(log(d, at)),
         warn: (d, at) => ctx.warn(log(d, at)),
       },
       lateInputMap,

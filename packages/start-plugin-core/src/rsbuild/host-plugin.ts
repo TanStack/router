@@ -563,11 +563,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const { allocator, errors, warnings } = session.start.allocateIds(
           environment.type,
         )
+        // once per run: every environment allocates the same custom ids, and
+        // Rsbuild prints each environment's errors and warnings
+        const once = (code: string, message: string) =>
+          session.start.warnings.once('', { code, message })
         for (const error of errors) {
-          compilation.errors.push(new WebpackError(error))
+          if (once('function-id:error', error)) {
+            compilation.errors.push(new WebpackError(error))
+          }
         }
         for (const warning of warnings) {
-          compilation.warnings.push(new WebpackError(warning))
+          if (once('function-id:warning', warning)) {
+            compilation.warnings.push(new WebpackError(warning))
+          }
         }
         for (const asset of compilation.getAssets()) {
           if (!/\.[cm]?js$/.test(asset.name)) {

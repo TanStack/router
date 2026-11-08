@@ -339,6 +339,7 @@ export class StartCompilerSession {
     return {
       resolve,
       rawFacts: this.rawFacts,
+      root: this.opts.root,
       routes: this.opts.routes,
       modifiedAt: fileModifiedAt,
       ...(services && { services }),

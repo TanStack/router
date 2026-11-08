@@ -7,13 +7,14 @@
  * loader records each diagnostic with its position in the module's
  * `buildInfo` (fresh per build, kept for a failed module), and the host
  * replaces what the loader reported with errors and warnings located there
- * after the seal (`locateDiagnostics`).
+ * after the seal (`locateDiagnostics`). The bundler prints that position, so
+ * the message carries none (one position per message, 1-based).
  */
 import type { DiagnosticPosition } from '../diagnostics'
 
 export interface LocatedDiagnostic {
   severity: 'error' | 'warning'
-  /** The reported message, with the position in the Vite host's form. */
+  /** The reported message (the loader's error or warning has this text). */
   message: string
   /** 1-based line and column. */
   line?: number
@@ -50,24 +51,14 @@ interface ReportedLike {
 
 type ErrorClass = new (message: string) => Error
 
-/**
- * A diagnostic's record: its message with the position in the Vite host's
- * form, `message (file:line:col)` (the text the loader reports), and the
- * 1-based position.
- */
+/** A diagnostic's record: its message and its 1-based position. */
 export function locatedDiagnostic(
   severity: LocatedDiagnostic['severity'],
   message: string,
   at: DiagnosticPosition | undefined,
-  file: string,
 ): LocatedDiagnostic {
   return at
-    ? {
-        severity,
-        message: `${message} (${file}:${at.line}:${at.column + 1})`,
-        line: at.line,
-        column: at.column + 1,
-      }
+    ? { severity, message, line: at.line, column: at.column + 1 }
     : { severity, message }
 }
 

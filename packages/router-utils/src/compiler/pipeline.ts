@@ -20,6 +20,7 @@ import { DependencyLedger, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
+import { displayPath } from './diagnostics'
 import { ExportResolver } from './resolve'
 import {
   dependencyPaths,
@@ -417,6 +418,7 @@ async function runAttempt(
   if (cjs || tier0Only) {
     planners = planners.filter((p) => p.tier === 0)
   }
+  const displayFile = displayPath(identity.path, host.root)
   if (planners.length === 0) {
     return { kind: 'untouched' }
   }
@@ -542,6 +544,7 @@ async function runAttempt(
         fallbacks,
         planners,
         input,
+        displayFile,
       )
       const fresh = plan
         .fallbackRecords()
@@ -570,6 +573,7 @@ async function runAttempt(
           fallbacks,
           planners,
           input,
+          displayFile,
         )
         plan.diagnostic({
           severity: 'warning',
@@ -682,8 +686,16 @@ function planRound(
   fallbacks: ReadonlyArray<FallbackRecord>,
   planners: ReadonlyArray<Planner>,
   input: CompileInput,
+  displayFile: string,
 ): AnalysisPlan {
-  const plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
+  const plan = new AnalysisPlan(
+    t0,
+    identity,
+    env,
+    prefetched,
+    fallbacks,
+    displayFile,
+  )
   for (const p of planners) {
     p.plan(withConfig(plan, input.config.perPlanner[p.name]))
   }
@@ -697,6 +709,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     analysis: plan.analysis,
     t1: plan.t1,
     identity: plan.identity,
+    displayPath: plan.displayPath,
     env: plan.env,
     config,
     rewrites: plan.rewrites,

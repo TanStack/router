@@ -45,6 +45,8 @@ export type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 /** The parts of a webpack / Rspack compiler the host uses. */
 export interface CompilerLike extends WatchingCompilerLike {
   name?: string
+  /** The project root (`context`). */
+  context: string
   options: {
     mode?: 'development' | 'production' | 'none'
     target?: unknown
@@ -152,6 +154,7 @@ export function createRouterCompilerWebpackPlugin(
       const session = new RouterCompiler({
         context: routerPluginContext,
         config: userConfig,
+        root: compiler.context,
         bundler,
         mode,
       })

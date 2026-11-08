@@ -2,8 +2,64 @@
 import { readFile } from 'node:fs/promises'
 import { deriveId, identify } from '../identity'
 import { pathsOf } from './rebuild'
+import { positionSuffix } from '../diagnostics'
+import type { DiagnosticPosition } from '../diagnostics'
 import type { CompilerCaches, InvalidateChange } from '../host'
 import type { PlanKey } from '../identity'
+
+/** A message as a Vite plugin log (`this.warn`, `this.error`). */
+export interface ViteLog {
+  message: string
+  id: string
+  frame?: string
+}
+
+/**
+ * A compile diagnostic as a Vite plugin log, router and Start alike. Its one
+ * position is in the message, 1-based (`positionSuffix`), on every Vite
+ * channel (build, dev, overlay), with a code frame of the module: no `loc`,
+ * whose column is 0-based by Rollup's contract (Vite and Rolldown print it
+ * as given), and which a Vite build drops from warnings. `file` is the
+ * module as messages name it (`displayPath`), `id` the module's id, `code`
+ * the text the position is in (null: no frame).
+ */
+export function viteLog(
+  message: string,
+  at: DiagnosticPosition | undefined,
+  code: string | null,
+  file: string,
+  id: string,
+): ViteLog {
+  if (at === undefined) {
+    return { message, id }
+  }
+  const log: ViteLog = { message: `${message}${positionSuffix(file, at)}`, id }
+  if (code !== null) {
+    log.frame = codeFrame(code, at)
+  }
+  return log
+}
+
+const LINE_TERMINATOR = /\r\n|[\n\r\u2028\u2029]/
+
+/** Two lines either side of the position and a caret under its column, in Vite's own frame layout. */
+function codeFrame(code: string, at: DiagnosticPosition): string {
+  const lines = code.split(LINE_TERMINATOR)
+  const index = at.line - 1
+  const out: Array<string> = []
+  for (
+    let i = Math.max(0, index - 2);
+    i <= Math.min(lines.length - 1, index + 2);
+    i++
+  ) {
+    const n = String(i + 1)
+    out.push(`${n}${' '.repeat(Math.max(3 - n.length, 0))}|  ${lines[i]}`)
+    if (i === index) {
+      out.push(`   |  ${' '.repeat(at.column)}^`)
+    }
+  }
+  return out.join('\n')
+}
 
 /**
  * Whether a Vite environment build (its `build` config) is the last one of

@@ -109,13 +109,13 @@ function effectiveGroupings(
   cfg: RouterPlannerConfig,
   route: RouteModuleInfo,
 ): CodeSplitGroupings {
-  const file = ctx.identity.path
+  const file = ctx.displayPath
   if (route.fileGroupings) {
     const res = splitGroupingsSchema.safeParse(route.fileGroupings)
     if (!res.success) {
       const message = res.error.issues.map((e) => e.message).join('. ')
       throw new Error(
-        `The groupings for the route "${file}" are invalid.\n${message}`,
+        `The groupings for the route ${file} are invalid.\n${message}`,
       )
     }
     return route.fileGroupings
@@ -127,7 +127,7 @@ function effectiveGroupings(
       if (!res.success) {
         const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
-          `The groupings returned when using \`splitBehavior\` for the route "${file}" are invalid.\n${message}`,
+          `The groupings returned when using \`splitBehavior\` for the route ${file} are invalid.\n${message}`,
         )
       }
       return fromPlugin
@@ -328,7 +328,7 @@ export function splitPlanOf(
   route: RouteModuleInfo,
 ): SplitPlan {
   const warnings: Array<Diagnostic> = [...route.warnings]
-  const file = ctx.identity.path
+  const file = ctx.displayPath
   const decisions: Array<SplitDecision> = []
   const notSplit: Array<NotSplit> = []
   const deleted: Array<RouteOption> = []
@@ -358,8 +358,8 @@ export function splitPlanOf(
         by: ROUTER_PLANNER,
         message:
           deleteNodes.size > 0
-            ? `[tanstack-router] The route options of "${file}" are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, server })\`).`
-            : `[tanstack-router] The route options of "${file}" are ${how}, so the route is not code-split.`,
+            ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, server })\`).`
+            : `[tanstack-router] The route options of ${file} are ${how}, so the route is not code-split.`,
         range: {
           start: route.optionsCall.start,
           end: route.optionsCall.end,
@@ -387,8 +387,8 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             option.kind === 'spread'
-              ? `[tanstack-router] "${file}" spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it are not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
-              : `[tanstack-router] "${file}" computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
+              ? `[tanstack-router] ${file} spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it are not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
+              : `[tanstack-router] ${file} computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
       }
@@ -508,7 +508,7 @@ export function splitPlanOf(
       severity: 'warning',
       code: `not-split:${n.reason}`,
       by: ROUTER_PLANNER,
-      message: `[tanstack-router] The \`${n.key}\` option of "${file}" is not code-split: ${describeReason(n.reason)}`,
+      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason)}`,
       range: n.range,
     })
   }

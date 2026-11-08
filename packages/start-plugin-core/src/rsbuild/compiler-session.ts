@@ -689,7 +689,7 @@ export class StartRsbuildCompilerSession {
       message: string,
       at: DiagnosticPosition | undefined,
     ) => {
-      const d = locatedDiagnostic(severity, message, at, file)
+      const d = locatedDiagnostic(severity, message, at)
       located.push(d)
       return d.message
     }

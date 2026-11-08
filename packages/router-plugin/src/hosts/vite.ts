@@ -15,6 +15,7 @@ import {
   OWNED_QUERY_RE,
   SAME_FILE_SPECIFIER_RE,
   applyViteInvalidation,
+  displayPath,
   identify,
   isFinalBuild,
   liveModules,
@@ -23,6 +24,7 @@ import {
   releaseEnvironment,
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
+  viteLog,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -33,11 +35,7 @@ import {
 import { JS_ID_RE, RouterCompiler } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type {
-  Diagnostic,
-  DiagnosticPosition,
-  ModuleGraphLike,
-} from '@tanstack/router-utils/compiler'
+import type { ModuleGraphLike } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
 
 export const CODE_SPLITTER_PLUGIN_NAME =
@@ -87,16 +85,6 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 }
 
 export type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
-
-function logOf(
-  d: Diagnostic,
-  at: DiagnosticPosition | undefined,
-  file: string,
-) {
-  return at
-    ? { message: d.message, id: file, loc: { file, ...at } }
-    : { message: d.message, id: file }
-}
 
 /**
  * The router compiler as a Vite plugin: route splitting (`autoCodeSplitting`)
@@ -164,6 +152,7 @@ export function createRouterCompilerVitePlugin(
       compiler = new RouterCompiler({
         context: routerPluginContext,
         config: userConfig,
+        root: ROOT,
         bundler: 'vite',
         mode: config.command === 'build' ? 'build' : 'dev',
       })
@@ -322,9 +311,12 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
+        const name = displayPath(identity.path, ROOT)
         compiler.report(out, file, code, {
-          error: (d, at) => this.error(logOf(d, at, identity.path)),
-          warn: (d, at) => this.warn(logOf(d, at, identity.path)),
+          error: (d, at) =>
+            this.error(viteLog(d.message, at, code, name, identity.path)),
+          warn: (d, at) =>
+            this.warn(viteLog(d.message, at, code, name, identity.path)),
         })
         if (identity.derived === null && out.code === code) {
           return null
