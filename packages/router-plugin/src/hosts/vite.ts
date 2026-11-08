@@ -95,6 +95,7 @@ export function createRouterCompilerVitePlugin(
   routerPluginContext: RouterPluginContext,
 ): Plugin {
   let ROOT: string = process.cwd()
+  let bundledDev = false
   let userConfig: Config
   let compiler: RouterCompiler
   let server: ViteDevServer | null = null
@@ -148,6 +149,10 @@ export function createRouterCompilerVitePlugin(
     configResolved(config) {
       firstEnvironment = Object.keys(config.environments)[0]
       ROOT = config.root
+      bundledDev =
+        config.command === 'serve' &&
+        !!(config.experimental as { bundledDev?: boolean } | undefined)
+          ?.bundledDev
       userConfig = resolveUserConfig()
       compiler = new RouterCompiler({
         context: routerPluginContext,
@@ -313,7 +318,8 @@ export function createRouterCompilerVitePlugin(
           return null
         }
         const name = displayPath(identity.path, ROOT)
-        const dev = compiler.mode === 'dev'
+        // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
+        const dev = compiler.mode === 'dev' && !bundledDev
         compiler.report(out, file, code, {
           error: (d, at) =>
             this.error(viteLog(d.message, at, code, name, identity.path, dev)),

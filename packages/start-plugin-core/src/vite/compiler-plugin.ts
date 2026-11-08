@@ -613,7 +613,8 @@ export function startCompilerPlugin(
     // a Vue SFC's late refusals are positioned in the SFC, not in `code`
     const frameOf = lateInputMap ? null : code
     const name = displayPath(filePath, s.start.opts.root)
-    const dev = s.start.opts.mode === 'dev'
+    // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
+    const dev = s.start.opts.mode === 'dev' && !s.bundledDev
     const log = (d: Diagnostic, at: DiagnosticPosition | undefined) =>
       viteLog(d.message, at, frameOf, name, filePath, dev)
     s.start.report(
