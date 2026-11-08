@@ -11,7 +11,9 @@ import { expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import {
   openRscPage,
   startRscDevServer,
@@ -22,6 +24,12 @@ import {
 } from './rsc-app'
 
 const timeout = 120_000
+/**
+ * From the dev server's start to the refusal: on Vite, the server renders
+ * the page first, and the client compiles `src/part.tsx` only once the page
+ * hydrates and imports the route; under load that takes seconds.
+ */
+const refusalTimeout = 30_000
 
 const partModule = (
   helper: string,
@@ -59,14 +67,27 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
       const server = await (
         bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
       )({ files: files(refused), browser: true })
-      await openRscPage(server, '/')
-      await expect
-        .poll(() => server.diagnostics.some((d) => d.severity === 'error'))
-        .toBe(true)
-      expectDiagnostic(server.diagnostics, {
+      const page = await openRscPage(server, '/')
+      const where = {
         severity: 'error',
         file: 'src/part.tsx',
         root: server.root,
+      } as const
+      // (no `problems`: on Rsbuild the page's errors hold the refused
+      // module's failed build, the outcome itself)
+      await waitForOutcome({
+        applied: () => findDiagnostics(server.diagnostics, where).length > 0,
+        timeout: refusalTimeout,
+        describe: async () =>
+          `the server reported ${JSON.stringify(
+            server.diagnostics.map(({ severity, text }) => ({
+              severity,
+              text: text.slice(0, 200),
+            })),
+          )}; the page shows ${JSON.stringify(await page.text().catch(() => '(loading)'))}, its errors: ${JSON.stringify(page.errors)}`,
+      })
+      expectDiagnostic(server.diagnostics, {
+        ...where,
         position: diagnosticPosition(refused, 'renderServerComponent(<Part'),
       })
     },
