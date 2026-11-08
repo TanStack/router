@@ -144,7 +144,10 @@ describe('route edits', () => {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
     })
-    const { config, generator } = await startGenerator(root)
+    const { config, generator } = await startGenerator(root, {
+      // (the warning is a log: `disableLogging` silences it)
+      disableLogging: false,
+    })
 
     const broken = `import { createFileRoute } from '@tanstack/react-router'
 
