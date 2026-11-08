@@ -312,11 +312,13 @@ export const Route = createRootRoute({})
 
 describe('claim 7: a registry change with a resolver that throws', () => {
   // The invalidation asks the resolver (after a file event emptied its memo).
-  // A rejection there would be unhandled and end a `vite dev` process; the
-  // module counts as stale instead, and its next request reports the error,
-  // as on main.
+  // A rejection there would be unhandled and end a `vite dev` process. A
+  // resolver that throws couldn't resolve the specifier (DECISIONS,
+  // "Resolver errors in import protection"): the module is compiled again,
+  // and the bundler decides on the import; here only the handler reads it,
+  // so the client drops it and the compile succeeds (on main it failed).
   test(
-    'Vite: the dev server survives it, and the next compile reports the error',
+    'Vite: the dev server survives it, and the next compile leaves the import to the bundler',
     async () => {
       // the test runner fails a run on any unhandled rejection: only this
       // test's listener hears them, as the process would
@@ -370,8 +372,8 @@ export const Route = createFileRoute('/a')({})
       })
       await new Promise((resolve) => setTimeout(resolve, 2_000))
       expect(rejections).toEqual([])
-      await expect(server.transform('/src/helper.ts')).rejects.toThrow(
-        'MARK_RESOLVER_FAILED',
+      await expect(server.transform('/src/helper.ts')).resolves.toBeTypeOf(
+        'string',
       )
       failing = false
       await expect(server.transform('/src/helper.ts')).resolves.toBeTypeOf(
