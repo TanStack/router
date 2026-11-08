@@ -617,7 +617,8 @@ export function startCompilerPlugin(
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
   ) => {
-    const mapsLoc = ctx.environment.mode === 'dev'
+    // (bundled dev runs Rolldown's hook context, which does not)
+    const mapsLoc = ctx.environment.mode === 'dev' && !s.bundledDev
     const log = (
       d: Diagnostic,
       at: DiagnosticPosition | undefined,

@@ -8,6 +8,7 @@
  * the bundler wiring: hooks, module graph invalidation, witnesses, virtual
  * modules, and Rspack's `buildInfo` replay.
  */
+import { readFileSync } from 'node:fs'
 import {
   RawFactsCache,
   SourceText,
@@ -473,6 +474,9 @@ export class StartCompilerSession {
     sink: StartDiagnosticSink,
     inputMap?: () => InputSourceMap | null,
   ): void {
+    if (out.diagnostics.length === 0) {
+      return
+    }
     let commonJsScript: boolean | undefined
     // the SFC's positions of a Vue SFC's script, else the input map's
     const locate =
@@ -568,16 +572,37 @@ export interface StartDiagnosticSink {
   ) => void
 }
 
-/** Positions in `file` of offsets of `code` through its input map (none where the map covers none or names another file). */
+/**
+ * Positions in `file` of offsets of `code` through its input map (none where
+ * the map covers none or names another file). Without a map (a loader that
+ * makes none in production builds), `code`'s own positions when it is the
+ * file's text, else none.
+ */
 function mapLocate(
   file: string,
   code: string,
   inputMap: () => InputSourceMap | null,
 ): SfcLocate {
   const locator = new Locator(code, file, inputMap)
+  /** Without a map, whether `code` is the file's text (else its positions are no file's). */
+  let ownText: boolean | undefined
   return (offset) => {
+    if (inputMap() === null) {
+      ownText ??= readText(file) === code
+      if (!ownText) {
+        return null
+      }
+    }
     const at = locator.at(offset)
     return at === null || at.file !== file ? null : at
+  }
+}
+
+function readText(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8')
+  } catch {
+    return null
   }
 }
 

@@ -188,6 +188,41 @@ function needsParens(
   }
 }
 
+/** The name of the innermost function enclosing `node` (its declaration, or the binding, property or method it is), or null when that function has none. */
+function innermostFunctionName(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+): string | null {
+  for (let a = file.parentOf(node); a !== null; a = file.parentOf(a)) {
+    if (a.type === 'FunctionDeclaration') {
+      return a.id ? a.id.name : null
+    }
+    if (
+      a.type === 'FunctionExpression' ||
+      a.type === 'ArrowFunctionExpression'
+    ) {
+      const p = file.parentOf(a)
+      if (p?.type === 'VariableDeclarator' && p.id.type === 'Identifier') {
+        return p.id.name
+      }
+      if (
+        (p?.type === 'Property' ||
+          p?.type === 'MethodDefinition' ||
+          p?.type === 'PropertyDefinition') &&
+        !p.computed &&
+        p.key.type === 'Identifier'
+      ) {
+        return p.key.name
+      }
+      return a.type === 'FunctionExpression' && a.id ? a.id.name : null
+    }
+    if (a.type === 'StaticBlock') {
+      return null
+    }
+  }
+  return null
+}
+
 function enclosingFunctionNames(
   file: PlanContext['analysis']['file'],
   node: Node,
@@ -1244,7 +1279,7 @@ function escapeMessage(
   return message
 }
 
-/** The variable `node` is assigned to (`x = node`, through parentheses and TS wrappers), or null. */
+/** The variable `node` is assigned to by a statement (`x = node`, through parentheses and TS wrappers), or null. */
 function assignedTo(
   file: PlanContext['analysis']['file'],
   node: Node,
@@ -1262,6 +1297,7 @@ function assignedTo(
     a = file.parentOf(a)
   }
   return a?.type === 'AssignmentExpression' &&
+    file.parentOf(a)?.type === 'ExpressionStatement' &&
     a.operator === '=' &&
     a.right.start === child.start &&
     a.right.end === child.end &&
@@ -1611,11 +1647,11 @@ function hoist(
   }
   for (const a of eagerArgs) {
     if (!isPureExpression(ctx.analysis.purity, a)) {
-      const fn = enclosingFunctionNames(file, X).at(-1)
-      const fnText = fn === undefined ? 'the enclosing function' : `\`${fn}\``
+      const fn = innermostFunctionName(file, X)
+      const fnText = fn === null ? 'the enclosing function' : `\`${fn}\``
       const source = ctx.analysis.source.code.slice(a.start, a.end)
       const expr =
-        source.length <= 40 && !source.includes('\n')
+        source.length <= 40 && !/[\n`]/.test(source)
           ? `\`${source}\``
           : 'an expression'
       return refuse(
