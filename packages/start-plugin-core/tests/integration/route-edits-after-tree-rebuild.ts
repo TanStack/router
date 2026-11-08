@@ -12,6 +12,7 @@
 import { expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
+  errorsOutsideReloads,
   hmrSyncModule,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
@@ -70,6 +71,9 @@ export interface TreeRebuildServer {
  * Edits the loader, adds a route, edits the loader, renames a route, edits
  * the loader: each loader edit must show on the loader route's page (open
  * from the start), and each tree change on a page visiting the new route.
+ * Neither page logs an error, but a document that Vite's client was told to
+ * reload may fail to fetch the module of the renamed route's old file
+ * (`errorsOutsideReloads`).
  */
 export async function editLoaderAroundTreeRebuilds(
   server: TreeRebuildServer,
@@ -82,10 +86,12 @@ export async function editLoaderAroundTreeRebuilds(
   }
   const loader = await open('/with-loader')
   const inFlight = trackRequests(loader)
+  const loaderErrors = errorsOutsideReloads(loader)
   await loader.waitForText('probe-loader-v0', {
     selector: '[data-probe=loader]',
   })
   const visit = await open('/')
+  const visitErrors = errorsOutsideReloads(visit)
   let shown = 'probe-loader-v0'
   const loaderShows = async (token: string) => {
     await server.edit({ 'src/routes/with-loader.tsx': loaderRoute(token) })
@@ -95,9 +101,14 @@ export async function editLoaderAroundTreeRebuilds(
     })
     shown = token
   }
+  /**
+   * A visit is done once the page hydrated: its server-rendered text shows
+   * while its modules still load.
+   */
   const visits = async (url: string, text: string) => {
     await visit.page.goto(`${server.url}${url}`)
     await visit.waitForText(text, { selector: '[data-probe=child]' })
+    await visit.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   }
   /** An edit that rebuilds the route tree; the loader page settles on it before the next edit. */
   const treeChange = async (edit: () => Promise<unknown>) => {
@@ -126,7 +137,7 @@ export async function editLoaderAroundTreeRebuilds(
   await visits('/renamed-2', 'renamed-route')
   await loaderShows('probe-loader-v3')
 
-  expect(loader.errors).toEqual([])
-  expect(visit.errors).toEqual([])
+  expect(loaderErrors()).toEqual([])
+  expect(visitErrors()).toEqual([])
   return { loader, visit }
 }

@@ -30,6 +30,9 @@ import { waitForOutcome } from './outcome'
 import type { BrowserPage } from './browser'
 import type { DevServer, HmrMessage } from './dev-server'
 
+/** What `hmrSyncModule` logs (`console.debug`) when Vite's client announces a full reload. */
+const fullReloadMark = 'harness:beforeFullReload'
+
 /**
  * `src/hmr-sync.ts`: imported by a module the app's client code loads (on
  * the server too, where it does nothing: Vite's module runner has a hot
@@ -40,6 +43,7 @@ export const hmrSyncModule = `if (import.meta.hot && typeof window !== 'undefine
   const page = ((window as any).__harnessPage ??= Math.random().toString(36).slice(2))
   hot.on('vite:beforeFullReload', () => {
     ;(window as any).__harnessFullReload = true
+    console.debug(${JSON.stringify(fullReloadMark)})
   })
   hot.on('harness:sync', (data: { token: string }) => {
     ;(window as any).__harnessSynced = data.token
@@ -68,6 +72,39 @@ export function trackRequests(browser: BrowserPage) {
     }
   })
   return () => inFlight.size
+}
+
+/**
+ * The page's errors (`browser.errors`), but for those a document logged,
+ * from now on, after Vite's client announced it would reload it (as
+ * `hmrSyncModule` records) and before the next document replaced it. Vite's
+ * client goes on handling the server's messages until then, so an update the
+ * server sent after the reload, e.g. of a module whose file was deleted
+ * meanwhile, may fail in a document that is about to go. Errors before the
+ * announcement, in a document that never got replaced, and in the next
+ * document all count.
+ */
+export function errorsOutsideReloads(browser: BrowserPage) {
+  /** Index ranges of `browser.errors` that replaced documents logged after their announcement. */
+  const replaced: Array<[number, number]> = []
+  let announcedAt: number | undefined
+  // (after `openPage`'s own listeners, which record the errors)
+  browser.page.on('console', (message) => {
+    if (message.type() === 'debug' && message.text() === fullReloadMark) {
+      announcedAt ??= browser.errors.length
+    }
+  })
+  browser.page.on('framenavigated', (frame) => {
+    if (frame === browser.page.mainFrame() && announcedAt !== undefined) {
+      replaced.push([announcedAt, browser.errors.length])
+      announcedAt = undefined
+    }
+  })
+  return () =>
+    browser.errors.filter(
+      (_, index) =>
+        !replaced.some(([start, end]) => index >= start && index < end),
+    )
 }
 
 let tokens = 0
