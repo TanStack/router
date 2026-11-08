@@ -97,6 +97,24 @@ function RootComponent() {
             </Link>
           </svg>
         </div>
+        <div className="ml-auto flex gap-2 text-sm items-center">
+          Devtools:
+          {(['floating', 'panel', 'shadow'] as const).map((mode) => (
+            <Link
+              key={mode}
+              to="."
+              search={(prev) => ({
+                ...prev,
+                devtools: mode === 'floating' ? undefined : mode,
+              })}
+              className={
+                (devtools ?? 'floating') === mode ? 'font-bold' : undefined
+              }
+            >
+              {mode}
+            </Link>
+          ))}
+        </div>
       </div>
       <Outlet />
       {devtools === 'panel' ? (
