@@ -20,8 +20,7 @@ export type SerializationAdapterByRuntime = Partial<
 >
 
 export type SerializationAdapterConfig =
-  | SerializationAdapterModuleRef
-  | SerializationAdapterByRuntime
+  SerializationAdapterModuleRef | SerializationAdapterByRuntime
 
 export type StartCompilerEnvironment = 'client' | 'server'
 
@@ -52,9 +51,7 @@ export interface StartCompilerTransformContext {
 export interface StartCompilerImportTransform {
   name: string
   environment?:
-    | StartCompilerEnvironment
-    | Array<StartCompilerEnvironment>
-    | undefined
+    StartCompilerEnvironment | Array<StartCompilerEnvironment> | undefined
   imports: Array<StartCompilerImportTransformImport>
   detect: RegExp
   order?: 'pre' | 'post' | undefined
@@ -80,9 +77,7 @@ export interface StartCompilerVirtualModuleContext {
 export interface StartCompilerPlugin {
   name: string
   environment?:
-    | StartCompilerEnvironment
-    | Array<StartCompilerEnvironment>
-    | undefined
+    StartCompilerEnvironment | Array<StartCompilerEnvironment> | undefined
   detect?: RegExp | undefined
   virtualModuleIdPattern?: RegExp | undefined
   transformAst?: (

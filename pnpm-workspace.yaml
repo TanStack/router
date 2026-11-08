@@ -168,4 +168,4 @@ allowBuilds:
   protobufjs: false # transitive dep
 minimumReleaseAgeExclude:
   # Renovate security update: @trpc/server@11.8.0
-  - "@trpc/server@11.8.0"
+  - '@trpc/server@11.8.0'
