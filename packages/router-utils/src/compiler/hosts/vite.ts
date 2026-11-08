@@ -12,16 +12,21 @@ export interface ViteLog {
   message: string
   id: string
   frame?: string
+  loc?: { file: string; line: number; column: number }
 }
 
 /**
- * A compile diagnostic as a Vite plugin log, router and Start alike. Its one
- * position is in the message, 1-based (`positionSuffix`), on every Vite
- * channel (build, dev, overlay), with a code frame of the module: no `loc`,
- * whose column is 0-based by Rollup's contract (Vite and Rolldown print it
- * as given), and which a Vite build drops from warnings. `file` is the
- * module as messages name it (`displayPath`), `id` the module's id, `code`
- * the text the position is in (null: no frame).
+ * A compile diagnostic as a Vite plugin log, router and Start alike, with
+ * one position. In dev, `loc`: Vite maps it through the source maps of the
+ * plugins that ran before (to the file as written), frames it and links it
+ * in the overlay, printing the column as Rollup's contract has it
+ * (0-based, `File: …:3:6`), like every Vite plugin's. A Vite build drops
+ * `loc` from warnings and prints the header of an error as given: there the
+ * message carries the position, 1-based (`positionSuffix`), with a code frame
+ * of `code`. `file` is the module as messages name it (`displayPath`), `id`
+ * the module's id, `code` the text the position is in (null when the
+ * position was mapped elsewhere, a Vue SFC's: then the message carries it,
+ * without a frame, in dev too).
  */
 export function viteLog(
   message: string,
@@ -29,9 +34,13 @@ export function viteLog(
   code: string | null,
   file: string,
   id: string,
+  dev: boolean,
 ): ViteLog {
   if (at === undefined) {
     return { message, id }
+  }
+  if (dev && code !== null) {
+    return { message, id, loc: { file: id, line: at.line, column: at.column } }
   }
   const log: ViteLog = { message: `${message}${positionSuffix(file, at)}`, id }
   if (code !== null) {
@@ -46,16 +55,16 @@ const LINE_TERMINATOR = /\r\n|[\n\r\u2028\u2029]/
 function codeFrame(code: string, at: DiagnosticPosition): string {
   const lines = code.split(LINE_TERMINATOR)
   const index = at.line - 1
+  const first = Math.max(0, index - 2)
+  const last = Math.min(lines.length - 1, index + 2)
+  // the gutter fits the largest line number, with a space before the bar
+  const width = Math.max(String(last + 1).length + 1, 3)
   const out: Array<string> = []
-  for (
-    let i = Math.max(0, index - 2);
-    i <= Math.min(lines.length - 1, index + 2);
-    i++
-  ) {
+  for (let i = first; i <= last; i++) {
     const n = String(i + 1)
-    out.push(`${n}${' '.repeat(Math.max(3 - n.length, 0))}|  ${lines[i]}`)
+    out.push(`${n.padEnd(width)}|  ${lines[i]}`)
     if (i === index) {
-      out.push(`   |  ${' '.repeat(at.column)}^`)
+      out.push(`${' '.repeat(width)}|  ${' '.repeat(at.column)}^`)
     }
   }
   return out.join('\n')

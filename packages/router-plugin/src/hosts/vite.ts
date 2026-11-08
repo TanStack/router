@@ -313,11 +313,12 @@ export function createRouterCompilerVitePlugin(
           return null
         }
         const name = displayPath(identity.path, ROOT)
+        const dev = compiler.mode === 'dev'
         compiler.report(out, file, code, {
           error: (d, at) =>
-            this.error(viteLog(d.message, at, code, name, identity.path)),
+            this.error(viteLog(d.message, at, code, name, identity.path, dev)),
           warn: (d, at) =>
-            this.warn(viteLog(d.message, at, code, name, identity.path)),
+            this.warn(viteLog(d.message, at, code, name, identity.path, dev)),
         })
         if (identity.derived === null && out.code === code) {
           return null

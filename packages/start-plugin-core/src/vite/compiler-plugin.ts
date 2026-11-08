@@ -606,7 +606,6 @@ export function startCompilerPlugin(
     },
     out: CompileOutput,
     filePath: string,
-    id: string,
     code: string,
     envType: 'client' | 'server',
     lateInputMap?: () => InputSourceMap | null,
@@ -614,8 +613,9 @@ export function startCompilerPlugin(
     // a Vue SFC's late refusals are positioned in the SFC, not in `code`
     const frameOf = lateInputMap ? null : code
     const name = displayPath(filePath, s.start.opts.root)
+    const dev = s.start.opts.mode === 'dev'
     const log = (d: Diagnostic, at: DiagnosticPosition | undefined) =>
-      viteLog(d.message, at, frameOf, name, id)
+      viteLog(d.message, at, frameOf, name, filePath, dev)
     s.start.report(
       out,
       filePath,
@@ -698,7 +698,7 @@ export function startCompilerPlugin(
       if (!out) {
         return null
       }
-      reportDiagnostics(s, this, out, identity.path, id, code, env.type)
+      reportDiagnostics(s, this, out, identity.path, code, env.type)
       let mock = afterCompile(s, env, id, out, (error) => this.error(error))
       if (mock instanceof Promise) {
         mock = await mock
@@ -1176,7 +1176,6 @@ export function startCompilerPlugin(
           this,
           out,
           identify(id).path,
-          id,
           code,
           env.type,
           readInputMap,
