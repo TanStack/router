@@ -3,6 +3,7 @@
  * check of the output shapes of `start-env` and `rsc-css` on an in-memory
  * host, before the public Start host of the oracle tests exercises them).
  */
+import { createHash } from 'node:crypto'
 import { describe, expect, test } from 'vitest'
 import {
   RawFactsCache,
@@ -102,6 +103,26 @@ const head = `import { createServerFn } from '@tanstack/react-start'\n`
 /** The local name of a client output's server-fn stub factory. */
 const clientRpc = (code: string) =>
   importedAs(code, 'createClientRpc', '@tanstack/react-start/client-rpc')
+
+describe("start-env: a server fn's filename on Windows is main's (pathe's relative)", () => {
+  const code = `${head}export const fn = createServerFn().handler(async () => 1)\n`
+  test.each([
+    ['C:\\proj', 'C:/proj/src/fns.ts', 'src/fns.ts'],
+    ['c:\\proj', 'C:/proj/src/fns.ts', 'src/fns.ts'],
+    ['C:\\proj\\app', 'C:/proj/lib/fns.ts', '../lib/fns.ts'],
+    ['C:\\proj', 'D:/lib/fns.ts', 'D:/lib/fns.ts'],
+  ])('root %s, module %s: %s', async (root, id, filename) => {
+    const out = (await compile({ [id]: code }, 'ssr', id, { root }))!
+    expect(out.code).toContain(`filename: ${JSON.stringify(filename)}`)
+    // main's default id: sha256 hex of `<filename>--<functionName>`
+    const fnId = createHash('sha256')
+      .update(`${filename}--fn_createServerFn_handler`)
+      .digest('hex')
+    expect(out.code).toContain(`id: "${fnId}"`)
+    const facts = out.facts.planners[START_ENV] as StartEnvFacts
+    expect(facts.serverFns[0]).toMatchObject({ rootRel: filename })
+  })
+})
 
 describe('start-env: server fns', () => {
   const files = {
