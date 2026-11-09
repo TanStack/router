@@ -649,6 +649,14 @@ export async function createStartHost(
   interface HostPage {
     opened: BrowserPage
     requests: Array<string>
+    /**
+     * The page's requests that failed in transport (`url: net error`), not
+     * the ones a navigation or the page aborted: Chromium keeps a failed
+     * module fetch in the document's module map, so every later import of
+     * that module (any case that reaches it) fails on this page without a
+     * request (`ERR_NO_BUFFER_SPACE` on a Windows runner).
+     */
+    failed: Array<string>
   }
   let previewState:
     | { server: PreviewServer; url: string; build: HostBuild }
@@ -672,9 +680,16 @@ export async function createStartHost(
    */
   const openHostPage = async (): Promise<HostPage> => {
     const requests: Array<string> = []
+    const failed: Array<string> = []
     const track = (opened: BrowserPage) => {
       opened.page.on('request', (request) => {
         requests.push(request.url())
+      })
+      opened.page.on('requestfailed', (request) => {
+        const error = request.failure()?.errorText
+        if (error !== 'net::ERR_ABORTED') {
+          failed.push(`${request.url()}: ${error}`)
+        }
       })
     }
     if (previewState) {
@@ -699,14 +714,14 @@ export async function createStartHost(
           ].join('\n'),
         )
       }
-      return { opened, requests }
+      return { opened, requests, failed }
     }
     const opened = await openPage('about:blank')
     track(opened)
     await opened.page.goto(
       new URL('/__plugin-host__/page.html', baseUrl()).href,
     )
-    return { opened, requests }
+    return { opened, requests, failed }
   }
 
   // The host's pages: concurrent runs (concurrent tests) each hold one
@@ -826,9 +841,9 @@ export async function createStartHost(
         held = await renewPage(held)
         run.dropped = false
       }
-      const { opened, requests } = held
       let lastError: unknown
       for (let attempt = 0; attempt < 3; attempt++) {
+        const { opened, requests } = held
         const loads = opened.loads()
         const firstRequest = requests.length
         const firstError = opened.errors.length
@@ -861,6 +876,15 @@ export async function createStartHost(
           }
         } catch (error) {
           lastError = error
+          // A request of this page failed in transport: its document keeps
+          // the failed module fetch (see `HostPage.failed`), so the run
+          // goes again on a new page
+          if (!run.dropped && held.failed.length > 0 && attempt < 2) {
+            run.dropped = true
+            held = await renewPage(held)
+            run.dropped = false
+            continue
+          }
           // A navigation destroys the run's context before the new document
           // fires its load event
           const navigated =
@@ -873,6 +897,7 @@ export async function createStartHost(
                 `the page run failed: ${(error as Error).message}`,
                 `errors:\n${errors.join('\n') || '(none)'}`,
                 `console:\n${opened.console.slice(firstConsole).join('\n') || '(none)'}`,
+                `failed requests:\n${held.failed.join('\n') || '(none)'}`,
               ].join('\n'),
               { cause: error },
             )
