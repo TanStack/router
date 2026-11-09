@@ -138,7 +138,7 @@ export type RefContext =
   | 'updateTarget'
   /** The callee of `new`: called at the reference, and its identity observed (a constructor). */
   | 'newCallee'
-  /** An operand of `instanceof`, `===`, `!==`, `==` or `!=`, or the object of a `.prototype` read: the value's identity is observed. */
+  /** An operand of `instanceof`, `===`, `!==`, `==` or `!=`, a `switch` value or `case` test, or the object of a `.prototype` read: the value's identity is observed. */
   | 'identity'
   | 'declName'
 
@@ -1643,7 +1643,7 @@ const VALUE_WRAPPERS = new Set([
  * How the value a reference reads is used by its parent, looking through
  * the value wrappers: `callee` (a call, a tagged template), `newCallee`
  * (constructed: called, identity observed), `identity` (an operand of
- * `instanceof`, `===`, `!==`, `==`, `!=`,
+ * `instanceof`, `===`, `!==`, `==`, `!=`, a `switch` value or `case` test,
  * the object of a `.prototype` read), else null.
  */
 function valueUse(
@@ -1682,6 +1682,11 @@ function valueUse(
         p.property.name === 'prototype'
         ? 'identity'
         : null
+    // `switch` compares its value with each `case` by `===`
+    case 'SwitchStatement':
+      return p.discriminant === child ? 'identity' : null
+    case 'SwitchCase':
+      return p.test === child ? 'identity' : null
     default:
       return null
   }
@@ -1782,6 +1787,16 @@ function classify(
           (parent.operator === 'instanceof' && parent.right === node)
             ? 'identity'
             : 'plain',
+      }
+    case 'SwitchStatement':
+      return {
+        kind: 'value',
+        ctx: parent.discriminant === node ? 'identity' : 'plain',
+      }
+    case 'SwitchCase':
+      return {
+        kind: 'value',
+        ctx: parent.test === node ? 'identity' : 'plain',
       }
     case 'ParenthesizedExpression':
     case 'TSAsExpression':

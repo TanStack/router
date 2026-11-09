@@ -1814,6 +1814,16 @@ describe('extracted-export outputs', () => {
         'export function Model() {}\nexport function isModel(v: unknown) { return Object.getPrototypeOf(v) === Model.prototype }',
         'isModel(Model)',
       ],
+      [
+        'a case label',
+        'export const Model = () => {}\nexport function isModel(v: unknown) { switch (v) { case Model: return true } return false }',
+        'isModel(Model)',
+      ],
+      [
+        'a switch value',
+        'export const Model = () => {}\nexport function isModel(v: unknown) { switch (Model) { case v: return true } return false }',
+        'isModel(Model)',
+      ],
     ])(
       'imports an exported function whose identity is observed instead of copying it: %s',
       async (_, declarations, read) => {
