@@ -1209,6 +1209,27 @@ export const peek = () => other()
     },
     timeout,
   )
+
+  // A file the user empties is an empty module once the save settled, with
+  // no marker (an editor's in-place save, which empties the file for a
+  // moment, gets the text it then writes: start-compiler-dev-server.test.ts
+  // "a factory saved in place").
+  // Source: review of 2026-11-09, round 2 (the emptied file kept its last
+  // facts, marker included, until it held text again).
+  test(
+    'after an edit empties the marked module, its importer loads without a violation',
+    async () => {
+      const server = await startProtectedDevServer(markedApp(serverOnly), {
+        behavior: 'error',
+      })
+      await rejection(server.load('/src/entry.ts'))
+      await server.edit({ 'src/b.ts': '' })
+      const logged = server.violations.length
+      await server.load('/src/entry.ts')
+      expect(server.violations.slice(logged)).toEqual([])
+    },
+    timeout,
+  )
 })
 
 // Source: mutation testing (the SSR counterpart of the client control
