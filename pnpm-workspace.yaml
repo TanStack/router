@@ -166,3 +166,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: compression@1.8.2
+  - compression@1.8.2
