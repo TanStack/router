@@ -3,6 +3,7 @@
   "csrf-warning-config.test.ts",
   "entry-planning.test.ts",
   "post-server-build.test.ts",
+  "prerender-discovery.test.ts",
   "prerender-ssrf.test.ts",
   "prerender-vite.test.ts",
   "rsbuild/normalized-client-build.test.ts",
