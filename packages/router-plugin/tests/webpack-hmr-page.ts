@@ -288,6 +288,8 @@ export const Route = createRootRoute({})
         problems: () => compileErrors,
         applied: async () => (await text()).includes(expected),
         quiet: () => webpackQuiet() && requests() === 0,
+        // (the page's text holds the expected text)
+        observed: async () => ({ actual: await text(), expected }),
         describe: async () =>
           [
             `the page shows: ${JSON.stringify(await text())}`,
