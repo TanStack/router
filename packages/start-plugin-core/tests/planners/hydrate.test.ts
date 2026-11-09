@@ -989,7 +989,10 @@ export class Page extends Base {
   // React passes captures by value when the placeholder renders (R123);
   // Solid reads a reassigned binding through a getter
   it('rejects a React function in the children reading a let the component reassigns, at the read', async () => {
-    const body = (head: string, read: string) => `${head}export function Page() {
+    const body = (
+      head: string,
+      read: string,
+    ) => `${head}export function Page() {
   let timer = 0
   const start = () => { timer = 1 }
   return <Hydrate><button onClick={start}>{${read}}</button></Hydrate>
