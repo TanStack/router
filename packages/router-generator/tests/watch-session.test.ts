@@ -85,9 +85,9 @@ test('a route tree written as a route file is deleted is never replaced by one t
 
   // Every content the route tree file holds from then on
   const seen = new Set<string>()
-  let sampling = true
+  const sampling = new AbortController()
   const sampler = (async () => {
-    while (sampling) {
+    while (!sampling.signal.aborted) {
       try {
         seen.add(readFileSync(config.generatedRouteTree, 'utf8'))
       } catch {
@@ -107,7 +107,7 @@ test('a route tree written as a route file is deleted is never replaced by one t
       describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
     })
   } finally {
-    sampling = false
+    sampling.abort()
     await sampler
   }
 
