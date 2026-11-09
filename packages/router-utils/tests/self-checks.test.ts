@@ -4,7 +4,7 @@
  * warning for the module. No public input reaches a violation (it takes a
  * compiler bug), so the warning's wording is checked on the formatter.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   SELF_CHECKS,
   invariantViolated,
@@ -22,6 +22,20 @@ describe('self-checks', () => {
   it('are on in the test runs, where a violated invariant throws', () => {
     expect(SELF_CHECKS).toBe(true)
     expect(() => invariantViolated(violation)).toThrow(violation.detail)
+  })
+
+  // Source: review of 2026-11-09, round 2 (no test ran the warn branch).
+  it("are off in users' runs, where a violated invariant is returned for the warning", async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    try {
+      const off = await import('../src/compiler/self-checks')
+      expect(off.SELF_CHECKS).toBe(false)
+      expect(off.invariantViolated(violation)).toBe(violation)
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
   })
 
   it('word the warning of a module as an internal compiler error to report', () => {
