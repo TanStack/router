@@ -242,7 +242,9 @@ text compiles waits for it and emits its own output from the result.
   `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`ModuleSummary.exportKeys`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
-  added to a widely imported module re-plans none of its importers.
+  added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per
+  module it looked names up in: the names and their keys, or none when the module exports none of them (a barrel's
+  star targets are visited for every name, so one record per name grew with names × targets).
 - Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
   (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget` and `retain` drop, which is how anything that
   changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it may have

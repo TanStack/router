@@ -264,3 +264,90 @@ describe('a namespace that escapes the analysis', () => {
     expect(await t.compile(NS)).toBe(await t.fresh(NS))
   })
 })
+
+describe('several names read of one module re-plan exactly their readers', () => {
+  const A = '/app/src/a.ts'
+  const B = '/app/src/b.ts'
+  const C = '/app/src/c.ts'
+  const BARREL = '/app/src/barrel.ts'
+  const U1 = '/app/src/u1.ts'
+  const U2 = '/app/src/u2.ts'
+  const U3 = '/app/src/u3.ts'
+  const NS = '/app/src/ns.ts'
+  const files = {
+    [A]: `${IMPORT}export const fa = createServerFn()\nexport const pa = 1\n`,
+    [B]: `${IMPORT}export const fb = createServerFn()\nexport const pb = 1\n`,
+    [C]: `export const pc = 1\n`,
+    [BARREL]: `export * from './a'\nexport * from './b'\n`,
+    // fa through the barrel
+    [U1]: user('fa', './barrel'),
+    // fa and fb through the barrel: two names of the barrel, one of each star target
+    [U2]: `import { fa, fb } from './barrel'\nexport const f1 = fa.handler(async () => '${SECRET}')\nexport const f2 = fb.handler(async () => '${SECRET}')\n`,
+    // pb through the barrel
+    [U3]: user('pb', './barrel'),
+    // fa as a namespace member of a
+    [NS]: `import * as lib from './a'\nexport const fn = lib.fa.handler(async () => '${SECRET}')\n`,
+  }
+  const USERS = [U1, U2, U3, NS]
+
+  it.each([
+    [
+      'an export added to a star target',
+      A,
+      `${files[A]}export const added = 2\n`,
+      [],
+    ],
+    [
+      'an unread export removed',
+      A,
+      `${IMPORT}export const fa = createServerFn()\n`,
+      [],
+    ],
+    [
+      'an unread export changing kind',
+      A,
+      `${IMPORT}export const fa = createServerFn()\nexport const pa = createServerFn()\n`,
+      [],
+    ],
+    [
+      'a read export changing kind',
+      A,
+      `export const fa = (x: any) => x\nexport const pa = 1\n`,
+      [U1, U2, NS],
+    ],
+    ['a read export removed', B, `export const pb = 1\n`, [U2]],
+    [
+      'a star target gaining a name another target exports',
+      B,
+      `${files[B]}export const fa = 1\n`,
+      [U1, U2],
+    ],
+    [
+      'a star added to the barrel',
+      BARREL,
+      `${files[BARREL]}export * from './c'\n`,
+      [U1, U2, U3],
+    ],
+    [
+      'a star removed from the barrel',
+      BARREL,
+      `export * from './a'\n`,
+      [U1, U2, U3],
+    ],
+    [
+      'a body edit keeping every export',
+      A,
+      `${IMPORT}export const fa = createServerFn()\nexport const pa = 1 + 0\n`,
+      [],
+    ],
+  ])('%s', async (_, path, text, expected) => {
+    const t = session(files)
+    for (const u of USERS) {
+      expect(await t.compile(u)).toBe(await t.fresh(u))
+    }
+    expect((await t.edit(path, text)).sort()).toEqual([...expected].sort())
+    for (const u of USERS) {
+      expect(await t.compile(u)).toBe(await t.fresh(u))
+    }
+  })
+})

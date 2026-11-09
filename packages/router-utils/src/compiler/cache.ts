@@ -16,8 +16,18 @@ import type { Diagnostic } from './diagnostics'
 export type DependencyFingerprint =
   /** The whole summary (a listing of the module's exports, or a module without one: null). */
   | { kind: 'summary'; canonicalId: string; digest: string | null }
-  /** One export as a lookup read it (`ModuleSummary.exportKeys`; null: the module exports no such name). */
-  | { kind: 'export'; canonicalId: string; name: string; key: string | null }
+  /**
+   * The exports a plan read of one module, one record however many names it
+   * read: per name, its `ModuleSummary.exportKeys` entry (null: the module
+   * has no such export); `keys` is null when the module has none of them (a
+   * star target a lookup passed through).
+   */
+  | {
+      kind: 'exports'
+      canonicalId: string
+      names: ReadonlyArray<string>
+      keys: ReadonlyArray<string | null> | null
+    }
   /** The `export *` list, read by a lookup of a name the module does not export itself. */
   | { kind: 'stars'; canonicalId: string; stars: ReadonlyArray<string> }
   | { kind: 'target-facts'; canonicalId: string; digest: string }
@@ -40,8 +50,8 @@ function fingerprintId(fp: DependencyFingerprint): string {
   switch (fp.kind) {
     case 'summary':
       return `summary:${fp.canonicalId}`
-    case 'export':
-      return `export:${fp.canonicalId}\u0000${fp.name}`
+    case 'exports':
+      return `exports:${fp.canonicalId}`
     case 'stars':
       return `stars:${fp.canonicalId}`
     case 'target-facts':
@@ -59,7 +69,7 @@ function fingerprintId(fp: DependencyFingerprint): string {
 export function fingerprintPath(fp: DependencyFingerprint): string | null {
   switch (fp.kind) {
     case 'summary':
-    case 'export':
+    case 'exports':
     case 'stars':
     case 'target-facts':
     case 'target-marker':
@@ -113,11 +123,15 @@ export async function fingerprintCurrent(
   switch (fp.kind) {
     case 'summary':
       return ((await src.summary(fp.canonicalId))?.digest ?? null) === fp.digest
-    case 'export': {
+    case 'exports': {
       const summary = await src.summary(fp.canonicalId)
       return (
         summary !== null &&
-        (ownEntry(summary.exportKeys, fp.name) ?? null) === fp.key
+        fp.names.every(
+          (n, i) =>
+            (ownEntry(summary.exportKeys, n) ?? null) ===
+            (fp.keys?.[i] ?? null),
+        )
       )
     }
     case 'stars': {
@@ -291,16 +305,19 @@ class DependentsIndex {
 }
 
 /**
- * Records the facts a compile acquires, registers them as in-flight
- * dependencies and validates the complete snapshot before publication. A
- * fact is recorded once per compile: a resolution asked again in the same
- * attempt reads the recorded answer (`resolved`), so one attempt sees one
- * answer and the snapshot validation decides whether it is still current.
+ * Records the facts a compile acquires and registers them as in-flight
+ * dependencies; the complete snapshot (`published`) is validated before
+ * publication. A fact is recorded once per compile: a resolution asked again
+ * in the same attempt reads the recorded answer (`resolved`), so one attempt
+ * sees one answer and the snapshot validation decides whether it is still
+ * current.
  */
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
   private readonly byId = new Map<string, DependencyFingerprint>()
-  /** The dependents-index buckets of `entries`. */
+  /** The exports lookups read, by module: name → `exportKeys` entry (null: no such export). */
+  private readonly exportReads = new Map<string, Map<string, string | null>>()
+  /** The dependents-index buckets of `entries` and `exportReads`. */
   private readonly indexKeys = new Set<string>()
 
   constructor(
@@ -316,11 +333,54 @@ export class DependencyLedger {
     }
     this.byId.set(id, fp)
     this.entries.push(fp)
-    const indexKey = fingerprintIndexKey(fp)
+    this.indexPath(fingerprintIndexKey(fp))
+  }
+
+  /** A lookup read export `name` of a module (`key`: its `exportKeys` entry, null when it has none). */
+  recordExport(canonicalId: string, name: string, key: string | null): void {
+    let keys = this.exportReads.get(canonicalId)
+    if (!keys) {
+      keys = new Map()
+      this.exportReads.set(canonicalId, keys)
+      this.indexPath(identify(canonicalId).path)
+    }
+    if (!keys.has(name)) {
+      keys.set(name, key)
+    }
+  }
+
+  private indexPath(indexKey: string | null): void {
     if (indexKey !== null && !this.indexKeys.has(indexKey)) {
       this.indexKeys.add(indexKey)
       this.index.add(indexKey, this.key)
     }
+  }
+
+  /**
+   * Every fact recorded, as a published plan keeps it: the exports read of
+   * a module are one `exports` record. Names are sorted, so the star
+   * targets a lookup visited for the same names share one list.
+   */
+  published(): Array<DependencyFingerprint> {
+    const out = [...this.entries]
+    const lists = new Map<string, ReadonlyArray<string>>()
+    for (const [canonicalId, keys] of this.exportReads) {
+      const sorted = [...keys.keys()].sort()
+      const listId = JSON.stringify(sorted)
+      let names = lists.get(listId)
+      if (!names) {
+        names = sorted
+        lists.set(listId, names)
+      }
+      const read = names.map((n) => keys.get(n) ?? null)
+      out.push({
+        kind: 'exports',
+        canonicalId,
+        names,
+        keys: read.every((k) => k === null) ? null : read,
+      })
+    }
+    return out
   }
 
   /** The answer of a resolution this compile recorded (undefined: not asked yet). */
@@ -339,18 +399,6 @@ export class DependencyLedger {
       }),
     )
     return fp && fp.kind === 'resolution' ? fp.resolved : undefined
-  }
-
-  /**
-   * Whether every recorded fact is still current. `standing`: what moved
-   * nothing since the attempt started (no file appeared or disappeared: the
-   * resolver's answers stand; no raw fact went stale: the facts read stand).
-   */
-  validateSnapshot(
-    src: FingerprintSource,
-    standing: StandingAnswers,
-  ): Promise<boolean> {
-    return fingerprintsCurrent(this.entries, src, standing)
   }
 
   /** The plan is published: its rows replace the key's previous plan's. */

@@ -524,7 +524,7 @@ export function dependencyPaths(
   for (const fp of dependencies) {
     if (
       fp.kind === 'summary' ||
-      fp.kind === 'export' ||
+      fp.kind === 'exports' ||
       fp.kind === 'stars' ||
       fp.kind === 'target-facts' ||
       fp.kind === 'target-marker'
