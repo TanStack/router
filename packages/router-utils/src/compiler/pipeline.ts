@@ -287,10 +287,17 @@ async function settle(
       }
       entry.plan.dependencies = ledger.published()
       const src = fingerprintSourceFor(caches, host, key.env)
-      const snapshotOk = await ledger.validateSnapshot(src, {
-        resolutions: caches.fileSetVersion === fileSetVersion,
-        facts: caches.rawFacts.version === factsVersion,
-      })
+      // the snapshot: whether every fact the attempt recorded is still
+      // current. Standing answers (no file appeared or disappeared, no raw
+      // fact went stale since the attempt started) are not asked again
+      const snapshotOk = await fingerprintsCurrent(
+        entry.plan.dependencies,
+        src,
+        {
+          resolutions: caches.fileSetVersion === fileSetVersion,
+          facts: caches.rawFacts.version === factsVersion,
+        },
+      )
       if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {
           ledger.publish()
@@ -498,16 +505,15 @@ async function runAttempt(
   // a lookup depends on the export it reads, not on the module's others
   const exportOf = async (canonicalId: string, name: string) => {
     const { summary } = await rawFactsOf(canonicalId)
-    ledger.record(
-      summary === null
-        ? { kind: 'summary', canonicalId, digest: null }
-        : {
-            kind: 'export',
-            canonicalId,
-            name,
-            key: ownEntry(summary.exportKeys, name) ?? null,
-          },
-    )
+    if (summary === null) {
+      ledger.record({ kind: 'summary', canonicalId, digest: null })
+    } else {
+      ledger.recordExport(
+        canonicalId,
+        name,
+        ownEntry(summary.exportKeys, name) ?? null,
+      )
+    }
     return summary
   }
   const targetFactsOf = async (canonicalId: string) => {
