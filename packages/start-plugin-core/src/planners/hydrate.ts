@@ -697,11 +697,12 @@ function boundaryError(
   b: Boundary,
   code: string,
   message: string,
+  range: Range = { start: b.element.start, end: b.opening.end },
 ): void {
   const d: Diagnostic = {
     severity: 'error',
     message,
-    range: { start: b.element.start, end: b.opening.end },
+    range,
     by: HYDRATE_PLANNER,
     code,
   }
@@ -716,6 +717,8 @@ interface Scan {
   directives: Array<{ nameRange: Range; sym: SymbolId | null }>
   /** Solid `ref={x}` attributes naming a binding: the identifier range and symbol. */
   refAttrs: Array<{ range: Range; sym: SymbolId }>
+  /** The functions of the children (outermost first, nested ones too). */
+  functions: Array<Range>
 }
 
 /**
@@ -734,6 +737,7 @@ function validate(
     argumentsRefs: [],
     directives: [],
     refAttrs: [],
+    functions: [],
   }
   const fail = (code: string, message: string) => {
     if (scan.ok) {
@@ -775,11 +779,13 @@ function validate(
     switch (node.type) {
       case 'ArrowFunctionExpression':
         nextFn = true
+        scan.functions.push({ start: node.start, end: node.end })
         break
       case 'FunctionExpression':
       case 'FunctionDeclaration':
         nextFn = true
         nextSelf = true
+        scan.functions.push({ start: node.start, end: node.end })
         break
       case 'ClassBody':
         nextFn = true
@@ -1094,6 +1100,25 @@ function extract(
       !liveEnv.live(ref)
     ) {
       continue
+    }
+    // React passes a capture's value when the placeholder renders (Solid
+    // reads a reassigned binding through a getter): a function of the
+    // children that reads it later would read that snapshot
+    if (
+      !solid &&
+      symbols.isReassignable(ref.sym) &&
+      scan.functions.some((f) => within(ref.range, f)) &&
+      t1.mutation.isReassigned(ref.sym, (r) => liveEnv.live(r))
+    ) {
+      const name = symbols.name(ref.sym)
+      boundaryError(
+        ctx,
+        b,
+        'hydrate-capture-reassigned',
+        `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef()\`, read and assign \`${name}.current\`), or use split={false}.`,
+        ref.range,
+      )
+      return null
     }
     found.push({ sym: ref.sym, pos: ref.range.start })
   }
