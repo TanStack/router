@@ -189,13 +189,14 @@ function deniedBy(info: ViolationInfo, ctx: ReportContext): string {
 export function formatUncheckedImporters(
   info: ViolationInfo,
   importers: Array<string>,
-  root: string,
+  ctx: ReportContext,
 ): string {
+  const root = ctx.config.root
   return [
     ``,
     `[import-protection] Denied file mocked in ${info.envType} environment, for importers that are not checked`,
     ``,
-    `  Denied by ${info.type} pattern: ${String(info.pattern)}`,
+    deniedBy(info, ctx),
     `  Denied file: ${relativizePath(info.importer, root)}`,
     `  Importers (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
     ...importers.map((file) => `    - ${relativizePath(file, root)}`),

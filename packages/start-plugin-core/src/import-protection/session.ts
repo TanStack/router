@@ -1136,8 +1136,7 @@ class ImportProtectionEnv {
         steps: [],
         fromEntry: false,
       }))
-      const { root } = this.ip.config
-      const message = formatUncheckedImporters(info, importers, root)
+      const message = formatUncheckedImporters(info, importers, this.ip.report)
       reports.push({
         severity: 'warning' as const,
         message,
