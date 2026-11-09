@@ -180,8 +180,9 @@ Arguments after -- go to the selected unit tests, not the measurement.`)
   }
 
   if (values['test-projects']) {
-    const status = step('tests', process.execPath, [
-      fileURLToPath(import.meta.resolve('nx/bin/nx.js')),
+    const status = step('tests', process.env.npm_execpath || 'pnpm', [
+      'exec',
+      'nx',
       'run-many',
       '--target=test:unit',
       `--projects=${values['test-projects']}`,

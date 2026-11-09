@@ -13,13 +13,8 @@ export function build(args, execute = spawnSync) {
   /** @type {import('./run.mjs').CommandOptions} */
   const options = { cwd: repoRoot, env: process.env, stdio: 'inherit' }
   const result = execute(
-    process.execPath,
-    [
-      fileURLToPath(import.meta.resolve('nx/bin/nx.js')),
-      'run',
-      '@benchmarks/bundle-size:measure',
-      ...args,
-    ],
+    process.env.npm_execpath || 'pnpm',
+    ['exec', 'nx', 'run', '@benchmarks/bundle-size:measure', ...args],
     options,
   )
   if (result.status !== 0) {

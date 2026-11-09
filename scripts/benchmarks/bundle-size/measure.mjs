@@ -479,7 +479,8 @@ function buildRequiredPackages({ repoRoot, scenarios, skipPackageBuilds }) {
   )
 
   const args = [
-    fileURLToPath(import.meta.resolve('nx/bin/nx.js')),
+    'exec',
+    'nx',
     'run-many',
     '--target=build',
     `--projects=${projects.join(',')}`,
@@ -494,7 +495,7 @@ function buildRequiredPackages({ repoRoot, scenarios, skipPackageBuilds }) {
     args.push('--skipNxCache')
   }
 
-  execFileSync(process.execPath, args, {
+  execFileSync(process.env.npm_execpath || 'pnpm', args, {
     cwd: repoRoot,
     stdio: 'inherit',
     env: process.env,
