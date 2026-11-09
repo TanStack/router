@@ -256,7 +256,7 @@ export function hasEscapedLeadingUnderscore(originalSegment: string): boolean {
  * - Segment ends with [_] pattern: "blog[_]" -> "blog_"
  * - Segment is fully escaped and content ends with _: "[_r0ut3_]" -> "_r0ut3_"
  */
-export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
+function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
   // Pattern: something[_] or [something_]
   return (
     originalSegment.endsWith('[_]') ||
@@ -294,7 +294,7 @@ export function countSlashSeparatedParts(path: string): number {
   return count
 }
 
-export function hasRoutePathSegmentMetadata(
+function hasRoutePathSegmentMetadata(
   metadata: RoutePathSegmentMetadata | undefined,
 ): metadata is RoutePathSegmentMetadata {
   return !!(
@@ -681,7 +681,7 @@ export function removeGroups(s: string) {
  * @example
  * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
  */
-export function removeLayoutSegments(routePath: string = '/'): string {
+function removeLayoutSegments(routePath: string = '/'): string {
   const segments = routePath.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
   return newSegments.join('/')

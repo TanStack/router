@@ -24,7 +24,7 @@ export interface RouterPlannerConfig {
   hmr: { style: HmrStyle } | null
 }
 
-export interface RouterPlannerEnv {
+interface RouterPlannerEnv {
   framework: RouterPlannerConfig['framework']
   envType: 'client' | 'server'
   mode: 'dev' | 'build'

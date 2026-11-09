@@ -113,7 +113,7 @@ const consoleSeverities: Record<ConsoleMethod, Severity> = {
 }
 
 /** The text of `console.*` arguments, as the console would print them. */
-export function consoleText(args: Array<unknown>) {
+function consoleText(args: Array<unknown>) {
   return stripVTControlCharacters(
     args
       .map((arg) =>

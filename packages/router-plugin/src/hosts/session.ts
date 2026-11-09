@@ -49,7 +49,7 @@ import type {
 
 export type Bundler = 'vite' | 'rspack' | 'webpack'
 
-export interface RouterCompilerOptions {
+interface RouterCompilerOptions {
   context: RouterPluginContext
   config: Config
   /** The project root: messages name files relative to it. */
@@ -58,7 +58,7 @@ export interface RouterCompilerOptions {
   mode: 'dev' | 'build'
 }
 
-export interface CompileRequest {
+interface CompileRequest {
   /** The bundler's module id (path with query). */
   id: string
   code: string

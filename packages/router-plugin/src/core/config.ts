@@ -41,7 +41,7 @@ export function groupingsProblem(value: unknown): string | null {
   return null
 }
 
-export const splitGroupingsSchema = z
+const splitGroupingsSchema = z
   .custom<CodeSplitGroupings>(() => true)
   .superRefine((value, ctx) => {
     const problem = groupingsProblem(value)

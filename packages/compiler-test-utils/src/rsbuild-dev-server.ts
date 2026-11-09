@@ -1185,7 +1185,7 @@ const nonAppDirectories = new Set(['node_modules', 'dist', '.git'])
  * How long before the dev server starts its initial files were last
  * modified: more than watchpack's coarsest modification-time accuracy (2 s).
  */
-export const initialFilesAge = 10_000
+const initialFilesAge = 10_000
 
 /**
  * Dates the app's initial files `initialFilesAge` back: a user starts the

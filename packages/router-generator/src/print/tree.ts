@@ -5,7 +5,7 @@ import { key, lit } from './style'
 import type { CodeStyle } from './style'
 import type { ModelRoute, RoutePieceName, TreeModel } from '../types'
 
-export interface PrintTreeOptions {
+interface PrintTreeOptions {
   style: CodeStyle
   disableTypes: boolean
   /** The router package the tree imports its runtime from (`@tanstack/react-router`). */

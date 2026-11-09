@@ -24,9 +24,9 @@ import type { Node } from 'yuku'
 import type { CodeSplitGroupings } from '../core/constants'
 import type { RouterPlannerConfig } from './config'
 
-export type RouteKind = 'file' | 'root' | 'lazy'
+type RouteKind = 'file' | 'root' | 'lazy'
 
-export type RouteFactory =
+type RouteFactory =
   | 'createFileRoute'
   | 'createRootRoute'
   | 'createRootRouteWithContext'
@@ -46,9 +46,9 @@ const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
 ])
 
 /** Packages whose `createFileRoute` & co. are the router's. */
-export const ROUTER_PACKAGE_RE = /^@tanstack\/(react|solid|vue)-router(\/|$)/
+const ROUTER_PACKAGE_RE = /^@tanstack\/(react|solid|vue)-router(\/|$)/
 
-export type OptionKind =
+type OptionKind =
   | 'init'
   | 'method'
   | 'shorthand'
@@ -68,7 +68,7 @@ export interface RouteOption {
   keyText: string
 }
 
-export type OptionsResolution =
+type OptionsResolution =
   | { kind: 'object'; node: Node }
   | { kind: 'opaque'; reason: 'imported' | 'call' | 'written' | 'other' }
   /** `createRootRoute()`: no options to split or remove */
@@ -98,7 +98,7 @@ export interface RouteModuleInfo {
   routeId: string | null
 }
 
-export type RouteRecognition =
+type RouteRecognition =
   | { route: RouteModuleInfo; warnings: Array<Diagnostic> }
   | { route: null; warnings: Array<Diagnostic> }
 

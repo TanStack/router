@@ -45,7 +45,7 @@ const componentPieceRegex =
   /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
 const routeGroupPatternRegex = /\(.+\)/
 
-export interface TreeModelInput {
+interface TreeModelInput {
   scan: ScanResult
   config: Pick<Config, 'indexToken' | 'routeToken'>
   /** Whether a route file joins the tree (its analysis found a route). */

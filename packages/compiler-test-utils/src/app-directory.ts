@@ -161,7 +161,7 @@ function withoutPrivilege(error: unknown): boolean {
  * packages (see `linkType`): the app resolves its bare imports through it
  * as from `target`'s place.
  */
-export function linkDirectorySync(target: string, link: string): void {
+function linkDirectorySync(target: string, link: string): void {
   try {
     symlinkSync(target, link, linkType)
   } catch (error) {

@@ -6,7 +6,7 @@ export type RouterPluginContext = {
   routesByFile: GetRoutesByFileMapResult
 }
 
-export type RoutesChangedListener = (
+type RoutesChangedListener = (
   next: GetRoutesByFileMapResult,
   previous: GetRoutesByFileMapResult,
 ) => void

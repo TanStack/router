@@ -40,7 +40,7 @@ import type {
   WatchingCompilerLike,
 } from '@tanstack/router-utils/compiler'
 
-export type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
+type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 
 /** The parts of a webpack / Rspack compiler the host uses. */
 export interface CompilerLike extends WatchingCompilerLike {
@@ -89,7 +89,7 @@ const JS_FILE_RE = /\.[cm]?[jt]sx?$/
 let loaderPath: string | null = null
 
 /** The static loader file of this package (`loader/index.cjs`), found from the package root. */
-export function routerLoaderPath(): string {
+function routerLoaderPath(): string {
   if (loaderPath) {
     return loaderPath
   }

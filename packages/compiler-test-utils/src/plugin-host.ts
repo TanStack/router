@@ -167,7 +167,7 @@ export interface PluginHost {
 }
 
 /** The page the host serves for `runClient`. */
-export const hostPagePath = '/__plugin-host__/page.html'
+const hostPagePath = '/__plugin-host__/page.html'
 
 const hostPageHtml = `<!doctype html>
 <html>

@@ -433,7 +433,7 @@ export function isRootRouteFile(node: RouteNode) {
  * @param tokenRegexes - Pre-compiled token regexes for matching.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
-export function getRouteMeta(
+function getRouteMeta(
   routePath: string,
   originalRoutePath: string,
   tokenRegexes: TokenRegexBundle,

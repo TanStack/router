@@ -246,7 +246,7 @@ export class StartCompilerSession {
     return cfg
   }
 
-  envInfo(env: StartCompilerEnvironment, layer?: string): EnvInfo {
+  private envInfo(env: StartCompilerEnvironment, layer?: string): EnvInfo {
     return {
       name: env.name,
       type: env.type,
