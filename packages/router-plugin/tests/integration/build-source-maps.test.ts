@@ -287,6 +287,48 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
       expectModuleThrowMapsToRouteFile(bundler, source, marker),
     timeout,
   )
+
+  // A raw U+2028 inside a string of the component the splitter moves out of
+  // the route module: these bundlers' maps count lines at LF only (as editors
+  // and devtools show the file), so the loader's throw below it still maps
+  // to its line.
+  test(
+    'a throw below a raw line separator in a string maps to its line and column in the route file',
+    async () => {
+      const source = `${routeHead()}function Page() {
+  return <p>{'MARK_LS \u2028 text'}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => {
+    throw new Error('MARK_LOADER_THROW')
+  },
+  component: Page,
+})
+`
+      const app = await build({
+        bundler,
+        env: 'client',
+        minify: false,
+        sourcemap: true,
+        files: routeApp(source, {
+          env: 'client',
+          files: { 'entry.ts': `export * from './routes/index'\n` },
+        }),
+      })
+      const { result: stack } = await app.run(
+        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+      )
+      expect(stack).toMatch('MARK_LOADER_THROW')
+      const { line, column } = originalFrameOf(app, stack as string) ?? {}
+      const offset = source.indexOf('new Error(')
+      const lineStart = source.lastIndexOf('\n', offset) + 1
+      expect({ line, column }).toEqual({
+        line: source.slice(0, offset).split('\n').length,
+        column: offset - lineStart + 1,
+      })
+    },
+    timeout,
+  )
 })
 
 /**

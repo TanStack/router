@@ -5,7 +5,7 @@
  * is a module of the app, and Start compiles it as with the plugin
  * (`vue-sfc.test.ts`). Its server fn keeps its handler on the server and the
  * client calls it by id, with vue-loader's inline match resource and
- * without it.
+ * without it, and with the app's own subclass of `VueLoaderPlugin`.
  */
 import { createRequire } from 'node:module'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -21,6 +21,9 @@ const vueLoader = createRequire(
 const { VueLoaderPlugin } = createRequire(import.meta.url)(vueLoader) as {
   VueLoaderPlugin: new () => object
 }
+
+/** An app's own `VueLoaderPlugin` (a subclass: another class name). */
+class AppVueLoaderPlugin extends VueLoaderPlugin {}
 
 const files = {
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/vue-router'
@@ -59,9 +62,22 @@ export { createClientRpc } from '@tanstack/vue-start/client-rpc'
 }
 
 describe.each([
-  { name: 'inline match resource', inlineMatchResource: true },
-  { name: 'no inline match resource', inlineMatchResource: false },
-])('rsbuild build, $name', ({ inlineMatchResource }) => {
+  {
+    name: 'inline match resource',
+    inlineMatchResource: true,
+    Plugin: VueLoaderPlugin,
+  },
+  {
+    name: 'no inline match resource',
+    inlineMatchResource: false,
+    Plugin: VueLoaderPlugin,
+  },
+  {
+    name: 'inline match resource, a VueLoaderPlugin subclass',
+    inlineMatchResource: true,
+    Plugin: AppVueLoaderPlugin,
+  },
+])('rsbuild build, $name', ({ inlineMatchResource, Plugin }) => {
   let build: StartBuild
   let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
@@ -81,7 +97,7 @@ describe.each([
                 experimentalInlineMatchResource: inlineMatchResource,
               },
             })
-            config.plugins.push(new VueLoaderPlugin() as never)
+            config.plugins.push(new Plugin() as never)
             return config
           },
         },
