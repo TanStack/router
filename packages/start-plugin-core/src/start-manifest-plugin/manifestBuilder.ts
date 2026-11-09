@@ -673,13 +673,9 @@ function mergeReachableHydrationChunkData(options: {
     mergedHydrationChunks.add(chunk.fileName)
 
     appendRouteStylesheets(options.route, options.getChunkCssAssets(chunk))
-
-    for (const dynamicImport of chunk.dynamicImports) {
-      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
-      if (dynamicChunk?.hydrationIds.length) {
-        mergeHydrationChunk(dynamicChunk)
-      }
-    }
+    // the boundaries it reaches, also through a module it imports (a helper
+    // two boundaries share, holding another boundary)
+    visitStaticChunk(chunk)
   }
 
   const visitStaticChunk = (chunk: NormalizedClientChunk) => {

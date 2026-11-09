@@ -986,6 +986,32 @@ export class Page extends Base {
     }
   })
 
+  // React passes captures by value when the placeholder renders (R123);
+  // Solid reads a reassigned binding through a getter
+  it('rejects a React function in the children reading a let the component reassigns, at the read', async () => {
+    const body = (
+      head: string,
+      read: string,
+    ) => `${head}export function Page() {
+  let timer = 0
+  const start = () => { timer = 1 }
+  return <Hydrate><button onClick={start}>{${read}}</button></Hydrate>
+}
+`
+    const closure = body(REACT, '() => timer')
+    expect((await compile(closure)).errors).toEqual([
+      {
+        code: 'hydrate-capture-reassigned',
+        start: closure.indexOf('timer', closure.indexOf('() => timer')),
+      },
+    ])
+    // read when the boundary renders, as in the source
+    expect((await compile(body(REACT, 'timer'))).errors).toEqual([])
+    expect(
+      (await compile(body(SOLID, '() => timer'), { env: clientEnv })).errors,
+    ).toEqual([])
+  })
+
   it('validates a nested boundary on its own (the outer one renders its placeholder)', async () => {
     const code = `${REACT}import { useThing } from './hooks'
 export const Page = () => <Hydrate><section><Hydrate><p>{useThing()}</p></Hydrate></section></Hydrate>

@@ -186,6 +186,32 @@ export const Route = createFileRoute('/hyd')({
   ),
 })
 `,
+  // A boundary in a helper two boundaries render: the helper, and with it
+  // the inner boundary, is no longer the outer chunks' own code
+  'src/routes/nest.tsx': `${head}import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import innerCss from './nestinner.module.css'
+function Card() {
+  return (
+    <Hydrate when={interaction()}>
+      <u className={innerCss.m}>MARK_JS_NESTINNER</u>
+    </Hydrate>
+  )
+}
+export const Route = createFileRoute('/nest')({
+  component: () => (
+    <section>
+      MARK_JS_NEST
+      <Hydrate when={interaction()}>
+        <Card />
+      </Hydrate>
+      <Hydrate when={interaction()}>
+        <Card />
+      </Hydrate>
+    </section>
+  ),
+})
+`,
   'src/routes/paged.tsx': `${head}import pagedCss from './paged.module.css'
 export function Paged() {
   return <p className={pagedCss.m}>MARK_JS_PAGED</p>
@@ -250,6 +276,7 @@ export const Route = createFileRoute('/posts/new')({
       'Glyph',
       'Paged',
       'TwiceChild',
+      'NestInner',
       'Posts',
       'PostCard',
       'PostId',
@@ -318,6 +345,11 @@ const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
   '/paged': {
     needs: { js: ['PAGED', 'BANNER'], css: ['PAGED', 'BANNER'] },
   },
+  // A boundary inside a boundary's children renders on the server with its
+  // CSS, also when only a module the outer chunks share reaches it (J5.7).
+  '/nest': {
+    needs: { js: ['NEST', 'BANNER'], css: ['NESTINNER', 'BANNER'] },
+  },
   // (one component in a module both options read, J2.20)
   '/twice': {
     needs: { js: ['TWICE', 'BANNER'], css: ['TWICECHILD', 'BANNER'] },
@@ -355,6 +387,8 @@ const routeOnly = [
   'GEM',
   'TWICE',
   'TWICECHILD',
+  'NEST',
+  'NESTINNER',
   'POSTS',
   'POSTID',
   'POSTNEW',

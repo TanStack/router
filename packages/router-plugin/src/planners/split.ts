@@ -15,7 +15,12 @@ import {
   sameFileSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
-import { identifierSymbol, isMemberOfImport, pascal } from './route'
+import {
+  identifierSymbol,
+  isMemberOfImport,
+  pascal,
+  refreshRegisters,
+} from './route'
 import { COMPONENT_KEYS } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
@@ -244,7 +249,17 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       by: ROUTER_PLANNER,
     })
     if (isComponent && !isMemberOfImport(ctx, d.valueNode)) {
-      round.splitComponents.push({ output: g.output, exported, valueSym })
+      round.splitComponents.push({
+        output: g.output,
+        exported,
+        valueSym,
+        // the user's binding (registered where it is declared), a method,
+        // or the chunk's declaration of the value
+        registers:
+          valueSym !== null
+            ? d.member === null
+            : d.methodPrefix !== '' || refreshRegisters(d.valueNode),
+      })
     }
 
     // the route module's placeholder (pure for the client's tree shaking;

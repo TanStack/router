@@ -89,21 +89,6 @@ const HOOK_RE = /^use[A-Z0-9]/
 /** Props React (and Solid, for `ref`) keep for themselves, or that the chunk component must not receive. */
 const RESERVED_PROPS = new Set(['key', 'ref', 'children'])
 
-interface ResolvedConfig {
-  root: string
-  refreshMarkers: boolean
-}
-
-function resolveConfig(config: unknown): ResolvedConfig {
-  const c = (config ?? {}) as Partial<HydratePlannerConfig>
-  if (typeof c.root !== 'string') {
-    throw new Error(
-      `the ${HYDRATE_PLANNER} planner needs \`root\` in its config (config.perPlanner.${HYDRATE_PLANNER})`,
-    )
-  }
-  return { root: c.root, refreshMarkers: c.refreshMarkers ?? false }
-}
-
 declare module '@tanstack/router-utils/compiler' {
   interface PlannerData {
     /** The Hydrate planner's `PlannerData` (`HYDRATE_PLANNER`). */
@@ -285,7 +270,7 @@ interface Extracted {
 
 function findBoundaries(
   ctx: PlanContext,
-  cfg: ResolvedConfig,
+  cfg: HydratePlannerConfig,
 ): Array<Boundary> {
   const { analysis, t1 } = ctx
   const table = startRecognizer()
@@ -529,8 +514,8 @@ const within = (r: Range, outer: Range): boolean =>
 // planning
 // ---------------------------------------------------------------------------
 
-function plan(ctx: PlanContext): void {
-  const cfg = resolveConfig(ctx.config)
+function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
+  const cfg = ctx.config
   const boundaries = findBoundaries(ctx, cfg)
   if (boundaries.length === 0) {
     return
@@ -697,11 +682,12 @@ function boundaryError(
   b: Boundary,
   code: string,
   message: string,
+  range: Range = { start: b.element.start, end: b.opening.end },
 ): void {
   const d: Diagnostic = {
     severity: 'error',
     message,
-    range: { start: b.element.start, end: b.opening.end },
+    range,
     by: HYDRATE_PLANNER,
     code,
   }
@@ -716,6 +702,8 @@ interface Scan {
   directives: Array<{ nameRange: Range; sym: SymbolId | null }>
   /** Solid `ref={x}` attributes naming a binding: the identifier range and symbol. */
   refAttrs: Array<{ range: Range; sym: SymbolId }>
+  /** The functions of the children (outermost first, nested ones too). */
+  functions: Array<Range>
 }
 
 /**
@@ -734,6 +722,7 @@ function validate(
     argumentsRefs: [],
     directives: [],
     refAttrs: [],
+    functions: [],
   }
   const fail = (code: string, message: string) => {
     if (scan.ok) {
@@ -775,11 +764,13 @@ function validate(
     switch (node.type) {
       case 'ArrowFunctionExpression':
         nextFn = true
+        scan.functions.push({ start: node.start, end: node.end })
         break
       case 'FunctionExpression':
       case 'FunctionDeclaration':
         nextFn = true
         nextSelf = true
+        scan.functions.push({ start: node.start, end: node.end })
         break
       case 'ClassBody':
         nextFn = true
@@ -861,10 +852,12 @@ function validate(
           } else if (
             node.name.type === 'JSXIdentifier' &&
             node.name.name === 'ref' &&
-            node.value?.type === 'JSXExpressionContainer' &&
-            node.value.expression.type === 'Identifier'
+            node.value?.type === 'JSXExpressionContainer'
           ) {
-            const ref = refAt(node.value.expression.start)
+            // (Solid's JSX transform unwraps `ref={el!}`, `ref={el as T}`, `ref={(el)}`)
+            const target = unwrapExpression(node.value.expression)
+            const ref =
+              target.type === 'Identifier' ? refAt(target.start) : undefined
             if (ref) {
               scan.refAttrs.push({ range: ref.range, sym: ref.sym })
             }
@@ -1041,7 +1034,7 @@ function extract(
   nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
-  cfg: ResolvedConfig,
+  cfg: HydratePlannerConfig,
 ): { sym: SymbolId; chunk: string } | null {
   const { t1, symbols } = ctx
   const shape = b.children!
@@ -1092,6 +1085,25 @@ function extract(
       !liveEnv.live(ref)
     ) {
       continue
+    }
+    // React passes a capture's value when the placeholder renders (Solid
+    // reads a reassigned binding through a getter): a function of the
+    // children that reads it later would read that snapshot
+    if (
+      !solid &&
+      symbols.isReassignable(ref.sym) &&
+      scan.functions.some((f) => within(ref.range, f)) &&
+      t1.mutation.isReassigned(ref.sym, (r) => liveEnv.live(r))
+    ) {
+      const name = symbols.name(ref.sym)
+      boundaryError(
+        ctx,
+        b,
+        'hydrate-capture-reassigned',
+        `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef()\`, read and assign \`${name}.current\`), or use split={false}.`,
+        ref.range,
+      )
+      return null
     }
     found.push({ sym: ref.sym, pos: ref.range.start })
   }

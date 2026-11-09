@@ -902,6 +902,76 @@ describe('claims, homes and substitution', () => {
     )
   })
 
+  it('separates a statement whose callee a substitution environment rewrites from the previous one', () => {
+    const code = dedent(`
+      export function Comp() {
+        const set = (n) => n
+        const open = () => 1
+        return <button onClick={() => {
+          set(1)
+          open()
+        }}/>
+      }
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    const children = {
+      start: code.indexOf('<button'),
+      end: code.indexOf('}}/>') + '}}/>'.length,
+    }
+    const symOf = (name: string) =>
+      ctx.t1.symbols.binding(
+        ctx.t1.refs.all.find((r) => ctx.t1.symbols.name(r.sym) === name)!.sym,
+      )!.id as never
+    const props = ctx.names.alloc('props')
+    const out = ctx.declareOutput({
+      kind: 'hydrate',
+      key: 'h0',
+      derived: { kind: 'hydrate', value: 'h0' },
+    })
+    const comp = ctx.names.alloc('TsrHydrate0', { jsxTag: true })
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: [
+            'export function ',
+            { sym: comp.sym },
+            '(',
+            { sym: props.sym },
+            ') { return (',
+          ],
+        },
+        { k: 'slice', range: children },
+        { k: 'text', parts: [') }\n'] },
+      ],
+      declares: [comp.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: out,
+      env: new Map(
+        ['set', 'open'].map(
+          (c) => [symOf(c), { member: [props.sym, c] }] as const,
+        ),
+      ) as never,
+      by: 'hydrate',
+    })
+    ctx.rewrites.claim({
+      region: ctx.region(children, 'hydrate-children'),
+      owner,
+      placeholder: [{ k: 'text', parts: ['null'] }],
+      by: 'hydrate',
+    })
+    expect(e.render(out).code).toBe(
+      dedent(`
+      export function TsrHydrate0(props) { return (<button onClick={() => {
+          (0, props.set)(1)
+          ;(0, props.open)()
+        }}/>) }
+    `),
+    )
+  })
+
   it('forwards captures through nested placeholders with a substitution environment', () => {
     const code = dedent(`
       import { Hydrate } from 'toy-start'

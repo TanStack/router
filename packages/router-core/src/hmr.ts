@@ -9,7 +9,7 @@ import type { AnyRouter } from './router'
  * Called only by compiler output; not a public API.
  */
 export interface RouteHmrMeta {
-  /** Compile-time binding names of the component options left in the route module. */
+  /** Refresh identities of the component options left in the route module (a binding's name, `<specifier>#<export>` for an import); an option without one is swapped. */
   unsplit?: Record<string, string>
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, every module-level binding name the user does not export). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }

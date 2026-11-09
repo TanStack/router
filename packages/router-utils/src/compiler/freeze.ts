@@ -958,6 +958,7 @@ class Renderer {
       } else {
         const ref = cut.ref!
         const to = env!.get(ref.sym)!
+        const at = out.length
         out.push({
           k: 'text',
           text: this.renderRefText(
@@ -969,6 +970,8 @@ class Renderer {
           ),
           mapTo: ref.range.start,
         })
+        // a callee at a statement's start renders `(0, props.x)`: as an edit
+        this.guardStatementStart(ref.range.start, out, at)
       }
       pos = Math.max(pos, cut.end)
     }

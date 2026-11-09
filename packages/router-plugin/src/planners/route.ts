@@ -741,6 +741,63 @@ export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
   )
 }
 
+/**
+ * Whether React Refresh registers a `const` the compiler declares with
+ * `init` (casts and parentheses dropped) as a component family, as its
+ * transform decides (`findInnerComponents` of react-refresh/babel; oxc and
+ * SWC follow it): a function (not one returning a function), or a call of
+ * a higher-order component (`memo(() => …)`, `withAuth(Page)`). A
+ * conditional, a member or another call is no family: refresh patches
+ * nothing the router keeps, so route HMR swaps it.
+ */
+export function refreshRegisters(init: Node): boolean {
+  const v = unwrapExpression(init)
+  switch (v.type) {
+    case 'ArrowFunctionExpression':
+      return v.body.type !== 'ArrowFunctionExpression'
+    case 'FunctionExpression':
+      return true
+    case 'CallExpression': {
+      const callee = v.callee
+      const [first] = v.arguments
+      if (
+        first === undefined ||
+        !(
+          callee.type === 'MemberExpression' ||
+          (callee.type === 'Identifier' &&
+            !callee.name.startsWith('require') &&
+            !callee.name.startsWith('import'))
+        )
+      ) {
+        return false
+      }
+      return first.type === 'Identifier'
+        ? /^[A-Z]/.test(first.name)
+        : refreshRegisters(first)
+    }
+    default:
+      return false
+  }
+}
+
+/**
+ * What a component option's identity is for the refresh runtimes, recorded
+ * per evaluation for the route HMR runtime (`unsplit`): an import is the
+ * module's export (`<specifier>#<imported name>`, a same-named import from
+ * another module is another component), a module binding its name.
+ */
+export function bindingIdentity(ctx: PlanContext, sym: SymbolId): string {
+  if (ctx.symbols.isImport(sym)) {
+    for (const imp of ctx.analysis.imports) {
+      const s = imp.specifiers.find((x) => x.local === sym)
+      if (s) {
+        return `${imp.specifier}#${s.imported}`
+      }
+    }
+  }
+  return ctx.symbols.name(sym)
+}
+
 /** Whether a value is a member of an imported binding (`C.NotFound` of `import * as C`). */
 export function isMemberOfImport(ctx: PlanContext, value: Node): boolean {
   let v = unwrapExpression(value)

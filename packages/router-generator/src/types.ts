@@ -29,6 +29,8 @@ export type RouteNode = {
    * (e.g., when the parent is a virtual file-less route that gets filtered out).
    */
   _virtualParentRoutePath?: string
+  /** The route file is named by a virtual route config (`virtualRouteConfig`, `__virtual.ts`), not found by a directory listing: it must exist. */
+  _namedByConfig?: true
   /** Internal routePath segment metadata for escaped or explicit literal syntax. */
   _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
 }
@@ -97,6 +99,7 @@ export interface ModelRoute {
   readonly children: ReadonlyArray<ModelRoute>
   /** Lazily loaded files of the route, by option (absolute paths). */
   readonly pieces: Readonly<Partial<Record<RoutePieceName, string>>>
+  /** What the route file's `Route` options record; undefined for a route without a route file (nothing is known: its lazy file or pieces may hold any option). */
   readonly props: RouteProps | undefined
 }
 
