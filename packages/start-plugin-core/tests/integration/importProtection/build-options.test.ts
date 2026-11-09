@@ -135,9 +135,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         })
         const unchecked = problems(built.diagnostics)
           .map(({ text }) => text)
-          .filter((text) =>
-            text.includes('for importers that are not checked'),
-          )
+          .filter((text) => text.includes('for importers that are not checked'))
         expect(unchecked).toHaveLength(1)
         expect(unchecked[0]).toContain(
           'Denied by marker: src/secret.ts imports "@tanstack/react-start/server-only" (line 1), which restricts it to the server',

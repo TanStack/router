@@ -279,7 +279,10 @@ export class RawFactsCache {
       // never parsed is unknown. One that still reads empty after
       // `readSaved`'s retries is empty.
       const facts =
-        text !== null && !built.opaque && prior?.summary && built.summary === null
+        text !== null &&
+        !built.opaque &&
+        prior?.summary &&
+        built.summary === null
           ? prior
           : built
       // a newer read may have superseded this one
