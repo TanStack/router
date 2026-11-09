@@ -36,6 +36,8 @@ export interface RouterRound {
     output: OutputId
     exported: SymRef
     valueSym: SymbolId | null
+    /** Whether React Refresh registers the exported value as a component family (`refreshRegisters`). */
+    registers: boolean
   }>
 }
 

@@ -3,12 +3,15 @@
  * `hmr.ts` of router-core and the framework routers), in a development
  * client only.
  *
- * Before the split part (`planHmrHoists`): records the compile-time name of
+ * Before the split part (`planHmrHoists`): records the refresh identity of
  * each component option that stays in the route module (`unsplit`, every
- * framework); for React, every such option becomes a registrable binding —
- * inline values are hoisted into `const Tsr<Key> = …` before the statement
- * holding the options (a claim, so the original body is relocated, not
- * reprinted), lowercase module-level components are renamed module-wide.
+ * framework: a binding's name, an import's module and export); for React,
+ * every such option React Refresh can register becomes a registrable
+ * binding — inline functions and higher-order calls are hoisted into
+ * `const Tsr<Key> = …` before the statement holding the options (a claim,
+ * so the original body is relocated, not reprinted), lowercase
+ * module-level components are renamed module-wide. Any other value (a
+ * conditional, a member) has no identity: an edit swaps it.
  * After it (`planHmrBlock`): the dev block, with the literal
  * `import.meta.hot.accept(` (Vite) / `import.meta.webpackHot.accept()`, the
  * `__tsrRouteHmr(routeId, Route, meta)` call that runs on every evaluation,
@@ -20,10 +23,12 @@ import {
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import {
+  bindingIdentity,
   identifierSymbol,
   isAlreadyLazy,
   isFallbackLiteral,
   pascal,
+  refreshRegisters,
   routerRouteId,
 } from './route'
 import { methodPrefixOf } from './decisions'
@@ -52,8 +57,8 @@ function isCapitalised(name: string): boolean {
 
 /**
  * Before the split part: makes every component option that stays in the
- * route module a binding React Refresh registers, and records its
- * compile-time name (`round.unsplit`, every framework).
+ * route module a binding React Refresh registers where it can, and records
+ * its refresh identity (`round.unsplit`, every framework).
  */
 export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
   const { cfg, route, plan } = round
@@ -98,19 +103,20 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     if (sym !== null) {
       // a module binding: registrable by its own declaration when
       // capitalised; a lowercase local one is renamed module-wide, split
-      // or not (React Refresh registers it wherever it is declared)
+      // or not (React Refresh registers it wherever it is declared); an
+      // import is registered by its module, under its export's name
       const name = symbols.name(sym)
       const record = (registered: string) => {
         if (!isSplit) {
           round.unsplit[key] = registered
         }
       }
-      if (isCapitalised(name)) {
-        record(name)
-        continue
-      }
-      if (cfg.framework !== 'react' || symbols.isImport(sym)) {
-        record(name)
+      if (
+        isCapitalised(name) ||
+        cfg.framework !== 'react' ||
+        symbols.isImport(sym)
+      ) {
+        record(bindingIdentity(ctx, sym))
         continue
       }
       const renamed = ctx.nameOf(sym)
@@ -137,7 +143,13 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       record(next.name)
       continue
     }
-    if (cfg.framework !== 'react' || isSplit) {
+    if (
+      cfg.framework !== 'react' ||
+      isSplit ||
+      (option.kind !== 'method' && !refreshRegisters(value))
+    ) {
+      // (a value React Refresh registers no family for stays inline and
+      // unrecorded: an edit swaps it)
       continue
     }
     // inline value or method: hoist into a registrable binding before the options
@@ -325,33 +337,42 @@ export function planHmrBlock(
  */
 function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
   for (const c of round.splitComponents) {
-    if (c.valueSym !== null && ctx.symbols.isImport(c.valueSym)) {
-      // a foreign module's export is not this module's to mark: React Refresh
-      // registers it where it is declared, and the object may be frozen (a
-      // member of an import, `C.NotFound`, isn't listed for the same reason)
+    if (
+      !c.registers ||
+      (c.valueSym !== null && ctx.symbols.isImport(c.valueSym))
+    ) {
+      // no family React Refresh would patch (`cond ? A : B`, `views.Main`:
+      // swapped on every update); a foreign module's export is not this
+      // module's to mark: React Refresh registers it where it is declared
+      // (a member of an import, `C.NotFound`, isn't listed for the same
+      // reason)
       continue
     }
     // identity = the module React Refresh registers the binding in (where
     // placement puts the user's component: this chunk or the route module,
     // nothing is extracted in dev; a move is a new family) + the binding:
     // the user's component when the value names one (a rename is a new
-    // family), else the chunk's own declaration
+    // family), else the chunk's own declaration. (A value that can't hold
+    // the marker, e.g. frozen, is swapped.)
     ctx.rewrites.addGenerated({
       body: [
         {
           k: 'text',
-          parts:
-            c.valueSym !== null
+          parts: [
+            'if (Object.isExtensible(',
+            c.exported,
+            ')) ',
+            c.exported,
+            ...(c.valueSym !== null
               ? [
-                  c.exported,
                   '.$$tsrRefreshId = ',
-                  { sym: c.valueSym, ctx: 'homeId' },
+                  { sym: c.valueSym, ctx: 'homeId' } as const,
                   ` + ${stringLiteral(` ${ctx.nameOf(c.valueSym)}`, '"')}\n`,
                 ]
               : [
-                  c.exported,
                   `.$$tsrRefreshId = ${stringLiteral(`${c.output.slice('derived:'.length)} ${ctx.nameOf(c.exported.sym)}`, '"')}\n`,
-                ],
+                ]),
+          ],
         },
       ],
       declares: [],
