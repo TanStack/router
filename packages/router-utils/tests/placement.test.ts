@@ -5225,11 +5225,6 @@ describe('pure calls of known packages', () => {
   })
 })
 
-// A client compile's builder chains (`RecognizerTable.builderLinks`) with
-// pure arguments are no effect for the planners: what the client erases (a
-// server fn's handler) does not count. The server compile's purity takes
-// none, and a link on a `const` holding a builder stays an effect (a
-// middleware's links write that builder's options).
 describe('generated imports', () => {
   // A planner's runtime helper (Start's client stub `createClientRpc`) is an
   // import like one the source wrote: two extracted modules reading it at
@@ -5303,6 +5298,11 @@ describe('generated imports', () => {
   )
 })
 
+// A client compile's builder chains (`RecognizerTable.builderLinks`) with
+// pure arguments are no effect for the planners: what the client erases (a
+// server fn's handler) does not count. The server compile's purity takes
+// none, and a link on a `const` holding a builder stays an effect (a
+// middleware's links write that builder's options).
 describe('builder chains in a client compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
