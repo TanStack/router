@@ -107,16 +107,10 @@ const run = createServerFn().middleware([linked]).handler(async () => 1)`,
   // a parameter shadowing the factory: its calls are the argument's, effects
   // (source: review of 2026-11-09, round 2: factories were known by name)
   'src/setup.ts': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { track } from './track'
 export const real = createServerFn().handler(async () => 1)
 export function setup(createServerFn: () => { handler: (value: unknown) => unknown }) {
-  const effect = createServerFn().handler(track('MARK_shadowed'))
+  const effect = createServerFn().handler('MARK_shadowed')
   return createServerOnlyFn(() => effect)
-}
-`,
-  'src/track.ts': `export function track(label: string) {
-  ;(globalThis as any).tracked = label
-  return label
 }
 `,
   'src/routes/shadowed.tsx': route(

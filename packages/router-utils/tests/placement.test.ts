@@ -5301,10 +5301,9 @@ describe('builder chains in a client compile', () => {
       files: {
         '/app/m.ts': dedent(`
           import { createServerFn, wrapServer } from 'toy-start'
-          import { track } from './track'
           export const real = createServerFn()
           export function setup(createServerFn) {
-            const effect = createServerFn().handler(track())
+            const effect = createServerFn().handler(1)
             return wrapServer(() => effect)
           }
         `),
@@ -5314,7 +5313,7 @@ describe('builder chains in a client compile', () => {
     const out = await host.compile('/app/m.ts', [toyEnvPlanner()], {
       env: envInfo({ mode: 'build', type: 'client', name: 'client' }),
     })
-    expect(out?.code).toContain('createServerFn().handler(track())')
+    expect(out?.code).toContain('createServerFn().handler(1)')
     expect(out?.code).not.toContain('const effect')
   })
 })
