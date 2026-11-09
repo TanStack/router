@@ -522,16 +522,7 @@ export function startCompilerPlugin(
           continue
         }
         await environment.transformRequest(node.url).catch(() => null)
-        if (digestOf(node.id, key) === previous) {
-          unchanged[i] = true
-          environment.moduleGraph.invalidateModule(
-            node,
-            undefined,
-            undefined,
-            false,
-            true,
-          )
-        }
+        unchanged[i] = digestOf(node.id, key) === previous
       }
     }
     await Promise.all(
@@ -540,7 +531,23 @@ export function startCompilerPlugin(
         transformNext,
       ),
     )
-    return dependents.filter((_, i) => !unchanged[i])
+    // once every transform ended: an invalidation reaches the importers,
+    // and Vite drops a transform it overtook (compiled again on request)
+    const changed: Array<EnvironmentModuleNode> = []
+    dependents.forEach((node, i) => {
+      if (unchanged[i]) {
+        environment.moduleGraph.invalidateModule(
+          node,
+          undefined,
+          undefined,
+          false,
+          true,
+        )
+      } else {
+        changed.push(node)
+      }
+    })
+    return changed
   }
 
   /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
