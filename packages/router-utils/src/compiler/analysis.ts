@@ -1016,27 +1016,30 @@ export class ModuleAnalysis {
   /**
    * The bindings the module's JSX reads implicitly (`jsx()`), without Tier
    * 1: whether it has an element (the factory) and a fragment (the fragment
-   * factory), one walk that stops once it saw both.
+   * factory), one walk that stops once it saw both, or either when both read
+   * the same binding. TypeScript (`.ts`) has no JSX.
    */
   implicitJsxReads(): ReadonlySet<SymbolId> {
     if (this.implicitReads !== null) {
       return this.implicitReads
     }
     const reads = new Set<SymbolId>()
-    const { factory, fragment } = this.jsx()
-    if (factory !== null) {
+    const jsx = this.jsx()
+    const factory = jsx.factory
+    if (factory !== null && this.file.lang !== 'ts') {
+      const fragment = jsx.fragment ?? factory
       // (the walk's callbacks set them)
       const seen = { element: false, fragment: false }
       walk(this.file.program, {
         JSXElement: (_n, w) => {
           seen.element = true
-          if (seen.fragment) {
+          if (seen.fragment || fragment === factory) {
             w.stop()
           }
         },
         JSXFragment: (_n, w) => {
           seen.fragment = true
-          if (seen.element) {
+          if (seen.element || fragment === factory) {
             w.stop()
           }
         },
@@ -1045,7 +1048,7 @@ export class ModuleAnalysis {
         reads.add(factory)
       }
       if (seen.fragment) {
-        reads.add(fragment ?? factory)
+        reads.add(fragment)
       }
     }
     return (this.implicitReads = reads)

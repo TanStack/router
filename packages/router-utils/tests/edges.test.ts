@@ -266,6 +266,7 @@ describe('edge names (J6)', () => {
       const host = new MemoryHost({
         files: {
           '/app/auto.tsx': code,
+          '/app/fragment.tsx': code.replace('<p />', '<></>'),
           '/app/classic.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code.replace('<p />', '<><p /></>')}`,
         },
       })
@@ -274,6 +275,12 @@ describe('edge names (J6)', () => {
       expect(byspec(rec.edges.env!)).toMatchObject({
         'static ./react': ['binding', ['default']],
         'static ./h': ['evaluation', []],
+      })
+      // (a fragment reads the same binding)
+      rec = edgeRecorder()
+      await host.compile('/app/fragment.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['binding', ['default']],
       })
       rec = edgeRecorder()
       await host.compile('/app/classic.tsx', planners(rec))
