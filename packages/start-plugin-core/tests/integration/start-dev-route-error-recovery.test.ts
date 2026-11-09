@@ -9,7 +9,8 @@
  * it throw; and with a route error component, which catches it instead.
  * Where the framework cannot recover in place, route HMR reloads the page
  * (`router._hmrReload`). A loader that failed is no render error: route
- * edits after it update in place.
+ * edits after it update in place, but for Vue's global boundary, which
+ * replaced the document shell.
  */
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
@@ -398,6 +399,19 @@ describe('Vite dev, Start with a document shell: route edits after a loader fail
         await server.edit({
           'src/routes/index.tsx': index(framework, 'home-v2', false),
         })
+        // Vue cannot render the document shell again once its global
+        // boundary replaced it: route edits reload the page, as after a
+        // render error
+        const reloads = framework === 'vue' && !errorComponent
+        if (reloads) {
+          await expect.poll(() => browser.loads()).toBe(2)
+          await browser.waitForText('fails-v1', {
+            selector: '[data-probe=fails]',
+          })
+          await browser.page.waitForFunction(
+            () => (window as any).__TSR_ROUTER__ !== undefined,
+          )
+        }
         await server.idle()
         await server.edit({
           'src/routes/fails.tsx': failing(
@@ -411,7 +425,7 @@ describe('Vite dev, Start with a document shell: route edits after a loader fail
           selector: '[data-probe=fails]',
           timeout: 20_000,
         })
-        expect(browser.loads()).toBe(1)
+        expect(browser.loads()).toBe(reloads ? 2 : 1)
       },
       timeout,
     )

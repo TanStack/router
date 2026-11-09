@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { rootRouteId } from '@tanstack/router-core'
+import { hmrReloadAfterCatch, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -125,7 +125,7 @@ export const Match = (props: { routeId: string }) => {
                 throw notFoundError
               }
               if (process.env.NODE_ENV !== 'production') {
-                ;(router as { _hmrReload?: true })._hmrReload = true
+                hmrReloadAfterCatch(router, error)
                 console.warn(
                   `Warning: Error in route match: ${currentMatch().routeId}`,
                 )
