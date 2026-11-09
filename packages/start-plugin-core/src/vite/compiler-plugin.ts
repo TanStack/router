@@ -475,6 +475,13 @@ export function startCompilerPlugin(
    * `DEPENDENT_TRANSFORMS` at a time (an export added to a shared module
    * re-plans each of its importers: their waits overlap, and the modules
    * in flight at once stay few); the result keeps their order.
+   *
+   * An unchanged dependent stays invalidated (soft: its next request reuses
+   * this transform): Vite's graph, not the comparison, says whether what a
+   * module runner holds is current. Another file's hot update may have
+   * invalidated the dependent meanwhile (Vite keeps a transform that an HMR
+   * invalidation overtook), and a runner whose copy failed to load (an
+   * import was missing) is not told when the file is back.
    */
   const changedDependents = async (
     environment: DevEnvironment,
@@ -498,7 +505,16 @@ export function startCompilerPlugin(
           continue
         }
         await environment.transformRequest(node.url).catch(() => null)
-        unchanged[i] = digestOf(node.id, key) === previous
+        if (digestOf(node.id, key) === previous) {
+          unchanged[i] = true
+          environment.moduleGraph.invalidateModule(
+            node,
+            undefined,
+            undefined,
+            false,
+            true,
+          )
+        }
       }
     }
     await Promise.all(
