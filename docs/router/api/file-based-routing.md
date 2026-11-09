@@ -270,4 +270,4 @@ If it is a relative path, it will be resolved to the current working directory.
 If this value is not set, `process.env.TSR_TMP_DIR` will be used.
 If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.
 
-Add this directory to your `.gitignore` (`.tanstack/` for the default): commands like `git stash -u` and `git clean -fd` otherwise delete it while the dev server runs. A dev server or `tsr watch` in a git repository warns once when git does not ignore it.
+Add this directory to your `.gitignore` (`.tanstack/` for the default): commands like `git stash -u` and `git clean -fd` otherwise delete it while the dev server runs.

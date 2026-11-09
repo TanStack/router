@@ -3,20 +3,13 @@
  * chokidar watcher, as Rspack, webpack and the CLI run it) under file
  * operations that replace several files at once: a git operation, a deleted
  * `.tanstack/` directory. The outcome is the route tree on disk, loaded by the
- * real router, and the routes the session hands over. Also what a session
- * says of a temporary directory git does not ignore.
+ * real router, and the routes the session hands over.
  */
-import { execFileSync } from 'node:child_process'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import {
-  captureDiagnostics,
-  expectNoProblems,
-} from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, createGeneratorSession, replaceBackslash } from '../src'
 import { configOf, createApp, fileRoute, rootRoute, save } from './app'
 import { routesOf } from './route-tree'
@@ -157,75 +150,5 @@ test('after the temporary directory is deleted, an added route reaches the route
     ...appRoutes,
     '/b': 'routes/b.tsx',
     '/c': 'routes/c.tsx',
-  })
-})
-
-describe('a temporary directory git does not ignore', () => {
-  /** An app in a git work tree of its own, with these `.gitignore` lines. */
-  const gitApp = async (gitignore?: string) => {
-    const root = await createApp({
-      ...app,
-      ...(gitignore === undefined ? {} : { '.gitignore': gitignore }),
-    })
-    execFileSync('git', ['init', '--quiet'], { cwd: root })
-    return root
-  }
-  const logged = (root: string) => configOf(root, { disableLogging: false })
-
-  // `git stash -u` and `git clean -fd` delete it under the running session
-  test('a watch session in a git work tree that does not ignore it warns once, naming the .gitignore', async () => {
-    const root = await gitApp()
-    const config = logged(root)
-    const { diagnostics } = await captureDiagnostics(async () => {
-      const session = await watchApp(root, config)
-      await save(root, 'src/routes/b.tsx', fileRoute('/b'))
-      await waitForOutcome({
-        applied: () => session.routeFiles().includes('src/routes/b.tsx'),
-        problems: () => session.reported,
-        timeout: 10_000,
-        describe: () => session.routeFiles().join(', '),
-      })
-      // a second session of the process: checked already
-      await watchApp(root, config)
-    })
-    expectDiagnostic(diagnostics, {
-      severity: 'warning',
-      file: '.gitignore',
-      root,
-      times: 1,
-    })
-  })
-
-  test.each([
-    { name: '.tanstack', gitignore: '.tanstack\n' },
-    { name: '.tanstack/', gitignore: 'node_modules\n.tanstack/\n' },
-    { name: '**/.tanstack', gitignore: '**/.tanstack\n' },
-  ])(
-    'a watch session in a git work tree that ignores it with $name says nothing',
-    async ({ gitignore }) => {
-      const root = await gitApp(gitignore)
-      const { diagnostics } = await captureDiagnostics(() =>
-        watchApp(root, logged(root)),
-      )
-      expectNoProblems(diagnostics)
-    },
-  )
-
-  test('a watch session outside any git work tree says nothing', async (context) => {
-    const root = await createApp(app)
-    try {
-      execFileSync('git', ['rev-parse', '--show-toplevel'], {
-        cwd: root,
-        stdio: 'ignore',
-      })
-      // (the run directory is inside a git work tree on this machine)
-      context.skip()
-    } catch {
-      // not in a work tree: the case under test
-    }
-    const { diagnostics } = await captureDiagnostics(() =>
-      watchApp(root, logged(root)),
-    )
-    expectNoProblems(diagnostics)
   })
 })
