@@ -861,10 +861,12 @@ function validate(
           } else if (
             node.name.type === 'JSXIdentifier' &&
             node.name.name === 'ref' &&
-            node.value?.type === 'JSXExpressionContainer' &&
-            node.value.expression.type === 'Identifier'
+            node.value?.type === 'JSXExpressionContainer'
           ) {
-            const ref = refAt(node.value.expression.start)
+            // (Solid's JSX transform unwraps `ref={el!}`, `ref={el as T}`, `ref={(el)}`)
+            const target = unwrapExpression(node.value.expression)
+            const ref =
+              target.type === 'Identifier' ? refAt(target.start) : undefined
             if (ref) {
               scan.refAttrs.push({ range: ref.range, sym: ref.sym })
             }
