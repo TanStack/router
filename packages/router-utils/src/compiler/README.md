@@ -229,7 +229,7 @@ text compiles waits for it and emits its own output from the result.
 - `PlanCache`: one plan per (env, canonical id, config key; the late pass is a second config key of a file), the latest revision only. A hit is _validated_ (same canonical identity,
   input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
-- `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read, a
+- `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read and a
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
   module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
@@ -244,7 +244,8 @@ text compiles waits for it and emits its own output from the result.
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per
   module it looked names up in: the names and their keys, or none when the module exports none of them (a barrel's
-  star targets are visited for every name, so one record per name grew with names × targets).
+  star targets are visited for every name, so one record per name grew with names × targets), and the module's
+  `export *` list when a lookup walked it.
 - Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
   (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget` and `retain` drop, which is how anything that
   changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it may have

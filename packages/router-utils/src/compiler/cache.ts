@@ -20,16 +20,16 @@ export type DependencyFingerprint =
    * The exports a plan read of one module, one record however many names it
    * read: per name, its `ModuleSummary.exportKeys` entry (null: the module
    * has no such export); `keys` is null when the module has none of them (a
-   * star target a lookup passed through).
+   * star target a lookup passed through). `stars`: the module's `export *`
+   * list, when a lookup of a name it does not export itself went through it.
    */
   | {
       kind: 'exports'
       canonicalId: string
       names: ReadonlyArray<string>
       keys: ReadonlyArray<string | null> | null
+      stars?: ReadonlyArray<string>
     }
-  /** The `export *` list, read by a lookup of a name the module does not export itself. */
-  | { kind: 'stars'; canonicalId: string; stars: ReadonlyArray<string> }
   | { kind: 'target-facts'; canonicalId: string; digest: string }
   /** Only the target's environment marker (a consumer that reads nothing else). */
   | {
@@ -52,8 +52,6 @@ function fingerprintId(fp: DependencyFingerprint): string {
       return `summary:${fp.canonicalId}`
     case 'exports':
       return `exports:${fp.canonicalId}`
-    case 'stars':
-      return `stars:${fp.canonicalId}`
     case 'target-facts':
       return `target:${fp.canonicalId}`
     case 'target-marker':
@@ -70,7 +68,6 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
   switch (fp.kind) {
     case 'summary':
     case 'exports':
-    case 'stars':
     case 'target-facts':
     case 'target-marker':
       return pathOfId(fp.canonicalId)
@@ -125,21 +122,17 @@ export async function fingerprintCurrent(
       return ((await src.summary(fp.canonicalId))?.digest ?? null) === fp.digest
     case 'exports': {
       const summary = await src.summary(fp.canonicalId)
+      const stars = fp.stars
       return (
         summary !== null &&
         fp.names.every(
           (n, i) =>
             (ownEntry(summary.exportKeys, n) ?? null) ===
             (fp.keys?.[i] ?? null),
-        )
-      )
-    }
-    case 'stars': {
-      const stars = (await src.summary(fp.canonicalId))?.stars
-      return (
-        stars !== undefined &&
-        stars.length === fp.stars.length &&
-        stars.every((s, i) => s === fp.stars[i])
+        ) &&
+        (stars === undefined ||
+          (summary.stars.length === stars.length &&
+            summary.stars.every((s, i) => s === stars[i])))
       )
     }
     case 'target-facts':
@@ -315,8 +308,8 @@ class DependentsIndex {
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
   private readonly byId = new Map<string, DependencyFingerprint>()
-  /** The exports lookups read, by module: name → `exportKeys` entry (null: no such export). */
-  private readonly exportReads = new Map<string, Map<string, string | null>>()
+  /** What lookups read of a module: name → `exportKeys` entry (null: no such export), and its `export *` list if they walked it. */
+  private readonly exportReads = new Map<string, ExportReads>()
   /** The dependents-index buckets of `entries` and `exportReads`. */
   private readonly indexKeys = new Set<string>()
 
@@ -338,15 +331,28 @@ export class DependencyLedger {
 
   /** A lookup read export `name` of a module (`key`: its `exportKeys` entry, null when it has none). */
   recordExport(canonicalId: string, name: string, key: string | null): void {
-    let keys = this.exportReads.get(canonicalId)
-    if (!keys) {
-      keys = new Map()
-      this.exportReads.set(canonicalId, keys)
-      this.indexPath(pathOfId(canonicalId))
-    }
+    const { keys } = this.readsOf(canonicalId)
     if (!keys.has(name)) {
       keys.set(name, key)
     }
+  }
+
+  /** A lookup walked the module's `export *` list (a name it does not export itself). */
+  recordStars(canonicalId: string, stars: ReadonlyArray<string>): void {
+    const reads = this.readsOf(canonicalId)
+    // a copy: the plan keeps it, the cache may drop its summary (most star
+    // targets of a barrel have no stars: one list for all of them)
+    reads.stars ??= stars.length === 0 ? NO_STARS : [...stars]
+  }
+
+  private readsOf(canonicalId: string): ExportReads {
+    let reads = this.exportReads.get(canonicalId)
+    if (!reads) {
+      reads = { keys: new Map(), stars: undefined }
+      this.exportReads.set(canonicalId, reads)
+      this.indexPath(pathOfId(canonicalId))
+    }
+    return reads
   }
 
   private indexPath(indexKey: string | null): void {
@@ -357,28 +363,35 @@ export class DependencyLedger {
   }
 
   /**
-   * Every fact recorded, as a published plan keeps it: the exports read of
-   * a module are one `exports` record. Names are sorted, so the star
-   * targets a lookup visited for the same names share one list.
+   * Every fact recorded, as a published plan keeps it: what was read of a
+   * module is one `exports` record. Names are sorted, so the star targets a
+   * lookup visited for the same names share one list.
    */
   published(): Array<DependencyFingerprint> {
     const out = [...this.entries]
-    const lists = new Map<string, ReadonlyArray<string>>()
-    for (const [canonicalId, keys] of this.exportReads) {
-      const sorted = [...keys.keys()].sort()
-      const listId = JSON.stringify(sorted)
-      let names = lists.get(listId)
-      if (!names) {
-        names = sorted
-        lists.set(listId, names)
+    const lists =
+      this.exportReads.size > 1
+        ? new Map<string, ReadonlyArray<string>>()
+        : null
+    for (const [canonicalId, { keys, stars }] of this.exportReads) {
+      let names: ReadonlyArray<string> = [...keys.keys()].sort()
+      if (lists) {
+        const listId = names.join('\0')
+        const shared = lists.get(listId)
+        if (shared) {
+          names = shared
+        } else {
+          lists.set(listId, names)
+        }
       }
+      // (sized once: a pushed array keeps room it does not use)
       const read = names.map((n) => keys.get(n) ?? null)
-      out.push({
-        kind: 'exports',
-        canonicalId,
-        names,
-        keys: read.every((k) => k === null) ? null : read,
-      })
+      const kept = read.some((k) => k !== null) ? read : null
+      out.push(
+        stars
+          ? { kind: 'exports', canonicalId, names, keys: kept, stars }
+          : { kind: 'exports', canonicalId, names, keys: kept },
+      )
     }
     return out
   }
@@ -406,6 +419,13 @@ export class DependencyLedger {
     this.index.publish(this.key, this.indexKeys)
   }
 }
+
+interface ExportReads {
+  keys: Map<string, string | null>
+  stars: ReadonlyArray<string> | undefined
+}
+
+const NO_STARS: ReadonlyArray<string> = Object.freeze([])
 
 /** The dependents-index buckets of a plan's dependencies. */
 function indexKeysOf(

@@ -541,12 +541,7 @@ async function runAttempt(
     summaryOf,
     exportOf,
     starsOf: (canonicalId, summary) =>
-      ledger.record({
-        kind: 'stars',
-        canonicalId,
-        // a copy: the plan keeps it, the cache may drop its summary
-        stars: [...summary.stars],
-      }),
+      ledger.recordStars(canonicalId, summary.stars),
     readableOf: async (canonicalId) => {
       const { summary } = await rawFactsOf(canonicalId)
       if (summary === null) {

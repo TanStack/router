@@ -207,6 +207,37 @@ describe('a dependency with a query or a virtual id', () => {
   })
 })
 
+describe('a lookup through `export *`', () => {
+  it('depends on the star lists it walked, star targets without the name included', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': `import { make } from './barrel'\nexport const c = make\n`,
+        '/app/barrel.ts': `export * from './a'\nexport * from './b'\n`,
+        '/app/a.ts': 'export const other = 1\n',
+        '/app/b.ts': 'export const make = 1\n',
+        '/app/c.ts': 'export const make = 2\n',
+      },
+    })
+    await host.compile('/app/consumer.ts', planners())
+    const edit = async (path: string, text: string) => {
+      host.write(path, text)
+      const r = await invalidate(host.caches, { path, kind: 'change' }, host)
+      return r.dependents.map((k) => k.canonicalId)
+    }
+    // a star target without the name: another export of it is not read
+    expect(await edit('/app/a.ts', 'export const other = 2\n')).toEqual([])
+    // its own `export *` list is (the name may come through it)
+    expect(
+      await edit('/app/a.ts', `export const other = 2\nexport * from './c'\n`),
+    ).toEqual(['/app/consumer.ts'])
+    await host.compile('/app/consumer.ts', planners())
+    // and so is the barrel's
+    expect(await edit('/app/barrel.ts', `export * from './b'\n`)).toEqual([
+      '/app/consumer.ts',
+    ])
+  })
+})
+
 describe('a package.json change', () => {
   it('checks the resolutions of a plan once, however many of its files lie under the manifest', async () => {
     const names = Array.from({ length: 50 }, (_, i) => `m${i}`)
