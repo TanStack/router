@@ -66,3 +66,41 @@ export const leak = pick().handler(async () => 'secret')`
     column: true,
   })
 })
+
+// Source: review round 3 (R3-G2-3): a `var` redeclaring a function or a
+// parameter (JavaScript allows it; TypeScript's checker does not) was valued
+// as the function, so the handler of its builder shipped. The first
+// declaration with a value is the name's value (SPEC J4.5): after a function
+// declaration the declarator is a reassignment; a parameter has no value, so
+// the builder is a local of the function, as `const fn = createServerFn()`.
+const redeclared = (
+  head: string,
+) => `import { createServerFn } from '@tanstack/react-start'
+${head} = createServerFn()
+  return fn.handler(async () => 'MARK_SECRET')
+}
+`
+
+test.each([
+  {
+    redeclares: 'a function',
+    head: 'export function a() {\n  function fn() {}\n  var fn',
+    at: 'createServerFn()\n',
+  },
+  {
+    redeclares: 'a parameter',
+    head: 'export function a(fn) {\n  var fn',
+    at: 'fn.handler',
+  },
+])(
+  'a builder in a var redeclaring $redeclares fails the client module',
+  async ({ head, at }) => {
+    const source = redeclared(head)
+    const startCase = await (await host()).case({ 'module.js': source })
+    expectCompileError(await compileError(startCase, 'client', 'module.js'), {
+      source,
+      at,
+      column: true,
+    })
+  },
+)
