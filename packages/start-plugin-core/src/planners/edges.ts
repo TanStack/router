@@ -274,11 +274,13 @@ export function importEdgesPlanner(
   /** The module's own violation, if its file rule or its marker denies it here. */
   const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
     const id = ctx.identity.canonicalId
+    // an entry's own marker is judged at its marker import (located there)
+    const entry = ip.isEntry(ctx.identity.path)
     const rule = await fileOrMarkerRule(
       config,
       ctx.env.type,
       ctx.identity.path,
-      () => plan.facts.marker,
+      () => (entry ? null : plan.facts.marker),
     )
     return (
       rule &&
@@ -422,7 +424,7 @@ export function importEdgesPlanner(
           ),
         plan.revision,
       )
-      if (judgedOwn && output === 'env' && !ip.isEntry(ctx.identity.path)) {
+      if (judgedOwn && output === 'env') {
         const own = await ownViolation(ctx, plan)
         if (own) {
           facts.violations[output] = [own]
@@ -505,9 +507,8 @@ export function importEdgesPlanner(
         }
         violations.push(base)
       }
-      // the module's own violation (an entry's own marker is judged at its
-      // marker import above)
-      if (output === 'env' && !ip.isEntry(ctx.identity.path)) {
+      // the module's own violation
+      if (output === 'env') {
         const own = await ownViolation(ctx, plan)
         if (own) {
           violations.push(own)
