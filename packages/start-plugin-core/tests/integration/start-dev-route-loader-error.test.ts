@@ -14,15 +14,19 @@ import type { Framework } from './route-error-apps'
 
 const timeout = 90_000
 
-/** A route at `/fails`; `throwInBrowser`: its loader throws when it runs in the browser (a failing API, say). */
+/**
+ * A route at `/fails`; `throwInBrowser`: its loader throws `thrown` (an
+ * `Error` by default) when it runs in the browser (a failing API, say).
+ */
 const failing = (
   framework: Framework,
   text: string,
   throwInBrowser: boolean,
   errorComponent: boolean,
+  thrown = `new Error('loader-fails-in-browser')`,
 ) => {
   const loader = `loader: () => {
-    ${throwInBrowser ? `if (typeof window !== 'undefined') throw new Error('loader-fails-in-browser')\n    ` : ''}return '${text}'
+    ${throwInBrowser ? `if (typeof window !== 'undefined') throw ${thrown}\n    ` : ''}return '${text}'
   }`
   const options = `{
   ${loader},
@@ -48,6 +52,96 @@ function Fails() {
 `
 }
 
+/**
+ * Opens `/fails` of an app whose loader throws `thrown` in the browser
+ * (caught by the route's error component or the global boundary), edits
+ * another route, then fixes the loader: the page shows the fix, updated in
+ * place (but for Vue's global boundary, which reloads once).
+ */
+async function editAfterLoaderFailure(
+  framework: Framework,
+  errorComponent: boolean,
+  thrown?: string,
+) {
+  const app = apps[framework]
+  const server = await startDevServer({
+    ...app,
+    start: {},
+    browser: true,
+    files: {
+      ...app.files,
+      'src/routes/index.tsx': index(framework, 'home-v1', false),
+      'src/routes/fails.tsx': failing(
+        framework,
+        'fails-v1',
+        true,
+        errorComponent,
+        thrown,
+      ),
+    },
+  })
+  const browser = await openPage(server.url!, {
+    registerCleanup: onTestFinished,
+  })
+  await browser.waitForText('home-v1', {
+    selector: '[data-probe=home]',
+  })
+  await browser.page.waitForFunction(
+    () => (window as any).__TSR_ROUTER__ !== undefined,
+  )
+  await browser.page.evaluate(() =>
+    (window as any).__TSR_ROUTER__.navigate({ to: '/fails' }),
+  )
+  await expect
+    .poll(
+      () =>
+        browser.page.evaluate(() =>
+          (window as any).__TSR_ROUTER__.stores.matches
+            .get()
+            .some((match: any) => match.status === 'error'),
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(true)
+  if (errorComponent) {
+    await browser.waitForText('route-error', {
+      selector: '[data-probe=error]',
+    })
+  }
+  await server.idle()
+
+  await server.edit({
+    'src/routes/index.tsx': index(framework, 'home-v2', false),
+  })
+  // Vue cannot render the document shell again once its global
+  // boundary replaced it: route edits reload the page, as after a
+  // render error
+  const reloads = framework === 'vue' && !errorComponent
+  if (reloads) {
+    await expect.poll(() => browser.loads()).toBe(2)
+    await browser.waitForText('fails-v1', {
+      selector: '[data-probe=fails]',
+    })
+    await browser.page.waitForFunction(
+      () => (window as any).__TSR_ROUTER__ !== undefined,
+    )
+  }
+  await server.idle()
+  await server.edit({
+    'src/routes/fails.tsx': failing(
+      framework,
+      'fails-v2',
+      false,
+      errorComponent,
+    ),
+  })
+  await browser.waitForText('fails-v2', {
+    selector: '[data-probe=fails]',
+    timeout: 20_000,
+  })
+  expect(browser.loads()).toBe(reloads ? 2 : 1)
+}
+
 describe('Vite dev, Start with a document shell: route edits after a loader failed', () => {
   // A loader error is the router's state, not a render error: the boundary
   // that shows it resets when the route loads again. Source: review of
@@ -59,85 +153,27 @@ describe('Vite dev, Start with a document shell: route edits after a loader fail
   ] as const)('caught by %s', (_, errorComponent) => {
     test.each(['react', 'solid', 'vue'] as const)(
       '%s: an edit of another route updates in place, and an edit that fixes the loader shows the fix',
-      async (framework) => {
-        const app = apps[framework]
-        const server = await startDevServer({
-          ...app,
-          start: {},
-          browser: true,
-          files: {
-            ...app.files,
-            'src/routes/index.tsx': index(framework, 'home-v1', false),
-            'src/routes/fails.tsx': failing(
-              framework,
-              'fails-v1',
-              true,
-              errorComponent,
-            ),
-          },
-        })
-        const browser = await openPage(server.url!, {
-          registerCleanup: onTestFinished,
-        })
-        await browser.waitForText('home-v1', {
-          selector: '[data-probe=home]',
-        })
-        await browser.page.waitForFunction(
-          () => (window as any).__TSR_ROUTER__ !== undefined,
-        )
-        await browser.page.evaluate(() =>
-          (window as any).__TSR_ROUTER__.navigate({ to: '/fails' }),
-        )
-        await expect
-          .poll(
-            () =>
-              browser.page.evaluate(() =>
-                (window as any).__TSR_ROUTER__.stores.matches
-                  .get()
-                  .some((match: any) => match.status === 'error'),
-              ),
-            { timeout: 15_000 },
-          )
-          .toBe(true)
-        if (errorComponent) {
-          await browser.waitForText('route-error', {
-            selector: '[data-probe=error]',
-          })
-        }
-        await server.idle()
-
-        await server.edit({
-          'src/routes/index.tsx': index(framework, 'home-v2', false),
-        })
-        // Vue cannot render the document shell again once its global
-        // boundary replaced it: route edits reload the page, as after a
-        // render error
-        const reloads = framework === 'vue' && !errorComponent
-        if (reloads) {
-          await expect.poll(() => browser.loads()).toBe(2)
-          await browser.waitForText('fails-v1', {
-            selector: '[data-probe=fails]',
-          })
-          await browser.page.waitForFunction(
-            () => (window as any).__TSR_ROUTER__ !== undefined,
-          )
-        }
-        await server.idle()
-        await server.edit({
-          'src/routes/fails.tsx': failing(
-            framework,
-            'fails-v2',
-            false,
-            errorComponent,
-          ),
-        })
-        await browser.waitForText('fails-v2', {
-          selector: '[data-probe=fails]',
-          timeout: 20_000,
-        })
-        expect(browser.loads()).toBe(reloads ? 2 : 1)
-      },
+      (framework) => editAfterLoaderFailure(framework, errorComponent),
       timeout,
     )
   })
+
+  // Solid's `ErrorBoundary` hands a thrown value that is no `Error` to the
+  // boundary wrapped in one (its `cause`): still the loader's error.
+  // Source: review of 2026-11-09, round 2 (such a loader error made the next
+  // route edit reload the page, on Solid only).
+  test.each([
+    ['a string', 'a route error component', true, `'loader-fails-in-browser'`],
+    [
+      'a plain object',
+      'the global boundary',
+      false,
+      `{ reason: 'loader-fails-in-browser' }`,
+    ],
+  ] as const)(
+    'solid: a loader throwing %s, caught by %s: an edit of another route updates in place, and an edit that fixes the loader shows the fix',
+    (_, __, errorComponent, thrown) =>
+      editAfterLoaderFailure('solid', errorComponent, thrown),
+    timeout,
+  )
 })

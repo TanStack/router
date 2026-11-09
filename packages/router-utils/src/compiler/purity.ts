@@ -57,13 +57,16 @@ export interface BuilderPurity {
   /** Env-only kind → the environment keeping its argument (`RecognizerTable.envOnlyKinds`). */
   envOnly: Readonly<Record<string, 'client' | 'server'>>
   /**
-   * Local names of imports of known packages' chain factories → kind. By
-   * name: the checks evaluate module-level expressions only (never a
-   * function body), where a name is the module scope's.
+   * Local names of imports of known packages' chain factories → the import's
+   * binding and the kind. A callee of that name is the factory when it
+   * refers to that binding (a function body may declare the name again).
    */
-  factories: ReadonlyMap<string, string>
-  /** Local names of namespace imports of known packages → their factory exports → kind. */
-  namespaces: ReadonlyMap<string, Readonly<Record<string, string>>>
+  factories: ReadonlyMap<string, { binding: number; kind: string }>
+  /** Local names of namespace imports of known packages → the import's binding and its factory exports → kind. */
+  namespaces: ReadonlyMap<
+    string,
+    { binding: number; factories: Readonly<Record<string, string>> }
+  >
   /** Kind → the terminal value its builder reaches (`RecognizerTable.terminal`): `serverFn` ends at `.handler()`. */
   terminal: Readonly<Record<string, string>>
   /** Names of the module-level `const`s declared so far whose value is an open chain's builder → kind. */
@@ -405,15 +408,22 @@ export function builderCall(
   const callee = unwrapExpression(call.callee)
   let factory: string | undefined
   if (callee.type === 'Identifier') {
-    factory = b.factories.get(callee.name)
+    const imported = b.factories.get(callee.name)
+    if (imported && refersTo(ctx, callee, imported.binding)) {
+      factory = imported.kind
+    }
   } else if (
     callee.type === 'MemberExpression' &&
     !callee.computed &&
     callee.property.type === 'Identifier'
   ) {
     const object = unwrapExpression(callee.object as Node)
-    const namespace =
+    const imported =
       object.type === 'Identifier' ? b.namespaces.get(object.name) : undefined
+    const namespace =
+      imported && refersTo(ctx, object, imported.binding)
+        ? imported.factories
+        : undefined
     if (namespace) {
       factory = ownEntry(namespace, callee.property.name)
     } else {
@@ -444,6 +454,11 @@ export function builderCall(
   return keptPure(only ?? 'both')
     ? { kind: factory, open: only === undefined }
     : null
+}
+
+/** Whether an identifier refers to the binding `id` (an import's). */
+function refersTo(ctx: PurityContext, node: Node, id: number): boolean {
+  return ctx.file.referenceOf(node)?.binding?.id === id
 }
 
 /** The builder kind of a link's receiver: an open chain's call, or a `const` holding one. */

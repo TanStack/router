@@ -272,18 +272,17 @@ export class RawFactsCache {
       const prior = entry.facts
       const text = await this.readSaved(canonicalId, env, prior)
       const built = this.build(canonicalId, text)
-      // A file that stops parsing (saved mid-edit), or that reads empty
-      // after holding a module (`readSaved`), keeps the last facts it parsed
-      // to: its importers' decisions stand until it parses again (a changed
-      // digest would evict their plans and hot-update modules that cannot
-      // accept, e.g. a route tree, into a full reload). A file that never
-      // parsed is unknown.
+      // A file that stops parsing (saved mid-edit) keeps the last facts it
+      // parsed to: its importers' decisions stand until it parses again (a
+      // changed digest would evict their plans and hot-update modules that
+      // cannot accept, e.g. a route tree, into a full reload). A file that
+      // never parsed is unknown. One that still reads empty after
+      // `readSaved`'s retries is empty.
       const facts =
         text !== null &&
         !built.opaque &&
         prior?.summary &&
-        (built.summary === null ||
-          (text === '' && this.heldModule(canonicalId, prior)))
+        built.summary === null
           ? prior
           : built
       // a newer read may have superseded this one
@@ -346,7 +345,9 @@ export class RawFactsCache {
     holder.p = (async () => {
       const text = await this.read(canonicalId, env)
       // (an empty read of a file that held a module goes to `get`, which
-      // reads it again: `readSaved`)
+      // reads it again for a moment: `readSaved`. A file event checks the
+      // importers' markers at once, maybe while an in-place save has the
+      // file empty)
       if (
         text !== null &&
         (this.mayHaveMarker(text) ||
@@ -502,7 +503,8 @@ export class RawFactsCache {
    * the change in between, once (chokidar drops another change of a file
    * within a moment of the last one): a file that held a module and reads
    * empty is read again for a moment, until the text is there (as Vite's
-   * `readModifiedFile` reads a changed file for its own hot updates).
+   * `readModifiedFile` reads a changed file for its own hot updates). Still
+   * empty after that, it is empty (a later write gets an event of its own).
    */
   private async readSaved(
     canonicalId: string,

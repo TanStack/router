@@ -633,7 +633,7 @@ describe('facts of a file saved in place (truncated, then written)', () => {
     expect((await read).targetFacts.exportNames).toEqual(['b'])
   })
 
-  it('keeps the last facts while a file that held a module stays empty', async () => {
+  it('reads an empty module once a file that held one stays empty', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': 'export const a = 1\n',
     }
@@ -641,23 +641,19 @@ describe('facts of a file saved in place (truncated, then written)', () => {
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
     })
-    const parsed = await cache.get('/app/a.ts', 'client')
+    await cache.get('/app/a.ts', 'client')
     files['/app/a.ts'] = ''
     cache.markStale('/app/a.ts')
-    const empty = await cache.get('/app/a.ts', 'client')
-    expect(empty.targetFacts.digest).toBe(parsed.targetFacts.digest)
-    expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
-    // a file that was empty from the start has the facts of an empty module
+    const emptied = await cache.get('/app/a.ts', 'client')
     files['/app/b.ts'] = ''
-    expect(
-      (await cache.get('/app/b.ts', 'client')).targetFacts.exportNames,
-    ).toEqual([])
+    const empty = await cache.get('/app/b.ts', 'client')
+    expect(emptied.targetFacts.exportNames).toEqual([])
+    expect(emptied.targetFacts.digest).toBe(empty.targetFacts.digest)
   })
 
-  it('keeps the marker of a file that held one while it reads empty', async () => {
-    const files: Record<string, string> = {
-      '/app/a.ts': `import '@tanstack/react-start/server-only'\nexport const a = 1\n`,
-    }
+  it('reads the marker of the written text, or none once the file stays empty', async () => {
+    const marked = `import '@tanstack/react-start/server-only'\nexport const a = 1\n`
+    const files: Record<string, string> = { '/app/a.ts': marked }
     const cache = new RawFactsCache({
       readFile: (p) => Promise.resolve(files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
@@ -666,8 +662,16 @@ describe('facts of a file saved in place (truncated, then written)', () => {
       },
     })
     expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    // the file event asks the marker while the file is empty
     files['/app/a.ts'] = ''
     cache.markStale('/app/a.ts')
-    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    const saved = cache.marker('/app/a.ts', 'client')
+    setTimeout(() => {
+      files['/app/a.ts'] = `${marked}export const b = 2\n`
+    }, 15)
+    expect(await saved).toBe('server-only')
+    files['/app/a.ts'] = ''
+    cache.markStale('/app/a.ts')
+    expect(await cache.marker('/app/a.ts', 'client')).toBeNull()
   })
 })
