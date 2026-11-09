@@ -180,26 +180,16 @@ Arguments after -- go to the selected unit tests, not the measurement.`)
   }
 
   if (values['test-projects']) {
-    const pnpmPath = process.env.npm_execpath
-    const status = step(
-      'tests',
-      pnpmPath
-        ? process.execPath
-        : process.platform === 'win32'
-          ? 'pnpm.cmd'
-          : 'pnpm',
-      [
-        ...(pnpmPath ? [pnpmPath] : []),
-        'nx',
-        'run-many',
-        '--target=test:unit',
-        `--projects=${values['test-projects']}`,
-        '--parallel=1',
-        '--outputStyle=stream',
-        '--skipRemoteCache',
-        ...(testArgs.length > 0 ? ['--', ...testArgs] : []),
-      ],
-    )
+    const status = step('tests', process.execPath, [
+      fileURLToPath(import.meta.resolve('nx/bin/nx.js')),
+      'run-many',
+      '--target=test:unit',
+      `--projects=${values['test-projects']}`,
+      '--parallel=1',
+      '--outputStyle=stream',
+      '--skipRemoteCache',
+      ...(testArgs.length > 0 ? ['--', ...testArgs] : []),
+    ])
     if (status !== 0) {
       return status
     }

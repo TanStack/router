@@ -17,8 +17,7 @@ test('generates a fresh report after a successful Nx run, including cache hits',
   )
   assert.equal(status, 0)
   assert.equal(calls.length, 2)
-  assert.deepEqual(calls[0]?.slice(-5), [
-    'nx',
+  assert.deepEqual(calls[0]?.slice(1), [
     'run',
     '@benchmarks/bundle-size:measure',
     '--outputStyle=stream',

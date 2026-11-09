@@ -10,18 +10,12 @@ const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
  * @param {import('./run.mjs').Execute} [execute]
  */
 export function build(args, execute = spawnSync) {
-  const pnpmPath = process.env.npm_execpath
   /** @type {import('./run.mjs').CommandOptions} */
   const options = { cwd: repoRoot, env: process.env, stdio: 'inherit' }
   const result = execute(
-    pnpmPath
-      ? process.execPath
-      : process.platform === 'win32'
-        ? 'pnpm.cmd'
-        : 'pnpm',
+    process.execPath,
     [
-      ...(pnpmPath ? [pnpmPath] : []),
-      'nx',
+      fileURLToPath(import.meta.resolve('nx/bin/nx.js')),
       'run',
       '@benchmarks/bundle-size:measure',
       ...args,
