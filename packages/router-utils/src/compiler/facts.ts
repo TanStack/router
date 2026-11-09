@@ -15,7 +15,7 @@
 import { digestOf, identify, isCommonJsPath } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
-import { buildSummary } from './summary'
+import { buildSummary, exportKeysOf } from './summary'
 import { ownEntry } from './strings'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
@@ -365,11 +365,6 @@ export class RawFactsCache {
     return false
   }
 
-  async digestOf(canonicalId: string, env: string): Promise<string | null> {
-    const f = await this.get(canonicalId, env)
-    return f.summary?.digest ?? null
-  }
-
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
   async getTarget(canonicalId: string, env: string): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
@@ -456,7 +451,12 @@ export class RawFactsCache {
       codeEffects: { client: false, server: false },
     }
     return {
-      summary: { exports: exportFacts, stars: [], digest },
+      summary: {
+        exports: exportFacts,
+        stars: [],
+        exportKeys: exportKeysOf(exportFacts),
+        digest,
+      },
       targetFacts: { ...tf, digest: digestOf(tf) },
     }
   }

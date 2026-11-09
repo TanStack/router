@@ -433,6 +433,8 @@ export function dependencyPaths(
   for (const fp of dependencies) {
     if (
       fp.kind === 'summary' ||
+      fp.kind === 'export' ||
+      fp.kind === 'stars' ||
       fp.kind === 'target-facts' ||
       fp.kind === 'target-marker'
     ) {
@@ -550,7 +552,7 @@ export function fingerprintSourceFor(
   env: string,
 ): FingerprintSource {
   return {
-    summaryDigest: (id) => caches.rawFacts.digestOf(id, env),
+    summary: async (id) => (await caches.rawFacts.get(id, env)).summary,
     targetDigest: (id) => caches.rawFacts.targetDigestOf(id, env),
     targetMarker: (id) => caches.rawFacts.marker(id, env),
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,

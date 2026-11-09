@@ -29,6 +29,7 @@ import {
   resolveForAnalysis,
 } from './host'
 import { registerCompilerStats } from './stats'
+import { ownEntry } from './strings'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
 import type { CacheEntry, Settled } from './cache'
 import type { Diagnostic } from './diagnostics'
@@ -480,6 +481,21 @@ async function runAttempt(
     })
     return facts.summary
   }
+  // a lookup depends on the export it reads, not on the module's others
+  const exportOf = async (canonicalId: string, name: string) => {
+    const { summary } = await host.rawFacts.get(canonicalId, env.name)
+    ledger.record(
+      summary === null
+        ? { kind: 'summary', canonicalId, digest: null }
+        : {
+            kind: 'export',
+            canonicalId,
+            name,
+            key: ownEntry(summary.exportKeys, name) ?? null,
+          },
+    )
+    return summary
+  }
   const targetFactsOf = async (canonicalId: string) => {
     const facts = await host.rawFacts.getTarget(canonicalId, env.name)
     ledger.record({
@@ -496,6 +512,14 @@ async function runAttempt(
   }
   const resolver = new ExportResolver({
     summaryOf,
+    exportOf,
+    starsOf: (canonicalId, summary) =>
+      ledger.record({
+        kind: 'stars',
+        canonicalId,
+        // a copy: the plan keeps it, the cache may drop its summary
+        stars: [...summary.stars],
+      }),
     resolveSpecifier: (spec, importer) => resolveFrom(spec, importer),
   })
   const withdrawn = new Set<string>()
