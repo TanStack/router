@@ -27,8 +27,15 @@ function getPrerenderablePaths(model: TreeModel): Array<{ path: string }> {
 
     // filter routes that do not have a component, i.e api routes (a route
     // whose options may hold a key the generator could not read may have
-    // one, SPEC J1.9)
-    if (!route.props?.unknown && !route.props?.known.has('component')) continue
+    // one, SPEC J1.9, and so may a route without a route file: its component
+    // is in its lazy file)
+    if (
+      route.props &&
+      !route.props.unknown &&
+      !route.props.known.has('component')
+    ) {
+      continue
+    }
 
     paths.add(route.fullPath)
   }

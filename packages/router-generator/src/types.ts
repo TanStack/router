@@ -99,6 +99,7 @@ export interface ModelRoute {
   readonly children: ReadonlyArray<ModelRoute>
   /** Lazily loaded files of the route, by option (absolute paths). */
   readonly pieces: Readonly<Partial<Record<RoutePieceName, string>>>
+  /** What the route file's `Route` options record; undefined for a route without a route file (nothing is known: its lazy file or pieces may hold any option). */
   readonly props: RouteProps | undefined
 }
 
