@@ -40,7 +40,8 @@
           "buildProduction",
           "^buildProduction",
           "dependentTaskOutputs",
-          "streamingSsrTests"
+          "streamingSsrTests",
+          "compilerSelfChecks"
         ]
       },
       "test:e2e": {
@@ -48,14 +49,16 @@
           "default",
           "^production",
           "dependentTaskOutputs",
-          "streamingSsrTests"
+          "streamingSsrTests",
+          "compilerSelfChecks"
         ]
       },
       "test:e2e:preview": {
         "inputs": [
           "default",
           "^production",
-          "streamingSsrTests"
+          "streamingSsrTests",
+          "compilerSelfChecks"
         ]
       },
       "test:e2e:buffer-repro": {
@@ -63,7 +66,8 @@
           "default",
           "^production",
           "dependentTaskOutputs",
-          "streamingSsrTests"
+          "streamingSsrTests",
+          "compilerSelfChecks"
         ]
       }
     }
