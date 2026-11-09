@@ -1126,6 +1126,32 @@ export const query = () => 'MARK_DB'
     expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
   }, 120_000)
 
+  // The exempt importer is restored, the edited denied file built again
+  // before the cache's records of its importers are read. Source: review
+  // round 3 (R3-G6-4).
+  test('an exempt importer keeps the real module of a denied file edited between builds', async () => {
+    const exempt = {
+      'src/generated/registry.ts': `import { secret } from '../lib/db.server'
+export const registry = () => secret()
+`,
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_SECRET_1'\n`,
+      'src/entry.ts': `export { registry } from './generated/registry'\n`,
+    }
+    const cold = await buildStart({
+      bundler: 'rsbuild',
+      rsbuildConfig: { performance: { buildCache: true } },
+      files: exempt,
+      entry: 'src/entry.ts',
+      start: { importProtection: { exclude: ['src/generated/**'] } },
+    })
+    expect(cold.client.where('MARK_SECRET_1')).not.toBe('nowhere')
+    const warm = await cold.rebuild({
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_SECRET_2'\n`,
+    })
+    expect(warm.violations).toEqual([])
+    expect(warm.client.where('MARK_SECRET_2')).not.toBe('nowhere')
+  }, 120_000)
+
   test('allowImport -> true: the warm build asks again and bundles the real modules', async () => {
     let asked: Array<string> = []
     const allow: ImportProtectionOptions = {
