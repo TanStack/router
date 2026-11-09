@@ -914,6 +914,19 @@ export interface ViewTransitionOptions {
  * Convert an unknown error into a minimal, serializable object.
  * Includes name and message (and stack in development).
  */
+/**
+ * @internal Development-only: a router catch boundary of the framework
+ * adapters caught `error`. A render error makes route hot updates reload the
+ * page (`_hmrReload`); an error the router holds on a current match (its
+ * loader's or `beforeLoad`'s) is the router's state, not a render error: the
+ * boundary resets when the match loads again.
+ */
+export function hmrReloadAfterCatch(router: AnyRouter, error: unknown) {
+  if (!router.stores.matches.get().some((match) => match.error === error)) {
+    router._hmrReload = true
+  }
+}
+
 export function defaultSerializeError(err: unknown) {
   if (err instanceof Error) {
     const obj = {
@@ -1121,7 +1134,8 @@ export interface RouterCore<
   /**
    * @internal Development-only: a router catch boundary caught a render
    * error that route HMR cannot recover from in place, so route hot updates
-   * reload the page (set by the framework adapters).
+   * reload the page (`hmrReloadAfterCatch`, called by the framework
+   * adapters).
    */
   _hmrReload?: true
 }

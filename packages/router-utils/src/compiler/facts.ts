@@ -112,6 +112,10 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
 const OPAQUE_DIGEST = digestOf(OPAQUE_TARGET)
 const MISSING_DIGEST = digestOf(MISSING_TARGET)
 
+/** How often, and how far apart, an empty read of a file that held a module is repeated (`readSaved`: Vite's `readModifiedFile` waits as long). */
+const SAVE_RETRIES = 10
+const SAVE_RETRY_MS = 10
+
 interface FactsEntry {
   stale: boolean
   facts: RawFacts | null
@@ -259,19 +263,22 @@ export class RawFactsCache {
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
-      const text = await this.read(canonicalId, env)
+      const prior = entry.facts
+      const text = await this.readSaved(canonicalId, env, prior)
       const built = this.build(canonicalId, text)
-      // A file that stops parsing (saved mid-edit) keeps the last facts it
-      // parsed to: its importers' decisions stand until it parses again (a
-      // changed digest would evict their plans and hot-update modules that
-      // cannot accept, e.g. a route tree, into a full reload). A file that
-      // never parsed is unknown.
+      // A file that stops parsing (saved mid-edit), or that reads empty
+      // after holding a module (`readSaved`), keeps the last facts it parsed
+      // to: its importers' decisions stand until it parses again (a changed
+      // digest would evict their plans and hot-update modules that cannot
+      // accept, e.g. a route tree, into a full reload). A file that never
+      // parsed is unknown.
       const facts =
         text !== null &&
-        built.summary === null &&
         !built.opaque &&
-        entry.facts?.summary
-          ? entry.facts
+        prior?.summary &&
+        (built.summary === null ||
+          (text === '' && this.heldModule(canonicalId, prior)))
+          ? prior
           : built
       // a newer read may have superseded this one
       if (entry.pending === holder.p) {
@@ -332,7 +339,15 @@ export class RawFactsCache {
     const holder: { p: Promise<TargetFacts['marker']> | null } = { p: null }
     holder.p = (async () => {
       const text = await this.read(canonicalId, env)
-      if (text !== null && this.mayHaveMarker(text)) {
+      // (an empty read of a file that held a module goes to `get`, which
+      // reads it again: `readSaved`)
+      if (
+        text !== null &&
+        (this.mayHaveMarker(text) ||
+          (text === '' &&
+            entry.facts !== null &&
+            this.heldModule(canonicalId, entry.facts)))
+      ) {
         if (entry.pendingMarker === holder.p) {
           entry.pendingMarker = null
         }
@@ -473,6 +488,44 @@ export class RawFactsCache {
     }
     this.counters.factsReads++
     return this.opts.readFile(id.path)
+  }
+
+  /**
+   * `read`, for a file whose last facts were `prior`. An editor that saves
+   * in place truncates the file, then writes it, and the watcher may report
+   * the change in between, once (chokidar drops another change of a file
+   * within a moment of the last one): a file that held a module and reads
+   * empty is read again for a moment, until the text is there (as Vite's
+   * `readModifiedFile` reads a changed file for its own hot updates).
+   */
+  private async readSaved(
+    canonicalId: string,
+    env: string,
+    prior: RawFacts | null,
+  ): Promise<string | null> {
+    let text = await this.read(canonicalId, env)
+    if (
+      text !== '' ||
+      prior === null ||
+      isVirtualId(canonicalId) ||
+      !this.heldModule(canonicalId, prior)
+    ) {
+      return text
+    }
+    for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
+      await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
+      text = await this.read(canonicalId, env)
+    }
+    return text
+  }
+
+  /** Whether `facts` are of a module other than an empty file's. */
+  private heldModule(canonicalId: string, facts: RawFacts): boolean {
+    return (
+      !facts.opaque &&
+      facts.targetFacts.digest !==
+        this.build(canonicalId, '').targetFacts.digest
+    )
   }
 
   /** The facts of a text; `full` parses an opaque module too (its target facts are asked for). */

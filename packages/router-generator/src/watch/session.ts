@@ -52,11 +52,15 @@ export function createGeneratorSession(opts: {
   let watcher: Promise<RouteFileWatcher> | undefined
   let watching: Promise<void> | undefined
 
+  /** After a run: what it found is handed over, and watched (the first run's `physical()` mounts too). */
   const settle = async (run: Promise<void>) => {
     try {
       await run
     } catch (error) {
       report(error)
+    }
+    if (watcher) {
+      ;(await watcher).refresh()
     }
     opts.publish?.(opts.generator().getRoutesByFileMap())
   }

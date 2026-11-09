@@ -29,6 +29,7 @@ import type {
   Bundler,
   DiagnosticsMark,
   GeneratorDevApp,
+  GeneratorDevAppOptions,
   LiveRoute,
 } from './generator-dev-app'
 
@@ -293,6 +294,16 @@ export function describeRouteFileUpkeep(bundler: Bundler) {
       },
       timeout,
     )
+
+    // A checkout whose committed route tree is up to date: the dev server
+    // starts without writing it (the mounts are watched from the start).
+    test(
+      'a route file created under a physical() mount outside the routes directory reaches the live routes when the dev server starts with an up-to-date route tree',
+      async () => {
+        await expectPhysicalMountRouteFile(bundler, { upToDateTree: true })
+      },
+      timeout,
+    )
   })
 }
 
@@ -453,13 +464,16 @@ export async function expectCreatedBrokenRouteFileFixed(
  * An app with virtual routes mounting `features/` with `physical()` next to
  * the routes directory: a route file created there (with another path),
  * edited and deleted reaches the live routes each time. `settleTimeout`
- * guards the wait for the creation (see the Rsbuild pin).
+ * guards the wait for the creation (see the Rsbuild pin). `upToDateTree`:
+ * the app starts with the route tree a first dev server of it wrote, as a
+ * checkout with a committed tree does.
  */
 export async function expectPhysicalMountRouteFile(
   bundler: Bundler,
-  settleTimeout?: number,
+  options: { settleTimeout?: number; upToDateTree?: boolean } = {},
 ) {
-  const app = await generatorDevApp({
+  const { settleTimeout, upToDateTree = false } = options
+  const appOptions: GeneratorDevAppOptions = {
     bundler,
     links: ['@tanstack/virtual-file-routes'],
     // A path relative to the root the plugin resolves it from (the Rspack
@@ -480,7 +494,24 @@ export const routes = rootRoute('__root.tsx', [
       ...index,
       'features/a.tsx': route('/feature/a', 'MARK_A'),
     },
+  }
+  let tree: string | undefined
+  if (upToDateTree) {
+    const first = await generatorDevApp(appOptions)
+    tree = await first.read('routeTree.gen.ts')
+    await first.stop()
+  }
+  const app = await generatorDevApp({
+    ...appOptions,
+    files: {
+      ...appOptions.files,
+      ...(tree !== undefined && { 'routeTree.gen.ts': tree }),
+    },
   })
+  if (tree !== undefined) {
+    // (the tree it started with was up to date: the generator kept it)
+    expect(await app.read('routeTree.gen.ts')).toBe(tree)
+  }
   await app.write({ 'features/b.tsx': route('/wrong', 'MARK_B') })
   await app.settle({ timeout: settleTimeout })
   await expectRouteFile(

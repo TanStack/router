@@ -1,5 +1,9 @@
 import * as Solid from 'solid-js'
-import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
+import {
+  hmrReloadAfterCatch,
+  replaceEqualDeep,
+  rootRouteId,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
@@ -100,7 +104,7 @@ function MatchesInner() {
           onCatch={
             process.env.NODE_ENV !== 'production'
               ? (error) => {
-                  ;(router as { _hmrReload?: true })._hmrReload = true
+                  hmrReloadAfterCatch(router, error)
                   console.warn(
                     `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                   )

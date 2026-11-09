@@ -5,6 +5,7 @@
  * a restart. Client code runs in a real browser page of the dev server
  * (`runViteClient`).
  */
+import { writeFile } from 'node:fs/promises'
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -127,7 +128,80 @@ export const fn = base.handler(async () => db.x('${name}'))
     },
     timeout,
   )
+
+  // An editor that saves in place truncates the file, then writes it: the
+  // watcher reports the empty file and drops the write that follows within
+  // its moment (chokidar's per-file change throttle), so the server hears of
+  // the save once, while the file may still be empty.
+  test(
+    'client: a factory saved in place (truncated, then written) stays a factory for its importers',
+    async () => {
+      const server = await startBrowserStartDevServer({
+        files: {
+          'src/b.ts': factory,
+          'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+          'src/a.tsx': `import { base } from './b'
+import { db } from './db'
+export const fn = base.handler(async () => db.x())
+`,
+        },
+      })
+      const inClient = async (script: string) =>
+        (await runViteClient(server, '/src/a.tsx', script)).result
+      const rpc = `${requestsOfPrelude}
+return { url: entry.fn.url, requests: await requestsOf(entry.fn) }`
+      expect(await inClient(rpc)).toEqual({
+        url: expect.any(String),
+        requests: [{ url: expect.any(String), method: 'GET' }],
+      })
+
+      await saveInPlace(
+        server,
+        'src/b.ts',
+        `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn({ method: 'POST' })
+`,
+      )
+
+      expect(
+        containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
+      ).toEqual([])
+      expect(await inClient(rpc)).toEqual({
+        url: expect.any(String),
+        requests: [{ url: expect.any(String), method: 'POST' }],
+      })
+    },
+    timeout,
+  )
 })
+
+/**
+ * Saves `code` over an app file in place, as an editor that truncates the
+ * file and then writes it: the write comes once the watcher reported the
+ * empty file, within the moment it drops another change of it. Then waits
+ * for the server (`settle()`).
+ */
+async function saveInPlace(
+  server: Awaited<ReturnType<typeof startDevServer>>,
+  relative: string,
+  code: string,
+) {
+  const file = server.file(relative)
+  const from = server.events.length
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms))
+  await writeFile(file, '')
+  const deadline = Date.now() + 5_000
+  while (!server.events.slice(from).some((event) => event.file === relative)) {
+    if (Date.now() > deadline) {
+      throw new Error(`the watcher did not report ${relative}`)
+    }
+    await sleep(1)
+  }
+  await sleep(10)
+  await writeFile(file, code)
+  await server.settle()
+}
 
 describe('Vite dev: server fns by id', () => {
   // A dev server compiles modules on demand: the resolver must find server
