@@ -9,10 +9,13 @@ import type { RecordMapText } from './emitted-maps'
  * bundlers escape a `#` of the file path in `resource` (webpack as `\0#`,
  * Rspack as `\u200b#`; `resourcePath` is unescaped), so that their request
  * parsing reads it as a fragment only when meant as one: a project path with
- * a `#` (`C#`, `project #2`) must give the file's path.
+ * a `#` (`C#`, `project #2`) must give the file's path. A fragment (an
+ * unescaped `#`, last: `./x.ts#a`) names no other source: dropped.
  */
 export function webpackResourceId(resource: string): string {
-  return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
+  const fragment = resource.search(/(?<![\0\u200b])#/)
+  const id = fragment === -1 ? resource : resource.slice(0, fragment)
+  return normalizePath(id.replace(/[\0\u200b]#/g, '#'))
 }
 
 /**

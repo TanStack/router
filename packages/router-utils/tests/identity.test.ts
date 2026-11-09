@@ -10,6 +10,7 @@ import {
   resolveSameFileSpecifier,
   revision,
   sameFileSpecifier,
+  webpackResourceId,
 } from '../src/compiler'
 
 describe('identity', () => {
@@ -349,5 +350,21 @@ describe('identity', () => {
     expect(revision('a')).toBe(revision('a'))
     expect(revision('a')).not.toBe(revision('b'))
     expect(revision('a')).toHaveLength(22)
+  })
+
+  it('gives a webpack-family resource the id of its file, a fragment dropped', () => {
+    // Rspack escapes a path's `#` as `\u200b#`, webpack as `\0#`; a fragment is a raw `#`
+    expect(webpackResourceId('/home/me/C\u200b#/src/a.ts?x=1')).toBe(
+      '/home/me/C#/src/a.ts?x=1',
+    )
+    expect(webpackResourceId('/home/me/C\0#/src/a.ts')).toBe(
+      '/home/me/C#/src/a.ts',
+    )
+    expect(webpackResourceId('/app/src/secrets.ts#x')).toBe(
+      '/app/src/secrets.ts',
+    )
+    expect(webpackResourceId('/home/me/C\u200b#/src/a.ts?raw#x')).toBe(
+      '/home/me/C#/src/a.ts?raw',
+    )
   })
 })

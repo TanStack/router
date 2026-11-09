@@ -60,6 +60,13 @@ code.test.ts`: "a root route's %s loads lazily".
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom type importing
   a denied specifier is reported, and its real code does not run".
+- **Vite: an import with a `#fragment` (`./db.server.ts#x`) is judged as a file of that name**: Vite loads the file
+  before the `#`, but its id keeps the fragment, which no id tells from a `#` of a project path (`C#/src`). A file rule
+  naming the extension (`**/*.server.ts`) misses it and the real module ships; a `server-only` marker fails the build
+  on the mock's missing exports instead of reporting the import. SPEC J6.1.
+  `start-plugin-core/tests/integration/importProtection/fragment-specifier.test.ts`: "of a file its server-only marker
+  denies fails the build, naming the importer", "of a file a rule naming its extension denies fails the build, naming
+  the importer" (Vite). Fix: judged as the file, as on Rsbuild.
 - **Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) cannot import a denied module**:
   Start compiles it as a module of its environment, but its import of the mock (an edge module, a virtual file of the
   environment's compiler) does not resolve in the child compiler, so the build fails whatever the behavior (safe: no
