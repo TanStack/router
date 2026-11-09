@@ -126,7 +126,7 @@ export function startRecognizer(): RecognizerTable {
     startKind: START_KINDS.start,
     startMembers: { createMiddleware: START_KINDS.middleware },
     // the router's and the frameworks' pure APIs: the router planner's table, not a copy
-    pureCalls: knownPureCalls(),
+    ...knownPureCalls(),
   }
   return table
 }

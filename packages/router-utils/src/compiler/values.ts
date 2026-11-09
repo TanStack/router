@@ -86,6 +86,13 @@ export interface RecognizerTable {
    */
   pureCalls?: Record<string, ReadonlySet<string>>
   /**
+   * Specifiers of `pureCalls` whose default export is the module's
+   * namespace (a CommonJS package without `__esModule`, whose default import
+   * every bundler binds to its `module.exports`: React): a default import's
+   * members are recognised as a namespace import's.
+   */
+  pureDefaultNamespaces?: ReadonlySet<string>
+  /**
    * Builder kind → the link methods of its runtime builder → the
    * environment whose compile keeps the method's argument (`both`: every
    * one; a planner erases it from the other). A builder only records what
@@ -93,8 +100,9 @@ export interface RecognizerTable {
    * module-level `const` holding one) with pure arguments is no effect, and
    * an argument the environment erases is not evaluated there; an env-only
    * kind's argument is kept in its environment alone (`envOnlyKinds`). Read
-   * by the per-environment code effects of raw facts (import protection),
-   * never by the planners' purity.
+   * by the per-environment code effects of raw facts (import protection)
+   * and by the planners' purity of every compile, for its environment type
+   * (there, a link called on a `const` is an effect: `ModuleAnalysisOptions.env`).
    */
   builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
 }

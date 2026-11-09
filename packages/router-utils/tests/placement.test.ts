@@ -5121,11 +5121,16 @@ describe('declarations only split code needs that stay in the route module', () 
 
 // A call of a known package's pure export (`RecognizerTable.pureCalls`)
 // with pure arguments is pure, recognised by import binding to the package's
-// export (renamed, namespace member).
+// export (renamed, namespace member, a member of the default import of a
+// package whose default export is its namespace: `pureDefaultNamespaces`).
 describe('pure calls of known packages', () => {
   const recognizer = {
     ...EMPTY_RECOGNIZER,
-    pureCalls: { 'toy-router': new Set(['getRouteApi']) },
+    pureCalls: {
+      'toy-router': new Set(['getRouteApi']),
+      'toy-cjs': new Set(['getRouteApi']),
+    },
+    pureDefaultNamespaces: new Set(['toy-cjs']),
   }
   async function compile(code: string, files: Record<string, string> = {}) {
     const host = new MemoryHost({
@@ -5179,6 +5184,8 @@ describe('pure calls of known packages', () => {
     ["import { getRouteApi } from 'toy-router'", "getRouteApi('/x')"],
     ["import { getRouteApi as g } from 'toy-router'", "g('/x')"],
     ["import * as R from 'toy-router'", "R.getRouteApi('/x')"],
+    ["import C from 'toy-cjs'", "C.getRouteApi('/x')"],
+    ["import { default as C } from 'toy-cjs'", "C.getRouteApi('/x')"],
   ] as const
 
   it('moves a declaration calling one into the chunk: only an effect before it stays', async () => {
@@ -5209,6 +5216,8 @@ describe('pure calls of known packages', () => {
         { '/app/lib.ts': "export const id = () => '/x'" },
       ],
       ["import { useRouteApi } from 'toy-router'", "useRouteApi('/x')", {}],
+      // a default import of a package not listed: not its namespace
+      ["import R from 'toy-router'", "R.getRouteApi('/x')", {}],
       [
         "import { getRouteApi } from './lib'",
         "getRouteApi('/x')",
@@ -5225,12 +5234,12 @@ describe('pure calls of known packages', () => {
   })
 })
 
-// A client compile's builder chains (`RecognizerTable.builderLinks`) with
-// pure arguments are no effect for the planners: what the client erases (a
-// server fn's handler) does not count. The server compile's purity takes
-// none, and a link on a `const` holding a builder stays an effect (a
-// middleware's links write that builder's options).
-describe('builder chains in a client compile', () => {
+// A compile's builder chains (`RecognizerTable.builderLinks`) with pure
+// arguments are no effect for the planners, in either environment: what the
+// environment erases (on the client a server fn's validator and handler)
+// does not count, what it keeps does. A link on a `const` holding a builder
+// stays an effect (a middleware's links write that builder's options).
+describe('builder chains in a compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
     factories: { 'toy-start': { createServerFn: 'serverFn' } },
@@ -5272,9 +5281,20 @@ describe('builder chains in a client compile', () => {
       })
     `)
 
-  it('moves a page-only chain into the chunk on the client only', async () => {
+  it('moves a page-only chain into the chunk in both environments', async () => {
     const code = route(
       'const fn = createServerFn().middleware([]).validator(track).handler(async () => track())',
+    )
+    for (const type of ['client', 'server'] as const) {
+      const r = await compile(code, type)
+      expect(r.env, type).not.toContain('createServerFn()')
+      expect(r.kept, type).toEqual([])
+    }
+  })
+
+  it('counts an argument where its environment keeps it', async () => {
+    const code = route(
+      'const fn = createServerFn().validator(track()).handler(async () => 1)',
     )
     const client = await compile(code, 'client')
     expect(client.env).not.toContain('createServerFn()')
@@ -5289,9 +5309,11 @@ describe('builder chains in a client compile', () => {
       'const base = createServerFn()\nconst fn = base.handler(async () => 1)',
       'const fn = createServerFn().middleware([track()]).handler(async () => 1)',
     ]) {
-      const r = await compile(route(declarations), 'client')
-      expect(r.env, declarations).toContain('const fn =')
-      expect(r.kept, declarations).toContain('fn')
+      for (const type of ['client', 'server'] as const) {
+        const r = await compile(route(declarations), type)
+        expect(r.env, `${type}: ${declarations}`).toContain('const fn =')
+        expect(r.kept, `${type}: ${declarations}`).toContain('fn')
+      }
     }
   })
 })

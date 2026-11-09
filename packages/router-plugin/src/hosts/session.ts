@@ -122,7 +122,7 @@ export class RouterCompiler {
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
       // the router's and the frameworks' pure APIs
-      recognizer: { ...EMPTY_RECOGNIZER, pureCalls: knownPureCalls() },
+      recognizer: { ...EMPTY_RECOGNIZER, ...knownPureCalls() },
     })
     this.caches = createCompilerCaches(
       rawFacts,
