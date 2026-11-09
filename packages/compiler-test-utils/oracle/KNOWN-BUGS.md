@@ -101,6 +101,14 @@ code.test.ts`: "a root route's %s loads lazily".
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
 
+- **A route option value that is a server fn written in place, with that option configured for splitting, fails the
+  server build** with an internal `conflict: two claims on region N` error and no position: Start's planner hoists the
+  server fn and the code splitter relocates the same text. Declared as a `const` before the route and passed by name,
+  it splits and runs. SPEC J2.2, J4.1. `start-plugin-core/tests/integration/start-build-options.test.ts`:
+  "router.codeSplittingOptions: a loader that is a server fn written in place, split into its own chunk, runs on the
+  server" (Vite and Rsbuild). Fix: open (R3-G7-4, awaiting a ruling): the build succeeds and the loader runs on the
+  server, or fails with a positioned error naming the `const` spelling.
+
 ## Known incorrect rejections (accepted, R89)
 
 Reason, for both: a denied file is judged at its own compile, from the imports the compiler indexed; the bundler's graph
