@@ -1,7 +1,7 @@
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
 import { OutputBuilder, SourceText } from '../src/compiler'
-import type { BuilderEdit } from '../src/compiler'
+import type { BuilderEdit } from '../src/compiler/output-builder'
 
 /** ECMAScript line/column of an offset (LF, CRLF, lone CR, U+2028, U+2029). */
 function ecmaLocate(

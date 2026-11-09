@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { emittedMapTexts, fillSourcesContent } from '../src/compiler'
+import { emittedMapTexts } from '../src/compiler'
+import { fillSourcesContent } from '../src/compiler/hosts/emitted-maps'
 import type { EmittedMapsCompilerLike } from '../src/compiler'
 
 const context = path.resolve('/app')

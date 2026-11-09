@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   identifierBase,
   isValidIdentifier,
-  specifierLiteral,
   stringLiteral,
 } from '../src/compiler'
+import { specifierLiteral } from '../src/compiler/strings'
 
 /** The value a JavaScript string literal denotes. */
 function evaluate(literal: string): string {

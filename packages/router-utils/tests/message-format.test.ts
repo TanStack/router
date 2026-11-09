@@ -8,7 +8,8 @@
  * (`located-diagnostics.test.ts`).
  */
 import { describe, expect, it } from 'vitest'
-import { displayPath, positionSuffix, viteLog } from '../src/compiler'
+import { displayPath, viteLog } from '../src/compiler'
+import { positionSuffix } from '../src/compiler/diagnostics'
 
 describe('displayPath', () => {
   it('names a file of the project relative to its root', () => {

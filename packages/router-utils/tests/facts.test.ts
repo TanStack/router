@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
-import type { RawFacts, RecognizerTable } from '../src/compiler'
+import type { RecognizerTable } from '../src/compiler'
+import type { RawFacts } from '../src/compiler/facts'
 
 describe('RawFactsCache', () => {
   it('counts no entry stale once a marker scan has read the file again', async () => {

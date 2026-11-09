@@ -3,39 +3,162 @@
  * README.md). Planners live in `@tanstack/router-plugin` and
  * `@tanstack/start-plugin-core`; hosts compose them through `compileModule`.
  * Not a public API: an internal subpath for those packages, without semver.
- * Most modules are re-exported whole (`export *`), so it also exports
- * helpers only the core itself uses.
+ * It exports what the planners and hosts (and their tests) import, plus
+ * `PlannerData` and `PlannerServices` (the interfaces planner packages
+ * augment); the core's own helpers stay internal, and the core's tests
+ * import those from their files.
  */
-export * from './identity'
-export * from './source'
+export {
+  ASSET_QUERY_RE,
+  canonicalJson,
+  deriveId,
+  digestOf,
+  EXTRACTED_EXPORT_QUERY_RE,
+  identify,
+  isSplitGroupValue,
+  langFromId,
+  normalizePath,
+  OWNED_QUERY_KEYS,
+  planKeyString,
+  resolveSameFileSpecifier,
+  revision,
+  SAME_FILE_SPECIFIER_RE,
+  sameFileSpecifier,
+} from './identity'
+export type { PlanKey } from './identity'
+export {
+  isExpressionWrapper,
+  parseModule,
+  patternIdentifiers,
+  unwrapExpression,
+} from './source'
 export { OutputBuilder, SourceText } from './output-builder'
+export {
+  identifierBase,
+  isValidIdentifier,
+  ownEntry,
+  stringLiteral,
+} from './strings'
+export {
+  displayPath,
+  reportCompileDiagnostics,
+  WarningLedger,
+} from './diagnostics'
 export type {
-  BuilderEdit,
-  BuilderEditPart,
-  OutputBuilderOptions,
-  RawSourceMap,
-} from './output-builder'
-export * from './strings'
-export * from './diagnostics'
-export * from './symbols'
-export * from './header'
-export * from './purity'
-export * from './units'
-export * from './analysis'
-export * from './rewrite'
-export * from './plan'
-export * from './orphans'
-export * from './emit'
-export * from './values'
+  Diagnostic,
+  DiagnosticPosition,
+  DiagnosticSink,
+} from './diagnostics'
+export { valueBinding } from './symbols'
+export type { SymbolId } from './symbols'
+export type { Range } from './header'
+export { isPureExpression } from './purity'
+export type { Unit } from './units'
+export { ModuleAnalysis } from './analysis'
+export type { ClassifiedRef, ImportEntry, Tier1 } from './analysis'
+export type {
+  Anchor,
+  EditScope,
+  Frag,
+  GenUnitId,
+  GlueImport,
+  OutputId,
+  RefTarget,
+  SymRef,
+} from './rewrite'
+export type {
+  EdgeRecord,
+  EmitPlan,
+  EnvInfo,
+  PlanContext,
+  PlanFacts,
+} from './plan'
+export { listEnd, removeListItems } from './orphans'
+export {
+  applyCall,
+  applyMember,
+  EMPTY_RECOGNIZER,
+  isKnownSpecifier,
+  joinValues,
+  recognizeImport,
+  stampSites,
+  staticPropertyKey,
+  UNKNOWN,
+  ValueAnalysis,
+} from './values'
+export type { AbstractValue, RecognizerTable } from './values'
 export { LookupPath } from './resolve'
-export * from './summary'
-export * from './facts'
+export { buildSummary } from './summary'
+export { isVirtualId, RawFactsCache } from './facts'
 export type { PersistedPlan } from './cache'
-export * from './host'
-export * from './pipeline'
-export * from './stats'
-// bundler-shaped helpers of the hosts
-export * from './hosts/index'
+export {
+  fileModifiedAt,
+  invalidate,
+  isAnalyzableSpecifier,
+  OWNED_QUERY_RE,
+  planDependencyFiles,
+  releaseEnvironment,
+  restorePlans,
+} from './host'
+export type {
+  CompileConfig,
+  CompileInput,
+  CompileOutput,
+  CompilerCaches,
+  HostServices,
+  InputSourceMap,
+  InvalidateChange,
+  Planner,
+  PlannerData,
+  PlannerServices,
+  PolicyContext,
+  PrefetchContext,
+  RouteRegistry,
+} from './host'
+export { compileModule, createCompilerCaches } from './pipeline'
+export {
+  cacheDisabled,
+  collectionSizes,
+  compilerStats,
+  registerCompilerStats,
+} from './stats'
+
+// bundler-shaped helpers of the hosts (Vite builds, webpack-family loaders and
+// compilations, eager extracted exports, emitted source maps); nothing of the
+// compiler model uses them
+export {
+  applyViteInvalidation,
+  isFinalBuild,
+  liveModules,
+  loadDerivedSource,
+  viteLog,
+} from './hosts/vite'
+export type { ModuleGraphLike } from './hosts/vite'
+export { composeLoaderMap, webpackResourceId } from './hosts/loader'
+export { invalidateFiles, pathsOf, rebuildModules } from './hosts/rebuild'
+export type { WatchingCompilerLike } from './hosts/rebuild'
+export {
+  initialChunkResources,
+  rollupEntryModuleIds,
+  warnEagerExports,
+  webpackImporters,
+} from './hosts/eager-exports'
+export type { InitialChunksLike } from './hosts/eager-exports'
+export { emittedMapTexts } from './hosts/emitted-maps'
+export type {
+  EmittedMapsCompilerLike,
+  RecordMapText,
+} from './hosts/emitted-maps'
+export { compilerCacheKey } from './hosts/compiler-version'
+export {
+  locatedDiagnostic,
+  locatedError,
+  locateDiagnostics,
+} from './hosts/located-diagnostics'
+export type {
+  LocatedDiagnostic,
+  LocatedDiagnosticsOptions,
+} from './hosts/located-diagnostics'
 /** Yuku's walker and node type, for planners (the core owns the yuku dependency). */
 export { walk } from 'yuku'
 export type { Node as YukuNode } from 'yuku'

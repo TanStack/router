@@ -8,8 +8,8 @@ import {
   joinValues,
   parseModule,
   stampSites,
-  stripSites,
 } from '../src/compiler'
+import { stripSites } from '../src/compiler/values'
 import { MemoryHost, toySummaryPlanner } from './helpers'
 import type { AbstractValue, Planner, RecognizerTable } from '../src/compiler'
 
