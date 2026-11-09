@@ -79,9 +79,9 @@ import type {
 /**
  * A host's import rewrite (`PlannerServices.importRewrite`): the
  * specifiers the bundler turns an import of `specifier` with `names` into
- * (Rsbuild `source.transformImport`), or null when it leaves it alone. The
- * specifier rule judges the raw specifier; file and marker rules judge the
- * rewritten targets.
+ * (Rsbuild: `source.transformImport`, a request's inline loaders), or null
+ * when it leaves it alone. The rules judge the raw specifier, then the
+ * rewritten ones and their targets.
  */
 export type ImportRewrite = (
   specifier: string,
@@ -368,12 +368,18 @@ export function importEdgesPlanner(
         }
         let resolved = await ctx.resolve(raw, from)
         if (rule === null && !exempt) {
-          // a bundler rewrite of the import (Rsbuild `source.transformImport`)
-          // makes the file and marker rules judge the rewritten targets
+          // a bundler rewrite of the import (Rsbuild `source.transformImport`,
+          // inline loaders) makes the rules judge what the bundler loads
           const rewritten = rewriter?.(raw, e.names) ?? null
           for (const spec of rewritten ?? [raw]) {
             const target =
               spec === raw ? resolved : await ctx.resolve(spec, from)
+            const specRule = spec === raw ? null : matchSpecifier(rules, spec)
+            if (specRule !== null) {
+              rule = specRule
+              resolved = target
+              break
+            }
             if (target === null) {
               continue
             }

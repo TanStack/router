@@ -253,13 +253,18 @@ export class StartRsbuildCompilerSession {
     this.missing.clear()
   }
 
-  /** The import rewrite of an environment (`source.transformImport`), when it has one. */
-  private importRewrite(env: EnvState): ImportRewrite | undefined {
+  /**
+   * The import rewrite of an environment: the file a request with inline
+   * loaders loads (`!!raw-loader!./x.ts`, `-!./x.ts`: its last segment,
+   * whatever loaders run on it), and `source.transformImport`.
+   */
+  private importRewrite(env: EnvState): ImportRewrite {
     const rules = env.transformImport
-    if (rules.length === 0) {
-      return undefined
-    }
     return (specifier, names) => {
+      const bang = specifier.lastIndexOf('!')
+      if (bang !== -1) {
+        return [specifier.slice(bang + 1)]
+      }
       const rule = rules.find((r) => r.libraryName === specifier)
       if (!rule) {
         return null

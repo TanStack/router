@@ -79,7 +79,8 @@ rank (client first) and patched at `processAssets` before minification.
 ## Import protection
 
 Edges are judged in the plan (per output, with the raw specifier the user wrote; file and marker rules on the
-resolved target, which for Rsbuild's `source.transformImport` is the rewritten target). A violation substitutes the
+resolved target), and as what Rspack loads: the rewritten specifier and its target, for Rsbuild's
+`source.transformImport` and for a request with inline loaders (`!!raw-loader!./x.ts` loads `./x.ts`). A violation substitutes the
 specifier with a per-edge mock module written as a virtual file of the environment. In development a violation is
 pending until Rspack builds its edge module, which it does only for an import the importer kept after SWC: the
 loader's `edge` pass asks `allowImport` (also in builds, when one is configured) and confirms it. Reports are printed at `finishModules`, when the module graph
