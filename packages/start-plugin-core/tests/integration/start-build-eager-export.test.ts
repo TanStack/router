@@ -196,13 +196,26 @@ const routeApiFiles = {
     "import { getRouteApi } from '@tanstack/react-router'",
     "getRouteApi('MARK_API_direct')",
   ),
+  // a framework's pure call (React `memo`): the component it creates loads
+  // with the chunk, although the `validateSearch` call after it stays
+  'src/routes/memo.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { memo } from 'react'
+import { makeSchema } from '../schema'
+const Page = memo(function Inner() {
+  return <p>{'MARK_MEMO'}</p>
+})
+export const Route = createFileRoute('/memo')({
+  validateSearch: makeSchema({ tab: 'string' }),
+  component: Page,
+})
+`,
 }
 
 describe.each(startBundlers)(
   'a %s build of routes reading their API',
   (bundler) => {
     test(
-      'loads the API with the chunk and warns of the effect before it only',
+      'loads the API and a memo component with the chunk and warns of the effect before the API only',
       async () => {
         const build = await buildStart({ bundler, files: routeApiFiles })
         const reported = [...build.client.warnings, ...build.ssr.warnings]
@@ -225,6 +238,13 @@ describe.each(startBundlers)(
             times: 1,
           })
         }
+        expect(build.client.where('MARK_MEMO')).toBe('lazy')
+        expect(
+          findDiagnostics(reported, {
+            file: 'src/routes/memo.tsx',
+            root: build.root,
+          }),
+        ).toEqual([])
       },
       timeout,
     )
