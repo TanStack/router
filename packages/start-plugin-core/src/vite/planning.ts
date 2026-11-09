@@ -196,7 +196,6 @@ export function createViteDefineConfig(opts: {
 export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
-  ssrIsProvider: boolean
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -220,7 +219,8 @@ export async function buildStartViteEnvironments(opts: {
     await opts.builder.build(server)
   }
 
-  if (opts.ssrIsProvider) {
+  // the SSR environment is the provider unless an RSC environment is
+  if (opts.providerEnvironmentName === START_ENVIRONMENT_NAMES.server) {
     return
   }
 

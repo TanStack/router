@@ -12,7 +12,6 @@ export function tanstackStart(
   const corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'vue',
     defaultEntryPaths: vueStartDefaultEntryPaths,
-    ssrIsProvider: true,
   }
 
   return tanStackStartRsbuild(corePluginOpts, options)

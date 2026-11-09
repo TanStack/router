@@ -62,7 +62,6 @@ export function tanStackStartVite(
   // the generator's registry, read by the compiler's router planner
   const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
-  const ssrIsProvider = corePluginOpts.ssrIsProvider
 
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
@@ -220,7 +219,6 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
-                ssrIsProvider,
               })
             },
           },

@@ -14,14 +14,12 @@ export function tanstackStart(
   let corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'react',
     defaultEntryPaths: reactStartDefaultEntryPaths,
-    ssrIsProvider: true,
   }
 
   if (rscEnabled) {
     const rscConfig = configureRscRsbuild()
     corePluginOpts = {
       ...corePluginOpts,
-      ssrIsProvider: false,
       serializationAdapters: rscConfig.serializationAdapters,
       rsc: rscConfig.rsc,
     }

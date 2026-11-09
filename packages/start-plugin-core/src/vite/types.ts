@@ -13,6 +13,5 @@ export type SsrResolverStrategy =
 
 export type TanStackStartVitePluginCoreOptions = TanStackStartCoreOptions & {
   providerEnvironmentName: string
-  ssrIsProvider: boolean
   ssrResolverStrategy: SsrResolverStrategy
 }

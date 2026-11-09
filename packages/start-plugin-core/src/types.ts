@@ -61,7 +61,6 @@ export interface TanStackStartCoreOptions {
     server: string
     start: string
   }
-  ssrIsProvider: boolean
   serializationAdapters?: Array<SerializationAdapterConfig> | undefined
   /** React Server Components integration: the host's CSS loader and the provider module directive. */
   rsc?: StartRscOptions | undefined

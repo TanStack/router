@@ -185,20 +185,17 @@ export class ViteCompilerState {
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
   /**
-   * `build --watch`: the server's resolver lists the functions the client
-   * build references, so it watches the files of the client's module graph
-   * (an edit only the client bundles rebuilds the server too) and waits for
-   * the client build a file event started (`clientRebuild`, until its
-   * `buildEnd`): the environments rebuild at once.
+   * The client environment's build in this process: null until one ended.
+   * The server's resolver of a build lists (or gates on) the functions the
+   * client build references, which it reads from the client's compiles.
+   * `build --watch`: the files of the client's module graph (else none),
+   * which the server's resolver watches (an edit only the client bundles
+   * rebuilds the server too), and it waits for the client build a file event
+   * started (`clientRebuild`, until its `buildEnd`): the environments rebuild
+   * at once.
    */
-  clientFiles: Array<string> = []
+  clientFiles: Array<string> | null = null
   clientRebuild: { ended: Promise<void>; end: () => void } | null = null
-  /**
-   * Whether the client environment built in this process: the server's
-   * resolver of a build lists (or gates on) the functions the client build
-   * references, which it reads from the client's compiles.
-   */
-  clientBuilt = false
 
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
