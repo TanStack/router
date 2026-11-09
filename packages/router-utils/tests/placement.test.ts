@@ -4639,6 +4639,18 @@ describe('declarations only split code needs that stay in the route module', () 
           'const confetti',
           '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\nconst confetti',
         ),
+      // before a `const` declaration of a function (its first
+      // declarator), or around its `export`, as Rollup and esbuild read it
+      ...[
+        '/* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape\n',
+        '/* #__NO_SIDE_EFFECTS__ */ export const type = function (shape) { return shape }\n',
+        'export /* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape\n',
+        'const type = /* #__NO_SIDE_EFFECTS__ */ (shape) => shape\n',
+      ].map((declaration) =>
+        pinned
+          .replace("import { type } from 'arktype'\n", '')
+          .replace('const confetti', `${declaration}const confetti`),
+      ),
       // declared after the call (hoisted): the annotation counts in any
       // order, for the option value and for a declaration's initialiser
       pinned
@@ -4669,6 +4681,24 @@ describe('declarations only split code needs that stay in the route module', () 
       expect(r.diagnostics, code).toEqual([])
     }
   })
+
+  it.each([
+    ['a `let`', '/* #__NO_SIDE_EFFECTS__ */ let type = (shape) => shape\n'],
+    [
+      'a later declarator',
+      '/* #__NO_SIDE_EFFECTS__ */ const x = 1, type = (shape) => shape\n',
+    ],
+  ])(
+    'reads no #__NO_SIDE_EFFECTS__ before the statement for %s (neither Rollup nor esbuild does)',
+    async (_, declaration) => {
+      const r = await kept(
+        pinned
+          .replace("import { type } from 'arktype'\n", '')
+          .replace('const confetti', `${declaration}const confetti`),
+      )
+      expect(r.env).toContain('const confetti = new JSConfetti()')
+    },
+  )
 
   it('suggests #__NO_SIDE_EFFECTS__ for a callee the route file declares', async () => {
     const code = pinned
