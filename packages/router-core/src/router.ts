@@ -909,24 +909,34 @@ export interface ViewTransitionOptions {
       }) => Array<string> | false)
 }
 
-// TODO where is this used? can we remove this?
-/**
- * Convert an unknown error into a minimal, serializable object.
- * Includes name and message (and stack in development).
- */
 /**
  * @internal Development-only: a router catch boundary of the framework
  * adapters caught `error`. A render error makes route hot updates reload the
  * page (`_hmrReload`); an error the router holds on a current match (its
  * loader's or `beforeLoad`'s) is the router's state, not a render error: the
- * boundary resets when the match loads again.
+ * boundary resets when the match loads again. (Solid's boundary hands over a
+ * thrown value that is no `Error` wrapped in one, as its `cause`.)
  */
 export function hmrReloadAfterCatch(router: AnyRouter, error: unknown) {
-  if (!router.stores.matches.get().some((match) => match.error === error)) {
+  const cause = error instanceof Error ? error.cause : undefined
+  if (
+    !router.stores.matches
+      .get()
+      .some(
+        (match) =>
+          match.error !== undefined &&
+          (match.error === error || match.error === cause),
+      )
+  ) {
     router._hmrReload = true
   }
 }
 
+// TODO where is this used? can we remove this?
+/**
+ * Convert an unknown error into a minimal, serializable object.
+ * Includes name and message (and stack in development).
+ */
 export function defaultSerializeError(err: unknown) {
   if (err instanceof Error) {
     const obj = {
