@@ -510,7 +510,7 @@ When this happens, you have a few options depending on what you want `leakyHelpe
 Option A: split the file so client code cannot accidentally import the leak
 
 ```ts
-// src/users.server.ts
+// src/users.ts (not `.server`: client code imports it)
 import { getUsers } from './db/queries.server'
 import { createServerFn } from '@tanstack/react-start'
 
