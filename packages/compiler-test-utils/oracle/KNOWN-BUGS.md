@@ -48,6 +48,12 @@ code.test.ts`: "a root route's %s loads lazily".
   invalidated by the route module, J3 below). SPEC J3.3.
   `router-plugin/tests/integration/known-bugs-route-hmr-kept-binding.test.ts`: "rsbuild %s: shows", "webpack with
   source maps %s: shows". Fix: the edit shows, by a hot update or a reload.
+- **A route edit reloads the page after a render error the page already recovered from** (React: the global
+  boundary; Solid and Vue: any router boundary): the boundary's catch marks the router for a reload (R70) and nothing
+  clears the mark, so a recovery without a reload (a navigation resets the boundary) still costs the next route edit a
+  full reload. Open: R70 keeps the mark on purpose (review round 3, G9-2). SPEC J3.1, G10.
+  `router-plugin/tests/integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a route edit after a
+  render error the page navigated away from updates in place". Fix: the edit updates in place.
 - **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
