@@ -12,10 +12,11 @@
  * options of the builder they are called on), as does a chain with an
  * impure argument.
  *
- * Two exported server fns the component reads: each extracted module
- * imports the client stub's runtime itself, as it would an import the
- * source wrote (an extracted module evaluates before the route module's
- * body, so it reads nothing of the route module then). Learned from the
+ * Server fns the component reads, exported or not, next to one the route
+ * module keeps or not: each module holding a client stub imports the stub's
+ * runtime itself, as it would an import the source wrote (an extracted
+ * module evaluates before the route module's body, so it reads nothing of
+ * the route module then). Learned from the
  * server-functions e2e app (its `method-not-allowed/$method` route), whose
  * client build failed the compiler's self-checks.
  */
@@ -182,13 +183,36 @@ describe.each(startBundlers)(
   'a %s client build of exported chains',
   (bundler) => {
     test(
-      'loads two exported server fns the component reads, each importing the client stub itself',
+      'loads the server fns split code reads, each module importing the client stub itself',
       async () => {
         const build = await buildStart({
           bundler,
           files: {
             'src/router.tsx': files['src/router.tsx'],
-            'entry.ts': files['entry.ts'],
+            'entry.ts': `export { Panel } from './src/panel'\n`,
+            // a plain module whose Hydrate children read two exported server fns
+            'src/panel.tsx': `import { Hydrate, createServerFn } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+export const first = createServerFn().handler(() => 'first')
+export const second = createServerFn().handler(() => 'second')
+export function Panel() {
+  return (
+    <Hydrate when={interaction()}>
+      <p data-first={first.url} data-second={second.url}>MARK_panel</p>
+    </Hydrate>
+  )
+}
+`,
+            // an exported function creating a server fn: the chunk copies it
+            'src/routes/copied-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+export function makeAction() {
+  return createServerFn().handler(() => 'made')
+}
+export const Route = createFileRoute('/copied-fn')({
+  component: () => <p data-url={makeAction().url}>MARK_copied-fn</p>,
+})
+`,
             'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 export const Route = createFileRoute('/two-exported')({
@@ -200,15 +224,57 @@ function Page() {
   return <p data-first={first.url} data-second={second.url}>MARK_page</p>
 }
 `,
+            // the route module keeps a stub too (the loader's server fn)
+            'src/routes/with-kept.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+const kept = createServerFn().handler(() => 'kept')
+const local = createServerFn().handler(() => 'local')
+export const exported = createServerFn().handler(() => 'exported')
+export const Route = createFileRoute('/with-kept')({
+  loader: () => kept(),
+  component: Page,
+})
+function Page() {
+  return <p data-local={local.url} data-exported={exported.url}>MARK_with-kept</p>
+}
+`,
+            // two split options, each reading a server fn of its own
+            'src/routes/two-chunks.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+const first = createServerFn().handler(() => 'first')
+const second = createServerFn().handler(() => 'second')
+export const Route = createFileRoute('/two-chunks')({
+  component: () => <p data-url={first.url}>MARK_two-chunks</p>,
+  errorComponent: () => <p data-url={second.url}>MARK_two-chunks-error</p>,
+})
+`,
           },
         })
-        expect(build.client.where('MARK_page')).toBe('lazy')
-        expect(
-          findDiagnostics(build.client.warnings, {
-            file: 'src/routes/two-exported.tsx',
-            root: build.root,
-          }),
-        ).toEqual([])
+        for (const marker of [
+          'MARK_page',
+          'MARK_with-kept',
+          'MARK_two-chunks',
+          'MARK_two-chunks-error',
+          'MARK_panel',
+          'MARK_copied-fn',
+        ]) {
+          expect(build.client.where(marker), marker).toBe('lazy')
+        }
+        for (const path of [
+          'routes/two-exported',
+          'routes/with-kept',
+          'routes/two-chunks',
+          'routes/copied-fn',
+          'panel',
+        ]) {
+          expect(
+            findDiagnostics(build.client.warnings, {
+              file: `src/${path}.tsx`,
+              root: build.root,
+            }),
+            path,
+          ).toEqual([])
+        }
       },
       timeout,
     )
