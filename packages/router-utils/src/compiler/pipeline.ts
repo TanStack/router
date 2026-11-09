@@ -16,7 +16,7 @@ import {
 import { parseModule } from './source'
 import { ModuleAnalysis } from './analysis'
 import { AnalysisPlan } from './plan'
-import { DependencyLedger, fingerprintCurrent } from './cache'
+import { DependencyLedger, fingerprintsCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
@@ -128,21 +128,17 @@ export async function compileModule(
     const hit = cache.lookup(key, rev)
     if (hit) {
       const src = fingerprintSourceFor(caches, host, env.name)
-      // resolutions validated at the current file-set version stand (not re-asked)
+      // what was validated at the current versions stands (not asked again)
       const fileSetVersion = caches.fileSetVersion
-      const resolutionsCurrent = hit.resolvedAt === fileSetVersion
-      // every fingerprint at once: the checks are independent reads
-      const checks: Array<Promise<boolean>> = []
-      for (const fp of hit.plan.dependencies) {
-        if (resolutionsCurrent && fp.kind === 'resolution') {
-          continue
-        }
-        checks.push(fingerprintCurrent(fp, src))
-      }
-      const valid = (await Promise.all(checks)).every((ok) => ok)
+      const factsVersion = caches.rawFacts.version
+      const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
+        resolutions: hit.resolvedAt === fileSetVersion,
+        facts: hit.factsAt === factsVersion,
+      })
       if (cache.lookup(key, rev) === hit) {
         if (valid) {
           hit.resolvedAt = fileSetVersion
+          hit.factsAt = factsVersion
           cache.counters.planHits++
           return noted(emitFrom(hit, requested, input, caches))
         }
@@ -262,6 +258,7 @@ async function settle(
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
+      const factsVersion = caches.rawFacts.version
       const ledger = new DependencyLedger(key, generation, cache.dependents)
       const result = await runAttempt(
         input,
@@ -281,15 +278,16 @@ async function settle(
         generation,
         plan: result.plan,
         resolvedAt: fileSetVersion,
+        factsAt: factsVersion,
         compiledFor: outputOf(identity),
         compiledAt,
       }
       entry.plan.dependencies = [...ledger.entries]
       const src = fingerprintSourceFor(caches, host, key.env)
-      const snapshotOk = await ledger.validateSnapshot(
-        src,
-        caches.fileSetVersion === fileSetVersion,
-      )
+      const snapshotOk = await ledger.validateSnapshot(src, {
+        resolutions: caches.fileSetVersion === fileSetVersion,
+        facts: caches.rawFacts.version === factsVersion,
+      })
       if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {
           ledger.publish()

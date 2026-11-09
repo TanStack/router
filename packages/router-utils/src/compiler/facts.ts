@@ -4,6 +4,13 @@
  * target facts (marker, export names, effect classification) from the same
  * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
+ *
+ * Rule: anything that changes an answer of `RawFactsCache` goes through
+ * `markStale`, `forget` or `retain`. They move `version`, and a plan whose
+ * facts were validated at the current version is not asked again
+ * (`CacheEntry.factsAt`), so a change made any other way serves stale plans.
+ * That includes a file a read found missing: its facts are not kept, and the
+ * host that saw the miss marks it stale when the file may have appeared.
  */
 import { digestOf, identify, isCommonJsPath } from './identity'
 import { parseModule } from './source'
@@ -123,8 +130,21 @@ export class RawFactsCache {
   private readonly noTargets = cacheDisabled('targets')
   /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
   private readonly counters = { factsHits: 0, factsReads: 0 }
+  private changes = 0
 
   constructor(private readonly opts: RawFactsOptions) {}
+
+  /**
+   * Moves whenever a fact this cache answers may change: an entry marked
+   * stale, forgotten or dropped. A `markStale` moves it even with nothing
+   * kept at the path, since a missing file's facts aren't kept and may be
+   * read differently now (Rsbuild's `forgetMisses`). A fact read while the
+   * version stays the same is still the cache's answer (plan validation
+   * skips it: `CacheEntry.factsAt`).
+   */
+  get version(): number {
+    return this.changes
+  }
 
   /** Whether `specifier` is a known package of the recognizer: it is never read or resolved: its exports are known by name. */
   isKnownSpecifier(specifier: string): boolean {
@@ -142,6 +162,7 @@ export class RawFactsCache {
   }
 
   markStale(path: string): void {
+    this.changes++
     for (const id of this.byPath.get(path) ?? []) {
       const e = this.entries.get(id)!
       e.stale = true
@@ -158,6 +179,7 @@ export class RawFactsCache {
    * is bounded by the live files, not by every file a session saw.
    */
   forget(path: string): void {
+    this.changes++
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
       const e = this.entries.get(id)!
@@ -202,6 +224,7 @@ export class RawFactsCache {
   retain(keep: (canonicalId: string) => boolean): void {
     for (const [id, e] of this.entries) {
       if (!keep(id)) {
+        this.changes++
         e.pending = null
         e.pendingMarker = null
         this.deleteEntry(id)
