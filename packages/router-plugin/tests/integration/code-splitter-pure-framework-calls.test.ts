@@ -109,6 +109,17 @@ const Page = () => <Field />`,
     `function memo<T>(component: T) { return component }
 const Page = memo(function Inner() { return <p>{'MARK_local'}</p> })`,
   ),
+  // a context is one instance: it stays (its call is an effect the later
+  // call keeps in order) and the memo component reading it splits
+  'routes/context.tsx': route(
+    'react',
+    'context',
+    "import { createContext, memo, useContext } from 'react'",
+    `const Theme = createContext('MARK_theme')
+const Page = memo(function Inner() {
+  return <p>{useContext(Theme)}{'MARK_context'}</p>
+})`,
+  ),
 }
 
 const vueFiles = {
@@ -239,6 +250,19 @@ describe.each(builds)('a %s client build', (name, files, pure, create) => {
           times: 1,
         })
       }
+      // the component loads with the chunk, the context with the route
+      // module, reported at the context only
+      expect(app.where('MARK_context')).toBe('lazy')
+      expect(app.where('MARK_theme')).toBe('eager')
+      expectDiagnostic(reported, {
+        severity: 'warning',
+        file: 'routes/context.tsx',
+        root: app.root,
+        ...(!name.startsWith('vite') && {
+          position: diagnosticPosition(files['routes/context.tsx']!, 'Theme ='),
+        }),
+        times: 1,
+      })
     },
     timeout,
   )
