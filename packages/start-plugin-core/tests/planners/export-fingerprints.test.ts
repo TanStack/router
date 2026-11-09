@@ -167,6 +167,45 @@ describe('through re-exports', () => {
   })
 })
 
+describe('a namespace read by member', () => {
+  const LIB = '/app/src/lib.ts'
+  const NS = '/app/src/ns.ts'
+  const CALLS = '/app/src/calls.ts'
+  const files = {
+    [LIB]: `${IMPORT}export const factory = createServerFn()\nexport const fin = createServerFn().handler(async () => 1)\n`,
+    [NS]: `import * as lib from './lib'\nexport const fn = lib.factory.handler(async () => '${SECRET}')\n`,
+    [CALLS]: `import * as lib from './lib'\nexport const read = () => lib.fin()\n`,
+  }
+
+  it('depends on the members it reads: an added export re-plans nothing', async () => {
+    const t = session(files)
+    expect(await t.compile(NS)).not.toContain(SECRET)
+    await t.compile(CALLS)
+    const dependents = await t.edit(
+      LIB,
+      `${files[LIB]}export const added = 2\n`,
+    )
+    expect(dependents).not.toContain(NS)
+    expect(dependents).not.toContain(CALLS)
+    expect(await t.compile(NS)).toBe(await t.fresh(NS))
+    expect(await t.compile(CALLS)).toBe(await t.fresh(CALLS))
+  })
+
+  it('the read member changing kind re-plans the importer', async () => {
+    const t = session(files)
+    expect(await t.compile(NS)).not.toContain(SECRET)
+    expect(
+      await t.edit(
+        LIB,
+        `export const factory = (x: any) => x\nexport const fin = () => 1\n`,
+      ),
+    ).toContain(NS)
+    const out = await t.compile(NS)
+    expect(out).toContain(SECRET)
+    expect(out).toBe(await t.fresh(NS))
+  })
+})
+
 describe('a namespace that escapes the analysis', () => {
   it('depends on the whole module: any export change re-plans it', async () => {
     const LIB = '/app/src/lib.ts'
