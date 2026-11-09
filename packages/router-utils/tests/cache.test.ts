@@ -405,6 +405,19 @@ describe('a derived id compiled again after an edit', () => {
     expect(after).toEqual(await factsOf(host, route))
   })
 
+  it('sees a dependency edit whose facts the cache dropped', async () => {
+    // the Rsbuild host keeps the raw facts of the files its compilation
+    // still holds (`retain`); a dropped file is read again when asked
+    const host = new MemoryHost({ files })
+    await host.compile(route, routePlanners())
+    const before = await factsOf(host, chunk)
+    host.write('/app/shared.ts', 'export const other = 1\n')
+    host.rawFacts.retain((id) => !id.startsWith('/app/shared.ts'))
+    const after = await factsOf(host, chunk)
+    expect(after).not.toEqual(before)
+    expect(after).toEqual(await factsOf(host, route))
+  })
+
   it('sees a dependency that was missing once a host marks its facts stale', async () => {
     // a resolution found the file, which was deleted before its facts were
     // read; it is saved again without an event: the Rsbuild host marks
