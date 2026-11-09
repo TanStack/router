@@ -68,6 +68,62 @@ return [value === Route.options.component, await renderComponent(value)]`),
     },
   )
 
+  // R3-G7-2: the lowercase component is one binding of an exported
+  // declaration with others; each export keeps its own binding
+  describe.each([
+    ['autoCodeSplitting: false', unsplit],
+    ['automatic code splitting', { hmr: true }],
+  ])('(%s)', (_, options) => {
+    it.each([
+      [
+        'a destructuring',
+        `export const { component, meta } = makeViews()`,
+        ['component', 'meta'],
+      ],
+      [
+        'a declarator beside a destructuring',
+        `export const component = makeViews().component, { meta, title } = makeViews()`,
+        ['component', 'meta', 'title'],
+      ],
+    ])(
+      'a lowercase component exported in %s leaves every other export its own value',
+      async (_name, declaration, names) => {
+        const route = await loadRoute(
+          `${head}import { makeViews } from './views'
+${declaration}
+export const Route = createFileRoute('/page')({ component })`,
+          {
+            ...options,
+            routeId: '/page',
+            tsconfig: appTsconfig,
+            files: {
+              'importer.ts': exportsImporter,
+              'views.tsx': `const component = () => <p>hi</p>
+export const makeViews = () => ({ component, meta: { kind: 'meta' }, title: 'title' })
+`,
+            },
+          },
+        )
+        expect(
+          await route.run(`const { bindings } = await app('importer.ts')
+return {
+  names: ${JSON.stringify(names)}.filter((name) => name in bindings),
+  component: bindings.component === Route.options.component,
+  meta: bindings.meta,
+  title: bindings.title ?? null,
+  html: await renderComponent(bindings.component),
+}`),
+        ).toEqual({
+          names,
+          component: true,
+          meta: { kind: 'meta' },
+          title: names.includes('title') ? 'title' : null,
+          html: '<p>hi</p>',
+        })
+      },
+    )
+  })
+
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
   it('leaves an imported lowercase component to the module that declares it', async () => {
     const route = await loadRoute(
