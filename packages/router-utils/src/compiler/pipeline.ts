@@ -520,6 +520,13 @@ async function runAttempt(
         // a copy: the plan keeps it, the cache may drop its summary
         stars: [...summary.stars],
       }),
+    readableOf: async (canonicalId) => {
+      const { summary } = await host.rawFacts.get(canonicalId, env.name)
+      if (summary === null) {
+        ledger.record({ kind: 'summary', canonicalId, digest: null })
+      }
+      return summary !== null
+    },
     resolveSpecifier: (spec, importer) => resolveFrom(spec, importer),
   })
   const withdrawn = new Set<string>()

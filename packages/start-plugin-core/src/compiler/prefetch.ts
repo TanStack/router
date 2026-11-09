@@ -564,7 +564,7 @@ export async function prefetchStartValues(
   ) => {
     const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
     // a module without a summary (a package, opaque) exports nothing to follow: every member reads as unknown
-    if (id !== null && (await ctx.resolver.summary(id)) !== null) {
+    if (id !== null && (await ctx.resolver.readable(id))) {
       await followNamespace(
         specifier,
         id,

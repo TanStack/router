@@ -58,6 +58,8 @@ interface ResolverDeps {
   exportOf: (canonicalId: string, name: string) => Promise<ModuleSummary | null>
   /** Records the `export *` list of a module's summary as read. */
   starsOf: (canonicalId: string, summary: ModuleSummary) => void
+  /** Whether the module has a summary, recording only a missing one (the whole null summary) as read. */
+  readableOf: (canonicalId: string) => Promise<boolean>
   /** Resolves a specifier from an importer to a canonical id (null when unresolvable/external). */
   resolveSpecifier: (
     specifier: string,
@@ -77,6 +79,15 @@ export class ExportResolver {
   /** The module's summary, for a caller listing what it exports. */
   summary(canonicalId: string): Promise<ModuleSummary | null> {
     return this.deps.summaryOf(canonicalId)
+  }
+
+  /**
+   * Whether the module has a summary (an unreadable or opaque one exports
+   * nothing to look up). A readable module's answer depends on nothing but
+   * what the caller then reads of it, which records itself.
+   */
+  readable(canonicalId: string): Promise<boolean> {
+    return this.deps.readableOf(canonicalId)
   }
 
   /**
