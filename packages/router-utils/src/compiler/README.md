@@ -369,5 +369,5 @@ nothing per compile.
   replayed) and memory/leak checks.
 - Client bytes: `pnpm benchmark:bundle-size:run` (18 scenarios); server bytes and cold start:
   `scripts/benchmarks/bundle-size/server.mjs`. Client production bytes must not grow.
-- Rules: semantic queries over full-AST walks, cheap gates before parsing, no worker pool, `yuku` pinned to an exact
-  version, every cache bounded and invalidated.
+- Rules: semantic queries over full-AST walks, cheap planner gates on the Tier 0 tables (after the parse, before Tier 1
+  and any cross-module work), no worker pool, `yuku` pinned to an exact version, every cache bounded and invalidated.
