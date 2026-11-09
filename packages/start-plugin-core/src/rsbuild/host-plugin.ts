@@ -319,6 +319,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // compilation starts: the modules of their stale dependents are built with them (a
       // file's facts need no resolver, and a resolution that found a removed file is stale)
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
+        if (
+          environment.type === 'client' &&
+          session.start.opts.mode === 'build'
+        ) {
+          // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
+          // no `beforeRun`); the client compiles first
+          session.start.warnings.reset()
+        }
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         ipEnvOf()?.beginBuild()
