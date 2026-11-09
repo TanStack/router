@@ -77,16 +77,9 @@ function getCode(result: TransformResult | null | undefined) {
   return result.code
 }
 
-function countProgramHotDeclarations(code: string) {
-  const ast = parseAst({ code })
-  return ast.program.body.filter((statement) => {
-    return (
-      t.isVariableDeclaration(statement) &&
-      statement.declarations.some((declaration) => {
-        return t.isIdentifier(declaration.id) && declaration.id.name === 'hot'
-      })
-    )
-  }).length
+/** How many times the route module accepts its own hot updates. */
+function countHotAccepts(code: string) {
+  return code.split('import.meta.hot.accept(').length - 1
 }
 
 describe('router plugin context', () => {
@@ -367,7 +360,7 @@ export const Route = createFileRoute('/owned')({
     const firstCode = getCode(firstResult)
 
     expect(firstCode).not.toBeNull()
-    expect(countProgramHotDeclarations(firstCode!)).toBe(1)
+    expect(countHotAccepts(firstCode!)).toBe(1)
 
     const secondResult = await transformReferenceRoute(
       splitterB,
