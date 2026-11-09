@@ -59,11 +59,17 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
 
+  // The callback is read through a ref so a new function identity does not repeat the
+  // notification; a parent that passes an inline arrow would otherwise report hydration on every
+  // one of its renders.
+  const onHydratedRef = React.useRef(onHydrated)
+  onHydratedRef.current = onHydrated
+
   React.useEffect(() => {
     if (!shouldPreserveServerHTMLRef.current) {
-      onHydrated?.()
+      onHydratedRef.current?.()
     }
-  }, [onHydrated])
+  }, [])
 
   const markerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
