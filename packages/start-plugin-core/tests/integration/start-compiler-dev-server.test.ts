@@ -633,6 +633,68 @@ export const read = createIsomorphicFn()
   )
 })
 
+describe('Vite dev: dependents whose output is unchanged', () => {
+  // A factory re-exported from another module: every importer re-plans and
+  // emits the same output. Each is compiled once per environment, during the
+  // edit; neither the next SSR import nor the next page load compiles it
+  // again, also when the dependents import each other and are compiled at
+  // the same time.
+  test(
+    'are compiled once per environment',
+    async () => {
+      const names = Array.from({ length: 40 }, (_, i) => `d${i}`)
+      const counts: Record<string, Record<string, number>> = {
+        client: {},
+        ssr: {},
+      }
+      let counting = false
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'count-transforms',
+            transform(_code, id) {
+              const name = /\/src\/(d\d+)\.ts$/.exec(id)?.[1]
+              if (counting && name) {
+                const env = counts[this.environment.name]!
+                env[name] = (env[name] ?? 0) + 1
+              }
+            },
+          },
+        ],
+        files: {
+          'src/fa.ts': factory,
+          'src/fb.ts': factory,
+          'src/lib.ts': `export { base } from './fa'\n`,
+          ...Object.fromEntries(
+            names.map((name, i) => [
+              `src/${name}.ts`,
+              `import { base } from './lib'
+${i > 0 ? `import { fn as first } from './d0'\nexport const p = first\n` : ''}export const fn = base.handler(async () => '${name}')
+`,
+            ]),
+          ),
+          'src/entry.ts': names
+            .map((name) => `export { fn as ${name} } from './${name}'\n`)
+            .join(''),
+        },
+      })
+      await server.import('/src/entry.ts')
+      await server.load('/src/entry.ts')
+      await server.idle()
+
+      counting = true
+      await server.edit({ 'src/lib.ts': `export { base } from './fb'\n` })
+      await server.import('/src/entry.ts')
+      await server.load('/src/entry.ts')
+      await server.idle()
+
+      const once = Object.fromEntries(names.map((name) => [name, 1]))
+      expect(counts).toEqual({ client: once, ssr: once })
+    },
+    timeout,
+  )
+})
+
 describe('Vite full-bundle dev (bundledDev)', () => {
   /**
    * `src/fns.ts` defines a server fn whose handler returns `MARK_HANDLER_*`
