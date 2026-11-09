@@ -52,8 +52,14 @@ type ResolveOutcome =
   | { k: 'cycleUnknown' }
 
 interface ResolverDeps {
-  /** The raw-domain summary of a canonical id (null when the module cannot be read). Records the dependency. */
+  /** The raw-domain summary of a canonical id (null when the module cannot be read). Records the whole summary as a dependency. */
   summaryOf: (canonicalId: string) => Promise<ModuleSummary | null>
+  /** The same summary, recording only its export `name` as read (the whole summary when the module has none). */
+  exportOf: (canonicalId: string, name: string) => Promise<ModuleSummary | null>
+  /** Records the `export *` list of a module's summary as read. */
+  starsOf: (canonicalId: string, summary: ModuleSummary) => void
+  /** Whether the module has a summary, recording only a missing one (the whole null summary) as read. */
+  readableOf: (canonicalId: string) => Promise<boolean>
   /** Resolves a specifier from an importer to a canonical id (null when unresolvable/external). */
   resolveSpecifier: (
     specifier: string,
@@ -76,15 +82,24 @@ export class ExportResolver {
   }
 
   /**
+   * Whether the module has a summary (an unreadable or opaque one exports
+   * nothing to look up). A readable module's answer depends on nothing but
+   * what the caller then reads of it, which records itself.
+   */
+  readable(canonicalId: string): Promise<boolean> {
+    return this.deps.readableOf(canonicalId)
+  }
+
+  /**
    * A resolver over the same summaries and resolutions that enters only the
    * modules `enters` accepts: a re-export of another module stays a symbolic
    * `importRef`, an `export *` of one is skipped. Its answers are memoised
    * apart from this resolver's.
    */
   within(enters: (canonicalId: string) => boolean): ExportResolver {
-    const { summaryOf, resolveSpecifier } = this.deps
+    const { resolveSpecifier } = this.deps
     return new ExportResolver({
-      summaryOf,
+      ...this.deps,
       resolveSpecifier: async (specifier, importer) => {
         const target = await resolveSpecifier(specifier, importer)
         return target !== null && enters(target) ? target : null
@@ -108,7 +123,7 @@ export class ExportResolver {
     if (!inner) {
       return { k: 'cycleUnknown' }
     }
-    const summary = await this.deps.summaryOf(canonicalId)
+    const summary = await this.deps.exportOf(canonicalId, name)
     if (!summary) {
       return { k: 'absent' }
     }
@@ -154,6 +169,7 @@ export class ExportResolver {
     }
     let found: Extract<ResolveOutcome, { k: 'found' }> | null = null
     let ambiguous = false
+    this.deps.starsOf(canonicalId, summary)
     for (const star of summary.stars) {
       const target = await this.deps.resolveSpecifier(star, canonicalId)
       if (target === null) {

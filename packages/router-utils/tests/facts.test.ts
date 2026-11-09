@@ -140,12 +140,8 @@ describe('RawFactsCache', () => {
     )
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
     // a mock of it asks for its target facts: parsed then, and kept; the
-    // module stays opaque to the summaries (its summary digest never
-    // changes: no plan that summarised the package is evicted by the question)
-    const before = await cache.digestOf(
-      '/app/node_modules/lib/index.js',
-      'client',
-    )
+    // module stays opaque to the summaries (its summary stays null: no plan
+    // that summarised the package is evicted by the question)
     const target = await cache.getTarget(
       '/app/node_modules/lib/index.js',
       'client',
@@ -155,9 +151,6 @@ describe('RawFactsCache', () => {
     expect(
       (await cache.get('/app/node_modules/lib/index.js', 'client')).summary,
     ).toBe(null)
-    expect(
-      await cache.digestOf('/app/node_modules/lib/index.js', 'client'),
-    ).toBe(before)
     expect(
       await cache.targetDigestOf('/app/node_modules/lib/index.js', 'client'),
     ).toBe(target.targetFacts.digest)

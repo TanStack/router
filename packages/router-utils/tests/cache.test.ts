@@ -126,11 +126,19 @@ describe('a changed dependency', () => {
     )
     expect(same.dependents).toEqual([])
     expect(host.resolveCalls).toEqual([])
-    // a change of the export facts: the importer is stale, still without a resolution
+    // a new export: the importer reads `make` only, and stays current
     host.write(
       '/app/shared.ts',
-      'export const make = 1\nexport const more = 2\n',
+      'export const make = 2\nexport const more = 2\n',
     )
+    const added = await invalidate(
+      host.caches,
+      { path: '/app/shared.ts', kind: 'change' },
+      host,
+    )
+    expect(added.dependents).toEqual([])
+    // a change of the export it reads: the importer is stale, still without a resolution
+    host.write('/app/shared.ts', "export { make } from './elsewhere'\n")
     const changed = await invalidate(
       host.caches,
       { path: '/app/shared.ts', kind: 'change' },
@@ -316,7 +324,8 @@ describe('plans restored from an earlier process', () => {
     '/app/page.ts': `import { make } from './helper'\nexport const page = make()\n`,
     '/app/helper.ts': 'export const make = () => 1\n',
   }
-  const edited = 'export const make = () => 1\nexport const more = 2\n'
+  // the export the page reads changes (an export added beside it would not re-plan the page)
+  const edited = "export { make } from './elsewhere'\n"
 
   /** The persisted plan of `/app/page.ts`, compiled by an earlier process (plain data). */
   async function persisted() {

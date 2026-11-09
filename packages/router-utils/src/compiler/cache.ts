@@ -4,15 +4,22 @@
  * validation, and the dependents index. Only plain data is retained.
  */
 import { identify, planKeyString } from './identity'
+import { ownEntry } from './strings'
 import { approxBytes, cacheDisabled } from './stats'
 import type { OutputId } from './rewrite'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
 import type { TargetFacts } from './facts'
+import type { ModuleSummary } from './summary'
 import type { Diagnostic } from './diagnostics'
 
 export type DependencyFingerprint =
+  /** The whole summary (a listing of the module's exports, or a module without one: null). */
   | { kind: 'summary'; canonicalId: string; digest: string | null }
+  /** One export as a lookup read it (`ModuleSummary.exportKeys`; null: the module exports no such name). */
+  | { kind: 'export'; canonicalId: string; name: string; key: string | null }
+  /** The `export *` list, read by a lookup of a name the module does not export itself. */
+  | { kind: 'stars'; canonicalId: string; stars: ReadonlyArray<string> }
   | { kind: 'target-facts'; canonicalId: string; digest: string }
   /** Only the target's environment marker (a consumer that reads nothing else). */
   | {
@@ -33,6 +40,10 @@ function fingerprintId(fp: DependencyFingerprint): string {
   switch (fp.kind) {
     case 'summary':
       return `summary:${fp.canonicalId}`
+    case 'export':
+      return `export:${fp.canonicalId}\u0000${fp.name}`
+    case 'stars':
+      return `stars:${fp.canonicalId}`
     case 'target-facts':
       return `target:${fp.canonicalId}`
     case 'target-marker':
@@ -48,6 +59,8 @@ function fingerprintId(fp: DependencyFingerprint): string {
 export function fingerprintPath(fp: DependencyFingerprint): string | null {
   switch (fp.kind) {
     case 'summary':
+    case 'export':
+    case 'stars':
     case 'target-facts':
     case 'target-marker':
       return identify(fp.canonicalId).path
@@ -85,7 +98,7 @@ export interface PersistedPlan {
 
 /** The current values fingerprints are validated against. */
 export interface FingerprintSource {
-  summaryDigest: (canonicalId: string) => Promise<string | null>
+  summary: (canonicalId: string) => Promise<ModuleSummary | null>
   targetDigest: (canonicalId: string) => Promise<string | null>
   targetMarker: (canonicalId: string) => Promise<TargetFacts['marker']>
   routeRegistryDigest: (path: string) => string | null
@@ -99,7 +112,22 @@ export async function fingerprintCurrent(
 ): Promise<boolean> {
   switch (fp.kind) {
     case 'summary':
-      return (await src.summaryDigest(fp.canonicalId)) === fp.digest
+      return ((await src.summary(fp.canonicalId))?.digest ?? null) === fp.digest
+    case 'export': {
+      const summary = await src.summary(fp.canonicalId)
+      return (
+        summary !== null &&
+        (ownEntry(summary.exportKeys, fp.name) ?? null) === fp.key
+      )
+    }
+    case 'stars': {
+      const stars = (await src.summary(fp.canonicalId))?.stars
+      return (
+        stars !== undefined &&
+        stars.length === fp.stars.length &&
+        stars.every((s, i) => s === fp.stars[i])
+      )
+    }
     case 'target-facts':
       return (await src.targetDigest(fp.canonicalId)) === fp.digest
     case 'target-marker':

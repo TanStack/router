@@ -16,8 +16,27 @@ type ExportFact =
 export interface ModuleSummary {
   exports: Record<string, ExportFact>
   stars: Array<string>
-  /** EXPORT-FACTS DIGEST over {exports (sites stripped), stars, marker}. */
+  /**
+   * Per export, the digest of what an importer reading it observes (the
+   * fact, sites stripped): an importer depends on the exports it reads
+   * only, so another export changing leaves its plan current.
+   */
+  exportKeys: Record<string, string>
+  /** EXPORT-FACTS DIGEST over {exportKeys, stars, marker}: a reader of the whole summary (a listing of its exports). */
   digest: string
+}
+
+/** The per-export digests of a summary's exports (`ModuleSummary.exportKeys`). */
+export function exportKeysOf(
+  exports: ModuleSummary['exports'],
+): ModuleSummary['exportKeys'] {
+  const keys: Record<string, string> = Object.create(null)
+  for (const [name, f] of Object.entries(exports)) {
+    keys[name] = digestOf(
+      f.kind === 'local' ? { kind: 'local', value: stripSites(f.value) } : f,
+    )
+  }
+  return keys
 }
 
 export function buildSummary(
@@ -76,19 +95,16 @@ export function buildSummary(
         break
     }
   }
+  const exportKeys = exportKeysOf(exportFacts)
   const digest = digestOf({
-    exports: Object.fromEntries(
-      Object.entries(exportFacts).map(([k, f]) => [
-        k,
-        f.kind === 'local' ? { kind: 'local', value: stripSites(f.value) } : f,
-      ]),
-    ),
+    exports: exportKeys,
     stars,
     marker: analysis.markers,
   })
   return {
     exports: exportFacts,
     stars,
+    exportKeys,
     digest,
   }
 }

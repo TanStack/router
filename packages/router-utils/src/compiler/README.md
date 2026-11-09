@@ -219,8 +219,9 @@ text compiles waits for it and emits its own output from the result.
 - `PlanCache`: one plan per (env, canonical id, config key; the late pass is a second config key of a file), the latest revision only. A hit is _validated_ (same canonical identity,
   input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
-- `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, summary digests, target facts,
-  route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
+- `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read, a
+  module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
+  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
@@ -228,8 +229,10 @@ text compiles waits for it and emits its own output from the result.
   add/unlink also retry failed resolutions, and they or a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
   take: a file of the same name with another extension, or of a directory a resolution went into; a resolution that
   found an unlinked file is stale without asking) and returns
-  `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates importers
-  only when its export-facts digest changed.
+  `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates an importer
+  only when what it read changed: the digest of an export it looked up (`ModuleSummary.exportKeys`; an absent name
+  appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
+  added to a widely imported module re-plans none of its importers.
 - Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
   (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget` and `retain` drop, which is how anything that
   changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it may have
