@@ -108,9 +108,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
   type-only binding) follow their statement's value specifiers (`importStays`). Below the units, function-local
-  declarators and destructuring leaves only erased code read go too (`orphans.ts`): the core runs that cleanup once
-  after every planner, removing each in every output when edits addressed to every output orphaned it, else in the
-  env module only. A module-level destructuring leaf stays while it is exported or another output takes it (one of
+  declarators and destructuring leaves only erased code read go too (`orphans.ts`), with their initialisers whatever
+  they do (a call of a helper, a global's method), as main's dead-code elimination did; a hook call (`useX(…)`,
+  `ns.useX(…)`) in a function stays as a statement with the import it reads, so every output calls the same hooks in
+  the same order. The core runs that cleanup once after every planner, removing each in every output when edits
+  addressed to every output orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or another output takes it (one of
   its roots names it, or a claimed region reads it); a property a live rest element keeps (its key stays out of the
   rest) loses only its default value. The initialiser stays as written: a value in a destructured literal
   (`{ a, b } = { a: 1, b: f() }`) is not chased, so `b`'s value stays where `a` needs the declaration. A read the core

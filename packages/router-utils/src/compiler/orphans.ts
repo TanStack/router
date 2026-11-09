@@ -8,7 +8,7 @@
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
-import { isPureClass, isPureExpression } from './purity'
+import { isPureClass } from './purity'
 import { patternIdentifiers } from './source'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
@@ -56,10 +56,10 @@ const prune = (
 /**
  * Function-local declarators (and `var`/block declarators of the module
  * level the core's units do not model) and destructuring leaves all of
- * whose references are erased in the env output: pure initialisers go with
- * the declarator; an impure initialiser at function level stays as an
- * expression statement (its hook calls keep running); module level drops it
- * with the declaration (J4.12, documented removal). Iterates to a fixpoint.
+ * whose references are erased in the env output: the initialiser goes with
+ * the declarator whatever it does (J4.12, documented removal), but for a
+ * hook call at function level, which stays as an expression statement so
+ * the hook order is the same in every output. Iterates to a fixpoint.
  */
 export function cleanOrphanedDeclarations(
   ctx: PlanContext,
@@ -176,7 +176,7 @@ export function cleanOrphanedDeclarations(
           handled.add(b.id)
           continue
         }
-        if (removeDeclarator(ctx, declarator, scopeOf, live, prunedDecls)) {
+        if (removeDeclarator(ctx, declarator, scopeOf, prunedDecls)) {
           removedDeclarators.add(declarator)
           handled.add(b.id)
           changed = true
@@ -282,15 +282,15 @@ function takenElsewhere(
 
 /**
  * Removes a declarator all of whose bindings are orphaned, or reports that
- * it cannot: a single declarator's statement goes, or becomes its impure
- * initialiser at function level; a declarator of several is pruned with its
- * neighbours (`prunedDecls`) unless its initialiser's effects must stay.
+ * it cannot: a single declarator's statement goes, or becomes its
+ * initialiser when that calls a hook at function level; a declarator of
+ * several is pruned with its neighbours (`prunedDecls`) unless it calls a
+ * hook there.
  */
 function removeDeclarator(
   ctx: PlanContext,
   declarator: Node,
   scopeOf: ScopeOf,
-  live: LivenessView,
   prunedDecls: Map<Node, Pruned>,
 ): boolean {
   if (declarator.type !== 'VariableDeclarator') {
@@ -307,13 +307,10 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
-  const moduleLevel = !ctx.t1.inFunctionAt(declarator.start)
   const effectsGo =
     declarator.init === null ||
-    isPureExpression(ctx.analysis.purity, declarator.init) ||
-    moduleLevel ||
-    (!callsHook(declarator.init) &&
-      initReadsOnlyOrphanedImports(ctx, declarator.init, live))
+    !ctx.t1.inFunctionAt(declarator.start) ||
+    !callsHook(declarator.init)
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
@@ -552,37 +549,6 @@ export function removeListItems(
     }
     i = j
   }
-}
-
-/**
- * Whether an impure initialiser is server-only code the removal documents
- * (J4.12): it reads at least one import, and every import it reads has no
- * other live reference (the import leaves with it). Otherwise its effects
- * are kept as a statement (a call next to a removed implementation).
- */
-function initReadsOnlyOrphanedImports(
-  ctx: PlanContext,
-  init: Node,
-  live: LivenessView,
-): boolean {
-  const { t1, symbols } = ctx
-  const range = rangeOf(init)
-  let imports = 0
-  for (const r of t1.refs.refsIn(range)) {
-    if (!symbols.isImport(r.sym)) {
-      continue
-    }
-    imports++
-    const others = t1.refs
-      .valueRefsOf(r.sym)
-      .filter(
-        (o) => !(o.range.start >= range.start && o.range.end <= range.end),
-      )
-    if (others.some((o) => live.live(o))) {
-      return false
-    }
-  }
-  return imports > 0
 }
 
 const HOOK_NAME = /^use[A-Z0-9_]/

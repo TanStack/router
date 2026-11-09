@@ -212,17 +212,42 @@ describe('function-local declarators only erased code read', () => {
     )
   })
 
+  // As main's dead-code elimination: what the initialiser does is not
+  // asked (a same-module helper's call, a global's method, a literal
+  // holding calls), and the helper it alone read goes too.
+  it('removes an impure initialiser with its declarator', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        function connect() {
+          return open()
+        }
+        export function f() {
+          before()
+          const a = { x: g() }
+          const b = function () { return g() }()
+          const c = connect()
+          const d = process.env.KEY.trim()
+          return wrapServer(() => [a, b, c, d])
+        }
+      `),
+    ).toBe(
+      // the removed statements' indentation stays (whitespace is free)
+      'export function f() {\n  before()\n          return tsrStub()\n}\n',
+    )
+  })
+
   // (a statement after a rendered `;` needs no `;` of its own)
-  it('keeps an impure initialiser as a statement that parses and stands alone', async () => {
+  it('keeps a hook call initialiser as a statement that parses and stands alone', async () => {
     expect(
       await client(`
         import { wrapServer } from 'toy-start'
         export function f() {
           before()
-          const a = { x: g() }
-          const b = function () { return g() }()
-          const c = [g()]
-          const d = g()
+          const a = { x: useX() }
+          const b = function () { return useX() }()
+          const c = [useX()]
+          const d = useX()
           return wrapServer(() => [a, b, c, d])
         }
       `),
@@ -230,10 +255,10 @@ describe('function-local declarators only erased code read', () => {
       dedent(`
         export function f() {
           before()
-          ;({ x: g() });
-          (function () { return g() }());
-          [g()];
-          g();
+          ;({ x: useX() });
+          (function () { return useX() }());
+          [useX()];
+          useX();
           return tsrStub()
         }
       `),
@@ -242,8 +267,8 @@ describe('function-local declarators only erased code read', () => {
 })
 
 describe('function-level call initialisers (hook calls)', () => {
-  // A plain call reading only imports nothing else reads is server-only
-  // code: it leaves with its import (J4.12).
+  // A call that is no hook call leaves with the declarator, and the import
+  // only it read with it (J4.12).
   it('drops a server call whose imports only it reads, with the import', async () => {
     expect(
       await client(`

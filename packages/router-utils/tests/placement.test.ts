@@ -5471,28 +5471,6 @@ describe('builder chains in a compile', () => {
       }
     }
   })
-
-  // Source: review of 2026-11-09, round 2 (factories were known by name).
-  it('takes a local shadowing a factory for what it is: an orphan calling it keeps its effects', async () => {
-    const host = new MemoryHost({
-      files: {
-        '/app/m.ts': dedent(`
-          import { createServerFn, wrapServer } from 'toy-start'
-          export const real = createServerFn()
-          export function setup(createServerFn) {
-            const effect = createServerFn().handler(1)
-            return wrapServer(() => effect)
-          }
-        `),
-      },
-      recognizer,
-    })
-    const out = await host.compile('/app/m.ts', [toyEnvPlanner()], {
-      env: envInfo({ mode: 'build', type: 'client', name: 'client' }),
-    })
-    expect(out?.code).toContain('createServerFn().handler(1)')
-    expect(out?.code).not.toContain('const effect')
-  })
 })
 
 describe('a statement an edit rewrites from its first byte', () => {
