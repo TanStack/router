@@ -533,6 +533,8 @@ export interface MemoryHostOptions {
   markerSpecifiers?: ConstructorParameters<
     typeof RawFactsCache
   >[0]['markerSpecifiers']
+  /** Texts of virtual modules (`loadVirtual`), by id. */
+  virtual?: Record<string, string>
 }
 
 export class MemoryHost implements HostServices {
@@ -547,7 +549,7 @@ export class MemoryHost implements HostServices {
     this.files = { ...opts.files }
     this.rawFacts = new RawFactsCache({
       readFile: (p) => this.readFile(p),
-      loadVirtual: () => Promise.resolve(null),
+      loadVirtual: (id) => Promise.resolve(opts.virtual?.[id] ?? null),
       recognizer: opts.recognizer,
       markerSpecifiers: opts.markerSpecifiers,
     })
@@ -617,6 +619,7 @@ export class MemoryHost implements HostServices {
         planners,
         config: extra.config ?? { configKey: 'cfg', perPlanner: {} },
         wantMap: extra.wantMap ?? true,
+        lines: extra.lines,
       },
       this,
       this.caches,

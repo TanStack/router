@@ -72,6 +72,13 @@ export interface CompileInput {
   planners: ReadonlyArray<Planner>
   config: CompileConfig
   wantMap: boolean
+  /**
+   * How the map's consumer counts lines: ECMAScript line terminators (LF,
+   * CRLF, lone CR, U+2028, U+2029; the default), or
+   * LF only (`lf`: webpack-sources, the webpack family's). Both axes of the
+   * map count them so.
+   */
+  lines?: 'ecma' | 'lf'
 }
 
 export interface CompileOutput {
@@ -141,6 +148,14 @@ export interface HostServices {
    * this is for a module nothing requests again.
    */
   onInvalidationError?: (error: unknown) => void
+  /**
+   * Every wait of the compile on the raw facts of a virtual module
+   * (`isVirtualId`) goes through this, when given: a host whose virtual
+   * reads settle only once the module's transforms are done (a Vite
+   * build's `this.load`) fails a wait that can never end instead of
+   * letting the build hang.
+   */
+  awaitVirtual?: <T>(canonicalId: string, read: Promise<T>) => Promise<T>
   /** Planner-specific services (onViolation, ipBuild, serverFns, refreshRuntime, …). */
   services?: Record<string, unknown>
 }

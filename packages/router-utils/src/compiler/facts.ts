@@ -80,7 +80,8 @@ interface RawFactsOptions {
 /** Effects in every environment: what is unknown of a module. */
 const ALL_EFFECTS: CodeEffects = { client: true, server: true }
 
-const isVirtualId = (canonicalId: string): boolean =>
+/** Whether a module is virtual: its raw text is the host's `loadVirtual`, not a file's. */
+export const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
 
 /** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown (effectful). */

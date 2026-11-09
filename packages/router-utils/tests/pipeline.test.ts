@@ -529,6 +529,60 @@ describe('resolution for analysis', () => {
   })
 })
 
+describe('waits on virtual modules', () => {
+  /** Reads the `make` export of each import's module (a summary wait per import). */
+  const reader: Planner = {
+    name: 'reader',
+    tier: 1,
+    gate: (t0) => t0.imports.length > 0,
+    async prefetch(t0, ctx) {
+      for (const imp of t0.imports) {
+        const target = await ctx.resolve(imp.specifier)
+        if (target) {
+          await ctx.resolver.resolve(target, 'make')
+        }
+      }
+      ctx.set({})
+    },
+    plan() {},
+  }
+  const hostWith = (awaitVirtual: HostServices['awaitVirtual']) =>
+    Object.assign(
+      new MemoryHost({
+        files: {
+          '/app/a.ts': `import { make } from 'virtual:x'\nimport { make as other } from './b'\nexport const a = [make, other]\n`,
+          '/app/b.ts': 'export const make = 2\n',
+        },
+        resolve: (specifier) =>
+          specifier.startsWith('virtual:')
+            ? specifier
+            : specifier === './b'
+              ? '/app/b.ts'
+              : null,
+        virtual: { 'virtual:x': 'export const make = 1\n' },
+      }),
+      { awaitVirtual },
+    )
+
+  it("a compile waits on a virtual module's raw facts through the host's `awaitVirtual`, on a file's directly", async () => {
+    const waits: Array<string> = []
+    const host = hostWith((id, read) => {
+      waits.push(id)
+      return read
+    })
+    expect(await host.compile('/app/a.ts', [reader])).not.toBeNull()
+    expect(waits.length).toBeGreaterThan(0)
+    expect(new Set(waits)).toEqual(new Set(['virtual:x']))
+  })
+
+  it('a wait the host fails fails the compile', async () => {
+    const host = hostWith(() => Promise.reject(new Error('MARK_WAIT')))
+    await expect(host.compile('/app/a.ts', [reader])).rejects.toThrow(
+      'MARK_WAIT',
+    )
+  })
+})
+
 describe('slice gates: edges and policy', () => {
   it('(c) judges a chunk-only denied import in the chunk output with async verdicts per importer', async () => {
     const files = {
@@ -1350,7 +1404,7 @@ describe('slice gates: claims and maps', () => {
     )
   })
 
-  it('(m) map positions survive a raw U+2028 in a string and a lone-CR file, in env and derived outputs', async () => {
+  it('(m) map positions survive a raw U+2028 in a string and a lone-CR file, in env and derived outputs, with either line model', async () => {
     const base = [
       "import { createFileRoute } from 'toy-router'",
       "import { helper } from './helper'",
@@ -1366,16 +1420,20 @@ describe('slice gates: claims and maps', () => {
       '})',
       '',
     ]
-    for (const [name, code] of [
-      ['ls', base.join('\n')],
-      ['cr', base.join('\r')],
+    for (const [name, code, lines] of [
+      ['ls', base.join('\n'), undefined],
+      ['cr', base.join('\r'), undefined],
+      // a host whose bundler counts lines at LF only (webpack-sources)
+      ['ls-lf', base.join('\n'), 'lf'],
     ] as const) {
+      const lf = lines === 'lf'
       const host = new MemoryHost({ files: { [`/app/${name}.tsx`]: code } })
       const planners = [toySplitPlanner()]
-      const env = await host.compile(`/app/${name}.tsx`, planners)
+      const env = await host.compile(`/app/${name}.tsx`, planners, { lines })
       const chunk = await host.compile(
         `/app/${name}.tsx?tsr-split=component`,
         planners,
+        { lines },
       )
       for (const out of [env!, chunk!]) {
         const tracer = new TraceMap(out.map as never)
@@ -1387,7 +1445,7 @@ describe('slice gates: claims and maps', () => {
               break
             }
             from = gi + 1
-            const g = locate(out.code, gi)
+            const g = locate(out.code, gi, lf)
             const pos = originalPositionFor(tracer, {
               line: g.line + 1,
               column: g.column,
@@ -1395,7 +1453,7 @@ describe('slice gates: claims and maps', () => {
             if (pos.line === null) {
               continue
             }
-            const originalOffset = offsetOf(code, pos.line - 1, pos.column)
+            const originalOffset = offsetOf(code, pos.line - 1, pos.column, lf)
             expect(
               code.slice(originalOffset, originalOffset + needle.length),
               `${name}: ${needle} in ${out.output}`,
@@ -1407,15 +1465,22 @@ describe('slice gates: claims and maps', () => {
   })
 })
 
+/** The 0-based line and column of `offset`: lines end at ECMAScript line terminators, or at LF only (`lf`). */
 function locate(
   code: string,
   offset: number,
+  lf = false,
 ): { line: number; column: number } {
   let line = 0
   let lineStart = 0
   for (let i = 0; i < offset; i++) {
     const c = code.charCodeAt(i)
-    if (c === 13) {
+    if (lf) {
+      if (c === 10) {
+        line++
+        lineStart = i + 1
+      }
+    } else if (c === 13) {
       if (code.charCodeAt(i + 1) === 10) {
         i++
       }
@@ -1429,12 +1494,21 @@ function locate(
   return { line, column: offset - lineStart }
 }
 
-function offsetOf(code: string, line: number, column: number): number {
+function offsetOf(
+  code: string,
+  line: number,
+  column: number,
+  lf = false,
+): number {
   let l = 0
   let i = 0
   while (l < line && i < code.length) {
     const c = code.charCodeAt(i)
-    if (c === 13) {
+    if (lf) {
+      if (c === 10) {
+        l++
+      }
+    } else if (c === 13) {
       if (code.charCodeAt(i + 1) === 10) {
         i++
       }

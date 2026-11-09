@@ -26,6 +26,7 @@ import {
   invalidate,
   isAnalyzableSpecifier,
   isFinalBuild,
+  isVirtualId,
   liveModules,
   loadDerivedSource,
   normalizePath,
@@ -67,6 +68,7 @@ import {
 } from '../import-protection/witness'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
+import { createVirtualWaits } from './virtual-waits'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -293,6 +295,12 @@ export function startCompilerPlugin(
    */
   let clientFiles: Array<string> = []
   let clientRebuild: { ended: Promise<void>; end: () => void } | null = null
+  /**
+   * Whether the client environment built in this process: the server's
+   * resolver of a build lists (or gates on) the functions the client build
+   * references, which it reads from the client's compiles.
+   */
+  let clientBuilt = false
 
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
@@ -378,7 +386,13 @@ export function startCompilerPlugin(
     return s.entries
   }
 
-  /** Host services bound to one hook context. */
+  /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
+  const virtualWaits = createVirtualWaits()
+  /**
+   * Host services bound to one hook context (`compiling`: the id a transform
+   * compiles; a build's compile of a virtual module fails a wait on a
+   * virtual text that would never end).
+   */
   const hostFor = (
     s: Session,
     environment: Environment,
@@ -387,8 +401,9 @@ export function startCompilerPlugin(
       importer?: string,
       options?: { skipSelf?: boolean },
     ) => Promise<{ id: string; external?: boolean | string } | null>,
-  ): HostServices =>
-    s.start.host(async (specifier, importer) => {
+    compiling?: string,
+  ): HostServices => {
+    const host = s.start.host(async (specifier, importer) => {
       // a resolver that throws (a package with no export for this
       // environment's conditions, e.g. only `node`) couldn't resolve the
       // specifier, as Rspack's resolver answers: the bundler decides on the
@@ -404,6 +419,14 @@ export function startCompilerPlugin(
         external: r.external === true || typeof r.external === 'string',
       }
     })
+    if (compiling !== undefined && environment.mode === 'build') {
+      const subject = identify(compiling).canonicalId
+      if (isVirtualId(subject)) {
+        host.awaitVirtual = virtualWaits.of(environment.name, subject)
+      }
+    }
+    return host
+  }
 
   /** The host of the invalidation operation (a dev environment's own resolver). */
   const invalidationHost = (
@@ -776,8 +799,11 @@ export function startCompilerPlugin(
             s.start.opts.mode === 'dev' ||
             environment.config.build.sourcemap !== false,
         },
-        hostFor(s, this.environment, (source, imp, options) =>
-          this.resolve(source, imp, options),
+        hostFor(
+          s,
+          this.environment,
+          (source, imp, options) => this.resolve(source, imp, options),
+          id,
         ),
       )
       if (!out) {
@@ -924,6 +950,9 @@ export function startCompilerPlugin(
         })
       },
       buildEnd() {
+        if (this.environment.mode === 'build' && env.type === 'client') {
+          clientBuilt = true
+        }
         if (
           this.environment.mode === 'build' &&
           env.type === 'client' &&
@@ -1268,8 +1297,11 @@ export function startCompilerPlugin(
             wantMap: true,
             late: true,
           },
-          hostFor(s, this.environment, (source, imp, options) =>
-            this.resolve(source, imp, options),
+          hostFor(
+            s,
+            this.environment,
+            (source, imp, options) => this.resolve(source, imp, options),
+            id,
           ),
         )
         if (
@@ -1383,6 +1415,18 @@ export function startCompilerPlugin(
     enforce: 'pre',
     applyToEnvironment: (e) => resolverEnvironments.has(e.name),
     async load() {
+      if (
+        this.environment.mode === 'build' &&
+        this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
+        // (not a scan: plugin-rsc analyses the ssr environment first)
+        this.environment.config.build.write !== false &&
+        !clientBuilt
+      ) {
+        // the server would answer no client call (J4.2)
+        this.error(
+          `[tanstack-start] The server environment is built before the client environment. The server answers the server functions the client build calls, so the client must build first, in the same process: run \`vite build\`, or build \`builder.environments.client\` before \`builder.environments.ssr\`.`,
+        )
+      }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         await clientRebuild?.ended
         for (const file of clientFiles) {

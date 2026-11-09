@@ -386,7 +386,9 @@ export class StartRsbuildCompilerSession {
 
   /**
    * The last file event invalidated per path (`kind:mtime:size`, or
-   * `unlink`), and the end of the invalidation it was part of.
+   * `unlink`), and the end of the invalidation it was part of. Keyed by the
+   * path as compiler keys hold it (`normalizePath`): Rspack reports native
+   * paths (backslashes on Windows), `rebuildDependents` records the plans'.
    */
   private readonly lastEvent = new Map<
     string,
@@ -410,13 +412,14 @@ export class StartRsbuildCompilerSession {
     let end!: () => void
     const done = new Promise<void>((resolve) => (end = resolve))
     for (const event of events) {
-      const stamp = stampOf(event.file, event.kind)
-      const last = this.lastEvent.get(event.file)
+      const file = normalizePath(event.file)
+      const stamp = stampOf(file, event.kind)
+      const last = this.lastEvent.get(file)
       if (last?.stamp === stamp) {
         others.push(last.done)
       } else {
-        this.lastEvent.set(event.file, { stamp, done })
-        mine.push(event)
+        this.lastEvent.set(file, { stamp, done })
+        mine.push({ file, kind: event.kind })
       }
     }
     try {
@@ -424,7 +427,7 @@ export class StartRsbuildCompilerSession {
       for (const { file, kind } of mine) {
         stale.push(...(await this.invalidate(file, kind)).dependents)
         if (kind === 'unlink') {
-          this.start.forget(normalizePath(file))
+          this.start.forget(file)
         }
       }
       this.rebuildDependents(stale)
@@ -592,6 +595,8 @@ export class StartRsbuildCompilerSession {
         layer: ctx._module?.layer ?? undefined,
         inputMap: readInputMap,
         wantMap: ctx.sourceMap !== false,
+        // webpack-sources counts the map's lines at LF only
+        lines: 'lf',
         late,
       },
       this.hostFor(env.name),

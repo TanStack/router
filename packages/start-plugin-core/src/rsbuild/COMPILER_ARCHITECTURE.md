@@ -15,8 +15,8 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   implementation, the invalidation operation, the resolver module content.
 - `vue.ts` holds the Vue rules: the late pass over an SFC's script block under vue-loader's inline match resource
   (`x.vue.js?vue&type=script…`, which neither the `pre` rule, before vue-loader, nor the `.vue` late rule reads), a
-  rule registered only when vue-loader's plugin is in the final configuration (`onBeforeCreateCompiler`, after
-  `tools.rspack`, so vue-loader set up without `@rsbuild/plugin-vue` counts too); and the late loader's single run per module
+  rule registered next to the late rule in every configuration (only vue-loader requests such a module, however it is
+  set up: `@rsbuild/plugin-vue`, `tools.rspack`, a plugin of its own); and the late loader's single run per module
   (vue-loader's pitcher copies a block's loaders into its own request, which the configured `post` rules match again:
   a late loader that runs again later in its chain passes through).
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler

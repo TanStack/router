@@ -21,34 +21,20 @@ const VUE_SCRIPT_BLOCK_RE = /\.vue\.[cm]?[jt]sx?$/
 const SCRIPT_BLOCK_QUERY_RE = /[?&]type=script(?:&|$)/
 
 /**
- * Adds the `post` rule of the late pass over a script block requested under
- * vue-loader's inline match resource after Start's late rule (`late`, its
- * index in `config.module.rules`), when the final configuration builds Vue
- * SFCs with vue-loader: its `VueLoaderPlugin` is in the configuration's
- * plugins (vue-loader refuses to run without it), whichever way it got there
- * (`@rsbuild/plugin-vue`, `tools.rspack`).
+ * The `post` rule of the late pass over a script block requested under
+ * vue-loader's inline match resource, with the late rule's loader (`use`).
+ * Only vue-loader requests such a module: an app without Vue SFCs never
+ * meets the rule.
  */
-export function addVueScriptBlockRule(
-  config: Rspack.Configuration,
-  late: number,
-): void {
-  const buildsVueSfcs = (config.plugins ?? []).some(
-    (plugin) =>
-      !!plugin &&
-      typeof plugin === 'object' &&
-      plugin.constructor.name === 'VueLoaderPlugin',
-  )
-  if (!buildsVueSfcs) {
-    return
-  }
-  const rules = config.module!.rules!
-  const { use } = rules[late] as Rspack.RuleSetRule
-  rules.splice(late + 1, 0, {
+export function vueScriptBlockRule(
+  use: Rspack.RuleSetUseItem,
+): Rspack.RuleSetRule {
+  return {
     test: VUE_SCRIPT_BLOCK_RE,
     resourceQuery: SCRIPT_BLOCK_QUERY_RE,
     enforce: 'post',
-    use: [...(use as Array<Rspack.RuleSetUseItem>)],
-  })
+    use: [use],
+  }
 }
 
 /** What `runsAgainLater` reads of a loader context. */
