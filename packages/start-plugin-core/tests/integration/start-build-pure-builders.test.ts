@@ -226,6 +226,26 @@ export const Route = createFileRoute('/identity')({
   component: () => <p>{'MARK_identity'}{typeof counted.options}</p>,
 })
 `,
+  // a middleware `const` only a server fn nested in split code reads: the
+  // server compile hoists that server fn into the route module, which keeps
+  // the middleware it reads
+  'src/routes/hoisted.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { makeSchema } from '../schema'
+const tagged = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next({ context: { via: 'MARK_hoisted' } }),
+)
+function lookup() {
+  return createServerFn()
+    .middleware([tagged])
+    .handler(async ({ context }) => context.via)()
+}
+export const Route = createFileRoute('/hoisted')({
+  validateSearch: makeSchema({ tab: 'string' }),
+  loader: () => lookup(),
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
   'client-entry.ts': `export { makeLookup } from './src/nested'
 `,
   'ssr-entry.ts': `export { makeLookup } from './src/nested'
@@ -249,11 +269,19 @@ const lookup = await callById(serverFnId(${JSON.stringify(url)}))
 const before = runs()
 const page = await entry.startServerEntry.fetch(new Request('http://localhost/identity'))
 const html = await page.text()
-return { lookup, runs: runs() - before, rendered: html.includes('MARK_identity') }`)
+const counted = runs() - before
+const hoisted = await entry.startServerEntry.fetch(new Request('http://localhost/hoisted'))
+return {
+  lookup,
+  runs: counted,
+  rendered: html.includes('MARK_identity'),
+  hoisted: (await hoisted.text()).includes('MARK_hoisted'),
+}`)
       expect(result).toEqual({
         lookup: 'MARK_nested',
         runs: 1,
         rendered: true,
+        hoisted: true,
       })
     },
     timeout,
