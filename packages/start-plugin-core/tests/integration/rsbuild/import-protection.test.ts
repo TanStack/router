@@ -950,6 +950,70 @@ export const read = () => button()
   }, 60_000)
 })
 
+// A webpack request with inline loaders (`!!./x.server.js`, `-!`, `!`, or
+// `loader!./x.server.js`) loads the file at its last segment: judged as that
+// file and that specifier. Source: review round 3 (R3-G6-5; main judged the
+// resolved module).
+describe('Rsbuild build: an import with webpack inline loaders', () => {
+  const inlineLoaderBuild = (
+    specifier: string,
+    importProtection: ImportProtectionOptions = {},
+  ) =>
+    buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/secret.server.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'node_modules/secret-lib/package.json': JSON.stringify({
+          name: 'secret-lib',
+          type: 'module',
+          exports: './index.js',
+        }),
+        'node_modules/secret-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import { secret } from ${JSON.stringify(specifier)}
+export const read = () => secret()
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection },
+    })
+
+  test.each([
+    '!!./secret.server.js',
+    '-!./secret.server.js',
+    '!./secret.server.js',
+  ])(
+    'the file rule denies %s: the build fails, naming the importer',
+    async (specifier) => {
+      expect(
+        reportedViolations(await rejection(inlineLoaderBuild(specifier))),
+      ).toEqual([
+        {
+          environment: 'client',
+          importer: expect.stringMatching(/^src\/entry\.ts\b/),
+        },
+      ])
+    },
+    60_000,
+  )
+
+  test('a denied specifier behind inline loaders: the build fails, naming the importer', async () => {
+    expect(
+      reportedViolations(
+        await rejection(
+          inlineLoaderBuild('!!secret-lib', {
+            client: { specifiers: ['secret-lib'] },
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        environment: 'client',
+        importer: expect.stringMatching(/^src\/entry\.ts\b/),
+      },
+    ])
+  }, 60_000)
+})
+
 // `rsbuild build --watch`: each build reports the violations it bundles,
 // whatever an earlier build reported.
 // Source: mutation testing (Rsbuild host, the state of a previous build).
