@@ -83,6 +83,49 @@ return {
     },
     timeout,
   )
+
+  // Every importer of the factory is a dependent of the edit, each compiled
+  // again; more of them than the dev server compiles at once. Mirrors
+  // rsbuild/dev-server.test.ts "every module importing a factory from ./b
+  // that stops being one keeps its handler".
+  test(
+    'client: every module importing a factory that stops being one keeps its handler',
+    async () => {
+      const names = Array.from({ length: 140 }, (_, i) => `m${i}`)
+      const importers = Object.fromEntries(
+        names.map((name) => [
+          `src/${name}.tsx`,
+          `import { base } from './b'
+import { db } from './db'
+export const fn = base.handler(async () => db.x('${name}'))
+`,
+        ]),
+      )
+      const server = await startBrowserStartDevServer({
+        files: {
+          'src/b.ts': factory,
+          'src/db.ts': `export const db = { x: (name: string) => 'MARK_DB_SECRET_' + name }\n`,
+          ...importers,
+          'src/main.tsx': names
+            .map((name) => `export { fn as ${name} } from './${name}'\n`)
+            .join(''),
+        },
+      })
+      const inClient = async (script: string) =>
+        (await runViteClient(server, '/src/main.tsx', script)).result
+      const fns = `[${names.map((name) => `entry.${name}`).join(', ')}]`
+      expect(
+        await inClient(`return ${fns}.map((fn) => typeof fn.url)`),
+      ).toEqual(names.map(() => 'string'))
+
+      await server.edit({ 'src/b.ts': plain })
+
+      expect(
+        await inClient(`return await Promise.all(${fns}.map((fn) => fn()))`),
+      ).toEqual(names.map((name) => `MARK_DB_SECRET_${name}`))
+    },
+    timeout,
+  )
 })
 
 describe('Vite dev: server fns by id', () => {

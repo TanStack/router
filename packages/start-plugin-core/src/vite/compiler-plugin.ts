@@ -157,6 +157,9 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ASSET_QUERY_RE,
 ]
 
+/** How many dependents of one file change `changedDependents` transforms at once. */
+const DEPENDENT_TRANSFORMS = 128
+
 const readAwaitingAdd = (awaitingAdd: Map<string, Set<string>>) =>
   collectionSizes({ awaitingAdd })
 
@@ -468,30 +471,43 @@ export function startCompilerPlugin(
    * hot-apply (a route tree, accepted by nothing) and so a full reload,
    * e.g. after a route file gained an export. The comparison is of the
    * compiler's output, not Vite's (import analysis stamps `?t=` on the
-   * imports of changed modules).
+   * imports of changed modules). The dependents are transformed
+   * `DEPENDENT_TRANSFORMS` at a time (an export added to a shared module
+   * re-plans each of its importers: their waits overlap, and the modules
+   * in flight at once stay few); the result keeps their order.
    */
   const changedDependents = async (
     environment: DevEnvironment,
     dependents: Array<EnvironmentModuleNode>,
   ): Promise<Array<EnvironmentModuleNode>> => {
-    const changed: Array<EnvironmentModuleNode> = []
-    for (const node of dependents) {
-      if (node.id !== null) {
+    const unchanged: Array<boolean> = []
+    let next = 0
+    const transformNext = async (): Promise<void> => {
+      while (next < dependents.length) {
+        const i = next++
+        const node = dependents[i]!
+        if (node.id === null) {
+          continue
+        }
         // Vite's own propagation of the file change may have cleared the
         // node's transform result already; the compiler's last output is
         // what the page holds
         const key = `${environment.name}\0${node.id}`
         const previous = digestOf(node.id, key)
-        if (previous !== undefined) {
-          await environment.transformRequest(node.url).catch(() => null)
-          if (digestOf(node.id, key) === previous) {
-            continue
-          }
+        if (previous === undefined) {
+          continue
         }
+        await environment.transformRequest(node.url).catch(() => null)
+        unchanged[i] = digestOf(node.id, key) === previous
       }
-      changed.push(node)
     }
-    return changed
+    await Promise.all(
+      Array.from(
+        { length: Math.min(DEPENDENT_TRANSFORMS, dependents.length) },
+        transformNext,
+      ),
+    )
+    return dependents.filter((_, i) => !unchanged[i])
   }
 
   /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
