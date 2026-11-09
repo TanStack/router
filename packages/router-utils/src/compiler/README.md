@@ -63,7 +63,8 @@ rule) and `inclusion` (what each output contains, imports and exports). The same
 
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
   chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
-  are duplicated. An exported binding only split code needs leaves the route module for a side-effect-free extracted
+  are duplicated (a planner's generated import, such as a client stub's `createClientRpc`, is an import specifier
+  too). An exported binding only split code needs leaves the route module for a side-effect-free extracted
   module (`?tsr-split=export---Name`) that the route module re-exports, so other modules importing it from the route
   file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
   chunks: when a copy would be indistinguishable from the original, the chunk carries its own copy and never

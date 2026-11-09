@@ -5225,6 +5225,159 @@ describe('pure calls of known packages', () => {
   })
 })
 
+describe('generated imports', () => {
+  // A planner's runtime helper (Start's server-fn stubs `createClientRpc`,
+  // `createSsrRpc`) is an import like one the source wrote: every output
+  // reading it imports it itself, never through the env module (an
+  // extracted module evaluates before the env module's body: the verifier's
+  // rule (e)), and one nothing reads is dropped.
+  /** A planner importing `stub` (as `tsrStub`) and wrapping each of `literals` in a call of it. */
+  const wrapping = (literals: Array<string>): Planner => ({
+    name: 'toy-wrap',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const stub = ctx.names.alloc('tsrStub')
+      ctx.rewrites.addGenerated({
+        body: [],
+        declares: [],
+        effectful: false,
+        anchor: { k: 'after-header' },
+        home: 'auto',
+        by: 'toy-wrap',
+        imports: [
+          {
+            names: [{ imported: 'stub', local: stub.sym }],
+            spec: {
+              k: 'spec',
+              specifier: 'toy-runtime',
+              edgeKey: ctx.edgeKey('toy-runtime', 'static', 'runtime'),
+              provenance: { origin: 'runtime' },
+            },
+          },
+        ],
+      })
+      for (const literal of literals) {
+        const start = ctx.analysis.source.code.indexOf(literal)
+        ctx.rewrites.add({
+          range: { start, end: start + literal.length },
+          body: [{ k: 'text', parts: [{ sym: stub.sym }, `(${literal})`] }],
+          scope: 'all-outputs',
+          by: 'toy-wrap',
+        })
+      }
+    },
+  })
+  const imported = "import { stub as tsrStub } from 'toy-runtime'"
+  async function compileAll(
+    code: string,
+    literals: Array<string>,
+    ids: Array<string>,
+    opts: { keys?: Array<string>; type?: 'client' | 'server' } = {},
+  ) {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toySplitPlanner({
+        keys: opts.keys ?? ['component'],
+        extractExports: true,
+      }),
+      wrapping(literals),
+    ]
+    const type = opts.type ?? 'client'
+    const options = { env: envInfo({ mode: 'build', type, name: type }) }
+    const out: Record<string, string> = {}
+    for (const id of ['', ...ids]) {
+      const r = await host.compile(`/app/route.tsx${id}`, planners, options)
+      expect(r, id).not.toBeNull()
+      out[id] = r!.code
+    }
+    return out
+  }
+
+  it.each(['client', 'server'] as const)(
+    'are imported by each extracted module reading them at load (%s)',
+    async (type) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        export const a = [1]
+        export const b = [2]
+        export const Route = createFileRoute('/')({ component: () => a[0] + b[0] })
+      `)
+      const ids = ['?tsr-split=export---a', '?tsr-split=export---b']
+      const out = await compileAll(code, ['[1]', '[2]'], ids, { type })
+      expect(out['']).not.toContain('tsrStub')
+      for (const id of ids) {
+        expect(out[id], id).toContain(imported)
+        expect(out[id], id).not.toContain("from '/app/route.tsx'")
+      }
+    },
+  )
+
+  it('are imported by the env module and an extracted module both reading them', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const kept = [0]
+      export const a = [1]
+      export const Route = createFileRoute('/')({
+        loader: () => kept,
+        component: () => a[0],
+      })
+    `)
+    const id = '?tsr-split=export---a'
+    const out = await compileAll(code, ['[0]', '[1]'], [id])
+    expect(out['']).toContain(imported)
+    expect(out['']).toContain('const kept = tsrStub([0])')
+    expect(out[id]).toContain(imported)
+    expect(out[id]).not.toContain("from '/app/route.tsx'")
+  })
+
+  it('are imported by each split chunk reading them, with no shared module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const a = [1]
+      const b = [2]
+      export const Route = createFileRoute('/')({
+        component: () => a[0],
+        errorComponent: () => b[0],
+      })
+    `)
+    const ids = ['?tsr-split=component', '?tsr-split=errorComponent']
+    const out = await compileAll(code, ['[1]', '[2]'], ids, {
+      keys: ['component', 'errorComponent'],
+    })
+    expect(out['']).not.toContain('tsrStub')
+    for (const id of ids) {
+      expect(out[id], id).toContain(imported)
+      expect(out[id], id).not.toContain('/app/route.tsx')
+    }
+  })
+
+  it('are carried by a chunk copying a function export that reads them', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function make() { return [3] }
+      export const Route = createFileRoute('/')({ component: () => make() })
+    `)
+    const id = '?tsr-split=component'
+    const out = await compileAll(code, ['[3]'], [id])
+    expect(out[id]).toContain('function make() { return tsrStub([3]) }')
+    expect(out[id]).toContain(imported)
+    expect(out[id]).not.toContain('export---make')
+  })
+
+  it('are dropped when no output reads them', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const a = [1]
+      export const Route = createFileRoute('/')({ component: () => a[0] })
+    `)
+    const id = '?tsr-split=component'
+    const out = await compileAll(code, [], [id])
+    expect(out['']).not.toContain('toy-runtime')
+    expect(out[id]).not.toContain('toy-runtime')
+  })
+})
+
 // A client compile's builder chains (`RecognizerTable.builderLinks`) with
 // pure arguments are no effect for the planners: what the client erases (a
 // server fn's handler) does not count. The server compile's purity takes
