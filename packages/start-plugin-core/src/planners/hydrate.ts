@@ -104,11 +104,18 @@ function resolveConfig(config: unknown): ResolvedConfig {
   return { root: c.root, refreshMarkers: c.refreshMarkers ?? false }
 }
 
+declare module '@tanstack/router-utils/compiler' {
+  interface PlannerData {
+    /** The Hydrate planner's `PlannerData` (`HYDRATE_PLANNER`). */
+    hydrate: { config: HydratePlannerConfig; prefetch: HydratePrefetch }
+  }
+}
+
 /**
  * Creates the planner. Its config comes from `config.perPlanner.hydrate`
  * (`HydratePlannerConfig`), which the host folds into the config key.
  */
-export function createHydratePlanner(): Planner {
+export function createHydratePlanner(): Planner<typeof HYDRATE_PLANNER> {
   return {
     name: HYDRATE_PLANNER,
     tier: 1,
@@ -282,10 +289,7 @@ function findBoundaries(
 ): Array<Boundary> {
   const { analysis, t1 } = ctx
   const table = startRecognizer()
-  const reexported = new Map(
-    (ctx.prefetched.get(HYDRATE_PLANNER) as HydratePrefetch | undefined)
-      ?.reexported,
-  )
+  const reexported = new Map(ctx.prefetched.get(HYDRATE_PLANNER)?.reexported)
   // every element whose tag may be a boundary (its framework, or null when
   // its import is no Start `Hydrate`): ordinals count them all, so an env
   // resolving an app module differently shifts no other boundary's id

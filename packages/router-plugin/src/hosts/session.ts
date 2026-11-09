@@ -35,6 +35,7 @@ import type { Config } from '../core/config'
 import type { RouterPlannerConfig } from '../planners'
 import type { RouteEntryFacts } from '../planners/route'
 import type {
+  CompileConfig,
   CompileOutput,
   CompilerCaches,
   DiagnosticSink,
@@ -76,7 +77,7 @@ const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])
 /** The router planner's configuration of an environment type, and the compile config holding it. */
 interface EnvConfig {
   planner: RouterPlannerConfig
-  compile: { configKey: string; perPlanner: Record<string, unknown> }
+  compile: CompileConfig
 }
 
 export class RouterCompiler {

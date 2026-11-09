@@ -32,9 +32,76 @@ import type { RawFacts, RawFactsCache } from './facts'
 import type { ExportResolver } from './resolve'
 import type { RawSourceMap } from './output-builder'
 
+/**
+ * What each planner exchanges through the core, by planner name: `config`
+ * (its `CompileConfig.perPlanner` entry, read as `ctx.config`), `prefetch`
+ * (its phase A result: `PrefetchContext.set`, `PlanContext.prefetched`) and
+ * `facts` (`PlanContext.setFacts`, `PlanFacts.planners`). A planner package
+ * declares its planner's entry next to the planner (module augmentation):
+ *
+ * ```ts
+ * declare module '@tanstack/router-utils/compiler' {
+ *   interface PlannerData {
+ *     router: { config: RouterPlannerConfig; prefetch: RouteEntryFacts | null }
+ *   }
+ * }
+ * ```
+ *
+ * A member an entry leaves out is `never` (the planner has no such data); a
+ * name without an entry carries `unknown`. The core joins name and data at
+ * run time (`perPlanner[p.name]`, `prefetched.set(p.name, …)`): these types
+ * only check the planners and hosts on both sides of it.
+ */
+export interface PlannerData {}
+
+/** Member `TKey` of planner `TName`'s `PlannerData` entry. */
+type PlannerDataOf<
+  TName extends string,
+  TKey extends 'config' | 'prefetch' | 'facts',
+> = TName extends keyof PlannerData
+  ? PlannerData[TName] extends Record<TKey, infer T>
+    ? T
+    : never
+  : unknown
+
+/** Planner `TName`'s configuration (`CompileConfig.perPlanner[TName]`, `ctx.config`). */
+export type PlannerConfig<TName extends string> = PlannerDataOf<TName, 'config'>
+/** Planner `TName`'s phase A result (`PrefetchContext.set`, `PlanContext.prefetched`). */
+export type PlannerPrefetch<TName extends string> = PlannerDataOf<
+  TName,
+  'prefetch'
+>
+/** Planner `TName`'s facts (`PlanContext.setFacts`, `PlanFacts.planners[TName]`). */
+export type PlannerFacts<TName extends string> = PlannerDataOf<TName, 'facts'>
+
+/** `CompileConfig.perPlanner`: each planner's configuration under its name. */
+export type PlannerConfigs = {
+  [TName in keyof PlannerData & string]?: PlannerConfig<TName>
+} & Record<string, unknown>
+
+/** `PlanFacts.planners`: each planner's facts under its name; plain data only. */
+export type PlannerFactsByName = {
+  [TName in keyof PlannerData & string]?: PlannerFacts<TName>
+} & Record<string, unknown>
+
+/** `PlanContext.prefetched`: the phase A results of a compile, by planner name. */
+export interface PlannerPrefetches extends ReadonlyMap<string, unknown> {
+  /** Undefined when the planner stored none (it has no `prefetch`, or did not run). */
+  get: <TName extends string>(
+    planner: TName,
+  ) => PlannerPrefetch<TName> | undefined
+}
+
+/**
+ * The services a host gives its planners (`HostServices.services`),
+ * declared by the planner packages (module augmentation, like
+ * `PlannerData`).
+ */
+export interface PlannerServices {}
+
 export interface CompileConfig {
   configKey: string
-  perPlanner: Record<string, unknown>
+  perPlanner: PlannerConfigs
 }
 
 /** A source map another plugin produced for the input text (any number of sources). */
@@ -156,16 +223,20 @@ export interface HostServices {
    * letting the build hang.
    */
   awaitVirtual?: <T>(canonicalId: string, read: Promise<T>) => Promise<T>
-  /** Planner-specific services (onViolation, ipBuild, serverFns, refreshRuntime, …). */
-  services?: Record<string, unknown>
+  /**
+   * What a host gives particular planners beyond the core's services
+   * (`PlannerServices`, declared by the planner packages). Today one key:
+   * Start's `import-edges` planner reads the Rsbuild host's `importRewrite`.
+   */
+  services?: PlannerServices
 }
 
-export interface GateContext {
+export interface GateContext<TName extends string = string> {
   identity: SourceIdentity
-  config: unknown
+  config: PlannerConfig<TName>
 }
 
-export interface PrefetchContext {
+export interface PrefetchContext<TName extends string = string> {
   identity: SourceIdentity
   host: HostServices
   ledger: DependencyLedger
@@ -180,7 +251,7 @@ export interface PrefetchContext {
   /** Target facts (records a target-facts fingerprint). */
   targetFacts: (canonicalId: string) => Promise<RawFacts['targetFacts']>
   /** Stores this planner's phase A result for `PlanContext.prefetched`. */
-  set: (data: unknown) => void
+  set: (data: PlannerPrefetch<TName>) => void
 }
 
 export interface PolicyContext {
@@ -211,10 +282,15 @@ export interface PolicyContext {
   diagnostic: (d: Diagnostic) => void
 }
 
-export interface Planner {
-  name: string
+/**
+ * A planner named `TName`: its contexts carry `TName`'s `PlannerData`.
+ * `Planner` (the default, `any` name) is what the core's arrays hold: every
+ * `Planner<'router'>` is one, and the core passes it its own data by name.
+ */
+export interface Planner<TName extends string = any> {
+  name: TName
   tier: 0 | 1
-  gate: (t0: ModuleAnalysis, ctx: GateContext) => boolean
+  gate: (t0: ModuleAnalysis, ctx: GateContext<TName>) => boolean
   /**
    * Phase A contributions. Resolving to `false` withdraws the planner from
    * this compile (an async refinement of `gate`); the facts it recorded stay
@@ -222,9 +298,9 @@ export interface Planner {
    */
   prefetch?: (
     t0: ModuleAnalysis,
-    ctx: PrefetchContext,
+    ctx: PrefetchContext<TName>,
   ) => Promise<void | boolean>
-  plan: (ctx: PlanContext) => void
+  plan: (ctx: PlanContext<TName>) => void
   policy?: (
     plan: EmitPlan,
     output: OutputId,

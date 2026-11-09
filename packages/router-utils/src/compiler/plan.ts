@@ -37,6 +37,12 @@ import type {
   RefTarget,
 } from './rewrite'
 import type { DependencyFingerprint } from './cache'
+import type {
+  PlannerConfig,
+  PlannerFacts,
+  PlannerFactsByName,
+  PlannerPrefetches,
+} from './host'
 
 export type {
   OutputDecl,
@@ -91,7 +97,7 @@ export interface OutputRecipe {
 export interface PlanFacts {
   marker: 'server-only' | 'client-only' | 'conflict' | null
   /** Planner facts by planner name; plain data only. */
-  planners: Record<string, unknown>
+  planners: PlannerFactsByName
 }
 
 export interface EmitPlan {
@@ -132,20 +138,20 @@ interface ModuleWords {
   tag: string
 }
 
-/** What planners see in phase B. */
-export interface PlanContext {
+/** What planner `TName` sees in phase B. */
+export interface PlanContext<TName extends string = string> {
   readonly analysis: ModuleAnalysis
   readonly t1: Tier1
   readonly identity: SourceIdentity
   /** The module as messages name it: relative to the project root (`displayPath`). */
   readonly displayPath: string
   readonly env: EnvInfo
-  readonly config: unknown
+  readonly config: PlannerConfig<TName>
   readonly rewrites: RewriteSet
   readonly names: NameAllocator
   readonly symbols: SymbolTable
   /** Phase A results, by planner name. */
-  readonly prefetched: ReadonlyMap<string, unknown>
+  readonly prefetched: PlannerPrefetches
   /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
@@ -198,7 +204,10 @@ export interface PlanContext {
     /** References inside these ranges are left to their owner (another planner rewrites them). */
     except?: ReadonlyArray<Range>,
   ) => void
-  setFacts: (planner: string, data: unknown) => void
+  setFacts: <TPlanner extends string>(
+    planner: TPlanner,
+    data: PlannerFacts<TPlanner>,
+  ) => void
   diagnostic: (d: Diagnostic) => void
   /**
    * A diagnostic about the code at `d.range`, reported only if that code
@@ -236,7 +245,7 @@ export class AnalysisPlan implements PlanContext {
     at: Range
     unlessLive: ReadonlyArray<Range>
   }> = []
-  readonly facts: Record<string, unknown> = {}
+  readonly facts: PlannerFactsByName = {}
   readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
   private readonly keptSyms = new Set<SymbolId>()
@@ -260,7 +269,7 @@ export class AnalysisPlan implements PlanContext {
     readonly analysis: ModuleAnalysis,
     readonly identity: SourceIdentity,
     readonly env: EnvInfo,
-    readonly prefetched: ReadonlyMap<string, unknown>,
+    readonly prefetched: PlannerPrefetches,
     readonly fallbacks: ReadonlyArray<FallbackRecord>,
     /** The module as messages name it (`displayPath`). */
     readonly displayPath: string = identity.path,
@@ -374,7 +383,10 @@ export class AnalysisPlan implements PlanContext {
     return this.rewrites.liveness(output)
   }
 
-  setFacts(planner: string, data: unknown): void {
+  setFacts<TPlanner extends string>(
+    planner: TPlanner,
+    data: PlannerFacts<TPlanner>,
+  ): void {
     this.facts[planner] = data
   }
 

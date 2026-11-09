@@ -7,7 +7,8 @@ import {
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
-import type { EdgeRecord, Lang, Planner, PolicyContext } from '../src/compiler'
+import type { EdgeRecord, Planner, PolicyContext } from '../src/compiler'
+import type { Lang } from '../src/compiler/identity'
 
 /** A tier-0 policy planner that records every output's edges and its policy context. */
 function edgeRecorder(

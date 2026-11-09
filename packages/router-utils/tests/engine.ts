@@ -1,12 +1,12 @@
 /** Direct engine harness: parse → AnalysisPlan → planners-as-callbacks → freeze → emit. */
 import {
-  AnalysisPlan,
   ModuleAnalysis,
-  emitRecipe,
   identify,
   parseModule,
   revision,
 } from '../src/compiler'
+import { AnalysisPlan } from '../src/compiler/plan'
+import { emitRecipe } from '../src/compiler/emit'
 import { envInfo } from './helpers'
 import type { EmitPlan, EnvInfo, OutputId, PlanContext } from '../src/compiler'
 

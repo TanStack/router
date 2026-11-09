@@ -51,6 +51,7 @@ import type {
   HostServices,
   InputSourceMap,
   Planner,
+  PlannerPrefetches,
   PolicyContext,
   PrefetchContext,
 } from './host'
@@ -760,7 +761,8 @@ function planRound(
     t0,
     identity,
     env,
-    prefetched,
+    // each planner stored its own entry under its name (`PrefetchContext.set`)
+    prefetched as PlannerPrefetches,
     fallbacks,
     displayFile,
   )

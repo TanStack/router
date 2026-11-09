@@ -419,7 +419,20 @@ function roleOf(ctx: PlanContext, config: StartEnvConfig): Role {
   return 'ssr-caller'
 }
 
-export function startEnvPlanner(opts?: { late: true }): Planner {
+declare module '@tanstack/router-utils/compiler' {
+  interface PlannerData {
+    /** The start-env planner's `PlannerData` (`START_ENV`); `startAnalysisOf` and the hosts read it too. */
+    'start-env': {
+      config: StartEnvConfig
+      prefetch: StartPrefetch
+      facts: StartEnvFacts
+    }
+  }
+}
+
+export function startEnvPlanner(opts?: {
+  late: true
+}): Planner<typeof START_ENV> {
   const table = startRecognizer()
   const answerFromRegistry = !cacheDisabled('registry')
   return {
@@ -436,7 +449,7 @@ export function startEnvPlanner(opts?: { late: true }): Planner {
       return result.relevant
     },
     plan(ctx) {
-      planStartEnv(ctx, ctx.config as StartEnvConfig, table)
+      planStartEnv(ctx, ctx.config, table)
     },
   }
 }
@@ -1065,9 +1078,7 @@ function planStartEnv(
         code: `start-escape:${e.reason}`,
       })
     }
-    const prefetched = ctx.prefetched.get(START_ENV) as
-      | StartPrefetch
-      | undefined
+    const prefetched = ctx.prefetched.get(START_ENV)
     for (const range of prefetched?.lateExports ?? []) {
       diag(LATE_MESSAGE, range)
     }

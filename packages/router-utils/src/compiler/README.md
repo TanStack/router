@@ -257,13 +257,13 @@ text compiles waits for it and emits its own output from the result.
 
 ## Hosts
 
-| host                     | where                                                                                                                                                                                                                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Router, Vite             | `router-plugin/src/hosts/vite.ts` (+ `session.ts`): native plugin, hook filters, `load` for derived ids, `hotUpdate` invalidation                                                                                             |
-| Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader (composes input maps, `addDependency`)                                                                                                             |
-| Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                                    |
-| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env |
-| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache          |
+| host                     | where                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Router, Vite             | `router-plugin/src/hosts/vite.ts` (+ `session.ts`): native plugin, hook filters, `load` for derived ids, `hotUpdate` invalidation                                                                                                                                                                                                        |
+| Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader (composes input maps, `addDependency`)                                                                                                                                                                                                                        |
+| Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                                                                                                                                               |
+| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `compiler-state.ts`, `invalidation.ts`, `late-pass-plugin.ts`, `server-fn-plugins.ts`, `handler-reach.ts`, `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env |
+| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache                                                                                                                     |
 
 The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
 invalidation and live modules of a hot update, a webpack-family loader's map and module id,
@@ -314,7 +314,10 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
    derived modules, `setFacts`, `diagnostic`), and an optional per-output `policy`.
 2. Never walk the whole AST when a semantic query from the import table or a binding's references answers the
    question; never keep a Yuku node beyond `plan()`; facts must be JSON data.
-3. Slot it into the host's planner array at its fixed position; read its config through `ctx.config`.
+3. Declare its `PlannerData` entry (`host.ts`: the types of its config, prefetch result and facts, by its name) next
+   to it with `declare module '@tanstack/router-utils/compiler'`, and type it `Planner<typeof NAME>`: `ctx.config`,
+   `ctx.prefetched.get(name)`, `setFacts` and `facts.planners[name]` then carry those types, for the planner and for the
+   hosts reading its facts. Slot it into the host's planner array at its fixed position.
 4. Add core unit tests with a toy planner if the core needs a new capability (and keep the invariants above), and
    oracle tests through the public plugins for the behaviour.
 
