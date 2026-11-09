@@ -10,7 +10,12 @@ import {
   toyHydratePlanner,
   toySplitPlanner,
 } from './helpers'
-import type { EnvInfo, Planner, SymbolId } from '../src/compiler'
+import type {
+  EnvInfo,
+  Planner,
+  RecognizerTable,
+  SymbolId,
+} from '../src/compiler'
 
 async function split(
   code: string,
@@ -5116,16 +5121,16 @@ describe('pure calls of known packages', () => {
 // none, and a link on a `const` holding a builder stays an effect (a
 // middleware's links write that builder's options).
 describe('builder chains in a client compile', () => {
-  const recognizer = {
+  const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
     factories: { 'toy-start': { createServerFn: 'serverFn' } },
     builderKinds: new Set(['serverFn']),
     terminal: { serverFn: 'serverFn' },
     builderLinks: {
       serverFn: {
-        middleware: 'both' as const,
-        validator: 'server' as const,
-        handler: 'server' as const,
+        middleware: 'both',
+        validator: 'server',
+        handler: 'server',
       },
     },
   }
