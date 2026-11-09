@@ -206,6 +206,45 @@ describe('a namespace read by member', () => {
   })
 })
 
+// A module that stops parsing keeps the last facts it parsed to (saved
+// mid-edit): its importers' decisions stand until it parses again. A module
+// read by member must still be a dependency when it is unreadable.
+// Source: review of 2026-11-09, round 2 (a namespace's dependency is its
+// members' records, no longer the whole summary).
+describe('a namespace read by member, of a module that does not parse', () => {
+  const LIB = '/app/src/lib.ts'
+  const NS = '/app/src/ns.ts'
+  const ns = `import * as lib from './lib'\nexport const fn = lib.factory.handler(async () => '${SECRET}')\n`
+  const broken = `${IMPORT}export const factory = createServerFn(\n`
+
+  it('keeps the plan while the module stops parsing, and re-plans when it parses again', async () => {
+    const t = session({
+      [LIB]: `${IMPORT}export const factory = createServerFn()\n`,
+      [NS]: ns,
+    })
+    expect(await t.compile(NS)).not.toContain(SECRET)
+    expect(await t.edit(LIB, broken)).not.toContain(NS)
+    expect(await t.compile(NS)).not.toContain(SECRET)
+    expect(
+      await t.edit(LIB, `export const factory = (x: any) => x\n`),
+    ).toContain(NS)
+    const out = await t.compile(NS)
+    expect(out).toContain(SECRET)
+    expect(out).toBe(await t.fresh(NS))
+  })
+
+  it('re-plans the importer once a module that never parsed parses', async () => {
+    const t = session({ [LIB]: broken, [NS]: ns })
+    expect(await t.compile(NS)).toContain(SECRET)
+    expect(
+      await t.edit(LIB, `${IMPORT}export const factory = createServerFn()\n`),
+    ).toContain(NS)
+    const out = await t.compile(NS)
+    expect(out).not.toContain(SECRET)
+    expect(out).toBe(await t.fresh(NS))
+  })
+})
+
 describe('a namespace that escapes the analysis', () => {
   it('depends on the whole module: any export change re-plans it', async () => {
     const LIB = '/app/src/lib.ts'
