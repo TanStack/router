@@ -15,6 +15,7 @@ import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
+  requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
 import { solidAppConfig } from './hydrate-pages'
@@ -392,6 +393,57 @@ return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ??
         client: { staticData: { marker: 'MARK_STATIC' }, ssr: null },
         ssr: { staticData: null, ssr: true },
       })
+    },
+    timeout,
+  )
+
+  // A loader written as a server fn, in a chunk of its own: each build
+  // compiles it (R3-G7-4), and the client's loader calls the server's.
+  test(
+    'router.codeSplittingOptions: a loader written as a server fn and split into its own chunk runs on the server',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...routeFiles,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+export const Route = createFileRoute('/')({
+  loader: createServerFn().handler(async () => 'MARK_LOADER_FN'),
+  component: () => 'MARK_COMPONENT',
+})
+`,
+          'src/client-entry.ts': `export { getRouter } from './router'\n`,
+          'src/ssr-entry.ts': `export { getRouter } from './router'
+${callByIdExports}`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: {
+          router: {
+            codeSplittingOptions: {
+              defaultBehavior: [['loader'], ['component']] as Array<
+                Array<'loader' | 'component'>
+              >,
+            },
+          },
+        },
+      })
+      const requests = (
+        await client.run(
+          `${requestsOfPrelude}const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+return requestsOf((options) => route.options.loader(options))`,
+        )
+      ).result as Array<{ url: string }>
+      expect(requests).toHaveLength(1)
+      expect(
+        (
+          await ssr.run(
+            `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(requests[0]!.url.split('?')[0])}))`,
+          )
+        ).result,
+      ).toBe('MARK_LOADER_FN')
     },
     timeout,
   )
