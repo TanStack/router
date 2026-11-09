@@ -853,7 +853,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
   (the docs recommend `createLazyFileRoute` instead): once the router preloaded the route, rendering it requests no
   new module and shows no pending fallback. Leaving already-lazy values in the route module and chaining the inner
   `preload()` both pass.
-- **OQ14: a chunk for `component: Outlet`.** No requirement (emit a chunk, skip it or drop the property). No test.
+- **OQ14: a chunk for `component: Outlet`.** Resolved: a chunk is emitted that forwards the imported binding (J2.8), as on main. `integration/vite-versions.test.ts` ("outlet" route) pins it. Dropping the property is not equivalent (the router falls back to `defaultComponent`).
 - **OQ15: the release-candidate `.inputValidator()`.** Type-invalid input (§8, §2.2). No requirement, no test.
 - **OQ16: third-party transforms on split chunks.** An app's own `enforce: 'pre'` plugin filtering `/\.tsx$/` does not
   see split-chunk ids. Out of scope, no test. The documented integrations (framework plugins, the React Compiler
