@@ -72,6 +72,13 @@ export interface CompileInput {
   planners: ReadonlyArray<Planner>
   config: CompileConfig
   wantMap: boolean
+  /**
+   * How the map's consumer counts lines: ECMAScript line terminators (LF,
+   * CRLF, lone CR, U+2028, U+2029; the default), or
+   * LF only (`lf`: webpack-sources, the webpack family's). Both axes of the
+   * map count them so.
+   */
+  lines?: 'ecma' | 'lf'
 }
 
 export interface CompileOutput {

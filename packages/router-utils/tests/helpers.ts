@@ -617,6 +617,7 @@ export class MemoryHost implements HostServices {
         planners,
         config: extra.config ?? { configKey: 'cfg', perPlanner: {} },
         wantMap: extra.wantMap ?? true,
+        lines: extra.lines,
       },
       this,
       this.caches,

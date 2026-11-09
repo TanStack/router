@@ -595,6 +595,8 @@ export class StartRsbuildCompilerSession {
         layer: ctx._module?.layer ?? undefined,
         inputMap: readInputMap,
         wantMap: ctx.sourceMap !== false,
+        // webpack-sources counts the map's lines at LF only
+        lines: 'lf',
         late,
       },
       this.hostFor(env.name),

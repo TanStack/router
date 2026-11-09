@@ -63,6 +63,8 @@ export interface CompileRequest {
   code: string
   env: { name: string; type: 'client' | 'server' }
   wantMap: boolean
+  /** How the map's consumer counts lines (`CompileInput.lines`). */
+  lines?: 'ecma' | 'lf'
 }
 
 /** JS module ids the compiler may transform (query allowed). */
@@ -185,6 +187,7 @@ export class RouterCompiler {
         planners: this.planners,
         config: this.configs[req.env.type].compile,
         wantMap: req.wantMap,
+        lines: req.lines,
       },
       this.host,
       this.caches,

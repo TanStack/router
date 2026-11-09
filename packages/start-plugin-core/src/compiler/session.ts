@@ -134,6 +134,8 @@ export interface StartCompileInput {
   layer?: string
   inputMap: () => InputSourceMap | null
   wantMap: boolean
+  /** How the map's consumer counts lines (`CompileInput.lines`). */
+  lines?: 'ecma' | 'lf'
   /**
    * The late import-protection pass: the JS output of a module that is no
    * JS/TS (`.vue`, `.mdx`), judged by the `import-edges` planner alone.
@@ -387,6 +389,7 @@ export class StartCompilerSession {
           : config,
         inputMap: input.inputMap,
         wantMap: input.wantMap,
+        lines: input.lines,
         ...(late ? { lang: 'jsx' as const, inPlace: true } : {}),
       },
       host,

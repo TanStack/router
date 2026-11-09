@@ -368,7 +368,11 @@ function emitFrom(
       ? // every host passes an unchanged env module through (no map read):
         // no builder run and no word-level map over the whole text
         { code: input.code, map: null }
-      : emitRecipe(recipe, new SourceText(input.code), input.wantMap)
+      : emitRecipe(
+          recipe,
+          new SourceText(input.code, { lines: input.lines }),
+          input.wantMap,
+        )
     : { code: 'export {}\n', map: null }
   return {
     code: emitted.code,

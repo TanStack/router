@@ -88,6 +88,8 @@ export function createLoaderImpl(
       code: source,
       env,
       wantMap: ctx.sourceMap !== false,
+      // webpack-sources counts the map's lines at LF only
+      lines: 'lf',
     })
     if (!out) {
       return { code: source, map: inputMap }
