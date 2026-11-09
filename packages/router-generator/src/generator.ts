@@ -627,17 +627,24 @@ export class Generator {
    * an unused duplicate) is never edited.
    */
   private async writePending() {
+    const upkeep = [...this.files].filter(
+      ([, state]) => state.pending !== undefined,
+    )
+    if (upkeep.length === 0) {
+      return
+    }
     const treeFiles = importedFiles(this.model!)
     await Promise.all(
-      [...this.files].map(async ([file, state]) => {
-        if (state.pending === undefined || !treeFiles.has(file)) {
+      upkeep.map(async ([file, state]) => {
+        const pending = state.pending!
+        if (!treeFiles.has(file)) {
           return
         }
         if (state.content === '' && file === this.model!.root.file) {
           this.logger.log(`🟡 Creating ${file}`)
         }
         try {
-          await this.publisher.write(file, state.pending, state.content)
+          await this.publisher.write(file, pending, state.content)
         } catch (error) {
           if (error instanceof ConcurrentEditError) {
             // Edited while we kept it up: handled again with its new content
@@ -648,7 +655,7 @@ export class Generator {
         }
         this.files.set(file, {
           ...state,
-          content: state.pending,
+          content: pending,
           pending: undefined,
           // (the stamp of what it wrote)
           stamp: (await stampOf(file)) ?? undefined,
