@@ -48,3 +48,21 @@ export const requireRole = (role: string) =>
     expect.stringContaining('`role` is read only by server-only code'),
   ])
 })
+
+// Source: review round 3 (R3-G2-2): the join of the two isomorphic fns lost
+// what the first one's call returns, so the handler of the server fn it
+// returns shipped.
+test('a join of isomorphic fns of which one returns a builder fails the client module at the join', async () => {
+  const source = `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+const flag = Math.random() > 0.5
+const pick = flag
+  ? createIsomorphicFn().client(() => createServerFn({ method: 'POST' }))
+  : createIsomorphicFn().client(() => undefined)
+export const leak = pick().handler(async () => 'secret')`
+  const startCase = await (await host()).case({ 'module.tsx': source })
+  expectCompileError(await compileError(startCase), {
+    source,
+    at: 'createIsomorphicFn().client(() => createServerFn',
+    column: true,
+  })
+})
