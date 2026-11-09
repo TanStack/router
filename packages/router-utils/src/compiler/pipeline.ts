@@ -28,6 +28,7 @@ import {
   planCacheFor,
   resolveForAnalysis,
 } from './host'
+import { isVirtualId } from './facts'
 import { registerCompilerStats } from './stats'
 import { ownEntry } from './strings'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
@@ -476,8 +477,15 @@ async function runAttempt(
     })
     return resolved
   }
+  /** A wait on a module's raw facts (`HostServices.awaitVirtual`). */
+  const awaitFacts = <T>(canonicalId: string, read: Promise<T>): Promise<T> =>
+    host.awaitVirtual && isVirtualId(canonicalId)
+      ? host.awaitVirtual(canonicalId, read)
+      : read
+  const rawFactsOf = (canonicalId: string) =>
+    awaitFacts(canonicalId, host.rawFacts.get(canonicalId, env.name))
   const summaryOf = async (canonicalId: string) => {
-    const facts = await host.rawFacts.get(canonicalId, env.name)
+    const facts = await rawFactsOf(canonicalId)
     ledger.record({
       kind: 'summary',
       canonicalId,
@@ -487,7 +495,7 @@ async function runAttempt(
   }
   // a lookup depends on the export it reads, not on the module's others
   const exportOf = async (canonicalId: string, name: string) => {
-    const { summary } = await host.rawFacts.get(canonicalId, env.name)
+    const { summary } = await rawFactsOf(canonicalId)
     ledger.record(
       summary === null
         ? { kind: 'summary', canonicalId, digest: null }
@@ -501,7 +509,10 @@ async function runAttempt(
     return summary
   }
   const targetFactsOf = async (canonicalId: string) => {
-    const facts = await host.rawFacts.getTarget(canonicalId, env.name)
+    const facts = await awaitFacts(
+      canonicalId,
+      host.rawFacts.getTarget(canonicalId, env.name),
+    )
     ledger.record({
       kind: 'target-facts',
       canonicalId,
@@ -510,7 +521,10 @@ async function runAttempt(
     return facts.targetFacts
   }
   const targetMarkerOf = async (canonicalId: string) => {
-    const marker = await host.rawFacts.marker(canonicalId, env.name)
+    const marker = await awaitFacts(
+      canonicalId,
+      host.rawFacts.marker(canonicalId, env.name),
+    )
     ledger.record({ kind: 'target-marker', canonicalId, marker })
     return marker
   }
@@ -525,7 +539,7 @@ async function runAttempt(
         stars: [...summary.stars],
       }),
     readableOf: async (canonicalId) => {
-      const { summary } = await host.rawFacts.get(canonicalId, env.name)
+      const { summary } = await rawFactsOf(canonicalId)
       if (summary === null) {
         ledger.record({ kind: 'summary', canonicalId, digest: null })
       }

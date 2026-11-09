@@ -285,7 +285,7 @@ A use of these the compiler cannot follow (a builder passed to another function,
 The compiler reads your code statically, which limits this guarantee:
 
 - `import()`, `require()` and `import.meta.glob` of a builder are not followed, and nothing reports them. Attach server code to a builder you imported statically.
-- Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either.
+- Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either. In a Vite build, a virtual module with a `server-only` marker, or virtual modules importing each other, fail the build: put that code in a file of your project.
 - Imports other plugins add to your modules (auto-imports, `ProvidePlugin`) are not judged by import protection: such an import of `@tanstack/react-start/server` ships to the client. A `.server` file one of them imports is still replaced by its mock, as a file no import the compiler read brought in.
 - A builder method the types don't allow, called through `as any` or plain JavaScript, isn't followed. For example, a second `.server()` on a middleware that already has one, or a second `.handler()` (or `.validator()`) on a server function that is already finished: its code can ship to the client.
 - A `.server` file behind a neutral module outside the protected scope (`srcDirectory`, `include`) isn't caught: the scope is about importers.

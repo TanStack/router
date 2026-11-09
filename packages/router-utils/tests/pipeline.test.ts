@@ -529,6 +529,60 @@ describe('resolution for analysis', () => {
   })
 })
 
+describe('waits on virtual modules', () => {
+  /** Reads the `make` export of each import's module (a summary wait per import). */
+  const reader: Planner = {
+    name: 'reader',
+    tier: 1,
+    gate: (t0) => t0.imports.length > 0,
+    async prefetch(t0, ctx) {
+      for (const imp of t0.imports) {
+        const target = await ctx.resolve(imp.specifier)
+        if (target) {
+          await ctx.resolver.resolve(target, 'make')
+        }
+      }
+      ctx.set({})
+    },
+    plan() {},
+  }
+  const hostWith = (awaitVirtual: HostServices['awaitVirtual']) =>
+    Object.assign(
+      new MemoryHost({
+        files: {
+          '/app/a.ts': `import { make } from 'virtual:x'\nimport { make as other } from './b'\nexport const a = [make, other]\n`,
+          '/app/b.ts': 'export const make = 2\n',
+        },
+        resolve: (specifier) =>
+          specifier.startsWith('virtual:')
+            ? specifier
+            : specifier === './b'
+              ? '/app/b.ts'
+              : null,
+        virtual: { 'virtual:x': 'export const make = 1\n' },
+      }),
+      { awaitVirtual },
+    )
+
+  it("a compile waits on a virtual module's raw facts through the host's `awaitVirtual`, on a file's directly", async () => {
+    const waits: Array<string> = []
+    const host = hostWith((id, read) => {
+      waits.push(id)
+      return read
+    })
+    expect(await host.compile('/app/a.ts', [reader])).not.toBeNull()
+    expect(waits.length).toBeGreaterThan(0)
+    expect(new Set(waits)).toEqual(new Set(['virtual:x']))
+  })
+
+  it('a wait the host fails fails the compile', async () => {
+    const host = hostWith(() => Promise.reject(new Error('MARK_WAIT')))
+    await expect(host.compile('/app/a.ts', [reader])).rejects.toThrow(
+      'MARK_WAIT',
+    )
+  })
+})
+
 describe('slice gates: edges and policy', () => {
   it('(c) judges a chunk-only denied import in the chunk output with async verdicts per importer', async () => {
     const files = {
