@@ -14,4 +14,4 @@ Rebuild the route generator without Babel.
 - A route file that does not parse fails `tsr generate` and builds, naming the file, the root route file included (main read the root without parsing it, so only the bundler failed on it); a build fails on it even when the plugin instance built or watched before. A dev server or watch session keeps the file's last good route and reports it.
 - `disableLogging` silences the generator's warnings about route files too (a file without a `Route` export, a route id it reports instead of fixing, a file an edit broke in a running dev server); a run that fails still throws.
 - Writes are atomic per write (also when `tmpDir` is on another filesystem); the generator's own writes no longer regenerate.
-- `tsr watch` and the Rspack/webpack plugins watch every route root, including `physical()` mounts. <!-- TODO: final wording for physical() mount watching (a committed, up-to-date tree on a clean checkout) -->
+- `tsr watch` and the Rspack/webpack plugins watch every route root, including `physical()` mounts.
