@@ -1,5 +1,14 @@
 # @tanstack/solid-start-client
 
+## 2.0.0-rc.11
+
+### Patch Changes
+
+- [#8885](https://github.com/TanStack/router/pull/8885) [`04e5e4d`](https://github.com/TanStack/router/commit/04e5e4d9e2a5bf92a5b6d81bf84ac3a033acc962) - Bump solid-js and @solidjs/web to ^2.0.0-rc.21 and @solidjs/vite-plugin to ^3.0.0-next.57 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.21 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.0-rc.21.
+
+- Updated dependencies [[`04e5e4d`](https://github.com/TanStack/router/commit/04e5e4d9e2a5bf92a5b6d81bf84ac3a033acc962)]:
+  - @tanstack/solid-router@2.0.0-rc.11
+
 ## 2.0.0-rc.10
 
 ### Patch Changes
