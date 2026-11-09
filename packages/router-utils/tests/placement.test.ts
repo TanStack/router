@@ -4248,6 +4248,36 @@ describe('one mutation model: eager reads of state something writes', () => {
       true,
     ],
     ['negated and called', 'const initial = !function () { return n }()', true],
+    [
+      'called through a type assertion',
+      'const initial = ((() => n) as () => number)()',
+      true,
+    ],
+    ['called through !', 'const initial = ((() => n)!)()', true],
+    ['called optionally', 'const initial = (() => n)?.()', true],
+    [
+      'called through a type assertion and .call',
+      'const initial = ((function () { return n }) as () => number).call(null)',
+      true,
+    ],
+    [
+      'bound and called',
+      'const initial = (function () { return n }).bind(null)()',
+      true,
+    ],
+    [
+      'constructed',
+      'const initial = new (function (this: any) { this.v = n } as any)().v',
+      true,
+    ],
+    ['bound, not called', 'const initial = (() => n).bind(null)', false],
+    // without semicolons, a line starting with `(` after an arrow's block
+    // is a statement of its own: the arrow is not called
+    [
+      'followed by a statement in parentheses',
+      'const read = () => {\n  return n\n}\n(globalThis as any).seen = 1\nconst initial = read',
+      false,
+    ],
     // a function passed to a call may run when the call does (the module
     // does not know what `wrap` does with it): its read counts as eager
     [
