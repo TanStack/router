@@ -39,7 +39,7 @@ function getDefaultParserPluginsForFilename(
     'explicitResourceManagement',
     'importAttributes',
     'deprecatedImportAssert',
-    ['decorators', { decoratorsBeforeExport: true }],
+    'decorators',
     'decoratorAutoAccessors',
   ]
 

@@ -230,16 +230,33 @@ function computeStaticDependencyChunks(
   // A shared chunk can belong to several route groups. Group membership
   // limits where dependencies can be loaded from; it does not establish
   // an import from the shared chunk back to every route in those groups.
-  const availableChunks = new Set<RspackCompilationChunk>()
-  const groups = new Set(chunk.groupsIterable)
-  for (const group of groups) {
-    for (const availableChunk of group.chunks) {
-      availableChunks.add(availableChunk)
+  // A chunk counts as available only when every group of this chunk (or
+  // one of its ancestors) has it: a module duplicated into each route's
+  // chunk is satisfied per group, by that group's own chunk, so neither
+  // route's chunk is a dependency of the shared chunk (#8780).
+  let availableChunks: Set<RspackCompilationChunk> | undefined
+  for (const group of chunk.groupsIterable) {
+    const groupChunks = new Set<RspackCompilationChunk>()
+    const ancestors = new Set([group])
+    for (const ancestor of ancestors) {
+      for (const availableChunk of ancestor.chunks) {
+        groupChunks.add(availableChunk)
+      }
+      for (const parent of ancestor.getParents()) {
+        ancestors.add(parent)
+      }
     }
-    for (const parent of group.getParents()) {
-      groups.add(parent)
+    if (availableChunks === undefined) {
+      availableChunks = groupChunks
+    } else {
+      for (const availableChunk of availableChunks) {
+        if (!groupChunks.has(availableChunk)) {
+          availableChunks.delete(availableChunk)
+        }
+      }
     }
   }
+  availableChunks ??= new Set()
 
   for (const module of modules) {
     for (const dependency of module.dependencies) {
