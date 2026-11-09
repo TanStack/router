@@ -35,5 +35,5 @@ const settleTimeout = 6_000
 // the app until another route file is created in the routes directory or the
 // dev server restarts.
 test('a route file created under a physical() mount outside the routes directory reaches the live routes', async () => {
-  await expectPhysicalMountRouteFile('rsbuild', settleTimeout)
+  await expectPhysicalMountRouteFile('rsbuild', { settleTimeout })
 }, 30_000)
