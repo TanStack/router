@@ -8,6 +8,7 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { requestsOfPrelude } from '../build-harness'
 import {
@@ -557,6 +558,75 @@ export const where = createIsomorphicFn()
         client: 'MARK_CLIENT_V2',
         ssr: 'MARK_SERVER_V2',
         serverCodeInClient: [],
+      })
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: restoring a deleted import', () => {
+  const value = (version: string) =>
+    `export const value = () => 'MARK_${version}'\n`
+
+  // Restoring several files at once (a `git checkout`, an undo) after SSR
+  // failed to load one of them: the importer of the restored file is
+  // compiled again on the other new file's hot update, and SSR must not keep
+  // its failed load. Another plugin of the app transforms the importer slowly
+  // in SSR, so that Vite handles the restored file meanwhile.
+  // Source: the v2-edits.test.ts flake (Vite dev), 4 runs in 8 under load.
+  test(
+    'SSR loads the restored file, restored with another new file',
+    async () => {
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'slow-ssr-transform',
+            async transform(_code, id) {
+              if (
+                this.environment.name === 'ssr' &&
+                id.endsWith('/src/uses.ts')
+              ) {
+                await new Promise((resolve) => setTimeout(resolve, 300))
+              }
+            },
+          },
+        ],
+        files: {
+          'src/value.ts': value('V1'),
+          'src/uses.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+import { value } from './value'
+export const read = createIsomorphicFn()
+  .server(() => value())
+  .client(() => 'MARK_CLIENT')
+`,
+          'src/entry.ts': `export * as uses from './uses'\n`,
+        },
+      })
+      const read = async () =>
+        (await server.import('/src/entry.ts')).uses.read() as string
+      expect(await read()).toBe('MARK_V1')
+
+      await server.edit({ 'src/value.ts': null })
+      // SSR fails while the file is missing
+      await expect(read()).rejects.toThrow()
+
+      await server.edit({
+        'src/other.ts': `export {}\n`,
+        'src/value.ts': value('V2'),
+      })
+
+      let last = ''
+      await waitForOutcome({
+        applied: async () =>
+          (last = await read().catch((error: unknown) => String(error))) ===
+          'MARK_V2',
+        quiet: async () => {
+          await server.idle()
+          return true
+        },
+        failWhenQuietFor: 1_000,
+        timeout: 10_000,
+        describe: () => `SSR gave: ${last}`,
       })
     },
     timeout,
