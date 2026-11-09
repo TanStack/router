@@ -19,6 +19,11 @@
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.json"
     ],
+    "compilerSelfChecks": [
+      {
+        "env": "TSR_COMPILER_VERIFY"
+      }
+    ],
     "dependentTaskOutputs": [
       {
         "dependentTasksOutputFiles": "**/*",
@@ -121,26 +126,31 @@
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
-      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "inputs": [
+        "buildProduction",
+        "^production",
+        "dependentTaskOutputs",
+        "compilerSelfChecks"
+      ],
       "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
       "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:types": {
@@ -183,18 +193,42 @@
         "dependentTaskOutputs"
       ]
     },
-    "build": {
-      "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["buildProduction", "^buildProduction", "dependentTaskOutputs"],
-      "outputs": [
-        "{projectRoot}/.netlify",
-        "{projectRoot}/.wrangler",
-        "{projectRoot}/.output",
-        "{projectRoot}/build",
-        "{projectRoot}/dist"
-      ]
-    },
+    "build": [
+      {
+        "cache": true,
+        "dependsOn": ["^build"],
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs"
+        ],
+        "outputs": [
+          "{projectRoot}/.netlify",
+          "{projectRoot}/.wrangler",
+          "{projectRoot}/.output",
+          "{projectRoot}/build",
+          "{projectRoot}/dist"
+        ]
+      },
+      {
+        "filter": { "projects": ["e2e/**", "examples/**"] },
+        "cache": true,
+        "dependsOn": ["^build"],
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs",
+          "compilerSelfChecks"
+        ],
+        "outputs": [
+          "{projectRoot}/.netlify",
+          "{projectRoot}/.wrangler",
+          "{projectRoot}/.output",
+          "{projectRoot}/build",
+          "{projectRoot}/dist"
+        ]
+      }
+    ],
     "test:build": {
       "cache": true,
       "dependsOn": ["build"],

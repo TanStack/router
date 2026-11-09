@@ -138,6 +138,9 @@ jobs:
           --projects=@tanstack/router-plugin,@tanstack/start-plugin-core
           --skip-nx-cache --outputStyle=static
       - name: Production builds
+        # With the compiler's self-checks on, as in the PR workflow's e2e runs
+        env:
+          TSR_COMPILER_VERIFY: '1'
         run: >-
           pnpm nx run-many --targets=build:vite:ssr,build:rsbuild:ssr
           --projects=tanstack-react-start-e2e-basic
