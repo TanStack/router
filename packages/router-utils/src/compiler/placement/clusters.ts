@@ -131,9 +131,10 @@ export interface ClusterGraph {
   atLoad: (ref: ClassifiedRef) => boolean
   /**
    * The one notion of what a cluster reads when it evaluates: the
-   * references of `c` that run at load (`atLoad`) reading a module binding,
-   * then, transitively, those of the declaration clusters they read (a
-   * function the evaluation may call, a callback it may run). Calls `visit`
+   * references of `c` that run at load (`atLoad`) reading or assigning a
+   * module binding, then, transitively, those of the declaration clusters
+   * they read (a function the evaluation may call, a callback it may run:
+   * what it reads, and what it assigns, `mode = 'ready'`). Calls `visit`
    * with each and the cluster declaring what it reads; `skip` does not walk
    * into that cluster, `stop` ends the walk. True when a visit stopped it.
    */
@@ -412,7 +413,9 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     addWrite({
       sym: ref.sym,
       at: ref.range.start,
-      eager: ref.eager,
+      // (code evaluated with the module that runs later, `runsLaterAt`:
+      // its write has not happened where it is written)
+      eager: ref.eager && !t1.runsLaterAt(ref.range.start),
       live: isLive(ref, 'env'),
       owner: regions.innermostAt(ref.range.start, ref.range.end),
       augment: false,
@@ -641,7 +644,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     subRegionWriters.push({ cluster: clusterOfMember(d), writers })
   }
 
-  let atLoad: ((ref: ClassifiedRef) => boolean) | null = null
+  let loadAt: ((ref: ClassifiedRef) => number | null) | null = null
 
   // ---- readers of mutable state ----------------------------------------------
   // (a claimed region is in its owner's cluster: a write there is the owner's)
@@ -682,16 +685,22 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return false
   }
-  const atLoadOf = (ref: ClassifiedRef) =>
-    (atLoad ??= runsAtLoad(
+  /** Where a reference first runs while the module loads (`runsAtLoad`), null when it does not. */
+  const loadAtOf = (ref: ClassifiedRef) =>
+    (loadAt ??= runsAtLoad(
       t1,
       (r) => isLive(r, 'env') && (claimed.size === 0 || !inClaim(r)),
     ))(ref)
-  /** A reference that reads a module binding (`n++` too). */
+  const atLoadOf = (ref: ClassifiedRef) => loadAtOf(ref) !== null
+  /**
+   * A reference that reads or assigns a module binding (`n++`, `x = v`):
+   * an assignment is ordered against the binding's readers as a read is
+   * (`mode = 'ready'` in a function the load calls, while the loader reads
+   * `mode`).
+   */
   const reads = (ref: ClassifiedRef) =>
-    (READ_KINDS.has(ref.kind) || ref.ctx === 'updateTarget') &&
-    t1.symbols.isModuleLevel(ref.sym)
-  /** A reference that reads a module binding when the module loads. */
+    NEED_KINDS.has(ref.kind) && t1.symbols.isModuleLevel(ref.sym)
+  /** A reference that reads or assigns a module binding when the module loads. */
   const readsAtLoad = (ref: ClassifiedRef) => reads(ref) && atLoadOf(ref)
   // the references of each cluster that read at load (built on first use)
   let loadRefs: Map<ClusterId, Array<ClassifiedRef>> | null = null
@@ -772,7 +781,9 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         }
         continue
       }
-      if (!mutatedOutside(ref.sym, ref.range.start, reader)) {
+      // (where the read runs: in a function the load calls, where the
+      // first such call is)
+      if (!mutatedOutside(ref.sym, loadAtOf(ref)!, reader)) {
         continue
       }
       if (!mutableReaders.has(reader)) {
@@ -798,17 +809,21 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       }
       const by = clusterOfRegion.get(r)!
       const live = (ref: ClassifiedRef) => isLive(ref, 'env')
-      const observes = (ref: ClassifiedRef) =>
+      // (a read in a function the value calls runs where the value is)
+      const observes = (ref: ClassifiedRef, at: number) =>
         reads(ref) &&
         writesOfSym.has(ref.sym) &&
-        mutatedOutside(ref.sym, ref.range.start, by)
-      if (inner.some(observes)) {
+        mutatedOutside(ref.sym, at, by)
+      if (inner.some((ref) => observes(ref, ref.range.start))) {
         orderedEffectRegions.add(r)
         continue
       }
-      for (const u of unitsRunBy(t1, inner, live)) {
+      const at = regions.get(r).range.start
+      for (const u of unitsRunBy(t1, inner, live).keys()) {
         if (
-          refs.refsIn(units[u]!.range).some((ref) => live(ref) && observes(ref))
+          refs
+            .refsIn(units[u]!.range)
+            .some((ref) => live(ref) && observes(ref, at))
         ) {
           orderedEffectRegions.add(r)
           break

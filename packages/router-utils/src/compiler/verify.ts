@@ -148,7 +148,7 @@ export function verifyPlan(
           if (
             out.refs
               .refsOf(s.local)
-              .some((r) => atLoad(r) && r.kind !== 'write')
+              .some((r) => atLoad(r) !== null && r.kind !== 'write')
           ) {
             problems.push(
               `${id}: reads ${s.localName} of the env module at its evaluation`,

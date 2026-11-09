@@ -278,6 +278,16 @@ export interface Tier1 {
    * block or static field initialiser).
    */
   isLazyAt: (offset: number) => boolean
+  /**
+   * Whether code at `offset` that evaluates when the module loads may run
+   * after the code written after it: the body of an immediately invoked
+   * async function (after an `await`) or generator (when resumed), an
+   * instance field initialiser (at each `new`). Its references count as
+   * eager reads (a read there observes every write but the eager ones
+   * before it, which have run by then in any case); its writes have not
+   * happened where they are written (the write table, placement).
+   */
+  runsLaterAt: (offset: number) => boolean
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -1132,21 +1142,52 @@ export class ModuleAnalysis {
     // declaration inside is local to it), and the lazily evaluated ones
     // (an immediately invoked function runs where it is written). Each
     // set is reduced to its outermost ranges and searched by offset.
+    // Also the code that evaluates with the module but may run after what
+    // follows it: an immediately invoked async function's body (after an
+    // `await`) or generator's (when resumed), an instance field's
+    // initialiser (at each `new`).
     const fnRanges: Array<Range> = []
     const lazyRanges: Array<Range> = []
+    const laterRanges: Array<Range> = []
     for (const scope of file.scopes) {
+      const n = scope.node
+      if (scope.kind === 'class') {
+        if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') {
+          for (const el of n.body.body) {
+            if (
+              (el.type === 'PropertyDefinition' ||
+                el.type === 'AccessorProperty') &&
+              !el.static &&
+              el.value !== null
+            ) {
+              laterRanges.push({ start: el.value.start, end: el.value.end })
+            }
+          }
+        }
+        continue
+      }
       if (scope.kind !== 'function') {
         continue
       }
-      const n = scope.node
       const r = { start: n.start, end: n.end }
       fnRanges.push(r)
       if (!isImmediatelyInvoked(file, n)) {
         lazyRanges.push(r)
+      } else if (
+        (n.type === 'ArrowFunctionExpression' ||
+          n.type === 'FunctionExpression') &&
+        (n.async || n.generator)
+      ) {
+        laterRanges.push(r)
       }
     }
     lazyRanges.sort((a, b) => a.start - b.start || b.end - a.end)
     const isLazyAt = offsetTest(outermost(lazyRanges))
+    laterRanges.sort((a, b) => a.start - b.start || b.end - a.end)
+    const runsLaterAt =
+      laterRanges.length === 0
+        ? () => false
+        : offsetTest(outermost(laterRanges))
     // the scope question is asked for function-local orphans only
     let inFunction: ((offset: number) => boolean) | null = null
     const inFunctionAt = (offset: number): boolean => {
@@ -1322,6 +1363,7 @@ export class ModuleAnalysis {
         })
       },
       isLazyAt,
+      runsLaterAt,
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1398,9 +1440,9 @@ function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
  * `(async () => …)()`, `(() => …)?.()`, `new (function () { … })()`), through
  * the wrappers a value passes (`(f)`, `f as T`, `f!`, `f satisfies T`,
  * `<T>f`, `f<T>`) and `.call(…)`, `.apply(…)` or `.bind(…)(…)`. Its body
- * evaluates with the surrounding code (the part of an async one after its
- * first `await` later, but nothing can be known about that: eager is the
- * safe classification). Asked of the parents: the text around the function
+ * evaluates with the surrounding code: eager (an async one's body after an
+ * `await`, a generator's, runs later: eager is the safe classification of
+ * its reads, `runsLaterAt` answers for its writes). Asked of the parents: the text around the function
  * cannot tell (`const f = () => { … }` followed by a line starting with
  * `(` is two statements).
  */
@@ -1587,8 +1629,9 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
 }
 
 /**
- * Which references run when the module loads: the eager ones, and every
- * reference inside a module-level function or class that the load may run.
+ * Which references run when the module loads, and from where: the eager
+ * ones, and every reference inside a module-level function or class that
+ * the load may run.
  * The load runs what an eager reference calls, and a unit whose evaluation
  * calls anything (effectful or not) may run whatever it reads: its callee
  * can be an alias, a method of an object it reads (`o.m()`, `read.call()`),
@@ -1603,12 +1646,18 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
  * (`const config = { read }`), nor does writing one of its properties.
  * `live`: a reference in code the output evaluates where it is written
  * (kept, and not relocated by a claim).
+ *
+ * The answer is the earliest position in the module at which the reference
+ * may run while the module loads: its own for an eager reference (and for
+ * one in a callback a calling unit runs, which runs within that unit), the
+ * position of the first load evaluation that may call it for one in a
+ * function body (`const snap = read()` above `function read() { … }` runs
+ * the body at `snap`); null when it does not run at load.
  */
 export function runsAtLoad(
   t1: Pick<Tier1, 'refs' | 'units' | 'regions' | 'declaringUnits' | 'ownerOf'>,
   live: (ref: ClassifiedRef) => boolean = () => true,
-): (ref: ClassifiedRef) => boolean {
-  const marked = new Set<UnitId>()
+): (ref: ClassifiedRef) => number | null {
   const seeds: Array<ClassifiedRef> = []
   /** References inside a function a calling unit passes on: they run at load. */
   const loadCallbackRefs = new Set<ClassifiedRef>()
@@ -1647,17 +1696,23 @@ export function runsAtLoad(
     }
   }
   // (a calling unit's own references count through `loadCallbackRefs`: a
-  // function it holds, or nests in an argument, runs only when called)
-  unitsRunBy(t1, seeds, live, marked)
+  // function it holds, or nests in an argument, runs only when called);
+  // walked in source order, a body is first reached from the earliest
+  // evaluation that may run it
+  const marked = new Map<UnitId, number>()
+  seeds.sort((a, b) => a.range.start - b.range.start)
+  for (const seed of seeds) {
+    unitsRunBy(t1, [seed], live, marked, seed.range.start)
+  }
   if (marked.size === 0 && loadCallbackRefs.size === 0) {
-    return (ref) => ref.eager
+    return (ref) => (ref.eager ? ref.range.start : null)
   }
   return (ref) => {
     if (ref.eager || loadCallbackRefs.has(ref)) {
-      return true
+      return ref.range.start
     }
     const u = t1.regions.unitOf(t1.ownerOf(ref))
-    return u !== null && marked.has(u)
+    return u === null ? null : (marked.get(u) ?? null)
   }
 }
 
@@ -1676,15 +1731,17 @@ const mayRun = (
 
 /**
  * The module-level declarations whose bodies may run where `refs` run (what
- * they read, transitively), added to `marked`: a reference may call what it
- * reads, or hand it to something that does.
+ * they read, transitively), added to `marked` with `at` (where the run
+ * starts) unless already there: a reference may call what it reads, or hand
+ * it to something that does.
  */
 export function unitsRunBy(
   t1: Pick<Tier1, 'refs' | 'units' | 'declaringUnits'>,
   refs: Iterable<ClassifiedRef>,
   live: (ref: ClassifiedRef) => boolean,
-  marked: Set<UnitId> = new Set(),
-): Set<UnitId> {
+  marked: Map<UnitId, number> = new Map(),
+  at = 0,
+): Map<UnitId, number> {
   const work = [...refs]
   while (work.length > 0) {
     const r = work.pop()!
@@ -1693,7 +1750,7 @@ export function unitsRunBy(
       if (unit.kind !== 'declaration' || marked.has(u)) {
         continue
       }
-      marked.add(u)
+      marked.set(u, at)
       for (const inner of t1.refs.refsIn(unit.range)) {
         if (mayRun(inner, live)) {
           work.push(inner)
