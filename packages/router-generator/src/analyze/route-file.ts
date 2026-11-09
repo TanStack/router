@@ -567,11 +567,11 @@ function bindConstructor(
   }
 
   let local: string = wanted
-  if (calleeKind.kind !== 'repair' || calleeKind.name !== wanted) {
-    for (let n = 2; !nameFree(local); n++) {
-      local = `${wanted}${n}`
-    }
-  } else if (file.rootScope.lookup(wanted) !== null) {
+  if (
+    calleeKind.kind !== 'repair' ||
+    calleeKind.name !== wanted ||
+    file.rootScope.lookup(wanted) !== null
+  ) {
     for (let n = 2; !nameFree(local); n++) {
       local = `${wanted}${n}`
     }

@@ -4,6 +4,7 @@
  * packages are never resolved; their exports map to kinds.
  */
 import { knownPureCalls } from '@tanstack/router-plugin/planners'
+import { escapeRegExp } from '../utils'
 import type { RecognizerTable } from '@tanstack/router-utils/compiler'
 import type { CompileStartFrameworkOptions } from '../types'
 
@@ -150,9 +151,7 @@ let specifierPattern: RegExp | null = null
  */
 export function namesStartSpecifier(code: string): boolean {
   specifierPattern ??= new RegExp(
-    Object.keys(startRecognizer().factories)
-      .map((spec) => spec.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'))
-      .join('|'),
+    Object.keys(startRecognizer().factories).map(escapeRegExp).join('|'),
   )
   return specifierPattern.test(code)
 }

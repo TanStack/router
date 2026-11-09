@@ -14,7 +14,9 @@
  */
 import {
   cacheDisabled,
+  derivedIdOf,
   identifierBase,
+  isExpressionWrapper,
   isPureExpression,
   patternIdentifiers,
   revision,
@@ -303,16 +305,7 @@ function describeServerFn(
   const hop = () => {
     node = p!
     p = file.parentOf(node)
-    while (
-      p &&
-      (p.type === 'ParenthesizedExpression' ||
-        p.type === 'TSAsExpression' ||
-        p.type === 'TSSatisfiesExpression' ||
-        p.type === 'TSNonNullExpression' ||
-        p.type === 'TSTypeAssertion' ||
-        p.type === 'TSInstantiationExpression' ||
-        p.type === 'ChainExpression')
-    ) {
+    while (p && isExpressionWrapper(p)) {
       node = p
       p = file.parentOf(p)
     }
@@ -573,7 +566,7 @@ function planStartEnv(
       })
       const memo = names.alloc('tsrHandlers')
       const load = names.alloc('tsrLoadHandlers')
-      const spec = sameFileSpecifier(handlerOut.slice('derived:'.length))
+      const spec = sameFileSpecifier(derivedIdOf(handlerOut))
       rewrites.addGenerated({
         body: [
           text(

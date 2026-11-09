@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { rootRouteId } from '@tanstack/router-core/tooling'
 import { removeExt, replaceBackslash } from '../utils'
+import { routeOptionPieces } from '../types'
 import { key, lit } from './style'
 import type { CodeStyle } from './style'
 import type { ModelRoute, RoutePieceName, TreeModel } from '../types'
@@ -18,12 +19,10 @@ interface PrintTreeOptions {
   footer: ReadonlyArray<string>
 }
 
-const componentPieces = [
-  'component',
-  'errorComponent',
-  'notFoundComponent',
-  'pendingComponent',
-] as const satisfies ReadonlyArray<RoutePieceName>
+/** The component pieces, in the printed order (alphabetical). */
+const componentPieces: ReadonlyArray<RoutePieceName> = routeOptionPieces
+  .filter((piece) => piece !== 'loader')
+  .sort()
 
 /**
  * The files the printed tree imports: the route files of the tree (the root

@@ -26,6 +26,7 @@ export {
   removeExt,
 } from './utils'
 
+export { routeOptionPieces } from './types'
 export type {
   RouteNode,
   ModelRoute,

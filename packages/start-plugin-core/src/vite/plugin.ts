@@ -39,6 +39,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import type { ViteStartEnvironment } from './compiler-state'
 import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
@@ -67,11 +68,7 @@ export function tanStackStartVite(
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
 
-  const environments: Array<{
-    name: string
-    type: 'client' | 'server'
-    getServerFnById?: string
-  }> = [
+  const environments: Array<ViteStartEnvironment> = [
     { name: START_ENVIRONMENT_NAMES.client, type: 'client' },
     {
       name: START_ENVIRONMENT_NAMES.server,

@@ -55,13 +55,28 @@ export function parseModule(
   return { ok: true, file, source }
 }
 
+/** The node types `isExpressionWrapper` accepts. */
+type ExpressionWrapper = Extract<
+  Node,
+  {
+    type:
+      | 'ParenthesizedExpression'
+      | 'TSAsExpression'
+      | 'TSSatisfiesExpression'
+      | 'TSNonNullExpression'
+      | 'TSTypeAssertion'
+      | 'TSInstantiationExpression'
+      | 'ChainExpression'
+  }
+>
+
 /**
  * Whether `node` is transparent to the value it wraps: parentheses, the
  * TypeScript expression wrappers (`x as T`, `x satisfies T`, `x!`, `<T>x`,
  * `f<T>`) and the `ChainExpression` around an optional chain. Yuku's own
  * `unwrap` stops at instantiation expressions and chains.
  */
-export function isExpressionWrapper(node: Node): boolean {
+export function isExpressionWrapper(node: Node): node is ExpressionWrapper {
   switch (node.type) {
     case 'ParenthesizedExpression':
     case 'TSAsExpression':
@@ -79,21 +94,10 @@ export function isExpressionWrapper(node: Node): boolean {
 /** The expression inside every wrapper (`isExpressionWrapper`) around `node`, or `node` itself. */
 export function unwrapExpression(node: Node): Node {
   let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-      case 'ChainExpression':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
+  while (isExpressionWrapper(n)) {
+    n = n.expression
   }
+  return n
 }
 
 /** The identifiers a binding pattern declares, in source order. */

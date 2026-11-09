@@ -69,8 +69,8 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type {
-  StartCompilerEnvironment,
   StartCompilerPluginOptions,
+  ViteStartEnvironment,
 } from './compiler-state'
 
 /** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
@@ -98,7 +98,7 @@ export function startCompilerPlugin(
 /** An environment's compiler plugin, and the one of its dependency scripts. */
 function envCompilerPlugins(
   state: ViteCompilerState,
-  env: StartCompilerEnvironment,
+  env: ViteStartEnvironment,
 ): Array<Plugin> {
   const watches = env.name === state.watchingEnv
   const compileTransform: TransformHandler = async function (code, id) {

@@ -9,6 +9,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
 import { identify, normalizePath } from '@tanstack/router-utils/compiler'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import { importEdgesPlanner } from '../planners/edges'
 import { resolveImportProtectionConfig } from './config'
 import {
@@ -568,7 +569,7 @@ class ImportProtectionEnv {
     if (
       this.type !== 'client' ||
       id.startsWith('\0') ||
-      (path.includes('/node_modules/') &&
+      (NODE_MODULES_RE.test(path) &&
         !this.ip.inScope(path) &&
         !this.ip.exempt(path))
     ) {

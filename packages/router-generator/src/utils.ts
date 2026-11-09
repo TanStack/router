@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import { rootPathId } from './filesystem/physical/rootPathId'
+import { routePieces } from './types'
 import type { TokenMatcher } from './config'
 import type { RouteNode, RoutePathSegmentMetadata } from './types'
 
@@ -17,14 +18,7 @@ export class RoutePrefixMap {
 
       // Skip route pieces (lazy, loader, component, etc.) - they are merged with main routes
       // and should not be valid parent candidates
-      if (
-        route._fsRouteType === 'lazy' ||
-        route._fsRouteType === 'loader' ||
-        route._fsRouteType === 'component' ||
-        route._fsRouteType === 'pendingComponent' ||
-        route._fsRouteType === 'errorComponent' ||
-        route._fsRouteType === 'notFoundComponent'
-      ) {
+      if ((routePieces as ReadonlyArray<string>).includes(route._fsRouteType)) {
         continue
       }
 

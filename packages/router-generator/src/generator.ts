@@ -19,6 +19,7 @@ import {
   readIfExists,
 } from './publish/atomic'
 import { validateRouteParams } from './validate-route-params'
+import { routeOptionPieces } from './types'
 import type { FileDiagnostic } from './analyze/route-file'
 import type { ScanResult } from './filesystem/scan'
 import type { GeneratorPlugin } from './plugin/types'
@@ -140,13 +141,7 @@ async function stampOf(file: string): Promise<FileStamp | null> {
   }
 }
 
-const pieceTypes: ReadonlyArray<FsRouteType> = [
-  'loader',
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-]
+const pieceTypes: ReadonlyArray<FsRouteType> = routeOptionPieces
 
 const routeFileExtension = /\.(tsx|ts|jsx|js|vue)$/
 

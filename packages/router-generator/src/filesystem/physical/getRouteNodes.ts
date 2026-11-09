@@ -15,6 +15,7 @@ import {
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
 import { logging } from '../../logger'
+import { routeOptionPieces, routePieces } from '../../types'
 import { rootPathId } from './rootPathId'
 import type {
   VirtualRootRoute,
@@ -232,21 +233,15 @@ export async function getRouteNodes(
           // Only show deprecation warning for .tsx/.ts files, not .vue files
           // Vue files using .component.vue is the Vue-native way
           if (!isVueFile) {
-            ;(
-              [
-                ['component', 'component'],
-                ['errorComponent', 'errorComponent'],
-                ['notFoundComponent', 'notFoundComponent'],
-                ['pendingComponent', 'pendingComponent'],
-                ['loader', 'loader'],
-              ] satisfies Array<[FsRouteType, string]>
-            ).forEach(([matcher, type]) => {
-              if (routeType === matcher) {
-                logger.warn(
-                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-                )
-              }
-            })
+            if (
+              (routeOptionPieces as ReadonlyArray<FsRouteType>).includes(
+                routeType,
+              )
+            ) {
+              logger.warn(
+                `WARNING: The \`.${routeType}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+              )
+            }
           }
 
           // Get the last segment of originalRoutePath to check for escaping
@@ -257,21 +252,11 @@ export async function getRouteNodes(
           const { routeTokenSegmentRegex, indexTokenSegmentRegex } =
             tokenRegexes
 
-          // List of special suffixes that can be escaped
-          const specialSuffixes = [
-            'component',
-            'errorComponent',
-            'notFoundComponent',
-            'pendingComponent',
-            'loader',
-            'lazy',
-          ]
-
           const routePathSegments = routePath.split('/').filter(Boolean)
           const lastRouteSegment =
             routePathSegments[routePathSegments.length - 1] || ''
 
-          const suffixToStrip = specialSuffixes.find((suffix) => {
+          const suffixToStrip = routePieces.find((suffix) => {
             const endsWithSuffix = routePath.endsWith(`/${suffix}`)
             // A suffix is escaped if wrapped in brackets in the original: [lazy] means literal "lazy"
             const isEscaped =
@@ -414,14 +399,7 @@ export async function getRouteNodes(
 export function isRootRouteFile(node: RouteNode) {
   return (
     node.routePath === `/${rootPathId}` &&
-    ![
-      'component',
-      'errorComponent',
-      'notFoundComponent',
-      'pendingComponent',
-      'loader',
-      'lazy',
-    ].includes(node._fsRouteType)
+    !(routePieces as ReadonlyArray<FsRouteType>).includes(node._fsRouteType)
   )
 }
 
@@ -484,36 +462,12 @@ function getRouteMeta(
   if (routeTokenSegmentRegex.test(lastRouteSegment) && !isRouteTokenEscaped) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
-  } else if (routePath.endsWith('/lazy') && !isSuffixEscaped('lazy')) {
-    // lazy routes, i.e. `/foo.lazy.tsx`
-    fsRouteType = 'lazy'
-  } else if (routePath.endsWith('/loader') && !isSuffixEscaped('loader')) {
-    // loader routes, i.e. `/foo.loader.tsx`
-    fsRouteType = 'loader'
-  } else if (
-    routePath.endsWith('/component') &&
-    !isSuffixEscaped('component')
-  ) {
-    // component routes, i.e. `/foo.component.tsx`
-    fsRouteType = 'component'
-  } else if (
-    routePath.endsWith('/pendingComponent') &&
-    !isSuffixEscaped('pendingComponent')
-  ) {
-    // pending component routes, i.e. `/foo.pendingComponent.tsx`
-    fsRouteType = 'pendingComponent'
-  } else if (
-    routePath.endsWith('/errorComponent') &&
-    !isSuffixEscaped('errorComponent')
-  ) {
-    // error component routes, i.e. `/foo.errorComponent.tsx`
-    fsRouteType = 'errorComponent'
-  } else if (
-    routePath.endsWith('/notFoundComponent') &&
-    !isSuffixEscaped('notFoundComponent')
-  ) {
-    // not found component routes, i.e. `/foo.notFoundComponent.tsx`
-    fsRouteType = 'notFoundComponent'
+  } else {
+    // a piece, i.e. `/foo.lazy.tsx`, `/foo.component.tsx`
+    fsRouteType =
+      routePieces.find(
+        (piece) => routePath.endsWith(`/${piece}`) && !isSuffixEscaped(piece),
+      ) ?? fsRouteType
   }
 
   // Use originalRoutePath for variable name when any segment is fully

@@ -11,6 +11,7 @@ import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   bindingNameRange,
+  isExpressionWrapper,
   namespaceName,
   patternIdentifiers,
   unwrapExpression,
@@ -354,7 +355,7 @@ export function writesMember(file: SourceFile, node: Node): boolean {
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
     if (parent.type === 'MemberExpression' && parent.object === n) {
       member = true
-    } else if (!WRAPPERS.has(parent.type)) {
+    } else if (!isExpressionWrapper(parent)) {
       break
     }
   }
@@ -379,16 +380,6 @@ export function writesMember(file: SourceFile, node: Node): boolean {
 }
 
 /** The node types `unwrapExpression` looks through. */
-const WRAPPERS = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-  'ChainExpression',
-])
-
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
 function rootIdentifier(node: Node): Node | null {
   let n = unwrapExpression(node)

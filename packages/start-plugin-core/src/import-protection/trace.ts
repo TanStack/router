@@ -400,7 +400,7 @@ function suggestionsOf(
     : [...barrel, ...SERVER_FN_SUGGESTIONS]
 }
 
-/** Whether a trace step's file is the app's own (not a package's, not virtual). */
+/** Whether a trace step's file is the app's own: under `root`, not in a package's directory there. */
 function isAppFile(file: string, root: string): boolean {
   const prefix = root.endsWith('/') ? root : `${root}/`
   return (

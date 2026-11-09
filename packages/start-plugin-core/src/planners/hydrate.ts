@@ -30,6 +30,7 @@ import { relative } from 'node:path'
 import {
   LookupPath,
   UNKNOWN,
+  derivedIdOf,
   isKnownSpecifier,
   listEnd,
   ownEntry,
@@ -1153,7 +1154,7 @@ function extract(
     derived: { kind: 'hydrate', value: b.id },
     describe: '`<Hydrate>` boundary',
   })
-  const chunkId = out.slice('derived:'.length)
+  const chunkId = derivedIdOf(out)
   // the parent's lazy const: same name as the chunk component, its own symbol
   // (one name per meaning in every output of the file; the chunk component
   // is a fixed-home generated unit pinned to its chunk), unless the children reach the unexported

@@ -285,13 +285,15 @@ export function recognizeRoute(
     })
   }
   const fileName = ctx.displayPath
+  const warnNotFactoryCall = (range?: Range) =>
+    warn(
+      `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
+      range,
+      'route-unrecognized',
+    )
   const notFactoryCall = (range?: Range) => {
     if (entry !== null && importsFactory(analysis)) {
-      warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
-        range,
-        'route-unrecognized',
-      )
+      warnNotFactoryCall(range)
     }
     return { route: null, warnings }
   }
@@ -311,11 +313,10 @@ export function recognizeRoute(
   const outer = unwrapExpression(routeUnit.node.init)
   if (outer.type !== 'CallExpression') {
     if (importsFactory(analysis)) {
-      warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
-        { start: routeUnit.node.start, end: routeUnit.node.end },
-        'route-unrecognized',
-      )
+      warnNotFactoryCall({
+        start: routeUnit.node.start,
+        end: routeUnit.node.end,
+      })
     }
     return { route: null, warnings }
   }
@@ -340,11 +341,10 @@ export function recognizeRoute(
         }),
       )
     } else if (importsFactory(analysis)) {
-      warn(
-        `[tanstack-router] The route of ${fileName} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
-        { start: routeUnit.node.start, end: routeUnit.node.end },
-        'route-unrecognized',
-      )
+      warnNotFactoryCall({
+        start: routeUnit.node.start,
+        end: routeUnit.node.end,
+      })
     }
     return { route: null, warnings }
   }
