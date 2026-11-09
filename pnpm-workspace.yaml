@@ -166,3 +166,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: seroval@1.6.11
+  - seroval@1.6.11
