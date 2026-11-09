@@ -11,6 +11,13 @@
  * holding a builder stays an effect (a middleware's links write the
  * options of the builder they are called on), as does a chain with an
  * impure argument.
+ *
+ * Two exported server fns the component reads: each extracted module
+ * imports the client stub's runtime itself, as it would an import the
+ * source wrote (an extracted module evaluates before the route module's
+ * body, so it reads nothing of the route module then). Learned from the
+ * server-functions e2e app (its `method-not-allowed/$method` route), whose
+ * client build failed the compiler's self-checks.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -170,3 +177,40 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
     timeout,
   )
 })
+
+describe.each(startBundlers)(
+  'a %s client build of exported chains',
+  (bundler) => {
+    test(
+      'loads two exported server fns the component reads, each importing the client stub itself',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          files: {
+            'src/router.tsx': files['src/router.tsx'],
+            'entry.ts': files['entry.ts'],
+            'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+export const Route = createFileRoute('/two-exported')({
+  component: Page,
+})
+export const first = createServerFn().handler(() => 'MARK_first')
+export const second = createServerFn({ method: 'POST' }).handler(() => 'MARK_second')
+function Page() {
+  return <p data-first={first.url} data-second={second.url}>MARK_page</p>
+}
+`,
+          },
+        })
+        expect(build.client.where('MARK_page')).toBe('lazy')
+        expect(
+          findDiagnostics(build.client.warnings, {
+            file: 'src/routes/two-exported.tsx',
+            root: build.root,
+          }),
+        ).toEqual([])
+      },
+      timeout,
+    )
+  },
+)
