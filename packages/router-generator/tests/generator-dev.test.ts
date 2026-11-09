@@ -10,7 +10,7 @@
  * `tests/integration/{dev-server,rsbuild-dev-server}-{generator,new-routes}.test.ts`.
  */
 import { existsSync } from 'node:fs'
-import { rm } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -615,5 +615,38 @@ export default [route('${routePath}', 'x.tsx')]
         '/sub/b',
       )
     })
+  })
+})
+
+describe('a batch that fails to publish', () => {
+  // Bug: the generator's tree model (`getTreeModel()`, which Start prints its
+  // client route tree from) took the batch's routes before the batch wrote
+  // and published them. A batch failing after that (a route file write or
+  // the tree write failing: EACCES, ENOSPC, Windows EBUSY) left the model
+  // ahead of the published tree and the routes the generator hands over,
+  // until the next file event.
+  test('leaves the tree model at the last published tree', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts.tsx': fileRoute('/posts'),
+    })
+    const { config, generator } = await startGenerator(root)
+    const fullPaths = async () =>
+      (await generator.getTreeModel())!.routes.map((route) => route.fullPath)
+    const published = await fullPaths()
+
+    // the tree can no longer be written
+    await rm(config.generatedRouteTree)
+    await mkdir(config.generatedRouteTree)
+    const created = await save(
+      root,
+      'src/routes/about.tsx',
+      fileRoute('/about'),
+    )
+    await expect(
+      generator.run({ type: 'create', path: created }),
+    ).rejects.toThrow()
+
+    expect(await fullPaths()).toEqual(published)
   })
 })
