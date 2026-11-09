@@ -11,8 +11,7 @@ export function getSerovalPlugins(
   routerPlugins: Array<Plugin<any, any>>,
 ): Array<Plugin<any, any>> {
   const adapters = getStartOptions()?.serializationAdapters as
-    | Array<AnySerializationAdapter>
-    | undefined
+    Array<AnySerializationAdapter> | undefined
   return [...(adapters?.map(makeSerovalPlugin) ?? []), ...routerPlugins]
 }
 
