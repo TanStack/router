@@ -5,7 +5,7 @@
  * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
  */
-import { digestOf, identify, isCommonJsPath, revision } from './identity'
+import { digestOf, identify, isCommonJsPath } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
@@ -39,8 +39,6 @@ export interface TargetFacts {
 }
 
 export interface RawFacts {
-  /** null when the module could not be read. */
-  rawRevision: string | null
   summary: ModuleSummary | null
   targetFacts: TargetFacts
   /**
@@ -111,8 +109,8 @@ interface FactsEntry {
   stale: boolean
   facts: RawFacts | null
   pending: Promise<RawFacts> | null
-  /** The revision at which the text holds no marker literal (`marker` answered without a parse). */
-  markerless: string | null
+  /** Whether the text since the last `markStale` holds no marker literal (`marker` answered without a parse). */
+  markerless: boolean
   pendingMarker: Promise<TargetFacts['marker']> | null
 }
 
@@ -149,7 +147,7 @@ export class RawFactsCache {
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
-      e.markerless = null
+      e.markerless = false
       e.pendingMarker = null
     }
   }
@@ -273,7 +271,7 @@ export class RawFactsCache {
       stale: false,
       facts,
       pending: null,
-      markerless: null,
+      markerless: false,
       pendingMarker: null,
     }
   }
@@ -294,7 +292,7 @@ export class RawFactsCache {
         return e.facts.targetFacts.marker
       }
       // (`markerless` and a pending scan are of the text since the last `markStale`)
-      if (e.markerless !== null) {
+      if (e.markerless) {
         return null
       }
       if (e.pendingMarker) {
@@ -320,7 +318,7 @@ export class RawFactsCache {
       if (entry.pendingMarker === holder.p) {
         entry.pendingMarker = null
         if (text !== null && !this.noTargets) {
-          entry.markerless = revision(text)
+          entry.markerless = true
         } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
           // a missing file is not kept (`forget`)
           this.deleteEntry(canonicalId)
@@ -392,7 +390,7 @@ export class RawFactsCache {
       stale += e.stale && e.facts ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
-      markerless += !e.facts && e.markerless !== null ? 1 : 0
+      markerless += !e.facts && e.markerless ? 1 : 0
       opaque += e.facts?.opaque ? 1 : 0
       if (withBytes && e.facts) {
         bytes += approxBytes(e.facts)
@@ -435,7 +433,6 @@ export class RawFactsCache {
       codeEffects: { client: false, server: false },
     }
     return {
-      rawRevision: digest,
       summary: { exports: exportFacts, stars: [], digest },
       targetFacts: { ...tf, digest: digestOf(tf) },
     }
@@ -463,20 +460,17 @@ export class RawFactsCache {
   ): RawFacts {
     if (text === null) {
       return {
-        rawRevision: null,
         summary: null,
         targetFacts: { ...MISSING_TARGET, digest: MISSING_DIGEST },
       }
     }
     const id = identify(canonicalId)
-    const rev = revision(text)
     if (
       !full &&
       this.opts.opaque?.(id.path, text) &&
       !this.mayHaveMarker(text)
     ) {
       return {
-        rawRevision: rev,
         summary: null,
         targetFacts: { ...OPAQUE_TARGET, digest: OPAQUE_DIGEST },
         opaque: true,
@@ -504,7 +498,6 @@ export class RawFactsCache {
         codeEffects: ALL_EFFECTS,
       }
       return {
-        rawRevision: rev,
         summary: null,
         targetFacts: { ...tf, digest: digestOf(tf) },
       }
@@ -514,13 +507,10 @@ export class RawFactsCache {
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
     })
-    return this.fromAnalysis(rev, analysis)
+    return this.fromAnalysis(analysis)
   }
 
-  private fromAnalysis(
-    rawRevision: string,
-    analysis: ModuleAnalysis,
-  ): RawFacts {
+  private fromAnalysis(analysis: ModuleAnalysis): RawFacts {
     const summary = buildSummary(
       analysis,
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
@@ -567,7 +557,6 @@ export class RawFactsCache {
       }),
     }
     return {
-      rawRevision,
       summary,
       targetFacts: { ...tf, digest: digestOf(tf) },
     }

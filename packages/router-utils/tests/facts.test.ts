@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
-import type { RecognizerTable } from '../src/compiler'
+import type { RawFacts, RecognizerTable } from '../src/compiler'
 
 describe('RawFactsCache', () => {
   it('counts no entry stale once a marker scan has read the file again', async () => {
@@ -30,20 +30,19 @@ describe('RawFactsCache', () => {
     })
     const first = cache.get('/app/a.ts', 'client')
     // the file changes while the first read is pending; the host reports it
-    text = 'export const a = 2\n'
+    text = 'export const b = 2\n'
     cache.markStale('/app/a.ts')
     release!()
     await first
     // the next read sees the new text, not the superseded read's
     const second: Promise<unknown> = cache.get('/app/a.ts', 'client')
     release!()
-    const facts = (await second) as { rawRevision: string }
-    const superseded = (await first) as { rawRevision: string }
-    expect(facts.rawRevision).not.toBe(superseded.rawRevision)
+    const facts = (await second) as RawFacts
+    const superseded = await first
+    expect(superseded.targetFacts.exportNames).toEqual(['a'])
+    expect(facts.targetFacts.exportNames).toEqual(['b'])
     // the cache holds the second read's facts, current
-    expect((await cache.get('/app/a.ts', 'client')).rawRevision).toBe(
-      facts.rawRevision,
-    )
+    expect(await cache.get('/app/a.ts', 'client')).toBe(facts)
     expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
   })
 
