@@ -1,5 +1,34 @@
 # @tanstack/start-plugin-core
 
+## 1.171.57
+
+### Patch Changes
+
+- [#8889](https://github.com/TanStack/router/pull/8889) [`3f22686`](https://github.com/TanStack/router/commit/3f226869e0af211ff7f1de5d7343e43462dbb101) - fix: Rsbuild dev SSR now includes stylesheet links when the server environment runs outside the build process, such as in workerd with `rsbuild-plugin-cloudflare`. The dev manifest is written into the server's manifest module instead of being stored on the build process's `globalThis`.
+
+- [#8892](https://github.com/TanStack/router/pull/8892) [`559c7de`](https://github.com/TanStack/router/commit/559c7ded6e2a6eeda3f91c80d8c03f4cfeb9a206) - fix: Rsbuild dev with React Server Components includes stylesheet links in SSR again. The client and server compile concurrently, so the server's manifest module is now rebuilt once the client build is available, as in production builds.
+
+## 1.171.56
+
+### Patch Changes
+
+- [#8863](https://github.com/TanStack/router/pull/8863) [`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c) - The Rsbuild plugin keeps the app's `server.compress` setting instead of always setting it to `false`. Compression stays off by default: a compressed streamed page reaches the browser only once the stream ends. The optional `@rsbuild/core` peer is now `^2.0.5`, the first version whose compression keeps SSR response headers intact.
+
+- [#8805](https://github.com/TanStack/router/pull/8805) [`c5320d7`](https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02) - With `spa.enabled`, the Rsbuild dev server answers the SPA shell, as Vite's dev server does, instead of rendering the route and running its loaders on the server.
+
+- [#8871](https://github.com/TanStack/router/pull/8871) [`545a8d3`](https://github.com/TanStack/router/commit/545a8d3790989ca502153c3292c6b1e8063257f4) - Require `exsolve` `^1.1.3`: a failed lookup that exsolve caches no longer keeps its callers alive, so Start's cached failed lookups no longer hold on to each build's objects. Entry lookups bypass exsolve's process-wide cache, so a dev server restart finds an entry file (such as `src/start.ts`) created since.
+
+- [#8861](https://github.com/TanStack/router/pull/8861) [`da8c28c`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) - Start's router options now reach the route generator and the code splitter as they do in a router app:
+  - Generator plugins given as `router.plugins` run ([#7768](https://github.com/TanStack/router/issues/7768)). Start's own generator plugins used to replace them.
+  - A function-form `router.routeTreeFileFooter` is called at every print of the route tree. Start's Vite plugin used to print its first result for the whole dev server.
+  - Start's Rsbuild plugin keeps `router.codeSplittingOptions.deleteNodes` for the server build. It used to drop the option there.
+  - Start's Vite plugin finds the client route tree by its exact module id ([#8839](https://github.com/TanStack/router/issues/8839)). With a regular-expression character in the project path, such as `+`, the client used to get the full route tree, server-only routes included; a file whose name differed from the route tree's by one character (`routeTree-gen.ts`) was replaced by the client route tree.
+
+- Updated dependencies [[`1ba19a0`](https://github.com/TanStack/router/commit/1ba19a04456983ee0f8adffd038b6b1194441e15), [`94f36c4`](https://github.com/TanStack/router/commit/94f36c4a9ecf3062b326a8eb772e73b00c0644d9), [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6), [`533ca27`](https://github.com/TanStack/router/commit/533ca2704452f36c5fef5c5fe084554d9b5db1ab), [`13b6256`](https://github.com/TanStack/router/commit/13b625683030ea4ab359495ecda570e05e472587), [`b5e2ac9`](https://github.com/TanStack/router/commit/b5e2ac9c4cee4c5c6f464adc6cfddcddf6c84171), [`d250819`](https://github.com/TanStack/router/commit/d25081952dd04a5f5a44db7c8df5cbbf50fad054), [`f420d4a`](https://github.com/TanStack/router/commit/f420d4a6dacfaa81d306b7bbc9af8f1010d1a1bc), [`ff157f0`](https://github.com/TanStack/router/commit/ff157f0079982e90d62be7fdeecfb77e4fdcec69)]:
+  - @tanstack/router-plugin@1.169.0
+  - @tanstack/router-generator@1.168.0
+  - @tanstack/router-utils@1.163.0
+
 ## 1.171.55
 
 ### Patch Changes

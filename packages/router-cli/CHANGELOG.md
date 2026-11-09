@@ -1,5 +1,16 @@
 # @tanstack/router-cli
 
+## 1.168.0
+
+### Minor Changes
+
+- [#8855](https://github.com/TanStack/router/pull/8855) [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6) - Require Node `^20.19.0 || >=22.12.0` (was `>=20.19`), so the CommonJS builds can load ESM-only dependencies through `require(esm)`. Node 21 and Node 22.0–22.11 do not enable it by default, so they are no longer supported.
+
+### Patch Changes
+
+- Updated dependencies [[`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6)]:
+  - @tanstack/router-generator@1.168.0
+
 ## 1.167.46
 
 ### Patch Changes
