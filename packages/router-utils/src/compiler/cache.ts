@@ -16,8 +16,20 @@ import type { Diagnostic } from './diagnostics'
 export type DependencyFingerprint =
   /** The whole summary (a listing of the module's exports, or a module without one: null). */
   | { kind: 'summary'; canonicalId: string; digest: string | null }
-  /** One export as a lookup read it (`ModuleSummary.exportKeys`; null: the module exports no such name). */
+  /** One export as a lookup read it (`ModuleSummary.exportKeys`; null: the module exports no such name). In flight only: a published plan keeps `exports`. */
   | { kind: 'export'; canonicalId: string; name: string; key: string | null }
+  /**
+   * The exports a plan read of one module, one record however many names it
+   * read: per name, its `ModuleSummary.exportKeys` entry (null: the module
+   * has no such export); `keys` is null when the module has none of them (a
+   * star target a lookup passed through).
+   */
+  | {
+      kind: 'exports'
+      canonicalId: string
+      names: ReadonlyArray<string>
+      keys: ReadonlyArray<string | null> | null
+    }
   /** The `export *` list, read by a lookup of a name the module does not export itself. */
   | { kind: 'stars'; canonicalId: string; stars: ReadonlyArray<string> }
   | { kind: 'target-facts'; canonicalId: string; digest: string }
@@ -42,6 +54,8 @@ function fingerprintId(fp: DependencyFingerprint): string {
       return `summary:${fp.canonicalId}`
     case 'export':
       return `export:${fp.canonicalId}\u0000${fp.name}`
+    case 'exports':
+      return `exports:${fp.canonicalId}`
     case 'stars':
       return `stars:${fp.canonicalId}`
     case 'target-facts':
@@ -60,6 +74,7 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
   switch (fp.kind) {
     case 'summary':
     case 'export':
+    case 'exports':
     case 'stars':
     case 'target-facts':
     case 'target-marker':
@@ -118,6 +133,17 @@ export async function fingerprintCurrent(
       return (
         summary !== null &&
         (ownEntry(summary.exportKeys, fp.name) ?? null) === fp.key
+      )
+    }
+    case 'exports': {
+      const summary = await src.summary(fp.canonicalId)
+      return (
+        summary !== null &&
+        fp.names.every(
+          (n, i) =>
+            (ownEntry(summary.exportKeys, n) ?? null) ===
+            (fp.keys?.[i] ?? null),
+        )
       )
     }
     case 'stars': {
@@ -321,6 +347,46 @@ export class DependencyLedger {
       this.indexKeys.add(indexKey)
       this.index.add(indexKey, this.key)
     }
+  }
+
+  /**
+   * The dependencies a published plan keeps: the `export` records of each
+   * module become one `exports` record. Names are sorted, so the star
+   * targets a lookup visited for the same names share one list.
+   */
+  published(): Array<DependencyFingerprint> {
+    const out: Array<DependencyFingerprint> = []
+    const reads = new Map<string, Map<string, string | null>>()
+    for (const fp of this.entries) {
+      if (fp.kind !== 'export') {
+        out.push(fp)
+        continue
+      }
+      let keys = reads.get(fp.canonicalId)
+      if (!keys) {
+        keys = new Map()
+        reads.set(fp.canonicalId, keys)
+      }
+      keys.set(fp.name, fp.key)
+    }
+    const lists = new Map<string, ReadonlyArray<string>>()
+    for (const [canonicalId, keys] of reads) {
+      const sorted = [...keys.keys()].sort()
+      const listId = JSON.stringify(sorted)
+      let names = lists.get(listId)
+      if (!names) {
+        names = sorted
+        lists.set(listId, names)
+      }
+      const read = names.map((n) => keys.get(n) ?? null)
+      out.push({
+        kind: 'exports',
+        canonicalId,
+        names,
+        keys: read.every((k) => k === null) ? null : read,
+      })
+    }
+    return out
   }
 
   /** The answer of a resolution this compile recorded (undefined: not asked yet). */

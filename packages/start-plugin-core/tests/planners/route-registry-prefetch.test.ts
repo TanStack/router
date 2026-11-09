@@ -98,7 +98,7 @@ describe('a route file the registry vouches for', () => {
       d.kind === 'route-registry' ? `registry:${d.path}` : d.kind,
     )
     expect(kinds).toContain(`registry:${OWN}`)
-    expect(kinds).toContain('export')
+    expect(kinds).toContain('exports')
 
     // the generator reports the own route's constructor as foreign now: the
     // tree's plan is stale, and its next compile reads the file

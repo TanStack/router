@@ -285,7 +285,7 @@ async function settle(
         compiledFor: outputOf(identity),
         compiledAt,
       }
-      entry.plan.dependencies = [...ledger.entries]
+      entry.plan.dependencies = ledger.published()
       const src = fingerprintSourceFor(caches, host, key.env)
       const snapshotOk = await ledger.validateSnapshot(src, {
         resolutions: caches.fileSetVersion === fileSetVersion,
