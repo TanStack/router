@@ -1,6 +1,6 @@
 import { SourceText } from './output-builder'
 
-type DiagnosticSeverity = 'error' | 'warning' | 'info'
+type DiagnosticSeverity = 'error' | 'warning'
 
 export interface Diagnostic {
   severity: DiagnosticSeverity

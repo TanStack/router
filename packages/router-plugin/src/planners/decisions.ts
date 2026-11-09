@@ -28,7 +28,7 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
-export type SplitShape = 'init' | 'method' | 'shorthand'
+type SplitShape = 'init' | 'method' | 'shorthand'
 
 export interface SplitDecision {
   /** The route option (`component`, `loader`, …). */
@@ -56,7 +56,7 @@ export interface SplitDecision {
   member: string | null
 }
 
-export type NotSplitReason =
+type NotSplitReason =
   | 'shared-writer'
   | 'multi-writer'
   | 'ordered-effect'
@@ -67,7 +67,7 @@ export type NotSplitReason =
   | 'reassigned'
   | 'loader-object'
 
-export interface NotSplit {
+interface NotSplit {
   key: string
   reason: NotSplitReason
   range: Range

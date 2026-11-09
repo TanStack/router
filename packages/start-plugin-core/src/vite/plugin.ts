@@ -39,6 +39,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import type { ViteStartEnvironment } from './compiler-state'
 import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
@@ -62,17 +63,12 @@ export function tanStackStartVite(
   // the generator's registry, read by the compiler's router planner
   const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
-  const ssrIsProvider = corePluginOpts.ssrIsProvider
 
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
 
-  const environments: Array<{
-    name: string
-    type: 'client' | 'server'
-    getServerFnById?: string
-  }> = [
+  const environments: Array<ViteStartEnvironment> = [
     { name: START_ENVIRONMENT_NAMES.client, type: 'client' },
     {
       name: START_ENVIRONMENT_NAMES.server,
@@ -220,7 +216,6 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
-                ssrIsProvider,
               })
             },
           },

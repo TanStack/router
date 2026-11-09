@@ -43,6 +43,7 @@ import {
   ownEntry,
 } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../compiler/recognizer'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import { edgeModuleKey } from '../import-protection/edge-modules'
 import { Locator } from '../import-protection/locate'
 import {
@@ -271,8 +272,9 @@ export function importEdgesPlanner(
   ip: ImportProtection,
 ): Planner<typeof IMPORT_EDGES_PLANNER> {
   const { config } = ip
-  const isAppFile = (path: string) =>
-    !path.includes('/node_modules/') && !path.startsWith('\0')
+  /** A module of no package and not virtual. */
+  const isSourceModule = (path: string) =>
+    !NODE_MODULES_RE.test(path) && !path.startsWith('\0')
   /** The module's own violation, if its file rule or its marker denies it here. */
   const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
     const id = ctx.identity.canonicalId
@@ -309,7 +311,7 @@ export function importEdgesPlanner(
       return (
         ip.inScope(path) ||
         ip.exempt(path) ||
-        (envType === 'client' && isAppFile(path))
+        (envType === 'client' && isSourceModule(path))
       )
     },
     plan() {},
@@ -327,7 +329,7 @@ export function importEdgesPlanner(
       // the scope is about importers: on a client an app file outside it is
       // indexed like an exempt importer, and judged itself as a denied file
       const judgedOwn =
-        exempt && ctx.env.type === 'client' && isAppFile(ctx.identity.path)
+        exempt && ctx.env.type === 'client' && isSourceModule(ctx.identity.path)
       if (exempt && !judgedOwn && !ip.exempt(ctx.identity.path)) {
         return
       }
@@ -341,7 +343,7 @@ export function importEdgesPlanner(
 
       const rewriter = ctx.host.services?.importRewrite
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
-        if (e.provenance.origin === 'runtime' || e.typeOnly) {
+        if (e.provenance.origin === 'runtime') {
           return null
         }
         const forwarded =
@@ -658,7 +660,7 @@ export function importEdgesPlanner(
       if (await ip.packageSideEffectFree(path)) {
         return false
       }
-      if (path.includes('/node_modules/')) {
+      if (NODE_MODULES_RE.test(path)) {
         return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)

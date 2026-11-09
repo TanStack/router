@@ -19,6 +19,7 @@
  * the chunk blocks (`chunkHmr`, `keptReaderHmr`).
  */
 import {
+  derivedIdOf,
   stringLiteral,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
@@ -31,7 +32,7 @@ import {
   refreshRegisters,
   routerRouteId,
 } from './route'
-import { methodPrefixOf } from './decisions'
+import { COMPONENT_KEYS, methodPrefixOf } from './decisions'
 import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
@@ -42,12 +43,10 @@ import type {
   SymbolId,
 } from '@tanstack/router-utils/compiler'
 
+/** The component options route HMR keeps: the splittable ones and `shellComponent`. */
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
-  'component',
+  ...COMPONENT_KEYS,
   'shellComponent',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
 ]
 
 function isCapitalised(name: string): boolean {
@@ -370,7 +369,7 @@ function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
                   ` + ${stringLiteral(` ${ctx.nameOf(c.valueSym)}`, '"')}\n`,
                 ]
               : [
-                  `.$$tsrRefreshId = ${stringLiteral(`${c.output.slice('derived:'.length)} ${ctx.nameOf(c.exported.sym)}`, '"')}\n`,
+                  `.$$tsrRefreshId = ${stringLiteral(`${derivedIdOf(c.output)} ${ctx.nameOf(c.exported.sym)}`, '"')}\n`,
                 ]),
           ],
         },

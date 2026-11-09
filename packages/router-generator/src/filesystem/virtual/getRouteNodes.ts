@@ -132,7 +132,7 @@ async function getVirtualRouteConfigFromFileExport(
   return virtualRootRouteSchema.parse(virtualRouteConfig)
 }
 
-export async function getRouteNodesRecursive(
+async function getRouteNodesRecursive(
   tsrConfig: Pick<
     Config,
     | 'routesDirectory'

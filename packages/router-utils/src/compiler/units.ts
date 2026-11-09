@@ -11,6 +11,7 @@ import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   bindingNameRange,
+  isExpressionWrapper,
   namespaceName,
   patternIdentifiers,
   unwrapExpression,
@@ -88,8 +89,6 @@ export interface Unit {
   callsAtLoad: boolean
   /** Import entries (Tier 0 index) for import units. */
   importIndex: number | null
-  /** For import specifiers: the imported name ('default', '*' or a name). */
-  importedName: string | null
   /** The ranges of the names as written, without an annotation (what a rename replaces). */
   declNameRanges: Array<Range>
   /** Ephemeral node (phase B only). */
@@ -356,7 +355,7 @@ export function writesMember(file: SourceFile, node: Node): boolean {
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
     if (parent.type === 'MemberExpression' && parent.object === n) {
       member = true
-    } else if (!WRAPPERS.has(parent.type)) {
+    } else if (!isExpressionWrapper(parent)) {
       break
     }
   }
@@ -381,16 +380,6 @@ export function writesMember(file: SourceFile, node: Node): boolean {
 }
 
 /** The node types `unwrapExpression` looks through. */
-const WRAPPERS = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-  'ChainExpression',
-])
-
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
 function rootIdentifier(node: Node): Node | null {
   let n = unwrapExpression(node)
@@ -556,7 +545,6 @@ export function buildUnits(
     copyable: false,
     identityFree: false,
     importIndex: null,
-    importedName: null,
     declNameRanges: [],
     node,
   })
@@ -591,14 +579,6 @@ export function buildUnits(
             u.declares.push(s)
           }
           u.importIndex = importIndex
-          u.importedName =
-            spec.type === 'ImportDefaultSpecifier'
-              ? 'default'
-              : spec.type === 'ImportNamespaceSpecifier'
-                ? '*'
-                : spec.imported.type === 'Identifier'
-                  ? spec.imported.name
-                  : spec.imported.value
           u.declNameRanges.push({
             start: spec.local.start,
             end: spec.local.end,
@@ -1095,7 +1075,8 @@ export function statementRecipe(
       out.push(slice(close + 1, item.range.end))
       return out
     }
-    default:
+    case 'single':
+      // one unit (`buildUnits`): kept at all, it is kept whole (above)
       return 'keep'
   }
 }

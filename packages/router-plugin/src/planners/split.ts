@@ -10,6 +10,7 @@
  * properties in every output.
  */
 import {
+  derivedIdOf,
   listEnd,
   removeListItems,
   sameFileSpecifier,
@@ -151,7 +152,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       key: d.groupKey,
       derived: { kind: 'split', value: d.groupKey },
     })
-    const derivedId = output.slice('derived:'.length)
+    const derivedId = derivedIdOf(output)
     const importer = names.alloc(
       `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
     )

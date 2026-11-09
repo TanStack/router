@@ -9,7 +9,7 @@ import type { AbstractValue, RecognizerTable } from './values'
 import type { ModuleAnalysis } from './analysis'
 
 type ExportFact =
-  | { kind: 'local'; value: AbstractValue; noSideEffects?: true }
+  | { kind: 'local'; value: AbstractValue }
   | { kind: 'reExport'; specifier: string; fromName: string }
   | { kind: 'namespace'; specifier: string }
 

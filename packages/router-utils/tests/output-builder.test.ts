@@ -1,7 +1,6 @@
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
 import { OutputBuilder, SourceText } from '../src/compiler'
-import type { BuilderEdit } from '../src/compiler/output-builder'
 
 /** ECMAScript line/column of an offset (LF, CRLF, lone CR, U+2028, U+2029). */
 function ecmaLocate(
@@ -100,52 +99,33 @@ const FIXTURE_LS = [
 ].join('\n')
 
 describe('OutputBuilder', () => {
-  it('maps every token of an env-style output with nested edits, raw U+2028 included', () => {
+  it('maps every token of an env-style output spliced around generated text, raw U+2028 included', () => {
     const code = FIXTURE_LS
     const src = new SourceText(code)
     const b = new OutputBuilder(src, '/app/route.tsx')
     const throwAt = code.indexOf('throw')
+    const throwEnd = throwAt + 'throw new Error(`fail ${helper(text)}`)'.length
     const importEnd = code.indexOf('\n') + 1
-    const edits: Array<BuilderEdit> = [
-      { kind: 'insert', at: importEnd, text: "import { tsr } from 'tsr'\n" },
-      {
-        kind: 'replace',
-        start: throwAt,
-        end: throwAt + 'throw new Error(`fail ${helper(text)}`)'.length,
-        parts: [
-          { text: 'tsr(' },
-          {
-            start: throwAt + 6,
-            end: throwAt + 'throw new Error(`fail ${helper(text)}`)'.length,
-          },
-          { text: ')' },
-        ],
-      },
-    ]
-    b.copy(0, code.length, edits)
-    b.text('export { Comp as tsrComp }\n')
-    const { code: out, map } = b.finish()
-    expect(map).not.toBeNull()
-    const { out: expected, runs } = oracle(code, [
+    const ops: Array<{ copy: [number, number] } | { text: string }> = [
       { copy: [0, importEnd] },
       { text: "import { tsr } from 'tsr'\n" },
       { copy: [importEnd, throwAt] },
       { text: 'tsr(' },
-      {
-        copy: [
-          throwAt + 6,
-          throwAt + 'throw new Error(`fail ${helper(text)}`)'.length,
-        ],
-      },
+      { copy: [throwAt + 6, throwEnd] },
       { text: ')' },
-      {
-        copy: [
-          throwAt + 'throw new Error(`fail ${helper(text)}`)'.length,
-          code.length,
-        ],
-      },
+      { copy: [throwEnd, code.length] },
       { text: 'export { Comp as tsrComp }\n' },
-    ])
+    ]
+    for (const op of ops) {
+      if ('copy' in op) {
+        b.copy(op.copy[0], op.copy[1])
+      } else {
+        b.text(op.text)
+      }
+    }
+    const { code: out, map } = b.finish()
+    expect(map).not.toBeNull()
+    const { out: expected, runs } = oracle(code, ops)
     expect(out).toBe(expected)
     expect(map!.sources).toEqual(['/app/route.tsx'])
     const n = checkAllTokens(code, out, runs, map!)

@@ -20,6 +20,7 @@ import {
   removeTrailingSlash,
   sortRouteNodes,
 } from '../utils'
+import { routePieces } from '../types'
 import type { Config } from '../config'
 import type { ScanResult } from '../filesystem/scan'
 import type {
@@ -32,20 +33,12 @@ import type {
   TreeModel,
 } from '../types'
 
-const pieceTypes: ReadonlyArray<FsRouteType> = [
-  'lazy',
-  'loader',
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-]
+const pieceTypes: ReadonlyArray<FsRouteType> = routePieces
 
-const componentPieceRegex =
-  /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
+const componentPieceRegex = new RegExp(`[./](${routePieces.join('|')})[.]`)
 const routeGroupPatternRegex = /\(.+\)/
 
-export interface TreeModelInput {
+interface TreeModelInput {
   scan: ScanResult
   config: Pick<Config, 'indexToken' | 'routeToken'>
   /** Whether a route file joins the tree (its analysis found a route). */

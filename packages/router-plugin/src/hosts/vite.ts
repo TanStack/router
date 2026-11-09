@@ -38,7 +38,7 @@ import type { Config } from '../core/config'
 import type { ModuleGraphLike } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
 
-export const CODE_SPLITTER_PLUGIN_NAME =
+const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
 
 type TransformationPluginInfo = {

@@ -20,6 +20,7 @@ import { DEV_CLIENT_ENTRY, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { StartCompilerSession } from '../compiler/session'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { createVirtualWaits } from './virtual-waits'
+import type { StartCompilerEnvironment } from '../compiler/session'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -41,15 +42,14 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { DevEnvironment, Environment, ViteDevServer } from 'vite'
 
-export interface StartCompilerEnvironment {
-  name: string
-  type: 'client' | 'server'
+/** A Start environment of the Vite host: a resolver environment may forward to another one's `getServerFnById`. */
+export interface ViteStartEnvironment extends StartCompilerEnvironment {
   getServerFnById?: string
 }
 
 export interface StartCompilerPluginOptions {
   framework: CompileStartFrameworkOptions
-  environments: Array<StartCompilerEnvironment>
+  environments: Array<ViteStartEnvironment>
   generateFunctionId?: GenerateFunctionId
   /** The Vite environment name of the server function provider. */
   providerEnvName: string
@@ -185,20 +185,17 @@ export class ViteCompilerState {
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
   /**
-   * `build --watch`: the server's resolver lists the functions the client
-   * build references, so it watches the files of the client's module graph
-   * (an edit only the client bundles rebuilds the server too) and waits for
-   * the client build a file event started (`clientRebuild`, until its
-   * `buildEnd`): the environments rebuild at once.
+   * The client environment's build in this process: null until one ended.
+   * The server's resolver of a build lists (or gates on) the functions the
+   * client build references, which it reads from the client's compiles.
+   * `build --watch`: the files of the client's module graph (else none),
+   * which the server's resolver watches (an edit only the client bundles
+   * rebuilds the server too), and it waits for the client build a file event
+   * started (`clientRebuild`, until its `buildEnd`): the environments rebuild
+   * at once.
    */
-  clientFiles: Array<string> = []
+  clientFiles: Array<string> | null = null
   clientRebuild: { ended: Promise<void>; end: () => void } | null = null
-  /**
-   * Whether the client environment built in this process: the server's
-   * resolver of a build lists (or gates on) the functions the client build
-   * references, which it reads from the client's compiles.
-   */
-  clientBuilt = false
 
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
@@ -249,7 +246,7 @@ export class ViteCompilerState {
     return this.session
   }
 
-  envOf(name: string): StartCompilerEnvironment | undefined {
+  envOf(name: string): ViteStartEnvironment | undefined {
     return this.opts.environments.find((e) => e.name === name)
   }
 
@@ -359,7 +356,7 @@ export class ViteCompilerState {
   }
 
   /** Whether `env` is a server-fn provider of its own (RSC), not the SSR environment. */
-  isSeparateProvider(env: StartCompilerEnvironment): boolean {
+  isSeparateProvider(env: ViteStartEnvironment): boolean {
     return !this.ssrIsProvider && env.name === this.opts.providerEnvName
   }
 
@@ -427,7 +424,7 @@ export class ViteCompilerState {
    */
   afterCompile(
     s: Session,
-    env: StartCompilerEnvironment,
+    env: ViteStartEnvironment,
     id: string,
     out: CompiledOutputLike,
     fail: (error: Error) => never,

@@ -69,8 +69,8 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type {
-  StartCompilerEnvironment,
   StartCompilerPluginOptions,
+  ViteStartEnvironment,
 } from './compiler-state'
 
 /** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
@@ -98,7 +98,7 @@ export function startCompilerPlugin(
 /** An environment's compiler plugin, and the one of its dependency scripts. */
 function envCompilerPlugins(
   state: ViteCompilerState,
-  env: StartCompilerEnvironment,
+  env: ViteStartEnvironment,
 ): Array<Plugin> {
   const watches = env.name === state.watchingEnv
   const compileTransform: TransformHandler = async function (code, id) {
@@ -276,34 +276,32 @@ function envCompilerPlugins(
       })
     },
     buildEnd() {
-      if (this.environment.mode === 'build' && env.type === 'client') {
-        state.clientBuilt = true
+      if (this.environment.mode !== 'build' || env.type !== 'client') {
+        return
       }
-      if (
-        this.environment.mode === 'build' &&
-        env.type === 'client' &&
-        this.meta.watchMode
-      ) {
-        // a rebuild keeps the registry (a new build cleared it): the
-        // functions the client references are those of the modules this
-        // build bundles (the server's resolver gates on them)
-        const graph = new Set<string>()
-        const files = new Set<string>()
-        for (const id of this.getModuleIds()) {
-          const identity = identify(id)
-          graph.add(identity.canonicalId)
-          if (
-            path.isAbsolute(identity.path) &&
-            !NODE_MODULES_RE.test(identity.path)
-          ) {
-            files.add(identity.path)
-          }
+      if (!this.meta.watchMode) {
+        state.clientFiles ??= []
+        return
+      }
+      // a rebuild keeps the registry (a new build cleared it): the
+      // functions the client references are those of the modules this
+      // build bundles (the server's resolver gates on them)
+      const graph = new Set<string>()
+      const files = new Set<string>()
+      for (const id of this.getModuleIds()) {
+        const identity = identify(id)
+        graph.add(identity.canonicalId)
+        if (
+          path.isAbsolute(identity.path) &&
+          !NODE_MODULES_RE.test(identity.path)
+        ) {
+          files.add(identity.path)
         }
-        state.requireSession().start.registry.retain(env.name, graph)
-        state.clientFiles = [...files]
-        state.clientRebuild?.end()
-        state.clientRebuild = null
       }
+      state.requireSession().start.registry.retain(env.name, graph)
+      state.clientFiles = [...files]
+      state.clientRebuild?.end()
+      state.clientRebuild = null
     },
     /**
      * A build that writes its bundle (not a scan: plugin-rsc analyses the

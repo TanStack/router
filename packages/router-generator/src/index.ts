@@ -26,6 +26,7 @@ export {
   removeExt,
 } from './utils'
 
+export { routeOptionPieces } from './types'
 export type {
   RouteNode,
   ModelRoute,
@@ -40,7 +41,5 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 
 export { rootPathId } from './filesystem/physical/rootPathId'
 
-export { watchRouteFiles } from './watch/chokidar'
-export type { RouteFileWatcher } from './watch/chokidar'
 export { createGeneratorSession } from './watch/session'
 export type { GeneratorSession } from './watch/session'

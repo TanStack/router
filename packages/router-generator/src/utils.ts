@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import { rootPathId } from './filesystem/physical/rootPathId'
+import { routePieces } from './types'
 import type { TokenMatcher } from './config'
 import type { RouteNode, RoutePathSegmentMetadata } from './types'
 
@@ -17,14 +18,7 @@ export class RoutePrefixMap {
 
       // Skip route pieces (lazy, loader, component, etc.) - they are merged with main routes
       // and should not be valid parent candidates
-      if (
-        route._fsRouteType === 'lazy' ||
-        route._fsRouteType === 'loader' ||
-        route._fsRouteType === 'component' ||
-        route._fsRouteType === 'pendingComponent' ||
-        route._fsRouteType === 'errorComponent' ||
-        route._fsRouteType === 'notFoundComponent'
-      ) {
+      if ((routePieces as ReadonlyArray<string>).includes(route._fsRouteType)) {
         continue
       }
 
@@ -256,7 +250,7 @@ export function hasEscapedLeadingUnderscore(originalSegment: string): boolean {
  * - Segment ends with [_] pattern: "blog[_]" -> "blog_"
  * - Segment is fully escaped and content ends with _: "[_r0ut3_]" -> "_r0ut3_"
  */
-export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
+function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
   // Pattern: something[_] or [something_]
   return (
     originalSegment.endsWith('[_]') ||
@@ -294,7 +288,7 @@ export function countSlashSeparatedParts(path: string): number {
   return count
 }
 
-export function hasRoutePathSegmentMetadata(
+function hasRoutePathSegmentMetadata(
   metadata: RoutePathSegmentMetadata | undefined,
 ): metadata is RoutePathSegmentMetadata {
   return !!(
@@ -681,7 +675,7 @@ export function removeGroups(s: string) {
  * @example
  * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
  */
-export function removeLayoutSegments(routePath: string = '/'): string {
+function removeLayoutSegments(routePath: string = '/'): string {
   const segments = routePath.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
   return newSegments.join('/')

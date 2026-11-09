@@ -3728,9 +3728,11 @@ describe('needers and homes', () => {
     expect(r.chunks.component).toContain("import { fmt } from './util'")
     expect(r.chunks.loader).toContain("import { Route } from '/app/route.tsx'")
     expect(r.chunks.loader).not.toContain('Page')
-    const outputs = [
-      ...r.host.caches.plans.get(r.env ? 'client' : 'client')!.values(),
-    ].flatMap((e) => Object.keys(e.plan.outputs))
+    const plans = r.host.caches.plans.get('client')!
+    const outputs = plans
+      .keysAt('/app/route.tsx')
+      .flatMap((k) => Object.keys(plans.get(k)!.plan.outputs))
+    expect(outputs.length).toBeGreaterThan(0)
     expect(outputs.some((o) => o.includes('shared---'))).toBe(false)
   })
 

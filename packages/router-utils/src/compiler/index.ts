@@ -50,6 +50,7 @@ export type {
   DiagnosticSink,
 } from './diagnostics'
 export { valueBinding } from './symbols'
+export { derivedIdOf } from './rewrite'
 export type { SymbolId } from './symbols'
 export type { Range } from './header'
 export { isPureExpression } from './purity'

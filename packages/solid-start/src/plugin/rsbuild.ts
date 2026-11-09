@@ -12,7 +12,6 @@ export function tanstackStart(
   const corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'solid',
     defaultEntryPaths: solidStartDefaultEntryPaths,
-    ssrIsProvider: true,
     rsbuild: {
       environments: {
         all: {

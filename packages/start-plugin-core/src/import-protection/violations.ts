@@ -78,7 +78,7 @@ export interface RenderedUse {
 }
 
 /** The edge key of a module's own violation (`EdgeViolation.self`) in an environment. */
-export function selfEdgeKey(canonicalId: string): string {
+function selfEdgeKey(canonicalId: string): string {
   return `self\u0000${canonicalId}`
 }
 

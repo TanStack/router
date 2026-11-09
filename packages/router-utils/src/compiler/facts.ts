@@ -452,7 +452,7 @@ export class RawFactsCache {
       ownEntry(table.factories, specifier) ?? {},
     )) {
       const value: AbstractValue = { t: 'factory', kind }
-      exportFacts[name] = { kind: 'local', value, noSideEffects: true }
+      exportFacts[name] = { kind: 'local', value }
     }
     const exportNames = Object.keys(exportFacts).sort()
     const digest = digestOf({ known: specifier, exports: exportNames })

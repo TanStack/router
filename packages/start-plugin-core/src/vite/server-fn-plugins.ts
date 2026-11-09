@@ -120,7 +120,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
         // (not a scan: plugin-rsc analyses the ssr environment first)
         this.environment.config.build.write !== false &&
-        !state.clientBuilt
+        state.clientFiles === null
       ) {
         // the server would answer no client call (J4.2)
         this.error(
@@ -129,7 +129,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
       }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         await state.clientRebuild?.ended
-        for (const file of state.clientFiles) {
+        for (const file of state.clientFiles ?? []) {
           this.addWatchFile(file)
         }
       }

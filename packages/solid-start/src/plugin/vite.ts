@@ -16,7 +16,6 @@ export function tanstackStart(
     framework: 'solid',
     defaultEntryPaths: solidStartDefaultEntryPaths,
     providerEnvironmentName: START_ENVIRONMENT_NAMES.server,
-    ssrIsProvider: true,
     ssrResolverStrategy: {
       type: 'default',
     },

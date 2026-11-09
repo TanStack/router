@@ -129,7 +129,6 @@ export type RefContext =
   | 'shorthandPattern'
   | 'exportSpec'
   | 'exportDecl'
-  | 'importLocal'
   | 'jsxOpen'
   | 'jsxClose'
   | 'jsxTag'

@@ -64,7 +64,7 @@ export function relativeTargetPath(
 }
 
 /** Whether the resolved target skips the file and marker rules (`excludeFiles`). */
-export function targetExcluded(
+function targetExcluded(
   rules: ImportProtectionEnvRules,
   relativePath: string,
 ): boolean {
@@ -75,7 +75,7 @@ export function targetExcluded(
 }
 
 /** The file rule matching the resolved target's root-relative path, if any. */
-export function matchFile(
+function matchFile(
   rules: ImportProtectionEnvRules,
   relativePath: string,
 ): RuleRef | null {

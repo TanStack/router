@@ -2,9 +2,9 @@ import { lit } from '../print/style'
 import type { CodeStyle } from '../print/style'
 import type { Config } from '../config'
 
-export type ScaffoldKind = 'root' | 'route' | 'lazy'
+type ScaffoldKind = 'root' | 'route' | 'lazy'
 
-export interface ScaffoldOptions {
+interface ScaffoldOptions {
   target: Config['target']
   kind: ScaffoldKind
   /** The route id (`__root` for the root route). */

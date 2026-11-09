@@ -18,6 +18,11 @@ import type { SymbolId } from './symbols'
 import type { RegionId, RegionTable, UnitId } from './units'
 
 export type OutputId = 'env' | `derived:${string}`
+
+/** The module id of a derived output (`derived:<id>`). */
+export function derivedIdOf(output: OutputId): string {
+  return output.slice('derived:'.length)
+}
 export type EditScope = 'all-outputs' | ReadonlyArray<OutputId>
 export type RefTarget =
   | { sym: SymbolId }

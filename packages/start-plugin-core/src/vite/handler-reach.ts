@@ -5,7 +5,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import type { HostServices } from '@tanstack/router-utils/compiler'
-import type { Session, StartCompilerEnvironment } from './compiler-state'
+import type { Session, ViteStartEnvironment } from './compiler-state'
 
 /** A module naming no server-fn factory nor `.handler(` defines no server function (a text gate before any analysis). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
@@ -29,7 +29,7 @@ const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
  */
 export async function compileHandlerReach(
   s: Session,
-  env: StartCompilerEnvironment,
+  env: ViteStartEnvironment,
   host: HostServices,
 ): Promise<void> {
   const { registry, rawFacts } = s.start

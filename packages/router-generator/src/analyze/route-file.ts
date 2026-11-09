@@ -5,7 +5,7 @@ import type { CodeStyle } from '../print/style'
 import type { RouteProps } from '../types'
 import type { CallExpression, Expression, Node, SourceFile } from 'yuku'
 
-export type RouteConstructorName = 'createFileRoute' | 'createLazyFileRoute'
+type RouteConstructorName = 'createFileRoute' | 'createLazyFileRoute'
 
 const routeConstructors: ReadonlyArray<string> = [
   'createFileRoute',
@@ -46,7 +46,7 @@ export type RouteFileAnalysis =
       diagnostics: Array<FileDiagnostic>
     }
 
-export interface RouteFileExpectation {
+interface RouteFileExpectation {
   /** The route id the file's location implies. */
   routeId: string
   /** Whether the file is a `.lazy` route file (`createLazyFileRoute`). */
@@ -567,11 +567,11 @@ function bindConstructor(
   }
 
   let local: string = wanted
-  if (calleeKind.kind !== 'repair' || calleeKind.name !== wanted) {
-    for (let n = 2; !nameFree(local); n++) {
-      local = `${wanted}${n}`
-    }
-  } else if (file.rootScope.lookup(wanted) !== null) {
+  if (
+    calleeKind.kind !== 'repair' ||
+    calleeKind.name !== wanted ||
+    file.rootScope.lookup(wanted) !== null
+  ) {
     for (let n = 2; !nameFree(local); n++) {
       local = `${wanted}${n}`
     }

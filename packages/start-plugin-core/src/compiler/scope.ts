@@ -3,12 +3,11 @@
  * transform, the Rsbuild loader).
  */
 import { isInsideDirectory } from '../import-protection/utils'
+import { escapeRegExp } from '../utils'
 import { startRecognizer } from './recognizer'
 import type { ImportProtection } from '../import-protection/session'
 
 export const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
-
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
 
 /**
  * The app's own modules are all compiled: a Start value reaches a module
@@ -67,7 +66,7 @@ function startTextTest(ip: ImportProtection | null): RegExp {
     [
       ...names,
       String.raw`\.\s*(?:handler|server|client)\s*\(`,
-      ...Object.keys(ip?.markerSpecifiers ?? {}).map(escape),
+      ...Object.keys(ip?.markerSpecifiers ?? {}).map(escapeRegExp),
     ].join('|'),
   )
 }

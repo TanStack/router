@@ -60,7 +60,6 @@ export function sourceEdges(
       kind,
       specifier,
       locations: [{ range }],
-      typeOnly: false,
       names,
       provenance: SOURCE,
     })

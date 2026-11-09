@@ -41,25 +41,31 @@ export interface GetRouteNodesResult {
   physicalDirectories: Array<string>
 }
 
+/**
+ * The route options a route file piece defines (`posts.component.tsx`,
+ * deprecated for `posts.lazy.tsx`), in the order code splitting lists them
+ * (router-plugin's `splitRouteIdentNodes`). The one list of them.
+ */
+export const routeOptionPieces = [
+  'loader',
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+] as const
+
+/** The pieces a route file suffix names: the route options and `lazy` (`posts.lazy.tsx`). */
+export const routePieces = [...routeOptionPieces, 'lazy'] as const
+
+export type RoutePieceName = (typeof routePieces)[number]
+
+/** A scanned file's kind; the pieces other than `lazy` are deprecated. */
 export type FsRouteType =
   | '__root'
   | 'static'
   | 'layout'
   | 'pathless_layout'
-  | 'lazy'
-  | 'loader' // @deprecated
-  | 'component' // @deprecated
-  | 'pendingComponent' // @deprecated
-  | 'errorComponent' // @deprecated
-  | 'notFoundComponent' // @deprecated
-
-export type RoutePieceName =
-  | 'component'
-  | 'errorComponent'
-  | 'notFoundComponent'
-  | 'pendingComponent'
-  | 'loader'
-  | 'lazy'
+  | RoutePieceName
 
 /**
  * The option keys of a route file's `createFileRoute(...)({...})` call
