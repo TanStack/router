@@ -7,10 +7,12 @@
  * JSConfetti()` stayed eager because an inline `validateSearch: type({…})`
  * call runs after it and stays in the route module. The same file with the
  * declaration after the route, with the schema declared first, with the
- * call annotated `/* @__PURE__ *\/`, or with
- * a callee declared `/* #__NO_SIDE_EFFECTS__ *\/` in the route file loads
- * the declaration with its chunk and reports nothing; neither does a route
- * whose split code needs nothing pinned. Every host: Vite, Rspack, webpack
+ * call annotated `/* @__PURE__ *\/`, or with a callee declared
+ * `/* #__NO_SIDE_EFFECTS__ *\/` in the route file (before a function
+ * declaration, before a `const` declaration of a function or before its
+ * initialiser) loads the declaration with its chunk and reports nothing;
+ * neither does a route whose split code needs nothing pinned (also an arrow
+ * function followed by a statement in parentheses, without a semicolon). Every host: Vite, Rspack, webpack
  * and Rsbuild builds, and the Vite dev server, where an edit that keeps the
  * finding does not repeat it.
  */
@@ -69,6 +71,28 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     '/* #__NO_SIDE_EFFECTS__ */ function makeSchema<T>(shape: T) { return shape }\n',
     '  validateSearch: makeSchema({ tab: "string" }),',
   ),
+  'routes/no-side-effects-initialiser.tsx': route(
+    'no-side-effects-initialiser',
+    'const makeSchema = /* #__NO_SIDE_EFFECTS__ */ <T,>(shape: T) => shape\n',
+    '  validateSearch: makeSchema({ tab: "string" }),',
+  ),
+  // before the declaration of a `const` function, as Rollup and esbuild
+  // accept it, exported or not
+  'routes/no-side-effects-const.tsx': route(
+    'no-side-effects-const',
+    '/* #__NO_SIDE_EFFECTS__ */ const makeSchema = <T,>(shape: T) => shape\n',
+    '  validateSearch: makeSchema({ tab: "string" }),',
+  ),
+  'routes/no-side-effects-export-const.tsx': route(
+    'no-side-effects-export-const',
+    '/* #__NO_SIDE_EFFECTS__ */ export const makeSchema = function <T>(shape: T) { return shape }\n',
+    '  validateSearch: makeSchema({ tab: "string" }),',
+  ),
+  'routes/no-side-effects-export-then-const.tsx': route(
+    'no-side-effects-export-then-const',
+    'export /* #__NO_SIDE_EFFECTS__ */ const makeSchema = <T,>(shape: T) => shape\n',
+    '  validateSearch: makeSchema({ tab: "string" }),',
+  ),
   // the annotated callee declared after the call (hoisted): the
   // annotation counts in any order
   'routes/no-side-effects-after.tsx': `${head}import { Marker } from '../marker'
@@ -89,6 +113,19 @@ export const Route = createFileRoute('/declared-after')({
 const marker = new Marker('MARK_declared-after_END')
 `,
   'routes/nothing-pinned.tsx': route('nothing-pinned', '', ''),
+  // without semicolons, a statement in parentheses after an arrow function
+  // is a statement of its own: the arrow is not called at load, so it reads
+  // the state when the component calls it and loads with the component
+  'routes/arrow-before-parentheses.tsx': `${head}let count = 0
+export function bump() { count++ }
+const show = () => {
+  return 'MARK_arrow-before-parentheses_END' + count
+}
+(globalThis as any).loaded = true
+export const Route = createFileRoute('/arrow-before-parentheses')({
+  component: () => <p>{show()}</p>,
+})
+`,
   'entry.ts': `import { routeTree } from './routeTree.gen'
 export { routeTree }
 `,
@@ -100,7 +137,12 @@ const lazyRoutes = [
   'declared-after',
   'no-side-effects',
   'no-side-effects-after',
+  'no-side-effects-initialiser',
+  'no-side-effects-const',
+  'no-side-effects-export-const',
+  'no-side-effects-export-then-const',
   'nothing-pinned',
+  'arrow-before-parentheses',
 ]
 
 /**

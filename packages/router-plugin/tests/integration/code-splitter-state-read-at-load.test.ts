@@ -16,10 +16,13 @@ import {
 
 const state = `let prefix = 'a'\nexport function setPrefix(p: string) { prefix = p }\n`
 
-/** `component`: the route's component option (default: a component rendering `read`). */
+/**
+ * `component`: the route's component option (default: a component rendering
+ * `read`); `state`: the module state and its exported setter (default: `state`).
+ */
 const shapes: Record<
   string,
-  { code: string; read?: string; component?: string }
+  { code: string; read?: string; component?: string; state?: string }
 > = {
   'direct read (control)': { code: `const labels = [prefix + 'x']` },
   map: { code: `const labels = ['x'].map((k) => prefix + k)` },
@@ -47,6 +50,34 @@ const shapes: Record<
     code: `const o = Object.fromEntries(['x'].map((k) => [k, prefix + k]))\nconst labels = Object.values(o)`,
   },
   'local IIFE': { code: `const labels = (() => [prefix + 'x'])()` },
+  'IIFE through `as`': {
+    code: `const labels = ((() => [prefix + 'x']) as () => Array<string>)()`,
+  },
+  'IIFE through `!`': { code: `const labels = ((() => [prefix + 'x'])!)()` },
+  'IIFE through `satisfies`': {
+    code: `const labels = ((() => [prefix + 'x']) satisfies () => Array<string>)()`,
+  },
+  'IIFE called optionally': {
+    code: `const labels = (() => [prefix + 'x'])?.()`,
+  },
+  'IIFE through `.call`': {
+    code: `const labels = (function () { return [prefix + 'x'] }).call(null)`,
+  },
+  'IIFE through `as`, then `.call`': {
+    code: `const labels = ((function () { return [prefix + 'x'] }) as () => Array<string>).call(null)`,
+  },
+  'IIFE through `.bind`': {
+    code: `const labels = (function () { return [prefix + 'x'] }).bind(null)()`,
+  },
+  'function constructed in place': {
+    code: `const labels = new (function (this: any) { this.v = [prefix + 'x'] } as any)().v`,
+  },
+  // without semicolons, a statement in parentheses after an arrow function
+  // is a statement of its own: the setter is not called at load
+  'setter followed by a statement in parentheses': {
+    state: `let prefix = 'a'\nexport const setPrefix = (p: string) => { prefix = p }\n(globalThis as any).loaded = true\n`,
+    code: `const labels = [prefix + 'x']`,
+  },
   'helper called at load': {
     code: `function make() { return [prefix + 'x'] }\nconst labels = make()`,
   },
@@ -90,9 +121,9 @@ async function run(bundler: 'vite' | 'rspack' | 'rsbuild', split: boolean) {
     files: {
       'routes/__root.tsx': rootRoute,
       ...Object.fromEntries(
-        rows.map(([, { code, read, component }], i) => [
+        rows.map(([, { code, read, component, state: own }], i) => [
           `routes/r${i}.tsx`,
-          `${head}${state}${code}
+          `${head}${own ?? state}${code}
 export const Route = createFileRoute('/')({ component: ${component ?? `() => <p>{String(${read ?? 'labels'})}</p>`} })
 `,
         ]),
