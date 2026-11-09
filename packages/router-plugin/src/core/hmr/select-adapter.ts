@@ -1,7 +1,15 @@
 import { createViteHmrStatement } from './vite-adapter'
 import { createWebpackHmrStatement } from './webpack-adapter'
-import type { Config, HmrStyle } from '../config'
+import type { Config } from '../config'
 import type * as t from '@babel/types'
+
+/**
+ * The HMR runtime to emit code for:
+ * - `'vite'`: ESM `import.meta.hot` with Vite accept-callback semantics.
+ * - `'webpack'`: `import.meta.webpackHot` with webpack / Rspack `module.hot`
+ *   re-execution semantics.
+ */
+export type HmrStyle = 'vite' | 'webpack'
 
 export type CreateRouteHmrStatementOpts = {
   hmrStyle: HmrStyle
@@ -10,9 +18,9 @@ export type CreateRouteHmrStatementOpts = {
 }
 
 /**
- * Dispatches to the configured HMR adapter. `hmrStyle` is set explicitly by
- * the bundler-specific plugin entry (e.g. `rspack.ts` → `'webpack'`), so there
- * is no runtime inference based on config string shapes.
+ * Dispatches to the HMR adapter of the bundler the plugin runs in. `hmrStyle`
+ * comes from the bundler-specific plugin entry (e.g. `rspack.ts` →
+ * `'webpack'`), not from user config.
  */
 export function createRouteHmrStatement(
   stableRouteOptionKeys: Array<string>,
