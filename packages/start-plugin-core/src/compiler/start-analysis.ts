@@ -484,12 +484,10 @@ export function startAnalysisOf(
           }
           const b = file.bindingOf(p.id)
           if (b && isStartValue(table, value)) {
-            // (`var a = 1; var a = createServerFn()`: the name's value is the first)
-            const first = b.declarations.find((d) => {
-              const q = parentOf(d)
-              return q?.type === 'VariableDeclarator' && q.init !== null
-            })
-            if (first?.start === p.id.start) {
+            // followed when the name's value is this initialiser's (`var a =
+            // 1; var a = createServerFn()`, `function a() {}; var a = …`: the
+            // first declaration with a value decides it)
+            if (values.valueOfBinding(b.id) === values.valueOf(p.init)) {
               enqueueBinding(b.id)
             } else {
               escape(outer, value, 'reassigned')

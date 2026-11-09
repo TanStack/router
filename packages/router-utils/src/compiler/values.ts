@@ -488,7 +488,7 @@ export class ValueAnalysis {
     if (parent.type === 'VariableDeclarator' && parent.id === decl) {
       return parent.init ? this.valueOf(parent.init) : null
     }
-    if (parent.type === 'FunctionDeclaration') {
+    if (parent.type === 'FunctionDeclaration' && parent.id === decl) {
       return parent.body ? this.functionValue(parent) : null
     }
     // `const { createServerFn: csf } = Start`: the member of the initialiser
