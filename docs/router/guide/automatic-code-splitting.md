@@ -150,7 +150,7 @@ Any of these lets the declaration load with the split chunk, from the least to t
 - **Create it on first use**, for example `let instance; const getConfetti = () => (instance ??= new JSConfetti())`: a function has no side effects when it is declared.
 - **Tell the compiler that the call has no side effects**, with one of these annotations:
   - `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
-  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not, declared before or after the call.
+  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself, where Rollup and esbuild accept it: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }`, `/* #__NO_SIDE_EFFECTS__ */ const makeSchema = (…) => …` (a `const`, the first function it declares) or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not (before or after `export`), declared before or after the call.
 
   The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter. An annotation frees only a call or `new` whose arguments have no side effects. A value that is not a call, such as a template literal (`` `${config.url}/mcp` ``) or an object, has nothing to annotate, so for those the warning offers only the other fixes.
 
