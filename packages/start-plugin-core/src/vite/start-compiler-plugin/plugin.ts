@@ -70,14 +70,16 @@ export async function loadViteModuleFromEnvironment(
   id: string,
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
-  const isBundled =
-    Boolean((environment as any).config?.isBundled) ||
-    Boolean(environment.config?.experimental?.bundledDev)
+  // Vite resolves isBundled per environment: build mode is always bundled, and in
+  // dev only the client environment inherits experimental.bundledDev unless an
+  // environment overrides it. Reading the tool-wide flag instead would put an
+  // unbundled environment on the load hook, whose result carries no code there.
+  const isBundled = Boolean((environment as any).config?.isBundled)
 
   if (environment.mode === 'build' || isBundled) {
-    // Bundled environments (build mode or Vite bundledDev) must load through
-    // their plugin driver rather than calling transformRequest, which fails on
-    // arbitrary dependencies (e.g. server-function validators like Zod).
+    // Bundled environments must load through their plugin driver rather than
+    // calling transformRequest, which fails on arbitrary dependencies (e.g.
+    // server-function validators like Zod).
     const loaded = await opts.load({ id })
     return loaded?.code ?? ''
   }

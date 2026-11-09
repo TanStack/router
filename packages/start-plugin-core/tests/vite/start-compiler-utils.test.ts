@@ -122,18 +122,25 @@ describe('loadViteModuleFromEnvironment', () => {
     expect(code).toBe('export const zod = {};')
   })
 
-  test('uses plugin load hook when experimental.bundledDev is configured', async () => {
+  test('uses transformRequest for an unbundled environment even when experimental.bundledDev is set', async () => {
+    // Vite seeds the bundledDev default for the client environment only; other
+    // environments resolve isBundled to false unless they set it themselves.
+    // Following the global flag here would send this environment down the load
+    // hook, whose result has no code in an unbundled dev plugin context.
+    const transformRequestMock = vi.fn().mockResolvedValue(undefined)
     const env = {
       mode: 'dev',
       name: 'ssr',
       config: {
+        isBundled: false,
         experimental: {
           bundledDev: true,
         },
       },
+      transformRequest: transformRequestMock,
     } as unknown as Environment
 
-    const loadMock = vi.fn().mockResolvedValue({ code: 'export const s = 2;' })
+    const loadMock = vi.fn()
 
     const code = await loadViteModuleFromEnvironment(env, '/src/server-fn.ts', {
       load: loadMock,
@@ -143,8 +150,9 @@ describe('loadViteModuleFromEnvironment', () => {
       devId: '/src/server-fn.ts?query',
     })
 
-    expect(loadMock).toHaveBeenCalledWith({ id: '/src/server-fn.ts' })
-    expect(code).toBe('export const s = 2;')
+    expect(loadMock).not.toHaveBeenCalled()
+    expect(transformRequestMock).toHaveBeenCalledWith('/src/server-fn.ts?query')
+    expect(code).toBeUndefined()
   })
 
   test('uses transformRequest when environment.mode is dev and not bundled', async () => {

@@ -25,7 +25,10 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
     }).map(([file, code]) => writeFile(path.join(root, file), code)),
   )
   let snapshot: ReturnType<typeof captureBundledDevStyles> | undefined
-  const completed = Promise.withResolvers<void>()
+  let resolveCompleted!: () => void
+  const completedPromise = new Promise<void>((resolve) => {
+    resolveCompleted = resolve
+  })
   const server = await createServer({
     root,
     configFile: false,
@@ -43,7 +46,7 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
             return
           }
           snapshot = captureBundledDevStyles(this, root)
-          completed.resolve()
+          resolveCompleted()
         },
       },
     ],
@@ -55,7 +58,7 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
       throw new Error('Expected the dev server to listen on a TCP port')
     }
     await fetch(`http://localhost:${address.port}/`)
-    await completed.promise
+    await completedPromise
     const css = collectBundledDevStyles(snapshot, [path.join(root, 'entry.js')])
     expect(css).toContain('/* /root.css */')
     expect(css).toContain('/* /component.module.css */')
