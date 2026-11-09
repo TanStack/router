@@ -107,7 +107,7 @@ ${
  * component (Solid's `ref={input}` assigns the element to `input`), which a
  * button outside the boundary reads.
  */
-function letRefPage(split: string) {
+function letRefPage(split: string, ref = 'input') {
   return `${head}import { createSignal } from 'solid-js'
 export function Page() {
   let input: HTMLInputElement | undefined
@@ -116,7 +116,7 @@ export function Page() {
     <div>
       <button data-read onClick={() => setRead(input ? input.value : 'unset')}>read</button>
       <output>{read()}</output>
-      <Hydrate when={interaction()}${split}><input ref={input} value="typed" /><Counter label="child" /></Hydrate>
+      <Hydrate when={interaction()}${split}><input ref={${ref}} value="typed" /><Counter label="child" /></Hydrate>
     </div>
   )
 }`
@@ -244,6 +244,30 @@ export function Page() {
   updatesPropsReference: updatesPage(' split={false}', true),
   letRef: letRefPage(''),
   letRefReference: letRefPage(' split={false}'),
+  // the forms Solid's own JSX transform unwraps for `ref`
+  letRefNonNull: letRefPage('', 'input!'),
+  letRefCast: letRefPage('', 'input as HTMLInputElement'),
+  letRefParens: letRefPage('', '(input)'),
+  // A handler of several statements without semicolons, calling locals of
+  // the component at each statement's start.
+  statements: `${head}import { createSignal } from 'solid-js'
+export function Page() {
+  const [count, setCount] = createSignal(0)
+  const [open, setOpen] = createSignal(false)
+  return (
+    <Hydrate when={idle()}>
+      <button
+        data-label="statements"
+        onClick={() => {
+          setCount(count() + 1)
+          setOpen(true)
+        }}
+      >
+        {'statements:' + (open() ? count() : 0)}
+      </button>
+    </Hydrate>
+  )
+}`,
   directiveModule: directivePage('module'),
   directiveComponent: directivePage('component'),
   // A context declared in the page module itself.
@@ -357,6 +381,16 @@ export function solidPageSuite(bundler: StartBundler) {
         })
       },
     )
+
+    // Bug: a captured local called at a statement's start became
+    // `(0, props.setOpen)(true)` in the chunk, with no `;` before it: in
+    // code without semicolons the statement continued the previous one
+    // (`setCount(…)(0, props.setOpen)(true)`). SPEC J5.2, G1.
+    // Impact: the click threw "… is not a function" and the second
+    // statement never ran.
+    test('a handler of statements without semicolons runs each of them', async () => {
+      await expectChildrenHydrate('statements', ['statements'])
+    })
 
     test('children reading a let reassigned before the boundary show its latest value', async () => {
       await expectChildrenHydrate('latestLet', ['second'], {
@@ -581,6 +615,28 @@ return root.querySelector('output').textContent`
         { read: 'typed', consoleErrors: [] },
       ])
     })
+
+    // Bug: only a bare identifier was taken for a ref assignment; Solid's
+    // JSX transform also unwraps `ref={input!}`, `ref={input as T}` and
+    // `ref={(input)}`, and assigned the element to the chunk's own props.
+    // SPEC J5.8.
+    // Impact: silently, the parent's `let` stays `undefined`.
+    test.each(['letRefNonNull', 'letRefCast', 'letRefParens'])(
+      'a wrapped ref in split children binds the let of their component (%s)',
+      async (fixture) => {
+        const page = await app.hydrate(fixture, {
+          script: `const counter = () => root.querySelector('button[data-label="child"]')
+await clickUntil(counter, () => counter().textContent === 'child:1')
+root.querySelector('button[data-read]').click()
+await settled()
+return root.querySelector('output').textContent`,
+        })
+        expect({
+          read: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({ read: 'typed', consoleErrors: [] })
+      },
+    )
 
     // Bug: the chunk re-declares the module-level bindings its children use
     // instead of using the parent module's (`createContext` runs again
