@@ -12,3 +12,4 @@ yarn.lock
 /server/build
 /public/build# Sentry Config File
 .env.sentry-build-plugin
+.tanstack/
