@@ -132,6 +132,12 @@ export function createRouterGeneratorPlugin(
       config() {
         initConfigAndGenerator()
       },
+      // Every build and rebuild (esbuild watches the files of the bundle
+      // only, and reports no file events to plugins: `watchChange` never
+      // runs)
+      setup(build) {
+        build.onStart(() => session.build())
+      },
     },
   }
 }
