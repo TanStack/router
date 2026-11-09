@@ -3,6 +3,12 @@ import type { FileEventType, Generator } from '../generator'
 export interface RouteFileWatcher {
   /** Resolves once the watcher has scanned its targets. */
   ready: Promise<void>
+  /**
+   * Watches the targets the generator's last run added (the `physical()`
+   * mounts of the scan and the config it read): after every run, the first
+   * one included.
+   */
+  refresh: () => void
   close: () => Promise<void>
 }
 
@@ -17,8 +23,9 @@ const eventTypes: Record<string, FileEventType | undefined> = {
  * the files of the bundle: Rspack, webpack, the CLI). It watches every
  * root the routes come from (the routes directory, `physical()` mounts),
  * the route tree and the virtual route config file for created, changed and
- * deleted files, and follows the mounts as the config changes (SPEC J1.10).
- * `onRun` gets each run's outcome.
+ * deleted files, and follows the mounts as the config changes (SPEC J1.10):
+ * the owner of the runs calls `refresh` after each one. `onRun` gets the run
+ * of each event.
  */
 export async function watchRouteFiles(
   generator: Generator,
@@ -40,22 +47,18 @@ export async function watchRouteFiles(
     if (!type) {
       return
     }
-    const run = generator.run({ type, path: file })
-    onRun(run)
-    run.then(
-      () => {
-        const added = targets()
-        if (added.length) {
-          added.forEach((target) => watched.add(target))
-          watcher.add(added)
-        }
-      },
-      () => {},
-    )
+    onRun(generator.run({ type, path: file }))
   })
 
   return {
     ready,
+    refresh() {
+      const added = targets()
+      if (added.length) {
+        added.forEach((target) => watched.add(target))
+        watcher.add(added)
+      }
+    },
     close: () => watcher.close(),
   }
 }
