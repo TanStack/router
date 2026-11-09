@@ -233,6 +233,7 @@ export async function getRouteNodesRecursive(
               : undefined,
             _fsRouteType: 'static',
             _virtualParentRoutePath: virtualParentRoutePath,
+            _namedByConfig: true,
           } satisfies RouteNode
         }
 
@@ -263,6 +264,7 @@ export async function getRouteNodesRecursive(
               _routePathSegmentMetadata: routePathSegmentMetadata,
               _fsRouteType: 'static',
               _virtualParentRoutePath: virtualParentRoutePath,
+              _namedByConfig: true,
             }
           } else {
             routeNode = {
@@ -333,6 +335,7 @@ export async function getRouteNodesRecursive(
             _routePathSegmentMetadata: routePathSegmentMetadata,
             _fsRouteType: 'pathless_layout',
             _virtualParentRoutePath: virtualParentRoutePath,
+            _namedByConfig: true,
           }
 
           if (node.children !== undefined) {

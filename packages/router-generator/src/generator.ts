@@ -751,6 +751,13 @@ export class Generator {
           `The root route file ${displayFile(file, this.root)} does not exist: create it, with \`export const Route = createRootRoute()\`.`,
         )
       }
+      // (a file a directory listing found and a delete removed since is no
+      // route; a file a config names is one: never drop it silently)
+      if (node._namedByConfig) {
+        throw new RouteGenerationError(
+          `The route file ${displayFile(file, this.root)} named by the virtual route config does not exist: create it, or fix its path in the config.`,
+        )
+      }
       this.files.set(key, {
         digest: digestOf(''),
         facts: { included: false },

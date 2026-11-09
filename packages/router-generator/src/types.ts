@@ -29,6 +29,8 @@ export type RouteNode = {
    * (e.g., when the parent is a virtual file-less route that gets filtered out).
    */
   _virtualParentRoutePath?: string
+  /** The route file is named by a virtual route config (`virtualRouteConfig`, `__virtual.ts`), not found by a directory listing: it must exist. */
+  _namedByConfig?: true
   /** Internal routePath segment metadata for escaped or explicit literal syntax. */
   _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
 }
