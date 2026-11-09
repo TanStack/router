@@ -5,6 +5,7 @@
  * Source: review (options that were parsed but never exercised for
  * effect).
  */
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -116,6 +117,37 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   // Scope: which importers are checked.
   describe('include, exclude and ignoreImporters', () => {
+    // A module outside srcDirectory is never checked: the marked module is
+    // mocked for it, and the build warns, saying what denies the module.
+    // Source: review of 2026-11-09, round 2 (the warning said "Denied by
+    // marker pattern: undefined").
+    test(
+      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming the marker',
+      async () => {
+        const built = await buildStart({
+          bundler,
+          files: {
+            'src/secret.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+            'lib/outside.ts': userOf('../src/secret'),
+            'src/entry.ts': `export { read } from '../lib/outside'\n`,
+          },
+          entry: 'src/entry.ts',
+        })
+        const unchecked = problems(built.diagnostics)
+          .map(({ text }) => text)
+          .filter((text) =>
+            text.includes('for importers that are not checked'),
+          )
+        expect(unchecked).toHaveLength(1)
+        expect(unchecked[0]).toContain(
+          'Denied by marker: src/secret.ts imports "@tanstack/react-start/server-only" (line 1), which restricts it to the server',
+        )
+        expect(unchecked[0]).toContain('Denied file: src/secret.ts')
+        expect(built.client.where('MARK_SECRET')).toBe('nowhere')
+      },
+      timeout,
+    )
+
     test(
       'include: an importer outside the patterns is not checked',
       async () => {
