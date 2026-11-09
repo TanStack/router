@@ -563,7 +563,8 @@ export async function prefetchStartValues(
     refs: ReadonlyArray<{ node: Node }>,
   ) => {
     const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
-    if (id !== null) {
+    // a module without a summary (a package, opaque) exports nothing to follow: every member reads as unknown
+    if (id !== null && (await ctx.resolver.summary(id)) !== null) {
       await followNamespace(
         specifier,
         id,
