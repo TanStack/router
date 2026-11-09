@@ -8,7 +8,7 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { reportedViolations } from '../../importProtection/start-apps'
-import type { StartBundler } from '../../build-harness'
+import type { StartBuildError, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
@@ -28,13 +28,13 @@ const build = (
 const importer = expect.stringMatching(/^src\/entry\.ts\b/)
 
 /** The build's error, asserted (a pin fails on an assertion). */
-async function failure(build: Promise<unknown>): Promise<Error> {
+async function failure(build: Promise<unknown>): Promise<StartBuildError> {
   const error = await build.then(
     () => null,
     (e: unknown) => e,
   )
   expect(error, 'the build fails').toBeInstanceOf(Error)
-  return error as Error
+  return error as StartBuildError
 }
 
 // Known bug (Vite): a Vite id keeps the fragment, which no id tells from a
