@@ -4,7 +4,7 @@
  */
 import { stat } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
-import { OWNED_QUERY_KEYS, identify, planKeyString } from './identity'
+import { OWNED_QUERY_KEYS, identify, pathOfId, planKeyString } from './identity'
 import {
   PlanCache,
   UNRESOLVED_DEPENDENCY,
@@ -518,7 +518,7 @@ export function dependencyPaths(
 ): Set<string> {
   const addModule = (canonicalId: string) => {
     if (!caches.rawFacts.isKnownSpecifier(canonicalId)) {
-      out.add(identify(canonicalId).path)
+      out.add(pathOfId(canonicalId))
     }
   }
   for (const fp of dependencies) {

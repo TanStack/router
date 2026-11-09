@@ -3,7 +3,7 @@
  * hits, the `DependencyLedger` with in-flight registration and snapshot
  * validation, and the dependents index. Only plain data is retained.
  */
-import { identify, planKeyString } from './identity'
+import { pathOfId, planKeyString } from './identity'
 import { ownEntry } from './strings'
 import { approxBytes, cacheDisabled } from './stats'
 import type { OutputId } from './rewrite'
@@ -73,11 +73,11 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
     case 'stars':
     case 'target-facts':
     case 'target-marker':
-      return identify(fp.canonicalId).path
+      return pathOfId(fp.canonicalId)
     case 'route-registry':
       return fp.path
     case 'resolution':
-      return fp.resolved === null ? null : identify(fp.resolved).path
+      return fp.resolved === null ? null : pathOfId(fp.resolved)
   }
 }
 
@@ -335,7 +335,7 @@ export class DependencyLedger {
     if (!keys) {
       keys = new Map()
       this.exportReads.set(canonicalId, keys)
-      this.indexPath(identify(canonicalId).path)
+      this.indexPath(pathOfId(canonicalId))
     }
     if (!keys.has(name)) {
       keys.set(name, key)
@@ -543,7 +543,7 @@ export class PlanCache {
     if (this.pathOf.has(ks)) {
       return
     }
-    const path = identify(key.canonicalId).path
+    const path = pathOfId(key.canonicalId)
     this.pathOf.set(ks, path)
     let keys = this.byPath.get(path)
     if (!keys) {

@@ -10,6 +10,7 @@ import {
   revision,
   sameFileSpecifier,
 } from '../src/compiler'
+import { pathOfId } from '../src/compiler/identity'
 
 describe('identity', () => {
   it('canonicalises only owned keys and keeps foreign queries verbatim', () => {
@@ -35,6 +36,22 @@ describe('identity', () => {
     expect(langFromId('/app/worker.ts?worker_file&type=module')).toBe('ts')
     expect(langFromId('/app/page.tsx?rawish')).toBe('tsx')
     expect(langFromId('/app/page.tsx?raw#a')).toBe('tsx')
+  })
+
+  it("`pathOfId` is `identify`'s path for every id shape", () => {
+    for (const id of [
+      '/app/page.tsx',
+      '/app/page.tsx?flavour=b&tsr-split=component',
+      '/app/C#/page.tsx',
+      '/app/C#/page.tsx?raw#frag',
+      '/app/page.tsx?',
+      '\0virtual:x',
+      '\0virtual:x?side=1',
+      'virtual:y?tsr-split=component',
+      '/@id/__x00__virtual:z',
+    ]) {
+      expect(pathOfId(id)).toBe(identify(id).path)
+    }
   })
 
   it('never canonicalises virtual ids beyond owned keys', () => {
