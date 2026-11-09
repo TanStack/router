@@ -472,17 +472,34 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // names the user's file and the line of the boundary (SPEC J5.5, G5,
     // §5.7: no wording is required). Every channel of the failed build is
     // read (a compiler may print the details and fail with a short error).
+    // (`at`: the error's line, default the boundary's)
     test.each([
       { name: 'a function child', children: '{() => <p>child</p>}' },
       { name: 'a hook call', children: '<p>{useThing()}</p>' },
+      // The split children receive the variable's value when the boundary
+      // renders: a function in them would read that snapshot, not the
+      // variable the component reassigns later (R123).
+      {
+        name: 'a function reading a let the component reassigns',
+        setup: `let timer: number | undefined
+  useEffect(() => {
+    timer = window.setInterval(() => {}, 1000)
+  }, [])
+  `,
+        children: `<button
+        onClick={() => clearInterval(timer)}
+      >stop</button>`,
+        at: 'clearInterval(timer)',
+      },
     ])(
       'client: $name in a boundary fails the build, naming the file and line',
-      async ({ children }) => {
-        const page = `import { Hydrate } from '@tanstack/react-start'
+      async ({ children, setup = '', at = '<Hydrate' }) => {
+        const page = `import { useEffect } from 'react'
+import { Hydrate } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
 import { useThing } from '../hooks'
 export function Page() {
-  return (
+  ${setup}return (
     <main>
       <Hydrate when={idle()}>${children}</Hydrate>
     </main>
@@ -506,7 +523,7 @@ export function Page() {
         expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
           severity: 'error',
           file: 'src/pages/unsafe.tsx',
-          position: { line: diagnosticPosition(page, '<Hydrate').line },
+          position: { line: diagnosticPosition(page, at).line },
         })
       },
       timeout,
