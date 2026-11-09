@@ -1,16 +1,19 @@
 /**
- * Start's own builder chains are no effect in the client build when their
- * arguments are pure (the arguments the client compile erases, a server
- * fn's handler and validator or a middleware's server, do not count): a
- * page-only `createServerFn()…handler(…)`, `createMiddleware(…).client(…)`
- * or `createIsomorphicFn()…` loads with the split chunk although an inline
+ * Start's own builder chains are no effect in the client and the server
+ * builds when their arguments are pure (the arguments an environment's
+ * compile erases, on the client a server fn's handler and validator or a
+ * middleware's server, do not count): a page-only
+ * `createServerFn()…handler(…)`, `createMiddleware(…).client(…)` or
+ * `createIsomorphicFn()…` loads with the split chunk although an inline
  * `validateSearch` call after it stays in the route module. Learned from
  * real apps: 94 of 188 kept-declaration warnings over 10,653 route files
  * (47 apps) were such chains. A builder exists once: one read by two split
- * options lives in one module both import. A link called on a `const`
- * holding a builder stays an effect (a middleware's links write the
- * options of the builder they are called on), as does a chain with an
- * impure argument.
+ * options lives in one module both import, and a middleware a server fn and
+ * split code read runs once per call. A link called on a `const` holding a
+ * builder stays an effect (a middleware's links write the options of the
+ * builder they are called on), as does a chain with an impure argument.
+ * Both environments agree, so a server fn nested in a function may take a
+ * builder chain in its options (the server compile hoists it).
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -18,7 +21,12 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../build-harness'
+import {
+  buildStart,
+  callByIdExports,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
 
 const timeout = 120_000
 
@@ -79,7 +87,7 @@ const run = createServerFn().middleware([tagged]).handler(async () => 1)`,
   'src/routes/isomorphic.tsx': route(
     'isomorphic',
     `const label = createIsomorphicFn()
-  .server(() => 'server')
+  .server(() => 'SERVER_isomorphic')
   .client(() => 'MARK_isomorphic')`,
     '<p>{label()}</p>',
   ),
@@ -121,14 +129,26 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
     "loads Start's builder chains with the chunk that reads them, one instance each",
     async () => {
       const build = await buildStart({ bundler, files })
-      // the client build's: the server compile's purity takes no builder
-      // chain (an isomorphic fn the component reads still stays there)
       const reported = build.client.warnings
       const warnings = (path: string) =>
         findDiagnostics(reported, {
           file: `src/routes/${path}.tsx`,
           root: build.root,
         })
+      // the server build agrees: nothing reported, the isomorphic fn's
+      // server implementation loads with the SSR chunk of the component
+      expect(
+        Object.fromEntries(
+          pure.map((path) => [
+            path,
+            findDiagnostics(build.ssr.warnings, {
+              file: `src/routes/${path}.tsx`,
+              root: build.root,
+            }),
+          ]),
+        ),
+      ).toEqual(Object.fromEntries(pure.map((path) => [path, []])))
+      expect(build.ssr.where('SERVER_isomorphic')).toBe('lazy')
       // one module: Rolldown emits a module two chunks import as a chunk of
       // its own (Rspack copies a small one into both chunks under one module
       // id, which its runtime evaluates once)
@@ -165,6 +185,75 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
         root: build.root,
         position: diagnosticPosition(files['src/routes/impure.tsx'], 'run ='),
         times: 1,
+      })
+    },
+    timeout,
+  )
+})
+
+/** A middleware sending `MARK_nested` to the handler, as an inline chain. */
+const sending = `createMiddleware({ type: 'function' }).server(({ next }) => next({ context: { via: 'MARK_nested' } }))`
+
+const serverFiles = {
+  'src/schema.ts': files['src/schema.ts'],
+  // a server fn nested in a function, with a builder chain in its options
+  'src/nested.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+export function makeLookup() {
+  return createServerFn()
+    .middleware([${sending}])
+    .handler(async ({ context }) => context.via)
+}
+`,
+  // a middleware a server fn (called by the loader) and the split component
+  // read; another middleware lists it too: one instance runs once per call
+  'src/routes/identity.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { makeSchema } from '../schema'
+const counted = createMiddleware({ type: 'function' }).server(({ next }) => {
+  const runs = globalThis as { __runs?: number }
+  runs.__runs = (runs.__runs ?? 0) + 1
+  return next()
+})
+const wrapped = createMiddleware({ type: 'function' })
+  .middleware([counted])
+  .server(({ next }) => next())
+const count = createServerFn()
+  .middleware([counted, wrapped])
+  .handler(async () => (globalThis as { __runs?: number }).__runs)
+export const Route = createFileRoute('/identity')({
+  validateSearch: makeSchema({ tab: 'string' }),
+  loader: () => count(),
+  component: () => <p>{'MARK_identity'}{typeof counted.options}</p>,
+})
+`,
+  'client-entry.ts': `export { makeLookup } from './src/nested'
+`,
+  'ssr-entry.ts': `export { makeLookup } from './src/nested'
+${callByIdExports}`,
+}
+
+describe.each(startBundlers)('a %s build', (bundler) => {
+  test(
+    'runs a nested server fn whose options are a builder chain, and a shared middleware once per call',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: serverFiles,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const url = (await build.client.run('return entry.makeLookup().url'))
+        .result
+      const { result } = await build.ssr.run(`${callByIdPrelude}
+const runs = () => globalThis.__runs ?? 0
+const lookup = await callById(serverFnId(${JSON.stringify(url)}))
+const before = runs()
+const page = await entry.startServerEntry.fetch(new Request('http://localhost/identity'))
+const html = await page.text()
+return { lookup, runs: runs() - before, rendered: html.includes('MARK_identity') }`)
+      expect(result).toEqual({
+        lookup: 'MARK_nested',
+        runs: 1,
+        rendered: true,
       })
     },
     timeout,
