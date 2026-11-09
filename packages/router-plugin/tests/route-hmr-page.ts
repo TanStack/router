@@ -458,6 +458,8 @@ export const Route = createRootRoute({})
           },
           describe: async () =>
             `edit of ${files}\n${describe(expected, await text())}`,
+          // (the page's text holds or matches the expected one)
+          observed: async () => ({ actual: await text(), expected }),
         })
         return {
           get reloaded() {

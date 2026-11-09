@@ -451,8 +451,18 @@ export const getEnv = withBuilder(
       if ((await compileError(startCase)) !== undefined) {
         return
       }
+      const client = await clientValue(startCase, 'module.getEnv()').catch(
+        (error: unknown) => {
+          // The bug fails the pin's assertion; any other failure of the
+          // page run fails the pin as the error it is
+          expect(String(error), 'the module loads in the page').not.toMatch(
+            /withBuilder\(\.\.\.\)\.client is not a function/,
+          )
+          throw error
+        },
+      )
       expect({
-        client: await clientValue(startCase, 'module.getEnv()'),
+        client,
         ssr: settle((await startCase.ssr()).getEnv),
       }).toEqual({ client: 'client', ssr: 'server' })
     },

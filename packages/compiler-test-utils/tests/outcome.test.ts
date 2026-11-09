@@ -127,4 +127,43 @@ describe('waitForOutcome', () => {
     ).rejects.toThrow(/the edit failed: Uncaught ReferenceError/)
     expect(Date.now() - started).toBeLessThan(1_000)
   })
+
+  // An edit that ended without its outcome is a failed expectation (a known-
+  // bug pin passes on it); a wait that could not tell is not.
+  test('an edit without its outcome fails as an assertion with what was expected and seen; the bound as an error', async () => {
+    const failure = (wait: Parameters<typeof waitForOutcome>[0]) =>
+      waitForOutcome(wait).then(
+        () => undefined,
+        (error: unknown) => error as Record<string, unknown>,
+      )
+    expect(
+      await failure({
+        timeout: 5_000,
+        applied: () => false,
+        problems: () => ['Uncaught ReferenceError: x is not defined'],
+        describe: () => 'problem',
+      }),
+    ).toMatchObject({
+      name: 'AssertionError',
+      actual: ['Uncaught ReferenceError: x is not defined'],
+      expected: [],
+    })
+    expect(
+      await failure({
+        timeout: 10_000,
+        failWhenQuietFor: 100,
+        applied: () => false,
+        quiet: () => true,
+        describe: () => 'the page shows "v1"',
+        observed: () => ({ actual: 'v1', expected: 'v2' }),
+      }),
+    ).toMatchObject({ name: 'AssertionError', actual: 'v1', expected: 'v2' })
+    expect(
+      await failure({
+        timeout: 100,
+        applied: () => false,
+        describe: () => 'the page shows "v1"',
+      }),
+    ).toMatchObject({ name: 'Error' })
+  })
 })

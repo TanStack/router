@@ -144,7 +144,18 @@ describe('Rsbuild dev: a route module gains its first server fn', () => {
   // hot update throws, the route renders nothing.
   test.fails(
     'an edit that adds a server fn to the component shows its result on the open page',
-    () => editInFirstServerFn({ target: 'component' }),
+    () =>
+      editInFirstServerFn({ target: 'component' }).catch((error: unknown) => {
+        // The bug fails the pin's assertion; any other failure (another
+        // page error included) fails the pin as an error
+        expect(
+          String(error),
+          'the hot update of the component chunk requires only modules that loaded',
+        ).not.toMatch(/Cannot read properties of undefined \(reading 'call'\)/)
+        throw new Error('the edit failed otherwise than by the pinned bug', {
+          cause: error,
+        })
+      }),
     timeout,
   )
 

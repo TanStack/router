@@ -7,7 +7,13 @@
  * an edit takes, or how soon after the first one the edit shows, are the
  * compiler's business (a valid update may come in two phases, or as a full
  * reload).
+ *
+ * An edit that ends without its outcome (a problem, or the hosts quiet
+ * without it: `failWhenQuietFor`) fails as an assertion, with what was
+ * expected and what was seen; the overall timeout is a plain error (the
+ * wait could not tell).
  */
+import { AssertionError } from 'node:assert'
 
 export interface OutcomeWait {
   /** Whether the edit's outcome holds now (e.g. the page shows the edit). */
@@ -34,6 +40,14 @@ export interface OutcomeWait {
   failWhenQuietFor?: number
   /** What the failure reports (the state seen last). */
   describe: () => string | Promise<string>
+  /**
+   * What the outcome expects and what the hosts show now (e.g. the page's
+   * text), for the assertion an edit without its outcome fails with (a
+   * diff of the two).
+   */
+  observed?: () =>
+    | { actual: unknown; expected: unknown }
+    | Promise<{ actual: unknown; expected: unknown }>
 }
 
 const sleep = (ms: number) =>
@@ -54,9 +68,12 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
   for (;;) {
     const problems = wait.problems?.() ?? []
     if (problems.length > 0) {
-      throw new Error(
-        `the edit failed: ${problems.join('\n')}\n${await wait.describe()}`,
-      )
+      throw new AssertionError({
+        message: `the edit failed: ${problems.join('\n')}\n${await wait.describe()}`,
+        actual: problems,
+        expected: [],
+        operator: 'deepStrictEqual',
+      })
     }
     const applied = await wait.applied()
     const quiet = await (wait.quiet?.() ?? true)
@@ -72,9 +89,15 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
         quietWithout.checks >= 5 &&
         Date.now() - quietWithout.since >= wait.failWhenQuietFor
       ) {
-        throw new Error(
-          `the edit reached its final state without its outcome: the hosts had nothing of it in flight for ${wait.failWhenQuietFor} ms\n${await wait.describe()}`,
-        )
+        const observed = await wait.observed?.()
+        throw new AssertionError({
+          message: `the edit reached its final state without its outcome: the hosts had nothing of it in flight for ${wait.failWhenQuietFor} ms\n${await wait.describe()}`,
+          ...(observed && {
+            actual: observed.actual,
+            expected: observed.expected,
+            operator: 'strictEqual',
+          }),
+        })
       }
     } else {
       quietWithout = undefined
