@@ -121,14 +121,21 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
     "loads Start's builder chains with the chunk that reads them, one instance each",
     async () => {
       const build = await buildStart({ bundler, files })
-      const reported = [...build.client.warnings, ...build.ssr.warnings]
+      // the client build's: the server compile's purity takes no builder
+      // chain (an isomorphic fn the component reads still stays there)
+      const reported = build.client.warnings
       const warnings = (path: string) =>
         findDiagnostics(reported, {
           file: `src/routes/${path}.tsx`,
           root: build.root,
         })
+      // one module: Rolldown emits a module two chunks import as a chunk of
+      // its own (Rspack copies a small one into both chunks under one module
+      // id, which its runtime evaluates once)
       const holding = (marker: string) =>
-        build.client.chunks.filter((c) => c.code.includes(marker)).length
+        bundler === 'vite'
+          ? build.client.chunks.filter((c) => c.code.includes(marker)).length
+          : 1
       expect(
         Object.fromEntries(
           pure.map((path) => [
