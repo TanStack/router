@@ -469,8 +469,8 @@ export class Generator {
       named.add(event.path)
       const kind = this.classify(event.path)
       if (kind === 'tree') {
-        // Mostly our own write coming back: the tree is printed again only
-        // when the file on disk is no longer the one published (below)
+        // Mostly our own write coming back: no change unless the file on
+        // disk is no longer the one published (below)
         continue
       }
       if (event.type !== 'update' || kind !== 'known') {
@@ -480,6 +480,16 @@ export class Generator {
       } else {
         changed.add(event.path)
       }
+    }
+
+    // The tree on disk is no longer the one published (a git operation, an
+    // editor, a deleted file): the routes are scanned again before it is
+    // printed. The operation may have deleted route files whose events come
+    // later (chokidar reports a delete ~100 ms after the other events), so
+    // the last scan's routes could import a file that is gone. The publish
+    // records the file it compared, so this happens once per outside write.
+    if (!structural && !(await this.treeOnDiskIsPublished())) {
+      structural = true
     }
 
     // What the re-read files changed: the tree's routes, or only the
@@ -550,9 +560,8 @@ export class Generator {
       )
     }
 
-    // The tree's routes are as before (no tree rebuild, no print), unless
-    // the tree on disk is no longer the one published.
-    if (!changes.routes && (await this.treeOnDiskIsPublished())) {
+    // The tree's routes are as before: no tree rebuild, no print
+    if (!changes.routes) {
       if (changes.props) {
         this.rebuildModel()
         this.notifyPlugins()

@@ -1,10 +1,16 @@
 import { watchRouteFiles } from './chokidar'
+import { warnIfTmpDirNotIgnored } from './gitignore'
 import type { RouteFileWatcher } from './chokidar'
 import type { Generator, GeneratorEvent } from '../generator'
 import type { GetRoutesByFileMapResult } from '../types'
 
 export interface GeneratorSession {
-  /** One run (a dev server's start, or a file event a host's own watcher reports), then the registry is handed over. */
+  /**
+   * One run (a dev server's start, or a file event a host's own watcher
+   * reports), then the registry is handed over. A start (no event) also
+   * warns, once per process, when git does not ignore the temporary
+   * directory.
+   */
   run: (event?: GeneratorEvent) => Promise<void>
   /**
    * The run of a build that does not watch: the registry is handed over,
@@ -62,7 +68,18 @@ export function createGeneratorSession(opts: {
   }
 
   const session: GeneratorSession = {
-    run: (event) => settle(opts.generator().run(event)),
+    run: (event) => {
+      const generator = opts.generator()
+      const run = generator.run(event)
+      return settle(
+        event
+          ? run
+          : // A session's start (a dev server, a watch): its one git check
+            Promise.all([run, warnIfTmpDirNotIgnored(generator.config)]).then(
+              () => {},
+            ),
+      )
+    },
     async build() {
       try {
         await opts.generator().run({ type: 'build' })

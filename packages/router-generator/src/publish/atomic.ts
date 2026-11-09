@@ -95,18 +95,37 @@ export class AtomicPublisher {
     this.tmpDirReady ??= fsp.mkdir(this.tmpDir, { recursive: true })
     await this.tmpDirReady
     try {
-      await this.writeVia(
-        path.join(this.tmpDir, `${this.session}-${this.writes++}`),
-        file,
-        content,
-        expected,
-      )
+      await this.writeViaTmpDir(file, content, expected)
     } catch (error) {
       if (!isErrorCode(error, 'EXDEV')) {
         throw error
       }
       this.besideDestination.add(dir)
       await this.writeVia(this.besideName(file), file, content, expected)
+    }
+  }
+
+  /**
+   * Through a temporary file in `tmpDir`. The directory can be deleted under
+   * a running session (`git stash -u` or `git clean -fd` where `.tanstack/` is
+   * not ignored, `rm -rf .tanstack`): on ENOENT, the directory is created
+   * again and the write tried once more.
+   */
+  private async writeViaTmpDir(
+    file: string,
+    content: string,
+    expected: string | null | undefined,
+  ) {
+    const temporary = () =>
+      path.join(this.tmpDir, `${this.session}-${this.writes++}`)
+    try {
+      await this.writeVia(temporary(), file, content, expected)
+    } catch (error) {
+      if (!isErrorCode(error, 'ENOENT')) {
+        throw error
+      }
+      await fsp.mkdir(this.tmpDir, { recursive: true })
+      await this.writeVia(temporary(), file, content, expected)
     }
   }
 
