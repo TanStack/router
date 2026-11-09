@@ -198,6 +198,15 @@ directives, never license comments.
   the mutation model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
   `E.__defineGetter__(…)`),
   an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
+- **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
+  `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
+  In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's
+  compile erases (a server fn's handler on the client) does not count, and its reads are erased with it. Raw facts use
+  it per environment for a target's code effects (`ModuleAnalysis.effects()`); the planners of a client compile use the
+  client's (`ModuleAnalysisOptions.clientBuilders`, from `RawFactsCache.builders`), so a page-only chain can move with
+  the split chunk. Factories are recognised by binding, as `pureCalls`. A link called on a `const` holding a builder
+  stays an effect (a middleware's links write the options of the builder they are called on), and the server
+  compile's planners take no builder chain as pure.
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 

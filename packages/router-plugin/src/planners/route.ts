@@ -170,7 +170,6 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
   return out
 }
 
-/** The module-level declaration unit of a symbol, when it is a plain declarator with an initialiser. */
 /**
  * The one unit declaring a binding's value. A namespace of the same name holding
  * only types declares none: TypeScript erases it, and it stays in the env module.
@@ -744,7 +743,6 @@ export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
   )
 }
 
-/** The module-level symbol an identifier value denotes, or null. */
 /** Whether a value is a member of an imported binding (`C.NotFound` of `import * as C`). */
 export function isMemberOfImport(ctx: PlanContext, value: Node): boolean {
   let v = unwrapExpression(value)
@@ -758,6 +756,7 @@ export function isMemberOfImport(ctx: PlanContext, value: Node): boolean {
   return sym !== null && ctx.symbols.isImport(sym)
 }
 
+/** The module-level symbol an identifier value denotes, or null. */
 export function identifierSymbol(
   ctx: PlanContext,
   value: Node,

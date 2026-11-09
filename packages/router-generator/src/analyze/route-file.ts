@@ -265,7 +265,6 @@ function isTypeOnlyImport(file: SourceFile, callee: Node) {
   )
 }
 
-/** The start of the first statement after the directive prologue. */
 /** A license or JSX pragma comment: it leads the file, above an added import. */
 const leadingCommentRe = /^\/\*!|@license|@preserve|@jsx/
 

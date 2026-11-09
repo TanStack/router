@@ -270,4 +270,4 @@ If it is a relative path, it will be resolved to the current working directory.
 If this value is not set, `process.env.TSR_TMP_DIR` will be used.
 If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.
 
-Add this directory to your `.gitignore` (`.tanstack/` for the default): commands like `git stash -u` and `git clean -fd` otherwise delete it while the dev server runs.
+Add this directory to your `.gitignore` (`.tanstack/` for the default): it only holds temporary files of the generator. Deleting it while the dev server runs (`git clean -fd`, say) is harmless: the generator creates it again.
