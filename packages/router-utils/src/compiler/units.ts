@@ -410,13 +410,23 @@ export function buildItems(
   const code = file.source
   const body = file.program.body
   const items: Array<TopLevelItem> = []
+  const comments = file.comments
+  // items start in order: the comments before one are no item's after it
+  let firstComment = 0
   let prevEnd = header.end
   for (let i = header.directiveCount; i < body.length; i++) {
     const node = body[i]!
     let start = Math.min(prevEnd, node.start)
+    while (
+      firstComment < comments.length &&
+      comments[firstComment]!.start < start
+    ) {
+      firstComment++
+    }
     // license comments belong to no item: they stay in the env module and
     // never travel into a derived output (G12)
-    for (const c of file.comments) {
+    for (let j = firstComment; j < comments.length; j++) {
+      const c = comments[j]!
       if (c.start < start) {
         continue
       }

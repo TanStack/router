@@ -7,6 +7,7 @@
  */
 import type { ImportEntry, ModuleAnalysis } from './analysis'
 import type { EdgeForm, EdgeRecord } from './plan'
+import type { EdgeProvenance } from './rewrite'
 import type { SymbolId } from './symbols'
 
 /** What of the module's source renders in an output. */
@@ -35,6 +36,8 @@ export function wholeModule(analysis: ModuleAnalysis): EdgeView {
   }
 }
 
+const SOURCE: EdgeProvenance = Object.freeze({ origin: 'source' })
+
 /** The source import edges of an output (every rendered import, re-export and dynamic edge). */
 export function sourceEdges(
   analysis: ModuleAnalysis,
@@ -59,7 +62,7 @@ export function sourceEdges(
       locations: [{ range }],
       typeOnly: false,
       names,
-      provenance: { origin: 'source' },
+      provenance: SOURCE,
     })
   }
   for (const imp of analysis.imports) {
