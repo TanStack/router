@@ -513,7 +513,6 @@ export class RawFactsCache {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
-      builders: this.opts.recognizer,
     })
     return this.fromAnalysis(rev, analysis)
   }
@@ -527,7 +526,7 @@ export class RawFactsCache {
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()
-    const own = analysis.ownEffects
+    const effects = analysis.effects(this.opts.recognizer)
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
@@ -558,12 +557,12 @@ export class RawFactsCache {
       imports,
       lazyImports,
       esm: analysis.sourceType === 'module',
-      effectful: own || bareImportEffect,
-      codeEffects: analysis.codeEffects,
-      ...(analysis.erasedImports && {
+      effectful: effects.own || bareImportEffect,
+      codeEffects: effects.code,
+      ...(effects.erasedImports && {
         erasedImports: {
-          client: [...analysis.erasedImports.client],
-          server: [...analysis.erasedImports.server],
+          client: [...effects.erasedImports.client],
+          server: [...effects.erasedImports.server],
         },
       }),
     }
