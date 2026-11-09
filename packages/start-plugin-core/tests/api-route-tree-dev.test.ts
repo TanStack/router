@@ -43,7 +43,11 @@ function fakeEnvironment() {
 }
 
 function setup() {
-  const startConfig = parseStartConfig({}, corePluginOpts, root)
+  const startConfig = parseStartConfig(
+    { router: { tmpDir: path.join(root, '.tanstack/tmp') } },
+    corePluginOpts,
+    root,
+  )
   const plugins = tanStackStartRouter(
     {},
     () => ({ startConfig, resolvedStartConfig: {} as any }),
@@ -122,7 +126,11 @@ describe('virtual API route tree', () => {
 
 describe('virtual API route tree in dev', () => {
   it('invalidates the server module when a server-only route file is created', async () => {
-    const startConfig = parseStartConfig({}, corePluginOpts, root)
+    const startConfig = parseStartConfig(
+      { router: { tmpDir: path.join(root, '.tanstack/tmp') } },
+      corePluginOpts,
+      root,
+    )
     const plugins = tanStackStartRouter(
       {},
       () => ({ startConfig, resolvedStartConfig: {} as any }),
