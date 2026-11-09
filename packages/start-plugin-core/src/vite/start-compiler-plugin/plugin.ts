@@ -65,18 +65,25 @@ type ViteModuleLoadOptions = {
   error: (message: string) => never
 }
 
+/**
+ * Whether this environment's modules arrive through the bundler rather than a
+ * transformRequest round trip.
+ *
+ * Vite resolves isBundled per environment: build mode is always bundled, and in
+ * dev only the client environment inherits experimental.bundledDev unless an
+ * environment overrides it. Reading the tool-wide flag instead would disagree
+ * with the bundler about an environment that opted out.
+ */
+export function isBundledEnvironment(environment: Environment): boolean {
+  return Boolean((environment as any).config?.isBundled)
+}
+
 export async function loadViteModuleFromEnvironment(
   environment: Environment,
   id: string,
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
-  // Vite resolves isBundled per environment: build mode is always bundled, and in
-  // dev only the client environment inherits experimental.bundledDev unless an
-  // environment overrides it. Reading the tool-wide flag instead would put an
-  // unbundled environment on the load hook, whose result carries no code there.
-  const isBundled = Boolean((environment as any).config?.isBundled)
-
-  if (environment.mode === 'build' || isBundled) {
+  if (environment.mode === 'build' || isBundledEnvironment(environment)) {
     // Bundled environments must load through their plugin driver rather than
     // calling transformRequest, which fails on arbitrary dependencies (e.g.
     // server-function validators like Zod).
@@ -527,11 +534,13 @@ export function startCompilerPlugin(
           id: new RegExp(`${SERVER_FN_LOOKUP}$`),
         },
         handler(code, id) {
+          // The bundled load hands its code to the compiler host itself, and only
+          // a bundled client environment takes that path (see
+          // isBundledEnvironment); the same test keeps this in step with it.
           if (
-            bundledDev &&
-            this.environment.name === VITE_ENVIRONMENT_NAMES.client
+            this.environment.name === VITE_ENVIRONMENT_NAMES.client &&
+            isBundledEnvironment(this.environment)
           ) {
-            // The bundled load returns its code directly to the compiler host.
             return
           }
           const compiler = compilers.get(this.environment.name)

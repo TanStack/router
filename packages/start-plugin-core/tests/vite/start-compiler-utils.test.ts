@@ -4,7 +4,10 @@ import {
   decodeViteDevServerModuleSpecifier,
 } from '../../src/vite/start-compiler-plugin/module-specifier'
 import { mergeHotUpdateModules } from '../../src/vite/start-compiler-plugin/hot-update'
-import { loadViteModuleFromEnvironment } from '../../src/vite/start-compiler-plugin/plugin'
+import {
+  isBundledEnvironment,
+  loadViteModuleFromEnvironment,
+} from '../../src/vite/start-compiler-plugin/plugin'
 import type { Environment, EnvironmentModuleNode } from 'vite'
 
 describe('Vite dev server module specifiers', () => {
@@ -182,3 +185,21 @@ describe('loadViteModuleFromEnvironment', () => {
   })
 })
 
+
+describe('isBundledEnvironment', () => {
+  test('reports what the bundler resolved for the environment', () => {
+    const clientBundled = {
+      name: 'client',
+      config: { isBundled: true },
+    } as unknown as Environment
+    const clientOptedOut = {
+      name: 'client',
+      config: { isBundled: false, experimental: { bundledDev: true } },
+    } as unknown as Environment
+
+    expect(isBundledEnvironment(clientBundled)).toBe(true)
+    // The tool-wide flag does not override an environment that resolved to false;
+    // reading it here is what made the ingest and load paths disagree.
+    expect(isBundledEnvironment(clientOptedOut)).toBe(false)
+  })
+})
