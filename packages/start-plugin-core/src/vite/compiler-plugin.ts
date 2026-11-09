@@ -293,6 +293,12 @@ export function startCompilerPlugin(
    */
   let clientFiles: Array<string> = []
   let clientRebuild: { ended: Promise<void>; end: () => void } | null = null
+  /**
+   * Whether the client environment built in this process: the server's
+   * resolver of a build lists (or gates on) the functions the client build
+   * references, which it reads from the client's compiles.
+   */
+  let clientBuilt = false
 
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
@@ -924,6 +930,9 @@ export function startCompilerPlugin(
         })
       },
       buildEnd() {
+        if (this.environment.mode === 'build' && env.type === 'client') {
+          clientBuilt = true
+        }
         if (
           this.environment.mode === 'build' &&
           env.type === 'client' &&
@@ -1383,6 +1392,18 @@ export function startCompilerPlugin(
     enforce: 'pre',
     applyToEnvironment: (e) => resolverEnvironments.has(e.name),
     async load() {
+      if (
+        this.environment.mode === 'build' &&
+        this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
+        // (not a scan: plugin-rsc analyses the ssr environment first)
+        this.environment.config.build.write !== false &&
+        !clientBuilt
+      ) {
+        // the server would answer no client call (J4.2)
+        this.error(
+          `[tanstack-start] The server environment is built before the client environment. The server answers the server functions the client build calls, so the client must build first, in the same process: run \`vite build\`, or build \`builder.environments.client\` before \`builder.environments.ssr\`.`,
+        )
+      }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         await clientRebuild?.ended
         for (const file of clientFiles) {
