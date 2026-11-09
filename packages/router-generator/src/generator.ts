@@ -563,22 +563,24 @@ export class Generator {
     // The tree's routes are as before: no tree rebuild, no print
     if (!changes.routes) {
       if (changes.props) {
-        this.rebuildModel()
+        this.model = this.buildModel()
         this.notifyPlugins()
       }
       if (changes.registry) {
         // the tree is as before, but what the registry says of a file is not
         this.routesByFile = this.computeRoutesByFile()
       }
-      await this.writePending()
+      await this.writePending(this.model!)
       return
     }
 
-    // (until published: a failure here rebuilds on the next batch)
+    // (until published: a failure here rebuilds on the next batch, and the
+    // model stays the published one)
     this.stale = true
-    this.rebuildModel()
-    await this.writePending()
-    await this.publishTree()
+    const model = this.buildModel()
+    await this.writePending(model)
+    await this.publishTree(model)
+    this.model = model
     this.routesByFile = this.computeRoutesByFile()
     this.stale = false
     this.notifyPlugins()
@@ -623,7 +625,7 @@ export class Generator {
     }
   }
 
-  private rebuildModel() {
+  private buildModel(): TreeModel {
     const scan = this.scan!
     const factsOf = (node: RouteNode) => this.files.get(node.fullPath)?.facts
     const model = buildTreeModel({
@@ -636,7 +638,7 @@ export class Generator {
       },
     })
     checkRouteFullPathUniqueness(model, this.root)
-    this.model = model
+    return model
   }
 
   private notifyPlugins() {
@@ -651,21 +653,21 @@ export class Generator {
    * (a `__root/route.tsx` beside `__root.tsx`, a lazy file of the root route,
    * an unused duplicate) is never edited.
    */
-  private async writePending() {
+  private async writePending(model: TreeModel) {
     const upkeep = [...this.files].filter(
       ([, state]) => state.pending !== undefined,
     )
     if (upkeep.length === 0) {
       return
     }
-    const treeFiles = importedFiles(this.model!)
+    const treeFiles = importedFiles(model)
     await Promise.all(
       upkeep.map(async ([file, state]) => {
         const pending = state.pending!
         if (!treeFiles.has(file)) {
           return
         }
-        if (pending.over === '' && file === this.model!.root.file) {
+        if (pending.over === '' && file === model.root.file) {
           this.logger.log(`🟡 Creating ${file}`)
         }
         try {
@@ -689,8 +691,8 @@ export class Generator {
     )
   }
 
-  private async publishTree() {
-    let content = this.printRouteTree(this.model!)
+  private async publishTree(model: TreeModel) {
+    let content = this.printRouteTree(model)
     if (this.config.enableRouteTreeFormatting === true) {
       content = await formatWithPrettier(content, this.style)
     }
