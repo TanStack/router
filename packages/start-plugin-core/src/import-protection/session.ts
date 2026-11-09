@@ -908,6 +908,14 @@ class ImportProtectionEnv {
    * or returned as the error the importer fails with (`behavior: 'error'`).
    * Null, synchronously, when there is nothing to do (the common case).
    */
+  /** The module an edge module `allowImport` allowed re-exports (by its facts id); null for any other id. */
+  allowedTarget(id: string): string | null {
+    const ref = this.ip.ids.parse(id)
+    return ref?.kind === 'edge' && this.allowed.has(ref.key)
+      ? (this.modules.get(ref.key)?.content.resolved ?? null)
+      : null
+  }
+
   confirm(id: string): Promise<Error | null> | null {
     const ref = this.ip.ids.parse(id)
     if (ref?.kind !== 'edge') {

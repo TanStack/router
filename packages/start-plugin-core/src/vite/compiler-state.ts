@@ -39,7 +39,12 @@ import type {
   InputSourceMap,
   invalidate,
 } from '@tanstack/router-utils/compiler'
-import type { DevEnvironment, Environment, ViteDevServer } from 'vite'
+import type {
+  DevEnvironment,
+  Environment,
+  OptimizedDepInfo,
+  ViteDevServer,
+} from 'vite'
 
 export interface StartCompilerEnvironment {
   name: string
@@ -119,6 +124,33 @@ function unoptimizedDependency(environment: Environment, id: string): string {
     }
   }
   return id
+}
+
+/**
+ * The id Vite serves a dependency's source entry as: the optimizer's bundle
+ * of a pre-bundled dependency (`unoptimizedDependency` reversed: other
+ * importers get that bundle), else the entry itself.
+ */
+export function optimizedDependency(
+  environment: Environment,
+  src: string,
+): string {
+  const optimizer = (environment as DevEnvironment).depsOptimizer
+  if (!optimizer) {
+    return src
+  }
+  const { optimized, discovered } = optimizer.metadata as {
+    optimized: Record<string, OptimizedDepInfo>
+    discovered?: Record<string, OptimizedDepInfo>
+  }
+  for (const table of [optimized, discovered ?? {}]) {
+    for (const info of Object.values(table)) {
+      if (info.src === src) {
+        return optimizer.getOptimizedDepId(info)
+      }
+    }
+  }
+  return src
 }
 
 /**
