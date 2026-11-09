@@ -5230,6 +5230,79 @@ describe('pure calls of known packages', () => {
 // server fn's handler) does not count. The server compile's purity takes
 // none, and a link on a `const` holding a builder stays an effect (a
 // middleware's links write that builder's options).
+describe('generated imports', () => {
+  // A planner's runtime helper (Start's client stub `createClientRpc`) is an
+  // import like one the source wrote: two extracted modules reading it at
+  // their evaluation import it themselves, not from the env module (whose
+  // body runs after them: the verifier's rule (e)).
+  it.each(['client', 'server'] as const)(
+    'are imported by each output reading them, like a source import (%s)',
+    async (type) => {
+      const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const a = [1]
+      export const b = [2]
+      export const Route = createFileRoute('/')({ component: () => a[0] + b[0] })
+    `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const wrap: Planner = {
+        name: 'toy-wrap',
+        tier: 1,
+        gate: () => true,
+        plan(ctx) {
+          const stub = ctx.names.alloc('tsrStub')
+          ctx.rewrites.addGenerated({
+            body: [],
+            declares: [],
+            effectful: false,
+            anchor: { k: 'after-header' },
+            home: 'auto',
+            by: 'toy-wrap',
+            imports: [
+              {
+                names: [{ imported: 'stub', local: stub.sym }],
+                spec: {
+                  k: 'spec',
+                  specifier: 'toy-runtime',
+                  edgeKey: ctx.edgeKey('toy-runtime', 'static', 'runtime'),
+                  provenance: { origin: 'runtime' },
+                },
+              },
+            ],
+          })
+          for (const literal of ['[1]', '[2]']) {
+            const start = ctx.analysis.source.code.indexOf(literal)
+            ctx.rewrites.add({
+              range: { start, end: start + literal.length },
+              body: [{ k: 'text', parts: [{ sym: stub.sym }, `(${literal})`] }],
+              scope: 'all-outputs',
+              by: 'toy-wrap',
+            })
+          }
+        },
+      }
+      const planners = [
+        toySplitPlanner({ keys: ['component'], extractExports: true }),
+        wrap,
+      ]
+      const options = { env: envInfo({ mode: 'build', type, name: type }) }
+      const env = await host.compile('/app/route.tsx', planners, options)
+      expect(env?.code).not.toContain('tsrStub')
+      for (const name of ['a', 'b']) {
+        const out = await host.compile(
+          `/app/route.tsx?tsr-split=export---${name}`,
+          planners,
+          options,
+        )
+        expect(out?.code, name).toContain(
+          "import { stub as tsrStub } from 'toy-runtime'",
+        )
+        expect(out?.code, name).not.toContain("from '/app/route.tsx'")
+      }
+    },
+  )
+})
+
 describe('builder chains in a client compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,

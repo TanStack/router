@@ -17,13 +17,13 @@ import {
   isDuplicable,
   symRefsOf,
 } from './clusters'
-import type { ClusterGraph, ClusterId } from './clusters'
+import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { InvariantViolation } from '../self-checks'
 import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
-import type { RegionId, Unit, UnitId } from '../units'
+import type { RegionId, Unit } from '../units'
 import type { Frag, OutputId } from '../rewrite'
 import type { Fallback, Home, OutputDecl, PlacementInput } from '../reach'
 
@@ -98,11 +98,10 @@ export function assignHomes(
    * (it would pull a chunk's dependency into the route module). A value
    * import a route module uses only in type positions leaves (TypeScript
    * erases it; the module is not loaded for types); plain modules keep it
-   * as written.
+   * as written. A generated import no output needs is dead generated code.
    */
-  const importStays = (u: UnitId): boolean => {
-    const cl = clusters[clusterOfRegion.get(units[u]!.region)!]!
-    if (orphaned.has(cl.id)) {
+  const importStays = (cl: Cluster): boolean => {
+    if (cl.units.length === 0 || orphaned.has(cl.id)) {
       return false
     }
     if (!routeModule) {
@@ -182,7 +181,7 @@ export function assignHomes(
       // other source stays in the env module (harmless)
       const dead =
         cl.kind === 'gen' ||
-        (cl.kind === 'import' && !importStays(cl.units[0]!)) ||
+        (cl.kind === 'import' && !importStays(cl)) ||
         (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
       home.set(cl.id, dead ? 'removed' : 'env')
       continue

@@ -18,7 +18,13 @@ import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
 import type { RegionId, Unit, UnitId } from '../units'
-import type { Frag, GenUnitId, OutputId, RenderTree } from '../rewrite'
+import type {
+  Frag,
+  GenUnitId,
+  GeneratedUnit,
+  OutputId,
+  RenderTree,
+} from '../rewrite'
 import type { Fallback, PlacementInput } from '../reach'
 
 export type ClusterId = number
@@ -297,6 +303,13 @@ export function ownAugmentation(
   )
 }
 
+/** A generated unit that only imports: no text, no declaration, no effect. */
+const importsOnly = (g: GeneratedUnit): boolean =>
+  g.body.length === 0 &&
+  g.declares.length === 0 &&
+  !g.effectful &&
+  (g.imports?.length ?? 0) > 0
+
 export function buildClusters(input: PlacementInput): ClusterGraph {
   const { t1, rewrites } = input
   const { units, regions, refs, items } = t1
@@ -563,7 +576,16 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     const kinds = (...ks: Array<Unit['kind']>) =>
       cl.units.some((u) => ks.includes(units[u]!.kind))
     if (cl.units.length === 0) {
-      cl.kind = cl.gens.length > 0 ? 'gen' : 'region'
+      // generated units that only import (a planner's runtime helper, e.g.
+      // the client stub's `createClientRpc`) are an import like one the
+      // source wrote: each output that reads it imports it itself
+      cl.kind =
+        cl.gens.length === 0
+          ? 'region'
+          : cl.regions.length === 0 &&
+              cl.gens.every((g) => importsOnly(gens[g]!))
+            ? 'import'
+            : 'gen'
     } else if (
       cl.units.some(
         (u) =>
@@ -583,10 +605,11 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       cl.kind = 'type'
     }
     cl.copyable =
-      cl.units.length === 1 &&
-      cl.gens.length === 0 &&
-      (units[cl.units[0]!]!.copyable ||
-        units[cl.units[0]!]!.kind === 'import-specifier')
+      (cl.kind === 'import' && cl.units.length === 0) ||
+      (cl.units.length === 1 &&
+        cl.gens.length === 0 &&
+        (units[cl.units[0]!]!.copyable ||
+          units[cl.units[0]!]!.kind === 'import-specifier'))
     cl.identityFree =
       cl.kind === 'declaration' &&
       cl.gens.length === 0 &&
