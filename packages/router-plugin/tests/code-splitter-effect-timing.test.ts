@@ -113,3 +113,181 @@ return { atLoad, html }`,
     })
   },
 )
+
+// A value the module computes at load keeps the value it had there when only
+// the split component reads it (DESIGN §3.4.3, R7): it may move to the chunk
+// only when nothing changes what it read, or what it wrote, between its place
+// in the module and the chunk's evaluation. The function it calls may write
+// state the route module keeps, may run its read before a later write, or may
+// read state that code which does not run where it is written changes later.
+describe('on the Vite dev server, a value computed at load that only the split component reads', () => {
+  it.each([
+    [
+      'a function it calls assigns state the loader reads',
+      `let mode = 'idle'
+function init() {
+  mode = 'ready'
+  return 1
+}
+const thing = init()
+export const Route = createFileRoute('/')({
+  loader: () => mode,
+  component: () => <p>{String(thing)}</p>,
+})`,
+      { loader: 'ready', html: '<p>1</p>' },
+    ],
+    [
+      'a function declared after a later write reads the state (pure call)',
+      `const obj = { v: 0 }
+const snap = /* @__PURE__ */ read()
+obj.v = 5
+function read() {
+  return obj.v
+}
+export const Route = createFileRoute('/')({
+  loader: () => obj.v,
+  component: () => <p>{snap}</p>,
+})`,
+      { loader: 5, html: '<p>0</p>' },
+    ],
+    [
+      'a function declared after a redeclaration reads the state',
+      `var limit = 1
+const snap = String(read())
+var limit = 2
+function read() {
+  return limit
+}
+export const Route = createFileRoute('/')({
+  loader: () => limit,
+  component: () => <p>{snap}</p>,
+})`,
+      { loader: 2, html: '<p>1</p>' },
+    ],
+    [
+      'an async function it starts writes the state after an await',
+      `const state = { v: 0 }
+;(async () => {
+  await null
+  state.v = 5
+})()
+function read() {
+  return state.v
+}
+const snapshot = read()
+export const Route = createFileRoute('/')({
+  loader: () => state.v,
+  component: () => <p>{snapshot}</p>,
+})`,
+      { loader: 5, html: '<p>0</p>' },
+    ],
+    [
+      'a generator it starts writes the state when the loader resumes it',
+      `const state = { v: 0 }
+const steps = (function* () {
+  state.v = 5
+})()
+function read() {
+  return state.v
+}
+const snapshot = read()
+export const Route = createFileRoute('/')({
+  loader: () => (steps.next(), state.v),
+  component: () => <p>{snapshot}</p>,
+})`,
+      { loader: 5, html: '<p>0</p>' },
+    ],
+    [
+      'an instance field the loader constructs writes a member of the state',
+      `const counter = { n: 0 }
+class Item {
+  id = counter.n++
+}
+function current() {
+  return counter.n
+}
+const first = current()
+export const Route = createFileRoute('/')({
+  loader: () => new Item().id + 1,
+  component: () => <p>{first}</p>,
+})`,
+      { loader: 1, html: '<p>0</p>' },
+    ],
+    [
+      'an instance field the loader constructs increments the state',
+      `let nextId = 0
+class Item {
+  id = nextId++
+}
+function peek() {
+  return nextId
+}
+const firstId = peek()
+export const Route = createFileRoute('/')({
+  loader: () => new Item().id + 1,
+  component: () => <p>{firstId}</p>,
+})`,
+      { loader: 1, html: '<p>0</p>' },
+    ],
+  ])('keeps its value when %s', async (_name, code, expected) => {
+    const route = await loadRoute(`${head}${code}\n`)
+    const run = await route.run<{ loader: unknown; html: string }>(
+      `const loader = await options.loader()
+await null
+const html = await render('component')
+return { loader, html }`,
+    )
+    expect(run).toEqual(expected)
+  })
+})
+
+// A destructuring default or computed key runs user code when the
+// declaration evaluates, like an initialiser does (`const beta = flags.beta
+// ?? track()`): it keeps its order with the effects after it.
+describe.each([
+  [
+    'an object pattern default',
+    `const { beta = track('beta') } = {} as { beta?: string }`,
+  ],
+  [
+    'an array pattern default',
+    `const [beta = track('beta')] = [] as Array<string>`,
+  ],
+  [
+    'a computed key',
+    `const { [track('beta')]: beta } = { beta: 'beta' } as Record<string, string>`,
+  ],
+])(
+  'on the Vite dev server, %s only the split component reads',
+  (_name, declaration) => {
+    it('runs before the effects written after it', async () => {
+      const route = await loadRoute(
+        `${head}import { track } from './analytics'
+${declaration}
+track('after')
+export const Route = createFileRoute('/')({
+  component: () => <p>{String(beta)}</p>,
+})
+`,
+        {
+          files: {
+            'analytics.ts': `export const track = (name: string) => {
+  ;(globalThis as any).seed(name)
+  return name
+}
+`,
+          },
+        },
+      )
+      const run = await route.run<{ atLoad: Array<string>; html: string }>(
+        `const atLoad = [...globalThis.seeded]
+const html = await render('component')
+return { atLoad, html }`,
+        {
+          before: `globalThis.seeded = []; globalThis.seed = (name) => globalThis.seeded.push(name)`,
+        },
+      )
+      expect(run).toEqual({ atLoad: ['beta', 'after'], html: '<p>beta</p>' })
+    })
+  },
+)
