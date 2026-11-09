@@ -613,7 +613,12 @@ export function isPureClass(
         }
         break
       case 'MethodDefinition':
-        if (el.decorators.length > 0) {
+        // a decorator on the method or on one of its parameters
+        // (`constructor(@Inject() dep)`) runs when the class is defined
+        if (
+          el.decorators.length > 0 ||
+          el.value.params.some((p) => (p.decorators?.length ?? 0) > 0)
+        ) {
           return false
         }
         if (el.computed && !isPureExpression(ctx, el.key as Node)) {

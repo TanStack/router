@@ -3160,6 +3160,46 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain('const store = createStore()')
   })
 
+  it.each([
+    [
+      'a constructor parameter',
+      'constructor(@inject() readonly dep: unknown) {}',
+    ],
+    ['a method parameter', 'use(@inject() dep: unknown) { return dep }'],
+    ['a method', '@inject() use() {}'],
+  ])(
+    'keeps a class with a decorator on %s eager when a surviving effect follows it (the decorator runs when the class is defined)',
+    async (_, member) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { inject, advance } from './di'
+        class Service { ${member} }
+        advance()
+        export const Route = createFileRoute('/')({
+          component: () => new Service(1),
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toContain('class Service')
+      expect(r.chunks.component).not.toContain('class Service')
+    },
+  )
+
+  it('moves a class without decorators a surviving effect follows', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { advance } from './di'
+      class Service { constructor(readonly dep: unknown) {} }
+      advance()
+      export const Route = createFileRoute('/')({
+        component: () => new Service(1),
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('class Service')
+    expect(r.chunks.component).toContain('class Service')
+  })
+
   it('keeps the initialiser eager when a surviving effect follows it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

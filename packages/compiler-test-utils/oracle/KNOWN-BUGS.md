@@ -452,7 +452,10 @@ SPLITTING.md`): a chunk never imports the extracted module of a copyable export 
   `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported component ($name) that is the only split candidate is
   split or reported as not code-split".
 - **Parameter decorators do not parse.** SPEC §2.1, G1. `pages/known-bugs-code-splitter-bindings.test.ts`: "a class
-  with a parameter decorator that the split component uses compiles into parseable modules".
+  with a parameter decorator that the split component uses compiles into parseable modules". A decorator on a
+  parameter, as on the class or a member, makes the class an effect (it runs when the class is defined), which keeps
+  its order with the effects after it: `router-plugin/tests/code-splitter-effect-timing.test.ts`: "runs its decorator
+  before the effects written after it".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
 - **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**
