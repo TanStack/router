@@ -91,14 +91,16 @@ const read = (app: BuildResult, file: string) =>
   readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
 // Every cell per bundler entry, `undefined` included: each entry (Vite,
-// Rspack, webpack) takes the user's options through its own code before the
-// default applies, so an entry could resolve an absent option differently;
-// the harness itself turns splitting on, so these are the only checks of
-// the default per entry.
+// Rspack, webpack, esbuild) takes the user's options through its own code
+// before the default applies, so an entry could resolve an absent option
+// differently; the harness itself turns splitting on, so these are the only
+// checks of the default per entry. The app has no route tree before the
+// build. (esbuild, source: review of 2026-11-09, round 2: its entry never
+// ran the generator.)
 describe.each([false, undefined])(
   'autoCodeSplitting: %s',
   (autoCodeSplitting) => {
-    test.each(bundlers)(
+    test.each([...bundlers, 'esbuild'] as const)(
       'splits nothing and still generates the route tree (%s)',
       async (bundler) => {
         const { app, html, result } = await buildRoute(
