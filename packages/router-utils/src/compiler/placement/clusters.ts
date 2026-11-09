@@ -194,11 +194,25 @@ export const READ_KINDS = new Set([
  */
 export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
-/** A cluster as a person knows it: the bindings it declares and where (for the dev-only invariants' messages). */
+/** A cluster as a person knows it: the bindings it declares and where (the invariants' internal details). */
 export function describeCluster(input: PlacementInput, cl: Cluster): string {
-  const names = [...cl.declares].map((s) => input.t1.symbols.name(s))
   const line = input.code.slice(0, cl.start).split('\n').length
-  return `${names.length > 0 ? names.join(', ') : 'the statement'} (${input.canonicalId}:${line})`
+  return `${namesOf(input, cl) ?? 'the statement'} (${input.canonicalId}:${line})`
+}
+
+/** The bindings a cluster declares, `` `a`, `b` `` (an invariant warning's words); none for a statement. */
+export function namesOf(input: PlacementInput, cl: Cluster): string | null {
+  const names = [...cl.declares].map((s) => `\`${input.t1.symbols.name(s)}\``)
+  return names.length > 0 ? names.join(', ') : null
+}
+
+/** Where a cluster starts in the source (an invariant warning's position); none for generated code alone. */
+export function clusterRange(
+  input: PlacementInput,
+  cl: Cluster,
+): { start: number; end: number } | undefined {
+  const r = cl.regions[0]
+  return r === undefined ? undefined : input.t1.regions.get(r).range
 }
 
 /**

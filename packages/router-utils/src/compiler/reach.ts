@@ -20,6 +20,7 @@ import { assignHomes } from './placement/homes'
 import { includeAndImport } from './placement/inclusion'
 import type { Cluster, ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
+import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
 import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
@@ -85,7 +86,7 @@ export interface PlacementInput {
   rewrites: RewriteSet
   outputs: Map<OutputId, OutputDecl>
   canonicalId: string
-  /** The module's text, for the dev-only invariants' messages. */
+  /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
   routeModule: boolean
   /** Whether an effect unit is a recognised framework call known not to touch user state (asked only when a cluster could move past it). */
@@ -171,6 +172,8 @@ export interface Placement {
   kept: Array<KeptDeclaration>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
+  /** The first violated invariant, when the run warns instead of throwing (`self-checks.ts`). */
+  violation: InvariantViolation | undefined
 }
 
 /**
@@ -226,5 +229,6 @@ export function computePlacement(input: PlacementInput): Placement {
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
+    violation: homes.violation ?? inclusion.violation,
   }
 }
