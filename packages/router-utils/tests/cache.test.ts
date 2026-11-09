@@ -151,6 +151,62 @@ describe('a changed dependency', () => {
   })
 })
 
+describe('a dependency with a query or a virtual id', () => {
+  it('is found at its path: a change of an export read stales the importer, another export does not', async () => {
+    const virtual: Record<string, string> = {
+      '\0virtual:x': 'export const make = 1\n',
+      'virtual:y?side=1': 'export const make = 1\n',
+    }
+    const ids: Record<string, string> = {
+      './shared?flavour=b': '/app/shared.ts?flavour=b',
+      './x': '\0virtual:x',
+      './y': 'virtual:y?side=1',
+    }
+    const host = new MemoryHost({
+      files: {
+        '/app/shared.ts': 'export const make = 1\n',
+        ...Object.fromEntries(
+          Object.keys(ids).map((spec, i) => [
+            `/app/c${i}.ts`,
+            `import { make } from '${spec}'\nexport const c = make\n`,
+          ]),
+        ),
+      },
+      resolve: (specifier) => ids[specifier] ?? null,
+      virtual,
+    })
+    const consumers = Object.keys(ids).map((_, i) => `/app/c${i}.ts`)
+    for (const c of consumers) {
+      await host.compile(c, planners())
+    }
+    const edit = async (id: string, text: string) => {
+      const file = id.split('?')[0]!
+      if (id in virtual) {
+        virtual[id] = text
+      } else {
+        host.write(file, text)
+      }
+      const r = await invalidate(
+        host.caches,
+        { path: file, kind: 'change' },
+        host,
+      )
+      return r.dependents.map((k) => k.canonicalId)
+    }
+    const at = Object.values(ids)
+    for (const [i, id] of at.entries()) {
+      // another export: current
+      expect(
+        await edit(id, 'export const make = 1\nexport const more = 2\n'),
+      ).toEqual([])
+      // the export read: stale
+      expect(await edit(id, "export { make } from './elsewhere'\n")).toEqual([
+        consumers[i],
+      ])
+    }
+  })
+})
+
 describe('a package.json change', () => {
   it('checks the resolutions of a plan once, however many of its files lie under the manifest', async () => {
     const names = Array.from({ length: 50 }, (_, i) => `m${i}`)

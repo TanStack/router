@@ -188,6 +188,16 @@ function decodeOwnedValue(value: string): string {
   }
 }
 
+/**
+ * `identify(id).path` without parsing the query (a path ends at the first
+ * `?`: `splitQuery`): what the caches index fingerprints and keys by, read
+ * per fingerprint of every dependent an invalidation checks.
+ */
+export function pathOfId(id: string): string {
+  const q = id.indexOf('?')
+  return q === -1 ? id : id.slice(0, q)
+}
+
 /** Maps a host id to its canonical identity. Never canonicalises virtual ids beyond their owned keys. */
 export function identify(hostId: string): SourceIdentity {
   const { base, query, hash } = splitQuery(hostId)
