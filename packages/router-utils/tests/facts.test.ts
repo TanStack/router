@@ -46,6 +46,37 @@ describe('RawFactsCache', () => {
     expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
   })
 
+  it('does not publish a marker scan in flight when the file changes meanwhile', async () => {
+    let text = 'export const a = 1\n'
+    const pending: { release?: () => void } = {}
+    let block = true
+    const cache = new RawFactsCache({
+      readFile: () => {
+        const current = text
+        if (!block) {
+          return Promise.resolve(current)
+        }
+        block = false
+        return new Promise<string>((resolve) => {
+          pending.release = () => resolve(current)
+        })
+      },
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const first = cache.marker('/app/a.ts', 'client')
+    while (!pending.release) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    // the file gains a marker while the scan is pending; the host reports it
+    text = `import 'server-only'\nexport const a = 1\n`
+    cache.markStale('/app/a.ts')
+    pending.release()
+    expect(await first).toBe(null)
+    // the superseded scan is no answer for the new text
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    expect(cache.stats(false)).toMatchObject({ rawFactsMarkerless: 0 })
+  })
+
   it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': `export const a = 1\n`,
@@ -501,6 +532,12 @@ import { track } from './track'
       code: `const f = createServerFn().handler(() => 1)\nexport const g = (f as any).validator((d: unknown) => d)`,
       codeEffects: all,
       erased: { client: [], server: [] },
+    },
+    {
+      name: 'an import only a handler reads, the factory imported under another name',
+      code: `import { createServerFn as csf } from 'toy-start'\nexport const fn = csf().handler(async () => track())`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
     },
   ])('$name', async ({ code, codeEffects, erased }) => {
     const files: Record<string, string> = {

@@ -268,6 +268,8 @@ describe('edge names (J6)', () => {
           '/app/auto.tsx': code,
           '/app/fragment.tsx': code.replace('<p />', '<></>'),
           '/app/classic.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code.replace('<p />', '<><p /></>')}`,
+          // (an element before a fragment: two bindings, both read)
+          '/app/classic-el-first.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code}export const frag = () => <></>\n`,
         },
       })
       let rec = edgeRecorder()
@@ -286,6 +288,12 @@ describe('edge names (J6)', () => {
       await host.compile('/app/classic.tsx', planners(rec))
       expect(byspec(rec.edges.env!)).toMatchObject({
         'static ./react': ['evaluation', []],
+        'static ./h': ['binding', ['h']],
+        'static ./fragment': ['binding', ['Fragment']],
+      })
+      rec = edgeRecorder()
+      await host.compile('/app/classic-el-first.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
         'static ./h': ['binding', ['h']],
         'static ./fragment': ['binding', ['Fragment']],
       })
