@@ -65,7 +65,7 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { resolveViteId } from '../utils'
+import { escapeRegExp, resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
 import type {
   CompileOutcome,
@@ -141,6 +141,19 @@ const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
 const DEPENDENCY_SCRIPT_RE =
   /^[^?]*[\\/]node_modules[\\/].*\.[cm]?[tj]sx?(?:$|\?)/
 
+/**
+ * The optimizer's bundles of an app: files of Vite's resolved `cacheDir`
+ * (`node_modules/.vite` by default, or wherever the app keeps it), the
+ * dependencies of `DEPENDENCY_ID_RE` wherever they are written. `script`:
+ * its script modules only (`DEPENDENCY_SCRIPT_RE`).
+ */
+function cacheDirRe(cacheDir: string, script = false): RegExp {
+  const dir = escapeRegExp(normalizePath(cacheDir).replace(/\/$/, ''))
+  return new RegExp(
+    script ? `^${dir}/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)` : `^${dir}/`,
+  )
+}
+
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
@@ -177,14 +190,15 @@ function toDevSpecifier(id: string, root: string): string {
 
 /**
  * The source entry of a pre-bundled dependency, when `id` is the dependency
- * optimizer's bundle (`node_modules/.vite/deps/x.js?v=…`): the optimizer
+ * optimizer's bundle (`<cacheDir>/deps/x.js?v=…`, the optimizer's own
+ * test: the app may keep its `cacheDir` anywhere): the optimizer
  * resolves a dependency to its bundle before the bundle is written, so facts
  * read through that path would see a missing module; the package's own entry
  * is what the dependency is (deterministic, and stable across re-optimization).
  */
 function unoptimizedDependency(environment: Environment, id: string): string {
   const optimizer = (environment as DevEnvironment).depsOptimizer
-  if (!optimizer || !id.includes('/node_modules/.vite/')) {
+  if (!optimizer?.isOptimizedDepFile(id)) {
     return id
   }
   const file = id.split('?')[0]!
@@ -303,7 +317,9 @@ export function startCompilerPlugin(
     root: string
     command: 'serve' | 'build'
     bundledDev: boolean
+    cacheDir: string
   }): Session => {
+    const cached = cacheDirRe(config.cacheDir)
     const { startConfig, resolvedStartConfig } = opts.getConfig()
     const s: Session = {
       start: new StartCompilerSession({
@@ -325,10 +341,11 @@ export function startCompilerPlugin(
           const load = virtualLoaders.get(env)
           return load ? load(id).catch(() => null) : null
         },
-        // pre-bundled dependencies (a Start library declaring the framework
-        // as a peer is never pre-bundled): what the optimizer metadata maps
-        // back to a source entry is read there (`unoptimizedDependency`)
-        opaque: (p) => normalizePath(p).includes('/node_modules/.vite/'),
+        // pre-bundled dependencies, in the app's `cacheDir` (a Start library
+        // declaring the framework as a peer is never pre-bundled): what the
+        // optimizer metadata maps back to a source entry is read there
+        // (`unoptimizedDependency`)
+        opaque: (p) => cached.test(normalizePath(p)),
         label: 'start:vite',
       }),
       bundledDev: config.bundledDev,
@@ -723,6 +740,8 @@ export function startCompilerPlugin(
     id: { include: Array<RegExp>; exclude: Array<RegExp> }
     code?: RegExp
   } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
+  /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
+  const ownExclude: Array<RegExp> = [ASSET_QUERY_RE, DEPENDENCY_ID_RE]
 
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   const watchingEnv = opts.environments[0]?.name
@@ -807,7 +826,12 @@ export function startCompilerPlugin(
             root: config.root,
             command: config.command,
             bundledDev: !!config.experimental.bundledDev,
+            cacheDir: config.cacheDir,
           })
+          // the optimizer's bundles are dependencies wherever the app keeps
+          // them: a custom `cacheDir` is outside every `node_modules`
+          dependencyFilter.id.include.push(cacheDirRe(config.cacheDir, true))
+          ownExclude.push(cacheDirRe(config.cacheDir))
           const text = dependencyTextFilter(session.start.ip)
           if (text) {
             dependencyFilter.code = text
@@ -999,7 +1023,7 @@ export function startCompilerPlugin(
         filter: {
           id: {
             include: TRANSFORM_ID_REGEX,
-            exclude: [ASSET_QUERY_RE, DEPENDENCY_ID_RE],
+            exclude: ownExclude,
           },
         },
         handler: compileTransform,
