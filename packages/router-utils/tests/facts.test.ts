@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
-import type { RecognizerTable } from '../src/compiler'
+import type { RawFacts, RecognizerTable } from '../src/compiler'
 
 describe('RawFactsCache', () => {
   it('counts no entry stale once a marker scan has read the file again', async () => {
@@ -30,21 +30,51 @@ describe('RawFactsCache', () => {
     })
     const first = cache.get('/app/a.ts', 'client')
     // the file changes while the first read is pending; the host reports it
-    text = 'export const a = 2\n'
+    text = 'export const b = 2\n'
     cache.markStale('/app/a.ts')
     release!()
     await first
     // the next read sees the new text, not the superseded read's
     const second: Promise<unknown> = cache.get('/app/a.ts', 'client')
     release!()
-    const facts = (await second) as { rawRevision: string }
-    const superseded = (await first) as { rawRevision: string }
-    expect(facts.rawRevision).not.toBe(superseded.rawRevision)
+    const facts = (await second) as RawFacts
+    const superseded = await first
+    expect(superseded.targetFacts.exportNames).toEqual(['a'])
+    expect(facts.targetFacts.exportNames).toEqual(['b'])
     // the cache holds the second read's facts, current
-    expect((await cache.get('/app/a.ts', 'client')).rawRevision).toBe(
-      facts.rawRevision,
-    )
+    expect(await cache.get('/app/a.ts', 'client')).toBe(facts)
     expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
+  })
+
+  it('does not publish a marker scan in flight when the file changes meanwhile', async () => {
+    let text = 'export const a = 1\n'
+    const pending: { release?: () => void } = {}
+    let block = true
+    const cache = new RawFactsCache({
+      readFile: () => {
+        const current = text
+        if (!block) {
+          return Promise.resolve(current)
+        }
+        block = false
+        return new Promise<string>((resolve) => {
+          pending.release = () => resolve(current)
+        })
+      },
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const first = cache.marker('/app/a.ts', 'client')
+    while (!pending.release) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    // the file gains a marker while the scan is pending; the host reports it
+    text = `import 'server-only'\nexport const a = 1\n`
+    cache.markStale('/app/a.ts')
+    pending.release()
+    expect(await first).toBe(null)
+    // the superseded scan is no answer for the new text
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    expect(cache.stats(false)).toMatchObject({ rawFactsMarkerless: 0 })
   })
 
   it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
@@ -502,6 +532,12 @@ import { track } from './track'
       code: `const f = createServerFn().handler(() => 1)\nexport const g = (f as any).validator((d: unknown) => d)`,
       codeEffects: all,
       erased: { client: [], server: [] },
+    },
+    {
+      name: 'an import only a handler reads, the factory imported under another name',
+      code: `import { createServerFn as csf } from 'toy-start'\nexport const fn = csf().handler(async () => track())`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
     },
   ])('$name', async ({ code, codeEffects, erased }) => {
     const files: Record<string, string> = {

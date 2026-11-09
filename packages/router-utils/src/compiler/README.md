@@ -230,6 +230,10 @@ text compiles waits for it and emits its own output from the result.
   found an unlinked file is stale without asking) and returns
   `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates importers
   only when its export-facts digest changed.
+- Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
+  (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget` and `retain` drop, which is how anything that
+  changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it may have
+  appeared).
 - `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and
   dependencies (`CompileOutput.persisted`) with its module; a later process checks them for the modules the cache
   restores without compiling: a current plan joins its environment's plans as a _restored_ plan (never a hit; its

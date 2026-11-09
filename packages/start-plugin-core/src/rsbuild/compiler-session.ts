@@ -231,6 +231,7 @@ export class StartRsbuildCompilerSession {
           return text
         }
       }
+      this.missing.add(file)
       return null
     }
     try {

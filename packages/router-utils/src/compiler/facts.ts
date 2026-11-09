@@ -4,8 +4,15 @@
  * target facts (marker, export names, effect classification) from the same
  * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
+ *
+ * Rule: anything that changes an answer of `RawFactsCache` goes through
+ * `markStale`, `forget` or `retain`. They move `version`, and a plan whose
+ * facts were validated at the current version is not asked again
+ * (`CacheEntry.factsAt`), so a change made any other way serves stale plans.
+ * That includes a file a read found missing: its facts are not kept, and the
+ * host that saw the miss marks it stale when the file may have appeared.
  */
-import { digestOf, identify, isCommonJsPath, revision } from './identity'
+import { digestOf, identify, isCommonJsPath } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
@@ -31,16 +38,14 @@ export interface TargetFacts {
   esm: boolean
   /** Own top-level effects or a bare import (transitive classification is the consumer's). */
   effectful: boolean
-  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.codeEffects`). */
+  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.effects().code`). */
   codeEffects: CodeEffects
-  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.erasedImports`; absent when none is). */
+  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.effects().erasedImports`; absent when none is). */
   erasedImports?: { client: Array<string>; server: Array<string> }
   digest: string
 }
 
 export interface RawFacts {
-  /** null when the module could not be read. */
-  rawRevision: string | null
   summary: ModuleSummary | null
   targetFacts: TargetFacts
   /**
@@ -111,8 +116,8 @@ interface FactsEntry {
   stale: boolean
   facts: RawFacts | null
   pending: Promise<RawFacts> | null
-  /** The revision at which the text holds no marker literal (`marker` answered without a parse). */
-  markerless: string | null
+  /** Whether the text since the last `markStale` holds no marker literal (`marker` answered without a parse). */
+  markerless: boolean
   pendingMarker: Promise<TargetFacts['marker']> | null
 }
 
@@ -125,8 +130,21 @@ export class RawFactsCache {
   private readonly noTargets = cacheDisabled('targets')
   /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
   private readonly counters = { factsHits: 0, factsReads: 0 }
+  private changes = 0
 
   constructor(private readonly opts: RawFactsOptions) {}
+
+  /**
+   * Moves whenever a fact this cache answers may change: an entry marked
+   * stale, forgotten or dropped. A `markStale` moves it even with nothing
+   * kept at the path, since a missing file's facts aren't kept and may be
+   * read differently now (Rsbuild's `forgetMisses`). A fact read while the
+   * version stays the same is still the cache's answer (plan validation
+   * skips it: `CacheEntry.factsAt`).
+   */
+  get version(): number {
+    return this.changes
+  }
 
   /** Whether `specifier` is a known package of the recognizer: it is never read or resolved: its exports are known by name. */
   isKnownSpecifier(specifier: string): boolean {
@@ -144,12 +162,13 @@ export class RawFactsCache {
   }
 
   markStale(path: string): void {
+    this.changes++
     for (const id of this.byPath.get(path) ?? []) {
       const e = this.entries.get(id)!
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
-      e.markerless = null
+      e.markerless = false
       e.pendingMarker = null
     }
   }
@@ -160,6 +179,7 @@ export class RawFactsCache {
    * is bounded by the live files, not by every file a session saw.
    */
   forget(path: string): void {
+    this.changes++
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
       const e = this.entries.get(id)!
@@ -204,6 +224,7 @@ export class RawFactsCache {
   retain(keep: (canonicalId: string) => boolean): void {
     for (const [id, e] of this.entries) {
       if (!keep(id)) {
+        this.changes++
         e.pending = null
         e.pendingMarker = null
         this.deleteEntry(id)
@@ -273,7 +294,7 @@ export class RawFactsCache {
       stale: false,
       facts,
       pending: null,
-      markerless: null,
+      markerless: false,
       pendingMarker: null,
     }
   }
@@ -294,7 +315,7 @@ export class RawFactsCache {
         return e.facts.targetFacts.marker
       }
       // (`markerless` and a pending scan are of the text since the last `markStale`)
-      if (e.markerless !== null) {
+      if (e.markerless) {
         return null
       }
       if (e.pendingMarker) {
@@ -320,7 +341,7 @@ export class RawFactsCache {
       if (entry.pendingMarker === holder.p) {
         entry.pendingMarker = null
         if (text !== null && !this.noTargets) {
-          entry.markerless = revision(text)
+          entry.markerless = true
         } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
           // a missing file is not kept (`forget`)
           this.deleteEntry(canonicalId)
@@ -392,7 +413,7 @@ export class RawFactsCache {
       stale += e.stale && e.facts ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
-      markerless += !e.facts && e.markerless !== null ? 1 : 0
+      markerless += !e.facts && e.markerless ? 1 : 0
       opaque += e.facts?.opaque ? 1 : 0
       if (withBytes && e.facts) {
         bytes += approxBytes(e.facts)
@@ -435,7 +456,6 @@ export class RawFactsCache {
       codeEffects: { client: false, server: false },
     }
     return {
-      rawRevision: digest,
       summary: { exports: exportFacts, stars: [], digest },
       targetFacts: { ...tf, digest: digestOf(tf) },
     }
@@ -463,20 +483,17 @@ export class RawFactsCache {
   ): RawFacts {
     if (text === null) {
       return {
-        rawRevision: null,
         summary: null,
         targetFacts: { ...MISSING_TARGET, digest: MISSING_DIGEST },
       }
     }
     const id = identify(canonicalId)
-    const rev = revision(text)
     if (
       !full &&
       this.opts.opaque?.(id.path, text) &&
       !this.mayHaveMarker(text)
     ) {
       return {
-        rawRevision: rev,
         summary: null,
         targetFacts: { ...OPAQUE_TARGET, digest: OPAQUE_DIGEST },
         opaque: true,
@@ -504,7 +521,6 @@ export class RawFactsCache {
         codeEffects: ALL_EFFECTS,
       }
       return {
-        rawRevision: rev,
         summary: null,
         targetFacts: { ...tf, digest: digestOf(tf) },
       }
@@ -513,21 +529,17 @@ export class RawFactsCache {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
-      builders: this.opts.recognizer,
     })
-    return this.fromAnalysis(rev, analysis)
+    return this.fromAnalysis(analysis)
   }
 
-  private fromAnalysis(
-    rawRevision: string,
-    analysis: ModuleAnalysis,
-  ): RawFacts {
+  private fromAnalysis(analysis: ModuleAnalysis): RawFacts {
     const summary = buildSummary(
       analysis,
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()
-    const own = analysis.ownEffects
+    const effects = analysis.effects(this.opts.recognizer)
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
@@ -558,17 +570,16 @@ export class RawFactsCache {
       imports,
       lazyImports,
       esm: analysis.sourceType === 'module',
-      effectful: own || bareImportEffect,
-      codeEffects: analysis.codeEffects,
-      ...(analysis.erasedImports && {
+      effectful: effects.own || bareImportEffect,
+      codeEffects: effects.code,
+      ...(effects.erasedImports && {
         erasedImports: {
-          client: [...analysis.erasedImports.client],
-          server: [...analysis.erasedImports.server],
+          client: [...effects.erasedImports.client],
+          server: [...effects.erasedImports.server],
         },
       }),
     }
     return {
-      rawRevision,
       summary,
       targetFacts: { ...tf, digest: digestOf(tf) },
     }

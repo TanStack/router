@@ -7,7 +7,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { invalidate, releaseEnvironment, restorePlans } from '../src/compiler'
 import { PlanCache } from '../src/compiler/cache'
 import { planKeyString } from '../src/compiler/identity'
-import { MemoryHost, envInfo, toySummaryPlanner } from './helpers'
+import {
+  MemoryHost,
+  dedent,
+  envInfo,
+  toySplitPlanner,
+  toySummaryPlanner,
+} from './helpers'
 import type { Planner } from '../src/compiler'
 import type { PlanKey } from '../src/compiler/identity'
 
@@ -38,6 +44,7 @@ describe('plan keys by path', () => {
           generation: cache.generation(k),
           plan: { dependencies: [] } as any,
           resolvedAt: 0,
+          factsAt: 0,
           compiledFor: 'env',
           compiledAt: 0,
         }),
@@ -351,4 +358,117 @@ describe('plans restored from an earlier process', () => {
     await host.compile('/app/page.ts', planners())
     expect(stats(host)).toMatchObject({ plans: 1, restored: 0 })
   })
+})
+
+describe('a derived id compiled again after an edit', () => {
+  const route = '/app/route.tsx'
+  const chunk = `${route}?tsr-split=component`
+  const files = {
+    [route]: dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './shared'
+      export const Route = createFileRoute('/')({
+        component: () => make,
+      })
+    `),
+    '/app/shared.ts': 'export const make = 1\n',
+  }
+  const routePlanners = () => [toySplitPlanner(), toySummaryPlanner()]
+  const factsOf = async (host: MemoryHost, id: string) =>
+    (await host.compile(id, routePlanners()))!.facts.planners['toy-summary']
+
+  it('sees a dependency edit reported by a file event', async () => {
+    const host = new MemoryHost({ files })
+    await host.compile(route, routePlanners())
+    const before = await factsOf(host, chunk)
+    host.write('/app/shared.ts', 'export const other = 1\n')
+    await invalidate(
+      host.caches,
+      { path: '/app/shared.ts', kind: 'change' },
+      host,
+    )
+    const after = await factsOf(host, chunk)
+    expect(after).not.toEqual(before)
+    expect(after).toEqual(await factsOf(host, route))
+  })
+
+  it('sees a dependency edit whose facts were marked stale without a file event', async () => {
+    // the Rsbuild host marks the facts of files a read found missing stale
+    // at each compilation (`forgetMisses`), outside `invalidate`
+    const host = new MemoryHost({ files })
+    await host.compile(route, routePlanners())
+    const before = await factsOf(host, chunk)
+    host.write('/app/shared.ts', 'export const other = 1\n')
+    host.rawFacts.markStale('/app/shared.ts')
+    const after = await factsOf(host, chunk)
+    expect(after).not.toEqual(before)
+    expect(after).toEqual(await factsOf(host, route))
+  })
+
+  it('sees a dependency edit whose facts the cache dropped', async () => {
+    // the Rsbuild host keeps the raw facts of the files its compilation
+    // still holds (`retain`); a dropped file is read again when asked
+    const host = new MemoryHost({ files })
+    await host.compile(route, routePlanners())
+    const before = await factsOf(host, chunk)
+    host.write('/app/shared.ts', 'export const other = 1\n')
+    host.rawFacts.retain((id) => !id.startsWith('/app/shared.ts'))
+    const after = await factsOf(host, chunk)
+    expect(after).not.toEqual(before)
+    expect(after).toEqual(await factsOf(host, route))
+  })
+
+  it('sees a dependency that was missing once a host marks its facts stale', async () => {
+    // a resolution found the file, which was deleted before its facts were
+    // read; it is saved again without an event: the Rsbuild host marks
+    // missing files stale at each compilation (`forgetMisses`)
+    const { ['/app/shared.ts']: shared, ...rest } = files
+    const host = new MemoryHost({
+      files: rest,
+      resolve: (spec) => (spec === './shared' ? '/app/shared.ts' : null),
+    })
+    await host.compile(route, routePlanners())
+    const before = await factsOf(host, chunk)
+    host.write('/app/shared.ts', shared)
+    host.rawFacts.markStale('/app/shared.ts')
+    const after = await factsOf(host, chunk)
+    expect(after).not.toEqual(before)
+    expect(after).toEqual(
+      await factsOf(new MemoryHost({ files: host.files }), route),
+    )
+  })
+
+  it.each([
+    ['a file event', 'event'],
+    ['facts marked stale', 'stale'],
+  ] as const)(
+    'sees a dependency edit made while its importer compiles (%s)',
+    async (_, report) => {
+      // the dependency is saved right after the compile read it: the compile
+      // holds the old text's facts, and its plan must not stand for the new text
+      class SavedAfterRead extends MemoryHost {
+        private saved = false
+        override async readFile(path: string): Promise<string | null> {
+          const text = await super.readFile(path)
+          if (path === '/app/shared.ts' && !this.saved) {
+            this.saved = true
+            this.write(path, 'export const other = 1\n')
+            if (report === 'event') {
+              void invalidate(this.caches, { path, kind: 'change' }, this)
+            } else {
+              this.rawFacts.markStale(path)
+            }
+          }
+          return text
+        }
+      }
+      const host = new SavedAfterRead({ files })
+      await host.compile(route, routePlanners())
+      const chunkFacts = await factsOf(host, chunk)
+      expect(chunkFacts).toEqual(
+        await factsOf(new MemoryHost({ files: host.files }), route),
+      )
+      expect(chunkFacts).toEqual(await factsOf(host, route))
+    },
+  )
 })

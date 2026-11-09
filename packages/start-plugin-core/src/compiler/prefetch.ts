@@ -37,7 +37,7 @@ import type {
 /** Phase A result: `${specifier}\0${name}` → value, for this module's imports. */
 export interface StartPrefetch {
   values: Map<string, AbstractValue>
-  /** Whether any import carries a Start value (the async half of the gate). */
+  /** Whether any import carries a Start value the module can build on (the async half of the gate). */
   relevant: boolean
   /** Where a project namespace with an open builder among its exports goes where the analysis does not follow it. */
   namespaceEscapes: Array<NamespaceEscape>
@@ -55,7 +55,11 @@ function importKey(specifier: string, name: string): string {
   return `${specifier}\u0000${name}`
 }
 
-/** Whether a value can lead to a Start candidate. */
+/**
+ * Whether a value can lead to a Start candidate. The import relevance test
+ * uses `startsCandidate` instead: a finished server fn, middleware or
+ * env-only result is a Start value but gives start-env nothing to plan.
+ */
 export function isStartValue(
   table: RecognizerTable,
   v: AbstractValue,
@@ -77,6 +81,25 @@ export function isStartValue(
       return isStartValue(table, v.returns)
     default:
       return false
+  }
+}
+
+/**
+ * Whether an import's value gives start-env something to plan: a Start
+ * value but a finished one. A server fn, a middleware and an env-only result
+ * are terminal (a call of them, a member, passing them on adds no chain,
+ * candidate or escape), so a module that only uses them stays verbatim.
+ */
+function startsCandidate(table: RecognizerTable, v: AbstractValue): boolean {
+  switch (v.t) {
+    case 'serverFn':
+    case 'middleware':
+    case 'envOnlyResult':
+      return false
+    case 'function':
+      return startsCandidate(table, v.returns)
+    default:
+      return isStartValue(table, v)
   }
 }
 
@@ -427,7 +450,7 @@ export async function prefetchStartValues(
     const member = async (name: string, at: Node) => {
       const v = await exportValue(id, name, LookupPath.start())
       values.set(importKey(specifier, name), v)
-      if (isStartValue(table, v)) {
+      if (startsCandidate(table, v)) {
         relevant = true
       } else if (v.t === 'namespace') {
         await (at.type === 'Property'
@@ -525,7 +548,7 @@ export async function prefetchStartValues(
       LookupPath.start(),
     )
     values.set(importKey(specifier, name), v)
-    if (isStartValue(table, v)) {
+    if (startsCandidate(table, v)) {
       relevant = true
     } else if (v.t === 'namespace') {
       await followNamespace(
@@ -540,7 +563,8 @@ export async function prefetchStartValues(
     refs: ReadonlyArray<{ node: Node }>,
   ) => {
     const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
-    if (id !== null) {
+    // a module without a summary (a package, opaque) exports nothing to follow: every member reads as unknown
+    if (id !== null && (await ctx.resolver.summary(id)) !== null) {
       await followNamespace(
         specifier,
         id,

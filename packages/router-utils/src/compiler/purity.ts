@@ -8,7 +8,7 @@
  * pure attributes and children, and a member of a module namespace import (`ns.x`: its [[Get]]
  * reads the module's binding and runs no code, as an imported identifier does) or of a
  * plain enum of the module (`isPlainEnum`; a property of any other object may be a getter).
- * `import()` is impure. The same classification yields Tier 0's `ownEffects` at statement granularity.
+ * `import()` is impure. The same classification yields the module's own effects at statement granularity (`ModuleAnalysis.effects()`).
  */
 import { BindingFlags } from 'yuku'
 import { unwrapExpression } from './source'
@@ -42,7 +42,7 @@ export interface PurityContext {
   /**
    * Builder chains whose calls are no effect in one environment
    * (`RecognizerTable.builderLinks`). Only on the contexts of the
-   * per-environment code effects of raw facts (`ModuleAnalysis.codeEffects`),
+   * per-environment code effects of raw facts (`ModuleAnalysis.effects()`),
    * never on the planners'.
    */
   builders?: BuilderPurity

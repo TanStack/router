@@ -98,6 +98,10 @@ export interface EmittedMapsCompilerLike {
 
 interface EmittedMapsCompilationLike {
   outputOptions: { path?: string }
+  chunks: Iterable<{
+    hash?: string | null
+    auxiliaryFiles: Iterable<string>
+  }>
   hooks: {
     processAssets: {
       tap: (
@@ -117,11 +121,12 @@ export type RecordMapText = (file: string, text: string) => void
  * of the files the loader records, unless the devtool keeps sources out
  * (`nosources-*`), and returns the recorder. A module the persistent cache
  * restored was not compiled by this process: its file, unchanged since,
- * is read once, and used when the host compiles it (`compiles`). A map
- * whose JSON and texts did not change since the last compilation (most of
- * them, after an edit) gets its last filled form again, a buffer (Rspack
- * copies a string source into its own memory). Otherwise null: the module
- * maps carry the text.
+ * is read once, and used when the host compiles it (`compiles`). The map
+ * of a chunk whose hash and texts did not change since the last compilation
+ * (most of them, after an edit) gets its last filled form again without
+ * being read (the chunk hashes its modules' maps with their code), a buffer
+ * (Rspack copies a string source into its own memory). Otherwise null: the
+ * module maps carry the text.
  */
 export function emittedMapTexts(
   compiler: EmittedMapsCompilerLike,
@@ -162,10 +167,14 @@ export function emittedMapTexts(
     }
     return text ?? undefined
   }
-  /** The last compilation's fill of each map: its JSON, the texts it got by file, the filled source (null: none). */
+  /** The last compilation's fill of each map: its chunk's hash, the texts it got by file, the filled source (null: none). */
   let fills = new Map<
     string,
-    { raw: string; used: Map<string, string>; filled: unknown }
+    {
+      chunkHash: string | undefined
+      used: Map<string, string>
+      filled: unknown
+    }
   >()
   const { Compilation, sources } = compiler.webpack
   compiler.hooks.thisCompilation.tap('tanstack:emitted-maps', (compilation) => {
@@ -176,18 +185,30 @@ export function emittedMapTexts(
       },
       (assets) => {
         const outDir = compilation.outputOptions.path ?? compiler.context
+        const chunkHashes = new Map<string, string>()
+        for (const chunk of compilation.chunks) {
+          if (chunk.hash) {
+            for (const file of chunk.auxiliaryFiles) {
+              chunkHashes.set(file, chunk.hash)
+            }
+          }
+        }
         const next: typeof fills = new Map()
         for (const name of Object.keys(assets)) {
           if (!name.endsWith('.map')) {
             continue
           }
-          const raw = String(assets[name]!.source())
+          // a map of no chunk (a hot update's) is read every time
+          const chunkHash = chunkHashes.get(name)
           let fill = fills.get(name)
           if (
-            fill?.raw !== raw ||
+            chunkHash === undefined ||
+            fill?.chunkHash !== chunkHash ||
             [...fill.used].some(([file, text]) => textOf(file) !== text)
           ) {
-            const map = JSON.parse(raw) as EmittedSourceMap
+            const map = JSON.parse(
+              String(assets[name]!.source()),
+            ) as EmittedSourceMap
             const files = fillSourcesContent(
               map,
               textOf,
@@ -195,7 +216,7 @@ export function emittedMapTexts(
               path.dirname(path.join(outDir, name)),
             )
             fill = {
-              raw,
+              chunkHash,
               used: new Map(files.map((file) => [file, textOf(file)!])),
               filled:
                 files.length > 0

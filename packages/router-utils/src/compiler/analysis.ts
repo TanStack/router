@@ -2,11 +2,11 @@
  * `ModuleAnalysis` — tiered, read-only: modules that only need their edges
  * never pay for the rest.
  *
- * Tier 0 (always): import/export tables, evaluation edges, header, markers,
- * own effects. Tier 1 (on demand): items, units, regions, symbols, classified
- * references, JSX info, name universe. Both are views over one Yuku parse
- * that lives for the compile attempt only (nothing cached may reach a Yuku
- * object).
+ * Tier 0 (always): import/export tables, evaluation edges, header, markers.
+ * Own effects (`effects()`, what raw facts describe of a target) and Tier 1
+ * (items, units, regions, symbols, classified references, JSX info, name
+ * universe) on demand. Both are views over one Yuku parse that lives for the
+ * compile attempt only (nothing cached may reach a Yuku object).
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
@@ -295,18 +295,34 @@ interface ModuleAnalysisOptions {
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /** The pure exports of known packages (`RecognizerTable.pureCalls`): their imports are pure callees. */
   pureCalls?: RecognizerTable['pureCalls']
-  /**
-   * The recognizer whose builder chains are no effect in `codeEffects`, per
-   * environment (`RecognizerTable.builderLinks`; raw facts only: the
-   * planners' purity never takes them).
-   */
-  builders?: RecognizerTable
 }
 
 /** Per environment type, whether a module's own statements have effects there. */
 export interface CodeEffects {
   client: boolean
   server: boolean
+}
+
+/** What a module's own top-level statements do when it is evaluated (`ModuleAnalysis.effects`). */
+export interface ModuleEffects {
+  /** Whether a statement has an effect, module loading included. */
+  own: boolean
+  /**
+   * Whether the module's own statements have effects, module loading aside
+   * (bare imports and re-exports are followed by consumers), per environment
+   * type: with `builders`, a builder chain with pure arguments is none, and
+   * an argument the environment's compile erases is not evaluated there.
+   */
+  code: CodeEffects
+  /**
+   * Per environment type, the specifiers whose every import only erased
+   * code reads (`code`): that environment's compile does not evaluate them.
+   * Null when none is (always without `builders`).
+   */
+  erasedImports: {
+    client: ReadonlyArray<string>
+    server: ReadonlyArray<string>
+  } | null
 }
 
 export const DEFAULT_MARKERS: Record<string, 'server-only' | 'client-only'> = {
@@ -324,27 +340,14 @@ export class ModuleAnalysis {
   readonly reexports: ReadonlyArray<ReexportEntry>
   readonly dynamicEdges: ReadonlyArray<DynamicEdge>
   readonly markers: Marker
-  readonly ownEffects: boolean
-  /**
-   * Whether the module's own statements have effects, module loading aside
-   * (bare imports and re-exports are followed by consumers), per environment
-   * type: with `builders`, a builder chain with pure arguments is none, and
-   * an argument the environment's compile erases is not evaluated there.
-   */
-  readonly codeEffects: CodeEffects
-  /**
-   * Per environment type, the specifiers whose every import only erased
-   * code reads (`codeEffects`): that environment's compile does not
-   * evaluate them. Null when none is (always without `builders`).
-   */
-  readonly erasedImports: {
-    client: ReadonlyArray<string>
-    server: ReadonlyArray<string>
-  } | null
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
   readonly purity: PurityContext
   private tier1: Tier1 | null = null
+  private readonly markerSpecifiers: Record<
+    string,
+    'server-only' | 'client-only'
+  >
   private readonly importByStatement = new Map<number, number>()
   /**
    * The declaration (declarator or function) of each top-level declared
@@ -367,6 +370,7 @@ export class ModuleAnalysis {
     let namespaceImports: Set<number> | null = null
     const pureCalls = opts.pureCalls
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
+    this.markerSpecifiers = markers
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
     const reexports: Array<ReexportEntry> = []
@@ -377,16 +381,6 @@ export class ModuleAnalysis {
         marker = marker === null || marker === m ? m : 'conflict'
       }
     }
-    let ownEffects = false
-    const codeEffects: CodeEffects = { client: false, server: false }
-    // the imports of the recognizer's factories
-    const builderTable = opts.builders?.builderLinks ? opts.builders : undefined
-    // (by local name: `BuilderPurity.factories`)
-    const factoryImports = new Map<string, string>()
-    const factoryNamespaces = new Map<
-      string,
-      Readonly<Record<string, string>>
-    >()
     // the bindings import specifiers declare and exports name, from Yuku's
     // module records by node position: a node lookup (`bindingOf`) would
     // build the file's node index, which a Tier-0-only module never needs
@@ -399,27 +393,6 @@ export class ModuleAnalysis {
         importLocals.set(record.node.start, local.id as SymbolId)
         if (record.kind === 'namespace' && !record.typeOnly) {
           ;(namespaceImports ??= new Set()).add(local.id)
-        }
-        // an import of a known package's factory (`builderCall` tells a
-        // chain's)
-        const factories =
-          builderTable && !record.typeOnly
-            ? factoryTable(builderTable).get(record.specifier)
-            : undefined
-        if (factories) {
-          if (record.kind === 'namespace') {
-            factoryNamespaces.set(local.name, factories)
-          } else if (record.kind === 'named' && record.name !== null) {
-            const kind = ownEntry(factories, record.name)
-            // (a chain's: other kinds need no per-environment purity)
-            if (
-              kind !== undefined &&
-              (ownEntry(builderTable!.builderLinks!, kind) !== undefined ||
-                ownEntry(builderTable!.envOnlyKinds, kind) !== undefined)
-            ) {
-              factoryImports.set(local.name, kind)
-            }
-          }
         }
         // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
@@ -457,28 +430,6 @@ export class ModuleAnalysis {
     }
     const body = file.program.body
     seedNoSideEffectDeclarations(this.purity, noSideEffectCallees, body)
-    // the purity of each environment type, with its builder chains
-    const envPurity =
-      builderTable && (factoryImports.size > 0 || factoryNamespaces.size > 0)
-        ? (['client', 'server'] as const).map((env) => ({
-            env,
-            ctx: {
-              ...this.purity,
-              builders: {
-                env,
-                links: builderTable.builderLinks!,
-                envOnly: builderTable.envOnlyKinds,
-                factories: factoryImports,
-                namespaces: factoryNamespaces,
-                terminal: builderTable.terminal,
-                locals: new Map<string, string>(),
-                erased: [],
-              },
-            } satisfies PurityContext,
-            /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */
-            pending: [] as Array<Array<string>>,
-          }))
-        : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -682,48 +633,6 @@ export class ModuleAnalysis {
       ) {
         declarations.set(declaration.id.start, declaration)
       }
-      // module loading counts as an own effect, not as an effect of its own
-      // code; a marker import declares the module's environment and loads
-      // nothing
-      const loads = loadsModule(stmt)
-      const isMarkerImport =
-        stmt.type === 'ImportDeclaration' &&
-        ownEntry(markers, stmt.source.value) !== undefined
-      if (isMarkerImport) {
-        continue
-      }
-      if (loads) {
-        ownEffects ||= statementHasEffects(this.purity, stmt)
-      } else if (!codeEffects.client || !codeEffects.server) {
-        if (statementHasEffects(this.purity, stmt)) {
-          ownEffects = true
-          if (!envPurity) {
-            codeEffects.client = codeEffects.server = true
-            continue
-          }
-          for (const p of envPurity) {
-            if (
-              !codeEffects[p.env] &&
-              // (a TS namespace's body has scopes of its own: the names of
-              // `BuilderPurity` are the module's)
-              (declaration?.type === 'TSModuleDeclaration' ||
-                statementHasEffects(p.ctx, stmt))
-            ) {
-              // a declaration only erased code reads is erased with it:
-              // decided once every statement was read
-              const names = erasableNames(stmt, source.code)
-              if (names) {
-                p.pending.push(names)
-              } else {
-                codeEffects[p.env] = true
-              }
-            }
-          }
-        }
-        if (envPurity && declaration?.type === 'VariableDeclaration') {
-          noteBuilderConsts(envPurity, declaration)
-        }
-      }
     }
     const dynamicEdges: Array<DynamicEdge> = []
     for (const imp of file.imports) {
@@ -764,6 +673,78 @@ export class ModuleAnalysis {
     this.reexports = reexports
     this.dynamicEdges = dynamicEdges
     this.markers = marker
+    this.sourceType =
+      file.sourceType === 'commonjs' ? 'commonjs' : file.program.sourceType
+    this.hasImportOrExport = imports.length > 0 || exportEntries.length > 0
+  }
+
+  /**
+   * The module's own effects, classified statement by statement (raw facts
+   * ask, for a module read as a target; a compile never does). `builders`:
+   * the recognizer whose builder chains are no effect per environment
+   * (`RecognizerTable.builderLinks`; the planners' purity never takes them).
+   */
+  effects(builders?: RecognizerTable): ModuleEffects {
+    const file = this.file
+    const body = file.program.body
+    let own = false
+    const code: CodeEffects = { client: false, server: false }
+    // the purity of each environment type, with its builder chains
+    const envPurity = builders?.builderLinks
+      ? builderPurityOf(this.purity, builders)
+      : null
+    for (let i = this.header.directiveCount; i < body.length; i++) {
+      const stmt = body[i]!
+      // module loading counts as an own effect, not as an effect of its own
+      // code; a marker import declares the module's environment and loads
+      // nothing
+      if (
+        stmt.type === 'ImportDeclaration' &&
+        ownEntry(this.markerSpecifiers, stmt.source.value) !== undefined
+      ) {
+        continue
+      }
+      if (loadsModule(stmt)) {
+        own ||= statementHasEffects(this.purity, stmt)
+        continue
+      }
+      if (code.client && code.server) {
+        continue
+      }
+      const declaration =
+        stmt.type === 'ExportNamedDeclaration' ||
+        stmt.type === 'ExportDefaultDeclaration'
+          ? stmt.declaration
+          : stmt
+      if (statementHasEffects(this.purity, stmt)) {
+        own = true
+        if (!envPurity) {
+          code.client = code.server = true
+          continue
+        }
+        for (const p of envPurity) {
+          if (
+            !code[p.env] &&
+            // (a TS namespace's body has scopes of its own: the names of
+            // `BuilderPurity` are the module's)
+            (declaration?.type === 'TSModuleDeclaration' ||
+              statementHasEffects(p.ctx, stmt))
+          ) {
+            // a declaration only erased code reads is erased with it:
+            // decided once every statement was read
+            const names = erasableNames(stmt, this.source.code)
+            if (names) {
+              p.pending.push(names)
+            } else {
+              code[p.env] = true
+            }
+          }
+        }
+      }
+      if (envPurity && declaration?.type === 'VariableDeclaration') {
+        noteBuilderConsts(envPurity, declaration)
+      }
+    }
     // per environment: the bindings only the arguments its compile erases
     // read, transitively, are erased with them (the compile removes what its
     // edits orphaned): their declarations' effects and their imports'
@@ -771,26 +752,30 @@ export class ModuleAnalysis {
     let erasedImports: { client: Array<string>; server: Array<string> } | null =
       null
     for (const p of envPurity ?? NO_ENV_PURITY) {
-      if (codeEffects[p.env]) {
+      if (code[p.env]) {
         continue
       }
-      const erased = erasedBindings(file, body, imports, p.ctx.builders.erased)
+      const erased = erasedBindings(
+        file,
+        body,
+        this.imports,
+        p.ctx.builders.erased,
+      )
       if (!p.pending.every((names) => names.every((n) => erased.has(n)))) {
-        codeEffects[p.env] = true
+        code[p.env] = true
         continue
       }
-      const specifiers = erasedImportSpecifiers(imports, reexports, erased)
+      const specifiers = erasedImportSpecifiers(
+        this.imports,
+        this.reexports,
+        erased,
+      )
       if (specifiers.length > 0) {
         erasedImports ??= { client: [], server: [] }
         erasedImports[p.env] = specifiers
       }
     }
-    this.ownEffects = ownEffects
-    this.codeEffects = codeEffects
-    this.erasedImports = erasedImports
-    this.sourceType =
-      file.sourceType === 'commonjs' ? 'commonjs' : file.program.sourceType
-    this.hasImportOrExport = imports.length > 0 || exportEntries.length > 0
+    return { own, code, erasedImports }
   }
 
   importIndexOfStatement(stmtStart: number): number | null {
@@ -1016,27 +1001,30 @@ export class ModuleAnalysis {
   /**
    * The bindings the module's JSX reads implicitly (`jsx()`), without Tier
    * 1: whether it has an element (the factory) and a fragment (the fragment
-   * factory), one walk that stops once it saw both.
+   * factory), one walk that stops once it saw both, or either when both read
+   * the same binding. TypeScript (`.ts`) has no JSX.
    */
   implicitJsxReads(): ReadonlySet<SymbolId> {
     if (this.implicitReads !== null) {
       return this.implicitReads
     }
     const reads = new Set<SymbolId>()
-    const { factory, fragment } = this.jsx()
-    if (factory !== null) {
+    const jsx = this.jsx()
+    const factory = jsx.factory
+    if (factory !== null && this.file.lang !== 'ts') {
+      const fragment = jsx.fragment ?? factory
       // (the walk's callbacks set them)
       const seen = { element: false, fragment: false }
       walk(this.file.program, {
         JSXElement: (_n, w) => {
           seen.element = true
-          if (seen.fragment) {
+          if (seen.fragment || fragment === factory) {
             w.stop()
           }
         },
         JSXFragment: (_n, w) => {
           seen.fragment = true
-          if (seen.element) {
+          if (seen.element || fragment === factory) {
             w.stop()
           }
         },
@@ -1045,7 +1033,7 @@ export class ModuleAnalysis {
         reads.add(factory)
       }
       if (seen.fragment) {
-        reads.add(fragment ?? factory)
+        reads.add(fragment)
       }
     }
     return (this.implicitReads = reads)
@@ -2121,6 +2109,62 @@ function erasedImportSpecifiers(
 }
 
 const NO_ENV_PURITY: ReadonlyArray<never> = []
+
+/**
+ * The purity of each environment type with the recognizer's builder chains
+ * (`ModuleAnalysis.effects`), or null when the module imports none of its
+ * chain factories.
+ */
+function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
+  // the imports of the recognizer's factories, by local name
+  // (`BuilderPurity.factories`): `builderCall` tells a chain's
+  const factoryImports = new Map<string, string>()
+  const factoryNamespaces = new Map<string, Readonly<Record<string, string>>>()
+  for (const record of purity.file.imports) {
+    const local = record.local
+    const factories =
+      local && !record.typeOnly
+        ? factoryTable(table).get(record.specifier)
+        : undefined
+    if (!local || !factories) {
+      continue
+    }
+    if (record.kind === 'namespace') {
+      factoryNamespaces.set(local.name, factories)
+    } else if (record.kind === 'named' && record.name !== null) {
+      const kind = ownEntry(factories, record.name)
+      // (a chain's: other kinds need no per-environment purity)
+      if (
+        kind !== undefined &&
+        (ownEntry(table.builderLinks!, kind) !== undefined ||
+          ownEntry(table.envOnlyKinds, kind) !== undefined)
+      ) {
+        factoryImports.set(local.name, kind)
+      }
+    }
+  }
+  if (factoryImports.size === 0 && factoryNamespaces.size === 0) {
+    return null
+  }
+  return (['client', 'server'] as const).map((env) => ({
+    env,
+    ctx: {
+      ...purity,
+      builders: {
+        env,
+        links: table.builderLinks!,
+        envOnly: table.envOnlyKinds,
+        factories: factoryImports,
+        namespaces: factoryNamespaces,
+        terminal: table.terminal,
+        locals: new Map<string, string>(),
+        erased: [],
+      },
+    } satisfies PurityContext,
+    /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */
+    pending: [] as Array<Array<string>>,
+  }))
+}
 
 const factoryTables = new WeakMap<
   RecognizerTable,

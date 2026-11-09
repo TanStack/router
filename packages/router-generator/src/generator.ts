@@ -1,4 +1,5 @@
 import path from 'node:path'
+import crypto from 'node:crypto'
 import * as fsp from 'node:fs/promises'
 import { logging } from './logger'
 import { isVirtualConfigFile } from './filesystem/physical/getRouteNodes'
@@ -65,16 +66,22 @@ interface FileStamp {
   readonly size: number
 }
 
+/** A file's content, to tell it unchanged without keeping its text. */
+function digestOf(content: string) {
+  return crypto.hash('sha1', content, 'base64')
+}
+
 interface FileState {
-  /** The content last read (or written by the generator). */
-  readonly content: string
+  /** The digest of the content last read (or written by the generator). */
+  readonly digest: string
   readonly stamp?: FileStamp
   /**
-   * What the file's upkeep writes (a scaffold, an id or constructor fix):
-   * written only while the route tree imports the file. A file the tree
+   * What the file's upkeep writes (a scaffold, an id or constructor fix),
+   * over the content it was made from: written only while the route tree
+   * imports the file and the file still holds that content. A file the tree
    * leaves out is never edited.
    */
-  readonly pending?: string
+  readonly pending?: { readonly content: string; readonly over: string }
   /** The facts of the file as its upkeep leaves it. */
   readonly facts: FileFacts
   /**
@@ -90,6 +97,11 @@ interface FileState {
   readonly realPath?: string
   /** Why the content does not parse (`facts` are those of its last good content). */
   readonly unparsable?: string
+}
+
+/** What the analysis of a file's content records (`pending`: the text its upkeep writes over it). */
+type ContentFacts = Pick<FileState, 'facts' | 'unparsable'> & {
+  readonly pending?: string
 }
 
 /** What a file's analysis depends on besides its content. */
@@ -247,13 +259,16 @@ export class Generator {
     }
     if (process.env.TSR_COMPILER_STATS === '1') {
       registerStats(this, (g) => {
-        let contentBytes = 0
+        let pendingBytes = 0
         for (const f of g.files.values()) {
-          contentBytes += f.content.length * 2
+          if (f.pending) {
+            pendingBytes +=
+              (f.pending.content.length + f.pending.over.length) * 2
+          }
         }
         return {
           files: g.files.size,
-          contentBytes,
+          pendingBytes,
           routesByFile: g.routesByFile.size,
           queue: g.queue.length,
           waiters: g.waiters.length,
@@ -578,10 +593,11 @@ export class Generator {
       for (const [file, state] of [...this.files].sort(([a], [b]) =>
         a < b ? -1 : 1,
       )) {
-        if (
-          state.unparsable &&
-          (await readIfExists(file).catch(() => null)) === state.content
-        ) {
+        if (!state.unparsable) {
+          continue
+        }
+        const content = await readIfExists(file).catch(() => null)
+        if (content !== null && digestOf(content) === state.digest) {
           unparsable.push(
             `Cannot generate the route of ${displayFile(file, this.root)}:\n${state.unparsable}`,
           )
@@ -627,17 +643,24 @@ export class Generator {
    * an unused duplicate) is never edited.
    */
   private async writePending() {
+    const upkeep = [...this.files].filter(
+      ([, state]) => state.pending !== undefined,
+    )
+    if (upkeep.length === 0) {
+      return
+    }
     const treeFiles = importedFiles(this.model!)
     await Promise.all(
-      [...this.files].map(async ([file, state]) => {
-        if (state.pending === undefined || !treeFiles.has(file)) {
+      upkeep.map(async ([file, state]) => {
+        const pending = state.pending!
+        if (!treeFiles.has(file)) {
           return
         }
-        if (state.content === '' && file === this.model!.root.file) {
+        if (pending.over === '' && file === this.model!.root.file) {
           this.logger.log(`🟡 Creating ${file}`)
         }
         try {
-          await this.publisher.write(file, state.pending, state.content)
+          await this.publisher.write(file, pending.content, pending.over)
         } catch (error) {
           if (error instanceof ConcurrentEditError) {
             // Edited while we kept it up: handled again with its new content
@@ -648,7 +671,7 @@ export class Generator {
         }
         this.files.set(file, {
           ...state,
-          content: state.pending,
+          digest: digestOf(pending.content),
           pending: undefined,
           // (the stamp of what it wrote)
           stamp: (await stampOf(file)) ?? undefined,
@@ -719,17 +742,30 @@ export class Generator {
           `The root route file ${displayFile(file, this.root)} does not exist: create it, with \`export const Route = createRootRoute()\`.`,
         )
       }
-      this.files.set(key, { content: '', facts: { included: false }, role })
+      this.files.set(key, {
+        digest: digestOf(''),
+        facts: { included: false },
+        role,
+      })
       return
     }
     const real = replaceBackslash(await fsp.realpath(file).catch(() => file))
     const realPath = real === file ? undefined : real
-    if (previous && previous.content === content) {
+    const digest = digestOf(content)
+    if (previous && previous.digest === digest) {
       this.files.set(key, { ...previous, stamp: stamp!, realPath })
       return
     }
-    const state = this.factsOf(node, isRoot, content, known)
-    this.files.set(key, { ...state, role, stamp: stamp!, realPath })
+    const { pending, ...state } = this.factsOf(node, isRoot, content, known)
+    this.files.set(key, {
+      ...state,
+      digest,
+      pending:
+        pending === undefined ? undefined : { content: pending, over: content },
+      role,
+      stamp: stamp!,
+      realPath,
+    })
   }
 
   private factsOf(
@@ -737,7 +773,7 @@ export class Generator {
     isRoot: boolean,
     content: string,
     previous: FileState | undefined,
-  ): Omit<FileState, 'role'> {
+  ): ContentFacts {
     const file = node.fullPath
     const isVue = file.endsWith('.vue')
     const isPiece = pieceTypes.includes(node._fsRouteType)
@@ -748,9 +784,8 @@ export class Generator {
         // (a single-file component is never parsed: its script is not its text)
         const errors = isVue ? [] : routeFileErrors(content, file)
         return errors.length > 0
-          ? this.unparsableFacts(file, content, errors, previous)
+          ? this.unparsableFacts(file, errors, previous)
           : {
-              content,
               facts: {
                 included: true,
                 props: undefined,
@@ -766,7 +801,6 @@ export class Generator {
         style: this.style,
       })
       return {
-        content,
         pending: scaffold,
         facts: { included: true, props: undefined, routerConstructor: false },
       }
@@ -774,12 +808,11 @@ export class Generator {
 
     if (content === '' && (isVue || isPiece)) {
       // Empty pieces stay empty and unused (SPEC J1.3, J1.17)
-      return { content, facts: { included: false } }
+      return { facts: { included: false } }
     }
     if (isVue) {
       // Single-file components are pieces the generator never edits
       return {
-        content,
         facts: { included: true, props: undefined, routerConstructor: false },
       }
     }
@@ -812,13 +845,12 @@ export class Generator {
     })
 
     if (analysis.kind === 'error') {
-      return this.unparsableFacts(file, content, analysis.diagnostics, previous)
+      return this.unparsableFacts(file, analysis.diagnostics, previous)
     }
 
     if (analysis.kind === 'no-route') {
       this.warnNoRouteExport(file)
       return {
-        content,
         pending: source !== content ? source : undefined,
         facts: { included: false },
       }
@@ -831,7 +863,6 @@ export class Generator {
     }
     const output = analysis.output ?? source
     return {
-      content,
       pending: output !== content ? output : undefined,
       facts: {
         included: true,
@@ -851,10 +882,9 @@ export class Generator {
    */
   private unparsableFacts(
     file: string,
-    content: string,
     diagnostics: ReadonlyArray<FileDiagnostic>,
     previous: FileState | undefined,
-  ): Omit<FileState, 'role'> {
+  ): ContentFacts {
     const name = displayFile(file, this.root)
     const messages = diagnostics.map((d) => formatDiagnostic(name, d))
     if (!previous) {
@@ -868,7 +898,6 @@ export class Generator {
       )
     }
     return {
-      content,
       facts: previous.facts.included ? previous.facts : { included: false },
       unparsable: messages.join('\n'),
     }

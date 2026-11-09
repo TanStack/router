@@ -65,7 +65,7 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { resolveViteId } from '../utils'
+import { escapeRegExp, resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
 import type {
   CompileOutcome,
@@ -141,6 +141,19 @@ const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
 const DEPENDENCY_SCRIPT_RE =
   /^[^?]*[\\/]node_modules[\\/].*\.[cm]?[tj]sx?(?:$|\?)/
 
+/**
+ * The optimizer's bundles of an app: files of Vite's resolved `cacheDir`
+ * (`node_modules/.vite` by default, or wherever the app keeps it), the
+ * dependencies of `DEPENDENCY_ID_RE` wherever they are written. `script`:
+ * its script modules only (`DEPENDENCY_SCRIPT_RE`).
+ */
+function cacheDirRe(cacheDir: string, script = false): RegExp {
+  const dir = escapeRegExp(normalizePath(cacheDir).replace(/\/$/, ''))
+  return new RegExp(
+    script ? `^${dir}/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)` : `^${dir}/`,
+  )
+}
+
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
@@ -156,6 +169,9 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ASSET_FILE_RE,
   ASSET_QUERY_RE,
 ]
+
+/** How many dependents of one file change `changedDependents` transforms at once. */
+const DEPENDENT_TRANSFORMS = 128
 
 const readAwaitingAdd = (awaitingAdd: Map<string, Set<string>>) =>
   collectionSizes({ awaitingAdd })
@@ -174,14 +190,15 @@ function toDevSpecifier(id: string, root: string): string {
 
 /**
  * The source entry of a pre-bundled dependency, when `id` is the dependency
- * optimizer's bundle (`node_modules/.vite/deps/x.js?v=…`): the optimizer
+ * optimizer's bundle (`<cacheDir>/deps/x.js?v=…`, the optimizer's own
+ * test: the app may keep its `cacheDir` anywhere): the optimizer
  * resolves a dependency to its bundle before the bundle is written, so facts
  * read through that path would see a missing module; the package's own entry
  * is what the dependency is (deterministic, and stable across re-optimization).
  */
 function unoptimizedDependency(environment: Environment, id: string): string {
   const optimizer = (environment as DevEnvironment).depsOptimizer
-  if (!optimizer || !id.includes('/node_modules/.vite/')) {
+  if (!optimizer?.isOptimizedDepFile(id)) {
     return id
   }
   const file = id.split('?')[0]!
@@ -300,7 +317,9 @@ export function startCompilerPlugin(
     root: string
     command: 'serve' | 'build'
     bundledDev: boolean
+    cacheDir: string
   }): Session => {
+    const cached = cacheDirRe(config.cacheDir)
     const { startConfig, resolvedStartConfig } = opts.getConfig()
     const s: Session = {
       start: new StartCompilerSession({
@@ -322,10 +341,11 @@ export function startCompilerPlugin(
           const load = virtualLoaders.get(env)
           return load ? load(id).catch(() => null) : null
         },
-        // pre-bundled dependencies (a Start library declaring the framework
-        // as a peer is never pre-bundled): what the optimizer metadata maps
-        // back to a source entry is read there (`unoptimizedDependency`)
-        opaque: (p) => normalizePath(p).includes('/node_modules/.vite/'),
+        // pre-bundled dependencies, in the app's `cacheDir` (a Start library
+        // declaring the framework as a peer is never pre-bundled): what the
+        // optimizer metadata maps back to a source entry is read there
+        // (`unoptimizedDependency`)
+        opaque: (p) => cached.test(normalizePath(p)),
         label: 'start:vite',
       }),
       bundledDev: config.bundledDev,
@@ -468,29 +488,65 @@ export function startCompilerPlugin(
    * hot-apply (a route tree, accepted by nothing) and so a full reload,
    * e.g. after a route file gained an export. The comparison is of the
    * compiler's output, not Vite's (import analysis stamps `?t=` on the
-   * imports of changed modules).
+   * imports of changed modules). The dependents are transformed
+   * `DEPENDENT_TRANSFORMS` at a time (an export added to a shared module
+   * re-plans each of its importers: their waits overlap, and the modules
+   * in flight at once stay few); the result keeps their order.
+   *
+   * An unchanged dependent stays invalidated (soft: its next request reuses
+   * this transform): Vite's graph, not the comparison, says whether what a
+   * module runner holds is current. Another file's hot update may have
+   * invalidated the dependent meanwhile (Vite keeps a transform that an HMR
+   * invalidation overtook), and a runner whose copy failed to load (an
+   * import was missing) is not told when the file is back.
    */
   const changedDependents = async (
     environment: DevEnvironment,
     dependents: Array<EnvironmentModuleNode>,
   ): Promise<Array<EnvironmentModuleNode>> => {
-    const changed: Array<EnvironmentModuleNode> = []
-    for (const node of dependents) {
-      if (node.id !== null) {
+    const unchanged: Array<boolean> = []
+    let next = 0
+    const transformNext = async (): Promise<void> => {
+      while (next < dependents.length) {
+        const i = next++
+        const node = dependents[i]!
+        if (node.id === null) {
+          continue
+        }
         // Vite's own propagation of the file change may have cleared the
         // node's transform result already; the compiler's last output is
         // what the page holds
         const key = `${environment.name}\0${node.id}`
         const previous = digestOf(node.id, key)
-        if (previous !== undefined) {
-          await environment.transformRequest(node.url).catch(() => null)
-          if (digestOf(node.id, key) === previous) {
-            continue
-          }
+        if (previous === undefined) {
+          continue
         }
+        await environment.transformRequest(node.url).catch(() => null)
+        unchanged[i] = digestOf(node.id, key) === previous
       }
-      changed.push(node)
     }
+    await Promise.all(
+      Array.from(
+        { length: Math.min(DEPENDENT_TRANSFORMS, dependents.length) },
+        transformNext,
+      ),
+    )
+    // once every transform ended: an invalidation reaches the importers,
+    // and Vite drops a transform it overtook (compiled again on request)
+    const changed: Array<EnvironmentModuleNode> = []
+    dependents.forEach((node, i) => {
+      if (unchanged[i]) {
+        environment.moduleGraph.invalidateModule(
+          node,
+          undefined,
+          undefined,
+          false,
+          true,
+        )
+      } else {
+        changed.push(node)
+      }
+    })
     return changed
   }
 
@@ -691,6 +747,8 @@ export function startCompilerPlugin(
     id: { include: Array<RegExp>; exclude: Array<RegExp> }
     code?: RegExp
   } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
+  /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
+  const ownExclude: Array<RegExp> = [ASSET_QUERY_RE, DEPENDENCY_ID_RE]
 
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   const watchingEnv = opts.environments[0]?.name
@@ -775,7 +833,12 @@ export function startCompilerPlugin(
             root: config.root,
             command: config.command,
             bundledDev: !!config.experimental.bundledDev,
+            cacheDir: config.cacheDir,
           })
+          // the optimizer's bundles are dependencies wherever the app keeps
+          // them: a custom `cacheDir` is outside every `node_modules`
+          dependencyFilter.id.include.push(cacheDirRe(config.cacheDir, true))
+          ownExclude.push(cacheDirRe(config.cacheDir))
           const text = dependencyTextFilter(session.start.ip)
           if (text) {
             dependencyFilter.code = text
@@ -967,7 +1030,7 @@ export function startCompilerPlugin(
         filter: {
           id: {
             include: TRANSFORM_ID_REGEX,
-            exclude: [ASSET_QUERY_RE, DEPENDENCY_ID_RE],
+            exclude: ownExclude,
           },
         },
         handler: compileTransform,

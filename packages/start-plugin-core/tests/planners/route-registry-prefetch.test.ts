@@ -43,8 +43,11 @@ const config = {
   },
 }
 
-function setup(routerConstructor: Record<string, boolean>) {
-  const memory = new MemoryHost(files, { recognizer: startRecognizer() })
+function setup(
+  routerConstructor: Record<string, boolean>,
+  appFiles: Record<string, string> = files,
+) {
+  const memory = new MemoryHost(appFiles, { recognizer: startRecognizer() })
   const reads: Array<string> = []
   const entries = { ...routerConstructor }
   const routes: NonNullable<HostServices['routes']> = {
@@ -119,6 +122,45 @@ describe('a route file the registry vouches for', () => {
       t.memory.caches,
     )
     expect(t.reads).toContain(OWN)
+  })
+})
+
+describe('a registry change no invalidation reports', () => {
+  // (Vite `build --watch`: the registry publishes without a dev server to
+  // invalidate) the next compile of the tree checks its registry entries
+  it('makes the plan stale on its next hit', async () => {
+    const SECRET = 'SECRET_HANDLER_BODY'
+    const app = {
+      [TREE]: `import { Route as OwnRoute } from './routes/own'
+export const routeTree = [OwnRoute.update({})]
+export const fn = OwnRoute.handler(async () => '${SECRET}')
+`,
+      [OWN]: `import { createServerFn } from '@tanstack/react-start'
+export const Route = createServerFn()
+`,
+    }
+    const { compileModule } = await import('@tanstack/router-utils/compiler')
+    const compile = async (t: ReturnType<typeof setup>) =>
+      (await compileModule(
+        {
+          id: TREE,
+          code: app[TREE],
+          env: clientEnv,
+          planners: t.planners,
+          config,
+          wantMap: false,
+        },
+        t.host,
+        t.memory.caches,
+      ))!.code
+    const t = setup({ [OWN]: true }, app)
+    expect(await compile(t)).toContain(SECRET)
+    expect(t.reads).not.toContain(OWN)
+    t.entries[OWN] = false
+    const out = await compile(t)
+    expect(t.reads).toContain(OWN)
+    expect(out).not.toContain(SECRET)
+    expect(out).toBe(await compile(setup({ [OWN]: false }, app)))
   })
 })
 

@@ -634,10 +634,15 @@ function renderDerived(
     render: () => void
   }
   const pieces: Array<Piece> = []
+  // in derived outputs, after-header units follow the included import statements
+  let importsEnd = -1
   for (const item of items) {
     const inc = includedUnitsOf(plan, item, included, placement, true)
     if (inc.size === 0) {
       continue
+    }
+    if (item.kind === 'ImportDeclaration') {
+      importsEnd = Math.max(importsEnd, item.range.end)
     }
     const recipe = statementRecipe(item, units, inc, false, code)
     if (recipe === 'drop') {
@@ -662,16 +667,6 @@ function renderDerived(
         }
       },
     })
-  }
-  // in derived outputs, after-header units follow the included import statements
-  let importsEnd = -1
-  for (const item of items) {
-    if (
-      item.kind === 'ImportDeclaration' &&
-      includedUnitsOf(plan, item, included, placement, true).size > 0
-    ) {
-      importsEnd = Math.max(importsEnd, item.range.end)
-    }
   }
   for (const a of anchored) {
     const pos =
@@ -839,8 +834,6 @@ class Renderer {
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
-  private readonly refByStart = new Map<number, ClassifiedRef>()
-  /** Whether an offset starts a statement of a statement list. */
   /** Per offset: the statement list a statement starting there stands in (`program`, `nested`), or none. */
   private readonly statementStarts = new Map<
     number,
@@ -850,13 +843,7 @@ class Renderer {
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
-  ) {
-    for (const r of plan.t1.refs.all) {
-      if (r.kind !== 'implicitJsxFactory') {
-        this.refByStart.set(r.range.start, r)
-      }
-    }
-  }
+  ) {}
 
   begin(output: OutputId, importerId: string, edges: Array<EdgeRecord>): void {
     this.output = output

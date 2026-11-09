@@ -111,6 +111,40 @@ export async function fingerprintCurrent(
   }
 }
 
+/**
+ * The answers a validation takes as current: resolutions at an unchanged
+ * `fileSetVersion`, raw facts at an unchanged `RawFactsCache.version`.
+ */
+export interface StandingAnswers {
+  resolutions: boolean
+  facts: boolean
+}
+
+/**
+ * Whether every fingerprint is still current; the standing answers are not
+ * asked again. A route-registry digest is always asked (a synchronous
+ * read): a registry publication reaches `invalidate` only on a dev server
+ * (a watch build sees it here).
+ */
+export async function fingerprintsCurrent(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  src: FingerprintSource,
+  standing: StandingAnswers,
+): Promise<boolean> {
+  // every fingerprint at once: the checks are independent reads
+  const checks: Array<Promise<boolean>> = []
+  for (const fp of fps) {
+    const skip =
+      fp.kind === 'resolution'
+        ? standing.resolutions
+        : fp.kind !== 'route-registry' && standing.facts
+    if (!skip) {
+      checks.push(fingerprintCurrent(fp, src))
+    }
+  }
+  return (await Promise.all(checks)).every((ok) => ok)
+}
+
 interface DependentEntry {
   key: PlanKey
   inFlight: boolean
@@ -280,22 +314,15 @@ export class DependencyLedger {
   }
 
   /**
-   * Whether every recorded fact is still current. Resolutions are skipped
-   * when `fileSetCurrent` (no file appeared or disappeared since the
-   * attempt started: the resolver's answers stand).
+   * Whether every recorded fact is still current. `standing`: what moved
+   * nothing since the attempt started (no file appeared or disappeared: the
+   * resolver's answers stand; no raw fact went stale: the facts read stand).
    */
-  async validateSnapshot(
+  validateSnapshot(
     src: FingerprintSource,
-    fileSetCurrent = false,
+    standing: StandingAnswers,
   ): Promise<boolean> {
-    const checks: Array<Promise<boolean>> = []
-    for (const fp of this.entries) {
-      if (fileSetCurrent && fp.kind === 'resolution') {
-        continue
-      }
-      checks.push(fingerprintCurrent(fp, src))
-    }
-    return (await Promise.all(checks)).every((ok) => ok)
+    return fingerprintsCurrent(this.entries, src, standing)
   }
 
   /** The plan is published: its rows replace the key's previous plan's. */
@@ -328,6 +355,8 @@ export interface CacheEntry {
   plan: EmitPlan
   /** The `fileSetVersion` the plan's resolutions were last validated at. */
   resolvedAt: number
+  /** The `RawFactsCache.version` the plan's raw facts were last validated at. */
+  factsAt: number
   /** The output whose request compiled it, and when that compile started (`Date.now()`): see `textDiffers`. */
   compiledFor: OutputId
   compiledAt: number
