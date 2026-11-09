@@ -31,7 +31,8 @@ import {
 import { isVirtualId } from './facts'
 import { registerCompilerStats } from './stats'
 import { ownEntry } from './strings'
-import { VERIFY_OUTPUTS, verifyPlan } from './verify'
+import { SELF_CHECKS, invariantWarning } from './self-checks'
+import { verifyPlan } from './verify'
 import type { CacheEntry, Settled } from './cache'
 import type { Diagnostic } from './diagnostics'
 import type {
@@ -646,13 +647,19 @@ async function runAttempt(
       }
       fallbacks = [...fallbacks, ...fresh]
     }
+    // a violated invariant of the final plan (only when the run warns: our
+    // test runs throw at the check): one warning for the module
+    const violation = plan.placement?.violation
+    if (violation !== undefined) {
+      plan.diagnostic(invariantWarning(tagOf(host), displayFile, violation))
+    }
     emitPlan = plan.freeze(rev)
     if (langFromId(input.id) === null && plan.outputs.size > 1) {
       throw new Error(
         `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
       )
     }
-    if (VERIFY_OUTPUTS) {
+    if (SELF_CHECKS) {
       verifyPlan(plan, emitPlan, input.code, identity)
     }
   }

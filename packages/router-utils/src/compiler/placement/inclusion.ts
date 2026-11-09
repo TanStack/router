@@ -5,8 +5,16 @@
  * imports what it reads from the cluster's home, which exports it; the
  * TypeScript-only specifiers follow their statement's value specifiers.
  */
-import { READ_KINDS, describeCluster, isDuplicable } from './clusters'
+import { invariantViolated } from '../self-checks'
+import {
+  READ_KINDS,
+  clusterRange,
+  describeCluster,
+  isDuplicable,
+  namesOf,
+} from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
+import type { InvariantViolation } from '../self-checks'
 import type { ReadIndex } from './reads'
 import type { Roots } from './settle'
 import type { Homes } from './homes'
@@ -24,6 +32,8 @@ export interface Inclusion {
   exportsNeeded: Map<OutputId, Set<SymbolId>>
   /** Type units the env module drops; every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
+  /** The first violated invariant (only when the run warns: `self-checks.ts`). */
+  violation: InvariantViolation | undefined
 }
 
 export function includeAndImport(
@@ -170,43 +180,62 @@ export function includeAndImport(
       droppedTypeUnits.add(u)
     }
   })
-  if (process.env.NODE_ENV !== 'production') {
-    // a declaration with an identity (an object, array, class, call result,
-    // regex, a function used as a constructor or sentinel) or a written one
-    // exists once: in at most one output that imports from the env module (a
-    // provider output copies). Whatever placement duplicates is functions
-    // and primitives nothing writes (`isDuplicable`): the copy of an
-    // extracted export, the duplicate home and the copies following readers
-    // all decide with it; this counts the result.
+  // Invariants (`self-checks.ts`: they throw in our tests and warn
+  // elsewhere). They exist to catch compiler bugs and can go once we trust
+  // the compiler's exhaustiveness.
+  let violation: InvariantViolation | undefined
+  // A declaration with an identity (an object, array, class, call result,
+  // regex, a function used as a constructor or sentinel) or a written one
+  // exists once: in at most one output that imports from the env module (a
+  // provider output copies). Whatever placement duplicates is functions and
+  // primitives nothing writes (`isDuplicable`): the copy of an extracted
+  // export, the duplicate home and the copies following readers all decide
+  // with it; this counts the result. One pass counts each cluster's holders;
+  // only a cluster held twice is judged.
+  let duplicates = false
+  for (const h of home.values()) {
+    if (h === 'duplicate') {
+      duplicates = true
+      break
+    }
+  }
+  if (duplicates) {
+    const holders = new Uint32Array(clusters.length)
+    for (const [o, set] of included) {
+      if (outputs.get(o)?.kind === 'provider') {
+        continue
+      }
+      for (const c of set) {
+        holders[c]!++
+      }
+    }
     const liveInEnv = (ref: { range: { start: number } }) =>
       !graph.treeOf('env').isErasedAt(ref.range.start)
-    let duplicates = false
-    for (const h of home.values()) {
-      if (h === 'duplicate') {
-        duplicates = true
+    for (const cl of clusters) {
+      if (
+        holders[cl.id]! > 1 &&
+        cl.kind === 'declaration' &&
+        !isDuplicable(cl, t1, liveInEnv)
+      ) {
+        const outs = [...included]
+          .filter(
+            ([o, set]) => set.has(cl.id) && outputs.get(o)?.kind !== 'provider',
+          )
+          .map(([o]) => o)
+        violation = invariantViolated({
+          effect: `${namesOf(input, cl) ?? 'a value'} may exist twice, with separate state in two chunks`,
+          detail: `placement: ${describeCluster(input, cl)}, an identity or state, is declared in ${outs.length} outputs: ${outs.join(', ')}`,
+          range: clusterRange(input, cl),
+        })
         break
       }
     }
-    for (const cl of duplicates ? clusters : []) {
-      if (cl.kind !== 'declaration' || isDuplicable(cl, t1, liveInEnv)) {
-        continue
-      }
-      const holders: Array<OutputId> = []
-      for (const [o, set] of included) {
-        if (set.has(cl.id) && outputs.get(o)?.kind !== 'provider') {
-          holders.push(o)
-        }
-      }
-      if (holders.length > 1) {
-        throw new Error(
-          `placement: ${describeCluster(input, cl)}, an identity or state, is declared in ${holders.length} outputs: ${holders.join(', ')}`,
-        )
-      }
-    }
-    // a static output (an extracted export's module) never reads, at its
-    // evaluation (its own text, or a function it calls then), a non-copyable
-    // binding the env module keeps: the roots settled with such readers
-    // rooted in the env module (`readsKeptEagerly`)
+  }
+  // A static output (an extracted export's module) never reads, at its
+  // evaluation (its own text, or a function it calls then), a non-copyable
+  // binding the env module keeps: the roots settled with such readers rooted
+  // in the env module (`readsKeptEagerly`).
+  const staticOutputRead = (): InvariantViolation | undefined => {
     for (const [o, decl] of outputs) {
       if (decl.kind !== 'export') {
         continue
@@ -230,15 +259,19 @@ export function includeAndImport(
               clusters[d]!.kind !== 'import' &&
               home.get(d) === 'env'
             ) {
-              throw new Error(
-                `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
-              )
+              return invariantViolated({
+                effect: `a split module may read ${namesOf(input, clusters[d]!) ?? 'a value'} before it exists`,
+                detail: `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
+                range: ref.range,
+              })
             }
           }
         }
       }
     }
+    return undefined
   }
+  violation ??= staticOutputRead()
 
   // ---- imports and the exports they need -----------------------------------
   const imports = new Map<OutputId, Map<OutputId, Set<SymbolId>>>()
@@ -319,5 +352,5 @@ export function includeAndImport(
     }
   }
 
-  return { included, imports, exportsNeeded, droppedTypeUnits }
+  return { included, imports, exportsNeeded, droppedTypeUnits, violation }
 }

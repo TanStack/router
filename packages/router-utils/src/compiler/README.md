@@ -348,7 +348,10 @@ nothing per compile.
   the outputs that import from the env module, an extracted export's module never reads a binding of the env
   module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
   nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
-  the core's own config); unset, it costs one boolean per compile.
+  the core's own config); unset, it costs one boolean per compile. It is the one switch of the compiler's self-checks
+  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`) throws;
+  unset (users' dev servers, builds and their own tests), placement still checks its invariants and a violation is one
+  `internal-invariant` warning for the module (an internal compiler error, the output may be wrong, please report it).
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
   approximate bytes in a process-global registry, held through a `WeakRef` and read by a function outside the owner's

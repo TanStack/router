@@ -5,10 +5,8 @@
  * by anything that stores a `SymbolId`.
  */
 import { BindingFlags } from 'yuku'
+import { SELF_CHECKS } from './self-checks'
 import type { Binding, Scope, SourceFile } from 'yuku'
-
-/** Runs in the bundler's process only: the environment is read once, not per binding. */
-const DEV = process.env.NODE_ENV !== 'production'
 
 export type SymbolId = number & { __sym: true }
 
@@ -90,7 +88,10 @@ export class SymbolTable {
   }
 
   ofBinding(b: Binding): SymbolId {
-    if (DEV && this.file && b.file !== this.file) {
+    // our test runs only (`self-checks.ts`): every caller passes a binding of
+    // the module's own file (`bindingOf`, `referenceOf`), so it has no
+    // warning. It catches compiler bugs and can go once we trust the compiler.
+    if (SELF_CHECKS && this.file && b.file !== this.file) {
       throw new Error('SymbolTable.ofBinding: binding of another file')
     }
     return b.id as SymbolId

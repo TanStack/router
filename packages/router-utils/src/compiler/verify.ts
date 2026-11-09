@@ -1,6 +1,6 @@
 /**
  * Semantic invariants of a plan, checked on its emitted outputs. A test-time
- * safety net (`TSR_COMPILER_VERIFY=1`, read once; every test run sets it):
+ * safety net (`SELF_CHECKS`, `self-checks.ts`; every test run sets it):
  * each output is re-parsed and analysed like a module, so the checks see
  * what the bundler sees, not what placement believes. Unset, the only cost
  * is one boolean per compile. A violation throws: the compile fails loudly
@@ -18,8 +18,6 @@ import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
 import type { SymbolId } from './symbols'
 import type { OutputKind } from './reach'
-
-export const VERIFY_OUTPUTS = process.env.TSR_COMPILER_VERIFY === '1'
 
 /** An output that copies what it reaches (another layer's instance of the module), not one importing from the env module. */
 const copies = (kind: OutputKind) => kind === 'provider'

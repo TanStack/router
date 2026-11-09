@@ -11,9 +11,7 @@
  *   copy run, at the start of every word run and at every punctuator
  *   character; whitespace never starts one. The scan is syntax-agnostic.
  */
-
-/** Runs in the bundler's process only: the environment is read once, not per copy. */
-const DEV = process.env.NODE_ENV !== 'production'
+import { SELF_CHECKS } from './self-checks'
 
 const SPACE = 0
 const WORD = 1
@@ -207,7 +205,10 @@ export class OutputBuilder {
   copy(start: number, end: number, edits?: ReadonlyArray<BuilderEdit>): void {
     let pos = start
     if (edits !== undefined) {
-      if (DEV) {
+      // our test runs only (`self-checks.ts`): no compiler path passes nested
+      // edits outside tests (emit copies without them), so it has no warning.
+      // It catches compiler bugs and can go once we trust the compiler.
+      if (SELF_CHECKS) {
         assertSortedEdits(edits, start, end)
       }
       for (const ed of edits) {

@@ -9,13 +9,16 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
+import { invariantViolated } from '../self-checks'
 import {
   READ_KINDS,
+  clusterRange,
   describeCluster,
   isDuplicable,
   symRefsOf,
 } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
+import type { InvariantViolation } from '../self-checks'
 import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
@@ -32,6 +35,8 @@ export interface Homes {
   derivedNeeders: Array<Array<OutputId>>
   /** `multi-writer`, `shared-writer`, `hydrate-writer`, `env-declared`. */
   fallbacks: Array<Fallback>
+  /** The first violated invariant (only when the run warns: `self-checks.ts`). */
+  violation: InvariantViolation | undefined
 }
 
 export function assignHomes(
@@ -229,16 +234,21 @@ export function assignHomes(
     }
     home.set(cl.id, shared)
   }
-  if (process.env.NODE_ENV !== 'production') {
-    // an effectful cluster the env module keeps for a derived output is an
-    // env root: decided when the roots settled, so that what it reads was
-    // live when the moving set was decided
-    for (const cl of clusters) {
-      if (home.get(cl.id) === 'env' && cl.effectful && !liveEnv.has(cl.id)) {
-        throw new Error(
-          `placement: ${describeCluster(input, cl)}, which has effects, is homed in the env module and is not live there`,
-        )
-      }
+  // Invariant (`self-checks.ts`: throws in our tests, warns elsewhere): an
+  // effectful cluster the env module keeps for a derived output is an env
+  // root, decided when the roots settled, so that what it reads was live when
+  // the moving set was decided. It exists to catch compiler bugs and can go
+  // once we trust the compiler's exhaustiveness.
+  let violation: InvariantViolation | undefined
+  for (const cl of clusters) {
+    if (home.get(cl.id) === 'env' && cl.effectful && !liveEnv.has(cl.id)) {
+      violation = invariantViolated({
+        effect:
+          'code with side effects may read a value that was moved out of the module or removed',
+        detail: `placement: ${describeCluster(input, cl)}, which has effects, is homed in the env module and is not live there`,
+        range: clusterRange(input, cl),
+      })
+      break
     }
   }
 
@@ -381,5 +391,5 @@ export function assignHomes(
     }
   }
 
-  return { home, created, derivedNeeders, fallbacks }
+  return { home, created, derivedNeeders, fallbacks, violation }
 }
