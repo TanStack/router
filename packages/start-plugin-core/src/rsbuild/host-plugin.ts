@@ -724,6 +724,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 ipEnv.replay(canonicalResource(module.resource), ip)
               }
             }
+            // a module compiled as its own violation before the edges of a
+            // restored exempt importer were replayed gets the real module
+            for (const resource of env.persistsModules ? env.compiled : []) {
+              if (ipEnv.selfAllowedNow(canonicalResource(resource))) {
+                unjudged.add(resource)
+              }
+            }
             const unconfirmed = new Set<string>()
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource

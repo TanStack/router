@@ -769,6 +769,23 @@ class ImportProtectionEnv {
   }
 
   /**
+   * Whether a module this session compiled as its own violation is now
+   * served as it is (`selfAllowed`): an importer Rspack restored from the
+   * persistent cache, whose edges were replayed after the module compiled,
+   * is exempt. The host builds it again.
+   */
+  selfAllowedNow(importerId: string): boolean {
+    for (const key of this.byImporter.get(importerId) ?? []) {
+      for (const v of this.modules.get(key)?.violations.values() ?? []) {
+        if (v.self && v.importerId === importerId && this.selfAllowed(v)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
    * Whether an Rspack module's record holds what this session must judge
    * again (a module restored from the persistent cache): in dev its violations
    * (another session reported them); with `allowImport`, its being its own
