@@ -39,12 +39,19 @@ export interface RouterRound {
   }>
 }
 
-export function routerPlanner(): Planner {
+declare module '@tanstack/router-utils/compiler' {
+  interface PlannerData {
+    /** The router planner's `PlannerData` (`ROUTER_PLANNER`): its config and its route-registry entry. */
+    router: { config: RouterPlannerConfig; prefetch: RouteEntryFacts | null }
+  }
+}
+
+export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
   return {
     name: ROUTER_PLANNER,
     tier: 1,
     gate: (t0, ctx) =>
-      routerPlannerApplies(ctx.config as RouterPlannerConfig) &&
+      routerPlannerApplies(ctx.config) &&
       t0.exports.some((e) => e.kind === 'local' && e.name === 'Route'),
     prefetch(_t0, ctx) {
       // the route id comes from the generator's registry: a dependency
@@ -58,8 +65,9 @@ export function routerPlanner(): Planner {
       return Promise.resolve()
     },
     plan(ctx) {
-      const cfg = ctx.config as RouterPlannerConfig
-      const entry = ctx.prefetched.get(ROUTER_PLANNER) as RouteEntryFacts | null
+      const cfg = ctx.config
+      // (the prefetch always stores the entry)
+      const entry = ctx.prefetched.get(ROUTER_PLANNER) ?? null
       const recognition = recognizeRoute(ctx, entry)
       const route = recognition.route
       for (const d of unownedRouteOptions(ctx, cfg, route)) {

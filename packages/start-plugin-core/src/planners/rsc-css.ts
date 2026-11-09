@@ -32,7 +32,14 @@ const RSC_CSS_OPTIONS_KEY = '__tanstackStartRscCss'
 const text = (t: string): Frag => ({ k: 'text', parts: [t] })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
 
-export function rscCssPlanner(): Planner {
+declare module '@tanstack/router-utils/compiler' {
+  interface PlannerData {
+    /** The rsc-css planner's `PlannerData` (`RSC_CSS`). */
+    'rsc-css': { config: RscCssConfig }
+  }
+}
+
+export function rscCssPlanner(): Planner<typeof RSC_CSS> {
   const table = startRecognizer()
   return {
     name: RSC_CSS,
@@ -47,7 +54,7 @@ export function rscCssPlanner(): Planner {
         t0.source.code,
       ),
     // (registered with its config: the hosts' `rsc` option)
-    plan: (ctx) => planRscCss(ctx, ctx.config as RscCssConfig, table),
+    plan: (ctx) => planRscCss(ctx, ctx.config, table),
   }
 }
 

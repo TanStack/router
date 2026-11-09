@@ -314,7 +314,10 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
    derived modules, `setFacts`, `diagnostic`), and an optional per-output `policy`.
 2. Never walk the whole AST when a semantic query from the import table or a binding's references answers the
    question; never keep a Yuku node beyond `plan()`; facts must be JSON data.
-3. Slot it into the host's planner array at its fixed position; read its config through `ctx.config`.
+3. Declare its `PlannerData` entry (`host.ts`: the types of its config, prefetch result and facts, by its name) next
+   to it with `declare module '@tanstack/router-utils/compiler'`, and type it `Planner<typeof NAME>`: `ctx.config`,
+   `ctx.prefetched.get(name)`, `setFacts` and `facts.planners[name]` then carry those types, for the planner and for the
+   hosts reading its facts. Slot it into the host's planner array at its fixed position.
 4. Add core unit tests with a toy planner if the core needs a new capability (and keep the invariants above), and
    oracle tests through the public plugins for the behaviour.
 

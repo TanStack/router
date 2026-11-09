@@ -17,6 +17,7 @@ import { START_ENV, startEnvPlanner } from '../../src/planners'
 import { NAME, shape } from '../generated-names'
 import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
 import type {
+  CompileConfig,
   CompileOutput,
   EnvInfo,
   PlanContext,
@@ -253,7 +254,7 @@ export const Page = () => (useHydrated() ? <UI.Button /> : null)
       '/app/src/more.tsx': `export * from './last'\n`,
       '/app/src/last.tsx': `export const Other = 1\n`,
     }
-    const config = {
+    const config: CompileConfig = {
       configKey: 'c',
       perPlanner: {
         hydrate: { root: ROOT },

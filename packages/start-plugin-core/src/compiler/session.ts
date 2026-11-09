@@ -53,7 +53,7 @@ import type { SfcLocate } from './vue'
 import type { EdgeModuleIds } from '../import-protection/edge-modules'
 import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { ImportEdgesConfig } from '../planners/edges'
-import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
+import type { RscCssConfig, StartEnvConfig } from '../planners'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ImportProtectionOptions } from '../schema'
@@ -333,8 +333,8 @@ export class StartCompilerSession {
           [START_ENV]: startEnv,
           [HYDRATE_PLANNER]: hydrate,
           [RSC_CSS]: rscCss,
-          [ROUTER_PLANNER]: router,
-        } as Record<string, unknown>,
+          [ROUTER_PLANNER]: router ?? undefined,
+        },
       }
       this.configs.set(key, config)
     }
@@ -381,7 +381,8 @@ export class StartCompilerSession {
               perPlanner: {
                 [IMPORT_EDGES_PLANNER]: env.type,
                 [START_ENV]: {
-                  ...(config.perPlanner[START_ENV] as StartEnvConfig),
+                  // (`configFor` sets it)
+                  ...config.perPlanner[START_ENV]!,
                   late: true,
                 } satisfies StartEnvConfig,
               },
@@ -671,6 +672,6 @@ const lateConfigKey = (configKey: string) => `late\u0000${configKey}`
 export function serverFnFactsOf(
   out: CompileOutput,
 ): Array<ServerFnFact> | null {
-  const facts = out.facts.planners[START_ENV] as StartEnvFacts | undefined
+  const facts = out.facts.planners[START_ENV]
   return facts && facts.serverFns.length > 0 ? facts.serverFns : null
 }

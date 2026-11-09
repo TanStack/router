@@ -263,7 +263,7 @@ function readGroupings(
  * package. `entry` is the file's route registry entry (its route id).
  */
 export function recognizeRoute(
-  ctx: PlanContext,
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
   entry: RouteEntryFacts | null,
 ): RouteRecognition {
   const { analysis, t1, symbols, identity } = ctx
@@ -335,12 +335,10 @@ export function recognizeRoute(
     const foreign = foreignFactory(analysis, factoryNode)
     if (foreign) {
       warnings.push(
-        foreignFactoryDiagnostic(
-          ctx.config as RouterPlannerConfig,
-          fileName,
-          foreign,
-          { start: factoryNode.start, end: factoryNode.end },
-        ),
+        foreignFactoryDiagnostic(ctx.config, fileName, foreign, {
+          start: factoryNode.start,
+          end: factoryNode.end,
+        }),
       )
     } else if (importsFactory(analysis)) {
       warn(

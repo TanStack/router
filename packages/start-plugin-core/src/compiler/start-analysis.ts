@@ -26,7 +26,6 @@ import {
   isStartValue,
   takesServerCode,
 } from './prefetch'
-import type { StartPrefetch } from './prefetch'
 import type {
   AbstractValue,
   ModuleAnalysis,
@@ -149,7 +148,7 @@ export function startAnalysisOf(
     return hit
   }
   // (rsc-css reads start-env's prefetch: both planners run where the Start compiler does)
-  const prefetch = ctx.prefetched.get('start-env') as StartPrefetch | undefined
+  const prefetch = ctx.prefetched.get('start-env')
   const file = ctx.analysis.file
   const values = new ValueAnalysis(file, {
     table,

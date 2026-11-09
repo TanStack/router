@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs'
 import { START_ENV } from '../planners'
 import { Locator } from '../import-protection/locate'
-import type { LateEscape, StartEnvFacts, VueHoist } from '../planners'
+import type { LateEscape, VueHoist } from '../planners'
 import type {
   CompileOutput,
   Diagnostic,
@@ -76,7 +76,7 @@ export function vueReport(
   diagnostics: Array<Diagnostic>
   moved: Map<Diagnostic, number>
 } | null {
-  const facts = out.facts.planners[START_ENV] as StartEnvFacts | undefined
+  const facts = out.facts.planners[START_ENV]
   const escapes = new Map<number, LateEscape>()
   for (const e of facts?.lateEscapes ?? []) {
     escapes.set(e.at, e)

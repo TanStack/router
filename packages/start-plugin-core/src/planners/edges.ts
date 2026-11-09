@@ -77,7 +77,7 @@ import type {
 } from '../import-protection/violations'
 
 /**
- * A host's import rewrite (`HostServices.services.importRewrite`): the
+ * A host's import rewrite (`PlannerServices.importRewrite`): the
  * specifiers the bundler turns an import of `specifier` with `names` into
  * (Rsbuild `source.transformImport`), or null when it leaves it alone. The
  * specifier rule judges the raw specifier; file and marker rules judge the
@@ -253,7 +253,23 @@ function renderedUse(
 /** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
 const KNOWN_PACKAGES = startRecognizer()
 
-export function importEdgesPlanner(ip: ImportProtection): Planner {
+declare module '@tanstack/router-utils/compiler' {
+  interface PlannerData {
+    /** The import-edges planner's `PlannerData` (`IMPORT_EDGES_PLANNER`): facts written by its policy. */
+    'import-edges': {
+      config: ImportEdgesConfig | undefined
+      facts: ImportEdgesFacts
+    }
+  }
+  interface PlannerServices {
+    /** Rsbuild's `source.transformImport`, as the host applies it. */
+    importRewrite?: ImportRewrite | undefined
+  }
+}
+
+export function importEdgesPlanner(
+  ip: ImportProtection,
+): Planner<typeof IMPORT_EDGES_PLANNER> {
   const { config } = ip
   const isAppFile = (path: string) =>
     !path.includes('/node_modules/') && !path.startsWith('\0')
@@ -281,7 +297,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       const path = ctx.identity.path
       // the environment's type (`ImportEdgesConfig`): a module importing
       // nothing can still be its own violation there
-      const envType = ctx.config as ImportEdgesConfig | undefined
+      const envType = ctx.config
       if (
         t0.imports.length === 0 &&
         t0.reexports.length === 0 &&
@@ -299,9 +315,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     plan() {},
     async policy(plan, output, edges, ctx) {
       const env = ip.env(ctx.env.name, ctx.env.type)
-      const facts = ((plan.facts.planners[IMPORT_EDGES_PLANNER] as
-        | ImportEdgesFacts
-        | undefined) ??= { violations: {} })
+      const facts = (plan.facts.planners[IMPORT_EDGES_PLANNER] ??= {
+        violations: {},
+      })
       if (output === 'env' && plan.facts.marker === 'conflict') {
         ctx.diagnostic(markerConflict(ctx))
       }
@@ -323,11 +339,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       const typescript =
         ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx'
 
-      const rewriter = (
-        ctx.host.services as
-          | { importRewrite?: ImportRewrite | undefined }
-          | undefined
-      )?.importRewrite
+      const rewriter = ctx.host.services?.importRewrite
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
         if (e.provenance.origin === 'runtime' || e.typeOnly) {
           return null

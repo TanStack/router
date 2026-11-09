@@ -14,6 +14,7 @@ import type { CodeFrame, OriginalLocation } from './locate'
 import type { IndexedEdge, Trace } from './graph-trace'
 import type { PatternImport } from './pattern-imports'
 import type { AllowImportInfo, TraceStep, ViolationInfo } from './trace'
+import type { PlanFacts } from '@tanstack/router-utils/compiler'
 
 export const IMPORT_EDGES_PLANNER = 'import-edges'
 
@@ -137,12 +138,10 @@ export interface ImportEdgesFacts {
 
 /** The violations of one compiled output (`CompileOutput.facts`, `CompileOutput.output`). */
 export function violationsOf(output: {
-  facts: { planners: Record<string, unknown> }
+  facts: Pick<PlanFacts, 'planners'>
   output: string
 }): Array<EdgeViolation> {
-  const facts = output.facts.planners[IMPORT_EDGES_PLANNER] as
-    | ImportEdgesFacts
-    | undefined
+  const facts = output.facts.planners[IMPORT_EDGES_PLANNER]
   return facts?.violations[output.output] ?? []
 }
 
