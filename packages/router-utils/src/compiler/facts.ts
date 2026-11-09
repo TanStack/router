@@ -38,9 +38,9 @@ export interface TargetFacts {
   esm: boolean
   /** Own top-level effects or a bare import (transitive classification is the consumer's). */
   effectful: boolean
-  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.codeEffects`). */
+  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.effects().code`). */
   codeEffects: CodeEffects
-  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.erasedImports`; absent when none is). */
+  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.effects().erasedImports`; absent when none is). */
   erasedImports?: { client: Array<string>; server: Array<string> }
   digest: string
 }
