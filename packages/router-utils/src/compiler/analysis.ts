@@ -295,6 +295,16 @@ interface ModuleAnalysisOptions {
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /** The pure exports of known packages (`RecognizerTable.pureCalls`): their imports are pure callees. */
   pureCalls?: RecognizerTable['pureCalls']
+  /**
+   * A client compile's recognizer: its builder chains with pure arguments
+   * are no effect in the planners' purity (`builderCall`; what the client
+   * compile erases does not count). A link called on a `const` holding a
+   * builder stays an effect: a middleware's links write the options of the
+   * builder they are called on, which another link of it then reads. The
+   * server compile's purity takes none: its server-fn provider copies what
+   * it reaches, and a builder has an identity.
+   */
+  clientBuilders?: RecognizerTable
 }
 
 /** Per environment type, whether a module's own statements have effects there. */
@@ -342,7 +352,10 @@ export class ModuleAnalysis {
   readonly markers: Marker
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
+  /** The planners' purity (with a client compile's builder chains: `clientBuilders`). */
   readonly purity: PurityContext
+  /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
+  private readonly ownPurity: PurityContext
   private tier1: Tier1 | null = null
   private readonly markerSpecifiers: Record<
     string,
@@ -410,7 +423,7 @@ export class ModuleAnalysis {
         }
       }
     }
-    this.purity = {
+    const ownPurity: PurityContext = {
       file,
       comments: file.comments,
       noSideEffectCallees,
@@ -429,7 +442,14 @@ export class ModuleAnalysis {
       }
     }
     const body = file.program.body
-    seedNoSideEffectDeclarations(this.purity, noSideEffectCallees, body)
+    seedNoSideEffectDeclarations(ownPurity, noSideEffectCallees, body)
+    this.ownPurity = ownPurity
+    const client = opts.clientBuilders?.builderLinks
+      ? builderPurityOf(ownPurity, opts.clientBuilders)?.find(
+          (p) => p.env === 'client',
+        )
+      : undefined
+    this.purity = client?.ctx ?? ownPurity
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -682,7 +702,8 @@ export class ModuleAnalysis {
    * The module's own effects, classified statement by statement (raw facts
    * ask, for a module read as a target; a compile never does). `builders`:
    * the recognizer whose builder chains are no effect per environment
-   * (`RecognizerTable.builderLinks`; the planners' purity never takes them).
+   * (`RecognizerTable.builderLinks`; the planners' purity takes the client's
+   * in a client compile: `clientBuilders`).
    */
   effects(builders?: RecognizerTable): ModuleEffects {
     const file = this.file
@@ -691,7 +712,7 @@ export class ModuleAnalysis {
     const code: CodeEffects = { client: false, server: false }
     // the purity of each environment type, with its builder chains
     const envPurity = builders?.builderLinks
-      ? builderPurityOf(this.purity, builders)
+      ? builderPurityOf(this.ownPurity, builders)
       : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -705,7 +726,7 @@ export class ModuleAnalysis {
         continue
       }
       if (loadsModule(stmt)) {
-        own ||= statementHasEffects(this.purity, stmt)
+        own ||= statementHasEffects(this.ownPurity, stmt)
         continue
       }
       if (code.client && code.server) {
@@ -716,7 +737,7 @@ export class ModuleAnalysis {
         stmt.type === 'ExportDefaultDeclaration'
           ? stmt.declaration
           : stmt
-      if (statementHasEffects(this.purity, stmt)) {
+      if (statementHasEffects(this.ownPurity, stmt)) {
         own = true
         if (!envPurity) {
           code.client = code.server = true

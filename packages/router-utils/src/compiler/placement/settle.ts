@@ -262,6 +262,15 @@ export function settleRoots(
    * it. The static outputs evaluate in source order among themselves (the
    * env module re-exports them in that order), so an effect moving to
    * another static output keeps its order.
+   *
+   * Kept on purpose (a maintainers' decision): without this guarantee a
+   * declaration only split code reads whose initialiser calls a function
+   * the compiler does not know would move to the chunk as the previous
+   * splitter moved it, which saves the initial load such calls keep (four
+   * real apps load about 175 KB more than before, mostly generated data
+   * and zod schemas), but two effects sharing state the compiler cannot see
+   * (a library's store, registry or configuration) would silently run in
+   * another order. Calls known to be pure are no effect (`pureCalls`).
    */
   function effectStays(
     cl: Cluster,
