@@ -26,8 +26,7 @@ export type HydrationInteractionEvent =
   | 'pointerup'
 
 export type HydrationInteractionEvents =
-  | HydrationInteractionEvent
-  | ReadonlyArray<HydrationInteractionEvent>
+  HydrationInteractionEvent | ReadonlyArray<HydrationInteractionEvent>
 
 export type HydrationMarkerAttributes = Record<string, string | undefined>
 
