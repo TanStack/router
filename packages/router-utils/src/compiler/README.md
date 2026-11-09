@@ -191,7 +191,8 @@ directives, never license comments.
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (audited APIs of TanStack's router packages, e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue
   `defineComponent`; the router planners own the table, Start's recognizer reuses it).
-  Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
+  Tier 0 recognises imports of such an export from the package itself by binding (renamed, a namespace member, or a
+  member of a default import the recognizer lists in `pureDefaultNamespaces`: React's, a CommonJS package's exports);
   an app module re-exporting it is not followed, and no other package's purity is assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
   and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data property):
@@ -203,11 +204,10 @@ directives, never license comments.
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's
   compile erases (a server fn's handler on the client) does not count, and its reads are erased with it. Raw facts use
-  it per environment for a target's code effects (`ModuleAnalysis.effects()`); the planners of a client compile use the
-  client's (`ModuleAnalysisOptions.clientBuilders`, from `RawFactsCache.builders`), so a page-only chain can move with
-  the split chunk. Factories are recognised by binding, as `pureCalls`. A link called on a `const` holding a builder
-  stays an effect (a middleware's links write the options of the builder they are called on), and the server
-  compile's planners take no builder chain as pure.
+  it per environment for a target's code effects (`ModuleAnalysis.effects()`); the planners of a compile use their
+  environment type's (`ModuleAnalysisOptions.env`), so a page-only chain can move with the split chunk in either
+  environment. Factories are recognised by binding, as `pureCalls`. A link called on a `const` holding a builder
+  stays an effect (a middleware's links write the options of the builder they are called on).
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 

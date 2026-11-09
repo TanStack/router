@@ -293,18 +293,25 @@ interface ModuleAnalysisOptions {
   path: string
   /** Bare import specifiers that mark a module (default: 'server-only' / 'client-only'). */
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
-  /** The pure exports of known packages (`RecognizerTable.pureCalls`): their imports are pure callees. */
-  pureCalls?: RecognizerTable['pureCalls']
   /**
-   * A client compile's recognizer: its builder chains with pure arguments
-   * are no effect in the planners' purity (`builderCall`; what the client
-   * compile erases does not count). A link called on a `const` holding a
-   * builder stays an effect: a middleware's links write the options of the
-   * builder they are called on, which another link of it then reads. The
-   * server compile's purity takes none: its server-fn provider copies what
-   * it reaches, and a builder has an identity.
+   * The recognizer: the pure exports of its known packages
+   * (`RecognizerTable.pureCalls`, members of the default imports of
+   * `pureDefaultNamespaces`) are pure callees.
    */
-  clientBuilders?: RecognizerTable
+  recognizer?: RecognizerTable
+  /**
+   * A compile's environment type: the planners' purity takes the
+   * recognizer's builder chains with pure arguments as no effect there
+   * (`builderCall`; what that environment's compile erases does not count).
+   * Both types take them, so both compiles home a builder alike. A builder
+   * is one instance in every output of an environment: a call result is
+   * never copied (the server-fn provider, the module's instance in another
+   * layer, copies what it reaches whatever its purity). A link called on a
+   * `const` holding a builder stays an effect: a middleware's links write
+   * the options of the builder they are called on, which another link of it
+   * then reads. Raw reads give none (`effects()` derives each one's).
+   */
+  env?: 'client' | 'server'
 }
 
 /** Per environment type, whether a module's own statements have effects there. */
@@ -352,10 +359,12 @@ export class ModuleAnalysis {
   readonly markers: Marker
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
-  /** The planners' purity (with a client compile's builder chains: `clientBuilders`). */
+  /** The planners' purity (with a compile's builder chains: `env`). */
   readonly purity: PurityContext
   /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
   private readonly ownPurity: PurityContext
+  /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
+  private readonly builderImports: BuilderImports | null
   private tier1: Tier1 | null = null
   private readonly markerSpecifiers: Record<
     string,
@@ -381,7 +390,8 @@ export class ModuleAnalysis {
     const noSideEffectCallees = new Set<number>()
     const pureNamespaces = new Map<number, ReadonlySet<string>>()
     let namespaceImports: Set<number> | null = null
-    const pureCalls = opts.pureCalls
+    const pureCalls = opts.recognizer?.pureCalls
+    const pureDefaults = opts.recognizer?.pureDefaultNamespaces
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     this.markerSpecifiers = markers
     const imports: Array<ImportEntry> = []
@@ -400,29 +410,73 @@ export class ModuleAnalysis {
     const declarations = new Map<number, Node>()
     this.declarations = declarations
     const importLocals = new Map<number, SymbolId>()
+    // the imports of the recognizer's chain factories (`BuilderImports`),
+    // in the same pass (a record's fields are decoded on every read)
+    const chains = opts.recognizer?.builderLinks ? opts.recognizer : null
+    const chainFactories = chains && factoryTable(chains)
+    let builderImports: BuilderImports | null = null
     for (const record of file.imports) {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
-        if (record.kind === 'namespace' && !record.typeOnly) {
+        if (record.typeOnly) {
+          continue
+        }
+        const kind = record.kind
+        if (kind === 'namespace') {
           ;(namespaceImports ??= new Set()).add(local.id)
         }
+        const specifier = pureCalls || chainFactories ? record.specifier : ''
         // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
-        const pure = pureCalls && ownEntry(pureCalls, record.specifier)
-        if (pure && !record.typeOnly) {
-          if (record.kind === 'namespace') {
-            pureNamespaces.set(local.id, pure)
-          } else if (
-            record.kind === 'named' &&
-            record.name !== null &&
-            pure.has(record.name)
+        const pure = pureCalls && ownEntry(pureCalls, specifier)
+        const factories = chainFactories?.get(specifier)
+        const name = pure || factories ? record.name : null
+        if (pure) {
+          if (
+            kind === 'namespace' ||
+            (name === 'default' && pureDefaults?.has(specifier) === true)
           ) {
+            pureNamespaces.set(local.id, pure)
+          } else if (kind === 'named' && name !== null && pure.has(name)) {
             noSideEffectCallees.add(local.id)
+          }
+        }
+        if (factories) {
+          builderImports ??= {
+            table: chains!,
+            factories: new Map(),
+            namespaces: new Map(),
+          }
+          if (kind === 'namespace') {
+            builderImports.namespaces.set(local.name, {
+              binding: local.id,
+              factories,
+            })
+          } else if (kind === 'named' && name !== null) {
+            const factory = ownEntry(factories, name)
+            // (a chain's: other kinds need no per-environment purity)
+            if (
+              factory !== undefined &&
+              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
+                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
+            ) {
+              builderImports.factories.set(local.name, {
+                binding: local.id,
+                kind: factory,
+              })
+            }
           }
         }
       }
     }
+    if (
+      builderImports?.factories.size === 0 &&
+      builderImports.namespaces.size === 0
+    ) {
+      builderImports = null
+    }
+    this.builderImports = builderImports
     const ownPurity: PurityContext = {
       file,
       comments: file.comments,
@@ -444,12 +498,10 @@ export class ModuleAnalysis {
     const body = file.program.body
     seedNoSideEffectDeclarations(ownPurity, noSideEffectCallees, body)
     this.ownPurity = ownPurity
-    const client = opts.clientBuilders?.builderLinks
-      ? builderPurityOf(ownPurity, opts.clientBuilders)?.find(
-          (p) => p.env === 'client',
-        )
-      : undefined
-    this.purity = client?.ctx ?? ownPurity
+    this.purity =
+      opts.env && builderImports
+        ? builderPurityOf(ownPurity, builderImports, opts.env).ctx
+        : ownPurity
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -700,19 +752,21 @@ export class ModuleAnalysis {
 
   /**
    * The module's own effects, classified statement by statement (raw facts
-   * ask, for a module read as a target; a compile never does). `builders`:
-   * the recognizer whose builder chains are no effect per environment
-   * (`RecognizerTable.builderLinks`; the planners' purity takes the client's
-   * in a client compile: `clientBuilders`).
+   * ask, for a module read as a target; a compile never does). The
+   * recognizer's builder chains are no effect per environment
+   * (`RecognizerTable.builderLinks`; the planners' purity takes the
+   * compile's environment's: `env`).
    */
-  effects(builders?: RecognizerTable): ModuleEffects {
+  effects(): ModuleEffects {
     const file = this.file
     const body = file.program.body
     let own = false
     const code: CodeEffects = { client: false, server: false }
     // the purity of each environment type, with its builder chains
-    const envPurity = builders?.builderLinks
-      ? builderPurityOf(this.ownPurity, builders)
+    const envPurity = this.builderImports
+      ? ENV_TYPES.map((env) =>
+          builderPurityOf(this.ownPurity, this.builderImports!, env),
+        )
       : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -2060,46 +2114,26 @@ function erasedImportSpecifiers(
 
 const NO_ENV_PURITY: ReadonlyArray<never> = []
 
-/**
- * The purity of each environment type with the recognizer's builder chains
- * (`ModuleAnalysis.effects`), or null when the module imports none of its
- * chain factories.
- */
-function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
-  // the imports of the recognizer's factories, by local name and binding
-  // (`BuilderPurity.factories`): `builderCall` tells a chain's
-  const factoryImports = new Map<string, { binding: number; kind: string }>()
-  const factoryNamespaces = new Map<
+/** The recognizer's chain factories a module imports, by local name and binding (`BuilderPurity.factories`, `namespaces`). */
+interface BuilderImports {
+  table: RecognizerTable
+  factories: Map<string, { binding: number; kind: string }>
+  namespaces: Map<
     string,
     { binding: number; factories: Readonly<Record<string, string>> }
-  >()
-  for (const record of purity.file.imports) {
-    const local = record.local
-    const factories =
-      local && !record.typeOnly
-        ? factoryTable(table).get(record.specifier)
-        : undefined
-    if (!local || !factories) {
-      continue
-    }
-    if (record.kind === 'namespace') {
-      factoryNamespaces.set(local.name, { binding: local.id, factories })
-    } else if (record.kind === 'named' && record.name !== null) {
-      const kind = ownEntry(factories, record.name)
-      // (a chain's: other kinds need no per-environment purity)
-      if (
-        kind !== undefined &&
-        (ownEntry(table.builderLinks!, kind) !== undefined ||
-          ownEntry(table.envOnlyKinds, kind) !== undefined)
-      ) {
-        factoryImports.set(local.name, { binding: local.id, kind })
-      }
-    }
-  }
-  if (factoryImports.size === 0 && factoryNamespaces.size === 0) {
-    return null
-  }
-  return (['client', 'server'] as const).map((env) => ({
+  >
+}
+
+const ENV_TYPES = ['client', 'server'] as const
+
+/** The purity of one environment type with the recognizer's builder chains the module imports. */
+function builderPurityOf(
+  purity: PurityContext,
+  imports: BuilderImports,
+  env: 'client' | 'server',
+) {
+  const table = imports.table
+  return {
     env,
     ctx: {
       ...purity,
@@ -2107,8 +2141,8 @@ function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
         env,
         links: table.builderLinks!,
         envOnly: table.envOnlyKinds,
-        factories: factoryImports,
-        namespaces: factoryNamespaces,
+        factories: imports.factories,
+        namespaces: imports.namespaces,
         terminal: table.terminal,
         locals: new Map<string, string>(),
         erased: [],
@@ -2116,7 +2150,7 @@ function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
     } satisfies PurityContext,
     /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */
     pending: [] as Array<Array<string>>,
-  }))
+  }
 }
 
 const factoryTables = new WeakMap<

@@ -161,14 +161,9 @@ export class RawFactsCache {
     return this.opts.markerSpecifiers
   }
 
-  /** The pure exports of the recognizer's known packages, for the analyses of compiled modules. */
-  get pureCalls(): RecognizerTable['pureCalls'] {
-    return this.opts.recognizer?.pureCalls
-  }
-
-  /** The recognizer when it has builder chains, for the analyses of client compiles (`clientBuilders`). */
-  get builders(): RecognizerTable | undefined {
-    return this.opts.recognizer?.builderLinks ? this.opts.recognizer : undefined
+  /** The recognizer every analysis of this session uses (its pure calls; a compile's builder chains). */
+  get recognizer(): RecognizerTable | undefined {
+    return this.opts.recognizer
   }
 
   markStale(path: string): void {
@@ -589,7 +584,7 @@ export class RawFactsCache {
     const analysis = new ModuleAnalysis(parsed.file, parsed.source, {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
-      pureCalls: this.opts.recognizer?.pureCalls,
+      recognizer: this.opts.recognizer,
     })
     return this.fromAnalysis(analysis)
   }
@@ -600,7 +595,7 @@ export class RawFactsCache {
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()
-    const effects = analysis.effects(this.opts.recognizer)
+    const effects = analysis.effects()
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS

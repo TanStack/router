@@ -8,8 +8,9 @@
  * effects, with a warning). Learned from real apps: Vue example routes
  * declaring `defineComponent({…})` above `validateSearch`, and `lazy()`
  * consts of a React app (converit, 11 of 12 kept). Recognised by binding to
- * the framework package's export: a renamed import and a namespace member
- * are recognised; an impure argument keeps the call an effect; a local
+ * the framework package's export: a renamed import, a namespace member and
+ * a member of React's default import (the package's CommonJS exports) are
+ * recognised; an impure argument keeps the call an effect; a local
  * function of the same name is not the framework's.
  */
 import { describe, expect, test } from 'vitest'
@@ -93,6 +94,23 @@ const Page = () => <Field />`,
     return <p ref={ref}>{'MARK_namespace'}</p>
   }),
 )`,
+  ),
+  // React's default import is its exports object, as a namespace import
+  'routes/default-import.tsx': route(
+    'react',
+    'default-import',
+    "import React from 'react'",
+    `const Page = React.memo(
+  React.forwardRef<HTMLParagraphElement>(function Inner(_props, ref) {
+    return <p ref={ref}>{'MARK_default-import'}</p>
+  }),
+)`,
+  ),
+  'routes/default-lazy.tsx': route(
+    'react',
+    'default-lazy',
+    "import { default as React } from 'react'",
+    "const Page = React.lazy(() => import('../chart').then((m) => ({ default: m.default, tag: 'MARK_default-lazy' })))",
   ),
   // an impure argument: the call stays an effect
   'routes/impure.tsx': route(
@@ -205,6 +223,8 @@ const builds: Array<
       'lazy-component',
       'renamed',
       'namespace',
+      'default-import',
+      'default-lazy',
       'display-name',
       'display-name-memo',
     ],
@@ -219,6 +239,8 @@ const builds: Array<
       'lazy-component',
       'renamed',
       'namespace',
+      'default-import',
+      'default-lazy',
       'display-name',
       'display-name-memo',
     ],
