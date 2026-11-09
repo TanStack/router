@@ -689,8 +689,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }
           const ipEnv = ipEnvOf()
-          const unjudged = new Set<string>()
-          if (ipEnv && !knownFiles) {
+          // a compiler's first compilation judges what it restored: its modules'
+          // import-protection records are replayed first, the modules to judge
+          // again are rebuilt before the server-fn snapshot
+          const judgesRestored = ipEnv !== null && !knownFiles
+          if (judgesRestored) {
+            const unjudged = new Set<string>()
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike
               const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
@@ -703,15 +707,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 unjudged.add(module.resource)
               }
             }
-          }
-          for (const m of compilation.modules) {
-            const module = m as unknown as ModuleLike
-            const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-            if (ipEnv && ip && module.resource) {
-              ipEnv.replay(canonicalResource(module.resource), ip)
+            for (const m of compilation.modules) {
+              const module = m as unknown as ModuleLike
+              const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+              if (ip && module.resource) {
+                ipEnv.replay(canonicalResource(module.resource), ip)
+              }
             }
-          }
-          if (ipEnv && !knownFiles) {
             const unconfirmed = new Set<string>()
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource
@@ -729,12 +731,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               await rebuildModules(compilation, unjudged, (r) => r)
             }
           }
+          // one read of each module's `buildInfo`: the server-fn snapshot and,
+          // but in a first compilation (replayed above), the records
           const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
           for (const m of compilation.modules) {
             const module = m as unknown as ModuleLike
             const info = module.buildInfo
             if (!info) {
               continue
+            }
+            const ip = info[RSPACK_BUILD_INFO_KEY]
+            if (ipEnv && !judgesRestored && ip && module.resource) {
+              ipEnv.replay(canonicalResource(module.resource), ip)
             }
             const fns = info[SERVER_FN_BUILD_INFO_FIELD] as
               | ServerFnBuildInfo
