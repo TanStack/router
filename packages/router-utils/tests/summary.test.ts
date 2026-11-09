@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ModuleAnalysis, buildSummary, parseModule } from '../src/compiler'
+import { exportKeyOf, summaryDigest } from '../src/compiler/summary'
 import type { RecognizerTable } from '../src/compiler'
 
 const TABLE: RecognizerTable = {
@@ -60,13 +61,30 @@ describe('export facts', () => {
       export const fn = () => 2
       export const options = { a: 1 }
     `)
-    expect(moved.digest).toBe(base.digest)
+    expect(summaryDigest(moved)).toBe(summaryDigest(base))
 
     const star = summarise(`
       export const options = { a: 1 }
       export const fn = () => 1
       export * from './more'
     `)
-    expect(star.digest).not.toBe(base.digest)
+    expect(summaryDigest(star)).not.toBe(summaryDigest(base))
+  })
+
+  it('keys an export when it is read; the digest keys them all', () => {
+    const code = `
+      export const options = { a: 1 }
+      export const fn = () => 1
+    `
+    const s = summarise(code)
+    expect(Object.keys(s.exportKeyMemo)).toEqual([])
+    const fn = exportKeyOf(s, 'fn')
+    expect(Object.keys(s.exportKeyMemo)).toEqual(['fn'])
+    expect(exportKeyOf(s, 'missing')).toBeNull()
+    expect(fn).toBe(exportKeyOf(summarise(`// moved\n${code}`), 'fn'))
+    expect(exportKeyOf(s, 'options')).not.toBe(fn)
+    const digest = summaryDigest(s)
+    expect(Object.keys(s.exportKeyMemo).sort()).toEqual(['fn', 'options'])
+    expect(summaryDigest(summarise(code))).toBe(digest)
   })
 })

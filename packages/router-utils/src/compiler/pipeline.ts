@@ -30,7 +30,7 @@ import {
 } from './host'
 import { isVirtualId } from './facts'
 import { registerCompilerStats } from './stats'
-import { ownEntry } from './strings'
+import { exportKeyOf, summaryDigest } from './summary'
 import { SELF_CHECKS, invariantWarning } from './self-checks'
 import { verifyPlan } from './verify'
 import type { CacheEntry, Settled } from './cache'
@@ -499,7 +499,7 @@ async function runAttempt(
     ledger.record({
       kind: 'summary',
       canonicalId,
-      digest: facts.summary?.digest ?? null,
+      digest: facts.summary ? summaryDigest(facts.summary) : null,
     })
     return facts.summary
   }
@@ -509,11 +509,7 @@ async function runAttempt(
     if (summary === null) {
       ledger.record({ kind: 'summary', canonicalId, digest: null })
     } else {
-      ledger.recordExport(
-        canonicalId,
-        name,
-        ownEntry(summary.exportKeys, name) ?? null,
-      )
+      ledger.recordExport(canonicalId, name, exportKeyOf(summary, name))
     }
     return summary
   }

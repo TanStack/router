@@ -476,8 +476,9 @@ export class RawFactsCache {
       summary: {
         exports: exportFacts,
         stars: [],
-        exportKeys: exportKeysOf(exportFacts),
-        digest,
+        marker: null,
+        exportKeyMemo: exportKeysOf(exportFacts),
+        digestMemo: digest,
       },
       targetFacts: { ...tf, digest: digestOf(tf) },
     }
