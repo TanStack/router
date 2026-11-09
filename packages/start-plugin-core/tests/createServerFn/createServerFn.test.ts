@@ -790,6 +790,60 @@ describe('createServerFn compiles correctly', async () => {
     expect(secondResult!.code).toContain('createSsrRpc("constant_id_1"')
   })
 
+  // The client puts the id in the URL unencoded and the server reads that
+  // path segment back: a `/`, `#` or `?` cut it short (the call ran another
+  // server function of the file or none), a client percent-encodes `"`,
+  // `\`, whitespace, control and non-ASCII characters, URL parsing removes
+  // dot segments, and the server decodes a percent-encoding to another id or
+  // rejects it.
+  test.each([
+    'users/get',
+    'users#get',
+    'users?get',
+    'users"get',
+    'users\\get',
+    'users get',
+    'users\u0007get',
+    'utilisateurs-é',
+    '..',
+    'users%41get',
+    'x%c3%a9',
+    '%2E',
+    'users%zz',
+  ])(
+    'a custom id the URL never carries whole fails the build: %j',
+    async (id) => {
+      const compiler = new StartCompiler({
+        env: 'client',
+        ...getDefaultTestOptions('client'),
+        mode: 'build',
+        loadModule: async () => {},
+        lookupKinds: new Set(['ServerFn']),
+        lookupConfigurations: [
+          {
+            libName: '@tanstack/react-start',
+            rootExport: 'createServerFn',
+            kind: 'Root',
+          },
+        ],
+        resolveId: async (id) => id,
+        generateFunctionId: () => id,
+        getKnownServerFns: () => ({}),
+      })
+      await expect(
+        compiler.compile({
+          code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn().handler(async () => 'user')
+      `,
+          id: '/test/src/users.ts',
+        }),
+      ).rejects.toThrow(
+        `[tanstack-start] serverFns.generateFunctionId returned ${JSON.stringify(id)} for the server function getUser (functionName "getUser_createServerFn_handler") of src/users.ts.`,
+      )
+    },
+  )
+
   test('should resolve createServerFn from the same binding as a known root export', async () => {
     const virtualModules: Record<string, string> = {
       '@tanstack/start-client-core': `

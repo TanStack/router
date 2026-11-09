@@ -13,6 +13,10 @@ function resolveModule(opts: ResolveModuleOptions): string | undefined {
     from: opts.from,
     extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'],
     try: true,
+    // exsolve's default cache is process-wide and keeps misses: a dev server
+    // restart would not see an entry created since. The plugin already
+    // resolves the entries once per instance.
+    cache: false,
   })
 }
 
