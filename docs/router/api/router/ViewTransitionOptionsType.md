@@ -27,11 +27,11 @@ The `ViewTransitionOptions` type accepts an object with a single property:
 ### `types` property
 
 - Type: `Array<string> | ((locationChangeInfo: {
-  fromLocation?: ParsedLocation
-  toLocation: ParsedLocation
-  pathChanged: boolean
-  hrefChanged: boolean
-  hashChanged: boolean
+fromLocation?: ParsedLocation
+toLocation: ParsedLocation
+pathChanged: boolean
+hrefChanged: boolean
+hashChanged: boolean
 }) => (Array<string> | false))`
 - Required
 - Either one of:
