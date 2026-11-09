@@ -21,6 +21,7 @@ import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json
 const aloneTests = [
   'integration/start-build-environment-release.test.ts',
   'integration/start-build-compile-scope.test.ts',
+  'integration/start-dev-cache-dir.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */
