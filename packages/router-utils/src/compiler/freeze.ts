@@ -275,19 +275,17 @@ function renderEnv(
     if (!keepExport && item.exportKeyword !== null) {
       // the statement loses its `export` keyword for the renamed binding
       // (re-exported under its public name by the glue); the other
-      // exported declarators of the statement stay exported through the
-      // same glue
+      // exported bindings of the statement, in the renamed declarator too
+      // (`export const { component, meta } = …`), stay exported under their
+      // own names through the same glue
       for (const uid of item.units) {
         const u = units[uid]!
-        if (
-          !retained.has(uid) ||
-          u.exported.length === 0 ||
-          u.declares.some((s) => plan.exportedRenames.has(s))
-        ) {
+        if (!retained.has(uid)) {
           continue
         }
         for (const s of u.declares) {
-          for (const name of u.exported) {
+          const name = plan.symbols.name(s)
+          if (!plan.exportedRenames.has(s) && u.exported.includes(name)) {
             siblingExports.push({ sym: s, name })
           }
         }
@@ -552,17 +550,15 @@ function exportGlue(
   }
   if (output === 'env') {
     const extractedSyms = new Set(placement.extracted.flatMap((e) => e.syms))
-    for (const [sym, r] of plan.exportedRenames) {
+    for (const [sym, to] of plan.exportedRenames) {
       if (extractedSyms.has(sym)) {
         continue // re-exported from the extracted output under its public names
       }
-      const local = 'sym' in r.to ? plan.symbols.name(r.to.sym) : null
+      const local = 'sym' in to ? plan.symbols.name(to.sym) : null
       if (local === null) {
         continue
       }
-      for (const name of r.names) {
-        parts.push(`${local} as ${name}`)
-      }
+      parts.push(`${local} as ${plan.symbols.name(sym)}`)
     }
   }
   if (parts.length === 0) {

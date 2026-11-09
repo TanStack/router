@@ -327,6 +327,36 @@ describe('context-aware reference rewrites', () => {
     `),
     )
   })
+
+  it('re-exports every binding of a renamed declarator and its siblings under its own name', () => {
+    const code = dedent(`
+      export const { page, meta } = views
+      export const other = 1, { a, b } = parts
+    `)
+    const e = engine(code)
+    const [pageSym] = e.ctx.t1.units[0]!.declares
+    const [otherSym] = e.ctx.t1.units[1]!.declares
+    e.ctx.renameRefs(
+      pageSym!,
+      { sym: e.ctx.names.alloc('TsrPage').sym },
+      'all-outputs',
+      'hmr',
+    )
+    e.ctx.renameRefs(
+      otherSym!,
+      { sym: e.ctx.names.alloc('TsrOther').sym },
+      'all-outputs',
+      'hmr',
+    )
+    const out = e.render().code
+    expect(out).toBe(
+      dedent(`
+      const { page: TsrPage, meta } = views
+      const TsrOther = 1, { a, b } = parts
+      export { meta, a, b, TsrPage as page, TsrOther as other }
+    `),
+    )
+  })
 })
 
 describe('claims, homes and substitution', () => {
