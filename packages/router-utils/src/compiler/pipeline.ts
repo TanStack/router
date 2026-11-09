@@ -420,6 +420,7 @@ async function runAttempt(
     path: identity.path,
     markerSpecifiers: host.rawFacts.markerSpecifiers,
     pureCalls: host.rawFacts.pureCalls,
+    clientBuilders: env.type === 'client' ? host.rawFacts.builders : undefined,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({

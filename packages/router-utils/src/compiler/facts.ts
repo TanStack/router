@@ -161,6 +161,11 @@ export class RawFactsCache {
     return this.opts.recognizer?.pureCalls
   }
 
+  /** The recognizer when it has builder chains, for the analyses of client compiles (`clientBuilders`). */
+  get builders(): RecognizerTable | undefined {
+    return this.opts.recognizer?.builderLinks ? this.opts.recognizer : undefined
+  }
+
   markStale(path: string): void {
     this.changes++
     for (const id of this.byPath.get(path) ?? []) {

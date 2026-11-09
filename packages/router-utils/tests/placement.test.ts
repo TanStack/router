@@ -5110,6 +5110,77 @@ describe('pure calls of known packages', () => {
   })
 })
 
+// A client compile's builder chains (`RecognizerTable.builderLinks`) with
+// pure arguments are no effect for the planners: what the client erases (a
+// server fn's handler) does not count. The server compile's purity takes
+// none, and a link on a `const` holding a builder stays an effect (a
+// middleware's links write that builder's options).
+describe('builder chains in a client compile', () => {
+  const recognizer = {
+    ...EMPTY_RECOGNIZER,
+    factories: { 'toy-start': { createServerFn: 'serverFn' } },
+    builderKinds: new Set(['serverFn']),
+    terminal: { serverFn: 'serverFn' },
+    builderLinks: {
+      serverFn: {
+        middleware: 'both' as const,
+        validator: 'server' as const,
+        handler: 'server' as const,
+      },
+    },
+  }
+  async function compile(code: string, type: 'client' | 'server') {
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+      recognizer,
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build', type, name: type })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    return {
+      env: main?.code ?? '',
+      kept: (main?.diagnostics ?? [])
+        .filter((d) => d.code?.startsWith('eager-'))
+        .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
+    }
+  }
+  const route = (declarations: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createServerFn } from 'toy-start'
+      import { type } from 'arktype'
+      import { track } from './track'
+      ${declarations}
+      export const Route = createFileRoute('/')({
+        validateSearch: type({ 'a?': 'string' }),
+        component: () => fn,
+      })
+    `)
+
+  it('moves a page-only chain into the chunk on the client only', async () => {
+    const code = route(
+      'const fn = createServerFn().middleware([]).validator(track).handler(async () => track())',
+    )
+    const client = await compile(code, 'client')
+    expect(client.env).not.toContain('createServerFn()')
+    expect(client.kept).toEqual([])
+    const server = await compile(code, 'server')
+    expect(server.env).toContain('createServerFn()')
+    expect(server.kept).toEqual(['fn'])
+  })
+
+  it('keeps a link on a const builder and an impure argument effects', async () => {
+    for (const declarations of [
+      'const base = createServerFn()\nconst fn = base.handler(async () => 1)',
+      'const fn = createServerFn().middleware([track()]).handler(async () => 1)',
+    ]) {
+      const r = await compile(route(declarations), 'client')
+      expect(r.env, declarations).toContain('const fn =')
+      expect(r.kept, declarations).toContain('fn')
+    }
+  })
+})
+
 describe('a statement an edit rewrites from its first byte', () => {
   it('stays an effect: what the rest of it reads stays with it', async () => {
     const code = dedent(`

@@ -109,6 +109,30 @@ const Page = () => <Field />`,
     `function memo<T>(component: T) { return component }
 const Page = memo(function Inner() { return <p>{'MARK_local'}</p> })`,
   ),
+  // the component's own augmentation and a memo of it (real apps: the
+  // augmentation writes `Inner` and `memo` reads it at load, so an unknown
+  // `memo` call kept both); no call stays after it
+  'routes/display-name.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { memo } from 'react'
+function Inner() {
+  return <p>{'MARK_display-name'}</p>
+}
+Inner.displayName = 'Named'
+const Page = memo(Inner)
+export const Route = createFileRoute('/display-name')({
+  component: Page,
+})
+`,
+  'routes/display-name-memo.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { memo } from 'react'
+const Page = memo(function Inner() {
+  return <p>{'MARK_display-name-memo'}</p>
+})
+Page.displayName = 'Named'
+export const Route = createFileRoute('/display-name-memo')({
+  component: Page,
+})
+`,
   // a context is one instance: it stays (its call is an effect the later
   // call keeps in order) and the memo component reading it splits
   'routes/context.tsx': route(
@@ -175,13 +199,29 @@ const builds: Array<
   [
     'vite react',
     reactFiles,
-    ['memo', 'forward-ref', 'lazy-component', 'renamed', 'namespace'],
+    [
+      'memo',
+      'forward-ref',
+      'lazy-component',
+      'renamed',
+      'namespace',
+      'display-name',
+      'display-name-memo',
+    ],
     () => build({ bundler: 'vite', env: 'client', files: reactFiles }),
   ],
   [
     'rsbuild react',
     reactFiles,
-    ['memo', 'forward-ref', 'lazy-component', 'renamed', 'namespace'],
+    [
+      'memo',
+      'forward-ref',
+      'lazy-component',
+      'renamed',
+      'namespace',
+      'display-name',
+      'display-name-memo',
+    ],
     () => buildWithRsbuild({ files: reactFiles, registerCleanup: () => {} }),
   ],
   [

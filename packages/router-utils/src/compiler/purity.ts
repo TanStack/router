@@ -41,9 +41,10 @@ export interface PurityContext {
   calls: number
   /**
    * Builder chains whose calls are no effect in one environment
-   * (`RecognizerTable.builderLinks`). Only on the contexts of the
-   * per-environment code effects of raw facts (`ModuleAnalysis.effects()`),
-   * never on the planners'.
+   * (`RecognizerTable.builderLinks`): on the contexts of the
+   * per-environment code effects of raw facts (`ModuleAnalysis.effects()`)
+   * and on the planners' of a client compile (`clientBuilders`, where no
+   * `locals` are noted).
    */
   builders?: BuilderPurity
 }
