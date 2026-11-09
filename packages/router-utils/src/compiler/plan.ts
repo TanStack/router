@@ -77,7 +77,6 @@ export interface EdgeRecord {
   specifier: string
   /** The source literals of this specifier; a generated specifier has none. */
   locations: Array<{ range: Range }>
-  typeOnly: boolean
   names: Array<string>
   provenance: EdgeProvenance
 }

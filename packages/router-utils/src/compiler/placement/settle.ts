@@ -38,8 +38,6 @@ export interface Roots {
   copied: Set<ClusterId>
   /** The undecided clusters that move with their only needer. */
   movable: Set<ClusterId>
-  /** Why each undecided cluster that does not move stays. */
-  pins: Map<ClusterId, Pin>
   /** The undecided clusters a derived output needs that became env roots, with the cause. */
   pinnedNeeded: Map<ClusterId, Pin>
 }
@@ -742,7 +740,6 @@ export function settleRoots(
     cancelled,
     copied: new Set([...remaining.keys()].filter(copies)),
     movable,
-    pins,
     pinnedNeeded,
   }
 }

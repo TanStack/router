@@ -196,19 +196,6 @@ export interface Trace {
   fromEntry: boolean
 }
 
-/**
- * The trace of `importerId` (`traceOf`) as `onViolation` receives it: at most
- * `maxDepth + 1` steps (a deeper chain is cut on the entry side).
- */
-export function buildTrace(
-  importerId: string,
-  graph: ImportGraphView | null,
-  index: EdgeIndex | null,
-  maxDepth: number,
-): Array<TraceStep> {
-  return cutTrace(traceOf(importerId, graph, index).steps, maxDepth)
-}
-
 /** The last `maxDepth + 1` steps of a trace (at least the importer). */
 export function cutTrace<T>(steps: Array<T>, maxDepth: number): Array<T> {
   const keep = Math.max(1, maxDepth + 1)

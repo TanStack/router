@@ -5,14 +5,12 @@
  * - `SourceText`: one per input revision, shared by every output of a plan.
  *   Lines are ECMAScript line terminators by default (LF, CRLF, lone CR,
  *   U+2028, U+2029), which is what V8, oxc, esbuild, Babel and Yuku count.
- * - `OutputBuilder`: one per output. `copy()` appends original text with
- *   nested edits applied; `text()` appends generated glue (unmapped unless
+ * - `OutputBuilder`: one per output. `copy()` appends original text;
+ *   `text()` appends generated glue (unmapped unless
  *   `mapTo` is given). Segments inside copied text sit at the start of every
  *   copy run, at the start of every word run and at every punctuator
  *   character; whitespace never starts one. The scan is syntax-agnostic.
  */
-import { SELF_CHECKS } from './self-checks'
-
 const SPACE = 0
 const WORD = 1
 const PUNCT = 2
@@ -138,20 +136,6 @@ export class SourceText {
   }
 }
 
-export type BuilderEditPart =
-  | { text: string; mapTo?: number }
-  | { start: number; end: number; edits?: Array<BuilderEdit> }
-
-export type BuilderEdit =
-  | { kind: 'remove'; start: number; end: number }
-  | {
-      kind: 'replace'
-      start: number
-      end: number
-      parts: Array<BuilderEditPart>
-    }
-  | { kind: 'insert'; at: number; text: string; mapTo?: number }
-
 export interface OutputBuilderOptions {
   map?: boolean
 }
@@ -201,41 +185,10 @@ export class OutputBuilder {
     this.withMap = opts.map !== false
   }
 
-  /** Appends original `[start, end)` with `edits` (sorted, non-overlapping) applied. */
-  copy(start: number, end: number, edits?: ReadonlyArray<BuilderEdit>): void {
-    let pos = start
-    if (edits !== undefined) {
-      // our test runs only (`self-checks.ts`): no compiler path passes nested
-      // edits outside tests (emit copies without them), so it has no warning.
-      // It catches compiler bugs and can go once we trust the compiler.
-      if (SELF_CHECKS) {
-        assertSortedEdits(edits, start, end)
-      }
-      for (const ed of edits) {
-        if (ed.kind === 'insert') {
-          if (ed.at > pos) {
-            this._run(pos, (pos = ed.at))
-          }
-          this.text(ed.text, ed.mapTo)
-          continue
-        }
-        if (ed.start > pos) {
-          this._run(pos, ed.start)
-        }
-        if (ed.kind === 'replace') {
-          for (const p of ed.parts) {
-            if ('text' in p) {
-              this.text(p.text, p.mapTo)
-            } else {
-              this.copy(p.start, p.end, p.edits)
-            }
-          }
-        }
-        pos = ed.end
-      }
-    }
-    if (end > pos) {
-      this._run(pos, end)
+  /** Appends original `[start, end)`. */
+  copy(start: number, end: number): void {
+    if (end > start) {
+      this._run(start, end)
     }
   }
 
@@ -514,22 +467,4 @@ function vlq(buf: Uint8Array, p: number, v: number): number {
     buf[p++] = B64[d]!
   } while (n > 0)
   return p
-}
-
-function assertSortedEdits(
-  edits: ReadonlyArray<BuilderEdit>,
-  start: number,
-  end: number,
-): void {
-  let pos = start
-  for (const ed of edits) {
-    const s = ed.kind === 'insert' ? ed.at : ed.start
-    const e = ed.kind === 'insert' ? ed.at : ed.end
-    if (s < pos || e > end || e < s) {
-      throw new Error(
-        `OutputBuilder: edits must be sorted and non-overlapping inside [${start}, ${end}) (got [${s}, ${e}) after ${pos})`,
-      )
-    }
-    pos = e
-  }
 }

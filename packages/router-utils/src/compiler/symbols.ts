@@ -63,10 +63,9 @@ export class SymbolTable {
   private readonly infos: Array<SymbolInfo> = []
   private readonly sourceCount: number
 
-  constructor(private readonly file: SourceFile | null) {
-    const root = file ? file.rootScope : null
-    const bindings = file ? file.bindings : []
-    for (const b of bindings) {
+  constructor(private readonly file: SourceFile) {
+    const root = file.rootScope
+    for (const b of file.bindings) {
       const moduleLevel = b.scope === root
       this.infos.push({
         name: b.name,
@@ -91,7 +90,7 @@ export class SymbolTable {
     // our test runs only (`self-checks.ts`): every caller passes a binding of
     // the module's own file (`bindingOf`, `referenceOf`), so it has no
     // warning. It catches compiler bugs and can go once we trust the compiler.
-    if (SELF_CHECKS && this.file && b.file !== this.file) {
+    if (SELF_CHECKS && b.file !== this.file) {
       throw new Error('SymbolTable.ofBinding: binding of another file')
     }
     return b.id as SymbolId
@@ -99,7 +98,7 @@ export class SymbolTable {
 
   /** The Yuku binding of a source symbol (ephemeral; only during phase B). */
   binding(s: SymbolId): Binding | null {
-    if (!this.file || s >= this.sourceCount) {
+    if (s >= this.sourceCount) {
       return null
     }
     return this.file.bindings[s] ?? null

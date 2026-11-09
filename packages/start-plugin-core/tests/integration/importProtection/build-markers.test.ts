@@ -185,8 +185,8 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
 
   // Bug (Rsbuild): the Rsbuild adapter reports a marker violation at the
   // marked module (SPEC J6.5 allows it) with the shortest import chain
-  // from the entry to the marked module (`buildTrace`,
-  // import-protection/trace.ts, a BFS to the nearest entry), whichever
+  // from the entry to the marked module (`traceOf`,
+  // import-protection/graph-trace.ts, a BFS to the nearest entry), whichever
   // importer it runs through: here the exempt `src/ignored.ts`, two steps
   // from the entry, while the importer the violation is for, `src/other.ts`,
   // is three steps away. An exempt edge is no violation (SPEC J6.7), so a

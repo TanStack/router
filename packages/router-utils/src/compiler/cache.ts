@@ -283,21 +283,15 @@ class DependentsIndex {
   /** Sizes for `compilerStats()`. */
   stats(): {
     paths: number
-    emptyPaths: number
     entries: number
     keys: number
   } {
     let entries = 0
-    let emptyPaths = 0
     for (const m of this.byPath.values()) {
       entries += m.size
-      if (m.size === 0) {
-        emptyPaths++
-      }
     }
     return {
       paths: this.byPath.size,
-      emptyPaths,
       entries,
       keys: this.byKey.size,
     }
@@ -322,7 +316,6 @@ export class DependencyLedger {
 
   constructor(
     readonly key: PlanKey,
-    readonly generation: number,
     private readonly index: DependentsIndex,
   ) {}
 
@@ -670,10 +663,6 @@ export class PlanCache {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
 
-  values(): IterableIterator<CacheEntry> {
-    return this.entries.values()
-  }
-
   /** Sizes for `compilerStats()` (bytes: plans, approximate). */
   stats(withBytes: boolean): Record<string, number> {
     let dependencies = 0
@@ -703,7 +692,6 @@ export class PlanCache {
       ...this.counters,
       dependentPaths: d.paths,
       dependentKeys: d.keys,
-      dependentEmptyPaths: d.emptyPaths,
       dependentEntries: d.entries,
       ...(withBytes && { planBytes }),
     }

@@ -341,7 +341,7 @@ export function importEdgesPlanner(
 
       const rewriter = ctx.host.services?.importRewrite
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
-        if (e.provenance.origin === 'runtime' || e.typeOnly) {
+        if (e.provenance.origin === 'runtime') {
           return null
         }
         const forwarded =

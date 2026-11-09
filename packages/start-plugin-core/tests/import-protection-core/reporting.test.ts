@@ -9,7 +9,7 @@ import { revision } from '@tanstack/router-utils/compiler'
 import { resolveImportProtectionConfig } from '../../src/import-protection/config'
 import {
   EdgeIndex,
-  buildTrace,
+  cutTrace,
   traceOf,
 } from '../../src/import-protection/graph-trace'
 import {
@@ -93,12 +93,8 @@ describe('traces', () => {
       { resolved: '/app/src/b.ts', specifier: './b' },
     ])
     expect(
-      buildTrace(
-        '/app/src/b.ts',
-        graph(chain, ['/app/src/entry.ts']),
-        index,
-        20,
-      ),
+      traceOf('/app/src/b.ts', graph(chain, ['/app/src/entry.ts']), index)
+        .steps,
     ).toEqual([
       { file: '/app/src/entry.ts', specifier: './a' },
       { file: '/app/src/a.ts', specifier: './b' },
@@ -131,12 +127,7 @@ describe('traces', () => {
       revision(`/* rewritten */\n${files['/app/src/a.ts']}`),
     )
     const trace = () =>
-      buildTrace(
-        '/app/src/b.ts',
-        graph(chain, ['/app/src/entry.ts']),
-        index,
-        20,
-      )
+      traceOf('/app/src/b.ts', graph(chain, ['/app/src/entry.ts']), index).steps
     expect(trace()).toEqual([
       { file: '/app/src/entry.ts', specifier: './a', line: 2, column: 19 },
       { file: '/app/src/a.ts', specifier: './b' },
@@ -149,18 +140,15 @@ describe('traces', () => {
 
   test('without a known entry, start at a module nothing imports; survive cycles; cut keeping the importer', () => {
     const g = graph({ ...chain, '/app/src/b.ts': ['/app/src/entry.ts'] })
-    expect(buildTrace('/app/src/b.ts', g, null, 20).map((s) => s.file)).toEqual(
-      [
-        '/app/src/main.ts',
-        '/app/src/entry.ts',
-        '/app/src/a.ts',
-        '/app/src/b.ts',
-      ],
-    )
-    expect(buildTrace('/app/src/b.ts', g, null, 1).map((s) => s.file)).toEqual([
+    expect(traceOf('/app/src/b.ts', g, null).steps.map((s) => s.file)).toEqual([
+      '/app/src/main.ts',
+      '/app/src/entry.ts',
       '/app/src/a.ts',
       '/app/src/b.ts',
     ])
+    expect(
+      cutTrace(traceOf('/app/src/b.ts', g, null).steps, 1).map((s) => s.file),
+    ).toEqual(['/app/src/a.ts', '/app/src/b.ts'])
   })
 
   test('the edge index supplies edges the bundler graph has not recorded yet; queries are stripped from files', () => {
@@ -169,14 +157,13 @@ describe('traces', () => {
       { resolved: '/app/src/b.ts', specifier: './b' },
     ])
     expect(
-      buildTrace(
+      traceOf(
         '/app/src/b.ts',
         graph({ '/app/src/entry.ts': ['/app/src/r.tsx?tsr-split=component'] }, [
           '/app/src/entry.ts',
         ]),
         index,
-        20,
-      ).map((s) => [s.file, s.specifier]),
+      ).steps.map((s) => [s.file, s.specifier]),
     ).toEqual([
       ['/app/src/entry.ts', undefined],
       ['/app/src/r.tsx', './b'],

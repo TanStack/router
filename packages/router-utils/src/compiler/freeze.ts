@@ -1058,7 +1058,6 @@ class Renderer {
             kind: f.form === 'dynamic' ? 'evaluation' : 'binding',
             specifier: f.specifier,
             locations: [],
-            typeOnly: false,
             names: [...(f.names ?? [])],
             provenance: f.provenance ?? { origin: 'runtime' },
           })
@@ -1239,7 +1238,6 @@ class Renderer {
           )
         }
         return exportShorthand ? `${t} as ${original}` : t
-      case 'importLocal':
       case 'declName':
         if (isMember) {
           throw new Error(

@@ -469,8 +469,6 @@ class ImportProtectionEnv {
   private readonly notified = new Set<string>()
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
-  /** Build, the last output read: the mocked modules that are their own violation whose every importer is not checked (R89), with those importers. */
-  private unchecked = new Map<string, [EdgeViolation, Array<string>]>()
   private runtimeEmitted = false
   /** Build: the compiled modules that are their own violation, by id: the witness reads their survival (as their mock or as they are). */
   private readonly selfModules = new Map<string, string>()
@@ -1090,7 +1088,8 @@ class ImportProtectionEnv {
     }>
   > {
     this.graph = graph
-    this.unchecked = new Map()
+    // the mocked modules that are their own violation whose every importer is not checked (R89), with those importers
+    const unchecked = new Map<string, [EdgeViolation, Array<string>]>()
     const live = new Map<string, EdgeViolation>()
     const add = (v: EdgeViolation) => {
       const key = dedupeKey(v)
@@ -1109,10 +1108,7 @@ class ImportProtectionEnv {
         checked.forEach(add)
         const others = importers.filter((id) => this.ip.ids.parse(id) === null)
         if (!checked.length && others.length && !this.selfAllowed(v)) {
-          this.unchecked.set(v.edgeKey, [
-            v,
-            [...new Set(others.map(traceFile))],
-          ])
+          unchecked.set(v.edgeKey, [v, [...new Set(others.map(traceFile))]])
         }
       }
     }
@@ -1131,7 +1127,7 @@ class ImportProtectionEnv {
       })
     }
     // not violations (no `onViolation`, no failure): a warning per module
-    for (const [v, importers] of this.unchecked.values()) {
+    for (const [v, importers] of unchecked.values()) {
       const info = violationInfo(v, this.ip.config, () => ({
         steps: [],
         fromEntry: false,
