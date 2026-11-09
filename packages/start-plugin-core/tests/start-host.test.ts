@@ -1,6 +1,6 @@
+import path from 'node:path'
 import { beforeAll, expect, test } from 'vitest'
 import { inPage, useStartHost } from './regression-helpers'
-import { casesDir } from './start-host'
 
 // Controls of the harness (`./start-host`), not of the compiler.
 
@@ -16,11 +16,17 @@ beforeAll(async () => {
 // request.
 test('a module request that fails in transport fails no run', async () => {
   const startHost = await host()
+  // A module the cases share, new to the page: a host an earlier file of
+  // the process gave back has loaded the app's own shared modules already
+  const shared = await startHost.case({
+    'shared.ts': `export const value = 'shared'`,
+  })
+  const sharedPath = shared.url('shared.ts')
   const { page } = await startHost.page()
   const failed: Array<string> = []
-  // Once, the first request of a module the cases share (not one of a case)
+  // Once, its first request
   await page.route(
-    (url) => !url.pathname.startsWith(`/${casesDir}/`),
+    (url) => url.pathname === sharedPath,
     (route) => {
       failed.push(route.request().url())
       return route.abort('failed')
@@ -29,11 +35,9 @@ test('a module request that fails in transport fails no run', async () => {
   )
   for (let index = 0; index < 3; index++) {
     const startCase = await startHost.case({
-      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 1)
-export const value = typeof fn`,
+      'module.tsx': `export { value } from '../${path.posix.basename(shared.dir)}/shared'`,
     })
-    expect(await inPage(startCase, 'return module.value')).toBe('function')
+    expect(await inPage(startCase, 'return module.value')).toBe('shared')
   }
   expect(failed).toHaveLength(1)
 })
