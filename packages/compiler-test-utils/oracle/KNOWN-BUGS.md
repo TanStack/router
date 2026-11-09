@@ -370,6 +370,10 @@ SPLITTING.md`): a chunk never imports the extracted module of a copyable export 
   and head() reads it (%s build)"; `integration/known-bugs-code-splitter-client-builds.test.ts`: "a split component that
   an unused object names renders (vite)"; `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component renders
   the exported component of another option that reads Route ($name)".
+  #8914 (an imported component, named or default, read by a split and an unsplit option):
+  `pages/known-bugs-code-splitter-server.test.ts`: "an imported component read by a split and an unsplit option
+  renders from both ($form)"; `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "an imported component read
+  by a split and an unsplit option renders from both (%s build)".
 - **Export lists and aliases of a moved declaration are left without it** ("Export 'load' is not defined"). SPEC
   J2.12, J3.3. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split loader exported through an export list keeps
   working"; `known-bugs-dev-server.test.ts`: "keep a $name component exported as the route option value";

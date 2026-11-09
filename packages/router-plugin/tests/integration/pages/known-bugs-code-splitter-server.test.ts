@@ -231,6 +231,51 @@ function Page() {
     ).toEqual(['<p>object</p>', '<p>object</p>'])
   })
 
+  // Bug: same as above, for an imported component: main left the unsplit
+  // option naming it and removed the import. Source: #8914.
+  // Impact: the route module throws when it loads ("Page is not defined").
+  test.each([
+    {
+      form: 'a named import, component and pendingComponent',
+      importLine: `import { Page } from './page'`,
+      options: ['component', 'pendingComponent'],
+    },
+    {
+      form: 'a default import, component and pendingComponent',
+      importLine: `import Page from './page'`,
+      options: ['component', 'pendingComponent'],
+    },
+    {
+      form: 'a named import, pendingComponent and errorComponent',
+      importLine: `import { Page } from './page'`,
+      options: ['pendingComponent', 'errorComponent'],
+    },
+  ])(
+    'an imported component read by a split and an unsplit option renders from both ($form)',
+    async ({ importLine, options }) => {
+      const route = await loadRoute(
+        `${head}${importLine}
+export const Route = createFileRoute('/')({
+${options.map((option) => `  ${option}: Page,\n`).join('')}})
+`,
+        {
+          files: {
+            'page.tsx': `export function Page() {
+  return <p>page</p>
+}
+export default Page
+`,
+          },
+        },
+      )
+      expect(
+        await route.run(
+          `return [${options.map((option) => `await render('${option}')`).join(', ')}]`,
+        ),
+      ).toEqual(['<p>page</p>', '<p>page</p>'])
+    },
+  )
+
   // Bug: same root cause as above, for an unsplit option that reads the
   // split component (which reads `Route`, so it moves to its chunk) with
   // `typeof`. Reading an undeclared name with `typeof` does not throw, so

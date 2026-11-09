@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 import {
   build,
   buildAndRun,
+  buildWithRsbuild,
   head,
   routeApp,
   ssrRenderEntry,
@@ -381,6 +382,67 @@ PostsPage.title = 'Posts'
     },
     60_000,
   )
+
+  // Bug: an imported component read by a split and an unsplit option: main
+  // left the unsplit option naming it and removed the import. Source: #8914.
+  // Impact: the built entry throws when it loads ("Page is not defined").
+  // The page's code ships once, with the route module: the split option's
+  // chunk renders that copy.
+  describe.each([
+    {
+      form: 'a named import, component and pendingComponent',
+      importLine: `import { Page } from '../page'`,
+      options: ['component', 'pendingComponent'],
+    },
+    {
+      form: 'a default import, component and pendingComponent',
+      importLine: `import Page from '../page'`,
+      options: ['component', 'pendingComponent'],
+    },
+    {
+      form: 'a named import, pendingComponent and errorComponent',
+      importLine: `import { Page } from '../page'`,
+      options: ['pendingComponent', 'errorComponent'],
+    },
+  ])('$form', ({ importLine, options }) => {
+    test.each(['vite', 'rsbuild'] as const)(
+      'an imported component read by a split and an unsplit option renders from both (%s build)',
+      async (bundler) => {
+        const files = routeApp(
+          `${head}${importLine}
+export const Route = createFileRoute('/')({
+${options.map((option) => `  ${option}: Page,\n`).join('')}})
+`,
+          {
+            files: {
+              'page.tsx': `export function Page() {
+  return <p>MARK_PAGE_8914</p>
+}
+export default Page
+`,
+            },
+          },
+        )
+        const app =
+          bundler === 'vite'
+            ? await build({ bundler, env: 'ssr', minify: false, files })
+            : await buildWithRsbuild({ files })
+        const { result } = await app.run(
+          `return [${options.map((option) => `await entry.render(entry.Route.options.${option})`).join(', ')}]`,
+        )
+        expect({
+          rendered: result,
+          page: app.locate('MARK_PAGE_8914'),
+          split: app.lazy.length > 0,
+        }).toEqual({
+          rendered: ['<p>MARK_PAGE_8914</p>', '<p>MARK_PAGE_8914</p>'],
+          page: { eager: [expect.any(String)], lazy: [] },
+          split: true,
+        })
+      },
+      60_000,
+    )
+  })
 })
 
 // `this` in split callbacks (a split loader called as a method of its
