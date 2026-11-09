@@ -37,8 +37,8 @@
  */
 import { isBuiltin } from 'node:module'
 import {
-  ASSET_QUERY_RE,
   identify,
+  isAssetId,
   isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
@@ -108,14 +108,12 @@ interface TargetDescription {
 }
 
 /**
- * The module whose marker a target's is. An asset query of a file (`x.ts?raw`)
+ * The module whose marker a target's is. An asset of a file (`x.ts?raw`)
  * has no language, so no marker of its own: on a client, the file's. A server
  * gets the text or URL of a client-only file: that runs nothing of it there.
  */
 function markerIdOf(envType: EnvType, target: string): string {
-  return envType === 'client' &&
-    ASSET_QUERY_RE.test(target) &&
-    !target.startsWith('\0')
+  return envType === 'client' && isAssetId(target) && !target.startsWith('\0')
     ? identify(target).path
     : target
 }
@@ -628,7 +626,7 @@ export function importEdgesPlanner(
   ): Promise<TargetDescription> {
     const p = identify(resolved).path
     // a text or URL: importing it evaluates nothing of the file
-    if (/\.json$/i.test(p) || ASSET_QUERY_RE.test(resolved)) {
+    if (/\.json$/i.test(p) || isAssetId(resolved)) {
       return { names: [], hasDefault: true, effectful: false }
     }
     const names = new Set<string>()

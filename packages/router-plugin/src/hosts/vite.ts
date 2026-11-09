@@ -11,9 +11,9 @@
  */
 import path from 'node:path'
 import {
-  ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   SAME_FILE_SPECIFIER_RE,
+  SCRIPT_ASSET_QUERY_RE,
   applyViteInvalidation,
   displayPath,
   identify,
@@ -283,7 +283,7 @@ export function createRouterCompilerVitePlugin(
     },
 
     transform: {
-      filter: { id: { include: JS_ID_RE, exclude: ASSET_QUERY_RE } },
+      filter: { id: { include: JS_ID_RE, exclude: SCRIPT_ASSET_QUERY_RE } },
       async handler(code, id) {
         if (!compiler.wants(id)) {
           return null

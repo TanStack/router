@@ -22,7 +22,6 @@ import {
   rebuildModules,
   warnEagerExports,
   webpackImporters,
-  webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import {
@@ -87,7 +86,7 @@ const COMPILER_PACKAGES = [
 
 /** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
 function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
-  const view = rspackGraphView(compilation as never)
+  const view = rspackGraphView(compilation as never, canonicalResource)
   return {
     importers(id) {
       try {
@@ -208,7 +207,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               resolver.resolve({}, dir, request, {}, (error, result) => {
                 resolve(
                   !error && typeof result === 'string'
-                    ? webpackResourceId(result)
+                    ? canonicalResource(result)
                     : null,
                 )
               })
@@ -509,9 +508,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               },
               async () => {
                 const buildEnv = ipEnvOf()!
-                const live = readRspackWitness(
-                  compilation as never,
-                  buildEnv.witness(),
+                const lookup = buildEnv.witness()
+                const live = readRspackWitness(compilation as never, (res) =>
+                  lookup(canonicalResource(res)),
                 )
                 const reports = await buildEnv.surviving(
                   live,

@@ -297,7 +297,7 @@ webpack-family request escape); under a path with a `!` (loader syntax there, no
 `resolveSameFileSpecifier`, only for the importer's own file (a browser URL `/src/…?tsr-split=…` looks absolute too).
 
 Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
-a language (an asset, or an asset query: `ASSET_QUERY_RE`) is never compiled, and its facts are never read from its
+a language (an asset, or an asset query a script honours: `SCRIPT_ASSET_QUERY_RE`, `isAssetId`) is never compiled, and its facts are never read from its
 file. A host returns no transform for an env output equal to its input (an output ending where the source ends gets no
 line feed). Start's hosts compile a `node_modules` module only as `start-plugin-core/src/compiler/scope.ts` decides.
 

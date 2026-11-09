@@ -4,6 +4,7 @@ import {
   SAME_FILE_SPECIFIER_RE,
   deriveId,
   identify,
+  isAssetId,
   isSplitGroupValue,
   langFromId,
   resolveSameFileSpecifier,
@@ -35,6 +36,17 @@ describe('identity', () => {
     expect(langFromId('/app/worker.ts?worker_file&type=module')).toBe('ts')
     expect(langFromId('/app/page.tsx?rawish')).toBe('tsx')
     expect(langFromId('/app/page.tsx?raw#a')).toBe('tsx')
+    // no bundler inlines a script: its code
+    expect(langFromId('/app/page.ts?inline')).toBe('ts')
+  })
+
+  it('tells an asset id (the file’s text, URL, inline data or worker) from a script’s code', () => {
+    expect(isAssetId('/app/page.ts?raw')).toBe(true)
+    expect(isAssetId('/app/logo.svg?inline')).toBe(true)
+    expect(isAssetId('/app/notes.txt?url')).toBe(true)
+    expect(isAssetId('/app/page.ts?inline')).toBe(false)
+    expect(isAssetId('/app/page.ts')).toBe(false)
+    expect(isAssetId('/app/logo.svg')).toBe(false)
   })
 
   it('never canonicalises virtual ids beyond owned keys', () => {

@@ -6,7 +6,7 @@
  */
 import { promises as fs, readFileSync } from 'node:fs'
 import {
-  ASSET_QUERY_RE,
+  SCRIPT_ASSET_QUERY_RE,
   collectionSizes,
   displayPath,
   identify,
@@ -217,9 +217,11 @@ export class ViteCompilerState {
   readonly dependencyFilter: {
     id: { include: Array<RegExp>; exclude: Array<RegExp> }
     code?: RegExp
-  } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
+  } = {
+    id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [SCRIPT_ASSET_QUERY_RE] },
+  }
   /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
-  readonly ownExclude: Array<RegExp> = [ASSET_QUERY_RE, DEPENDENCY_ID_RE]
+  readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   readonly watchingEnv: string | undefined
 

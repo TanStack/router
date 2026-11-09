@@ -286,16 +286,35 @@ export function resolveSameFileSpecifier(
   return normalizePath(identify(id).path) === own ? id : null
 }
 
-/** Bundler queries whose module is not the file's code (`?raw`, `?url`, `?inline`, `?worker`): the file is an asset of it. */
+/**
+ * Bundler queries under which a file's module may not be its code: its
+ * text, URL, inline data or a worker of it (`x.ts?raw`, `x.svg?inline`).
+ * Which ones a script honours: `SCRIPT_ASSET_QUERY_RE` (`isAssetId`).
+ */
 export const ASSET_QUERY_RE =
   /[?&](?:raw|url|inline|worker|sharedworker)(?:&|$)/
 
-/** Query-aware language of an id: `.vue?vue&type=script&lang.ts` → 'ts'; non-JS (or an asset query, `x.ts?raw`) → null. */
+/**
+ * The asset queries under which a script's module is not its code (Vite's:
+ * its text, URL or a worker of it). No bundler inlines a script
+ * (`x.ts?inline` is its code); a host whose bundler runs a script's code
+ * under another of them folds that query out of its ids (Rsbuild: `?url`,
+ * `?sharedworker`).
+ */
+export const SCRIPT_ASSET_QUERY_RE =
+  /[?&](?:raw|url|worker|sharedworker)(?:&|$)/
+
+/** Whether an id's module is the file's text, URL, inline data or worker (an asset query it honours), not its code. */
+export function isAssetId(id: string): boolean {
+  return ASSET_QUERY_RE.test(id) && langFromId(id) === null
+}
+
+/** Query-aware language of an id: `.vue?vue&type=script&lang.ts` → 'ts'; non-JS (or a script's asset query, `x.ts?raw`) → null. */
 export function langFromId(id: string): Lang | null {
   const { base, query, hash } = splitQuery(id)
   if (query.length > 0) {
     // (a bundler honours no asset query followed by a hash in the id: code)
-    if (hash.length === 0 && ASSET_QUERY_RE.test(`?${query}`)) {
+    if (hash.length === 0 && SCRIPT_ASSET_QUERY_RE.test(`?${query}`)) {
       return null
     }
     const m = /(?:^|&)lang\.(tsx|ts|jsx|js|mjs|cjs|mts|cts)(?:$|&|=)/.exec(

@@ -46,7 +46,7 @@ Imports your bundler expands from a pattern, such as `import.meta.glob`, a templ
 
 On the client, a file rule judges the denied file itself, wherever it lives in your project: a pattern that reaches `../lib/*.server.ts`, or a file `exclude` matches, gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. On Vite this covers non-code files too (`./*.server.json`); on Rsbuild, `new URL` of a non-code file and asset queries. A package's own files in `node_modules` are not judged this way.
 
-Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
+Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. A query your bundler ignores on a script (`./session.ts?inline`; on Rsbuild also `?url` and `?sharedworker`) imports the module itself, which is compiled and checked like the file. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
 
 ```ts
 // src/routes/admin.tsx: reported, and the client gets a mock of db.server.ts

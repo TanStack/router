@@ -25,6 +25,7 @@ import {
   SourceText,
   identify,
   invalidate,
+  isAssetId,
   isFinalBuild,
   liveModules,
   loadDerivedSource,
@@ -361,7 +362,7 @@ function envCompilerPlugins(
             ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
             : null
         }
-        if (ASSET_QUERY_RE.test(id) || ASSET_FILE_RE.test(id)) {
+        if (isAssetId(id) || ASSET_FILE_RE.test(id)) {
           // never compiled (the transform filters exclude it), and an
           // import the compiler does not read may have brought it here:
           // a denied file's text is served as its mock

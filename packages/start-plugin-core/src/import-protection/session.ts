@@ -552,8 +552,8 @@ class ImportProtectionEnv {
   }
 
   /**
-   * An id with an asset query (`x.ts?raw`, `?url`, `?inline`, `?worker`) is
-   * the file's text and never compiled, so the planner cannot make it its
+   * An asset id (`isAssetId`: `x.ts?raw`, `x.svg?url`, `?inline`, `?worker`)
+   * is the file's text and never compiled, so the planner cannot make it its
    * own violation: the same verdict, as the output of a compile, for the host
    * to hand to `afterCompile`. Null when nothing can deny it here. On a
    * server only the static edge is judged: the text or URL of a client-only
