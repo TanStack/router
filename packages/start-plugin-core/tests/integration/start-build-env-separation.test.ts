@@ -245,6 +245,32 @@ export const fnMiddleware = createMiddleware({ type: 'function' })
       'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
+      // A middleware factory: a declaration of the factory that only the
+      // middleware's `.server()` reads calls a helper of the same module,
+      // which reads a server-only package.
+      'node_modules/postgres/package.json': JSON.stringify({
+        name: 'postgres',
+        type: 'module',
+        exports: { '.': './index.js' },
+      }),
+      'node_modules/postgres/index.js': `globalThis.MARK_POSTGRES = 'loaded'
+export default function postgres(url) {
+  return { url }
+}
+`,
+      'src/db-middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
+import postgres from 'postgres'
+function connect() {
+  return postgres('MARK_DB_CONNECT')
+}
+export function dbMiddleware() {
+  const sql = connect()
+  return createMiddleware({ type: 'function' }).server(({ next }) =>
+    next({ context: { marker: sql.url } }),
+  )
+}
+export const db = dbMiddleware()
+`,
       'src/fns.ts': `import {
   createIsomorphicFn,
   createServerFn,
@@ -272,6 +298,7 @@ export const serverOnly = createServerOnlyFn(() => serverOnlyDep())
       'src/middleware-fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { serverMiddleware, validatedMiddleware } from './builder-middleware'
 import { fnMiddleware } from './middleware'
+import { db } from './db-middleware'
 type Context = { marker?: string }
 export const viaFnMiddleware = createServerFn()
   .middleware([fnMiddleware])
@@ -285,6 +312,9 @@ export const viaBuilderMiddleware = createServerFn()
 export const viaBuilderValidator = createServerFn()
   .middleware([validatedMiddleware])
   .handler(async ({ data }) => data)
+export const viaMiddlewareFactory = createServerFn()
+  .middleware([db])
+  .handler(async ({ context }) => (context as Context).marker)
 export const viaStartMiddleware = createServerFn().handler(
   async ({ context }) => (context as unknown as Context).marker,
 )
@@ -366,6 +396,7 @@ export {
   viaBuilderMiddleware,
   viaBuilderValidator,
   viaFnMiddleware,
+  viaMiddlewareFactory,
   viaStartMiddleware,
 } from './middleware-fns'
 export { getRouter } from './router'
@@ -516,6 +547,15 @@ const get = async (path) =>
         marker: 'MARK_START_MIDDLEWARE',
         run: `return await callById(serverFnId(entry.viaStartMiddleware))`,
         expected: 'MARK_START_MIDDLEWARE',
+      },
+      // Source: review round 3 (R3-G2-1): the factory's declaration stayed
+      // as a call of the helper, with the helper and the package's import.
+      {
+        construct:
+          'a function middleware .server() of a factory reading a call of a same-module helper',
+        marker: /MARK_DB_CONNECT|MARK_POSTGRES/,
+        run: `return await callById(serverFnId(entry.viaMiddlewareFactory))`,
+        expected: 'MARK_DB_CONNECT',
       },
       {
         construct: 'a function middleware .server() on a builder variable',
