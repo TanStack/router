@@ -16,7 +16,6 @@ import {
   cacheDisabled,
   identifierBase,
   isPureExpression,
-  normalizePath,
   patternIdentifiers,
   revision,
   sameFileSpecifier,
@@ -24,6 +23,7 @@ import {
   unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
+import { relative } from 'pathe'
 import {
   START_KINDS,
   runtimeSpecifiers,
@@ -467,7 +467,8 @@ function planStartEnv(
       by,
     })
   const specs = runtimeSpecifiers(config.framework)
-  const rootRel = relativeRoot(config.root, ctx.identity.path)
+  // main's `filename`: pathe's `relative` (forward slashes, drive letters upper-cased, another drive absolute)
+  const rootRel = relative(config.root, ctx.identity.path)
   // what the compile adds to an in-place provider's exports is tagged with the file (`fileTag`)
   let fileTag: string | undefined
   const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
@@ -1473,30 +1474,6 @@ function serverFnFact(
     name,
     providerDerived,
   }
-}
-
-/**
- * `path` relative to `root`, with forward slashes. A drive letter is
- * compared in upper case, as pathe does: Windows paths name one directory
- * whatever its case, and the root (`process.cwd()`, Vite's `root`) can carry a
- * lowercase one while module ids carry the file system's.
- */
-function relativeRoot(root: string, path: string): string {
-  const drive = (p: string) =>
-    p.replace(/^[a-z](?=:)/, (letter) => letter.toUpperCase())
-  const r = drive(normalizePath(root)).replace(/\/+$/, '')
-  const p = drive(normalizePath(path))
-  if (p.startsWith(`${r}/`)) {
-    return p.slice(r.length + 1)
-  }
-  // outside the root: a relative path with `..` segments
-  const a = r.split('/')
-  const b = p.split('/')
-  let i = 0
-  while (i < a.length && i < b.length && a[i] === b[i]) {
-    i++
-  }
-  return [...a.slice(i).map(() => '..'), ...b.slice(i)].join('/')
 }
 
 /**
