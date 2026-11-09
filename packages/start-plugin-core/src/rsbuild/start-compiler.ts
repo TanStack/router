@@ -18,7 +18,7 @@ import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
-import { addVueScriptBlockRule } from './vue'
+import { vueScriptBlockRule } from './vue'
 import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
 import type { TransformImportRule } from './compiler-session'
 import type { StartCompilerEnvironment } from '../compiler/session'
@@ -134,7 +134,11 @@ export function registerStartCompiler(
       loader: loaderPath,
       options: { environment: environment.name, pass: 'late' },
     }
-    loaderRules.push({ test: LATE_PASS_RE, enforce: 'post', use: [lateUse] })
+    loaderRules.push(
+      { test: LATE_PASS_RE, enforce: 'post', use: [lateUse] },
+      // Vue SFC script blocks under vue-loader's inline match resource
+      vueScriptBlockRule(lateUse),
+    )
     if (s.start.ip) {
       loaderRules.push(
         // the import-protection runtime only; edge modules are analysed by the bundler
@@ -205,35 +209,10 @@ export function registerStartCompiler(
     )
   })
 
-  // Vue SFCs: the final configuration says whether vue-loader builds them
-  // (`@rsbuild/plugin-vue`, or `tools.rspack`, which Rsbuild applies after
-  // every plugin's `modifyRspackConfig`)
-  api.onBeforeCreateCompiler(({ bundlerConfigs }) => {
-    for (const config of bundlerConfigs) {
-      const rules = config.module?.rules
-      const late = rules?.findIndex(isLateRule) ?? -1
-      if (late >= 0) {
-        addVueScriptBlockRule(config, late)
-      }
-    }
-  })
-
   return {
     session: () => session,
     resolverModule: () => ensureSession().resolverModule(),
   }
-}
-
-/** Start's late pass rule (`LATE_PASS_RE`) of an environment's configuration. */
-function isLateRule(rule: unknown): boolean {
-  const use = (rule as Rspack.RuleSetRule | undefined)?.use
-  const first = Array.isArray(use) ? use[0] : undefined
-  return (
-    !!first &&
-    typeof first === 'object' &&
-    first.loader === loaderPath &&
-    (first.options as { pass?: unknown } | undefined)?.pass === 'late'
-  )
 }
 
 /** The array form of `source.transformImport` (a function form is applied to no imports). */
