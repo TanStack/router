@@ -113,6 +113,17 @@ interface ModuleLike {
   identifier: () => string
 }
 
+/** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
+function addServerFns(
+  snapshot: Map<string, ReadonlyArray<ServerFnFact>>,
+  info: Record<string, unknown>,
+): void {
+  const fns = info[SERVER_FN_BUILD_INFO_FIELD] as ServerFnBuildInfo | undefined
+  if (fns?.version === 4) {
+    snapshot.set(fns.canonicalId, fns.facts)
+  }
+}
+
 /**
  * Whether Rspack's native `file` is a `package.json`: its edit re-resolves
  * what it may redirect, asked once Rspack's resolver forgot the old file
@@ -744,11 +755,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (ipEnv && !judgesRestored && ip && module.resource) {
               ipEnv.replay(canonicalResource(module.resource), ip)
             }
-            const fns = info[SERVER_FN_BUILD_INFO_FIELD] as
-              | ServerFnBuildInfo
-              | undefined
-            if (fns?.version === 4) {
-              snapshot.set(fns.canonicalId, fns.facts)
+            addServerFns(snapshot, info)
+          }
+          // the modules of child compilers (a worker's, a service worker's:
+          // compiled as this environment's, done during `make`) call the
+          // server fns they define too
+          const children = [...compilation.children]
+          for (const child of children) {
+            children.push(...child.children)
+            for (const m of child.modules) {
+              const info = (m as unknown as ModuleLike).buildInfo
+              if (info) {
+                addServerFns(snapshot, info)
+              }
             }
           }
           session.start.registry.replace(env, snapshot)

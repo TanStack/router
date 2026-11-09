@@ -6,7 +6,7 @@
  * the package (one module instance of the session, whichever `dist` entry
  * Rspack loads this from), and nothing of the package imports this file.
  */
-import { LOADER_REGISTRY } from './loader-registry'
+import { loaderImplOf } from './loader-registry'
 import type { Rspack } from '@rsbuild/core'
 import type { LoaderOptions } from './compiler-session'
 
@@ -20,9 +20,7 @@ export type LoaderImpl = (
 const tanstackStartCompilerLoader: Rspack.LoaderDefinition<LoaderOptions> =
   function (source, inputMap) {
     const callback = this.async()
-    const impl = (this._compiler as unknown as Record<string, unknown>)[
-      LOADER_REGISTRY
-    ] as LoaderImpl | undefined
+    const impl = loaderImplOf(this._compiler)
     if (!impl) {
       callback(null, source, inputMap)
       return

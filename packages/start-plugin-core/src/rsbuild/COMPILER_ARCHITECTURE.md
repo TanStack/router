@@ -20,7 +20,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   (vue-loader's pitcher copies a block's loaders into its own request, which the configured `post` rules match again:
   a late loader that runs again later in its chain passes through).
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
-  (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
+  (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin. A child compiler
+  (a worker or service-worker plugin's) takes its environment's module rules but none of its plugins: the loaders find
+  the implementation on its `root`, so its modules compile as the environment's.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
@@ -62,7 +64,8 @@ two plans (the layer is part of the plan configuration).
 A compile reports the server functions of its module in plan facts: the Start session's registry replaces the module's
 snapshot in its environment with them, and the loader stores them in `buildInfo['tanstack.start.serverFns']`, which
 Rspack persists with the module. At `finishMake` (stage −20) the host plugin replaces the environment's snapshots in
-the registry with those of every module of the compilation (built now or restored from the persistent cache), and the
+the registry with those of every module of the compilation (built now or restored from the persistent cache) and of
+its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
 at stage −10 the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
