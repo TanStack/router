@@ -114,8 +114,10 @@ function commentBefore(
 
 /**
  * Marks the module's own `#__NO_SIDE_EFFECTS__` callees (a function
- * declaration, `const f = /* #__NO_SIDE_EFFECTS__ *\/ () => …`, exported or
- * not) before any statement is classified: a function declaration is
+ * declaration, `const f = /* #__NO_SIDE_EFFECTS__ *\/ () => …`,
+ * `/* #__NO_SIDE_EFFECTS__ *\/ const f = () => …`, exported or not: the
+ * placements Rollup and esbuild both accept) before any statement is
+ * classified: a function declaration is
  * hoisted, so a call may precede it, and Tier 0 and the unit model must
  * classify the same statement alike. The one seeding of local callees.
  */
@@ -150,12 +152,20 @@ export function seedNoSideEffectDeclarations(
         mark(decl.id)
       }
     } else if (decl.type === 'VariableDeclaration') {
+      // before a `const` statement (or its `export`), the annotation is
+      // its first declarator's, as Rollup and esbuild read it
+      const first =
+        decl.kind === 'const' &&
+        (hasNoSideEffectsAnnotation(ctx, decl) ||
+          (decl !== stmt && hasNoSideEffectsAnnotation(ctx, stmt)))
+          ? decl.declarations[0]
+          : undefined
       for (const d of decl.declarations) {
         if (
           d.init &&
           (d.init.type === 'ArrowFunctionExpression' ||
             d.init.type === 'FunctionExpression') &&
-          hasNoSideEffectsAnnotation(ctx, d.init)
+          (d === first || hasNoSideEffectsAnnotation(ctx, d.init))
         ) {
           mark(d.id)
         }
@@ -603,7 +613,12 @@ export function isPureClass(
         }
         break
       case 'MethodDefinition':
-        if (el.decorators.length > 0) {
+        // a decorator on the method or on one of its parameters
+        // (`constructor(@Inject() dep)`) runs when the class is defined
+        if (
+          el.decorators.length > 0 ||
+          el.value.params.some((p) => (p.decorators?.length ?? 0) > 0)
+        ) {
           return false
         }
         if (el.computed && !isPureExpression(ctx, el.key as Node)) {

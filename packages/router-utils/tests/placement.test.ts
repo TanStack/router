@@ -1814,6 +1814,16 @@ describe('extracted-export outputs', () => {
         'export function Model() {}\nexport function isModel(v: unknown) { return Object.getPrototypeOf(v) === Model.prototype }',
         'isModel(Model)',
       ],
+      [
+        'a case label',
+        'export const Model = () => {}\nexport function isModel(v: unknown) { switch (v) { case Model: return true } return false }',
+        'isModel(Model)',
+      ],
+      [
+        'a switch value',
+        'export const Model = () => {}\nexport function isModel(v: unknown) { switch (Model) { case v: return true } return false }',
+        'isModel(Model)',
+      ],
     ])(
       'imports an exported function whose identity is observed instead of copying it: %s',
       async (_, declarations, read) => {
@@ -3150,6 +3160,46 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain('const store = createStore()')
   })
 
+  it.each([
+    [
+      'a constructor parameter',
+      'constructor(@inject() readonly dep: unknown) {}',
+    ],
+    ['a method parameter', 'use(@inject() dep: unknown) { return dep }'],
+    ['a method', '@inject() use() {}'],
+  ])(
+    'keeps a class with a decorator on %s eager when a surviving effect follows it (the decorator runs when the class is defined)',
+    async (_, member) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { inject, advance } from './di'
+        class Service { ${member} }
+        advance()
+        export const Route = createFileRoute('/')({
+          component: () => new Service(1),
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toContain('class Service')
+      expect(r.chunks.component).not.toContain('class Service')
+    },
+  )
+
+  it('moves a class without decorators a surviving effect follows', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { advance } from './di'
+      class Service { constructor(readonly dep: unknown) {} }
+      advance()
+      export const Route = createFileRoute('/')({
+        component: () => new Service(1),
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('class Service')
+    expect(r.chunks.component).toContain('class Service')
+  })
+
   it('keeps the initialiser eager when a surviving effect follows it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -4248,6 +4298,36 @@ describe('one mutation model: eager reads of state something writes', () => {
       true,
     ],
     ['negated and called', 'const initial = !function () { return n }()', true],
+    [
+      'called through a type assertion',
+      'const initial = ((() => n) as () => number)()',
+      true,
+    ],
+    ['called through !', 'const initial = ((() => n)!)()', true],
+    ['called optionally', 'const initial = (() => n)?.()', true],
+    [
+      'called through a type assertion and .call',
+      'const initial = ((function () { return n }) as () => number).call(null)',
+      true,
+    ],
+    [
+      'bound and called',
+      'const initial = (function () { return n }).bind(null)()',
+      true,
+    ],
+    [
+      'constructed',
+      'const initial = new (function (this: any) { this.v = n } as any)().v',
+      true,
+    ],
+    ['bound, not called', 'const initial = (() => n).bind(null)', false],
+    // without semicolons, a line starting with `(` after an arrow's block
+    // is a statement of its own: the arrow is not called
+    [
+      'followed by a statement in parentheses',
+      'const read = () => {\n  return n\n}\n(globalThis as any).seen = 1\nconst initial = read',
+      false,
+    ],
     // a function passed to a call may run when the call does (the module
     // does not know what `wrap` does with it): its read counts as eager
     [
@@ -4609,6 +4689,18 @@ describe('declarations only split code needs that stay in the route module', () 
           'const confetti',
           '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\nconst confetti',
         ),
+      // before a `const` declaration of a function (its first
+      // declarator), or around its `export`, as Rollup and esbuild read it
+      ...[
+        '/* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape\n',
+        '/* #__NO_SIDE_EFFECTS__ */ export const type = function (shape) { return shape }\n',
+        'export /* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape\n',
+        'const type = /* #__NO_SIDE_EFFECTS__ */ (shape) => shape\n',
+      ].map((declaration) =>
+        pinned
+          .replace("import { type } from 'arktype'\n", '')
+          .replace('const confetti', `${declaration}const confetti`),
+      ),
       // declared after the call (hoisted): the annotation counts in any
       // order, for the option value and for a declaration's initialiser
       pinned
@@ -4639,6 +4731,24 @@ describe('declarations only split code needs that stay in the route module', () 
       expect(r.diagnostics, code).toEqual([])
     }
   })
+
+  it.each([
+    ['a `let`', '/* #__NO_SIDE_EFFECTS__ */ let type = (shape) => shape\n'],
+    [
+      'a later declarator',
+      '/* #__NO_SIDE_EFFECTS__ */ const x = 1, type = (shape) => shape\n',
+    ],
+  ])(
+    'reads no #__NO_SIDE_EFFECTS__ before the statement for %s (neither Rollup nor esbuild does)',
+    async (_, declaration) => {
+      const r = await kept(
+        pinned
+          .replace("import { type } from 'arktype'\n", '')
+          .replace('const confetti', `${declaration}const confetti`),
+      )
+      expect(r.env).toContain('const confetti = new JSConfetti()')
+    },
+  )
 
   it('suggests #__NO_SIDE_EFFECTS__ for a callee the route file declares', async () => {
     const code = pinned
