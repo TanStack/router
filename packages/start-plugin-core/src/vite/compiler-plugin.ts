@@ -9,93 +9,69 @@
  * patching at `renderChunk`, and import protection's host side (edge
  * modules, dev reports, build witness and reports, the late pass for non-JS
  * importers).
+ *
+ * The plugins share one `ViteCompilerState` (`compiler-state.ts`: the
+ * session and the hooks' state). This file holds each environment's compiler
+ * plugin; beside it: `invalidation.ts` (file events), `handler-reach.ts`
+ * (the RSC provider's handler reach), `late-pass-plugin.ts` and
+ * `server-fn-plugins.ts` (dev lookup, forward, resolver).
  */
-import { promises as fs, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   OutputBuilder,
   SAME_FILE_SPECIFIER_RE,
   SourceText,
-  applyViteInvalidation,
-  collectionSizes,
-  displayPath,
   identify,
   invalidate,
-  isAnalyzableSpecifier,
   isFinalBuild,
-  isVirtualId,
   liveModules,
   loadDerivedSource,
   normalizePath,
-  registerCompilerStats,
   resolveSameFileSpecifier,
   revision,
   rollupEntryModuleIds,
-  viteLog,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import {
   changedRoutePaths,
   onRoutesChanged,
 } from '@tanstack/router-plugin/context'
-import { RouteRegistryView } from '@tanstack/router-plugin/planners'
-import {
-  DEV_CLIENT_ENTRY,
-  TRANSFORM_ID_REGEX,
-  VITE_ENVIRONMENT_NAMES,
-} from '../constants'
+import { TRANSFORM_ID_REGEX } from '../constants'
 import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
-import { StartCompilerSession } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
-import { decodeDevFunctionId } from '../server-fns/ids'
-import { providerModuleId } from '../server-fns/registry'
-import {
-  SERVER_FN_LOOKUP_VIRTUAL_ID,
-  callerGateModule,
-  devLookupModule,
-  devResolverModule,
-  productionResolverModule,
-  unreferencedWarning,
-} from '../server-fns/resolver'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
 import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { escapeRegExp, resolveViteId } from '../utils'
-import { createVirtualModule } from './createVirtualModule'
-import { createVirtualWaits } from './virtual-waits'
+import { ViteCompilerState, cacheDirRe, inputMapOf } from './compiler-state'
+import { compileHandlerReach } from './handler-reach'
+import {
+  applyInvalidation,
+  changeKindOf,
+  changedDependents,
+  forgetFile,
+  invalidateRegistry,
+  invalidationHosts,
+} from './invalidation'
+import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
+import {
+  devLookupPlugin,
+  forwardPlugin,
+  resolverPlugin,
+} from './server-fn-plugins'
 import type {
-  CompileOutcome,
-  CompiledOutputLike,
-} from '../import-protection/session'
-import type { GenerateFunctionId } from '../server-fns/ids'
-import type {
-  CompileStartFrameworkOptions,
-  GetConfigFn,
-  StartRscOptions,
-} from '../types'
-import type { RouterPluginContext } from '@tanstack/router-plugin/context'
-import type {
-  CompileOutput,
-  Diagnostic,
-  DiagnosticPosition,
-  HostServices,
   InputSourceMap,
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
+import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type {
-  DevEnvironment,
-  Environment,
-  EnvironmentModuleNode,
-  Plugin,
-  PluginOption,
-  ViteDevServer,
-} from 'vite'
+  StartCompilerEnvironment,
+  StartCompilerPluginOptions,
+} from './compiler-state'
 
 /** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
 type TransformHandler = Extract<
@@ -103,1401 +79,510 @@ type TransformHandler = Extract<
   { handler: unknown }
 >['handler']
 
-interface StartCompilerEnvironment {
-  name: string
-  type: 'client' | 'server'
-  getServerFnById?: string
-}
-
-interface StartCompilerPluginOptions {
-  framework: CompileStartFrameworkOptions
-  environments: Array<StartCompilerEnvironment>
-  generateFunctionId?: GenerateFunctionId
-  /** The Vite environment name of the server function provider. */
-  providerEnvName: string
-  rsc?: StartRscOptions | undefined
-  getConfig: GetConfigFn
-  /** The generator's registry (route modules by file), shared with the generator plugin. */
-  routerPluginContext: RouterPluginContext
-  /** The app's resolved entries (import protection's trace roots). */
-  resolveEntries: () => {
-    entryPaths: {
-      client: string
-      server: string
-      start: string
-      router: string
-    }
-  }
-}
-
-/** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
-const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
-
-/** A module naming no server-fn factory nor `.handler(` defines no server function (a text gate before any analysis). */
-const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
-
-/** A dependency module: `node_modules` in its path (not its query). */
-const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
-
-/** A dependency's script module (the `TRANSFORM_ID_REGEX` of `DEPENDENCY_ID_RE`). */
-const DEPENDENCY_SCRIPT_RE =
-  /^[^?]*[\\/]node_modules[\\/].*\.[cm]?[tj]sx?(?:$|\?)/
-
-/**
- * The optimizer's bundles of an app: files of Vite's resolved `cacheDir`
- * (`node_modules/.vite` by default, or wherever the app keeps it), the
- * dependencies of `DEPENDENCY_ID_RE` wherever they are written. `script`:
- * its script modules only (`DEPENDENCY_SCRIPT_RE`).
- */
-function cacheDirRe(cacheDir: string, script = false): RegExp {
-  const dir = escapeRegExp(normalizePath(cacheDir).replace(/\/$/, ''))
-  return new RegExp(
-    script ? `^${dir}/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)` : `^${dir}/`,
-  )
-}
-
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
-
-/** Files that are no code: a pattern can reach them, and nothing compiles them. */
-const ASSET_FILE_RE =
-  /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss|json|json5|yaml|yml|toml|html|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp[34]|webm|ogg|wav|flac|aac|pdf|txt|wasm|zip)(?:\?|$)/i
-
-/** Ids the late import-protection pass never compiles (not code, or served by the pre plugin). */
-const LATE_PASS_EXCLUDE: Array<RegExp> = [
-  ...TRANSFORM_ID_REGEX,
-  /^\0/,
-  NODE_MODULES_RE,
-  ASSET_FILE_RE,
-  ASSET_QUERY_RE,
-]
-
-/** How many dependents of one file change `changedDependents` transforms at once. */
-const DEPENDENT_TRANSFORMS = 128
-
-const readAwaitingAdd = (awaitingAdd: Map<string, Set<string>>) =>
-  collectionSizes({ awaitingAdd })
-
-const readEntries = (entries: Set<string>) => ({ size: entries.size })
-
-/** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
-function toDevSpecifier(id: string, root: string): string {
-  const normalizedRoot = normalizePath(root).replace(/\/$/, '')
-  const normalized = normalizePath(id)
-  if (normalized.startsWith(`${normalizedRoot}/`)) {
-    return normalized.slice(normalizedRoot.length)
-  }
-  return normalized.startsWith('/') ? `/@fs${normalized}` : `/@fs/${normalized}`
-}
-
-/**
- * The source entry of a pre-bundled dependency, when `id` is the dependency
- * optimizer's bundle (`<cacheDir>/deps/x.js?v=…`, the optimizer's own
- * test: the app may keep its `cacheDir` anywhere): the optimizer
- * resolves a dependency to its bundle before the bundle is written, so facts
- * read through that path would see a missing module; the package's own entry
- * is what the dependency is (deterministic, and stable across re-optimization).
- */
-function unoptimizedDependency(environment: Environment, id: string): string {
-  const optimizer = (environment as DevEnvironment).depsOptimizer
-  if (!optimizer?.isOptimizedDepFile(id)) {
-    return id
-  }
-  const file = id.split('?')[0]!
-  const { optimized, discovered } = optimizer.metadata as {
-    optimized: Record<string, { file: string; src?: string }>
-    discovered?: Record<string, { file: string; src?: string }>
-  }
-  for (const table of [optimized, discovered ?? {}]) {
-    for (const info of Object.values(table)) {
-      if (info.file === file && info.src) {
-        return info.src
-      }
-    }
-  }
-  return id
-}
-
-/**
- * The map of a transform's input, or null when the input is the original
- * source: its positions are the source's own. Vite answers an empty
- * sourcemap chain with an identity map it builds over the whole input
- * (and such a map counts lines by LF only, unlike ECMAScript), so the
- * file as written is compared first.
- */
-function inputMapOf(
-  ctx: { getCombinedSourcemap: () => unknown },
-  code: string,
-  file: string,
-): InputSourceMap | null {
-  try {
-    if (readFileSync(file, 'utf8') === code) {
-      return null
-    }
-  } catch {
-    // a virtual module: Vite's map
-  }
-  const map = ctx.getCombinedSourcemap() as InputSourceMap & {
-    sourcesContent?: Array<string | null>
-  }
-  if (map.sourcesContent?.length === 1 && map.sourcesContent[0] === code) {
-    return null
-  }
-  return map
-}
-
-/** What one dev server or build shares across the Start environments (created at `configResolved`). */
-interface Session {
-  start: StartCompilerSession
-  bundledDev: boolean
-  /** The app's entry module ids (dev traces start there). */
-  entries: Set<string>
-}
 
 export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
-  const ssrIsProvider = opts.providerEnvName === VITE_ENVIRONMENT_NAMES.server
-  const envNames = new Set(opts.environments.map((e) => e.name))
-  const resolverEnvironments = new Set(
-    ssrIsProvider
-      ? [opts.providerEnvName]
-      : [VITE_ENVIRONMENT_NAMES.server, opts.providerEnvName],
-  )
-  /**
-   * Per-env loaders of genuinely virtual ids (the dev plugin container, or
-   * `this.load` in a build): an id is loaded by the environment that
-   * resolved it, never asked of another one (in `vite build --watch` the
-   * environments build at once, and an id a build cannot load fails it).
-   */
-  const virtualLoaders = new Map<
-    string,
-    (id: string) => Promise<string | null>
-  >()
-  let session: Session | null = null
-  let server: ViteDevServer | null = null
-  let unsubscribeRoutes: (() => void) | null = null
-  /**
-   * One compiler invalidation per file event, applied by every env's
-   * `hotUpdate`: Vite hands each environment's hook its own context over the
-   * event's one `read` function, so the memo lives as long as the event.
-   */
-  const invalidations = new WeakMap<
-    () => unknown,
-    Promise<Awaited<ReturnType<typeof invalidate>>>
-  >()
-  /**
-   * `build --watch`: the server's resolver lists the functions the client
-   * build references, so it watches the files of the client's module graph
-   * (an edit only the client bundles rebuilds the server too) and waits for
-   * the client build a file event started (`clientRebuild`, until its
-   * `buildEnd`): the environments rebuild at once.
-   */
-  let clientFiles: Array<string> = []
-  let clientRebuild: { ended: Promise<void>; end: () => void } | null = null
-  /**
-   * Whether the client environment built in this process: the server's
-   * resolver of a build lists (or gates on) the functions the client build
-   * references, which it reads from the client's compiles.
-   */
-  let clientBuilt = false
-
-  /**
-   * Per env: files whose plans an `unlink` evicted or made stale, to
-   * re-transform when a file appears (see `applyInvalidation`).
-   */
-  const awaitingAdd = new Map<string, Set<string>>()
-  registerCompilerStats('start:vite:awaitingAdd', awaitingAdd, readAwaitingAdd)
-
-  const requireSession = (): Session => {
-    if (!session) {
-      throw new Error(
-        '[tanstack-start] the compiler plugin is used before `configResolved`',
-      )
-    }
-    return session
-  }
-
-  const envOf = (name: string): StartCompilerEnvironment | undefined =>
-    opts.environments.find((e) => e.name === name)
-
-  const createSession = (config: {
-    root: string
-    command: 'serve' | 'build'
-    bundledDev: boolean
-    cacheDir: string
-  }): Session => {
-    const cached = cacheDirRe(config.cacheDir)
-    const { startConfig, resolvedStartConfig } = opts.getConfig()
-    const s: Session = {
-      start: new StartCompilerSession({
-        framework: opts.framework,
-        mode: config.command === 'build' ? 'build' : 'dev',
-        root: config.root,
-        srcDirectory: resolvedStartConfig.srcDirectory,
-        environments: opts.environments,
-        providerEnv: opts.providerEnvName,
-        rsc: opts.rsc,
-        generateFunctionId: opts.generateFunctionId,
-        codeSplittingOptions: startConfig.router.codeSplittingOptions,
-        hmrStyle: 'vite',
-        importProtection: startConfig.importProtection,
-        isEntry: (p) => entriesOf(s).has(normalizePath(p)),
-        routes: new RouteRegistryView(opts.routerPluginContext),
-        readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-        loadVirtual: async (id, env) => {
-          const load = virtualLoaders.get(env)
-          return load ? load(id).catch(() => null) : null
-        },
-        // pre-bundled dependencies, in the app's `cacheDir` (a Start library
-        // declaring the framework as a peer is never pre-bundled): what the
-        // optimizer metadata maps back to a source entry is read there
-        // (`unoptimizedDependency`)
-        opaque: (p) => cached.test(normalizePath(p)),
-        label: 'start:vite',
-      }),
-      bundledDev: config.bundledDev,
-      entries: new Set(),
-    }
-    registerCompilerStats('start:vite:entries', s.entries, readEntries)
-    return s
-  }
-
-  /** The app's entry ids: traces of dev reports start at them (lazily: the entries are resolved after `config`). */
-  const entriesOf = (s: Session): Set<string> => {
-    if (s.entries.size === 0) {
-      const { resolvedStartConfig } = opts.getConfig()
-      const { entryPaths } = opts.resolveEntries()
-      for (const p of [
-        resolvedStartConfig.routerFilePath,
-        resolvedStartConfig.startFilePath,
-        entryPaths.client,
-        entryPaths.server,
-        entryPaths.router,
-        entryPaths.start,
-      ]) {
-        if (p) {
-          s.entries.add(normalizePath(p))
-        }
-      }
-      s.entries.add(resolveViteId(DEV_CLIENT_ENTRY))
-      s.entries.add(DEV_CLIENT_ENTRY)
-    }
-    return s.entries
-  }
-
-  /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
-  const virtualWaits = createVirtualWaits()
-  /**
-   * Host services bound to one hook context (`compiling`: the id a transform
-   * compiles; a build's compile of a virtual module fails a wait on a
-   * virtual text that would never end).
-   */
-  const hostFor = (
-    s: Session,
-    environment: Environment,
-    resolve: (
-      source: string,
-      importer?: string,
-      options?: { skipSelf?: boolean },
-    ) => Promise<{ id: string; external?: boolean | string } | null>,
-    compiling?: string,
-  ): HostServices => {
-    const host = s.start.host(async (specifier, importer) => {
-      // a resolver that throws (a package with no export for this
-      // environment's conditions, e.g. only `node`) couldn't resolve the
-      // specifier, as Rspack's resolver answers: the bundler decides on the
-      // import, failing if it keeps it
-      const r = await resolve(specifier, importer, { skipSelf: true }).catch(
-        () => null,
-      )
-      if (!r) {
-        return null
-      }
-      return {
-        id: unoptimizedDependency(environment, r.id),
-        external: r.external === true || typeof r.external === 'string',
-      }
-    })
-    if (compiling !== undefined && environment.mode === 'build') {
-      const subject = identify(compiling).canonicalId
-      if (isVirtualId(subject)) {
-        host.awaitVirtual = virtualWaits.of(environment.name, subject)
-      }
-    }
-    return host
-  }
-
-  /** The host of the invalidation operation (a dev environment's own resolver). */
-  const invalidationHost = (
-    s: Session,
-    environment: DevEnvironment,
-  ): HostServices => ({
-    ...hostFor(s, environment, async (specifier, importer) => {
-      const r = await environment.pluginContainer.resolveId(specifier, importer)
-      return r ? { id: r.id, external: r.external === true } : null
-    }),
-    onInvalidationError: (error) => {
-      environment.logger.warnOnce(
-        `[tanstack-start] re-checking a module after a file change failed: ${String(error)}`,
-      )
-    },
-  })
-
-  /**
-   * The hosts of one invalidation, per environment: each environment's
-   * fingerprints are re-validated with its own resolver (per-environment
-   * aliases and conditions); an environment the dev server does not
-   * know falls back to the hook's own.
-   */
-  const invalidationHosts = (
-    s: Session,
-    viteServer: ViteDevServer | null,
-    own: DevEnvironment,
-  ): ((env: string) => HostServices) => {
-    const hosts = new Map<string, HostServices>()
-    return (name) => {
-      let h = hosts.get(name)
-      if (!h) {
-        h = invalidationHost(s, viteServer?.environments[name] ?? own)
-        hosts.set(name, h)
-      }
-      return h
-    }
-  }
-
-  /**
-   * Applies one invalidation to an env's module graph and returns the
-   * dependents (`applyViteInvalidation`; Vite transforms them again and
-   * propagates their updates): the changed file's own modules are Vite's own
-   * update, and an `unlink`'s dependents wait for the next `add`.
-   */
-  const applyInvalidation = (
-    environment: Environment,
-    change: InvalidateChange,
-    res: Awaited<ReturnType<typeof invalidate>>,
-    timestamp: number,
-  ): Array<EnvironmentModuleNode> => {
-    let waiting = awaitingAdd.get(environment.name)
-    if (!waiting) {
-      waiting = new Set()
-      awaitingAdd.set(environment.name, waiting)
-    }
-    return applyViteInvalidation(
-      environment as DevEnvironment,
-      change,
-      res,
-      timestamp,
-      { ownUpdate: true, awaitingAdd: waiting },
-    )
-  }
-
-  /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
-  const outputDigests = new Map<string, Map<string, string>>()
-  const digestOf = (id: string, key: string): string | undefined =>
-    outputDigests.get(identify(id).path)?.get(key)
-
-  /** Forgets what the session and the host hold of a deleted file (`file`: its normalized path). */
-  const forgetFile = (s: Session, file: string): void => {
-    s.start.forget(file)
-    outputDigests.delete(file)
-  }
-
-  /**
-   * The dependents whose output the change altered: a dependent re-plans
-   * (its plan was evicted), and the one the compiler emits again as the
-   * page holds it is no update (D8: hard-invalidate where decisions
-   * changed). Propagating it would only send the page a module it cannot
-   * hot-apply (a route tree, accepted by nothing) and so a full reload,
-   * e.g. after a route file gained an export. The comparison is of the
-   * compiler's output, not Vite's (import analysis stamps `?t=` on the
-   * imports of changed modules). The dependents are transformed
-   * `DEPENDENT_TRANSFORMS` at a time (an export added to a shared module
-   * re-plans each of its importers: their waits overlap, and the modules
-   * in flight at once stay few); the result keeps their order.
-   *
-   * An unchanged dependent stays invalidated (soft: its next request reuses
-   * this transform): Vite's graph, not the comparison, says whether what a
-   * module runner holds is current. Another file's hot update may have
-   * invalidated the dependent meanwhile (Vite keeps a transform that an HMR
-   * invalidation overtook), and a runner whose copy failed to load (an
-   * import was missing) is not told when the file is back.
-   */
-  const changedDependents = async (
-    environment: DevEnvironment,
-    dependents: Array<EnvironmentModuleNode>,
-  ): Promise<Array<EnvironmentModuleNode>> => {
-    const unchanged: Array<boolean> = []
-    let next = 0
-    const transformNext = async (): Promise<void> => {
-      while (next < dependents.length) {
-        const i = next++
-        const node = dependents[i]!
-        if (node.id === null) {
-          continue
-        }
-        // Vite's own propagation of the file change may have cleared the
-        // node's transform result already; the compiler's last output is
-        // what the page holds
-        const key = `${environment.name}\0${node.id}`
-        const previous = digestOf(node.id, key)
-        if (previous === undefined) {
-          continue
-        }
-        await environment.transformRequest(node.url).catch(() => null)
-        unchanged[i] = digestOf(node.id, key) === previous
-      }
-    }
-    await Promise.all(
-      Array.from(
-        { length: Math.min(DEPENDENT_TRANSFORMS, dependents.length) },
-        transformNext,
-      ),
-    )
-    // once every transform ended: an invalidation reaches the importers,
-    // and Vite drops a transform it overtook (compiled again on request)
-    const changed: Array<EnvironmentModuleNode> = []
-    dependents.forEach((node, i) => {
-      if (unchanged[i]) {
-        environment.moduleGraph.invalidateModule(
-          node,
-          undefined,
-          undefined,
-          false,
-          true,
-        )
-      } else {
-        changed.push(node)
-      }
-    })
-    return changed
-  }
-
-  /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
-  const invalidateRegistry = async (file: string): Promise<void> => {
-    const s = session
-    if (!s || !server) {
-      return
-    }
-    const environments = Object.values(server.environments)
-    const first = environments[0]
-    if (!first) {
-      return
-    }
-    const change: InvalidateChange = {
-      path: normalizePath(file),
-      kind: 'registry',
-    }
-    const res = await invalidate(
-      s.start.caches,
-      change,
-      invalidationHosts(s, server, first),
-    )
-    const now = Date.now()
-    for (const environment of environments) {
-      if (envNames.has(environment.name)) {
-        applyInvalidation(environment, change, res, now)
-      }
-    }
-  }
-
-  /** Whether `env` is a server-fn provider of its own (RSC), not the SSR environment. */
-  const isSeparateProvider = (env: StartCompilerEnvironment): boolean =>
-    !ssrIsProvider && env.name === opts.providerEnvName
-
-  /**
-   * A separate provider's build (RSC; plugin-rsc's `buildApp` builds the
-   * provider before the client, after scanning the provider and the SSR
-   * environments). The provider's graph unfolds from its manifest, which
-   * lists the server functions the scans registered. The SSR scan compiles
-   * a server-fn module as a caller: its handlers are deleted, with the
-   * imports only they read, so a `'use client'` component a handler renders
-   * (through a server component) and the server-fn modules that component
-   * imports are seen by no environment before the client builds: their
-   * functions were missing from the manifest (J4.2, #7943). Before the
-   * provider's real build, the raw reach of every registered server-fn
-   * module (static and lazy imports, project modules only, what the deleted
-   * handlers read included) is walked, and each module that may define a
-   * server function is compiled in the provider environment, outside any
-   * transform, so the manifest lists its functions; the build then imports
-   * and compiles it in place (the plans are reused).
-   */
-  const compileHandlerReach = async (
-    s: Session,
-    env: StartCompilerEnvironment,
-    host: HostServices,
-  ): Promise<void> => {
-    const { registry, rawFacts } = s.start
-    const seen = new Set<string>()
-    const queue = registry.entries().map((e) => e.definingCanonicalId)
-    while (queue.length > 0) {
-      const id = queue.pop()!
-      if (seen.has(id)) {
-        continue
-      }
-      seen.add(id)
-      const identity = identify(id)
-      if (NODE_MODULES_RE.test(identity.path)) {
-        continue
-      }
-      const facts = await rawFacts.get(identity.canonicalId, env.name)
-      if (!facts.targetFacts.exists) {
-        continue
-      }
-      if (!registry.definedIn(identity.canonicalId)) {
-        const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
-        // the cheap text gate of a module that may define a server function
-        if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
-          // (the compile registers the module's functions)
-          await s.start.compile(
-            {
-              id: identity.canonicalId,
-              code,
-              env,
-              inputMap: () => null,
-              wantMap: false,
-            },
-            host,
-          )
-        }
-      }
-      for (const spec of [
-        ...facts.targetFacts.imports,
-        ...facts.targetFacts.lazyImports,
-      ]) {
-        if (rawFacts.isKnownSpecifier(spec) || !isAnalyzableSpecifier(spec)) {
-          continue
-        }
-        const r = await host.resolve(spec, identity.canonicalId)
-        if (r && !r.external) {
-          queue.push(identify(r.id).canonicalId)
-        }
-      }
-    }
-  }
-
-  /**
-   * Reports a compile's diagnostics through a hook context (`ctx.error`
-   * throws). `inputMap`: a compile of another plugin's output (its
-   * positions are the original file's, `StartCompilerSession.report`). The
-   * dev server's hook context maps a `loc` through the module's combined
-   * source map itself: there, `loc` is the position in `code`.
-   */
-  const reportDiagnostics = (
-    s: Session,
-    ctx: {
-      warn: (w: {
-        message: string
-        loc?: { file: string; line: number; column: number }
-      }) => void
-      error: (e: {
-        message: string
-        id?: string
-        loc?: { file: string; line: number; column: number }
-      }) => never
-    },
-    out: CompileOutput,
-    filePath: string,
-    code: string,
-    envType: 'client' | 'server',
-    inputMap?: () => InputSourceMap | null,
-  ) => {
-    // a Vue SFC's refusals are positioned in the SFC (`at`), not in `code`
-    const frameOf = inputMap ? null : code
-    const name = displayPath(filePath, s.start.opts.root)
-    // Vite's dev transform context maps `loc` through the module's source
-    // map; bundled dev's (Rolldown's) does not
-    const dev = s.start.opts.mode === 'dev' && !s.bundledDev
-    const log = (
-      d: Diagnostic,
-      at: DiagnosticPosition | undefined,
-      generated?: DiagnosticPosition,
-    ) =>
-      dev && generated
-        ? // Vite maps the position in `code` back to the SFC itself
-          viteLog(d.message, generated, code, name, filePath, true)
-        : viteLog(d.message, at, frameOf, name, filePath, dev)
-    s.start.report(
-      out,
-      filePath,
-      code,
-      envType,
-      {
-        error: (d, at, generated) => ctx.error(log(d, at, generated)),
-        warn: (d, at, generated) => ctx.warn(log(d, at, generated)),
-      },
-      inputMap,
-    )
-  }
-
-  /**
-   * What follows a compile (`StartCompilerSession.afterCompile`): an
-   * `error`-behaviour violation fails the module; otherwise the import
-   * protection reports whose importers the graph (or the judged edges) can
-   * reach now are printed, before the module is served (a host completion
-   * event, no microtask polling). Gives the mock to serve instead of the
-   * output, if any.
-   */
-  const afterCompile = (
-    s: Session,
-    env: StartCompilerEnvironment,
-    id: string,
-    out: CompiledOutputLike,
-    fail: (error: Error) => never,
-  ): CompileOutcome['mock'] | Promise<CompileOutcome['mock']> => {
-    const finish = ({ error, mock }: CompileOutcome) => {
-      if (error) {
-        fail(error)
-      }
-      s.start.ip?.env(env.name, env.type).reporter?.flush()
-      return mock
-    }
-    const outcome = s.start.afterCompile(env, id, out)
-    return outcome instanceof Promise ? outcome.then(finish) : finish(outcome)
-  }
-
-  const changeKindOf = (
-    event: 'create' | 'update' | 'delete',
-  ): InvalidateChange['kind'] =>
-    event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
-
-  /**
-   * The transform filter of dependency scripts. Its text test is set with
-   * the session (it depends on import protection's configuration); without
-   * one, every dependency script reaches the compiler, whose scope decides.
-   */
-  const dependencyFilter: {
-    id: { include: Array<RegExp>; exclude: Array<RegExp> }
-    code?: RegExp
-  } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
-  /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
-  const ownExclude: Array<RegExp> = [ASSET_QUERY_RE, DEPENDENCY_ID_RE]
-
-  /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
-  const watchingEnv = opts.environments[0]?.name
-  function perEnvPlugins(env: StartCompilerEnvironment): Array<Plugin> {
-    const watches = env.name === watchingEnv
-    const compileTransform: TransformHandler = async function (code, id) {
-      const identity = identify(id)
-      const s = requireSession()
-      if (identity.lang === null || !s.start.compiles(identity.path, code)) {
-        return null
-      }
-      const environment = this.environment
-      let inputMap: InputSourceMap | null | undefined
-      const readInputMap = () =>
-        inputMap === undefined
-          ? (inputMap = inputMapOf(this, code, identity.path))
-          : inputMap
-      const out = await s.start.compile(
-        {
-          id,
-          code,
-          env,
-          inputMap: readInputMap,
-          wantMap:
-            s.start.opts.mode === 'dev' ||
-            environment.config.build.sourcemap !== false,
-        },
-        hostFor(
-          s,
-          this.environment,
-          (source, imp, options) => this.resolve(source, imp, options),
-          id,
-        ),
-      )
-      if (!out) {
-        return null
-      }
-      reportDiagnostics(
-        s,
-        this,
-        out,
-        identity.path,
-        code,
-        env.type,
-        // a Vue SFC's script block, Vue's output
-        isVueSfc(identity.path) ? readInputMap : undefined,
-      )
-      let mock = afterCompile(s, env, id, out, (error) => this.error(error))
-      if (mock instanceof Promise) {
-        mock = await mock
-      }
-      if (s.start.opts.mode === 'dev') {
-        let digests = outputDigests.get(identity.path)
-        if (!digests) {
-          digests = new Map()
-          outputDigests.set(identity.path, digests)
-        }
-        digests.set(
-          `${environment.name}\0${id}`,
-          revision(mock?.code ?? out.code),
-        )
-      }
-      if (mock) {
-        return { code: mock.code, map: null }
-      }
-      if (identity.derived === null && out.code === code) {
-        return null
-      }
-      return {
-        code: out.code,
-        map: out.map as never,
-        moduleSideEffects: out.sideEffectFree ? false : undefined,
-      }
-    }
-    const plugin: Plugin = {
-      name: `tanstack-start:compiler:${env.name}`,
-      enforce: 'pre',
-      perEnvironmentWatchChangeDuringDev: watches,
-      applyToEnvironment(e) {
-        return e.name === env.name
-      },
-      configResolved(config) {
-        if (!session) {
-          session = createSession({
-            root: config.root,
-            command: config.command,
-            bundledDev: !!config.experimental.bundledDev,
-            cacheDir: config.cacheDir,
-          })
-          // the optimizer's bundles are dependencies wherever the app keeps
-          // them: a custom `cacheDir` is outside every `node_modules`
-          dependencyFilter.id.include.push(cacheDirRe(config.cacheDir, true))
-          ownExclude.push(cacheDirRe(config.cacheDir))
-          const text = dependencyTextFilter(session.start.ip)
-          if (text) {
-            dependencyFilter.code = text
-          }
-          unsubscribeRoutes?.()
-          unsubscribeRoutes = onRoutesChanged(
-            opts.routerPluginContext,
-            (next, previous) => {
-              for (const file of changedRoutePaths(next, previous)) {
-                void invalidateRegistry(file).catch((error: unknown) => {
-                  server?.config.logger.error(
-                    `[tanstack-start] invalidating ${file} after a route change failed: ${String(error)}`,
-                  )
-                })
-              }
-            },
-          )
-        }
-      },
-      configureServer(viteServer) {
-        server = viteServer
-        const s = requireSession()
-        const environment = viteServer.environments[env.name]
-        if (s.start.ip && environment) {
-          const ipEnv = s.start.ip.env(env.name, env.type)
-          const entries = entriesOf(s)
-          ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
-            entries.has(id),
-          )
-          const reporter = ipEnv.useDevReporter({
-            warn: (message) => environment.logger.warn(message),
-          })
-          viteServer.httpServer?.once('close', () => reporter.close())
-        }
-        viteServer.httpServer?.once('close', () => {
-          unsubscribeRoutes?.()
-          unsubscribeRoutes = null
-        })
-      },
-      async buildStart() {
-        const s = requireSession()
-        if (this.environment.mode === 'build' && this.meta.watchMode) {
-          s.start.ip?.env(env.name, env.type).beginBuild()
-        }
-        if (this.environment.mode === 'build' && env.type === 'client') {
-          if (!this.meta.watchMode) {
-            // a new build: the registry of the previous one is gone (the
-            // client builds first; under RSC the rsc provider built before
-            // it and allocated its entries first: deterministic, not
-            // client-first). A rebuild of `build --watch` keeps it: the
-            // server environment rebuilds at the same time and reads it,
-            // while the compiles replace their modules' functions (a
-            // deleted file's leave at `watchChange`)
-            s.start.registry.clear()
-          }
-          // one warning per file per run
-          s.start.warnings.reset()
-        }
-        if (
-          this.environment.mode === 'build' &&
-          this.environment.config.build.write !== false &&
-          isSeparateProvider(env)
-        ) {
-          await compileHandlerReach(
-            s,
-            env,
-            hostFor(s, this.environment, (source, imp, options) =>
-              this.resolve(source, imp, options),
-            ),
-          )
-        }
-        const environment = this.environment
-        virtualLoaders.set(env.name, async (id) => {
-          if (environment.mode === 'dev') {
-            const loaded = await environment.pluginContainer.load(id)
-            if (loaded === null || loaded === undefined) {
-              return null
-            }
-            return typeof loaded === 'string' ? loaded : loaded.code
-          }
-          const info = await this.load({ id })
-          return info.code
-        })
-      },
-      buildEnd() {
-        if (this.environment.mode === 'build' && env.type === 'client') {
-          clientBuilt = true
-        }
-        if (
-          this.environment.mode === 'build' &&
-          env.type === 'client' &&
-          this.meta.watchMode
-        ) {
-          // a rebuild keeps the registry (a new build cleared it): the
-          // functions the client references are those of the modules this
-          // build bundles (the server's resolver gates on them)
-          const graph = new Set<string>()
-          const files = new Set<string>()
-          for (const id of this.getModuleIds()) {
-            const identity = identify(id)
-            graph.add(identity.canonicalId)
-            if (
-              path.isAbsolute(identity.path) &&
-              !NODE_MODULES_RE.test(identity.path)
-            ) {
-              files.add(identity.path)
-            }
-          }
-          requireSession().start.registry.retain(env.name, graph)
-          clientFiles = [...files]
-          clientRebuild?.end()
-          clientRebuild = null
-        }
-      },
-      /**
-       * A build that writes its bundle (not a scan: plugin-rsc analyses the
-       * rsc and ssr environments with `write: false` first and builds them
-       * again) outside watch mode is the environment's last: its compiler
-       * state is released before the next environment builds. What later
-       * environments read stays in the session: the server-fn registry and id
-       * allocator, the raw facts, the warnings ledger.
-       */
-      closeBundle() {
-        if (this.environment.mode === 'build') {
-          unsubscribeRoutes?.()
-          unsubscribeRoutes = null
-          if (isFinalBuild(this.environment.config.build)) {
-            requireSession().start.release(env.name)
-          }
-        }
-      },
-      resolveId: {
-        filter: { id: [SAME_FILE_SPECIFIER_RE, IP_SPECIFIER_RE] },
-        handler(source, importer) {
-          const edge = resolveViteEdgeModuleId(source)
-          if (edge !== null) {
-            // an importer's request for an edge module comes from its
-            // transformed code (import analysis, or Rolldown): the import
-            // survived the TypeScript transform, and `allowImport` decides
-            // before the module loads; a pending violation it does not allow
-            // is reported, and `error` fails the importer's import analysis
-            const confirmation =
-              importer !== undefined && session?.start.ip
-                ? session.start.ip.env(env.name, env.type).confirm(edge)
-                : null
-            if (confirmation === null) {
-              return edge
-            }
-            return confirmation.then((error) => {
-              if (error) {
-                throw error
-              }
-              return edge
-            })
-          }
-          return resolveSameFileSpecifier(source, importer)
-        },
-      },
-      load: {
-        filter: {
-          id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE, ASSET_FILE_RE],
-        },
-        async handler(id) {
-          const s = requireSession()
-          if (IP_SPECIFIER_RE.test(id)) {
-            const load = s.start.ip?.load(id)
-            return load
-              ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
-              : null
-          }
-          if (ASSET_QUERY_RE.test(id) || ASSET_FILE_RE.test(id)) {
-            // never compiled (the transform filters exclude it), and an
-            // import the compiler does not read may have brought it here:
-            // a denied file's text is served as its mock
-            const out = await s.start.assetOutput(env, id)
-            const mock =
-              out &&
-              (await afterCompile(s, env, id, out, (error) =>
-                this.error(error),
-              ))
-            if (!mock) {
-              return null
-            }
-            this.addWatchFile(identify(id).path)
-            // (Vite's JSON plugin parses what a `.json` loads as)
-            return { code: id.endsWith('.json') ? '{}' : mock.code }
-          }
-          return loadDerivedSource(this, id)
-        },
-      },
-      transform: {
-        filter: {
-          id: {
-            include: TRANSFORM_ID_REGEX,
-            exclude: ownExclude,
-          },
-        },
-        handler: compileTransform,
-      },
-      async hotUpdate(ctx) {
-        const s = requireSession()
-        // the file's path once, as every module id and compiler key holds it
-        const change: InvalidateChange = {
-          path: normalizePath(ctx.file),
-          kind: changeKindOf(ctx.type),
-        }
-        let pending = invalidations.get(ctx.read)
-        if (!pending) {
-          pending = invalidate(
-            s.start.caches,
-            change,
-            invalidationHosts(s, server, this.environment),
-          )
-          invalidations.set(ctx.read, pending)
-        }
-        const res = await pending
-        if (change.kind === 'unlink') {
-          forgetFile(s, change.path)
-        }
-        const extra = applyInvalidation(
-          this.environment,
-          change,
-          res,
-          ctx.timestamp,
-        )
-        const changed = await changedDependents(
-          this.environment as DevEnvironment,
-          extra,
-        )
-        // see router-plugin's Vite host: the file's modules its current plan produces
-        const live =
-          (await liveModules(
-            this.environment as DevEnvironment,
-            s.start.caches,
-            change.path,
-            ctx.modules,
-          )) ?? ctx.modules
-        return changed.length > 0 || live !== ctx.modules
-          ? [...live, ...changed]
-          : undefined
-      },
-      // The one invalidation of a file event. Bundled dev: applied to every
-      // environment's module graph (Vite's `hotUpdate` is not called there;
-      // the watching environment's hook applies it). `build --watch`: each
-      // environment's watcher reports the files it bundles, and the rebuild
-      // compiles their dependents again, against the caches the
-      // invalidation left
-      async watchChange(id, event) {
-        const s = requireSession()
-        const environment = this.environment
-        if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
-          return
-        }
-        if (environment.mode === 'build' && env.type === 'client') {
-          if (!clientRebuild) {
-            let end!: () => void
-            const ended = new Promise<void>((resolve) => (end = resolve))
-            clientRebuild = { ended, end }
-          }
-        }
-        // the file's path once, as every module id and compiler key holds it
-        // (Rolldown reports its watcher's native path: backslashes on Windows)
-        const change: InvalidateChange = {
-          path: normalizePath(id),
-          kind: changeKindOf(event.event),
-        }
-        if (change.kind === 'unlink') {
-          forgetFile(s, change.path)
-        }
-        if (environment.mode !== 'dev') {
-          await invalidate(
-            s.start.caches,
-            change,
-            hostFor(s, environment, (source, importer, options) =>
-              this.resolve(source, importer, options),
-            ),
-          )
-          return
-        }
-        const res = await invalidate(
-          s.start.caches,
-          change,
-          invalidationHosts(s, server, environment),
-        )
-        const now = Date.now()
-        const environments = server
-          ? Object.values(server.environments).filter((e) =>
-              envNames.has(e.name),
-            )
-          : [environment]
-        for (const environment of environments) {
-          applyInvalidation(environment, change, res, now)
-        }
-      },
-      renderChunk(code, chunk) {
-        const s = requireSession()
-        if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
-          return null
-        }
-        const { allocator, errors, warnings } = s.start.allocateIds(env.type)
-        if (errors.length > 0) {
-          this.error({ message: errors.join('\n') })
-        }
-        for (const warning of warnings) {
-          this.warn(warning)
-        }
-        const patched = allocator.patch(code)
-        if (patched.missing.length > 0) {
-          this.error({
-            message: `Server function ids could not be resolved in ${chunk.fileName}: ${patched.missing.join(', ')}`,
-          })
-        }
-        const source = new SourceText(code)
-        const builder = new OutputBuilder(source, chunk.fileName, { map: true })
-        let pos = 0
-        for (const e of patched.edits) {
-          if (e.start > pos) {
-            builder.copy(pos, e.start)
-          }
-          builder.text(e.text)
-          pos = e.end
-        }
-        if (pos < code.length) {
-          builder.copy(pos, code.length)
-        }
-        const built = builder.finish()
-        return { code: built.code, map: built.map as never }
-      },
-      /**
-       * Import protection's build reports: the edge modules that survived
-       * tree-shaking → `onViolation` once per import → the build's errors and
-       * warnings.
-       */
-      async generateBundle(_options, bundle) {
-        const s = requireSession()
-        if (this.environment.mode !== 'build') {
-          return
-        }
-        if (env.type === 'client') {
-          // an extracted-export output an entry chunk (or a chunk it imports
-          // statically) holds is eager whatever the splitter did: say so
-          // once per file and export (J2.8)
-          warnEagerExports(
-            rollupEntryModuleIds(bundle as never),
-            'rollup',
-            s.start.warnings,
-            (m) => this.warn(m),
-            (id) => this.getModuleInfo(id)?.importers ?? [],
-            {
-              root: s.start.opts.root,
-              routeTree: opts.getConfig().startConfig.router.generatedRouteTree,
-            },
-          )
-        }
-        if (!s.start.ip) {
-          return
-        }
-        const ipEnv = s.start.ip.env(env.name, env.type)
-        const live = readRolldownWitness(bundle as never, ipEnv.witness())
-        const reports = await ipEnv.surviving(
-          live,
-          rolldownGraphView((id) => this.getModuleInfo(id)),
-        )
-        // every report first: the build fails once, with all of its errors
-        const errors: Array<string> = []
-        for (const report of reports) {
-          if (report.severity === 'error') {
-            errors.push(report.message)
-          } else {
-            this.warn(report.message)
-          }
-        }
-        if (errors.length > 0) {
-          this.error(errors.join('\n'))
-        }
-      },
-    }
-    return [
-      plugin,
-      {
-        // dependency scripts: only those whose text names what the compiler
-        // recognises reach the compiler (most of a dependency graph never
-        // crosses into JavaScript)
-        name: `tanstack-start:compiler:${env.name}:dependencies`,
-        enforce: 'pre',
-        applyToEnvironment(e) {
-          return e.name === env.name
-        },
-        transform: { filter: dependencyFilter, handler: compileTransform },
-      },
-    ]
-  }
-
-  /**
-   * The late pass: modules whose id is not
-   * JS/TS but whose code reaches us as JS through other plugins (`.mdx`, a
-   * compiled `.vue` module, custom types) are judged with the `import-edges`
-   * planner, and compiled by start-env in place
-   * (`StartEnvConfig.late`), after the framework plugins (`post`), their
-   * positions mapped through the combined source map.
-   */
-  const latePassPlugin: Plugin = {
-    name: 'tanstack-start:compiler-late',
-    enforce: 'post',
-    applyToEnvironment(e) {
-      return envNames.has(e.name)
-    },
-    transform: {
-      filter: {
-        id: { exclude: LATE_PASS_EXCLUDE },
-        code: { include: /\b(?:import|export)\b|\brequire\s*\(/ },
-      },
-      async handler(code, id, options) {
-        const s = requireSession()
-        const env = envOf(this.environment.name)
-        if (!env || identify(id).lang !== null) {
-          return null
-        }
-        let inputMap: InputSourceMap | null | undefined
-        const readInputMap = () =>
-          inputMap === undefined
-            ? (inputMap = inputMapOf(this, code, identify(id).path))
-            : inputMap
-        const out = await s.start.compile(
-          {
-            id,
-            code,
-            env,
-            inputMap: readInputMap,
-            wantMap: true,
-            late: true,
-          },
-          hostFor(
-            s,
-            this.environment,
-            (source, imp, options) => this.resolve(source, imp, options),
-            id,
-          ),
-        )
-        if (
-          !out ||
-          (out.diagnostics.some((d) => d.by === 'parse') &&
-            !bundlerParses(this, code, options?.moduleType))
-        ) {
-          // not JavaScript the bundler takes as it is: another plugin's
-          // input (Markdown a later plugin compiles), nothing to judge
-          return null
-        }
-        // (JavaScript the bundler parses and the compiler cannot fails the
-        // client build when it names a Start package:
-        // `StartCompilerSession.report`)
-        reportDiagnostics(
-          s,
-          this,
-          out,
-          identify(id).path,
-          code,
-          env.type,
-          readInputMap,
-        )
-        let mock = afterCompile(s, env, id, out, (error) => this.error(error))
-        if (mock instanceof Promise) {
-          mock = await mock
-        }
-        if (mock) {
-          return { code: mock.code, map: null }
-        }
-        if (out.code === code) {
-          return null
-        }
-        return { code: out.code, map: out.map as never }
-      },
-    },
-  }
-
-  const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
-
-  /**
-   * J4.2 in development: a client-origin call of a function whose defining
-   * module the client environment has not compiled (no client module in the
-   * dev server's graph references it: a stale page after a restart, an
-   * external caller, a serialized function) is answered, with one warning
-   * per function saying a production build refuses it. The dev server
-   * compiles lazily, so nothing short of crawling the client graph could
-   * prove reachability; it is not attempted.
-   */
-  const devWarned = new Set<string>()
-  const devLookupPlugin: Plugin = {
-    name: 'tanstack-start:server-fn-lookup',
-    apply: 'serve',
-    applyToEnvironment(e) {
-      return resolverEnvironments.has(e.name)
-    },
-    resolveId(source) {
-      if (source.startsWith(`${SERVER_FN_LOOKUP_VIRTUAL_ID}?`)) {
-        return `\0${source}`
-      }
-      return undefined
-    },
-    async load(id) {
-      if (!id.startsWith(lookupPrefix)) {
-        return undefined
-      }
-      const { registry, opts: startOpts } = requireSession().start
-      const params = new URLSearchParams(id.slice(lookupPrefix.length))
-      const fnId = params.get('id') ?? ''
-      let entry = registry.get(fnId)
-      if (!entry) {
-        // a fresh server: compile the defining module through the normal transform
-        const key = decodeDevFunctionId(fnId)
-        if (key && this.environment.mode === 'dev') {
-          const abs = path.resolve(startOpts.root, key.rootRel)
-          await this.environment.transformRequest(abs).catch(() => null)
-          entry = registry.get(fnId)
-        }
-      }
-      if (!entry) {
-        this.error(`Invalid server function ID: ${fnId}`)
-      }
-      if (
-        params.get('origin') === 'client' &&
-        !entry.clientReferenced &&
-        !devWarned.has(fnId)
-      ) {
-        devWarned.add(fnId)
-        this.warn(unreferencedWarning(entry))
-      }
-      const specifier = toDevSpecifier(providerModuleId(entry), startOpts.root)
-      return devLookupModule(entry, specifier)
-    },
-  }
-
-  /** A caller environment's own `getServerFnById` module (the forward to the provider), behind the production gate. */
-  const forwardPlugin = createVirtualModule({
-    name: 'tanstack-start:server-fn-forward',
-    moduleId: SERVER_FN_FORWARD_VIRTUAL_ID,
-    enforce: 'pre',
-    applyToEnvironment: (e) =>
-      resolverEnvironments.has(e.name) && e.name !== opts.providerEnvName,
-    load() {
-      return envOf(this.environment.name)?.getServerFnById ?? null
-    },
-  })
-
-  const resolverPlugin = createVirtualModule({
-    name: 'tanstack-start:server-fn-resolver',
-    moduleId: VIRTUAL_MODULES.serverFnResolver,
-    enforce: 'pre',
-    applyToEnvironment: (e) => resolverEnvironments.has(e.name),
-    async load() {
-      if (
-        this.environment.mode === 'build' &&
-        this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
-        // (not a scan: plugin-rsc analyses the ssr environment first)
-        this.environment.config.build.write !== false &&
-        !clientBuilt
-      ) {
-        // the server would answer no client call (J4.2)
-        this.error(
-          `[tanstack-start] The server environment is built before the client environment. The server answers the server functions the client build calls, so the client must build first, in the same process: run \`vite build\`, or build \`builder.environments.client\` before \`builder.environments.ssr\`.`,
-        )
-      }
-      if (this.environment.mode === 'build' && this.meta.watchMode) {
-        await clientRebuild?.ended
-        for (const file of clientFiles) {
-          this.addWatchFile(file)
-        }
-      }
-      if (this.environment.name !== opts.providerEnvName) {
-        const mod = envOf(this.environment.name)?.getServerFnById
-        if (mod) {
-          if (this.environment.mode === 'build' && !ssrIsProvider) {
-            // J4.2 with a separate provider (RSC): the provider built before
-            // the client, so its manifest lists every function; this
-            // environment builds last (plugin-rsc: rsc, client, ssr) and
-            // gates client-origin calls on the client build's references
-            return callerGateModule(
-              SERVER_FN_FORWARD_VIRTUAL_ID,
-              requireSession()
-                .start.registry.entries()
-                .filter((e) => e.clientReferenced)
-                .map((e) => e.id),
-            )
-          }
-          return mod
-        }
-        this.error(
-          `No getServerFnById implementation found for caller environment: ${this.environment.name}`,
-        )
-      }
-      if (this.environment.mode !== 'build') {
-        return devResolverModule()
-      }
-      return productionResolverModule({
-        entries: requireSession().start.registry.entries(),
-        providerModuleId,
-        clientReferencedOnly: ssrIsProvider,
-      })
-    },
-  })
-
+  const state = new ViteCompilerState(opts)
   return [
-    ...opts.environments.flatMap(perEnvPlugins),
-    latePassPlugin,
-    devLookupPlugin,
-    forwardPlugin,
-    resolverPlugin,
+    ...opts.environments.flatMap((env) => envCompilerPlugins(state, env)),
+    latePassPlugin(state),
+    devLookupPlugin(state),
+    forwardPlugin(state),
+    resolverPlugin(state),
   ]
 }
 
-/**
- * Whether the bundler's parser takes `code` as the module type it will parse
- * the module as (`moduleType`, which a plugin may set: `ts` for another
- * language compiled to TypeScript).
- */
-function bundlerParses(
-  ctx: {
-    parse: (
-      code: string,
-      options?: { lang?: 'js' | 'jsx' | 'ts' | 'tsx' },
-    ) => unknown
-  },
-  code: string,
-  moduleType: string | undefined,
-): boolean {
-  const lang = moduleType ?? 'js'
-  if (lang !== 'js' && lang !== 'jsx' && lang !== 'ts' && lang !== 'tsx') {
-    return false
+/** An environment's compiler plugin, and the one of its dependency scripts. */
+function envCompilerPlugins(
+  state: ViteCompilerState,
+  env: StartCompilerEnvironment,
+): Array<Plugin> {
+  const watches = env.name === state.watchingEnv
+  const compileTransform: TransformHandler = async function (code, id) {
+    const identity = identify(id)
+    const s = state.requireSession()
+    if (identity.lang === null || !s.start.compiles(identity.path, code)) {
+      return null
+    }
+    const environment = this.environment
+    let inputMap: InputSourceMap | null | undefined
+    const readInputMap = () =>
+      inputMap === undefined
+        ? (inputMap = inputMapOf(this, code, identity.path))
+        : inputMap
+    const out = await s.start.compile(
+      {
+        id,
+        code,
+        env,
+        inputMap: readInputMap,
+        wantMap:
+          s.start.opts.mode === 'dev' ||
+          environment.config.build.sourcemap !== false,
+      },
+      state.hostFor(
+        s,
+        this.environment,
+        (source, imp, options) => this.resolve(source, imp, options),
+        id,
+      ),
+    )
+    if (!out) {
+      return null
+    }
+    state.reportDiagnostics(
+      s,
+      this,
+      out,
+      identity.path,
+      code,
+      env.type,
+      // a Vue SFC's script block, Vue's output
+      isVueSfc(identity.path) ? readInputMap : undefined,
+    )
+    let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
+    if (mock instanceof Promise) {
+      mock = await mock
+    }
+    if (s.start.opts.mode === 'dev') {
+      let digests = state.outputDigests.get(identity.path)
+      if (!digests) {
+        digests = new Map()
+        state.outputDigests.set(identity.path, digests)
+      }
+      digests.set(
+        `${environment.name}\0${id}`,
+        revision(mock?.code ?? out.code),
+      )
+    }
+    if (mock) {
+      return { code: mock.code, map: null }
+    }
+    if (identity.derived === null && out.code === code) {
+      return null
+    }
+    return {
+      code: out.code,
+      map: out.map as never,
+      moduleSideEffects: out.sideEffectFree ? false : undefined,
+    }
   }
-  try {
-    ctx.parse(code, { lang })
-    return true
-  } catch {
-    return false
+  const plugin: Plugin = {
+    name: `tanstack-start:compiler:${env.name}`,
+    enforce: 'pre',
+    perEnvironmentWatchChangeDuringDev: watches,
+    applyToEnvironment(e) {
+      return e.name === env.name
+    },
+    configResolved(config) {
+      if (!state.session) {
+        state.session = state.createSession({
+          root: config.root,
+          command: config.command,
+          bundledDev: !!config.experimental.bundledDev,
+          cacheDir: config.cacheDir,
+        })
+        // the optimizer's bundles are dependencies wherever the app keeps
+        // them: a custom `cacheDir` is outside every `node_modules`
+        state.dependencyFilter.id.include.push(
+          cacheDirRe(config.cacheDir, true),
+        )
+        state.ownExclude.push(cacheDirRe(config.cacheDir))
+        const text = dependencyTextFilter(state.session.start.ip)
+        if (text) {
+          state.dependencyFilter.code = text
+        }
+        state.unsubscribeRoutes?.()
+        state.unsubscribeRoutes = onRoutesChanged(
+          state.opts.routerPluginContext,
+          (next, previous) => {
+            for (const file of changedRoutePaths(next, previous)) {
+              void invalidateRegistry(state, file).catch((error: unknown) => {
+                state.server?.config.logger.error(
+                  `[tanstack-start] invalidating ${file} after a route change failed: ${String(error)}`,
+                )
+              })
+            }
+          },
+        )
+      }
+    },
+    configureServer(viteServer) {
+      state.server = viteServer
+      const s = state.requireSession()
+      const environment = viteServer.environments[env.name]
+      if (s.start.ip && environment) {
+        const ipEnv = s.start.ip.env(env.name, env.type)
+        const entries = state.entriesOf(s)
+        ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
+          entries.has(id),
+        )
+        const reporter = ipEnv.useDevReporter({
+          warn: (message) => environment.logger.warn(message),
+        })
+        viteServer.httpServer?.once('close', () => reporter.close())
+      }
+      viteServer.httpServer?.once('close', () => {
+        state.unsubscribeRoutes?.()
+        state.unsubscribeRoutes = null
+      })
+    },
+    async buildStart() {
+      const s = state.requireSession()
+      if (this.environment.mode === 'build' && this.meta.watchMode) {
+        s.start.ip?.env(env.name, env.type).beginBuild()
+      }
+      if (this.environment.mode === 'build' && env.type === 'client') {
+        if (!this.meta.watchMode) {
+          // a new build: the registry of the previous one is gone (the
+          // client builds first; under RSC the rsc provider built before
+          // it and allocated its entries first: deterministic, not
+          // client-first). A rebuild of `build --watch` keeps it: the
+          // server environment rebuilds at the same time and reads it,
+          // while the compiles replace their modules' functions (a
+          // deleted file's leave at `watchChange`)
+          s.start.registry.clear()
+        }
+        // one warning per file per run
+        s.start.warnings.reset()
+      }
+      if (
+        this.environment.mode === 'build' &&
+        this.environment.config.build.write !== false &&
+        state.isSeparateProvider(env)
+      ) {
+        await compileHandlerReach(
+          s,
+          env,
+          state.hostFor(s, this.environment, (source, imp, options) =>
+            this.resolve(source, imp, options),
+          ),
+        )
+      }
+      const environment = this.environment
+      state.virtualLoaders.set(env.name, async (id) => {
+        if (environment.mode === 'dev') {
+          const loaded = await environment.pluginContainer.load(id)
+          if (loaded === null || loaded === undefined) {
+            return null
+          }
+          return typeof loaded === 'string' ? loaded : loaded.code
+        }
+        const info = await this.load({ id })
+        return info.code
+      })
+    },
+    buildEnd() {
+      if (this.environment.mode === 'build' && env.type === 'client') {
+        state.clientBuilt = true
+      }
+      if (
+        this.environment.mode === 'build' &&
+        env.type === 'client' &&
+        this.meta.watchMode
+      ) {
+        // a rebuild keeps the registry (a new build cleared it): the
+        // functions the client references are those of the modules this
+        // build bundles (the server's resolver gates on them)
+        const graph = new Set<string>()
+        const files = new Set<string>()
+        for (const id of this.getModuleIds()) {
+          const identity = identify(id)
+          graph.add(identity.canonicalId)
+          if (
+            path.isAbsolute(identity.path) &&
+            !NODE_MODULES_RE.test(identity.path)
+          ) {
+            files.add(identity.path)
+          }
+        }
+        state.requireSession().start.registry.retain(env.name, graph)
+        state.clientFiles = [...files]
+        state.clientRebuild?.end()
+        state.clientRebuild = null
+      }
+    },
+    /**
+     * A build that writes its bundle (not a scan: plugin-rsc analyses the
+     * rsc and ssr environments with `write: false` first and builds them
+     * again) outside watch mode is the environment's last: its compiler
+     * state is released before the next environment builds. What later
+     * environments read stays in the session: the server-fn registry and id
+     * allocator, the raw facts, the warnings ledger.
+     */
+    closeBundle() {
+      if (this.environment.mode === 'build') {
+        state.unsubscribeRoutes?.()
+        state.unsubscribeRoutes = null
+        if (isFinalBuild(this.environment.config.build)) {
+          state.requireSession().start.release(env.name)
+        }
+      }
+    },
+    resolveId: {
+      filter: { id: [SAME_FILE_SPECIFIER_RE, IP_SPECIFIER_RE] },
+      handler(source, importer) {
+        const edge = resolveViteEdgeModuleId(source)
+        if (edge !== null) {
+          // an importer's request for an edge module comes from its
+          // transformed code (import analysis, or Rolldown): the import
+          // survived the TypeScript transform, and `allowImport` decides
+          // before the module loads; a pending violation it does not allow
+          // is reported, and `error` fails the importer's import analysis
+          const confirmation =
+            importer !== undefined && state.session?.start.ip
+              ? state.session.start.ip.env(env.name, env.type).confirm(edge)
+              : null
+          if (confirmation === null) {
+            return edge
+          }
+          return confirmation.then((error) => {
+            if (error) {
+              throw error
+            }
+            return edge
+          })
+        }
+        return resolveSameFileSpecifier(source, importer)
+      },
+    },
+    load: {
+      filter: {
+        id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE, ASSET_FILE_RE],
+      },
+      async handler(id) {
+        const s = state.requireSession()
+        if (IP_SPECIFIER_RE.test(id)) {
+          const load = s.start.ip?.load(id)
+          return load
+            ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
+            : null
+        }
+        if (ASSET_QUERY_RE.test(id) || ASSET_FILE_RE.test(id)) {
+          // never compiled (the transform filters exclude it), and an
+          // import the compiler does not read may have brought it here:
+          // a denied file's text is served as its mock
+          const out = await s.start.assetOutput(env, id)
+          const mock =
+            out &&
+            (await state.afterCompile(s, env, id, out, (error) =>
+              this.error(error),
+            ))
+          if (!mock) {
+            return null
+          }
+          this.addWatchFile(identify(id).path)
+          // (Vite's JSON plugin parses what a `.json` loads as)
+          return { code: id.endsWith('.json') ? '{}' : mock.code }
+        }
+        return loadDerivedSource(this, id)
+      },
+    },
+    transform: {
+      filter: {
+        id: {
+          include: TRANSFORM_ID_REGEX,
+          exclude: state.ownExclude,
+        },
+      },
+      handler: compileTransform,
+    },
+    async hotUpdate(ctx) {
+      const s = state.requireSession()
+      // the file's path once, as every module id and compiler key holds it
+      const change: InvalidateChange = {
+        path: normalizePath(ctx.file),
+        kind: changeKindOf(ctx.type),
+      }
+      let pending = state.invalidations.get(ctx.read)
+      if (!pending) {
+        pending = invalidate(
+          s.start.caches,
+          change,
+          invalidationHosts(state, s, state.server, this.environment),
+        )
+        state.invalidations.set(ctx.read, pending)
+      }
+      const res = await pending
+      if (change.kind === 'unlink') {
+        forgetFile(state, s, change.path)
+      }
+      const extra = applyInvalidation(
+        state,
+        this.environment,
+        change,
+        res,
+        ctx.timestamp,
+      )
+      const changed = await changedDependents(
+        state,
+        this.environment as DevEnvironment,
+        extra,
+      )
+      // see router-plugin's Vite host: the file's modules its current plan produces
+      const live =
+        (await liveModules(
+          this.environment as DevEnvironment,
+          s.start.caches,
+          change.path,
+          ctx.modules,
+        )) ?? ctx.modules
+      return changed.length > 0 || live !== ctx.modules
+        ? [...live, ...changed]
+        : undefined
+    },
+    // The one invalidation of a file event. Bundled dev: applied to every
+    // environment's module graph (Vite's `hotUpdate` is not called there;
+    // the watching environment's hook applies it). `build --watch`: each
+    // environment's watcher reports the files it bundles, and the rebuild
+    // compiles their dependents again, against the caches the
+    // invalidation left
+    async watchChange(id, event) {
+      const s = state.requireSession()
+      const environment = this.environment
+      if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
+        return
+      }
+      if (environment.mode === 'build' && env.type === 'client') {
+        if (!state.clientRebuild) {
+          let end!: () => void
+          const ended = new Promise<void>((resolve) => (end = resolve))
+          state.clientRebuild = { ended, end }
+        }
+      }
+      // the file's path once, as every module id and compiler key holds it
+      // (Rolldown reports its watcher's native path: backslashes on Windows)
+      const change: InvalidateChange = {
+        path: normalizePath(id),
+        kind: changeKindOf(event.event),
+      }
+      if (change.kind === 'unlink') {
+        forgetFile(state, s, change.path)
+      }
+      if (environment.mode !== 'dev') {
+        await invalidate(
+          s.start.caches,
+          change,
+          state.hostFor(s, environment, (source, importer, options) =>
+            this.resolve(source, importer, options),
+          ),
+        )
+        return
+      }
+      const res = await invalidate(
+        s.start.caches,
+        change,
+        invalidationHosts(state, s, state.server, environment),
+      )
+      const now = Date.now()
+      const environments = state.server
+        ? Object.values(state.server.environments).filter((e) =>
+            state.envNames.has(e.name),
+          )
+        : [environment]
+      for (const environment of environments) {
+        applyInvalidation(state, environment, change, res, now)
+      }
+    },
+    renderChunk(code, chunk) {
+      const s = state.requireSession()
+      if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
+        return null
+      }
+      const { allocator, errors, warnings } = s.start.allocateIds(env.type)
+      if (errors.length > 0) {
+        this.error({ message: errors.join('\n') })
+      }
+      for (const warning of warnings) {
+        this.warn(warning)
+      }
+      const patched = allocator.patch(code)
+      if (patched.missing.length > 0) {
+        this.error({
+          message: `Server function ids could not be resolved in ${chunk.fileName}: ${patched.missing.join(', ')}`,
+        })
+      }
+      const source = new SourceText(code)
+      const builder = new OutputBuilder(source, chunk.fileName, { map: true })
+      let pos = 0
+      for (const e of patched.edits) {
+        if (e.start > pos) {
+          builder.copy(pos, e.start)
+        }
+        builder.text(e.text)
+        pos = e.end
+      }
+      if (pos < code.length) {
+        builder.copy(pos, code.length)
+      }
+      const built = builder.finish()
+      return { code: built.code, map: built.map as never }
+    },
+    /**
+     * Import protection's build reports: the edge modules that survived
+     * tree-shaking → `onViolation` once per import → the build's errors and
+     * warnings.
+     */
+    async generateBundle(_options, bundle) {
+      const s = state.requireSession()
+      if (this.environment.mode !== 'build') {
+        return
+      }
+      if (env.type === 'client') {
+        // an extracted-export output an entry chunk (or a chunk it imports
+        // statically) holds is eager whatever the splitter did: say so
+        // once per file and export (J2.8)
+        warnEagerExports(
+          rollupEntryModuleIds(bundle as never),
+          'rollup',
+          s.start.warnings,
+          (m) => this.warn(m),
+          (id) => this.getModuleInfo(id)?.importers ?? [],
+          {
+            root: s.start.opts.root,
+            routeTree:
+              state.opts.getConfig().startConfig.router.generatedRouteTree,
+          },
+        )
+      }
+      if (!s.start.ip) {
+        return
+      }
+      const ipEnv = s.start.ip.env(env.name, env.type)
+      const live = readRolldownWitness(bundle as never, ipEnv.witness())
+      const reports = await ipEnv.surviving(
+        live,
+        rolldownGraphView((id) => this.getModuleInfo(id)),
+      )
+      // every report first: the build fails once, with all of its errors
+      const errors: Array<string> = []
+      for (const report of reports) {
+        if (report.severity === 'error') {
+          errors.push(report.message)
+        } else {
+          this.warn(report.message)
+        }
+      }
+      if (errors.length > 0) {
+        this.error(errors.join('\n'))
+      }
+    },
   }
+  return [
+    plugin,
+    {
+      // dependency scripts: only those whose text names what the compiler
+      // recognises reach the compiler (most of a dependency graph never
+      // crosses into JavaScript)
+      name: `tanstack-start:compiler:${env.name}:dependencies`,
+      enforce: 'pre',
+      applyToEnvironment(e) {
+        return e.name === env.name
+      },
+      transform: { filter: state.dependencyFilter, handler: compileTransform },
+    },
+  ]
 }
