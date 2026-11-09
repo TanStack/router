@@ -593,7 +593,7 @@ export class RawFactsCache {
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()
-    const effects = analysis.effects(this.opts.recognizer)
+    const effects = analysis.effects()
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing and is no effect
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
