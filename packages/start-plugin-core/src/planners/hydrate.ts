@@ -89,21 +89,6 @@ const HOOK_RE = /^use[A-Z0-9]/
 /** Props React (and Solid, for `ref`) keep for themselves, or that the chunk component must not receive. */
 const RESERVED_PROPS = new Set(['key', 'ref', 'children'])
 
-interface ResolvedConfig {
-  root: string
-  refreshMarkers: boolean
-}
-
-function resolveConfig(config: unknown): ResolvedConfig {
-  const c = (config ?? {}) as Partial<HydratePlannerConfig>
-  if (typeof c.root !== 'string') {
-    throw new Error(
-      `the ${HYDRATE_PLANNER} planner needs \`root\` in its config (config.perPlanner.${HYDRATE_PLANNER})`,
-    )
-  }
-  return { root: c.root, refreshMarkers: c.refreshMarkers ?? false }
-}
-
 declare module '@tanstack/router-utils/compiler' {
   interface PlannerData {
     /** The Hydrate planner's `PlannerData` (`HYDRATE_PLANNER`). */
@@ -285,7 +270,7 @@ interface Extracted {
 
 function findBoundaries(
   ctx: PlanContext,
-  cfg: ResolvedConfig,
+  cfg: HydratePlannerConfig,
 ): Array<Boundary> {
   const { analysis, t1 } = ctx
   const table = startRecognizer()
@@ -529,8 +514,8 @@ const within = (r: Range, outer: Range): boolean =>
 // planning
 // ---------------------------------------------------------------------------
 
-function plan(ctx: PlanContext): void {
-  const cfg = resolveConfig(ctx.config)
+function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
+  const cfg = ctx.config
   const boundaries = findBoundaries(ctx, cfg)
   if (boundaries.length === 0) {
     return
@@ -1049,7 +1034,7 @@ function extract(
   nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
-  cfg: ResolvedConfig,
+  cfg: HydratePlannerConfig,
 ): { sym: SymbolId; chunk: string } | null {
   const { t1, symbols } = ctx
   const shape = b.children!
