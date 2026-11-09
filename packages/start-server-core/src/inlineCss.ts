@@ -1,8 +1,7 @@
 import type { Awaitable } from '@tanstack/router-core'
 
 export type HandlerInlineCssOption =
-  | boolean
-  | ((ctx: { request: Request }) => Awaitable<boolean>)
+  boolean | ((ctx: { request: Request }) => Awaitable<boolean>)
 
 /**
  * The inline-CSS choice that needs no handler callback: a request override
