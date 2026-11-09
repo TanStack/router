@@ -2066,10 +2066,13 @@ const NO_ENV_PURITY: ReadonlyArray<never> = []
  * chain factories.
  */
 function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
-  // the imports of the recognizer's factories, by local name
+  // the imports of the recognizer's factories, by local name and binding
   // (`BuilderPurity.factories`): `builderCall` tells a chain's
-  const factoryImports = new Map<string, string>()
-  const factoryNamespaces = new Map<string, Readonly<Record<string, string>>>()
+  const factoryImports = new Map<string, { binding: number; kind: string }>()
+  const factoryNamespaces = new Map<
+    string,
+    { binding: number; factories: Readonly<Record<string, string>> }
+  >()
   for (const record of purity.file.imports) {
     const local = record.local
     const factories =
@@ -2080,7 +2083,7 @@ function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
       continue
     }
     if (record.kind === 'namespace') {
-      factoryNamespaces.set(local.name, factories)
+      factoryNamespaces.set(local.name, { binding: local.id, factories })
     } else if (record.kind === 'named' && record.name !== null) {
       const kind = ownEntry(factories, record.name)
       // (a chain's: other kinds need no per-environment purity)
@@ -2089,7 +2092,7 @@ function builderPurityOf(purity: PurityContext, table: RecognizerTable) {
         (ownEntry(table.builderLinks!, kind) !== undefined ||
           ownEntry(table.envOnlyKinds, kind) !== undefined)
       ) {
-        factoryImports.set(local.name, kind)
+        factoryImports.set(local.name, { binding: local.id, kind })
       }
     }
   }
