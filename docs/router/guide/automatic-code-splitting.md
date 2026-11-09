@@ -117,6 +117,8 @@ create that value in a `const` before `confetti`, or mark the call `/* @__PURE__
 effects, so `confetti` can load with the split `component`. (src/routes/account.tsx:12:7)
 ```
 
+A call the compiler knows to have no side effects is no side effect here: it neither stays for this reason nor keeps a declaration before it. These are TanStack Router's `getRouteApi`, `linkOptions`, `createLink`, `createRouteMask`, `lazyRouteComponent`, `lazyFn`, `retainSearchParams`, `stripSearchParams`, `parseSearchWith`, `stringifySearchWith` and `createRouterConfig` (React and Vue), React's `memo`, `forwardRef` and `lazy`, Solid's `lazy`, and Vue's `defineComponent` and `defineAsyncComponent`, called with arguments that have no side effects and imported from the package itself: a renamed import and a namespace member (`React.memo` after `import * as React from 'react'`) count, a re-export through one of the app's modules and a member of a default import (`import React from 'react'`) do not. So `const Page = memo(Inner)` or `const Panel = defineComponent({ … })` above `validateSearch: z.object({ … })` loads with the split `component`.
+
 Every host prints the file and one position: a Vite build at the end of the message, as above (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
 
 Any of these lets the declaration load with the split chunk, from the least to the most effort:

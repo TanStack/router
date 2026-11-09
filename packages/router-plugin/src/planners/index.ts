@@ -15,4 +15,4 @@ export {
 } from './config'
 export type { RouterPlannerConfig } from './config'
 export { RouteRegistryView } from './registry'
-export { routerPureCalls } from './route'
+export { knownPureCalls } from './pure-calls'

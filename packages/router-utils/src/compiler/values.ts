@@ -79,8 +79,8 @@ export interface RecognizerTable {
   startMembers?: Record<string, Kind>
   /**
    * specifier → exports whose call is pure when its arguments are
-   * (TanStack's own APIs, audited per package by the planner that supplies
-   * them). Recognised by import binding (renamed, or a namespace member),
+   * (TanStack's own APIs and the frameworks' component wrappers, audited
+   * per package by the planner that supplies them). Recognised by import binding (renamed, or a namespace member),
    * never by spelling; re-exports are not followed; nothing else is assumed
    * pure.
    */

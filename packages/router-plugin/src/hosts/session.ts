@@ -22,11 +22,11 @@ import {
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
+  knownPureCalls,
   routerPlanner,
   routerPlannerApplies,
   routerPlannerConfigDigest,
   routerPlannerConfigFrom,
-  routerPureCalls,
 } from '../planners'
 import { RouteRegistryView } from '../planners/registry'
 import { contextInternals } from '../core/router-plugin-context'
@@ -119,8 +119,8 @@ export class RouterCompiler {
     const rawFacts = new RawFactsCache({
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
-      // the router's own pure APIs
-      recognizer: { ...EMPTY_RECOGNIZER, pureCalls: routerPureCalls() },
+      // the router's and the frameworks' pure APIs
+      recognizer: { ...EMPTY_RECOGNIZER, pureCalls: knownPureCalls() },
     })
     this.caches = createCompilerCaches(
       rawFacts,

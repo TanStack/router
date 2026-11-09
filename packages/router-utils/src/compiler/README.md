@@ -188,9 +188,10 @@ directives, never license comments.
   read no route file.
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
-  (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).
+  (audited APIs of TanStack's router packages, e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue
+  `defineComponent`; the router planners own the table, Start's recognizer reuses it).
   Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
-  an app module re-exporting it is not followed, and a third party's purity is never assumed. A member of a namespace
+  an app module re-exporting it is not followed, and no other package's purity is assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
   and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data property):
   no namespace merged in, and every value use a read of a member it declares or an export, so whatever writes it is in
