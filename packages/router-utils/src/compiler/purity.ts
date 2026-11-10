@@ -653,7 +653,39 @@ export function isPureDeclarator(
   ctx: PurityContext,
   d: VariableDeclarator,
 ): boolean {
-  return d.init === null || isPureExpression(ctx, d.init)
+  return (
+    (d.init === null || isPureExpression(ctx, d.init)) &&
+    isPurePattern(ctx, d.id)
+  )
+}
+
+/**
+ * Whether destructuring into a declaration's pattern runs no user code of
+ * its own: every default value (`{ a = f() }`, `[a = f()]`) and computed
+ * key (`{ [k()]: v }`) is pure, as an initialiser must be. The property
+ * reads themselves are not judged (unlike `const a = x.a`): a getter, or an
+ * iterator an array pattern runs, stays outside the model (R97).
+ */
+function isPurePattern(ctx: PurityContext, p: Node): boolean {
+  switch (p.type) {
+    case 'Identifier':
+      return true
+    case 'AssignmentPattern':
+      return isPureExpression(ctx, p.right) && isPurePattern(ctx, p.left)
+    case 'RestElement':
+      return isPurePattern(ctx, p.argument)
+    case 'ArrayPattern':
+      return p.elements.every((e) => e === null || isPurePattern(ctx, e))
+    case 'ObjectPattern':
+      return p.properties.every((prop) =>
+        prop.type === 'RestElement'
+          ? isPurePattern(ctx, prop)
+          : (!prop.computed || isPureExpression(ctx, prop.key as Node)) &&
+            isPurePattern(ctx, prop.value),
+      )
+    default:
+      return false
+  }
 }
 
 /** Whether a top-level statement has effects at module evaluation (the J6 effect scan). */

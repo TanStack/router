@@ -255,11 +255,11 @@ export class AnalysisPlan implements PlanContext {
   routeModule = false
   moduleWords: ModuleWords | null = null
   placement: Placement | null = null
-  /** Renamed directly-exported declarations: sym → export names. */
-  readonly exportedRenames = new Map<
-    SymbolId,
-    { to: RefTarget; names: Array<string>; units: Array<UnitId> }
-  >()
+  /**
+   * Renamed directly-exported declarations (`export const a = …`, exported
+   * under the binding's own name): sym → the new binding.
+   */
+  readonly exportedRenames = new Map<SymbolId, RefTarget>()
   /** Module-wide renames (`renameRefs`): the symbol glue and generated text name instead. */
   readonly renames = new Map<SymbolId, SymbolId>()
   config: unknown = undefined
@@ -477,8 +477,6 @@ export class AnalysisPlan implements PlanContext {
       }
       this.rewrites.ref(ref, to, scope, by)
     }
-    const exportNames: Array<string> = []
-    const renamedUnits: Array<UnitId> = []
     const name = this.symbols.name(sym)
     for (const uid of declaringUnits.get(sym) ?? []) {
       const u = units[uid]!
@@ -499,25 +497,15 @@ export class AnalysisPlan implements PlanContext {
           this.rewrites.declName(r, to, scope, by)
         }
       }
-      const item = this.t1.items[u.item]!
-      if (item.exportKeyword !== null && u.exported.length > 0) {
-        for (const name of u.exported) {
-          if (name === 'default' && item.kind === 'ExportDefaultDeclaration') {
-            continue // `export default function a` keeps `export default`
-          }
-          if (!exportNames.includes(name)) {
-            exportNames.push(name) // overloads: one export per name
-          }
-        }
-        renamedUnits.push(uid)
+      // an exported declaration exports each binding under its own name
+      // (`export default function a` exports `default` and keeps it; a
+      // declarator's sibling bindings keep theirs)
+      if (
+        this.t1.items[u.item]!.exportKeyword !== null &&
+        u.exported.includes(name)
+      ) {
+        this.exportedRenames.set(sym, to)
       }
-    }
-    if (exportNames.length > 0) {
-      this.exportedRenames.set(sym, {
-        to,
-        names: exportNames,
-        units: renamedUnits,
-      })
     }
   }
 

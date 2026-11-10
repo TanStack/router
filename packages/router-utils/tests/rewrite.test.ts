@@ -327,6 +327,36 @@ describe('context-aware reference rewrites', () => {
     `),
     )
   })
+
+  it('re-exports every binding of a renamed declarator and its siblings under its own name', () => {
+    const code = dedent(`
+      export const { page, meta } = views
+      export const other = 1, { a, b } = parts
+    `)
+    const e = engine(code)
+    const [pageSym] = e.ctx.t1.units[0]!.declares
+    const [otherSym] = e.ctx.t1.units[1]!.declares
+    e.ctx.renameRefs(
+      pageSym!,
+      { sym: e.ctx.names.alloc('TsrPage').sym },
+      'all-outputs',
+      'hmr',
+    )
+    e.ctx.renameRefs(
+      otherSym!,
+      { sym: e.ctx.names.alloc('TsrOther').sym },
+      'all-outputs',
+      'hmr',
+    )
+    const out = e.render().code
+    expect(out).toBe(
+      dedent(`
+      const { page: TsrPage, meta } = views
+      const TsrOther = 1, { a, b } = parts
+      export { meta, a, b, TsrPage as page, TsrOther as other }
+    `),
+    )
+  })
 })
 
 describe('claims, homes and substitution', () => {
@@ -1403,6 +1433,31 @@ describe('generated units next to what the source wrote', () => {
       id: unit(e, { k: 'after-unit', unit: 0 }),
     })
     expect(e.render().code).toContain(`const gen = 1\n/*! l */\n;(a).b = 1`)
+  })
+
+  it('renders before the next statement in a derived output, as in the env module', () => {
+    const e = engine(`const a = 1\nconst b = 2\n`)
+    const out = e.ctx.declareOutput({
+      kind: 'hydrate',
+      key: 'h1',
+      derived: { kind: 'hydrate', value: 'h1' },
+    })
+    const gen = e.ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: ['const gen = 1\n'] }],
+      declares: [e.ctx.names.alloc('gen').sym],
+      effectful: true,
+      anchor: { k: 'after-unit', unit: 0 },
+      home: out,
+      by: 'toy',
+    })
+    for (const output of ['env' as const, out]) {
+      e.ctx.addRoot(output, { t: 'gen', id: gen })
+      e.ctx.addRoot(output, { t: 'unit', id: 0 })
+      e.ctx.addRoot(output, { t: 'unit', id: 1 })
+    }
+    expect(e.render(out).code).toMatch(
+      /const a = 1\nconst gen = 1\nconst b = 2/,
+    )
   })
 
   it('gives a statement starting with a parenthesis its `;`, after the unit', () => {

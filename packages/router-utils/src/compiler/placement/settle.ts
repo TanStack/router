@@ -218,14 +218,18 @@ export function settleRoots(
       }
       return { reason: 'written', at: unit.range.start }
     }
-    // what it reads when it evaluates (`graph.loadReads`: its own reads that
-    // run at load, then those of the functions the load may call)
+    // what it reads (or assigns) when it evaluates (`graph.loadReads`: its
+    // own references that run at load, then those of the functions the load
+    // may call, which run where it evaluates, not where they are written)
     let pin: Pin | undefined
     graph.loadReads(cl.id, (ref, d) => {
       if (!liveInEnv(ref) || d === undefined || d === cl.id) {
         return 'skip'
       }
-      if (graph.mutatedOutside(ref.sym, ref.range.start, cl.id)) {
+      const at = ref.eager
+        ? ref.range.start
+        : Math.min(ref.range.start, cl.start)
+      if (graph.mutatedOutside(ref.sym, at, cl.id)) {
         pin = { reason: 'state', read: ref.sym }
         return 'stop'
       }

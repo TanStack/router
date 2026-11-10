@@ -4273,6 +4273,110 @@ describe('one mutation model: eager reads of state something writes', () => {
     },
   )
 
+  // what runs at load runs where it is evaluated (DESIGN §3.4.3): an
+  // assignment in a function the load calls, a read in a function declared
+  // after a later write, writes in code that evaluates with the module but
+  // runs later (an async or generator IIFE, an instance field)
+  it.each([
+    [
+      'a function it calls assigns a binding the route module reads',
+      "let mode = 'idle'\nfunction init() { mode = 'ready'; return 1 }\nconst snap = init()",
+      'mode',
+    ],
+    [
+      'a function declared after a later write reads a member',
+      'const obj = { v: 0 }\nconst snap = /* @__PURE__ */ read()\nobj.v = 5\nfunction read() { return obj.v }',
+      'obj.v',
+    ],
+    [
+      'an async IIFE writes a member after an await',
+      'const state = { v: 0 }\n;(async () => { await null; state.v = 5 })()\nfunction read() { return state.v }\nconst snap = read()',
+      'state.v',
+    ],
+    [
+      'a generator IIFE writes a member',
+      'const state = { v: 0 }\nconst steps = (function* () { state.v = 5 })()\nfunction read() { return state.v }\nconst snap = read()',
+      '(steps.next(), state.v)',
+    ],
+    [
+      'an instance field writes a member',
+      'const counter = { n: 0 }\nclass Item { id = counter.n++ }\nfunction read() { return counter.n }\nconst snap = read()',
+      'new Item().id',
+    ],
+  ])(
+    'keeps a value computed at load in the route module when %s',
+    async (_, declarations, loaderReads) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => ${loaderReads},
+          component: () => snap,
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toMatch(/const snap = /)
+      expect(r.chunks.component).not.toMatch(/const snap = /)
+      expect(r.chunks.component).toContain(
+        "import { snap } from '/app/route.tsx'",
+      )
+    },
+  )
+
+  it.each([
+    [
+      'the write ran before it',
+      'const obj = { v: 0 }\nobj.v = 5\nfunction read() { return obj.v }\nconst snap = /* @__PURE__ */ read()',
+      'obj.v',
+    ],
+    [
+      'a synchronous IIFE wrote it',
+      'const state = { v: 0 }\n;(() => { state.v = 5 })()\nfunction read() { return state.v }\nconst snap = read()',
+      'state.v',
+    ],
+    [
+      'a static field wrote it',
+      'const counter = { n: 0 }\nclass Item { static id = counter.n++ }\nfunction read() { return counter.n }\nconst snap = read()',
+      'Item.id',
+    ],
+  ])(
+    'moves a value computed at load to the chunk when %s',
+    async (_, declarations, loaderReads) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => ${loaderReads},
+          component: () => snap,
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).not.toMatch(/const snap = /)
+      expect(r.chunks.component).toMatch(/const snap = /)
+    },
+  )
+
+  it.each([
+    ['a default', "const { beta = track('beta') } = {}"],
+    ['a computed key', "const { [track('beta')]: beta } = { beta: 1 }"],
+  ])(
+    'keeps a destructuring whose pattern has %s with a call in order with the effects after it',
+    async (_, declaration) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { track } from './analytics'
+        ${declaration}
+        track('after')
+        export const Route = createFileRoute('/')({
+          component: () => beta,
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toContain(declaration)
+      expect(r.chunks.component).not.toContain(declaration)
+    },
+  )
+
   it('treats an immediately invoked function as eager: its read of a member something writes pins it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -4812,7 +4916,8 @@ describe('declarations only split code needs that stay in the route module', () 
       `(line ${lineOf(code, 'registry.add')})`,
     )
     expect(byName.snapshot).toMatchObject({ code: 'eager-split:state' })
-    expect(byName.snapshot!.message).toContain('reads `n`')
+    // ("uses": the pin also covers a load that assigns the binding, R3-G1-2)
+    expect(byName.snapshot!.message).toContain('uses `n`')
     // `client` stays only because `api`, which stays, reads it: one
     // warning, at the cause
     expect(byName.api).toMatchObject({ code: 'eager-split:reads' })

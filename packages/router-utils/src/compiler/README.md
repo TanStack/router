@@ -122,13 +122,20 @@ extends Z`, directly or through what they carry) share the module of the first i
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that
   asks about it: a read evaluated at module load _observes mutable state_ when something outside the reading
-  cluster writes the binding after it, or at an unknown time (inside a function). What a cluster reads at load
+  cluster writes the binding after it, or at an unknown time (inside a function; and code that evaluates with
+  the module but runs later: an async or generator function invoked where it is written, an instance field's
+  initialiser, `t1.runsLaterAt`). "After it" compares positions where the code runs: a read inside a function
+  the load calls runs where the first such call is (`runsAtLoad`), and for a cluster that may move, where it
+  evaluates. What a cluster reads at load
   has one definition (`ClusterGraph.loadReads`): its eager reads, the reads inside any function a unit that
   calls something may run (a function it passes directly, `['x'].map((k) => n + k)`, or calls; not a method
   nested in an object argument, `defineComponent({ setup() {} })`), and those
-  of the declarations such reads reach, transitively (`n++` and `n += 1` read too); a claimed region's text
+  of the declarations such reads reach, transitively (`n++`, `n += 1` and `n = v` count as reads: a cluster
+  whose load assigns state, `init()` writing `mode`, is ordered like one reading it); a claimed region's text
   evaluates where its owner lands, and an option value that calls something (`withPrefix(Page)`) reads what that
-  call may run (`ordered-effect`).
+  call may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
+  `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
+  module: the code they run is not seen to run at load.
   Such a reader never moves to a lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }`
   keeps the source's `[0]`); an option value that reads one is kept in place (`ordered-effect`). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
@@ -187,6 +194,9 @@ directives, never license comments.
   the route registry says the router package's constructor made it (`RouteRegistry.lookup().routerConstructor`): the
   Start prefetch takes it as a value it knows and records a `route-registry` dependency, so the route tree's imports
   read no route file.
+- **Pure declarations** (`purity.ts` `isPureDeclarator`): a declarator is pure when its initialiser is, and so is
+  every default value and computed key of its pattern (`const { beta = track() } = flags` runs `track` where it is
+  written, as `flags.beta ?? track()` would).
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (audited APIs of TanStack's router packages, e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue

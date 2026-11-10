@@ -15,6 +15,7 @@ import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
+  requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
 import { solidAppConfig } from './hydrate-pages'
@@ -392,6 +393,84 @@ return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ??
         client: { staticData: { marker: 'MARK_STATIC' }, ssr: null },
         ssr: { staticData: null, ssr: true },
       })
+    },
+    timeout,
+  )
+
+  // A loader that is a server fn, in a chunk of its own: each build
+  // compiles it, and the client's loader calls the server's. Written in
+  // place (R3-G7-4, open: awaiting a ruling), the server build throws an
+  // internal `conflict: two claims on region N` error: Start's planner hoists
+  // the server fn and the code splitter relocates the same text.
+  const splitServerFnLoader = async (declarations: string, loader: string) => {
+    let build: StartBuild
+    try {
+      build = await buildStart({
+        bundler,
+        files: {
+          ...routeFiles,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+${declarations}export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => 'MARK_COMPONENT',
+})
+`,
+          'src/client-entry.ts': `export { getRouter } from './router'\n`,
+          'src/ssr-entry.ts': `export { getRouter } from './router'
+${callByIdExports}`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: {
+          router: {
+            codeSplittingOptions: {
+              defaultBehavior: [['loader'], ['component']] as Array<
+                Array<'loader' | 'component'>
+              >,
+            },
+          },
+        },
+      })
+    } catch (error) {
+      // (an assertion: the pin below asserts its own bug)
+      expect.fail(`the build failed: ${String(error)}`)
+    }
+    const requests = (
+      await build.client.run(
+        `${requestsOfPrelude}const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+return requestsOf((options) => route.options.loader(options))`,
+      )
+    ).result as Array<{ url: string }>
+    expect(requests).toHaveLength(1)
+    return (
+      await build.ssr.run(
+        `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(requests[0]!.url.split('?')[0])}))`,
+      )
+    ).result
+  }
+  test(
+    'router.codeSplittingOptions: a loader that is a server fn declared before the route, split into its own chunk, runs on the server',
+    async () => {
+      expect(
+        await splitServerFnLoader(
+          `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
+          'loaderFn',
+        ),
+      ).toBe('MARK_LOADER_FN')
+    },
+    timeout,
+  )
+  test.fails(
+    'router.codeSplittingOptions: a loader that is a server fn written in place, split into its own chunk, runs on the server',
+    async () => {
+      expect(
+        await splitServerFnLoader(
+          '',
+          `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
+        ),
+      ).toBe('MARK_LOADER_FN')
     },
     timeout,
   )

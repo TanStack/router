@@ -115,6 +115,22 @@ const files = {
 `,
     'fns.make()',
   ),
+  // R3-G7-3: a chain nested in the statement right after the declaration
+  // it reads outside its handler (hoisted before that statement)
+  ...route(
+    'after-declaration',
+    `import { createMiddleware } from '@tanstack/react-start'
+const registry = {
+  fns: [] as Array<() => Promise<string>>,
+  add(fn: () => Promise<string>) {
+    registry.fns.push(fn)
+  },
+}
+const auth = createMiddleware({ type: 'function' }).server(({ next }) => next())
+registry.add(createServerFn().middleware([auth]).handler(async () => 'MARK_HANDLER'))
+`,
+    'registry.fns[0]!',
+  ),
   ...route(
     'two-classes',
     `export class Z {

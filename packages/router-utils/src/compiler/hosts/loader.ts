@@ -1,6 +1,8 @@
 /** Helpers of the webpack-family loaders (router and Start). */
 import remapping from '@jridgewell/remapping'
+import { FlattenMap } from '@jridgewell/trace-mapping'
 import { normalizePath } from '../identity'
+import type { SectionedSourceMapInput } from '@jridgewell/trace-mapping'
 import type { RawSourceMap } from '../output-builder'
 import type { RecordMapText } from './emitted-maps'
 
@@ -21,7 +23,7 @@ export function webpackResourceId(resource: string): string {
 /**
  * A loader's output map: the compiler's map naming the module's absolute
  * path (`resourcePath`), composed with the input map (an earlier loader's
- * map is not lost); without one, the file's text is in the map or, with a
+ * map is not lost, an index map included); without one, the file's text is in the map or, with a
  * recorder, in the emitted maps (`emittedMapTexts`).
  */
 export function composeLoaderMap(
@@ -42,10 +44,14 @@ export function composeLoaderMap(
     }
     return { ...ours, sourcesContent: [source] }
   }
+  const parsed = (
+    typeof inputMap === 'string' ? JSON.parse(inputMap) : inputMap
+  ) as object
+  // an index map (`sections`) is flattened first: remapping reads plain maps
   const input =
-    typeof inputMap === 'string'
-      ? (JSON.parse(inputMap) as Parameters<typeof remapping>[0])
-      : (inputMap as Parameters<typeof remapping>[0])
+    'sections' in parsed
+      ? new FlattenMap(parsed as SectionedSourceMapInput)
+      : parsed
   const composed = remapping(
     [ours as unknown as Parameters<typeof remapping>[0], input] as never,
     () => null,

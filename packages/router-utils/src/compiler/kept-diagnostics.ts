@@ -181,9 +181,9 @@ export function keptDiagnostic(
     case 'state':
       because =
         k.read === undefined
-          ? `${it} read${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
-          : `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
-      fix = `read ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
+          ? `${it} use${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
+          : `${it} use${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
+      fix = `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
       break
     default:
       because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${symbols.isConst(k.read!) ? 'has side effects' : 'is a `let`'}`

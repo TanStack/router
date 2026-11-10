@@ -288,6 +288,70 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
     timeout,
   )
 
+  // A loader before the router's handing it an index map (a map of
+  // `sections`, which the source map format allows): the router composes it
+  // like any other input map.
+  test(
+    'a throw in the route module maps to its line in the route file through an index map an earlier loader passes',
+    async () => {
+      const source = `${routeHead()}export const Route = createFileRoute('/')({
+  loader: () => {
+    throw new Error('MARK_LOADER_THROW')
+  },
+  component: () => <p>page</p>,
+})
+`
+      const app = await build({
+        bundler,
+        env: 'client',
+        minify: false,
+        sourcemap: true,
+        files: routeApp(source, {
+          env: 'client',
+          files: {
+            'entry.ts': `export * from './routes/index'\n`,
+            'index-map-loader.cjs': `module.exports = function (code) {
+  const lines = code.split('\\n')
+  const mappings = lines.map((_, i) => (i === 0 ? 'AAAA' : 'AACA')).join(';')
+  const map = {
+    version: 3,
+    sources: [this.resourcePath],
+    sourcesContent: [code],
+    names: [],
+    mappings,
+  }
+  this.callback(null, code, {
+    version: 3,
+    sections: [{ offset: { line: 0, column: 0 }, map }],
+  })
+}
+`,
+          },
+        }),
+        configure: (options) => {
+          const rules = (options.module as { rules: Array<unknown> }).rules
+          rules.push({
+            test: /routes[\\/]index\.tsx$/,
+            enforce: 'pre',
+            loader: path.join(
+              options.context as string,
+              'index-map-loader.cjs',
+            ),
+          })
+        },
+      })
+      const { result: stack } = await app.run(
+        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+      )
+      expect(stack).toMatch('MARK_LOADER_THROW')
+      const { line } = originalFrameOf(app, stack as string) ?? {}
+      expect(line).toBe(
+        source.slice(0, source.indexOf('new Error(')).split('\n').length,
+      )
+    },
+    timeout,
+  )
+
   // A raw U+2028 inside a string of the component the splitter moves out of
   // the route module: these bundlers' maps count lines at LF only (as editors
   // and devtools show the file), so the loader's throw below it still maps
