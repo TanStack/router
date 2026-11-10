@@ -28,7 +28,7 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type { RegionId, RegionTable, TopLevelItem, Unit, UnitId } from './units'
+import type { TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -248,7 +248,6 @@ interface JsxInfo {
 export interface Tier1 {
   items: ReadonlyArray<TopLevelItem>
   units: ReadonlyArray<Unit>
-  regions: RegionTable
   symbols: SymbolTable
   refs: RefIndex
   /** References to names without a binding (globals, `arguments`). */
@@ -292,8 +291,8 @@ export interface Tier1 {
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
   nodeAt: (offset: number) => Node | null
-  /** The innermost region owning a reference. */
-  ownerOf: (ref: ClassifiedRef) => RegionId
+  /** The unit whose range holds `range` (a unit is the outermost region of what it holds: `RegionTable`). */
+  unitAt: (range: Range) => UnitId | null
   /** Non-module symbols read inside `range` whose declaring scope lies outside it (captures). */
   capturesOf: (range: Range) => Array<SymbolId>
 }
@@ -1130,7 +1129,7 @@ export class ModuleAnalysis {
     const file = this.file
     const symbols = new SymbolTable(file)
     const items = buildItems(file, this.header)
-    const { units, regions, declaringUnits } = buildUnits(
+    const { units, declaringUnits } = buildUnits(
       file,
       items,
       symbols,
@@ -1335,7 +1334,6 @@ export class ModuleAnalysis {
     const tier1: Tier1 = {
       items,
       units,
-      regions,
       symbols,
       refs: refIndex,
       freeRefs,
@@ -1367,14 +1365,24 @@ export class ModuleAnalysis {
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
-      ownerOf: (ref) => {
-        const id = regions.innermostAt(ref.range.start, ref.range.end)
-        if (id === null) {
-          throw new Error(
-            `reference at ${ref.range.start} is outside every region`,
-          )
+      unitAt: ({ start, end }) => {
+        // the units are disjoint, in source order
+        let lo = 0
+        let hi = units.length - 1
+        let found: Unit | null = null
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1
+          const u = units[mid]!
+          if (u.range.start <= start) {
+            found = u
+            lo = mid + 1
+          } else {
+            hi = mid - 1
+          }
         }
-        return id
+        return found !== null && Math.max(end, start + 1) <= found.range.end
+          ? found.id
+          : null
       },
       capturesOf: (range) => {
         const out: Array<SymbolId> = []
@@ -1655,7 +1663,7 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
  * the body at `snap`); null when it does not run at load.
  */
 export function runsAtLoad(
-  t1: Pick<Tier1, 'refs' | 'units' | 'regions' | 'declaringUnits' | 'ownerOf'>,
+  t1: Pick<Tier1, 'refs' | 'units' | 'declaringUnits' | 'unitAt'>,
   live: (ref: ClassifiedRef) => boolean = () => true,
 ): (ref: ClassifiedRef) => number | null {
   const seeds: Array<ClassifiedRef> = []
@@ -1711,7 +1719,7 @@ export function runsAtLoad(
     if (ref.eager || loadCallbackRefs.has(ref)) {
       return ref.range.start
     }
-    const u = t1.regions.unitOf(t1.ownerOf(ref))
+    const u = t1.unitAt(ref.range)
     return u === null ? null : (marked.get(u) ?? null)
   }
 }

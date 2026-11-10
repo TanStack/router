@@ -130,13 +130,16 @@ describe('rewrite tree', () => {
         scope: 'all-outputs',
         by: 'x',
       })
-      e.ctx.rewrites.add({
-        range: rangeOf(code, '2 + 3'),
-        body: [],
-        scope: 'all-outputs',
-        by: 'y',
-      })
-      expect(() => e.render()).toThrow(/partially overlaps/)
+      // (one region tree for every output: the second range conflicts as it
+      // is registered)
+      expect(() =>
+        e.ctx.rewrites.add({
+          range: rangeOf(code, '2 + 3'),
+          body: [],
+          scope: 'all-outputs',
+          by: 'y',
+        }),
+      ).toThrow(/partially overlaps/)
     }
     {
       const e = engine(code)
@@ -826,7 +829,7 @@ describe('claims, homes and substitution', () => {
       by: 'router',
     })
     e.freeze()
-    expect(ctx.rewrites.tree('env').placeholderRenders(inner.region)).toBe(true)
+    expect(ctx.rewrites.view('env').placeholderRenders(inner.region)).toBe(true)
     expect(e.render('env').code).toContain(
       'const tsrOuter = make(() => tsrInner)',
     )
@@ -1434,7 +1437,7 @@ describe('erased parts around a claim read elsewhere', () => {
       scope: 'all-outputs',
       by: 'erases',
     })
-    expect(ctx.rewrites.tree('env').erasedParts()).toEqual([
+    expect(ctx.rewrites.view('env').erasedParts()).toEqual([
       { start: code.indexOf('{ x'), end: range.start },
       { start: range.end, end: code.indexOf('\n') },
     ])

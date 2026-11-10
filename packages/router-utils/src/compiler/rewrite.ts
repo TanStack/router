@@ -1,5 +1,5 @@
 /**
- * The rewrite tree (see README.md, "Units, regions, edits").
+ * The regions and the rewrite tree (see README.md, "Units, regions, edits").
  *
  * Planners emit `Edit`s against original ranges whose bodies are fragments:
  * retained slices (rendered with their own nested edits), structured text
@@ -8,14 +8,18 @@
  * regions; the region renders inside the owner wherever the owner is homed
  * and a placeholder renders at the original occurrence.
  *
- * Per output the set builds a `RenderTree`: the scoped edits sorted, nested,
- * conflict-checked, plus the live claims as placeholder edits. Liveness is
- * a function of that tree.
+ * The plan owns one region tree (`RegionTable`): the module, its regions and
+ * the range of every edit, shared by every output, so that two ranges nest
+ * or are disjoint whatever outputs their edits are scoped to. What an output
+ * renders of the source (`OutputView`) is read on that tree, by climbing from
+ * a position's innermost range. The renderer reads a `RenderTree` per output:
+ * the scoped edits sorted, nested, conflict-checked, plus the claims the view
+ * keeps as placeholder edits.
  */
 import type { Range } from './header'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { SymbolId } from './symbols'
-import type { RegionId, RegionTable, UnitId } from './units'
+import type { RegionId, UnitId } from './units'
 
 export type OutputId = 'env' | `derived:${string}`
 
@@ -136,8 +140,315 @@ interface RegionClaim {
   subject?: string
 }
 
-const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
-const NO_REGIONS: ReadonlySet<RegionId> = new Set()
+// ---- regions ------------------------------------------------------------------
+
+export type RegionKind =
+  | 'unit'
+  | 'option-value'
+  | 'hydrate-children'
+  | 'nested-chain'
+  | 'custom'
+
+export interface Region {
+  id: RegionId
+  range: Range
+  kind: RegionKind
+  unit: UnitId | null
+  parent: RegionId | null
+  children: Array<RegionId>
+}
+
+interface PlannerEdit extends Edit {
+  n: number
+}
+
+/**
+ * A range of the region tree: the module, a region, the range of planner
+ * edits, or several of them (one node per range). Nodes nest or are disjoint.
+ * Zero-width ranges (inserts) are no nodes: they render at their position,
+ * whose bytes decide whether they do.
+ */
+export interface RangeNode {
+  readonly start: number
+  readonly end: number
+  parent: RangeNode | null
+  /** Sorted by start, disjoint. */
+  children: Array<RangeNode>
+  /** What first addressed the range (a conflict names it). */
+  readonly by: string
+  /** The planner edits on exactly this range, of every scope, in call order. */
+  edits: Array<PlannerEdit> | null
+  /** The first claim of a region on exactly this range (a second is a conflict of the render tree). */
+  claim: RegionClaim | null
+}
+
+const rangeKey = (start: number, end: number) => start * 0x4000000 + end
+
+/**
+ * The regions of one plan and its region tree. Each unit is the region of
+ * its id; planners register sub-regions (`register`), the rewrite set the
+ * ranges of its edits (`node`). Registering a range that partly overlaps
+ * another one throws, whatever outputs their edits are scoped to.
+ *
+ * Placement reads the regions (units and sub-regions, each under the
+ * innermost region holding it: `parent`, `children`, `innermostAt`); the
+ * ranges of edits are tree nodes only.
+ */
+export class RegionTable {
+  readonly regions: Array<Region> = []
+  /** Unit regions sorted by start (disjoint). */
+  private readonly unitRegions: Array<Region> = []
+  /** Sub-regions by `start:end:kind` (one region per range and kind). */
+  private readonly subRegionByKey = new Map<string, RegionId>()
+  private readonly root: RangeNode
+  private readonly nodes = new Map<number, RangeNode>()
+
+  constructor(
+    length: number,
+    units: ReadonlyArray<{ id: UnitId; range: Range }>,
+  ) {
+    this.root = {
+      start: 0,
+      end: length,
+      parent: null,
+      children: [],
+      by: 'the module',
+      edits: null,
+      claim: null,
+    }
+    this.nodes.set(rangeKey(0, length), this.root)
+    for (const u of units) {
+      const r: Region = {
+        id: this.regions.length,
+        range: u.range,
+        kind: 'unit',
+        unit: u.id,
+        parent: null,
+        children: [],
+      }
+      this.regions.push(r)
+      this.unitRegions.push(r)
+      this.node(u.range, `unit ${u.id}`)
+    }
+  }
+
+  /** Registers a sub-region under the innermost region containing it. */
+  register(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
+    const key = `${range.start}:${range.end}:${kind}`
+    const existing = this.subRegionByKey.get(key)
+    if (existing !== undefined) {
+      return existing
+    }
+    this.node(range, `a ${kind} region`)
+    const parent = this.innermostAt(range.start, range.end)
+    const id = this.regions.length
+    const r: Region = { id, range, kind, unit: null, parent, children: [] }
+    this.regions.push(r)
+    this.subRegionByKey.set(key, id)
+    if (parent !== null) {
+      const p = this.regions[parent]!
+      // existing children inside the new range are re-parented (regions may be registered inner-first)
+      const kept: Array<RegionId> = []
+      for (const cid of p.children) {
+        const c = this.regions[cid]!
+        if (c.range.start >= range.start && c.range.end <= range.end) {
+          c.parent = id
+          r.children.push(cid)
+        } else {
+          kept.push(cid)
+        }
+      }
+      kept.push(id)
+      p.children = kept.sort(
+        (a, b) => this.regions[a]!.range.start - this.regions[b]!.range.start,
+      )
+      r.children.sort(
+        (a, b) => this.regions[a]!.range.start - this.regions[b]!.range.start,
+      )
+    }
+    return id
+  }
+
+  get(id: RegionId): Region {
+    return this.regions[id]!
+  }
+
+  /** The innermost region containing `[start, end)` (end defaults to start + 1 semantics). */
+  innermostAt(start: number, end: number = start): RegionId | null {
+    const units = this.unitRegions
+    let lo = 0
+    let hi = units.length - 1
+    let found: Region | null = null
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      const r = units[mid]!
+      if (r.range.start <= start) {
+        found = r
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
+    }
+    if (found === null || Math.max(end, start + 1) > found.range.end) {
+      return null
+    }
+    let cur = found
+    for (;;) {
+      let next: Region | null = null
+      for (const cid of cur.children) {
+        const c = this.regions[cid]!
+        if (
+          c.range.start <= start &&
+          Math.max(end, start) <= c.range.end &&
+          (end > start ? end <= c.range.end : start < c.range.end)
+        ) {
+          next = c
+          break
+        }
+      }
+      if (next === null) {
+        return cur.id
+      }
+      cur = next
+    }
+  }
+
+  /** The innermost region owning a reference. */
+  ownerOf(ref: ClassifiedRef): RegionId {
+    const id = this.innermostAt(ref.range.start, ref.range.end)
+    if (id === null) {
+      throw new Error(`reference at ${ref.range.start} is outside every region`)
+    }
+    return id
+  }
+
+  /** The unit region at the root of a region's chain. */
+  unitOf(id: RegionId): UnitId | null {
+    let cur: RegionId | null = id
+    while (cur !== null) {
+      const r: Region = this.regions[cur]!
+      if (r.unit !== null) {
+        return r.unit
+      }
+      cur = r.parent
+    }
+    return null
+  }
+
+  /**
+   * The tree node on exactly `range`, added under the innermost node holding
+   * it (none for an empty range). A range that partly overlaps another one
+   * is a conflict.
+   */
+  node(range: Range, by: string): RangeNode | null {
+    const { start, end } = range
+    if (end <= start) {
+      return null
+    }
+    const hit = this.nodes.get(rangeKey(start, end))
+    if (hit !== undefined) {
+      return hit
+    }
+    if (start < 0 || end > this.root.end) {
+      throw new Error(
+        `conflict: ${by} [${start}, ${end}) is outside the module [0, ${this.root.end})`,
+      )
+    }
+    let parent = this.root
+    for (;;) {
+      const c = parent.children[lastStartingBy(parent.children, start)]
+      if (c === undefined || c.end < end) {
+        break
+      }
+      parent = c
+    }
+    const siblings = parent.children
+    // the children inside the new range move under it; one cut by it conflicts
+    let i = lastStartingBy(siblings, start)
+    if (i < 0 || siblings[i]!.end <= start) {
+      i++
+    }
+    let j = i
+    while (j < siblings.length && siblings[j]!.start < end) {
+      const c = siblings[j]!
+      if (c.start < start || c.end > end) {
+        throw new Error(
+          `conflict: ${by} [${start}, ${end}) partially overlaps ${c.by} [${c.start}, ${c.end})`,
+        )
+      }
+      j++
+    }
+    const node: RangeNode = {
+      start,
+      end,
+      parent,
+      children: siblings.splice(i, j - i),
+      by,
+      edits: null,
+      claim: null,
+    }
+    siblings.splice(i, 0, node)
+    for (const c of node.children) {
+      c.parent = node
+    }
+    this.nodes.set(rangeKey(start, end), node)
+    return node
+  }
+
+  /** The tree node on exactly `range`, if any. */
+  nodeOn(range: Range): RangeNode | null {
+    return this.nodes.get(rangeKey(range.start, range.end)) ?? null
+  }
+
+  /** The innermost tree node holding the byte at `offset` (none past the module's end). */
+  nodeAt(offset: number): RangeNode | null {
+    if (offset < 0 || offset >= this.root.end) {
+      return null
+    }
+    let node = this.root
+    for (;;) {
+      const c = node.children[lastStartingBy(node.children, offset)]
+      if (c === undefined || c.end <= offset) {
+        return node
+      }
+      node = c
+    }
+  }
+
+  /** The innermost tree node holding `range` whole. */
+  nodeAround(range: Range): RangeNode {
+    let node = this.root
+    for (;;) {
+      const c = node.children[lastStartingBy(node.children, range.start)]
+      if (c === undefined || c.end < range.end) {
+        return node
+      }
+      node = c
+    }
+  }
+}
+
+/** The index of the last node starting at or before `offset` (-1: none). */
+function lastStartingBy(
+  nodes: ReadonlyArray<RangeNode>,
+  offset: number,
+): number {
+  let lo = 0
+  let hi = nodes.length - 1
+  let found = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (nodes[mid]!.start <= offset) {
+      found = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return found
+}
+
+// ---- edits ----------------------------------------------------------------
 
 /**
  * The order of the edits of one range and of the inserts at one position: the
@@ -187,17 +498,25 @@ export interface TreeEdit extends EditOrder {
 }
 
 export class RewriteSet {
-  readonly edits: Array<Edit & { n: number }> = []
+  readonly edits: Array<PlannerEdit> = []
   readonly generated: Array<GeneratedUnit> = []
   readonly claims = new Map<RegionId, RegionClaim>()
   private nextEdit = 0
-  private version = 0
+  private changes = 0
   private trees = new Map<string, { version: number; tree: RenderTree }>()
+  private views = new Map<OutputId, OutputView>()
+  private owners: { version: number; owners: ReadonlySet<GenUnitId> } | null =
+    null
 
-  constructor(private readonly regions: RegionTable) {}
+  constructor(readonly regions: RegionTable) {}
 
   add(edit: Edit): void {
-    this.edits.push({ ...edit, n: this.nextEdit++ })
+    const e = { ...edit, n: this.nextEdit++ }
+    const node = this.regions.node(edit.range, edit.by)
+    if (node !== null) {
+      ;(node.edits ??= []).push(e)
+    }
+    this.edits.push(e)
     this.bump()
   }
 
@@ -236,6 +555,10 @@ export class RewriteSet {
       )
     }
     this.claims.set(claim.region, claim)
+    const node = this.regions.nodeOn(this.regions.get(claim.region).range)
+    if (node !== null && node.claim === null) {
+      node.claim = claim
+    }
     this.bump()
   }
 
@@ -279,7 +602,12 @@ export class RewriteSet {
   }
 
   private bump(): void {
-    this.version++
+    this.changes++
+  }
+
+  /** Bumped by every change of the set (`OutputView` and the render trees are read for one version). */
+  get version(): number {
+    return this.changes
   }
 
   /** Whether `output` is in `scope`. */
@@ -287,10 +615,21 @@ export class RewriteSet {
     return scope === 'all-outputs' || scope.includes(output)
   }
 
+  /** What `output` renders of the source (liveness). */
+  view(output: OutputId): OutputView {
+    let view = this.views.get(output)
+    if (view === undefined) {
+      view = new OutputView(this, output)
+      this.views.set(output, view)
+    }
+    return view
+  }
+
   /**
    * The render tree of an output: planner edits in scope plus `extra`
-   * internal edits (statement-level DCE, export keyword drops) plus live
-   * claim placeholders. Cached by version when `extra` is empty.
+   * internal edits (statement-level DCE, export keyword drops) plus the
+   * claims the output keeps (`OutputView.hasClaim`). Cached by version when
+   * `extra` is empty.
    */
   tree(output: OutputId, extra: ReadonlyArray<TreeEdit> = []): RenderTree {
     const cacheable = extra.length === 0
@@ -301,97 +640,39 @@ export class RewriteSet {
       }
     }
     const edits: Array<TreeEdit> = []
-    // An edit addressed to every output on exactly a claimed region travels
-    // with the region: it nests inside the claim
-    const claimed: Array<{ range: Range; region: RegionId }> = []
-    for (const claim of this.claims.values()) {
-      claimed.push({
-        range: this.regions.get(claim.region).range,
-        region: claim.region,
-      })
-    }
     for (const e of this.edits) {
       if (RewriteSet.inScope(e.scope, output)) {
-        let band: EditBand = EditBand.planner
-        let n = e.n
-        let nested = false
-        if (e.scope === 'all-outputs') {
-          for (const c of claimed) {
-            if (
-              c.range.start === e.range.start &&
-              c.range.end === e.range.end
-            ) {
-              band = EditBand.claim
-              n = c.region
-              nested = true
-              break
-            }
-          }
-        }
+        // an edit addressed to every output on exactly a claimed region
+        // travels with the region: it nests inside the claim
+        const claim =
+          e.scope === 'all-outputs'
+            ? (this.regions.nodeOn(e.range)?.claim ?? null)
+            : null
         edits.push({
           range: e.range,
           body: e.body,
           by: e.by,
-          band,
-          n,
-          nested,
+          band: claim === null ? EditBand.planner : EditBand.claim,
+          n: claim === null ? e.n : claim.region,
+          nested: claim !== null,
           claim: null,
         })
       }
     }
-    // Claims: live iff the region's occurrence is not erased by a planner
-    // edit strictly enclosing it. A claim whose owner other generated code
-    // reads (`readOwners`: the provider's hoisted server fn its RPC wrapper
-    // calls) is a declaration in its own right and stays live (`hidden`):
-    // an erasure of its occurrence removes the placeholder there, the owner
-    // stays while placement reaches it, and the claims inside its region are
-    // decided inside it. An edit scoped to this output on exactly the region
-    // replaces the placeholder here (it sorts before the claim); one
-    // addressed to every output nests inside the claim and renders where the
-    // region does, inside its owner. The internal edits (`extra`) never
-    // decide it: placement drops a statement it does not place, not the
-    // claimed regions in it, which render inside their owners wherever those
-    // are placed (as reach saw them).
-    const live: Array<RegionClaim> = []
-    let erased: Array<RegionClaim> | undefined
-    const base = new RenderTree(edits, this.regions)
+    // The internal edits (`extra`) never decide a claim: placement drops a
+    // statement it does not place, not the claimed regions in it, which
+    // render inside their owners wherever those are placed (as reach saw
+    // them).
+    const view = this.view(output)
     for (const claim of this.claims.values()) {
-      const { range } = this.regions.get(claim.region)
-      if (base.isErasedAt(range.start, null, range)) {
-        ;(erased ??= []).push(claim)
-      } else {
-        live.push(claim)
-      }
-    }
-    let hidden: Set<RegionId> | undefined
-    if (erased) {
-      const read = this.readOwners()
-      for (const claim of erased) {
-        if (read.has(claim.owner)) {
-          ;(hidden ??= new Set()).add(claim.region)
-          edits.push(claimEdit(this.regions, claim))
-        }
-      }
-      if (hidden) {
-        // inside a hidden claim, what is erased is decided inside it
-        const relocated = new RenderTree(edits, this.regions, hidden)
-        for (const claim of erased) {
-          const { range } = this.regions.get(claim.region)
-          if (!relocated.isErasedAt(range.start, null, range)) {
-            if (!hidden.delete(claim.region)) {
-              live.push(claim)
-            }
-          }
-        }
+      if (view.hasClaim(claim.region)) {
+        edits.push(claimEdit(this.regions, claim))
       }
     }
     for (const x of extra) {
       edits.push(x)
     }
-    for (const claim of live) {
-      edits.push(claimEdit(this.regions, claim))
-    }
-    const tree = new RenderTree(edits, this.regions, hidden)
+    const tree = new RenderTree(edits)
     if (cacheable) {
       this.trees.set(output, { version: this.version, tree })
     }
@@ -399,7 +680,10 @@ export class RewriteSet {
   }
 
   /** The claim owners other generated code (another unit, another placeholder) reads a symbol of. */
-  private readOwners(): ReadonlySet<GenUnitId> {
+  readOwners(): ReadonlySet<GenUnitId> {
+    if (this.owners !== null && this.owners.version === this.version) {
+      return this.owners.owners
+    }
     const ownerOf = new Map<SymbolId, GenUnitId>()
     for (const { owner } of this.claims.values()) {
       for (const s of this.generated[owner]!.declares) {
@@ -426,14 +710,15 @@ export class RewriteSet {
     for (const c of this.claims.values()) {
       scan(c.owner, c.placeholder)
     }
+    this.owners = { version: this.version, owners }
     return owners
   }
 
   liveness(output: OutputId): LivenessView {
-    const tree = this.tree(output)
+    const view = this.view(output)
     return {
-      live: (ref) => !tree.isErasedAt(ref.range.start),
-      isErased: (range) => tree.isErasedRange(range),
+      live: (ref) => !view.isErasedAt(ref.range.start),
+      isErased: (range) => view.isErasedRange(range),
     }
   }
 }
@@ -459,20 +744,464 @@ function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+/** Whether a body erases the original byte at `offset` of its range (no slice or reference of it keeps it). */
+export function erases(body: ReadonlyArray<Frag>, offset: number): boolean {
+  for (const f of body) {
+    if (
+      (f.k === 'slice' || f.k === 'ref') &&
+      f.range.start <= offset &&
+      offset < f.range.end
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+/** One edit or claim of a node, as the render tree of an output holds it (`OutputView.erasedParts`). */
+interface NodeItem {
+  edit: PlannerEdit | null
+  claim: RegionClaim | null
+}
+
+/**
+ * What one output renders of the source, read on the region tree: whether
+ * an original byte renders in some text of the output (an edit erases it,
+ * or none does; relocation into a claim's owner is no erasure), and which
+ * claims the output keeps.
+ *
+ * A claim is kept unless an erasing edit strictly encloses its occurrence.
+ * One whose owner other generated code reads (`readOwners`: the provider's
+ * hoisted server fn its RPC wrapper calls) is a declaration in its own
+ * right and stays then, without its placeholder (read elsewhere): the owner
+ * stays while placement reaches it, and inside its region what renders is
+ * decided inside it. An edit scoped to this output on exactly a
+ * claimed region replaces the placeholder here (it sorts before the claim);
+ * one addressed to every output nests inside the claim and renders where
+ * the region does, inside its owner.
+ *
+ * Every question climbs from the innermost range of a position to the root,
+ * reading the edits and claims of each range (memoised per claim for one
+ * version of the set).
+ */
+export class OutputView {
+  private version = -1
+  /** Per claim: an erasing edit strictly encloses its occurrence. */
+  private readonly erasedClaims = new Map<RegionClaim, boolean>()
+
+  constructor(
+    private readonly set: RewriteSet,
+    readonly output: OutputId,
+  ) {}
+
+  private sync(): void {
+    if (this.version !== this.set.version) {
+      this.version = this.set.version
+      this.erasedClaims.clear()
+    }
+  }
+
+  /** Whether the original byte at `offset` renders in no text of this output. */
+  isErasedAt(offset: number): boolean {
+    return this.erasedBy(offset) === true
+  }
+
+  /**
+   * What decides whether the byte at `offset` renders: an edit erasing it
+   * (true), a claim read elsewhere inside which it renders (false), or
+   * nothing of the tree (null: it renders unless an edit outside the tree
+   * removes it).
+   */
+  erasedBy(offset: number): boolean | null {
+    return this.decide(offset, this.set.regions.nodeAt(offset), null)
+  }
+
+  /** Whether the byte at `range.start` is erased by what strictly encloses `range` (an edit on exactly the range does not count). */
+  isErasedAround(range: Range): boolean {
+    let node = this.set.regions.nodeAt(range.start)
+    while (
+      node !== null &&
+      node.start >= range.start &&
+      node.end <= range.end
+    ) {
+      node = node.parent
+    }
+    return this.decide(range.start, node, null) === true
+  }
+
+  /** Whether an edit of this output's render tree renders (its position is not erased by what encloses it). */
+  editRenders(e: TreeEdit): boolean {
+    if (e.range.end <= e.range.start) {
+      return !this.isErasedAt(e.range.start)
+    }
+    return (
+      this.decide(e.range.start, this.set.regions.nodeOn(e.range), e) !== true
+    )
+  }
+
+  /** Whether every byte of `range` is erased. */
+  isErasedRange(range: Range): boolean {
+    if (range.end <= range.start) {
+      return this.isErasedAt(range.start)
+    }
+    // erasure is piecewise over the boundaries of the ranges and kept parts
+    // inside the range
+    const points = new Set<number>([range.start])
+    const add = (p: number) => {
+      if (p > range.start && p < range.end) {
+        points.add(p)
+      }
+    }
+    const addParts = (node: RangeNode) => {
+      for (const e of node.edits ?? []) {
+        for (const f of e.body) {
+          if (f.k === 'slice' || f.k === 'ref') {
+            add(f.range.start)
+            add(f.range.end)
+          }
+        }
+      }
+    }
+    const around = this.set.regions.nodeAround(range)
+    for (let n: RangeNode | null = around; n !== null; n = n.parent) {
+      addParts(n)
+    }
+    const work = [...around.children]
+    while (work.length > 0) {
+      const n = work.pop()!
+      if (n.end <= range.start || n.start >= range.end) {
+        continue
+      }
+      add(n.start)
+      add(n.end)
+      addParts(n)
+      work.push(...n.children)
+    }
+    for (const p of points) {
+      if (!this.isErasedAt(p)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /** Whether this output keeps the claim of `region` (its placeholder, or its owner when read elsewhere). */
+  hasClaim(region: RegionId): boolean {
+    const claim = this.set.claims.get(region)
+    return claim !== undefined && this.keeps(claim)
+  }
+
+  /** Whether the claim's placeholder renders here (kept, its occurrence not erased, and not overridden by an edit on exactly the region). */
+  placeholderRenders(region: RegionId): boolean {
+    const claim = this.set.claims.get(region)
+    return (
+      claim !== undefined &&
+      !this.occurrenceErased(claim) &&
+      this.overrideOf(region) === null
+    )
+  }
+
+  /**
+   * The planner edit on exactly a kept claimed region that encloses the
+   * claim (scoped to this output): it replaces the placeholder here (the
+   * region's text stays relocated to its owner), so what it renders is read
+   * where the placeholder would be. An edit nested inside the claim (one
+   * addressed to every output) travels with the region instead.
+   */
+  overrideOf(region: RegionId): TreeEdit | null {
+    if (!this.hasClaim(region)) {
+      return null
+    }
+    const node = this.set.regions.nodeOn(this.set.regions.get(region).range)
+    for (const e of node?.edits ?? []) {
+      if (e.scope !== 'all-outputs' && e.scope.includes(this.output)) {
+        return {
+          range: e.range,
+          body: e.body,
+          by: e.by,
+          band: EditBand.planner,
+          n: e.n,
+          claim: null,
+        }
+      }
+    }
+    return null
+  }
+
+  /** The edits of this output's render tree. */
+  get edits(): ReadonlyArray<TreeEdit> {
+    return this.set.tree(this.output).edits
+  }
+
+  /** The erased parts of this output (for provenance). */
+  erasedParts(): Array<Range> {
+    this.sync()
+    const out: Array<Range> = []
+    const output = this.output
+    const claims = [...this.set.claims.values()]
+    const anyHidden = claims.some(
+      (c) => this.keeps(c) && this.occurrenceErased(c),
+    )
+    // the items of each node in the render tree's order (identical edits of
+    // one range are one)
+    const itemsOf = new Map<RangeNode, Array<NodeItem>>()
+    const items = (node: RangeNode): Array<NodeItem> => {
+      let list = itemsOf.get(node)
+      if (list !== undefined) {
+        return list
+      }
+      list = []
+      const claim = node.claim
+      for (const e of node.edits ?? []) {
+        if (
+          RewriteSet.inScope(e.scope, output) &&
+          !(claim !== null && e.scope === 'all-outputs')
+        ) {
+          list.push({ edit: e, claim: null })
+        }
+      }
+      if (claim !== null) {
+        if (this.keeps(claim)) {
+          list.push({ edit: null, claim })
+        }
+        for (const e of node.edits ?? []) {
+          if (e.scope === 'all-outputs') {
+            list.push({ edit: e, claim: null })
+          }
+        }
+      }
+      list = list.filter((it, i) => {
+        const prev = list![i - 1]
+        return !(
+          prev !== undefined &&
+          it.edit !== null &&
+          prev.edit !== null &&
+          fragsEqual(prev.edit.body, it.edit.body)
+        )
+      })
+      itemsOf.set(node, list)
+      return list
+    }
+    /** Whether `it` is the edit replacing the placeholder of a kept claim on its range. */
+    const overridesClaim = (node: RangeNode, it: NodeItem): boolean =>
+      it.edit !== null &&
+      node.claim !== null &&
+      this.keeps(node.claim) &&
+      items(node)[0] === it
+    // an erased part without the kept claims inside it read elsewhere
+    // (relocated: their text renders inside their owners)
+    const erased = (s: number, e: number, by: NodeItem) => {
+      let pos = s
+      const within = (c: RangeNode) => {
+        if (c.end <= pos || c.start >= e) {
+          return
+        }
+        if (
+          c.start >= pos &&
+          c.end <= e &&
+          c.claim !== null &&
+          this.keeps(c.claim)
+        ) {
+          if (c.start > pos) {
+            out.push({ start: pos, end: c.start })
+          }
+          // (`by` may be on exactly the claim: it already erased what it erases)
+          visit(
+            c.start,
+            c.end,
+            new Set([items(c).find((it) => it.claim !== null)!, by]),
+          )
+          pos = c.end
+          return
+        }
+        for (const child of c.children) {
+          within(child)
+        }
+      }
+      if (anyHidden) {
+        within(this.set.regions.nodeAround({ start: s, end: e }))
+      }
+      if (e > pos) {
+        out.push({ start: pos, end: e })
+      }
+    }
+    // the outermost items inside [s, e) but the excluded ones, in order (the
+    // render tree's `topLevelWithin`): up to an item starting inside and
+    // ending past `e`
+    const topLevel = (
+      s: number,
+      e: number,
+      excluded: ReadonlySet<NodeItem>,
+    ): Array<{ node: RangeNode; item: NodeItem }> => {
+      const found: Array<{ node: RangeNode; item: NodeItem }> = []
+      const scan = (node: RangeNode): boolean => {
+        if (node.start >= s && node.start < e) {
+          const list = items(node)
+          if (list.length > 0 && node.end > e) {
+            return false
+          }
+          const first = list.find((it) => !excluded.has(it))
+          if (first !== undefined) {
+            found.push({ node, item: first })
+            return true
+          }
+        }
+        for (const c of node.children) {
+          if (c.end <= s) {
+            continue
+          }
+          if (c.start >= e) {
+            break
+          }
+          if (!scan(c)) {
+            return false
+          }
+        }
+        return true
+      }
+      const around = this.set.regions.nodeAround({ start: s, end: e })
+      for (let a = around.parent; a !== null && a.start === s; a = a.parent) {
+        if (items(a).length > 0) {
+          return found
+        }
+      }
+      scan(around)
+      return found
+    }
+    const visit = (s: number, e: number, excluded: ReadonlySet<NodeItem>) => {
+      for (const { node, item } of topLevel(s, e, excluded)) {
+        if (item.claim !== null || overridesClaim(node, item)) {
+          // relocation, not erasure: look for erasing edits inside the region
+          visit(node.start, node.end, new Set([...excluded, item]))
+          continue
+        }
+        const body = item.edit!.body
+        let pos = node.start
+        const covered: Array<Range> = []
+        for (const f of body) {
+          if (f.k === 'slice' || f.k === 'ref') {
+            covered.push(f.range)
+          }
+        }
+        covered.sort((a, b) => a.start - b.start)
+        for (const c of covered) {
+          if (c.start > pos) {
+            erased(pos, c.start, item)
+          }
+          if (c.end > pos) {
+            pos = c.end
+          }
+        }
+        if (node.end > pos) {
+          erased(pos, node.end, item)
+        }
+        for (const f of body) {
+          if (f.k === 'slice') {
+            visit(
+              f.range.start,
+              f.range.end,
+              f.range.start === node.start && f.range.end === node.end
+                ? new Set([...excluded, item])
+                : NO_ITEMS,
+            )
+          }
+        }
+      }
+    }
+    visit(0, Infinity, NO_ITEMS)
+    return out
+  }
+
+  /** Whether this output keeps the claim: its occurrence renders, or other generated code reads its owner. */
+  private keeps(claim: RegionClaim): boolean {
+    return (
+      !this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner)
+    )
+  }
+
+  /** Whether an erasing edit strictly encloses the claim's occurrence (outside the claims read elsewhere, inside which it is decided). */
+  private occurrenceErased(claim: RegionClaim): boolean {
+    this.sync()
+    let erased = this.erasedClaims.get(claim)
+    if (erased === undefined) {
+      erased = this.isErasedAround(this.set.regions.get(claim.region).range)
+      this.erasedClaims.set(claim, erased)
+    }
+    return erased
+  }
+
+  /**
+   * Climbs from `from` to the root: the first edit of this output erasing
+   * the byte at `offset` decides it erased, the first claim read elsewhere
+   * (kept, its occurrence erased) decides it renders, inner first; null
+   * when nothing does. On `from`, only what the render tree orders before
+   * `until`.
+   */
+  private decide(
+    offset: number,
+    from: RangeNode | null,
+    until: EditOrder | null,
+  ): boolean | null {
+    const output = this.output
+    for (let x = from; x !== null; x = x.parent) {
+      const bound = x === from ? until : null
+      const claim = x.claim
+      const edits = x.edits
+      if (claim !== null) {
+        // edits addressed to every output nest inside the claim
+        if (
+          edits !== null &&
+          (bound === null ||
+            compareEditOrder(
+              { band: EditBand.claim, n: claim.region, nested: true },
+              bound,
+            ) < 0)
+        ) {
+          for (const e of edits) {
+            if (e.scope === 'all-outputs' && erases(e.body, offset)) {
+              return true
+            }
+          }
+        }
+        if (
+          (bound === null ||
+            compareEditOrder({ band: EditBand.claim, n: claim.region }, bound) <
+              0) &&
+          this.occurrenceErased(claim) &&
+          this.set.readOwners().has(claim.owner)
+        ) {
+          return false
+        }
+      }
+      if (edits !== null) {
+        for (const e of edits) {
+          if (
+            !(claim !== null && e.scope === 'all-outputs') &&
+            RewriteSet.inScope(e.scope, output) &&
+            (bound === null ||
+              compareEditOrder({ band: EditBand.planner, n: e.n }, bound) <
+                0) &&
+            erases(e.body, offset)
+          ) {
+            return true
+          }
+        }
+      }
+    }
+    return null
+  }
+}
+
+const NO_ITEMS: ReadonlySet<NodeItem> = new Set()
+
 /**
  * Edits of one output sorted by (start asc, zero-width first, end desc,
  * `compareEditOrder`), nested by containment and conflict-checked.
  */
 export class RenderTree {
   readonly edits: Array<TreeEdit>
-  private readonly claimRegions = new Set<RegionId>()
 
-  constructor(
-    edits: Array<TreeEdit>,
-    private readonly regions: RegionTable,
-    /** Claims in the tree only to relocate their region (their occurrence is erased). */
-    private readonly hidden: ReadonlySet<RegionId> = NO_REGIONS,
-  ) {
+  constructor(edits: Array<TreeEdit>) {
     const sorted = [...edits].sort(
       (a, b) =>
         a.range.start - b.range.start ||
@@ -528,62 +1257,8 @@ export class RenderTree {
       if (e.range.end > e.range.start) {
         stack.push(e)
       }
-      if (e.claim !== null) {
-        this.claimRegions.add(e.claim)
-      }
     }
     this.edits = out
-  }
-
-  hasClaim(region: RegionId): boolean {
-    return this.claimRegions.has(region)
-  }
-
-  /** Whether `e` replaces the placeholder of a live claimed region (an edit on exactly the region, outside the claim). */
-  private overridesClaim(e: TreeEdit): boolean {
-    for (const region of this.claimRegions) {
-      const r = this.regions.get(region).range
-      if (r.start === e.range.start && r.end === e.range.end) {
-        return this.overrideOf(region) === e
-      }
-    }
-    return false
-  }
-
-  /** Whether the claim's placeholder renders here (live, its occurrence not erased, and not overridden by an edit on exactly the region). */
-  placeholderRenders(region: RegionId): boolean {
-    return (
-      this.claimRegions.has(region) &&
-      !this.hidden.has(region) &&
-      this.overrideOf(region) === null
-    )
-  }
-
-  /**
-   * The planner edit on exactly a live claimed region that encloses the
-   * claim (scoped to this output): it replaces the placeholder here (the
-   * region's text stays relocated to its owner), so what it renders is read
-   * where the placeholder would be. An edit nested inside the claim (one
-   * addressed to every output) travels with the region instead.
-   */
-  overrideOf(region: RegionId): TreeEdit | null {
-    if (!this.claimRegions.has(region)) {
-      return null
-    }
-    const r = this.regions.get(region).range
-    for (const e of this.edits) {
-      if (e.range.start > r.start) {
-        break
-      }
-      if (e.range.start !== r.start || e.range.end !== r.end) {
-        continue
-      }
-      if (e.claim !== null) {
-        return null
-      }
-      return e
-    }
-    return null
   }
 
   /**
@@ -695,193 +1370,5 @@ export class RenderTree {
       return e
     }
     return null
-  }
-
-  /**
-   * Whether the original byte at `offset` renders in no output text (erased
-   * by an edit). With `until`, only edits enclosing `until` are consulted
-   * (does the text at `until`'s position render?). Claim placeholders are
-   * transparent: relocation is not erasure — the region's text renders
-   * inside its owner, and inside a hidden claim only the edits inside the
-   * region apply.
-   */
-  isErasedAt(
-    offset: number,
-    until: TreeEdit | null = null,
-    strictlyEnclosing: Range | null = null,
-  ): boolean {
-    let erased = false
-    for (const e of this.edits) {
-      if (e.range.start > offset) {
-        break
-      }
-      if (!(e.range.start <= offset && offset < e.range.end)) {
-        continue
-      }
-      if (
-        until !== null &&
-        (e === until ||
-          (e.range.start >= until.range.start &&
-            e.range.end <= until.range.end &&
-            e !== until &&
-            compareEditOrder(e, until) >= 0))
-      ) {
-        break
-      }
-      if (
-        strictlyEnclosing !== null &&
-        e.range.start >= strictlyEnclosing.start &&
-        e.range.end <= strictlyEnclosing.end
-      ) {
-        break
-      }
-      if (e.claim !== null) {
-        if (this.hidden.has(e.claim)) {
-          erased = false
-        }
-        continue
-      }
-      if (erased) {
-        continue
-      }
-      // Is offset covered by a slice frag of e's body?
-      let covered = false
-      for (const f of e.body) {
-        if (
-          f.k === 'slice' &&
-          f.range.start <= offset &&
-          offset < f.range.end
-        ) {
-          covered = true
-          break
-        }
-        if (f.k === 'ref' && f.range.start <= offset && offset < f.range.end) {
-          covered = true
-          break
-        }
-      }
-      if (!covered) {
-        if (this.hidden.size === 0) {
-          return true
-        }
-        erased = true
-      }
-    }
-    return erased
-  }
-
-  /** Whether an edit of this tree renders (its position is not erased by an enclosing edit). */
-  editRenders(e: TreeEdit): boolean {
-    return !this.isErasedAt(e.range.start, e)
-  }
-
-  /** Whether every byte of `range` is erased. */
-  isErasedRange(range: Range): boolean {
-    if (range.end <= range.start) {
-      return this.isErasedAt(range.start)
-    }
-    // Erasure is piecewise over edit boundaries; sample every boundary inside the range.
-    const points = new Set<number>([range.start])
-    for (const e of this.edits) {
-      if (e.range.start >= range.end) {
-        break
-      }
-      if (e.range.start > range.start && e.range.start < range.end) {
-        points.add(e.range.start)
-      }
-      if (e.range.end > range.start && e.range.end < range.end) {
-        points.add(e.range.end)
-      }
-      for (const f of e.body) {
-        if (f.k === 'slice' || f.k === 'ref') {
-          if (f.range.start > range.start && f.range.start < range.end) {
-            points.add(f.range.start)
-          }
-          if (f.range.end > range.start && f.range.end < range.end) {
-            points.add(f.range.end)
-          }
-        }
-      }
-    }
-    for (const p of points) {
-      if (!this.isErasedAt(p)) {
-        return false
-      }
-    }
-    return true
-  }
-
-  /** The erased parts of this tree (for provenance). */
-  erasedParts(): Array<Range> {
-    const out: Array<Range> = []
-    // `excluded`: the edits on exactly the visited range already looked
-    // through (a claim, its override, an edit whose slice keeps its whole
-    // range), so that the edits nested under them are found
-    // an erased part without the hidden claims inside it (relocated: their
-    // text renders inside their owners)
-    const erased = (s: number, e: number, by: TreeEdit) => {
-      let pos = s
-      for (const c of this.hidden.size > 0 ? this.edits : []) {
-        if (c.range.start >= e) {
-          break
-        }
-        if (c.claim === null || c.range.start < pos || c.range.end > e) {
-          continue
-        }
-        if (c.range.start > pos) {
-          out.push({ start: pos, end: c.range.start })
-        }
-        // (`by` may be on exactly the claim: it already erased what it erases)
-        visit(c.range.start, c.range.end, new Set([c, by]))
-        pos = c.range.end
-      }
-      if (e > pos) {
-        out.push({ start: pos, end: e })
-      }
-    }
-    const visit = (s: number, e: number, excluded: ReadonlySet<TreeEdit>) => {
-      for (const ed of this.topLevelWithin(s, e, excluded)) {
-        if (ed.range.start === ed.range.end) {
-          continue
-        }
-        if (ed.claim !== null || this.overridesClaim(ed)) {
-          // relocation, not erasure: look for erasing edits inside the region
-          visit(ed.range.start, ed.range.end, new Set([...excluded, ed]))
-          continue
-        }
-        let pos = ed.range.start
-        const covered: Array<Range> = []
-        for (const f of ed.body) {
-          if (f.k === 'slice' || f.k === 'ref') {
-            covered.push(f.range)
-          }
-        }
-        covered.sort((a, b) => a.start - b.start)
-        for (const c of covered) {
-          if (c.start > pos) {
-            erased(pos, c.start, ed)
-          }
-          if (c.end > pos) {
-            pos = c.end
-          }
-        }
-        if (ed.range.end > pos) {
-          erased(pos, ed.range.end, ed)
-        }
-        for (const f of ed.body) {
-          if (f.k === 'slice') {
-            visit(
-              f.range.start,
-              f.range.end,
-              f.range.start === ed.range.start && f.range.end === ed.range.end
-                ? new Set([...excluded, ed])
-                : NO_EDITS,
-            )
-          }
-        }
-      }
-    }
-    visit(0, Infinity, NO_EDITS)
-    return out
   }
 }

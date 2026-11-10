@@ -315,10 +315,10 @@ export function firstImpure(
   if (expr === null) {
     return { node, key: null }
   }
-  const env = rewrites.tree('env')
+  const env = rewrites.view('env')
   const claimed = (v: Node): boolean => {
     for (const claim of rewrites.claims.values()) {
-      const r = plan.t1.regions.get(claim.region).range
+      const r = plan.regions.get(claim.region).range
       if (r.start === v.start && r.end === v.end) {
         return true
       }

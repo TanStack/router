@@ -604,7 +604,5 @@ function readsOwnThis(fn: Node): boolean {
 /** The ranges of the module-level units declaring a symbol. */
 function declaringRanges(ctx: PlanContext, sym: SymbolId): Array<Range> {
   const { t1 } = ctx
-  return (t1.declaringUnits.get(sym) ?? []).map(
-    (u) => t1.regions.get(t1.units[u]!.region).range,
-  )
+  return (t1.declaringUnits.get(sym) ?? []).map((u) => t1.units[u]!.range)
 }

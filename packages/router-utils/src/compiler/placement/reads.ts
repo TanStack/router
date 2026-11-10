@@ -10,8 +10,8 @@
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { SymbolId } from '../symbols'
-import type { Region, RegionId } from '../units'
-import type { Frag, OutputId } from '../rewrite'
+import type { RegionId } from '../units'
+import type { Frag, OutputId, Region } from '../rewrite'
 import type { PlacementInput } from '../reach'
 
 export interface ClusterReads {
@@ -56,9 +56,10 @@ export function readIndex(
   graph: ClusterGraph,
 ): ReadIndex {
   const { t1, rewrites } = input
-  const { regions, refs, symbols } = t1
+  const { refs, symbols } = t1
+  const { regions } = rewrites
   const { clusters, clusterOfRegion, clusterOfSym, ownedRefs } = graph
-  const { treeOf, isLive } = graph
+  const { viewOf, isLive } = graph
   const regionCount = regions.regions.length
   const gens = rewrites.generated
 
@@ -99,8 +100,21 @@ export function readIndex(
       into.syms.push(ref.sym)
     }
     // generated text inside the region declares its reads structurally (symbol fragments)
-    const tree = treeOf(o)
-    for (const e of tree.edits) {
+    const view = viewOf(o)
+    const edits = view.edits
+    // (sorted by start: from the first edit inside the region)
+    let lo = 0
+    let hi = edits.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (edits[mid]!.range.start < r.range.start) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    for (let i = lo; i < edits.length; i++) {
+      const e = edits[i]!
       if (e.range.start >= r.range.end) {
         break
       }
@@ -115,7 +129,7 @@ export function readIndex(
         e.range.start,
         Math.max(e.range.end, e.range.start + 1),
       )
-      if (owner !== r.id || (live && !tree.editRenders(e))) {
+      if (owner !== r.id || (live && !view.editRenders(e))) {
         continue
       }
       into.syms.push(...symRefsOf(e.body))
@@ -127,11 +141,11 @@ export function readIndex(
         // renders; an edit on exactly the claimed region replaces the
         // placeholder in this output, and what it renders (its SymRefs and
         // the parts of the region it keeps) is read by this region there
-        if (!live || tree.placeholderRenders(cid)) {
+        if (!live || view.placeholderRenders(cid)) {
           into.syms.push(...symRefsOf(claim.placeholder))
         } else {
-          const override = tree.overrideOf(cid)
-          if (override && tree.editRenders(override)) {
+          const override = view.overrideOf(cid)
+          if (override && view.editRenders(override)) {
             fragReads(override.body, o, live, into)
           }
         }

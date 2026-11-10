@@ -601,13 +601,15 @@ async function runAttempt(
     // at least one more region of the module, so they end within the
     // number of regions. Past that bound (a planner registering new regions
     // every round) the module is planned with every sub-region kept in
-    // place, which is always correct, and a warning says so. The bound is
-    // the region count after the first round: regions accumulate across
-    // rounds (one Tier 1 per module), so a planner registering a new region
-    // every round would move a bound read each round out of reach.
+    // place (every sub-region of every round), which is always correct,
+    // and a warning says so. The bound is the region count after the first
+    // round, so a planner registering a new region every round cannot move
+    // it out of reach.
     let fallbacks: Array<FallbackRecord> = []
     let plan!: AnalysisPlan
     let bound = 0
+    /** The sub-regions of the rounds so far, by range and kind (each plan has its own regions). */
+    const subRegions = new Map<string, FallbackRecord>()
     for (let round = 0; ; round++) {
       plan = planRound(
         t0,
@@ -629,15 +631,23 @@ async function runAttempt(
             ),
         )
       if (round === 0) {
-        bound = plan.t1.regions.regions.length
+        bound = plan.regions.regions.length
       }
       if (fresh.length === 0) {
         break
       }
+      for (const r of plan.regions.regions) {
+        const key = `${r.range.start}:${r.range.end}:${r.kind}`
+        if (r.kind !== 'unit' && !subRegions.has(key)) {
+          subRegions.set(key, {
+            range: r.range,
+            kind: r.kind,
+            reason: 'exhausted',
+          })
+        }
+      }
       if (round >= bound) {
-        fallbacks = plan.t1.regions.regions
-          .filter((r) => r.kind !== 'unit')
-          .map((r) => ({ range: r.range, kind: r.kind, reason: 'exhausted' }))
+        fallbacks = [...subRegions.values()]
         plan = planRound(
           t0,
           identity,

@@ -13,7 +13,7 @@ import { computePlacement } from './reach'
 import { firstImpure, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
-import { RewriteSet } from './rewrite'
+import { RegionTable, RewriteSet } from './rewrite'
 import type {
   Fallback,
   HeaderPolicy,
@@ -28,7 +28,7 @@ import type { Range } from './header'
 import type { DerivedQuery, SourceIdentity } from './identity'
 import type { InvariantViolation } from './self-checks'
 import type { SymbolId, SymbolTable } from './symbols'
-import type { RegionId, RegionKind, UnitId } from './units'
+import type { RegionId, UnitId } from './units'
 import type {
   EdgeProvenance,
   EditScope,
@@ -36,6 +36,7 @@ import type {
   LivenessView,
   OutputId,
   RefTarget,
+  RegionKind,
 } from './rewrite'
 import type { DependencyFingerprint } from './cache'
 import type {
@@ -234,6 +235,8 @@ export interface PlanContext<TName extends string = string> {
 
 export class AnalysisPlan implements PlanContext {
   readonly t1: Tier1
+  /** The plan's regions and region tree (each plan its own: a fallback round starts with the units'). */
+  readonly regions: RegionTable
   readonly rewrites: RewriteSet
   readonly names: NameAllocator
   readonly symbols: SymbolTable
@@ -276,7 +279,8 @@ export class AnalysisPlan implements PlanContext {
   ) {
     this.t1 = analysis.t1()
     this.symbols = this.t1.symbols
-    this.rewrites = new RewriteSet(this.t1.regions)
+    this.regions = new RegionTable(analysis.source.code.length, this.t1.units)
+    this.rewrites = new RewriteSet(this.regions)
     this.names = new NameAllocator(
       this.t1.names,
       this.t1.exportNames,
@@ -313,7 +317,7 @@ export class AnalysisPlan implements PlanContext {
   }
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
-    return this.t1.regions.register(range, kind)
+    return this.regions.register(range, kind)
   }
 
   declareOutput(spec: OutputSpec): OutputId {
@@ -527,7 +531,7 @@ export class AnalysisPlan implements PlanContext {
   resolve(): Placement {
     // function-scope declarations only erased code read go once every
     // planner erased what it erases (placement decides the module level)
-    if (this.rewrites.tree('env').erasedParts().length > 0) {
+    if (this.rewrites.view('env').erasedParts().length > 0) {
       cleanOrphanedDeclarations(this, this.outputs)
     }
     const benign = new Map<UnitId, boolean>()
@@ -572,14 +576,14 @@ export class AnalysisPlan implements PlanContext {
 
   /** Whether an output that holds the code at `range` renders its position (`liveDiagnostic`). */
   private ships(placement: Placement, range: Range): boolean {
-    const region = this.t1.regions.innermostAt(range.start, range.end)
+    const region = this.regions.innermostAt(range.start, range.end)
     const cluster =
       region === null ? undefined : placement.clusterOfRegion.get(region)
     for (const [output, clusters] of placement.included) {
       if (cluster !== undefined && !clusters.has(cluster)) {
         continue
       }
-      if (!this.rewrites.tree(output).isErasedAt(range.start, null, range)) {
+      if (!this.rewrites.view(output).isErasedAround(range)) {
         return true
       }
     }
@@ -599,7 +603,7 @@ export class AnalysisPlan implements PlanContext {
   fallbackRecords(): Array<FallbackRecord> {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
-      const r = this.t1.regions.get(f.region)
+      const r = this.regions.get(f.region)
       out.push({
         range: r.range,
         kind: r.kind,

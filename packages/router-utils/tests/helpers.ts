@@ -196,7 +196,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           valueSym === null
             ? []
             : (ctx.t1.declaringUnits.get(valueSym) ?? []).map(
-                (u) => ctx.t1.regions.get(ctx.t1.units[u]!.region).range,
+                (u) => ctx.t1.units[u]!.range,
               )
         const fallback =
           ctx.fallbackAt(valueRange) ??

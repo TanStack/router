@@ -12,7 +12,7 @@ import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
-import { EditBand, compareEditOrder } from './rewrite'
+import { EditBand, compareEditOrder, erases } from './rewrite'
 import { invariantViolated } from './self-checks'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
@@ -136,7 +136,7 @@ export function freezePlan(
         plan.analysis,
         (raw, form) => plan.edgeKey(raw, form),
         importerId,
-        outputView(plan, included, renderer.tree, segments, unitsOfImport),
+        outputView(plan, included, renderer.erasedAt, segments, unitsOfImport),
       ),
     )
     outputs[id] = {
@@ -222,7 +222,7 @@ function renderEnv(
   const code = analysis.source.code
   const extra: Array<TreeEdit> = []
   let coreEdits = 0
-  const baseTree = rewrites.tree('env')
+  const envView = rewrites.view('env')
   // a statement only the line break inside the multi-line comment after it
   // ends: that comment leads what follows and may not render, so the statement
   // gets a line end of its own (before anything else generated there)
@@ -269,7 +269,7 @@ function renderEnv(
   /** The statement rendered before the current one (as the source wrote it, or rewritten). */
   let previous: RenderedStatement | undefined
   for (const item of items) {
-    if (baseTree.isErasedAt(item.nodeRange.start)) {
+    if (envView.isErasedAt(item.nodeRange.start)) {
       continue
     }
     endLine(item.nodeRange.end, item.range.end)
@@ -386,7 +386,30 @@ function renderEnv(
     }
   }
   const tree = rewrites.tree('env', extra)
-  renderer.setTree(tree)
+  // what the edits outside the region tree remove (statements placement
+  // drops, cut declarator lists) decides the bytes nothing in it decides
+  const removals = extra.filter((x) => x.range.end > x.range.start)
+  renderer.setTree(tree, (offset) => {
+    const decided = envView.erasedBy(offset)
+    if (decided !== null) {
+      return decided
+    }
+    // (in source order, disjoint: one per statement)
+    let lo = 0
+    let hi = removals.length - 1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      const x = removals[mid]!
+      if (offset < x.range.start) {
+        hi = mid - 1
+      } else if (offset >= x.range.end) {
+        lo = mid + 1
+      } else {
+        return erases(x.body, offset)
+      }
+    }
+    return false
+  })
   const out: Array<Segment> = []
   renderer.renderRange(0, code.length, null, null, out, null, true)
   return out
@@ -590,7 +613,8 @@ function renderDerived(
   const { items, units } = t1
   const code = analysis.source.code
   const tree = rewrites.tree(decl.id)
-  renderer.setTree(tree)
+  const view = rewrites.view(decl.id)
+  renderer.setTree(tree, (offset) => view.isErasedAt(offset))
   const out: Array<Segment> = []
   const anchored = anchoredGenerated(plan, decl.id, placement)
   const empty =
@@ -770,7 +794,7 @@ function startsWithPragmaComment(
 function outputView(
   plan: AnalysisPlan,
   included: ReadonlySet<number>,
-  tree: RenderTree,
+  erasedAt: (offset: number) => boolean,
   segments: ReadonlyArray<Segment>,
   unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
 ): EdgeView {
@@ -792,7 +816,7 @@ function outputView(
               .flatMap((u) => u.declares),
           )
     },
-    erasedAt: (offset) => tree.isErasedAt(offset),
+    erasedAt,
     reexports: (range) => {
       const unit = units.find(
         (u) =>
@@ -808,8 +832,7 @@ function outputView(
       refs
         .refsOf(local)
         .some(
-          (r) =>
-            r.kind === 'implicitJsxFactory' && !tree.isErasedAt(r.range.start),
+          (r) => r.kind === 'implicitJsxFactory' && !erasedAt(r.range.start),
         ),
   }
 }
@@ -838,6 +861,7 @@ function isAmbientValueDeclaration(node: Node): boolean {
  */
 class Renderer {
   tree!: RenderTree
+  erasedAt!: (offset: number) => boolean
   /** The first violated invariant (only when the run reports it: `self-checks.ts`). */
   violation: InvariantViolation | undefined
   private output!: OutputId
@@ -860,8 +884,10 @@ class Renderer {
     this.edges = edges
   }
 
-  setTree(tree: RenderTree): void {
+  /** The tree to render, and whether an original byte renders in no text of its output (`sourceEdges`). */
+  setTree(tree: RenderTree, erasedAt: (offset: number) => boolean): void {
     this.tree = tree
+    this.erasedAt = erasedAt
   }
 
   renderRange(

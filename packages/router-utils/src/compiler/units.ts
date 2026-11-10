@@ -4,7 +4,8 @@
  * one function/class/enum/namespace, one export specifier, every other
  * statement). A region is a range planned as one thing that owns the references
  * inside it; every unit is a region and planners register sub-regions (option
- * values, Hydrate children, nested chains).
+ * values, Hydrate children, nested chains). The regions of a plan are its own
+ * (`RegionTable`, rewrite.ts).
  */
 import { BindingFlags, walk } from 'yuku'
 import { hasRuntimeValue } from './symbols'
@@ -93,139 +94,6 @@ export interface Unit {
   declNameRanges: Array<Range>
   /** Ephemeral node (phase B only). */
   node: Node
-}
-
-export type RegionKind =
-  | 'unit'
-  | 'option-value'
-  | 'hydrate-children'
-  | 'nested-chain'
-  | 'custom'
-
-export interface Region {
-  id: RegionId
-  range: Range
-  kind: RegionKind
-  unit: UnitId | null
-  parent: RegionId | null
-  children: Array<RegionId>
-}
-
-export class RegionTable {
-  readonly regions: Array<Region> = []
-  /** Unit regions sorted by start (disjoint). */
-  private readonly unitRegions: Array<Region> = []
-  /** Sub-regions by `start:end:kind` (one region per range and kind). */
-  private readonly subRegionByKey = new Map<string, RegionId>()
-
-  /** Registers a unit region; units are added in source order. */
-  addUnitRegion(unit: UnitId, range: Range): RegionId {
-    const id = this.regions.length
-    const r: Region = {
-      id,
-      range,
-      kind: 'unit',
-      unit,
-      parent: null,
-      children: [],
-    }
-    this.regions.push(r)
-    this.unitRegions.push(r)
-    return id
-  }
-
-  /** Registers a sub-region under the innermost region containing it. */
-  register(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
-    const key = `${range.start}:${range.end}:${kind}`
-    const existing = this.subRegionByKey.get(key)
-    if (existing !== undefined) {
-      return existing
-    }
-    const parent = this.innermostAt(range.start, range.end)
-    const id = this.regions.length
-    const r: Region = { id, range, kind, unit: null, parent, children: [] }
-    this.regions.push(r)
-    this.subRegionByKey.set(key, id)
-    if (parent !== null) {
-      const p = this.regions[parent]!
-      // existing children inside the new range are re-parented (regions may be registered inner-first)
-      const kept: Array<RegionId> = []
-      for (const cid of p.children) {
-        const c = this.regions[cid]!
-        if (c.range.start >= range.start && c.range.end <= range.end) {
-          c.parent = id
-          r.children.push(cid)
-        } else {
-          kept.push(cid)
-        }
-      }
-      kept.push(id)
-      p.children = kept.sort(
-        (a, b) => this.regions[a]!.range.start - this.regions[b]!.range.start,
-      )
-      r.children.sort(
-        (a, b) => this.regions[a]!.range.start - this.regions[b]!.range.start,
-      )
-    }
-    return id
-  }
-
-  get(id: RegionId): Region {
-    return this.regions[id]!
-  }
-
-  /** The innermost region containing `[start, end)` (end defaults to start + 1 semantics). */
-  innermostAt(start: number, end: number = start): RegionId | null {
-    const units = this.unitRegions
-    let lo = 0
-    let hi = units.length - 1
-    let found: Region | null = null
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1
-      const r = units[mid]!
-      if (r.range.start <= start) {
-        found = r
-        lo = mid + 1
-      } else {
-        hi = mid - 1
-      }
-    }
-    if (found === null || Math.max(end, start + 1) > found.range.end) {
-      return null
-    }
-    let cur = found
-    for (;;) {
-      let next: Region | null = null
-      for (const cid of cur.children) {
-        const c = this.regions[cid]!
-        if (
-          c.range.start <= start &&
-          Math.max(end, start) <= c.range.end &&
-          (end > start ? end <= c.range.end : start < c.range.end)
-        ) {
-          next = c
-          break
-        }
-      }
-      if (next === null) {
-        return cur.id
-      }
-      cur = next
-    }
-  }
-
-  /** The unit region at the root of a region's chain. */
-  unitOf(id: RegionId): UnitId | null {
-    let cur: RegionId | null = id
-    while (cur !== null) {
-      const r: Region = this.regions[cur]!
-      if (r.unit !== null) {
-        return r.unit
-      }
-      cur = r.parent
-    }
-    return null
-  }
 }
 
 /** Method names that mutate their receiver (arrays, maps, sets). */
@@ -473,7 +341,6 @@ export function buildItems(
 
 interface UnitBuildResult {
   units: Array<Unit>
-  regions: RegionTable
   /** Symbol → units declaring it. */
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
@@ -486,7 +353,6 @@ export function buildUnits(
   importIndexOfStatement: (stmtStart: number) => number | null,
 ): UnitBuildResult {
   const units: Array<Unit> = []
-  const regions = new RegionTable()
   const declaringUnits = new Map<SymbolId, Array<UnitId>>()
 
   const symOf = (nameNode: Node): SymbolId | null => {
@@ -507,12 +373,12 @@ export function buildUnits(
     u: Omit<Unit, 'id' | 'item' | 'region' | 'callsAtLoad'>,
   ): Unit => {
     const id = units.length
-    const region = regions.addUnitRegion(id, u.range)
     const unit: Unit = {
       ...u,
       id,
       item: item.index,
-      region,
+      // (each unit is the region of its id: `RegionTable`)
+      region: id,
       // what the purity check of this unit, just done, visited (it stops at
       // the first impure part: `callsWhenEvaluated` looks into the rest)
       callsAtLoad: purity.calls > callsSeen,
@@ -942,7 +808,7 @@ export function buildUnits(
     }
   }
 
-  return { units, regions, declaringUnits }
+  return { units, declaringUnits }
 }
 
 /** The top-level item whose range holds `offset` (items are in source order, disjoint). */

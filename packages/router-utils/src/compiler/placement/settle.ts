@@ -98,7 +98,8 @@ export function settleRoots(
   seeds: Seeds,
 ): Roots {
   const { t1, outputs, isBenign } = input
-  const { units, refs, regions, symbols } = t1
+  const { units, refs, symbols } = t1
+  const { regions } = input.rewrites
   const { clusters, clusterOfRegion } = graph
   const { envRoots, pinned, derivedRoots, candidates } = seeds
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
@@ -540,7 +541,7 @@ export function settleRoots(
         refs.valueRefsOf(s).some((ref) => {
           // a reader outside the candidates, or inside erased text (an
           // orphan of ours, decided by provenance), is a real reader
-          const owner = clusterOfRegion.get(t1.ownerOf(ref))
+          const owner = clusterOfRegion.get(regions.ownerOf(ref))
           return (
             owner === undefined || !deadCandidates.has(owner) || !liveInEnv(ref)
           )
