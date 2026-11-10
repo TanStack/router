@@ -112,6 +112,57 @@ interface ModuleLike {
   identifier: () => string
 }
 
+/**
+ * Development: the warnings a compilation reports for the one before it,
+ * which Rsbuild never printed (`before`: what that one reported, by
+ * resource). Rspack reports a module's warnings only in the compilation that
+ * built it, and the session reports a warning once per dev session (the
+ * warning ledger), so a module the compilation kept, or built again, reports
+ * none of them: each recorded warning of one of its modules that it does not
+ * report itself (`built`: it built the module) is handed over. Also returns
+ * what the compilation reports, by resource (its built modules' warnings and
+ * the handed ones), for the compilation after it.
+ */
+export function handOverWarnings(
+  before: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>> | null,
+  modules: Iterable<ModuleLike>,
+  built: (resource: string) => boolean,
+): {
+  handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }>
+  reported: Map<string, Array<LocatedDiagnostic>>
+} {
+  const handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> = []
+  const reported = new Map<string, Array<LocatedDiagnostic>>()
+  for (const module of modules) {
+    const resource = module.resource
+    if (!resource) {
+      continue
+    }
+    const own = built(resource)
+      ? (
+          (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
+            []) as Array<LocatedDiagnostic>
+        ).filter((d) => d.severity === 'warning')
+      : []
+    const missing = (before?.get(resource) ?? []).filter(
+      (d) =>
+        !own.some(
+          (o) =>
+            o.message === d.message &&
+            o.line === d.line &&
+            o.column === d.column,
+        ),
+    )
+    for (const warning of missing) {
+      handed.push({ module, warning })
+    }
+    if (own.length > 0 || missing.length > 0) {
+      reported.set(resource, [...own, ...missing])
+    }
+  }
+  return { handed, reported }
+}
+
 /** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
 function addServerFns(
   snapshot: Map<string, ReadonlyArray<ServerFnFact>>,
@@ -295,8 +346,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       let reporterInstalled = false
       /**
        * Development: what this environment's last compilation reported,
-       * until Rsbuild printed it: the modules it compiled (their warnings are
-       * in their `buildInfo`) and its import-protection reports. Rsbuild
+       * until Rsbuild printed it: its modules' warnings and its
+       * import-protection reports. Rsbuild
        * prints the last compilation of each environment once every
        * environment is done, so one a newer compilation replaced before that
        * is never printed (a cold start's client compile, when the generator
@@ -306,12 +357,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        */
       let unprinted: {
         compilation: Rspack.Compilation
-        compiled: Set<string>
+        warnings: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>>
         reports: Array<string>
       } | null = null
-      /** Development: this compilation's import-protection reports, and the modules it reports for the one before. */
+      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by resource. */
       let reports: Array<string> = []
-      let handed: Array<string> = []
+      let warned: ReadonlyMap<
+        string,
+        ReadonlyArray<LocatedDiagnostic>
+      > = new Map()
       opts.onDevCompileDone?.(({ stats }) => {
         const printed = 'stats' in stats ? stats.stats : [stats]
         if (printed.some((one) => one.compilation === unprinted?.compilation)) {
@@ -415,7 +469,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (opts.onDevCompileDone) {
           unprinted = {
             compilation: stats.compilation,
-            compiled: new Set([...env.compiled, ...handed]),
+            warnings: warned,
             reports,
           }
         }
@@ -439,7 +493,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         currentCompilation = compilation
         env.compiled.clear()
         reports = []
-        handed = []
+        warned = new Map()
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
           locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS),
         )
@@ -557,7 +611,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (opts.onDevCompileDone) {
           // after import protection's dev reports (`flush`)
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
-            handOverWarnings(compilation, modules),
+            reportUnprinted(compilation, modules as Iterable<ModuleLike>),
           )
         }
         if (session.start.allocator && session.start.opts.mode === 'build') {
@@ -575,44 +629,31 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * The warnings of the compilation before `compilation`, which Rsbuild
        * never printed (`unprinted`), reported by `compilation`: its
        * import-protection reports that `compilation` did not report again,
-       * and the warnings of the modules it compiled that `compilation` kept
-       * without compiling them (a module compiled again reported for itself).
+       * and its modules' warnings `compilation` does not report itself
+       * (`handOverWarnings`).
        */
-      function handOverWarnings(
+      function reportUnprinted(
         compilation: Rspack.Compilation,
-        modules: Iterable<unknown>,
+        modules: Iterable<ModuleLike>,
       ): void {
         const from = unprinted
-        if (!from) {
-          return
-        }
-        for (const message of from.reports) {
+        for (const message of from?.reports ?? []) {
           if (!reports.includes(message)) {
             reports.push(message)
             compilation.warnings.push(new WebpackError(message))
           }
         }
-        for (const m of modules) {
-          const module = m as ModuleLike
-          if (
-            !module.resource ||
-            !from.compiled.has(module.resource) ||
-            env.compiled.has(module.resource)
-          ) {
-            continue
-          }
-          handed.push(module.resource)
-          const records = module.buildInfo?.[LOCATED_DIAGNOSTICS.field] as
-            | Array<LocatedDiagnostic>
-            | undefined
-          for (const d of records ?? []) {
-            if (d.severity === 'warning') {
-              compilation.warnings.push(
-                locatedError(WebpackError, module, d, LOCATED_DIAGNOSTICS),
-              )
-            }
-          }
+        const { handed, reported } = handOverWarnings(
+          from?.warnings ?? null,
+          modules,
+          (resource) => env.compiled.has(resource),
+        )
+        for (const { module, warning } of handed) {
+          compilation.warnings.push(
+            locatedError(WebpackError, module, warning, LOCATED_DIAGNOSTICS),
+          )
         }
+        warned = reported
       }
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */

@@ -20,7 +20,10 @@ const warning = (message: string, line = 1): LocatedDiagnostic => ({
   column: 1,
 })
 
-const moduleOf = (resource: string, records: Array<LocatedDiagnostic> = []) => ({
+const moduleOf = (
+  resource: string,
+  records: Array<LocatedDiagnostic> = [],
+) => ({
   resource,
   buildInfo: { [LOCATED_DIAGNOSTICS.field]: records },
   identifier: () => resource,
