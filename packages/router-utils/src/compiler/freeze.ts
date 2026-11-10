@@ -40,6 +40,7 @@ import type {
   SubstEnv,
   SymRefContext,
   WalkOptions,
+  WalkVisitor,
 } from './rewrite'
 import type { Node } from 'yuku'
 
@@ -960,6 +961,85 @@ class Renderer {
     this.guardStatementStart(start, out, from)
   }
 
+  // ---- the span being rendered (`renderSpan`; saved around a nested one) ----
+  private spanOwner: GeneratedUnit | null = null
+  private spanEnv: SubstEnv | null = null
+  private spanOut: Array<Segment> = []
+  /** The references the substitution environment rewrites in the span's source (one inside an active node renders with it). */
+  private spanSubst: Array<ClassifiedRef> | null = null
+  private spanSi = 0
+  /**
+   * The source text after an edit: the statement it starts may follow what
+   * the edit left (a removed `const local = 1;` before `(mk)()`).
+   */
+  private spanAfterEdit = false
+  /** The segment visitor of the walk, one per renderer (its state is the span's). */
+  private readonly spanVisitor: WalkVisitor = {
+    source: (s, e) => {
+      const subst = this.spanSubst
+      let pos = s
+      if (subst !== null) {
+        const env = this.spanEnv!
+        const out = this.spanOut
+        while (
+          this.spanSi < subst.length &&
+          subst[this.spanSi]!.range.start < s
+        ) {
+          this.spanSi++ // (inside an active node)
+        }
+        while (
+          this.spanSi < subst.length &&
+          subst[this.spanSi]!.range.start < e
+        ) {
+          const ref = subst[this.spanSi++]!
+          if (ref.range.start > pos) {
+            this.copy(pos, ref.range.start)
+          }
+          this.spanAfterEdit = false
+          const at = out.length
+          out.push({
+            k: 'text',
+            text: this.renderRefText(
+              ref.ctx,
+              env.get(ref.sym)!,
+              env,
+              ref.exportShorthand,
+              this.code.slice(ref.range.start, ref.range.end),
+            ),
+            mapTo: ref.range.start,
+          })
+          // a callee at a statement's start renders `(0, props.x)`: as an edit
+          this.guardStatementStart(ref.range.start, out, at)
+          pos = Math.max(pos, ref.range.end)
+        }
+      }
+      if (e > pos) {
+        this.copy(pos, e)
+      }
+    },
+    node: (n) => {
+      this.spanAfterEdit = true
+      const out = this.spanOut
+      const at = out.length
+      this.renderFrags(
+        (this.view.placeOf(n) ?? this.view.textOf(n))!,
+        this.spanOwner,
+        this.spanEnv,
+        out,
+        null,
+        { level: n, skipAt: null },
+      )
+      this.guardStatementStart(n.start, out, at)
+    },
+    insert: (e) => {
+      this.spanAfterEdit = true
+      const out = this.spanOut
+      const at = out.length
+      this.renderFrags(e.body, this.spanOwner, this.spanEnv, out)
+      this.guardStatementStart(e.range.start, out, at)
+    },
+  }
+
   /**
    * Renders `[start, end)` of `level`'s text (`OutputView.walk`); returns
    * whether something other than source text rendered (`afterEdit`, given:
@@ -974,8 +1054,6 @@ class Renderer {
     out: Array<Segment>,
     opts: SpanOptions = NO_SPAN_OPTIONS,
   ): boolean {
-    // the references a substitution environment rewrites in the source text
-    // (one inside an active node renders with it)
     let subst: Array<ClassifiedRef> | null = null
     if (env && env.size > 0) {
       subst = []
@@ -989,90 +1067,50 @@ class Renderer {
         }
       }
     }
-    let si = 0
-    // the source text after an edit: the statement it starts may follow
-    // what the edit left (a removed `const local = 1;` before `(mk)()`)
-    let afterEdit = opts.afterEdit === true
-    const copy = (pos: number, to: number) => {
-      if (!afterEdit) {
-        out.push({ k: 'slice', start: pos, end: to })
-        return
-      }
-      // a `;` goes after the indentation, before a comment (an annotation
-      // stays with its call)
-      let from = pos
-      while (from < to && /\s/.test(this.code[from]!)) {
-        from++
-      }
-      if (from > pos) {
-        out.push({ k: 'slice', start: pos, end: from })
-      }
-      const at = out.length
-      out.push({ k: 'slice', start: from, end: to })
-      // (a statement of the module's own list has freeze's guard)
-      this.guardStatementStart(this.tokenStart(from, to), out, at, true)
-    }
-    this.view.walk(
-      level,
-      start,
-      end,
-      {
-        source: (s, e) => {
-          let pos = s
-          if (subst !== null) {
-            while (si < subst.length && subst[si]!.range.start < s) {
-              si++ // (inside an active node)
-            }
-            while (si < subst.length && subst[si]!.range.start < e) {
-              const ref = subst[si++]!
-              if (ref.range.start > pos) {
-                copy(pos, ref.range.start)
-              }
-              afterEdit = false
-              const at = out.length
-              out.push({
-                k: 'text',
-                text: this.renderRefText(
-                  ref.ctx,
-                  env!.get(ref.sym)!,
-                  env,
-                  ref.exportShorthand,
-                  this.code.slice(ref.range.start, ref.range.end),
-                ),
-                mapTo: ref.range.start,
-              })
-              // a callee at a statement's start renders `(0, props.x)`: as an edit
-              this.guardStatementStart(ref.range.start, out, at)
-              pos = Math.max(pos, ref.range.end)
-            }
-          }
-          if (e > pos) {
-            copy(pos, e)
-          }
-        },
-        node: (n) => {
-          afterEdit = true
-          const at = out.length
-          this.renderFrags(
-            (this.view.placeOf(n) ?? this.view.textOf(n))!,
-            owner,
-            env,
-            out,
-            null,
-            { level: n, skipAt: null },
-          )
-          this.guardStatementStart(n.start, out, at)
-        },
-        insert: (e) => {
-          afterEdit = true
-          const at = out.length
-          this.renderFrags(e.body, owner, env, out)
-          this.guardStatementStart(e.range.start, out, at)
-        },
-      },
-      opts,
-    )
+    // (a span renders spans inside it, through the bodies it renders)
+    const outerOwner = this.spanOwner
+    const outerEnv = this.spanEnv
+    const outerOut = this.spanOut
+    const outerSubst = this.spanSubst
+    const outerSi = this.spanSi
+    const outerAfterEdit = this.spanAfterEdit
+    this.spanOwner = owner
+    this.spanEnv = env
+    this.spanOut = out
+    this.spanSubst = subst
+    this.spanSi = 0
+    this.spanAfterEdit = opts.afterEdit === true
+    this.view.walk(level, start, end, this.spanVisitor, opts)
+    const afterEdit = this.spanAfterEdit
+    this.spanOwner = outerOwner
+    this.spanEnv = outerEnv
+    this.spanOut = outerOut
+    this.spanSubst = outerSubst
+    this.spanSi = outerSi
+    this.spanAfterEdit = outerAfterEdit
     return afterEdit
+  }
+
+  /** Copies source text of the span (after an edit, a statement it starts is guarded). */
+  private copy(pos: number, to: number): void {
+    const out = this.spanOut
+    if (!this.spanAfterEdit) {
+      out.push({ k: 'slice', start: pos, end: to })
+      return
+    }
+    // a `;` goes after the indentation, before a comment (an annotation
+    // stays with its call)
+    let from = pos
+    while (from < to && /\s/.test(this.code[from]!)) {
+      from++
+    }
+    if (from > pos) {
+      out.push({ k: 'slice', start: pos, end: from })
+    }
+    const at = out.length
+    out.push({ k: 'slice', start: from, end: to })
+    // (a statement of the module's own list has freeze's guard)
+    this.guardStatementStart(this.tokenStart(from, to), out, at, true)
   }
 
   /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
