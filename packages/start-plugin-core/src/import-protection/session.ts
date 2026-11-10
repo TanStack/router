@@ -551,8 +551,8 @@ class ImportProtectionEnv {
   }
 
   /**
-   * An id with an asset query (`x.ts?raw`, `?url`, `?inline`, `?worker`) is
-   * the file's text and never compiled, so the planner cannot make it its
+   * An asset id (`isAssetId`: `x.ts?raw`, `x.svg?url`, `?inline`, `?worker`)
+   * is the file's text and never compiled, so the planner cannot make it its
    * own violation: the same verdict, as the output of a compile, for the host
    * to hand to `afterCompile`. Null when nothing can deny it here. On a
    * server only the static edge is judged: the text or URL of a client-only
@@ -768,6 +768,23 @@ class ImportProtectionEnv {
   }
 
   /**
+   * Whether a module this session compiled as its own violation is now
+   * served as it is (`selfAllowed`): an importer Rspack restored from the
+   * persistent cache, whose edges were replayed after the module compiled,
+   * is exempt. The host builds it again.
+   */
+  selfAllowedNow(importerId: string): boolean {
+    for (const key of this.byImporter.get(importerId) ?? []) {
+      for (const v of this.modules.get(key)?.violations.values() ?? []) {
+        if (v.self && v.importerId === importerId && this.selfAllowed(v)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
    * Whether an Rspack module's record holds what this session must judge
    * again (a module restored from the persistent cache): in dev its violations
    * (another session reported them); with `allowImport`, its being its own
@@ -890,6 +907,14 @@ class ImportProtectionEnv {
    * or returned as the error the importer fails with (`behavior: 'error'`).
    * Null, synchronously, when there is nothing to do (the common case).
    */
+  /** The module an edge module `allowImport` allowed re-exports (by its facts id); null for any other id. */
+  allowedTarget(id: string): string | null {
+    const ref = this.ip.ids.parse(id)
+    return ref?.kind === 'edge' && this.allowed.has(ref.key)
+      ? (this.modules.get(ref.key)?.content.resolved ?? null)
+      : null
+  }
+
   confirm(id: string): Promise<Error | null> | null {
     const ref = this.ip.ids.parse(id)
     if (ref?.kind !== 'edge') {

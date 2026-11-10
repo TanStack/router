@@ -17,6 +17,7 @@ import {
   composeLoaderMap,
   identify,
   invalidate,
+  langFromId,
   locatedDiagnostic,
   normalizePath,
   pathsOf,
@@ -253,13 +254,18 @@ export class StartRsbuildCompilerSession {
     this.missing.clear()
   }
 
-  /** The import rewrite of an environment (`source.transformImport`), when it has one. */
-  private importRewrite(env: EnvState): ImportRewrite | undefined {
+  /**
+   * The import rewrite of an environment: the file a request with inline
+   * loaders loads (`!!raw-loader!./x.ts`, `-!./x.ts`: its last segment,
+   * whatever loaders run on it), and `source.transformImport`.
+   */
+  private importRewrite(env: EnvState): ImportRewrite {
     const rules = env.transformImport
-    if (rules.length === 0) {
-      return undefined
-    }
     return (specifier, names) => {
+      const bang = specifier.lastIndexOf('!')
+      if (bang !== -1) {
+        return [specifier.slice(bang + 1)]
+      }
       const rule = rules.find((r) => r.libraryName === specifier)
       if (!rule) {
         return null
@@ -555,6 +561,10 @@ export class StartRsbuildCompilerSession {
     }
     const id = canonicalResource(ctx.resource)
     if (options.pass === 'asset') {
+      if (identify(id).lang !== null) {
+        // the file's code (`x.ts?inline`): compiled by the loader
+        return { code: '', map: null }
+      }
       // never compiled, and an import the compiler does not read may have
       // brought it here: a denied file's text is served as its mock
       const asset = await this.start.assetOutput(env, id)
@@ -819,7 +829,9 @@ function stampOf(file: string, kind: FileEventKind): string {
  * the identity parser reads one query, so later `?` become `&`, and that
  * query names no other source (the same text, the same plan: the server fn
  * registry must point the resolver at `file?tss-serverfn-split`), so it is
- * dropped.
+ * dropped. So are the asset queries Rsbuild's script rules ignore on a
+ * script (`x.ts?url`, `?sharedworker`: the file's code, which Vite's would
+ * not be; it honours `?raw` and `?worker`).
  */
 export function canonicalResource(resource: string): string {
   const normalized = webpackResourceId(resource)
@@ -827,11 +839,17 @@ export function canonicalResource(resource: string): string {
   if (q === -1) {
     return normalized
   }
+  const script = langFromId(normalized.slice(0, q)) !== null
   const query = normalized
     .slice(q + 1)
     .replace(/\?/g, '&')
     .split('&')
-    .filter((part) => part !== '' && !part.startsWith(RSC_PROXY_QUERY))
+    .filter(
+      (part) =>
+        part !== '' &&
+        !part.startsWith(RSC_PROXY_QUERY) &&
+        !(script && IGNORED_SCRIPT_QUERIES.has(part)),
+    )
     .join('&')
   return query.length > 0
     ? `${normalized.slice(0, q)}?${query}`
@@ -840,6 +858,9 @@ export function canonicalResource(resource: string): string {
 
 /** Rspack's RSC plugin's query on a server entry's original module. */
 const RSC_PROXY_QUERY = 'rsc-server-entry-proxy'
+
+/** The asset queries (`SCRIPT_ASSET_QUERY_RE`) under which Rsbuild runs a script's code. */
+const IGNORED_SCRIPT_QUERIES = new Set(['url', 'sharedworker'])
 
 const camelToDash = (name: string): string =>
   name

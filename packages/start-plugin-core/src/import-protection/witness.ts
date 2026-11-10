@@ -196,9 +196,13 @@ export function readRspackWitness(
   return [...live].sort()
 }
 
-/** The module graph of an Rspack compilation for traces (by resource; entries from `compilation.entries`). */
+/**
+ * The module graph of an Rspack compilation for traces (by resource, as the
+ * host's ids name it: `idOf`; entries from `compilation.entries`).
+ */
 export function rspackGraphView(
   compilation: RspackCompilationLike,
+  idOf: (resource: string) => string = (resource) => resource,
 ): ImportGraphView {
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
@@ -212,10 +216,11 @@ export function rspackGraphView(
           if (!inner.resource) {
             continue
           }
-          let list = byResource.get(inner.resource)
+          const key = idOf(inner.resource)
+          let list = byResource.get(key)
           if (!list) {
             list = []
-            byResource.set(inner.resource, list)
+            byResource.set(key, list)
           }
           for (const holder of inner === m ? [m] : [inner, m]) {
             if (!list.includes(holder)) {
@@ -235,7 +240,7 @@ export function rspackGraphView(
         for (const c of moduleGraph.getIncomingConnections?.(m) ?? []) {
           // a ConcatenatedModule holds the connections of each of its inner modules
           const target = c.resolvedModule?.resource
-          if (target !== undefined && target !== id) {
+          if (target !== undefined && idOf(target) !== id) {
             continue
           }
           // the importing module itself, inside a ConcatenatedModule origin
@@ -243,7 +248,7 @@ export function rspackGraphView(
             (c.dependency !== undefined
               ? moduleGraph.getParentModule?.(c.dependency)
               : null) ?? c.originModule
-          const res = origin?.resource
+          const res = origin?.resource && idOf(origin.resource)
           if (res) {
             if (res !== id && !out.includes(res)) {
               out.push(res)
@@ -269,7 +274,7 @@ export function rspackGraphView(
             const m = compilation.moduleGraph.getModule?.(dep)
             const res = m?.resource ?? m?.rootModule?.resource
             if (res) {
-              entries.add(res)
+              entries.add(idOf(res))
             }
           }
         }

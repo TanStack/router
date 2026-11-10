@@ -6,7 +6,7 @@
  */
 import { promises as fs, readFileSync } from 'node:fs'
 import {
-  ASSET_QUERY_RE,
+  SCRIPT_ASSET_QUERY_RE,
   collectionSizes,
   displayPath,
   identify,
@@ -40,7 +40,12 @@ import type {
   InputSourceMap,
   invalidate,
 } from '@tanstack/router-utils/compiler'
-import type { DevEnvironment, Environment, ViteDevServer } from 'vite'
+import type {
+  DevEnvironment,
+  Environment,
+  OptimizedDepInfo,
+  ViteDevServer,
+} from 'vite'
 
 /** A Start environment of the Vite host: a resolver environment may forward to another one's `getServerFnById`. */
 export interface ViteStartEnvironment extends StartCompilerEnvironment {
@@ -119,6 +124,33 @@ function unoptimizedDependency(environment: Environment, id: string): string {
     }
   }
   return id
+}
+
+/**
+ * The id Vite serves a dependency's source entry as: the optimizer's bundle
+ * of a pre-bundled dependency (`unoptimizedDependency` reversed: other
+ * importers get that bundle), else the entry itself.
+ */
+export function optimizedDependency(
+  environment: Environment,
+  src: string,
+): string {
+  const optimizer = (environment as DevEnvironment).depsOptimizer
+  if (!optimizer) {
+    return src
+  }
+  const { optimized, discovered } = optimizer.metadata as {
+    optimized: Record<string, OptimizedDepInfo>
+    discovered?: Record<string, OptimizedDepInfo>
+  }
+  for (const table of [optimized, discovered ?? {}]) {
+    for (const info of Object.values(table)) {
+      if (info.src === src) {
+        return optimizer.getOptimizedDepId(info)
+      }
+    }
+  }
+  return src
 }
 
 /**
@@ -214,9 +246,11 @@ export class ViteCompilerState {
   readonly dependencyFilter: {
     id: { include: Array<RegExp>; exclude: Array<RegExp> }
     code?: RegExp
-  } = { id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [ASSET_QUERY_RE] } }
+  } = {
+    id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [SCRIPT_ASSET_QUERY_RE] },
+  }
   /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
-  readonly ownExclude: Array<RegExp> = [ASSET_QUERY_RE, DEPENDENCY_ID_RE]
+  readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   readonly watchingEnv: string | undefined
 

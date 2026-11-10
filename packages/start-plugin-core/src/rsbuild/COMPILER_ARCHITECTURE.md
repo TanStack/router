@@ -20,7 +20,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   (vue-loader's pitcher copies a block's loaders into its own request, which the configured `post` rules match again:
   a late loader that runs again later in its chain passes through).
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
-  (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
+  (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin. A child compiler
+  (a worker or service-worker plugin's) takes its environment's module rules but none of its plugins: the loaders find
+  the implementation on its `root`, so its modules compile as the environment's.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
@@ -62,7 +64,8 @@ two plans (the layer is part of the plan configuration).
 A compile reports the server functions of its module in plan facts: the Start session's registry replaces the module's
 snapshot in its environment with them, and the loader stores them in `buildInfo['tanstack.start.serverFns']`, which
 Rspack persists with the module. At `finishMake` (stage −20) the host plugin replaces the environment's snapshots in
-the registry with those of every module of the compilation (built now or restored from the persistent cache), and the
+the registry with those of every module of the compilation (built now or restored from the persistent cache) and of
+its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
 at stage −10 the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
@@ -76,12 +79,15 @@ rank (client first) and patched at `processAssets` before minification.
 ## Import protection
 
 Edges are judged in the plan (per output, with the raw specifier the user wrote; file and marker rules on the
-resolved target, which for Rsbuild's `source.transformImport` is the rewritten target). A violation substitutes the
+resolved target), and as what Rspack loads: the rewritten specifier and its target, for Rsbuild's
+`source.transformImport` and for a request with inline loaders (`!!raw-loader!./x.ts` loads `./x.ts`). A violation substitutes the
 specifier with a per-edge mock module written as a virtual file of the environment. In development a violation is
 pending until Rspack builds its edge module, which it does only for an import the importer kept after SWC: the
 loader's `edge` pass asks `allowImport` (also in builds, when one is configured) and confirms it. Reports are printed at `finishModules`, when the module graph
 knows the importer's trace. At `finishMake` the records of modules restored from the persistent cache are replayed; a
-module or an edge module another session judged is built again, so `allowImport` answers in this session. In builds
+module or an edge module another session judged is built again, so `allowImport` answers in this session, and so is a
+module compiled as its own violation that a restored exempt importer imports (its edges were replayed after the module
+compiled: the importer gets the real module). In builds
 the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
 `onViolation` once per surviving import and publishes the reports. An edge `allowImport` allows is a transparent
 re-export from the start.

@@ -224,4 +224,27 @@ export const secret = () => 'MARK_SECRET'
     },
     timeout,
   )
+
+  // Source: review round 3 (R3-G5-4: the Rsbuild host reported the
+  // allocator's error once per watch session).
+  test(
+    'an invalid custom server fn id fails the rebuild too',
+    async () => {
+      const result = await buildStart({
+        bundler,
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        start: { serverFns: { generateFunctionId: () => 'a/b' } },
+        watchEdits: {
+          'greeting.ts': `export const greeting = 'MARK_AFTER'
+`,
+        },
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(result, 'the rebuild fails').toBeInstanceOf(Error)
+    },
+    timeout,
+  )
 })

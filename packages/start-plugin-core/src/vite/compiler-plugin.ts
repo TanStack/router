@@ -25,6 +25,7 @@ import {
   SourceText,
   identify,
   invalidate,
+  isAssetId,
   isFinalBuild,
   liveModules,
   loadDerivedSource,
@@ -47,7 +48,12 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { ViteCompilerState, cacheDirRe, inputMapOf } from './compiler-state'
+import {
+  ViteCompilerState,
+  cacheDirRe,
+  inputMapOf,
+  optimizedDependency,
+} from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
 import {
   applyInvalidation,
@@ -330,10 +336,11 @@ function envCompilerPlugins(
           // survived the TypeScript transform, and `allowImport` decides
           // before the module loads; a pending violation it does not allow
           // is reported, and `error` fails the importer's import analysis
-          const confirmation =
+          const ipEnv =
             importer !== undefined && state.session?.start.ip
-              ? state.session.start.ip.env(env.name, env.type).confirm(edge)
+              ? state.session.start.ip.env(env.name, env.type)
               : null
+          const confirmation = ipEnv?.confirm(edge) ?? null
           if (confirmation === null) {
             return edge
           }
@@ -341,7 +348,15 @@ function envCompilerPlugins(
             if (error) {
               throw error
             }
-            return edge
+            // an allowed import of a pre-bundled dependency gets its bundle,
+            // as its other importers do (a re-export of its source entry
+            // would load a second copy, without Vite's CommonJS interop)
+            const target = ipEnv!.allowedTarget(edge)
+            const served =
+              target === null
+                ? target
+                : optimizedDependency(this.environment, target)
+            return served !== null && served !== target ? served : edge
           })
         }
         return resolveSameFileSpecifier(source, importer)
@@ -359,7 +374,7 @@ function envCompilerPlugins(
             ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
             : null
         }
-        if (ASSET_QUERY_RE.test(id) || ASSET_FILE_RE.test(id)) {
+        if (isAssetId(id) || ASSET_FILE_RE.test(id)) {
           // never compiled (the transform filters exclude it), and an
           // import the compiler does not read may have brought it here:
           // a denied file's text is served as its mock

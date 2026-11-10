@@ -37,8 +37,8 @@
  */
 import { isBuiltin } from 'node:module'
 import {
-  ASSET_QUERY_RE,
   identify,
+  isAssetId,
   isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
@@ -80,9 +80,9 @@ import type {
 /**
  * A host's import rewrite (`PlannerServices.importRewrite`): the
  * specifiers the bundler turns an import of `specifier` with `names` into
- * (Rsbuild `source.transformImport`), or null when it leaves it alone. The
- * specifier rule judges the raw specifier; file and marker rules judge the
- * rewritten targets.
+ * (Rsbuild: `source.transformImport`, a request's inline loaders), or null
+ * when it leaves it alone. The rules judge the raw specifier, then the
+ * rewritten ones and their targets.
  */
 export type ImportRewrite = (
   specifier: string,
@@ -109,14 +109,12 @@ interface TargetDescription {
 }
 
 /**
- * The module whose marker a target's is. An asset query of a file (`x.ts?raw`)
+ * The module whose marker a target's is. An asset of a file (`x.ts?raw`)
  * has no language, so no marker of its own: on a client, the file's. A server
  * gets the text or URL of a client-only file: that runs nothing of it there.
  */
 function markerIdOf(envType: EnvType, target: string): string {
-  return envType === 'client' &&
-    ASSET_QUERY_RE.test(target) &&
-    !target.startsWith('\0')
+  return envType === 'client' && isAssetId(target) && !target.startsWith('\0')
     ? identify(target).path
     : target
 }
@@ -278,11 +276,13 @@ export function importEdgesPlanner(
   /** The module's own violation, if its file rule or its marker denies it here. */
   const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
     const id = ctx.identity.canonicalId
+    // an entry's own marker is judged at its marker import (located there)
+    const entry = ip.isEntry(ctx.identity.path)
     const rule = await fileOrMarkerRule(
       config,
       ctx.env.type,
       ctx.identity.path,
-      () => plan.facts.marker,
+      () => (entry ? null : plan.facts.marker),
     )
     return (
       rule &&
@@ -370,12 +370,18 @@ export function importEdgesPlanner(
         }
         let resolved = await ctx.resolve(raw, from)
         if (rule === null && !exempt) {
-          // a bundler rewrite of the import (Rsbuild `source.transformImport`)
-          // makes the file and marker rules judge the rewritten targets
+          // a bundler rewrite of the import (Rsbuild `source.transformImport`,
+          // inline loaders) makes the rules judge what the bundler loads
           const rewritten = rewriter?.(raw, e.names) ?? null
           for (const spec of rewritten ?? [raw]) {
             const target =
               spec === raw ? resolved : await ctx.resolve(spec, from)
+            const specRule = spec === raw ? null : matchSpecifier(rules, spec)
+            if (specRule !== null) {
+              rule = specRule
+              resolved = target
+              break
+            }
             if (target === null) {
               continue
             }
@@ -420,7 +426,7 @@ export function importEdgesPlanner(
           ),
         plan.revision,
       )
-      if (judgedOwn && output === 'env' && !ip.isEntry(ctx.identity.path)) {
+      if (judgedOwn && output === 'env') {
         const own = await ownViolation(ctx, plan)
         if (own) {
           facts.violations[output] = [own]
@@ -503,9 +509,8 @@ export function importEdgesPlanner(
         }
         violations.push(base)
       }
-      // the module's own violation (an entry's own marker is judged at its
-      // marker import above)
-      if (output === 'env' && !ip.isEntry(ctx.identity.path)) {
+      // the module's own violation
+      if (output === 'env') {
         const own = await ownViolation(ctx, plan)
         if (own) {
           violations.push(own)
@@ -624,7 +629,7 @@ export function importEdgesPlanner(
   ): Promise<TargetDescription> {
     const p = identify(resolved).path
     // a text or URL: importing it evaluates nothing of the file
-    if (/\.json$/i.test(p) || ASSET_QUERY_RE.test(resolved)) {
+    if (/\.json$/i.test(p) || isAssetId(resolved)) {
       return { names: [], hasDefault: true, effectful: false }
     }
     const names = new Set<string>()

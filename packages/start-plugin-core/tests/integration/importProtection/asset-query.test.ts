@@ -1,7 +1,8 @@
 /**
  * Asset queries on denied files (`?raw`, `?url`, `?inline`, `?worker`), in the
- * client environment, mock mode: the module is the file's text and is never
- * compiled, whichever import form brought it (static, `import.meta.glob`,
+ * client environment, mock mode: the module is the file's text, never compiled
+ * (or, under a query the bundler ignores on a script, the file's code:
+ * asset-query-code.test.ts), whichever import form brought it (static, `import.meta.glob`,
  * template-literal `import()`, `import.meta.webpackContext`) and whichever rule
  * denies the file (file rule, `server-only` marker). The file's text never
  * reaches the client, in any emitted file, and the import is reported. Builds

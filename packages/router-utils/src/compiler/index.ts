@@ -15,6 +15,7 @@ export {
   digestOf,
   EXTRACTED_EXPORT_QUERY_RE,
   identify,
+  isAssetId,
   isSplitGroupValue,
   langFromId,
   normalizePath,
@@ -23,6 +24,7 @@ export {
   resolveSameFileSpecifier,
   revision,
   SAME_FILE_SPECIFIER_RE,
+  SCRIPT_ASSET_QUERY_RE,
   sameFileSpecifier,
 } from './identity'
 export type { PlanKey } from './identity'

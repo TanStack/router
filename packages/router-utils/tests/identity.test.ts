@@ -4,11 +4,13 @@ import {
   SAME_FILE_SPECIFIER_RE,
   deriveId,
   identify,
+  isAssetId,
   isSplitGroupValue,
   langFromId,
   resolveSameFileSpecifier,
   revision,
   sameFileSpecifier,
+  webpackResourceId,
 } from '../src/compiler'
 import { pathOfId } from '../src/compiler/identity'
 
@@ -36,6 +38,17 @@ describe('identity', () => {
     expect(langFromId('/app/worker.ts?worker_file&type=module')).toBe('ts')
     expect(langFromId('/app/page.tsx?rawish')).toBe('tsx')
     expect(langFromId('/app/page.tsx?raw#a')).toBe('tsx')
+    // no bundler inlines a script: its code
+    expect(langFromId('/app/page.ts?inline')).toBe('ts')
+  })
+
+  it('tells an asset id (the file’s text, URL, inline data or worker) from a script’s code', () => {
+    expect(isAssetId('/app/page.ts?raw')).toBe(true)
+    expect(isAssetId('/app/logo.svg?inline')).toBe(true)
+    expect(isAssetId('/app/notes.txt?url')).toBe(true)
+    expect(isAssetId('/app/page.ts?inline')).toBe(false)
+    expect(isAssetId('/app/page.ts')).toBe(false)
+    expect(isAssetId('/app/logo.svg')).toBe(false)
   })
 
   it("`pathOfId` is `identify`'s path for every id shape", () => {
@@ -354,5 +367,21 @@ describe('identity', () => {
     expect(revision('a')).toBe(revision('a'))
     expect(revision('a')).not.toBe(revision('b'))
     expect(revision('a')).toHaveLength(22)
+  })
+
+  it('gives a webpack-family resource the id of its file, a fragment dropped', () => {
+    // Rspack escapes a path's `#` as `\u200b#`, webpack as `\0#`; a fragment is a raw `#`
+    expect(webpackResourceId('/home/me/C\u200b#/src/a.ts?x=1')).toBe(
+      '/home/me/C#/src/a.ts?x=1',
+    )
+    expect(webpackResourceId('/home/me/C\0#/src/a.ts')).toBe(
+      '/home/me/C#/src/a.ts',
+    )
+    expect(webpackResourceId('/app/src/secrets.ts#x')).toBe(
+      '/app/src/secrets.ts',
+    )
+    expect(webpackResourceId('/home/me/C\u200b#/src/a.ts?raw#x')).toBe(
+      '/home/me/C#/src/a.ts?raw',
+    )
   })
 })

@@ -950,6 +950,70 @@ export const read = () => button()
   }, 60_000)
 })
 
+// A webpack request with inline loaders (`!!./x.server.js`, `-!`, `!`, or
+// `loader!./x.server.js`) loads the file at its last segment: judged as that
+// file and that specifier. Source: review round 3 (R3-G6-5; main judged the
+// resolved module).
+describe('Rsbuild build: an import with webpack inline loaders', () => {
+  const inlineLoaderBuild = (
+    specifier: string,
+    importProtection: ImportProtectionOptions = {},
+  ) =>
+    buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/secret.server.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'node_modules/secret-lib/package.json': JSON.stringify({
+          name: 'secret-lib',
+          type: 'module',
+          exports: './index.js',
+        }),
+        'node_modules/secret-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import { secret } from ${JSON.stringify(specifier)}
+export const read = () => secret()
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection },
+    })
+
+  test.each([
+    '!!./secret.server.js',
+    '-!./secret.server.js',
+    '!./secret.server.js',
+  ])(
+    'the file rule denies %s: the build fails, naming the importer',
+    async (specifier) => {
+      expect(
+        reportedViolations(await rejection(inlineLoaderBuild(specifier))),
+      ).toEqual([
+        {
+          environment: 'client',
+          importer: expect.stringMatching(/^src\/entry\.ts\b/),
+        },
+      ])
+    },
+    60_000,
+  )
+
+  test('a denied specifier behind inline loaders: the build fails, naming the importer', async () => {
+    expect(
+      reportedViolations(
+        await rejection(
+          inlineLoaderBuild('!!secret-lib', {
+            client: { specifiers: ['secret-lib'] },
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        environment: 'client',
+        importer: expect.stringMatching(/^src\/entry\.ts\b/),
+      },
+    ])
+  }, 60_000)
+})
+
 // `rsbuild build --watch`: each build reports the violations it bundles,
 // whatever an earlier build reported.
 // Source: mutation testing (Rsbuild host, the state of a previous build).
@@ -1060,6 +1124,32 @@ export const query = () => 'MARK_DB'
     expect(tracesOf(warm.violations)).toEqual(coldTraces)
     expect(warm.client.warnings.map((w) => w.text).sort()).toEqual(coldWarnings)
     expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
+  }, 120_000)
+
+  // The exempt importer is restored, the edited denied file built again
+  // before the cache's records of its importers are read. Source: review
+  // round 3 (R3-G6-4).
+  test('an exempt importer keeps the real module of a denied file edited between builds', async () => {
+    const exempt = {
+      'src/generated/registry.ts': `import { secret } from '../lib/db.server'
+export const registry = () => secret()
+`,
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_SECRET_1'\n`,
+      'src/entry.ts': `export { registry } from './generated/registry'\n`,
+    }
+    const cold = await buildStart({
+      bundler: 'rsbuild',
+      rsbuildConfig: { performance: { buildCache: true } },
+      files: exempt,
+      entry: 'src/entry.ts',
+      start: { importProtection: { exclude: ['src/generated/**'] } },
+    })
+    expect(cold.client.where('MARK_SECRET_1')).not.toBe('nowhere')
+    const warm = await cold.rebuild({
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_SECRET_2'\n`,
+    })
+    expect(warm.violations).toEqual([])
+    expect(warm.client.where('MARK_SECRET_2')).not.toBe('nowhere')
   }, 120_000)
 
   test('allowImport -> true: the warm build asks again and bundles the real modules', async () => {

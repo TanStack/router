@@ -22,7 +22,6 @@ import {
   rebuildModules,
   warnEagerExports,
   webpackImporters,
-  webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import {
@@ -87,7 +86,7 @@ const COMPILER_PACKAGES = [
 
 /** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
 function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
-  const view = rspackGraphView(compilation as never)
+  const view = rspackGraphView(compilation as never, canonicalResource)
   return {
     importers(id) {
       try {
@@ -111,6 +110,17 @@ interface ModuleLike {
   buildInfo?: Record<string, unknown>
   layer?: string | null
   identifier: () => string
+}
+
+/** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
+function addServerFns(
+  snapshot: Map<string, ReadonlyArray<ServerFnFact>>,
+  info: Record<string, unknown>,
+): void {
+  const fns = info[SERVER_FN_BUILD_INFO_FIELD] as ServerFnBuildInfo | undefined
+  if (fns?.version === 4) {
+    snapshot.set(fns.canonicalId, fns.facts)
+  }
 }
 
 /**
@@ -197,7 +207,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               resolver.resolve({}, dir, request, {}, (error, result) => {
                 resolve(
                   !error && typeof result === 'string'
-                    ? webpackResourceId(result)
+                    ? canonicalResource(result)
                     : null,
                 )
               })
@@ -309,6 +319,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // compilation starts: the modules of their stale dependents are built with them (a
       // file's facts need no resolver, and a resolution that found a removed file is stale)
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
+        if (
+          environment.type === 'client' &&
+          session.start.opts.mode === 'build'
+        ) {
+          // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
+          // no `beforeRun`); the client compiles first
+          session.start.warnings.reset()
+        }
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         ipEnvOf()?.beginBuild()
@@ -498,9 +516,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               },
               async () => {
                 const buildEnv = ipEnvOf()!
-                const live = readRspackWitness(
-                  compilation as never,
-                  buildEnv.witness(),
+                const lookup = buildEnv.witness()
+                const live = readRspackWitness(compilation as never, (res) =>
+                  lookup(canonicalResource(res)),
                 )
                 const reports = await buildEnv.surviving(
                   live,
@@ -714,6 +732,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 ipEnv.replay(canonicalResource(module.resource), ip)
               }
             }
+            // a module compiled as its own violation before the edges of a
+            // restored exempt importer were replayed gets the real module
+            for (const resource of env.persistsModules ? env.compiled : []) {
+              if (ipEnv.selfAllowedNow(canonicalResource(resource))) {
+                unjudged.add(resource)
+              }
+            }
             const unconfirmed = new Set<string>()
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource
@@ -744,11 +769,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (ipEnv && !judgesRestored && ip && module.resource) {
               ipEnv.replay(canonicalResource(module.resource), ip)
             }
-            const fns = info[SERVER_FN_BUILD_INFO_FIELD] as
-              | ServerFnBuildInfo
-              | undefined
-            if (fns?.version === 4) {
-              snapshot.set(fns.canonicalId, fns.facts)
+            addServerFns(snapshot, info)
+          }
+          // the modules of child compilers (a worker's, a service worker's:
+          // compiled as this environment's, done during `make`) call the
+          // server fns they define too
+          const children = [...compilation.children]
+          for (const child of children) {
+            children.push(...child.children)
+            for (const m of child.modules) {
+              const info = (m as unknown as ModuleLike).buildInfo
+              if (info) {
+                addServerFns(snapshot, info)
+              }
             }
           }
           session.start.registry.replace(env, snapshot)
