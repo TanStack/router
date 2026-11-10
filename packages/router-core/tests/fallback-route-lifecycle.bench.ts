@@ -2,6 +2,10 @@ import { describe, expect, test } from 'vitest'
 import { lifecycleEnd, runRouteLifecycle } from '../src/router'
 import type { AnyRouteMatch, AnyRouter, AnyRoute } from '../src'
 import type { LoadTransaction } from '../src/load-client'
+import type { ParsedLocation } from '../src/location'
+
+// Lifecycle hooks receive the destination location; the frozen baseline ignores it.
+const lifecycleLocation = { href: '/' } as ParsedLocation
 
 function baselineEnd(matches: Array<AnyRouteMatch>) {
   const boundary = matches.findIndex(
@@ -43,7 +47,7 @@ function baselineLifecycle(
     if (!hasLifecycleMatch(matches, nextEnd, match.routeId)) {
       ;(router.routesById as Record<string, AnyRoute>)[
         match.routeId
-      ]!.options.onLeave?.(match)
+      ]!.options.onLeave?.(match, { location: lifecycleLocation })
     }
   }
   for (let index = 0; index < nextEnd; index++) {
@@ -55,7 +59,7 @@ function baselineLifecycle(
       hasLifecycleMatch(previous, previousEnd, match.routeId)
         ? 'onStay'
         : 'onEnter'
-    ]?.(match)
+    ]?.(match, { location: lifecycleLocation })
   }
 }
 // Freeze the published allocation-free dispatcher as the comparison baseline.
@@ -161,6 +165,7 @@ for (const depth of [1, 2, 3, 4, 5, 6]) {
             matches,
             previousEnd,
             nextEnd,
+            lifecycleLocation,
             owner,
           )
         }

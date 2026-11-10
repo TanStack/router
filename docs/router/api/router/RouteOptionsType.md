@@ -277,23 +277,26 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 ### `onEnter` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, context: RouteLifecycleContext) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after not being matched in the previous location.
+- `context.location` is the destination the router is navigating to.
 - Routes below an error or not-found boundary do not enter the active route lifecycle. The boundary itself remains active. A previously hidden route receives `onEnter` when a navigation makes it active again.
 
 ### `onStay` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, context: RouteLifecycleContext) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after being matched in the previous location.
+- `context.location` is the destination the router is navigating to, including its `search` and `hash`.
 - Both navigations must include the route in the active branch, through the first error or not-found boundary.
 
 ### `onLeave` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, context: RouteLifecycleContext) => void`
 - Optional
 - A function that will be called when a route is no longer matched after being matched in the previous location.
+- `context.location` is the destination that replaces the leaving route.
 - This also runs when a navigation hides a previously active route below an error or not-found boundary, even if the route remains structurally matched.
 - Background reloads update route data without dispatching these lifecycle callbacks.
 

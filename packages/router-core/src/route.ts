@@ -1254,6 +1254,21 @@ export interface DefaultUpdatableRouteOptionsExtensions {
 
 export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
+/**
+ * The context passed as the second argument to the route lifecycle hooks
+ * (`onEnter`, `onStay` and `onLeave`).
+ */
+export interface RouteLifecycleContext {
+  /**
+   * The location the router is navigating to.
+   *
+   * For `onEnter` and `onStay` this is the location of the newly matched
+   * branch, for `onLeave` it is the destination that replaces the leaving
+   * route.
+   */
+  location: ParsedLocation
+}
+
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
   in out TRouteId,
@@ -1322,6 +1337,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    context: RouteLifecycleContext,
   ) => void
   onStay?: (
     match: RouteMatch<
@@ -1338,6 +1354,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    context: RouteLifecycleContext,
   ) => void
   onLeave?: (
     match: RouteMatch<
@@ -1354,6 +1371,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    context: RouteLifecycleContext,
   ) => void
   headers?: (
     ctx: AssetFnContextOptions<

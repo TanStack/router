@@ -48,6 +48,9 @@ test('#3293 existing behavior: direct load runs onEnter after beforeLoad and loa
       context: expect.objectContaining({ ready: true }),
       loaderData: { someData: 42 },
     }),
+    expect.objectContaining({
+      location: expect.objectContaining({ href: expect.any(String) }),
+    }),
   )
 })
 
@@ -103,6 +106,9 @@ test('#3293 existing behavior: uncached SPA navigation runs onEnter after before
       status: 'success',
       context: expect.objectContaining({ ready: true }),
       loaderData: { someData: 42 },
+    }),
+    expect.objectContaining({
+      location: expect.objectContaining({ href: expect.any(String) }),
     }),
   )
 })

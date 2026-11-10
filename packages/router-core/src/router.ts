@@ -993,6 +993,7 @@ export function runRouteLifecycle(
   matches: Array<AnyRouteMatch>,
   previousEnd: number | undefined,
   nextEnd: number,
+  location: ParsedLocation,
   owner?: LoadTransaction,
 ): void {
   // Zero or undefined means the full branch; copy only at a fallback.
@@ -1009,7 +1010,7 @@ export function runRouteLifecycle(
     if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
       ;(router.routesById as Record<string, AnyRoute>)[
         match.routeId
-      ]!.options.onLeave?.(match)
+      ]!.options.onLeave?.(match, { location })
     }
   }
   for (const match of matches) {
@@ -1023,7 +1024,7 @@ export function runRouteLifecycle(
       previous.some((candidate) => candidate.routeId === match.routeId)
         ? 'onStay'
         : 'onEnter'
-    ]?.(match)
+    ]?.(match, { location })
   }
 }
 
