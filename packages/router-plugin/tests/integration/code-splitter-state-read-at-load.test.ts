@@ -16,13 +16,22 @@ import {
 
 const state = `let prefix = 'a'\nexport function setPrefix(p: string) { prefix = p }\n`
 
+type Bundler = 'vite' | 'rspack' | 'rsbuild'
+
 /**
  * `component`: the route's component option (default: a component rendering
- * `read`); `state`: the module state and its exported setter (default: `state`).
+ * `read`); `state`: the module state and its exported setter (default: `state`);
+ * `pin`: the bundlers on which the row is a known bug (KNOWN-BUGS).
  */
 const shapes: Record<
   string,
-  { code: string; read?: string; component?: string; state?: string }
+  {
+    code: string
+    read?: string
+    component?: string
+    state?: string
+    pin?: ReadonlyArray<Bundler>
+  }
 > = {
   'direct read (control)': { code: `const labels = [prefix + 'x']` },
   map: { code: `const labels = ['x'].map((k) => prefix + k)` },
@@ -107,6 +116,25 @@ const shapes: Record<
     code: `function withPrefix(C: () => string) { const p = prefix; return () => <p>{p + C()}</p> }\nfunction Page() { return 'x' }`,
     component: 'withPrefix(Page)',
   },
+  // review of 2026-11-10, F1-1: the state's cluster held a top-level
+  // `if` or `try` assigning it, and the load walk did not enter it
+  'helper updating the state a top-level `if` also assigns': {
+    state: `let prefix = 'a'\nif ((globalThis as any).never) { prefix = 'z' }\nexport function setPrefix(p: string) { prefix = p }\n`,
+    code: `const next = () => (prefix += '!')\nconst labels = [next()]`,
+  },
+  'helper updating the state a top-level `try` also assigns': {
+    state: `let prefix = 'a'\ntry { prefix = String(prefix) } catch { prefix = 'z' }\nexport function setPrefix(p: string) { prefix = p }\n`,
+    code: `const next = () => (prefix += '!')\nconst labels = [next()]`,
+  },
+  // Bug (review of 2026-11-10, F1-2, its Q1): an exported snapshot of the
+  // state is extracted to its own module, which evaluates with the chunk
+  // once nothing imports it through the route file, after the setter ran.
+  // Impact: the page shows a later value than the same code unsplit (and
+  // than dev, which keeps it in the route module).
+  'exported snapshot of the state': {
+    code: `export const labels = [prefix + 'x']`,
+    pin: ['vite', 'rspack', 'rsbuild'],
+  },
   'read at render (control, the current value is right)': {
     code: `const labels = () => [prefix + 'x']`,
     read: 'labels()',
@@ -115,7 +143,7 @@ const shapes: Record<
 
 const rows = Object.entries(shapes)
 
-async function run(bundler: 'vite' | 'rspack' | 'rsbuild', split: boolean) {
+async function run(bundler: Bundler, split: boolean) {
   const options = {
     pluginOptions: { autoCodeSplitting: split },
     files: {
@@ -171,9 +199,13 @@ describe.each(['vite', 'rspack', 'rsbuild'] as const)('%s', (bundler) => {
   const observed = (split: boolean) =>
     (results[String(split)] ??= run(bundler, split))
 
-  describe.each(rows)('%s', (name) => {
-    it('gives the value the same code gives unsplit', async () => {
-      expect((await observed(true))[name]).toBe((await observed(false))[name])
-    }, 180_000)
+  describe.each(rows)('%s', (name, { pin }) => {
+    ;(pin?.includes(bundler) ? it.fails : it)(
+      'gives the value the same code gives unsplit',
+      async () => {
+        expect((await observed(true))[name]).toBe((await observed(false))[name])
+      },
+      180_000,
+    )
   })
 })

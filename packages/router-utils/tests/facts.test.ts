@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { RawFactsCache } from '../src/compiler'
+import { walk } from 'yuku'
+import { RawFactsCache, unwrapExpression } from '../src/compiler'
 import { summaryDigest } from '../src/compiler/summary'
-import type { RecognizerTable } from '../src/compiler'
+import { MemoryHost, envInfo } from './helpers'
+import type { Planner, RecognizerTable } from '../src/compiler'
 import type { RawFacts } from '../src/compiler/facts'
 
 describe('RawFactsCache', () => {
@@ -456,7 +458,7 @@ import { track } from './track'
   // What only an erased argument reads goes with it: the client compile
   // orphans it (an import, a const, a function), so its effects and its
   // module's evaluation do not count there.
-  it.each([
+  const erasedCases = [
     {
       name: 'an import only a handler reads',
       code: `export const fn = createServerFn().handler(async () => track())`,
@@ -535,7 +537,8 @@ import { track } from './track'
       codeEffects: none,
       erased: { client: ['./track'], server: [] },
     },
-  ])('$name', async ({ code, codeEffects, erased }) => {
+  ]
+  it.each(erasedCases)('$name', async ({ code, codeEffects, erased }) => {
     const files: Record<string, string> = {
       '/app/m.ts': head + code + '\n',
       '/app/track.ts': 'export const track = () => () => 1\n',
@@ -551,6 +554,83 @@ import { track } from './track'
       erasedImports: targetFacts.erasedImports ?? { client: [], server: [] },
     }).toEqual({ codeEffects, erasedImports: erased })
   })
+
+  // Q3 (review of 2026-11-10, F1): raw facts decide what a compile erases
+  // on their own (`erasedBindings`), placement decides it by provenance.
+  // Every import the facts call erased must be one the compile of that
+  // environment drops, or import protection reads no effect where the
+  // compile keeps one.
+  const serverParts: Planner = {
+    name: 'toy-server-fn',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const factories = new Set(
+        ctx.analysis.imports
+          .filter((i) => i.specifier === 'toy-start')
+          .flatMap((i) => i.specifiers)
+          .filter((sp) => sp.imported === 'createServerFn')
+          .map((sp) => ctx.symbols.name(sp.local)),
+      )
+      walk(ctx.analysis.file.program, {
+        enter: (n) => {
+          if (
+            n.type !== 'CallExpression' ||
+            n.callee.type !== 'MemberExpression' ||
+            n.callee.property.type !== 'Identifier' ||
+            (n.callee.property.name !== 'handler' &&
+              n.callee.property.name !== 'validator')
+          ) {
+            return
+          }
+          // a link of a chain the module's `createServerFn` starts
+          let root = unwrapExpression(n.callee.object)
+          while (
+            root.type === 'CallExpression' &&
+            root.callee.type === 'MemberExpression'
+          ) {
+            root = unwrapExpression(root.callee.object)
+          }
+          if (
+            root.type !== 'CallExpression' ||
+            root.callee.type !== 'Identifier' ||
+            !factories.has(root.callee.name)
+          ) {
+            return
+          }
+          for (const arg of n.arguments) {
+            ctx.rewrites.edit({
+              range: { start: arg.start, end: arg.end },
+              body: [{ k: 'text', parts: ['undefined'] }],
+              by: 'toy-server-fn',
+            })
+          }
+        },
+      })
+    },
+  }
+  it.each(erasedCases)(
+    '$name: the client compile drops every import the facts call erased',
+    async ({ code }) => {
+      const host = new MemoryHost({
+        files: {
+          '/app/m.ts': head + code + '\n',
+          '/app/track.ts': 'export const track = () => () => 1\n',
+        },
+        recognizer: table,
+      })
+      const { targetFacts } = await host.rawFacts.get('/app/m.ts', 'client')
+      const out = await host.compile('/app/m.ts', [serverParts], {
+        env: envInfo({ type: 'client', name: 'client' }),
+      })
+      const imported = new Set(
+        [...out!.code.matchAll(/from '([^']+)'/g)].map((m) => m[1]!),
+      )
+      for (const specifier of targetFacts.erasedImports?.client ?? []) {
+        expect(imported.has(specifier), specifier).toBe(false)
+      }
+    },
+  )
 })
 
 describe('target facts: lazy imports', () => {
