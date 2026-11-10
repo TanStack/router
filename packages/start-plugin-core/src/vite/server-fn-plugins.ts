@@ -128,7 +128,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         )
       }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
-        await state.clientRebuild?.ended
+        await state.opts.clientRebuild.ended()
         for (const file of state.clientFiles ?? []) {
           this.addWatchFile(file)
         }

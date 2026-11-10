@@ -220,6 +220,17 @@ function envCompilerPlugins(
       state.server = viteServer
       const s = state.requireSession()
       const environment = viteServer.environments[env.name]
+      if (environment) {
+        // each environment loads the virtual ids it resolved (Vite runs a
+        // plugin's `buildStart` only for the client environment in dev)
+        state.virtualLoaders.set(env.name, async (id) => {
+          const loaded = await environment.pluginContainer.load(id)
+          if (loaded === null || loaded === undefined) {
+            return null
+          }
+          return typeof loaded === 'string' ? loaded : loaded.code
+        })
+      }
       if (s.start.ip && environment) {
         const ipEnv = s.start.ip.env(env.name, env.type)
         const entries = state.entriesOf(s)
@@ -238,6 +249,12 @@ function envCompilerPlugins(
     },
     async buildStart() {
       const s = state.requireSession()
+      if (this.environment.mode === 'build') {
+        state.virtualLoaders.set(
+          env.name,
+          async (id) => (await this.load({ id })).code,
+        )
+      }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         s.start.ip?.env(env.name, env.type).beginBuild()
       }
@@ -268,18 +285,6 @@ function envCompilerPlugins(
           ),
         )
       }
-      const environment = this.environment
-      state.virtualLoaders.set(env.name, async (id) => {
-        if (environment.mode === 'dev') {
-          const loaded = await environment.pluginContainer.load(id)
-          if (loaded === null || loaded === undefined) {
-            return null
-          }
-          return typeof loaded === 'string' ? loaded : loaded.code
-        }
-        const info = await this.load({ id })
-        return info.code
-      })
     },
     buildEnd() {
       if (this.environment.mode !== 'build' || env.type !== 'client') {
@@ -306,8 +311,6 @@ function envCompilerPlugins(
       }
       state.requireSession().start.registry.retain(env.name, graph)
       state.clientFiles = [...files]
-      state.clientRebuild?.end()
-      state.clientRebuild = null
     },
     /**
      * A build that writes its bundle (not a scan: plugin-rsc analyses the
@@ -447,7 +450,8 @@ function envCompilerPlugins(
         ? [...live, ...changed]
         : undefined
     },
-    // The one invalidation of a file event. Bundled dev: applied to every
+    // The one invalidation of a file event. Bundled dev, and a dev server
+    // without HMR (`server.hmr: false`, as Vitest's): applied to every
     // environment's module graph (Vite's `hotUpdate` is not called there;
     // the watching environment's hook applies it). `build --watch`: each
     // environment's watcher reports the files it bundles, and the rebuild
@@ -456,15 +460,17 @@ function envCompilerPlugins(
     async watchChange(id, event) {
       const s = state.requireSession()
       const environment = this.environment
-      if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
+      if (
+        environment.mode === 'dev' &&
+        !(
+          watches &&
+          (s.bundledDev || state.server?.config.server.hmr === false)
+        )
+      ) {
         return
       }
       if (environment.mode === 'build' && env.type === 'client') {
-        if (!state.clientRebuild) {
-          let end!: () => void
-          const ended = new Promise<void>((resolve) => (end = resolve))
-          state.clientRebuild = { ended, end }
-        }
+        state.opts.clientRebuild.begin()
       }
       // the file's path once, as every module id and compiler key holds it
       // (Rolldown reports its watcher's native path: backslashes on Windows)

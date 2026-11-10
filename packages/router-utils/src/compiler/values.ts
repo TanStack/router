@@ -309,7 +309,8 @@ export function applyCall(
  * The transfer function of an expression that is one of two values
  * (`c ? a : b`, `a ?? b`, `a || b`, `a && b`): known when both are the same
  * kind of value. A link only one of them has is dropped (a middleware is
- * configured on both sides or on neither); a symbolic side keeps the join
+ * configured on both sides or on neither), what an isomorphic fn's call
+ * gives never is (the join is unknown); a symbolic side keeps the join
  * symbolic, so a summary and the local analysis agree once it is reduced.
  */
 export function joinValues(a: AbstractValue, b: AbstractValue): AbstractValue {
@@ -331,11 +332,16 @@ export function joinValues(a: AbstractValue, b: AbstractValue): AbstractValue {
     case 'middleware':
       return b.t === a.t ? { t: a.t, links: common(a.links, b.links) } : UNKNOWN
     case 'isoFn': {
-      if (b.t !== 'isoFn') {
+      // what a call gives survives the join, or the join is no isomorphic
+      // fn (the branches are then judged on their own)
+      if (b.t !== 'isoFn' || !a.returns !== !b.returns) {
         return UNKNOWN
       }
       const returns =
         a.returns && b.returns ? joinValues(a.returns, b.returns) : undefined
+      if (returns?.t === 'unknown') {
+        return UNKNOWN
+      }
       return {
         t: 'isoFn',
         links: common(a.links, b.links),
@@ -482,7 +488,7 @@ export class ValueAnalysis {
     if (parent.type === 'VariableDeclarator' && parent.id === decl) {
       return parent.init ? this.valueOf(parent.init) : null
     }
-    if (parent.type === 'FunctionDeclaration') {
+    if (parent.type === 'FunctionDeclaration' && parent.id === decl) {
       return parent.body ? this.functionValue(parent) : null
     }
     // `const { createServerFn: csf } = Start`: the member of the initialiser

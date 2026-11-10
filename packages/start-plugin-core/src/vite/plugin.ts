@@ -32,6 +32,7 @@ import {
 } from './plugins'
 import { parseStartConfig } from './schema'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
+import { ClientRebuild } from './client-rebuild'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import {
   getClientOutputDirectory,
@@ -62,6 +63,8 @@ export function tanStackStartVite(
   const { getConfig, resolvedStartConfig } = configContext
   // the generator's registry, read by the compiler's router planner
   const routerPluginContext = createRouterPluginContext()
+  // `build --watch`: the client's rebuild the server's rebuild waits for
+  const clientRebuild = new ClientRebuild()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
 
   // When the router basepath and vite base are misaligned during dev,
@@ -216,6 +219,7 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
+                clientRebuild,
               })
             },
           },
@@ -265,6 +269,7 @@ export function tanStackStartVite(
       getConfig,
       routerPluginContext,
       resolveEntries: () => configContext.resolveEntries(),
+      clientRebuild,
     }),
     tanStackStartRouter(
       normalizedStartPluginOpts,
@@ -279,6 +284,7 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
+      clientRebuild,
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
     // install a middleware that rewrites incoming request URLs to prepend the vite base prefix.

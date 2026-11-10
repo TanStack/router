@@ -324,9 +324,10 @@ export interface CompilerCaches {
    * A plan's recorded resolutions and an environment's
    * resolution memo are current while the version they were validated or
    * filled at is the current one. It moves when a file appears or disappears
-   * and when a `package.json` changes (`imports`, `exports`), which is what a
-   * resolver's answers depend on for the life of a server: `tsconfig` `paths`
-   * and the bundler's aliases need a restart of the bundler's own resolver.
+   * and when a `package.json` (`imports`, `exports`) or a `tsconfig` /
+   * `jsconfig` (`paths`, `baseUrl`, which vite-tsconfig-paths reloads) changes:
+   * what a resolver's answers depend on for the life of a server. The
+   * bundler's own aliases need a restart of its resolver.
    */
   fileSetVersion: number
 }
@@ -395,11 +396,17 @@ export async function invalidate(
   }
   // `imports` and `exports` decide what specifiers resolve to, as files
   // appearing do. (A resolution from a package to a target outside its
-  // directory stays until its importer compiles again.)
+  // directory stays until its importer compiles again.) So do a tsconfig's
+  // `paths`: each plan asks its resolutions again at its next request (the
+  // bundler requests every module again after such an edit), and the
+  // failed ones now (they name no file whose dependents would be reported)
   const manifestAt = change.path.endsWith('/package.json')
   const manifest = change.kind === 'change' && manifestAt
   const fileSetMoved =
-    change.kind === 'add' || change.kind === 'unlink' || manifest
+    change.kind === 'add' ||
+    change.kind === 'unlink' ||
+    manifest ||
+    (change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
   if (fileSetMoved) {
     caches.fileSetVersion++
   }
@@ -509,6 +516,9 @@ export async function invalidate(
   }
   return { evicted, dependents }
 }
+
+/** A TypeScript or JavaScript project file (`tsconfig.json`, `tsconfig.app.json`, `jsconfig.json`): its `paths` decide resolutions. */
+const RESOLVER_CONFIG = /\/[jt]sconfig(?:\.[^/]*)?\.json$/
 
 /** The files dependencies name (a known package is recognised by its specifier, never read). */
 export function dependencyPaths(

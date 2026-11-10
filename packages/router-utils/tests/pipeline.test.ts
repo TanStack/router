@@ -1179,12 +1179,66 @@ describe('attempts that are overtaken or throw', () => {
       }),
     )
     const cache = host.caches.plans.get('client')!
+    // (its dependencies stay indexed: (n2))
     expect(cache.get(key)).toBeNull()
-    expect(cache.dependents.stats().entries).toBe(0)
     // the next request compiles and publishes as usual
     const next = await host.compile('/app/consumer.ts', planners)
     expect(next!.diagnostics).toEqual([])
     expect(cache.get(key)).not.toBeNull()
+  })
+
+  // Source: review round 3 (R3-G3-2): the unpublished plan left no rows,
+  // so no later edit of what it read reported the module, whose output the
+  // bundler keeps.
+  it('(n2) reports the module of an exhausted compile at a later event of what its last attempt read', async () => {
+    let flips = 0
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+    })
+    const flip = async () => {
+      flips++
+      host.write(
+        '/app/factory-inner.ts',
+        FACTORY(flips % 2 ? 'createClientOnlyFn' : 'createServerOnlyFn'),
+      )
+      await invalidate(
+        host.caches,
+        { path: '/app/factory-inner.ts', kind: 'change' },
+        host,
+      )
+    }
+    const flipping: Planner = {
+      name: 'toy-flip',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        const target = await ctx.resolve('./factory-inner')
+        await ctx.resolver.resolve(target!, 'make')
+        if (flips < 3) {
+          await flip()
+        }
+      },
+      plan() {},
+    }
+    const out = await host.compile('/app/consumer.ts', [
+      toySummaryPlanner(),
+      flipping,
+    ])
+    expect(out!.diagnostics).toContainEqual(
+      expect.objectContaining({ code: 'compile-overtaken' }),
+    )
+    // the last attempt read the factory before the third flip: a save of
+    // the file as it is now (a formatter) is a change of what it read
+    const res = await invalidate(
+      host.caches,
+      { path: '/app/factory-inner.ts', kind: 'change' },
+      host,
+    )
+    expect(res.dependents).toContainEqual(key)
   })
 
   it('(o) discards the attempt ledger when a planner throws', async () => {

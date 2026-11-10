@@ -481,16 +481,18 @@ export class PlanCache {
    * The memo is good for one `fileSetVersion` (a file appearing or
    * disappearing, a `package.json` changing) and dropped as one at the next
    * (`resolutionsAt`): the plans' resolution fingerprints have the same
-   * authority and no other. A `tsconfig` `paths` edit moves neither: the
-   * bundler's resolver keeps its old answer until a restart too.
+   * authority and no other. A `tsconfig` edit moves it too
+   * (`fileSetVersion`); the bundler's own aliases need a restart.
    */
   private readonly resolutions = new Map<string, ResolutionMemo>()
   private resolvedAt = -1
   /**
-   * Plans an earlier process published, known by their dependencies only
-   * (the bundler's persistent cache restored their modules without a
-   * compile): never a hit, found stale by `invalidate` like a published
-   * plan, replaced by the key's next publication.
+   * Plans known by their dependencies only, whose outputs a bundler holds:
+   * one an earlier process published (the bundler's persistent cache
+   * restored its module without a compile), or the last attempt of a
+   * compile every attempt of which was overtaken. Never a hit, found stale
+   * by `invalidate` like a published plan, replaced by the key's next
+   * publication.
    */
   private readonly restored = new Map<string, PersistedPlan>()
 
@@ -627,8 +629,8 @@ export class PlanCache {
   }
 
   /**
-   * Adds a plan an earlier process published (`restorePlans` validated its
-   * dependencies); a key this process compiled or compiles keeps its own.
+   * Adds a plan known by its dependencies only (`restored`); a key with a
+   * published plan or a compile running keeps its own.
    */
   restore(plan: PersistedPlan): void {
     const ks = planKeyString(plan.key)
