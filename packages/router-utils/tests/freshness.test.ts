@@ -444,3 +444,107 @@ describe('after any edits', () => {
     expect(host.caches.stale.stats()).toEqual({ stalePaths: 0, staleHeld: 0 })
   })
 })
+
+describe('events that move the file set', () => {
+  const SERVER_ONLY = dedent(`
+    import { createServerOnlyFn } from 'toy-start'
+    export const make = createServerOnlyFn(() => 1)
+  `)
+  const IMPORTER = "import { make } from './a'\nexport const use = make\n"
+  const factsOf = (out: CompileOutput | null) => out?.facts.planners
+
+  // `a.ts` was created in the session; it is removed, a module that imports
+  // it is compiled for the first time while it is gone, and it is created
+  // again with the same text. Both events arrive once it is back: the
+  // removal is no repeat (the file was gone for a while, and something
+  // looked for it), so the importer's failed resolution is asked again.
+  // Source: design 3 steps 0-1 review, finding 1 (a stash and pop, a
+  // checkout and back).
+  it('a file removed and created again with the same text re-plans what looked for it meanwhile', async () => {
+    const host = memoryHost({})
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, host)
+    await host.compile('/app/a.ts', planners())
+    delete host.files['/app/a.ts']
+    host.write('/app/c.ts', IMPORTER)
+    await host.compile('/app/c.ts', planners())
+    host.write('/app/a.ts', SERVER_ONLY)
+    for (const kind of ['unlink', 'add'] as const) {
+      await invalidate(host.caches, { path: '/app/a.ts', kind }, host)
+    }
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toContain(
+      '/app/c.ts',
+    )
+    expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+    )
+  })
+
+  // A created file reaches each environment's hook at its own time (Rspack:
+  // each compiler's `make`). The first one's invalidation asks every
+  // environment's failed resolutions again, each with its own resolver, and
+  // the SSR resolver still answers from before the file existed. SSR's own
+  // event, the same text, asks them again: its resolver finds the file now.
+  // Source: design 3 steps 0-1 review, step 2 item 3.
+  it("a created file's event re-asks the resolutions of an environment whose resolver answered from before it", async () => {
+    const host = memoryHost({ '/app/c.ts': IMPORTER })
+    let lagging = false
+    const ssrHost: MemoryHost = Object.create(host, {
+      resolve: {
+        value: (specifier: string, importer: string) =>
+          lagging ? Promise.resolve(null) : host.resolve(specifier, importer),
+      },
+    })
+    const hostOf = (key: { env: string }) =>
+      key.env === SSR.name ? ssrHost : host
+    await host.compile('/app/c.ts', planners(), { env: CLIENT })
+    await ssrHost.compile('/app/c.ts', planners(), { env: SSR })
+    host.write('/app/a.ts', SERVER_ONLY)
+    lagging = true
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, hostOf)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/c.ts'])
+    expect(host.caches.stale.take(SSR.name)).toEqual([])
+    lagging = false
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, hostOf)
+    expect(host.caches.stale.take(SSR.name)).toEqual(['/app/c.ts'])
+    expect(
+      factsOf(await ssrHost.compile('/app/c.ts', planners(), { env: SSR })),
+    ).toEqual(
+      factsOf(
+        await memoryHost(host.files).compile('/app/c.ts', planners(), {
+          env: SSR,
+        }),
+      ),
+    )
+  })
+})
+
+describe('a text without a plan', () => {
+  // `a.ts` had a plan that read `l.ts`; it is saved to a text the compiler
+  // leaves alone, to one that does not parse, and empty. None of those has a
+  // plan, and the plan of the old text goes with it: a later edit of what
+  // the old text read finds nothing stale.
+  // Source: design 3 steps 0-1 review, finding 2 (Vite's `liveModules`
+  // reads the plan at the path).
+  it.for([
+    { name: 'that the compiler leaves alone', text: 'export const use = 1\n' },
+    { name: 'that does not parse', text: 'export const = \n' },
+    { name: 'that is empty', text: '' },
+  ])("keeps no plan of the file's old text ($name)", async ({ text }) => {
+    const host = memoryHost({
+      '/app/l.ts': 'export const make = 1\n',
+      '/app/a.ts': "import { make } from './l'\nexport const use = make\n",
+    })
+    await host.compile('/app/a.ts', planners())
+    host.write('/app/a.ts', text)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    await host.compile('/app/a.ts', planners())
+    const cache = host.caches.plans.get(CLIENT.name)!
+    expect(
+      cache.keysAt('/app/a.ts').filter((key) => cache.get(key) !== null),
+    ).toEqual([])
+    host.write('/app/l.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/l.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([])
+  })
+})

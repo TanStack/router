@@ -125,6 +125,51 @@ console.log(a1, a2, u1(), u2())
     },
     timeout,
   )
+
+  // `base` stops being a server fn builder: the modules that built server
+  // fns on it are built again in the compilation of the edit, and each
+  // one's rebuild removes its handler module, which is a module of the same
+  // file and so on the list of what to build again too (eight importers, so
+  // that a handler comes after its importer on that list). Then `base` is a
+  // builder again: the handler modules come back. Each edit ends, without
+  // an error.
+  // Source: design 3 §5 (the stale dependents are built at `finishMake`;
+  // Rspack never calls back a rebuild whose module left its graph).
+  test(
+    'a server fn handler module removed by its importer rebuild does not hang the compilation',
+    async () => {
+      const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
+      const server = await startRsbuildStartDevServer({
+        compileTimeout,
+        files: {
+          'src/lib/base.ts': builderBase,
+          ...Object.fromEntries(
+            names.map((name) => [
+              `src/${name}.ts`,
+              handlerModule(name, './lib/base'),
+            ]),
+          ),
+          'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
+console.log(${names.join(', ')})
+`,
+        },
+      })
+      const client = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(server.errors).toEqual([])
+      await server.edit({ 'src/lib/base.ts': plainBase })
+      expect(server.errors).toEqual([])
+      for (const name of names) {
+        expect(await client()).toContain(`MARK_${name.toUpperCase()}`)
+      }
+      await server.edit({ 'src/lib/base.ts': builderBase })
+      expect(server.errors).toEqual([])
+      for (const name of names) {
+        expect(await client()).not.toContain(`MARK_${name.toUpperCase()}`)
+      }
+    },
+    timeout,
+  )
 })
 
 describe('Rsbuild dev: files that appear and disappear', () => {

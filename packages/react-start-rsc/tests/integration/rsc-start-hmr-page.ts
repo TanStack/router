@@ -2,15 +2,18 @@
  * `/`: a server fn whose handler returns `handler`, the loader and the page
  * calling it, the page's text `text` and a counter (component state). The
  * call button shows `text` and the answer, so a call from an edited
- * component is told apart from the answer the kept state shows.
+ * component is told apart from the answer the kept state shows. With
+ * `baseFrom`, the function is built on the `base` export of that module
+ * instead of `createServerFn()`.
  */
 export const route = (
   handler: string,
   text: string,
+  baseFrom?: string,
 ) => `import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+${baseFrom === undefined ? `import { createServerFn } from '@tanstack/react-start'` : `import { base } from '${baseFrom}'`}
 import { useState } from 'react'
-const getLabel = createServerFn().handler(() => '${handler}')
+const getLabel = ${baseFrom === undefined ? 'createServerFn()' : 'base'}.handler(() => '${handler}')
 export const Route = createFileRoute('/')({
   loader: () => getLabel(),
   component: Page,
