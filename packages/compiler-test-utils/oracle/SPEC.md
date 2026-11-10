@@ -98,7 +98,9 @@ on Vue, or environments Start did not create.
   `@jsxImportSource`), CRLF line endings, BOM-free UTF-8, file names with any character the OS allows (e.g.
   `what's-new.tsx`). `.js`/`.jsx` modules compile like `.ts`/`.tsx`. Non-JS modules that compile to JS before our
   transforms (`.vue`, `.mdx`) are inputs of J6. Other non-JS modules (CSS, JSON, Markdown, `?raw` text) are never
-  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1).
+  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1). A
+  webpack-family request that disables the configured loaders (`!!./fns.ts`, `-!./fns.ts`) is a deliberate bypass
+  like `?raw`: its module is not compiled (ruling of review round 3, F1); import protection judges what it loads.
 - **Routing setups**: flat, directory and mixed file-based routing; virtual file routes (`virtualRouteConfig` as path
   or object, `physical()`, `__virtual.ts` subtrees); code-based routing (J4 only). One route per file route module,
   exported as `Route`. The file naming conventions of `routing/file-naming-conventions.md` with configurable
@@ -702,7 +704,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. Vite and Rsbuild; every Start env
   (client-type and server-type). A specifier rule matches the specifier **the user wrote**: a bundler rewrite of the
   import (e.g. Rsbuild `source.transformImport` turning `ui-lib` into `ui-lib/button`) does not bypass a denial of the
-  original; file and marker checks apply to the rewritten edge's resolved target. An import the env's resolver
+  original; file and marker checks apply to the rewritten edge's resolved target. A resolved id whose path holds a `#` is
+  judged as itself and as the path cut at its last `#` (a Vite id keeps a `#fragment`, which no id tells from a `#` of a
+  path): either denies. An import the env's resolver
   cannot resolve (it fails, e.g. a package with only a `node` export on the client) has no resolved target: file and
   marker checks skip it, specifier rules apply, and the bundler decides on it (it fails the build if it keeps the
   import; nothing of it ships if it drops it). A denied file the bundler still loads through it is denied itself.
@@ -713,7 +717,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   dev-time warning), and calling a mock gives a runtime diagnostic at the severity `mockAccess` sets (default
   `error`; `warn`; `off` silences), wherever a mock is served: dev and production, client and server. `mockAccess`
   changes nothing else. Which uses of a mock beyond a call it reports is free (§5.18). A test that expects silence
-  sets `mockAccess: 'off'`.
+  sets `mockAccess: 'off'`. Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) gets
+  no mock: its violation fails the build at the import, whatever the behaviour, and `allowImport` is not asked
+  (ruling of review round 3, F1).
 - **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking.
   Dev: an edge the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
   server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,

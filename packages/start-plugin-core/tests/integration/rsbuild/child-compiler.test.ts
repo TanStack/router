@@ -6,12 +6,15 @@
  * client's. The child compiler takes the client's module rules, so Start
  * compiles its modules as client modules: a server function becomes its
  * client call, which the server serves, and import protection judges their
- * imports (SPEC J4.1, J6).
+ * imports (SPEC J4.1, J6): a denied import fails the build (a child
+ * compiler cannot load Start's mocks).
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -140,27 +143,31 @@ self.onmessage = () => {
     },
   }
 
-  // Known bug: a child compiler has no virtual files of its environment, so
-  // the worker's import of the edge module does not resolve and the build
-  // fails, whatever the behavior (safe: no server code ships).
-  test.fails(
-    'a worker importing a .server file gets its mock, and the build reports it',
-    async () => {
+  // A worker's module gets no mock (Start cannot serve one to a child
+  // compiler) and no `allowImport` answer: the build fails at the import,
+  // which is reported as a violation of the worker, whatever the behavior
+  // (ruling of review round 3, F1).
+  test.each(['mock', 'error'] as const)(
+    'a worker importing a .server file fails the build at the import, reported as its violation (%s)',
+    async (behavior) => {
       const built = await buildStart({
         ...config,
-        start: { importProtection: { behavior: 'mock' } },
+        start: { importProtection: { behavior } },
       }).catch((error: unknown) => error)
-      expect(built, 'the build passes').not.toBeInstanceOf(Error)
-      const build = built as StartBuild
+      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+      const error = built as StartBuildError
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/worker.ts',
+        root: error.root,
+        position: { line: 1 },
+      })
       expect(
-        fs.readFileSync(path.join(build.client.outDir, 'worker.js'), 'utf8'),
-      ).not.toContain('MARK_DB_SECRET')
-      expect(
-        build.violations.map((v) => ({
+        error.violations.map((v) => ({
           env: v.env,
           type: v.type,
           specifier: v.specifier,
-          importer: path.relative(build.root, v.importer),
+          importer: path.relative(error.root, v.importer),
         })),
       ).toEqual([
         {
@@ -170,6 +177,38 @@ self.onmessage = () => {
           importer: path.join('src', 'worker.ts'),
         },
       ])
+    },
+    timeout,
+  )
+
+  test(
+    'a worker reaching a .server file through a pattern import fails the build, naming the file',
+    async () => {
+      const built = await buildStart({
+        ...config,
+        files: {
+          'src/server/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+`,
+          'src/worker.ts': `const modules = import.meta.webpackContext('./server', { regExp: /\\.ts$/ })
+self.onmessage = () => {
+  self.postMessage(modules.keys().map((key) => modules(key).secret()))
+}
+`,
+          'src/entry.ts': `export const ready = true
+`,
+        },
+        start: { importProtection: { behavior: 'mock' } },
+      }).catch((error: unknown) => error)
+      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+      const error = built as StartBuildError
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/server/db.server.ts',
+        root: error.root,
+      })
+      expect(
+        error.violations.map((v) => path.relative(error.root, v.importer)),
+      ).toEqual([path.join('src', 'server', 'db.server.ts')])
     },
     timeout,
   )

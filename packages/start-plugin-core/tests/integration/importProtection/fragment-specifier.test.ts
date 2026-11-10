@@ -3,7 +3,8 @@
  * file, so import protection judges the file, whichever rule denies it (a
  * `server-only` marker, a file rule naming its extension), and Start
  * compiles it as the file. Source: review round 3 (R3-G6-2; main stripped
- * the fragment).
+ * the fragment). Vite's id keeps the fragment, which no id tells from a `#`
+ * of a path: the rules judge the id and the id cut at its last `#`.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -37,16 +38,10 @@ async function failure(build: Promise<unknown>): Promise<StartBuildError> {
   return error as StartBuildError
 }
 
-// Known bug (Vite): a Vite id keeps the fragment, which no id tells from a
-// `#` of a project path (`C#/src`): the marker case fails the build on the
-// mock's missing exports (safe), the file rule misses `db.server.ts#x`.
-const pinnedOnVite = (bundler: StartBundler) =>
-  bundler === 'vite' ? test.fails : test
-
 describe.each(startBundlers)(
   '%s build: an import with a #fragment',
   (bundler) => {
-    pinnedOnVite(bundler)(
+    test(
       'of a file its server-only marker denies fails the build, naming the importer',
       async () => {
         const error = await failure(
@@ -66,7 +61,7 @@ export const API_KEY = 'MARK_SECRET'
       timeout,
     )
 
-    pinnedOnVite(bundler)(
+    test(
       'of a file a rule naming its extension denies fails the build, naming the importer',
       async () => {
         const error = await failure(

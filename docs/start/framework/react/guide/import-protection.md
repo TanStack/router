@@ -345,6 +345,8 @@ To get the real module, write the import statically (a plain `import`), in a mod
 
 A denied file that an exempt importer imports with a plain import and a checked importer reaches through a pattern import is one module, served real or mocked as a whole. Which one is not guaranteed: it depends on the order the bundler compiles the importers in, and under `behavior: 'mock'` the pattern import can get the real module (its report then still says "mocked"). Under `behavior: 'error'` the build fails either way. To be safe, leave the file out of the pattern (`'!./db.server.ts'`) or don't exempt its plain importer.
 
+On Rsbuild, a module that a worker or service-worker plugin builds (a child compiler of the client build, such as `worker-rspack-loader` or workbox's `InjectManifest`) is checked like the client's own, but a child compiler cannot load a mock: a denied import there fails the build whatever `behavior` is, and `allowImport` is not asked. Call a server function from the worker instead.
+
 Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
 
 A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.

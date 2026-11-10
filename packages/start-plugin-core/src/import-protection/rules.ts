@@ -83,6 +83,22 @@ function matchFile(
   return m ? { type: 'file', index: rules.files.indexOf(m) } : null
 }
 
+/**
+ * The other id a target's file and marker rules judge, besides the id: when
+ * its path holds a `#`, the path cut at its last `#`. A Vite id keeps a
+ * specifier's `#fragment` (`./db.server.ts#x` loads `db.server.ts`), which no
+ * id tells from a `#` of a path (`C#/src`): both are judged, and either one
+ * denies. Null for an id without a `#`.
+ */
+function cutAtHash(id: string): string | null {
+  if (!id.includes('#')) {
+    return null
+  }
+  const { path } = identify(id)
+  const hash = path.lastIndexOf('#')
+  return hash === -1 ? null : path.slice(0, hash)
+}
+
 /** The file rule denying a module's own path in an environment of `envType` (`excludeFiles` skips it). */
 export function ownFileRule(
   config: ImportProtectionConfig,
@@ -90,30 +106,51 @@ export function ownFileRule(
   path: string,
 ): RuleRef | null {
   const rules = rulesFor(config, envType)
-  const rel = relativeTargetPath(config, path)
+  const cut = cutAtHash(path)
+  return (
+    unexcludedFileRule(config, rules, path) ??
+    (cut === null ? null : unexcludedFileRule(config, rules, cut))
+  )
+}
+
+function unexcludedFileRule(
+  config: ImportProtectionConfig,
+  rules: ImportProtectionEnvRules,
+  id: string,
+): RuleRef | null {
+  const rel = relativeTargetPath(config, id)
   return targetExcluded(rules, rel) ? null : matchFile(rules, rel)
 }
 
-/** The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both). */
+type MarkerReader = (
+  id: string,
+) => MarkerKind | 'conflict' | null | Promise<MarkerKind | 'conflict' | null>
+
+/**
+ * The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both), for the id and
+ * the id `cutAtHash` gives (`marker` reads the marker of the one it is given).
+ */
 export async function fileOrMarkerRule(
   config: ImportProtectionConfig,
   envType: EnvType,
   file: string,
-  marker: () =>
-    | MarkerKind
-    | 'conflict'
-    | null
-    | Promise<MarkerKind | 'conflict' | null>,
+  marker: MarkerReader,
 ): Promise<RuleRef | null> {
   const rules = rulesFor(config, envType)
-  const rel = relativeTargetPath(config, file)
-  if (targetExcluded(rules, rel)) {
-    return null
+  let id: string | null = file
+  while (id !== null) {
+    const rel = relativeTargetPath(config, id)
+    if (!targetExcluded(rules, rel)) {
+      const rule =
+        matchFile(rules, rel) ??
+        (markerViolates(envType, await marker(id)) ? { type: 'marker' } : null)
+      if (rule) {
+        return rule
+      }
+    }
+    id = id === file ? cutAtHash(file) : null
   }
-  return (
-    matchFile(rules, rel) ??
-    (markerViolates(envType, await marker()) ? { type: 'marker' } : null)
-  )
+  return null
 }
 
 /** Whether a target's marker denies it in an env of `envType` (a conflict is reported in the marked file itself). */

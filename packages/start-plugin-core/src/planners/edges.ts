@@ -385,7 +385,7 @@ export function importEdgesPlanner(
               config,
               envType,
               target,
-              () => ctx.targetMarker(markerIdOf(envType, target)),
+              (id) => ctx.targetMarker(markerIdOf(envType, id)),
             )
             if (targetRule !== null) {
               rule = targetRule

@@ -575,11 +575,11 @@ class ImportProtectionEnv {
     ) {
       return null
     }
-    const rule = await fileOrMarkerRule(config, this.type, path, async () => {
-      if (identify(path).lang === null) {
+    const rule = await fileOrMarkerRule(config, this.type, path, async (id) => {
+      if (identify(id).lang === null) {
         return null
       }
-      const m = await marker(path)
+      const m = await marker(id)
       return m === 'conflict' ? 'server-only' : m
     })
     return {
@@ -963,6 +963,58 @@ class ImportProtectionEnv {
       }
       return this.errorOf(errors)
     })()
+  }
+
+  /**
+   * Rspack: a request of an import-protection module in a child compiler of
+   * this environment (a worker or service-worker plugin's). The modules are
+   * virtual files of the environment's compiler, which a child compiler
+   * cannot load, so every violation the request stands for (an edge
+   * module's, of its importer; the runtime's, of the module that is its own
+   * violation) fails the build: told to `onViolation` and returned as its
+   * report. Null for any other request, or when no violation is known.
+   */
+  async childCompilerRequest(
+    request: string,
+    issuer: string | undefined,
+  ): Promise<Array<string> | null> {
+    const ref = this.ip.ids.parse(request)
+    if (ref?.env !== this.name || !issuer) {
+      return null
+    }
+    const file = normalizePath(issuer)
+    const ofImporter = (v: EdgeViolation) => traceFile(v.importerId) === file
+    let violations: Array<EdgeViolation>
+    if (ref.kind === 'edge') {
+      const m = this.modules.get(ref.key)
+      violations = m
+        ? [...m.violations.values()].filter((v) => !v.self && ofImporter(v))
+        : []
+      if (m && violations.length === 0) {
+        violations.push(this.violationOfContent(ref.key, m.content))
+      }
+    } else {
+      violations = [...this.modules.values()].flatMap((one) =>
+        [...one.violations.values()].filter((v) => v.self && ofImporter(v)),
+      )
+    }
+    if (violations.length === 0) {
+      return null
+    }
+    const reports: Array<string> = []
+    for (const v of violations) {
+      const denied = { ...v, behavior: 'error' as const }
+      await this.notify(denied)
+      const info = violationInfo(denied, this.ip.config, () =>
+        this.trace(v.importerId),
+      )
+      reports.push(
+        formatViolation(denied, info, this.ip.report, {
+          childCompiler: true,
+        }),
+      )
+    }
+    return reports
   }
 
   /** The violation an edge module stands for when no record of it was read: an importer restored from a persistent cache. */
