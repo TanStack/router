@@ -255,6 +255,7 @@ async function settle(
   const cache = planCacheFor(caches, key.env)
   // the key's generation and latest revision stay meaningful until the compile ends
   cache.begin(key)
+  let unpublished: CacheEntry | null = null
   try {
     let overtaken!: CacheEntry
     // every attempt compiles the text this compile was given
@@ -314,10 +315,16 @@ async function settle(
     // Every attempt was overtaken (a save storm, a checkout touching several
     // dependencies): the last plan answers without being published, so the
     // next request compiles afresh; the host sees a warning instead of a
-    // transform error for a transient condition.
+    // transform error for a transient condition. The bundler keeps that
+    // output, so the plan's dependencies stay indexed (never a hit): a
+    // later event of what it read reports the module.
+    unpublished = overtaken
     return { kind: 'plan', entry: overtaken, overtaken: true }
   } finally {
     cache.end(key)
+    if (unpublished) {
+      cache.restore({ key, dependencies: unpublished.plan.dependencies })
+    }
   }
 }
 

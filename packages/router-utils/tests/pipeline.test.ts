@@ -1179,8 +1179,8 @@ describe('attempts that are overtaken or throw', () => {
       }),
     )
     const cache = host.caches.plans.get('client')!
+    // (its dependencies stay indexed: (n2))
     expect(cache.get(key)).toBeNull()
-    expect(cache.dependents.stats().entries).toBe(0)
     // the next request compiles and publishes as usual
     const next = await host.compile('/app/consumer.ts', planners)
     expect(next!.diagnostics).toEqual([])
