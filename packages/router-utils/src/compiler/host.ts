@@ -535,7 +535,6 @@ export function dependencyPaths(
     if (
       fp.kind === 'summary' ||
       fp.kind === 'exports' ||
-      fp.kind === 'stars' ||
       fp.kind === 'target-facts' ||
       fp.kind === 'target-marker'
     ) {
