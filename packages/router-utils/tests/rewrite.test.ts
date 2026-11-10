@@ -1733,6 +1733,164 @@ describe('copied text keeps the edits under it', () => {
   })
 })
 
+// Source: design note 1 (rewrite tree), invariant I3 and F2-1 of the Fable
+// review: an edit's body names source text as a slice of the region it
+// edits, and a slice that cuts a region another edit rewrites would copy the
+// text that edit replaces. Such a body fails the compile, in every mode.
+describe('a kept slice cuts no edited region', () => {
+  /** `outer` rewrites `outerText` keeping `kept`; `inner` rewrites `innerText`. */
+  const cutting = (
+    code: string,
+    outerText: string,
+    kept: string,
+    innerText: string,
+  ): Planner => ({
+    name: 'toy-keep',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      ctx.rewrites.add({
+        range: rangeOf(code, outerText),
+        body: [
+          { k: 'text', parts: ['keep('] },
+          { k: 'slice', range: rangeOf(code, kept) },
+          { k: 'text', parts: [')'] },
+        ],
+        scope: 'all-outputs',
+        by: 'toy-outer',
+      })
+      ctx.rewrites.add({
+        range: rangeOf(code, innerText),
+        body: [{ k: 'text', parts: ['stub()'] }],
+        scope: 'all-outputs',
+        by: 'toy-inner',
+      })
+    },
+  })
+  const between = {
+    code: dedent(`
+      import { outer, inner, secret } from './lib'
+      outer(inner(secret))
+    `),
+    outer: 'outer(inner(secret))',
+    kept: 'secret',
+    inner: 'inner(secret)',
+  }
+  const straddling = {
+    code: dedent(`
+      import { outer, secret, other } from './lib'
+      outer(secret + 1, other)
+    `),
+    outer: 'outer(secret + 1, other)',
+    kept: '1, other',
+    inner: 'secret + 1',
+  }
+  const compileIn = async (
+    host: typeof MemoryHost,
+    c: typeof between,
+  ): Promise<unknown> =>
+    new host({ files: { '/app/mod.ts': c.code } }).compile('/app/mod.ts', [
+      cutting(c.code, c.outer, c.kept, c.inner),
+    ])
+
+  it('fails the compile when an edit lies between an edit and the slice it keeps', async () => {
+    await expect(compileIn(MemoryHost, between)).rejects.toThrow(
+      /conflict: .* cuts /,
+    )
+  })
+
+  it('fails the compile when an edit straddles the start of a kept slice', async () => {
+    await expect(compileIn(MemoryHost, straddling)).rejects.toThrow(
+      /conflict: .* cuts /,
+    )
+  })
+
+  it("fails the compile on both in users' runs", async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    try {
+      const { MemoryHost: Host } = await import('./helpers')
+      await expect(compileIn(Host, between)).rejects.toThrow(
+        /conflict: .* cuts /,
+      )
+      await expect(compileIn(Host, straddling)).rejects.toThrow(
+        /conflict: .* cuts /,
+      )
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+})
+
+// Source: design note 1, invariant I5 and F2-3 of the Fable review: an
+// insert belongs to the innermost region strictly containing its position,
+// so one at the edge of a claimed region renders once, at the place, and the
+// member around the place reads what it names.
+describe('an insert at the edge of a claimed region', () => {
+  it('renders once, beside the placeholder, and its reads stay with the place', () => {
+    const code = dedent(`
+      import { value } from './lib'
+      export const a = { x: value() }
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    const range = rangeOf(code, 'value()')
+    const tag = ctx.names.alloc('tsrTag')
+    ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: ['const ', { sym: tag.sym }, ' = 1\n'] }],
+      declares: [tag.sym],
+      effectful: false,
+      anchor: { k: 'after-header' },
+      home: 'auto',
+      by: 'toy',
+    })
+    const hoisted = ctx.names.alloc('tsrHoisted')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: 'auto',
+      by: 'toy',
+    })
+    ctx.rewrites.claim({
+      region: ctx.region(range, 'custom'),
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      by: 'toy',
+    })
+    for (const at of [range.start, range.end]) {
+      ctx.rewrites.add({
+        range: { start: at, end: at },
+        body: [
+          {
+            k: 'text',
+            parts:
+              at === range.start
+                ? [{ sym: tag.sym }, ' + ']
+                : [' + ', { sym: tag.sym }],
+          },
+        ],
+        scope: 'all-outputs',
+        by: 'toy',
+      })
+    }
+    expect(e.render().code).toBe(
+      dedent(`
+      const tsrTag = 1
+      import { value } from './lib'
+      export const a = { x: tsrTag + tsrHoisted + tsrTag }
+      const tsrHoisted = value()
+    `),
+    )
+  })
+})
+
 // Source: design note 1 (rewrite tree), invariant I1: every range a planner
 // addresses is a region of one tree shared by every output, so two edits
 // that cut each other conflict whichever outputs they are scoped to.
