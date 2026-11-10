@@ -183,7 +183,8 @@ export type RegionKind =
 /**
  * A placement member's text in the source: a unit, or a sub-region a
  * planner registers (its node in the tree). How regions nest is the tree's
- * (`RegionTable.parentOf`, `childrenOf`, `innermostAt`).
+ * (`RegionTable.parentOf`, `innermostAt`; placement indexes the nesting once
+ * per plan).
  */
 export interface Region {
   id: RegionId
@@ -242,8 +243,8 @@ export interface RangeNode {
  * another one throws, whatever outputs their edits are scoped to.
  *
  * Placement reads the regions (units and sub-regions, each under the
- * innermost region holding it: `parent`, `children`, `innermostAt`); the
- * ranges of edits are tree nodes only.
+ * innermost region holding it: `parentOf`, `innermostAt`); the ranges of
+ * edits are tree nodes only.
  */
 export class RegionTable {
   readonly regions: Array<Region> = []
@@ -254,8 +255,6 @@ export class RegionTable {
   private readonly root: RangeNode
   /** The nodes by start (several start at one offset only when nested). */
   private readonly nodes = new Map<number, RangeNode | Array<RangeNode>>()
-  /** `childrenOf`, per region (reset when a region or a node is added). */
-  private nested: Array<ReadonlyArray<RegionId> | undefined> | null = null
 
   constructor(
     length: number,
@@ -307,7 +306,6 @@ export class RegionTable {
     if (node.region === null || this.regions[node.region]!.unit !== null) {
       node.region = id
     }
-    this.nested = null
     return id
   }
 
@@ -316,7 +314,7 @@ export class RegionTable {
   }
 
   /** The unit region holding `[start, end)` (a zero-width range: the byte at `start`), if any. */
-  private unitAt(start: number, end: number): Region | null {
+  unitAt(start: number, end: number): Region | null {
     const i = this.lastUnitStartingBy(start)
     const u = i < 0 ? null : this.unitRegions[i]!
     return u === null || Math.max(end, start + 1) > u.range.end ? null : u
@@ -383,58 +381,6 @@ export class RegionTable {
       }
     }
     return this.unitAt(r.range.start, r.range.end)?.id ?? null
-  }
-
-  /** The regions nesting directly in a region (in source order). */
-  childrenOf(id: RegionId): ReadonlyArray<RegionId> {
-    const nested = (this.nested ??= [])
-    const hit = nested[id]
-    if (hit !== undefined) {
-      return hit
-    }
-    const list: Array<RegionId> = []
-    const { start, end } = this.regions[id]!.range
-    const own = this.nodeOn({ start, end })
-    const into = (x: RangeNode) => {
-      for (
-        let i = Math.max(0, lastStartingBy(x.children, start));
-        i < x.children.length;
-        i++
-      ) {
-        const c = x.children[i]!
-        if (c.start >= end) {
-          break
-        }
-        if (c.start < start || c.end > end) {
-          continue
-        }
-        if (c.region !== null && c.region !== id) {
-          list.push(c.region)
-        } else {
-          into(c)
-        }
-      }
-    }
-    if (own !== null && own.region === id) {
-      into(own)
-    } else {
-      // a unit, or a region without the node of its range (another one's)
-      let x = this.root
-      for (;;) {
-        const c = x.children[lastStartingBy(x.children, start)]
-        if (
-          c === undefined ||
-          c.end < end ||
-          (c.start === start && c.end === end)
-        ) {
-          break
-        }
-        x = c
-      }
-      into(x)
-    }
-    nested[id] = list
-    return list
   }
 
   /** The index of the last unit region starting at or before `offset` (-1: none). */
@@ -542,7 +488,6 @@ export class RegionTable {
       }
       siblings.push(node)
       this.index(node)
-      this.nested = null
       return node
     }
     // the children inside the new range move under it; one cut by it conflicts
@@ -578,7 +523,6 @@ export class RegionTable {
       node.marked ||= c.marked
     }
     this.index(node)
-    this.nested = null
     return node
   }
 
@@ -1840,4 +1784,3 @@ function same<T extends PlannerEdit>(found: T | null, e: T, n: RangeNode): T {
   }
   return found
 }
-

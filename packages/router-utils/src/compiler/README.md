@@ -58,7 +58,8 @@ emits its own output. Nothing depends on transform order.
   range of every edit, placeholder and claim, shared by every output and checked against the units, so two ranges
   nest or are disjoint whatever outputs they apply in; a range that partly overlaps another is a conflict as it is
   registered, and so is a second claim on one range. Each plan has its own (a fallback round starts again from the
-  units). How regions nest is read on the tree (`parentOf`, `childrenOf`, `innermostAt`).
+  units). How regions nest is read on the tree (`parentOf`, `innermostAt`); placement derives the nesting, where
+  each unit is, and what each region's text holds of the tree, once per plan.
 - **One walk per output** (`OutputView.walk`): source text enters an output only through it. A node renders its
   place (`placeholderOf`: a placeholder, or a kept claim's) or its text (`editOf`: its edit's body, or its source
   with the nodes inside it); a node that renders as its source is walked through, and an insert belongs to the
