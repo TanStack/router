@@ -489,7 +489,7 @@ export class PlanCache {
   /** The compile in flight per key: requests at its revision wait for it instead of compiling again. */
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
-  /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
+  /** `TSR_COMPILER_NO_CACHE=plans`: no plan is a hit (measurement knob); dependencies are still kept. */
   private readonly disabled = cacheDisabled('plans')
   /** Use counts for `compilerStats()`: validated plan hits. */
   readonly counters = { planHits: 0 }
@@ -509,8 +509,9 @@ export class PlanCache {
   /**
    * Plans known by their dependencies only, whose outputs a bundler holds:
    * one an earlier process published (the bundler's persistent cache
-   * restored its module without a compile), or the last attempt of a
-   * compile every attempt of which was overtaken. Never a hit, found stale
+   * restored its module without a compile), the last attempt of a
+   * compile every attempt of which was overtaken, or every plan when plan
+   * caching is off (`TSR_COMPILER_NO_CACHE=plans`). Never a hit, found stale
    * by `invalidate` like a published plan, replaced by the key's next
    * publication.
    */
@@ -624,17 +625,28 @@ export class PlanCache {
     return this.entries.get(planKeyString(key)) ?? null
   }
 
-  /** Publishes; refuses stale completions (generation moved or a newer revision was seen). */
+  /**
+   * Publishes; refuses stale completions (generation moved or a newer
+   * revision was seen). With plan caching off, the plan is kept by its
+   * dependencies only (`restored`: never a hit, its dependents still reported).
+   */
   set(entry: CacheEntry): boolean {
     const ks = planKeyString(entry.key)
     if ((this.generations.get(ks) ?? 0) !== entry.generation) {
       return false
     }
-    if (this.latest.get(ks) !== entry.revision || this.disabled) {
+    if (this.latest.get(ks) !== entry.revision) {
       return false
     }
-    this.entries.set(ks, entry)
-    this.restored.delete(ks)
+    if (this.disabled) {
+      this.restored.set(ks, {
+        key: entry.key,
+        dependencies: entry.plan.dependencies,
+      })
+    } else {
+      this.entries.set(ks, entry)
+      this.restored.delete(ks)
+    }
     this.track(ks, entry.key)
     return true
   }
