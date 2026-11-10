@@ -219,7 +219,7 @@ export class Generator {
   private published:
     | { content: string; mtimeMs: number; size: number }
     | undefined
-  /** A batch failed after the scan changed: the next one rebuilds the tree. */
+  /** A batch failed: the next one scans again and rebuilds the tree. */
   private stale = false
   private routesByFile: GetRoutesByFileMapResult = new Map()
 
@@ -405,6 +405,8 @@ export class Generator {
           failure = undefined
         } catch (error) {
           failure = { error }
+          // what this batch read reaches the tree with the next one
+          this.stale = true
           this.keepRegistryFactsCurrent()
         }
       }
@@ -505,7 +507,6 @@ export class Generator {
     }
 
     if (structural) {
-      this.stale = true
       let scan: ScanResult
       try {
         scan = await scanRoutes(this.config, this.root)
@@ -569,9 +570,7 @@ export class Generator {
       return
     }
 
-    // (until published: a failure here rebuilds on the next batch, and the
-    // model stays the published one)
-    this.stale = true
+    // (until published, the model stays the published one)
     const model = this.buildModel()
     await this.writePending(model)
     await this.publishTree(model)
@@ -611,8 +610,6 @@ export class Generator {
       }
     }
     if (unparsable.length > 0) {
-      // what this batch read reaches the tree with the next one
-      this.stale = true
       throw new UnparsableRouteFileError(unparsable.join('\n'))
     }
     if (failures.length > 0) {
