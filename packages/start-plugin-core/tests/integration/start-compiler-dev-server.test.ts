@@ -7,6 +7,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import react from '@vitejs/plugin-react'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
@@ -298,6 +299,38 @@ export const getSecret = authed.handler(() => 'MARK_KIT')
       })
       const { getSecret } = await server.import('/src/fns.ts')
       expect(await callServerFn(server, getSecret)).toBe('MARK_KIT')
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a tsconfig edit', () => {
+  // Source: review round 3 (R3-G3-1): Vite transforms every module again
+  // after a tsconfig edit, and the compiler answered from plans whose
+  // resolutions it did not ask again.
+  test(
+    'SSR: a server fn built on a factory imported through a path the edit adds runs by id',
+    async () => {
+      const tsconfig = (paths: Record<string, Array<string>>) =>
+        `${JSON.stringify({ compilerOptions: { paths } }, null, 2)}\n`
+      const server = await startDevServer({
+        start: {},
+        plugins: [tsconfigPaths()],
+        files: {
+          ...startRequestFiles,
+          'tsconfig.json': tsconfig({}),
+          'src/lib/base.ts': factory,
+          'src/fns.ts': `import { base } from '@lib/base'
+export const getLib = base.handler(() => 'MARK_LIB')
+`,
+        },
+      })
+      await expect(server.import('/src/fns.ts')).rejects.toThrow()
+      await server.edit({
+        'tsconfig.json': tsconfig({ '@lib/*': ['./src/lib/*'] }),
+      })
+      const { getLib } = await server.import('/src/fns.ts')
+      expect(await callServerFn(server, getLib)).toBe('MARK_LIB')
     },
     timeout,
   )
