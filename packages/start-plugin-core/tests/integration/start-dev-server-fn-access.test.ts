@@ -109,3 +109,72 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     timeout,
   )
 })
+
+/**
+ * The dev lookup compiles the defining file an id names when the server has
+ * not compiled it yet (a fresh server). An id comes from the caller, so it
+ * may name any file: only a file Vite's dev server may serve (`server.fs`,
+ * the rule of a `/@fs/` request) is compiled and called. The page builds
+ * both ids from the public URL of a server fn only server code calls,
+ * changing only the file it names: one under `server.fs.deny`, refused, and
+ * one the server may serve, answered (the forged request itself works).
+ * Rsbuild's dev resolver is a manifest of the bundle's server fns: an id
+ * names no file there.
+ */
+describe('vite dev lookup', () => {
+  const forgedFiles = {
+    ...files,
+    'src/secret/internal.ts': `import { createServerFn } from '@tanstack/react-start'
+export const internal = createServerFn().handler(() => 'MARK_SECRET')
+`,
+    'src/other/internal.ts': `import { createServerFn } from '@tanstack/react-start'
+export const internal = createServerFn().handler(() => 'MARK_OTHER')
+`,
+    'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { greet, internalUrl } from '../fns'
+export const Route = createFileRoute('/')({ component: Page })
+const decode = (text) => JSON.parse(atob(text.replace(/-/g, '+').replace(/_/g, '/')))
+const encode = (value) => btoa(JSON.stringify(value)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '')
+function Page() {
+  const [text, setText] = useState('idle')
+  const probe = async () => {
+    const url = await internalUrl()
+    const id = url.split('/').pop()
+    const naming = (file) => url.slice(0, -id.length) + encode({ ...decode(id), f: file })
+    const call = (target) => greet({ fetch: (_input, init) => fetch(target, init) }).then(String, () => 'refused')
+    setText('other=' + (await call(naming('src/other/internal.ts'))) + ' secret=' + (await call(naming('src/secret/internal.ts'))))
+  }
+  return <button data-testid="probe" onClick={probe}>{text}</button>
+}
+`,
+  }
+
+  test(
+    'an id naming a file the dev server may not serve is refused',
+    async () => {
+      const server = await startDevServer({
+        browser: true,
+        files: forgedFiles,
+        plugins: [
+          {
+            name: 'deny-secret',
+            config: () => ({ server: { fs: { deny: ['**/secret/**'] } } }),
+          },
+        ],
+      })
+      const page = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      await page.page.locator('[data-testid=probe]').click()
+      await page.waitForText(/other=/, { selector: '[data-testid=probe]' })
+      expect(await page.text('[data-testid=probe]')).toBe(
+        'other=MARK_OTHER secret=refused',
+      )
+    },
+    timeout,
+  )
+})
