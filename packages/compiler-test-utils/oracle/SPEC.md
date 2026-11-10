@@ -98,7 +98,9 @@ on Vue, or environments Start did not create.
   `@jsxImportSource`), CRLF line endings, BOM-free UTF-8, file names with any character the OS allows (e.g.
   `what's-new.tsx`). `.js`/`.jsx` modules compile like `.ts`/`.tsx`. Non-JS modules that compile to JS before our
   transforms (`.vue`, `.mdx`) are inputs of J6. Other non-JS modules (CSS, JSON, Markdown, `?raw` text) are never
-  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1).
+  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1). A
+  webpack-family request that disables the configured loaders (`!!./fns.ts`, `-!./fns.ts`) is a deliberate bypass
+  like `?raw`: its module is not compiled (ruling of review round 3, F1); import protection judges what it loads.
 - **Routing setups**: flat, directory and mixed file-based routing; virtual file routes (`virtualRouteConfig` as path
   or object, `physical()`, `__virtual.ts` subtrees); code-based routing (J4 only). One route per file route module,
   exported as `Route`. The file naming conventions of `routing/file-naming-conventions.md` with configurable

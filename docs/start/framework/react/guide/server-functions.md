@@ -152,6 +152,8 @@ function UserProfile({ id }) {
 
 The build process replaces server function implementations with RPC stubs in client bundles. The actual server code never reaches the browser.
 
+An import that asks the bundler to skip its configured processing is the exception, on purpose: a text import (`'./users.functions?raw'`) gives the file's text, and on Rsbuild a webpack inline-loader prefix that disables the configured loaders (`'!!./users.functions'`, `'-!./users.functions'`) loads the module uncompiled, its handlers included. Use them only on files that hold nothing server-only. Import protection still checks such imports of a `.server` file.
+
 > [!WARNING]
 > Avoid dynamic imports for server functions:
 >
