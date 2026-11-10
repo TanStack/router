@@ -621,6 +621,11 @@ export class RenderTree {
         // zero-width edit at the end boundary belongs to the following text
         break
       }
+      // an edit past `end` encloses the range or overlaps its end: no
+      // rendered edit follows it here. One at `start` encloses it (a claim
+      // around a copy of its left part) and hides the edits inside: no
+      // planner copies part of an edit's range from its start over an edit,
+      // and the renderer's copy check reports one that would (`editUnderCopy`)
       if (e.range.end > end) {
         break
       }
