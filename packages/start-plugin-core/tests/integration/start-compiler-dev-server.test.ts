@@ -336,6 +336,35 @@ export const getLib = base.handler(() => 'MARK_LIB')
   )
 })
 
+describe('Vite dev without HMR', () => {
+  // Source: review round 3 (R3-G4-4): Vite runs no `hotUpdate` hook with
+  // `server.hmr: false` (Vitest's dev server), which was the compiler's only
+  // invalidation of a dev server.
+  test(
+    'client: a module importing a factory that stops being one keeps its handler',
+    async () => {
+      const server = await startDevServer({
+        config: { server: { hmr: false, watch: {} } },
+        files: {
+          'src/b.ts': factory,
+          'src/a.ts': `import { base } from './b'
+export const run = base.handler(() => 'MARK_HANDLER')
+`,
+        },
+      })
+      const served = () => server.transform('/src/a.ts')
+      expect(await served()).not.toContain('MARK_HANDLER')
+      await writeFile(server.file('src/b.ts'), plain)
+      await waitForOutcome({
+        timeout: 10_000,
+        applied: async () => (await served()).includes('MARK_HANDLER'),
+        describe: served,
+      })
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
