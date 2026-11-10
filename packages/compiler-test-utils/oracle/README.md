@@ -32,11 +32,25 @@ not compilers (manifest, sitemap, prerender, RSC runtime, …), listed in each p
 
 ## Running
 
-The whole oracle, one task at a time (about 5 minutes on 16 cores, builds included):
+The whole oracle, its targets at once (about 3.5 minutes on 32 threads, 8 minutes one after another): one build, then
+two phases of test commands that build nothing (`--excludeTaskDependencies`), so no `dist` changes while tests read it:
 
 ```sh
-CI=1 NX_DAEMON=false pnpm nx run-many -t test:unit test:integration -p @tanstack/router-generator @tanstack/router-plugin @tanstack/start-plugin-core @tanstack/react-start-rsc --parallel=1 --outputStyle=stream --skipRemoteCache
+export CI=1 NX_DAEMON=false; logs=$(mktemp -d); echo "logs: $logs"
+pnpm nx run-many -t build --skipRemoteCache -p @tanstack/router-generator @tanstack/router-plugin @tanstack/start-plugin-core @tanstack/react-start-rsc @tanstack/react-start @tanstack/solid-start @tanstack/vue-start
+run() { pnpm nx run "$1" --excludeTaskDependencies --skipRemoteCache --skip-nx-cache --outputStyle=stream -- --maxWorkers="$2" > "$logs/${1//[\/:]/_}.log" 2>&1; echo "$1 exit $?"; }
+run @tanstack/router-generator:test:unit 2 & run @tanstack/router-generator:test:integration 2 & run @tanstack/start-plugin-core:test:unit 4 & wait
+run @tanstack/start-plugin-core:test:integration:whole 9 & run @tanstack/router-plugin:test:integration:whole 4 & run @tanstack/react-start-rsc:test:integration 4 & run @tanstack/router-plugin:test:unit 4 & wait
 ```
+
+- The first phase holds the tests with Vitest's 5 s default timeout (start-plugin-core's fast tier): under the slow
+  tiers' load they take most of it and time out.
+- The slow tiers run whole (`test:integration:whole`), each in one Vitest run with more workers: about 0.4 × the
+  logical CPUs in all, at most one per 2.4 GB of free memory, split 9 : 4 between start-plugin-core and router-plugin.
+  The run is CPU-bound: more workers add load and memory, not speed. Vitest's `--shard` slices finish unevenly.
+- The run takes the machine: start it with no other slow-tier run, and start none during it.
+- On a small machine, one target at a time:
+  `pnpm nx run-many -t test:unit test:integration -p @tanstack/router-generator @tanstack/router-plugin @tanstack/start-plugin-core @tanstack/react-start-rsc --parallel=1 --outputStyle=stream --skipRemoteCache`.
 
 One tier, one file, one test:
 
@@ -46,7 +60,8 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 ```
 
 - Always go through Nx: it builds the dependencies first; Vitest alone can test a stale `dist`.
-- One Nx command at a time. Each run uses 4 workers (`--maxWorkers=<n>` after `--` overrides).
+- One Nx command at a time, but for the whole oracle's test commands above. Each run uses 4 workers
+  (`--maxWorkers=<n>` after `--` overrides).
 - Never put `|` in a `-t` filter (Nx passes it through a shell).
 - Use `--skip-nx-cache` only when you measure time or set a switch below (Nx's cache does not know them).
 - The time budgets (`../test-budgets.json`) are reported after each run, and fail nothing unless
