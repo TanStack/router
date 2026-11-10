@@ -193,7 +193,10 @@ line:column. Lines follow every ECMAScript line terminator. Hosts compose the ma
 map names the file without its text (`sourcesContent`): Vite reads it, Rollup and Rolldown take the module's code, and
 the webpack-family hosts put it in the module map in production and in the emitted map files in development
 (`hosts/emitted-maps.ts`: the bundler hashes a module with its map, and the whole file in every output's map would hot-update
-every output of an edited file). The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
+every output of an edited file). Rollup and Rolldown name a module's source by its id (`route.tsx?tsr-split=…`); the
+Vite hosts' `outputOptions` compose `sourcemapPathTransform` with `withOwnSourcesNamedByFile` (`hosts/vite.ts`), which
+drops the owned query keys, so every output of a file names it once (R135); the webpack family names the resource
+path already. The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
 directives, never license comments.
 
 ### Values and summaries (`values.ts`, `summary.ts`, `resolve.ts`, `facts.ts`)

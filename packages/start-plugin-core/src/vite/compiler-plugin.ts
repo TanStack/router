@@ -36,6 +36,7 @@ import {
   rollupEntryModuleIds,
   warnEagerExports,
   watchDependencies,
+  withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { NODE_MODULES_RE } from '../compiler/scope'
@@ -488,6 +489,11 @@ function envCompilerPlugins(
       for (const environment of environments) {
         applyInvalidation(s, environment, change, res, now)
       }
+    },
+    // a derived output's map names its file, not `route.tsx?tsr-split=…`,
+    // `?tss-serverfn-split`, …
+    outputOptions(options) {
+      return withOwnSourcesNamedByFile(options)
     },
     renderChunk(code, chunk) {
       const s = state.sessionOf(this.environment)

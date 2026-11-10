@@ -6,8 +6,9 @@
  * transformed the file before the router plugin (composed maps); so does a
  * throw in code the splitter leaves in the route module or moves into a
  * shared module. The map holds the route file as written (what a debugger
- * shows), in development builds too. Map layout, `names`, granularity and
- * the source names a map lists are free (SPEC G6, §5.14).
+ * shows), in development builds too. Map layout, `names` and granularity
+ * are free (SPEC G6, §5.14); how a map names the route file:
+ * build-map-sources.test.ts.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
