@@ -575,11 +575,11 @@ class ImportProtectionEnv {
     ) {
       return null
     }
-    const rule = await fileOrMarkerRule(config, this.type, path, async () => {
-      if (identify(path).lang === null) {
+    const rule = await fileOrMarkerRule(config, this.type, path, async (id) => {
+      if (identify(id).lang === null) {
         return null
       }
-      const m = await marker(path)
+      const m = await marker(id)
       return m === 'conflict' ? 'server-only' : m
     })
     return {

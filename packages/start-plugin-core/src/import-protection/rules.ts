@@ -83,6 +83,18 @@ function matchFile(
   return m ? { type: 'file', index: rules.files.indexOf(m) } : null
 }
 
+/**
+ * The ids a target's file and marker rules judge: the id, and when its path
+ * holds a `#`, the path cut at its last `#`. A Vite id keeps a specifier's
+ * `#fragment` (`./db.server.ts#x` loads `db.server.ts`), which no id tells
+ * from a `#` of a path (`C#/src`): both are judged, and either one denies.
+ */
+function judgedIds(id: string): Array<string> {
+  const { path } = identify(id)
+  const hash = path.lastIndexOf('#')
+  return hash === -1 ? [id] : [id, path.slice(0, hash)]
+}
+
 /** The file rule denying a module's own path in an environment of `envType` (`excludeFiles` skips it). */
 export function ownFileRule(
   config: ImportProtectionConfig,
@@ -90,30 +102,46 @@ export function ownFileRule(
   path: string,
 ): RuleRef | null {
   const rules = rulesFor(config, envType)
-  const rel = relativeTargetPath(config, path)
-  return targetExcluded(rules, rel) ? null : matchFile(rules, rel)
+  for (const id of judgedIds(path)) {
+    const rel = relativeTargetPath(config, id)
+    const rule = targetExcluded(rules, rel) ? null : matchFile(rules, rel)
+    if (rule) {
+      return rule
+    }
+  }
+  return null
 }
 
-/** The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both). */
+/**
+ * The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both), for each id it
+ * judges (`judgedIds`; `marker` reads the marker of one).
+ */
 export async function fileOrMarkerRule(
   config: ImportProtectionConfig,
   envType: EnvType,
   file: string,
-  marker: () =>
+  marker: (
+    id: string,
+  ) =>
     | MarkerKind
     | 'conflict'
     | null
     | Promise<MarkerKind | 'conflict' | null>,
 ): Promise<RuleRef | null> {
   const rules = rulesFor(config, envType)
-  const rel = relativeTargetPath(config, file)
-  if (targetExcluded(rules, rel)) {
-    return null
+  for (const id of judgedIds(file)) {
+    const rel = relativeTargetPath(config, id)
+    if (targetExcluded(rules, rel)) {
+      continue
+    }
+    const rule =
+      matchFile(rules, rel) ??
+      (markerViolates(envType, await marker(id)) ? { type: 'marker' } : null)
+    if (rule) {
+      return rule
+    }
   }
-  return (
-    matchFile(rules, rel) ??
-    (markerViolates(envType, await marker()) ? { type: 'marker' } : null)
-  )
+  return null
 }
 
 /** Whether a target's marker denies it in an env of `envType` (a conflict is reported in the marked file itself). */
