@@ -646,7 +646,7 @@ function renderDerived(
     }
     pieces.push({
       pos: item.range.start,
-      order: 1,
+      order: 2,
       item,
       intact: recipe === 'keep',
       render: () => {
@@ -672,15 +672,15 @@ function renderDerived(
           ? Infinity
           : a.at
     // after-header: after the last included import (it starts before its end),
-    // before a statement starting where it ends and what is anchored before it
+    // before a statement starting where it ends and what is anchored before it;
+    // after-unit: before the next statement (its anchor is where that one
+    // starts), after what is anchored before it, as in the env module
     const order =
       a.gen.anchor.k === 'after-header'
         ? -1
         : a.gen.anchor.k === 'before-unit'
           ? 0
-          : a.gen.anchor.k === 'after-unit'
-            ? 2
-            : 1
+          : 1
     pieces.push({
       pos,
       order,

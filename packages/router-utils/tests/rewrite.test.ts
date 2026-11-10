@@ -1435,6 +1435,31 @@ describe('generated units next to what the source wrote', () => {
     expect(e.render().code).toContain(`const gen = 1\n/*! l */\n;(a).b = 1`)
   })
 
+  it('renders before the next statement in a derived output, as in the env module', () => {
+    const e = engine(`const a = 1\nconst b = 2\n`)
+    const out = e.ctx.declareOutput({
+      kind: 'hydrate',
+      key: 'h1',
+      derived: { kind: 'hydrate', value: 'h1' },
+    })
+    const gen = e.ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: ['const gen = 1\n'] }],
+      declares: [e.ctx.names.alloc('gen').sym],
+      effectful: true,
+      anchor: { k: 'after-unit', unit: 0 },
+      home: out,
+      by: 'toy',
+    })
+    for (const output of ['env', out]) {
+      e.ctx.addRoot(output, { t: 'gen', id: gen })
+      e.ctx.addRoot(output, { t: 'unit', id: 0 })
+      e.ctx.addRoot(output, { t: 'unit', id: 1 })
+    }
+    expect(e.render(out).code).toMatch(
+      /const a = 1\nconst gen = 1\nconst b = 2/,
+    )
+  })
+
   it('gives a statement starting with a parenthesis its `;`, after the unit', () => {
     const e = engine(`(a).b = 1\n`)
     e.ctx.addRoot('env', { t: 'gen', id: unit(e, { k: 'after-header' }) })
