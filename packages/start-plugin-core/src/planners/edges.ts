@@ -39,6 +39,7 @@ import { isBuiltin } from 'node:module'
 import {
   identify,
   isAssetId,
+  isExpressionWrapper,
   isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
@@ -128,15 +129,6 @@ const COMPONENT_OPTIONS = new Set([
   'shellComponent',
 ])
 
-/** Expression wrappers a value passes through unchanged (`Chart as any`, `(Chart)`). */
-const TRANSPARENT = new Set([
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'ParenthesizedExpression',
-])
-
 interface RenderedAt {
   name: string
   via: RenderedUse['via']
@@ -204,7 +196,8 @@ function renderedUse(
         if ((jsx && jsx.start < node.start) || insideClientOnly(node)) {
           continue
         }
-        // the whole tag or value: `UI.Chart` of `<UI.Chart />`
+        // the whole tag or value: `UI.Chart` of `<UI.Chart />` (and of
+        // `UI?.Chart`: an element's name has no optional chain)
         let outer = node
         let parent = parentOf(node)
         while (
@@ -216,7 +209,7 @@ function renderedUse(
           outer = parent
           parent = parentOf(parent)
         }
-        const name = code.slice(outer.start, outer.end)
+        const name = code.slice(outer.start, outer.end).replaceAll('?.', '.')
         if (node.type === 'JSXIdentifier') {
           jsx = { name, via: 'jsx', start: node.start }
           continue
@@ -224,7 +217,9 @@ function renderedUse(
         if (jsx || (option && option.start < node.start)) {
           continue
         }
-        while (parent && TRANSPARENT.has(parent.type)) {
+        // through what passes the value on unchanged (`Chart as any`,
+        // `Chart<Props>`, the optional chain of `UI?.Chart`)
+        while (parent && isExpressionWrapper(parent as never)) {
           outer = parent
           parent = parentOf(parent)
         }
