@@ -74,13 +74,13 @@
   },
   "dependencies": {
     "@jridgewell/remapping": "^2.3.5",
+    "@jridgewell/trace-mapping": "^0.3.31",
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
     "yuku": "0.27.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
-    "@jridgewell/trace-mapping": "^0.3.31",
     "@tanstack/vite-config": "catalog:",
     "@types/node": ">=20",
     "publint": "catalog:",

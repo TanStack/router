@@ -313,7 +313,13 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
             'index-map-loader.cjs': `module.exports = function (code) {
   const lines = code.split('\\n')
   const mappings = lines.map((_, i) => (i === 0 ? 'AAAA' : 'AACA')).join(';')
-  const map = { version: 3, sources: [this.resourcePath], names: [], mappings }
+  const map = {
+    version: 3,
+    sources: [this.resourcePath],
+    sourcesContent: [code],
+    names: [],
+    mappings,
+  }
   this.callback(null, code, {
     version: 3,
     sections: [{ offset: { line: 0, column: 0 }, map }],

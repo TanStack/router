@@ -1,9 +1,12 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { emittedMapTexts } from '../src/compiler'
+import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
+import { composeLoaderMap, emittedMapTexts } from '../src/compiler'
 import { fillSourcesContent } from '../src/compiler/hosts/emitted-maps'
+import type { EncodedSourceMap } from '@jridgewell/trace-mapping'
 import type { EmittedMapsCompilerLike } from '../src/compiler'
+import type { RawSourceMap } from '../src/compiler/output-builder'
 
 const context = path.resolve('/app')
 const mapDir = path.join(context, 'dist/static/js')
@@ -143,5 +146,45 @@ describe('emittedMapTexts', () => {
     ).toEqual({
       '0.js.map': { sources, sourcesContent: ['v2'], mappings: 'AACA' },
     })
+  })
+})
+
+describe('composeLoaderMap', () => {
+  // an earlier loader's index map (`sections`) composes like a plain one
+  it.each([
+    ['a plain map', (map: object) => map],
+    [
+      'an index map',
+      (map: object) => ({
+        version: 3,
+        sections: [{ offset: { line: 0, column: 0 }, map }],
+      }),
+    ],
+  ])('maps back through %s an earlier loader passed', (_, wrap) => {
+    const input = {
+      version: 3,
+      sources: ['/app/original.ts'],
+      sourcesContent: ['a\nb\n'],
+      names: [],
+      // line 2 of the earlier loader's output is line 1 of the original
+      mappings: ';AAAA',
+    }
+    const ours = {
+      version: 3,
+      sources: ['x'],
+      names: [],
+      // our line 2 is line 2 of what we were given
+      mappings: ';AACA',
+    } as RawSourceMap
+    const composed = composeLoaderMap(
+      ours,
+      '/app/route.tsx',
+      'a\nb\n',
+      wrap(input),
+      null,
+    ) as EncodedSourceMap
+    expect(
+      originalPositionFor(new TraceMap(composed), { line: 2, column: 0 }),
+    ).toMatchObject({ source: '/app/original.ts', line: 1, column: 0 })
   })
 })
