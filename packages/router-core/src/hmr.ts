@@ -9,6 +9,8 @@ import type { AnyRouter } from './router'
  * Called only by compiler output; not a public API.
  */
 export interface RouteHmrMeta {
+  /** The module is a lazy route file: its `Route` holds the options the route of its id loads with its chunk. */
+  lazy?: true
   /** Refresh identities of the component options left in the route module (a binding's name, `<specifier>#<export>` for an import); an option without one is swapped. */
   unsplit?: Record<string, string>
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, every module-level binding name the user does not export). */
@@ -192,6 +194,7 @@ function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
   for (const routeId in before) {
     if (!(routeId in router.routesById)) {
       hotRoutes.delete(routeId)
+      hotLazyRoutes.delete(routeId)
       hotChunks.delete(routeId)
       keptReaders.delete(routeId)
       adapter.retire?.(routeId)
@@ -216,6 +219,15 @@ export function applyRouteHmr(
 ): void {
   if (process.env.NODE_ENV !== 'production') {
     if (isServer ?? typeof window === 'undefined') {
+      return
+    }
+    if (meta.lazy) {
+      applyLazyRouteHmr(
+        routeId,
+        route as unknown as LazyRouteEvaluation,
+        meta,
+        adapter,
+      )
       return
     }
     // this evaluation owns the refresh: the route's chunks the refresh
@@ -254,6 +266,88 @@ export function applyRouteHmr(
       return
     }
     refreshRoute(routeId, route, meta, adapter, known)
+  }
+}
+
+/** A lazy route file's `Route` (`createLazyFileRoute(id)(options)`). */
+interface LazyRouteEvaluation {
+  options: { id: string } & Record<string, any>
+}
+
+// Per route id, the last evaluation of its lazy route file and its facts.
+// Bounded by the number of lazy route files.
+const hotLazyRoutes = new Map<
+  string,
+  { route: LazyRouteEvaluation; meta: RouteHmrMeta }
+>()
+
+/**
+ * Applies one evaluation of a lazy route file to the live route of its id.
+ * The route loads its lazy options from this evaluation from now on (the
+ * route tree's `import()` of the file keeps answering the module it first
+ * loaded); a route that loaded the earlier evaluation's options takes the
+ * new ones in place: a component keeps its held value when the framework
+ * patches it (`keepUnsplit`, as for a route module), and the options the
+ * edit removed leave the route (an option the route file sets too goes
+ * with them). The first evaluation only records itself.
+ */
+function applyLazyRouteHmr(
+  routeId: string,
+  lazy: LazyRouteEvaluation,
+  meta: RouteHmrMeta,
+  adapter: RouteHmrAdapter,
+): void {
+  if (process.env.NODE_ENV !== 'production') {
+    const known = hotLazyRoutes.get(routeId)
+    hotLazyRoutes.set(routeId, { route: lazy, meta })
+    const router = window.__TSR_ROUTER__
+    const live = router?.routesById?.[routeId] as HotRoute | undefined
+    if (!known || !router || !live) {
+      return
+    }
+    if (router._hmrReload) {
+      window.location.reload()
+      return
+    }
+    const state = live._lazy
+    router._replaceRouteChunk?.(live, () => Promise.resolve(lazy as any))
+    if (state === undefined) {
+      // not loaded: its first load takes this evaluation
+      return
+    }
+    if (state !== true) {
+      // loading the earlier evaluation, which the router now drops: the
+      // refresh loads this one
+      void router._refreshRoute?.()
+      return
+    }
+    const { id: _id, ...next } = lazy.options
+    const { id: _previousId, ...previous } = known.route.options
+    for (const key in previous) {
+      if (!(key in next)) {
+        delete live.options[key]
+      }
+    }
+    for (const key of componentKeys) {
+      const held = live.options[key]
+      const value = next[key]
+      if (
+        held !== undefined &&
+        value !== undefined &&
+        held !== value &&
+        adapter.keepUnsplit(
+          value,
+          held,
+          meta.unsplit?.[key] !== undefined &&
+            meta.unsplit[key] === known.meta.unsplit?.[key],
+        )
+      ) {
+        next[key] = held
+      }
+    }
+    live.update(next)
+    live._lazy = true
+    void router._refreshRoute?.()
   }
 }
 

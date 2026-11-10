@@ -12,6 +12,9 @@
  * so the original body is relocated, not reprinted), lowercase
  * module-level components are renamed module-wide. Any other value (a
  * conditional, a member) has no identity: an edit swaps it.
+ * A lazy route file (`createLazyFileRoute`, never split) gets both; its
+ * options are the ones the route loads with its chunk (`lazy: true` in the
+ * block's meta).
  * After it (`planHmrBlock`): the dev block, with the literal
  * `import.meta.hot.accept(` (Vite) / `import.meta.webpackHot.accept()`, the
  * `__tsrRouteHmr(routeId, Route, meta)` call that runs on every evaluation,
@@ -61,7 +64,7 @@ function isCapitalised(name: string): boolean {
  */
 export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
   const { cfg, route, plan } = round
-  if (route.kind === 'lazy' || route.options.kind !== 'object') {
+  if (route.options.kind !== 'object') {
     return
   }
   const split = new Set(plan.decisions.map((d) => d.key))
@@ -211,11 +214,7 @@ export function planHmrBlock(
   // options the compiler can't read may be one object shared across
   // evaluations, which the route adopts: a second evaluation can't take it, so
   // an edit reloads the page (J2.8)
-  if (
-    route.kind === 'lazy' ||
-    route.routeId === null ||
-    route.options.kind === 'opaque'
-  ) {
+  if (route.routeId === null || route.options.kind === 'opaque') {
     return
   }
   const { names } = ctx
@@ -223,7 +222,9 @@ export function planHmrBlock(
   const vite = style === 'vite'
   const reactVite = vite && cfg.framework === 'react'
   const anchor = reactVite ? names.alloc('TsrFastRefreshAnchor') : null
-  const metaParts: Array<string> = []
+  // a lazy route file's `Route` holds the options the route loads with its
+  // chunk: the runtime applies them to the route of its id
+  const metaParts: Array<string> = route.kind === 'lazy' ? ['lazy: true'] : []
   const unsplitKeys = Object.keys(round.unsplit)
   if (unsplitKeys.length > 0) {
     metaParts.push(
