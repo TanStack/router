@@ -45,9 +45,9 @@ emits its own output. Nothing depends on transform order.
   or `env-readers`: placement copies it into every derived output importing a binding of the env module other than
   the ones it names, once inclusion is decided (route HMR registers the chunks reading what the route module keeps); it
   declares nothing, owns no claim and reads only its own imports.
-- **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every region and the range of every edit,
-  shared by every output, so two ranges nest or are disjoint whatever outputs their edits are scoped to; a range that
-  partly overlaps another is a conflict as it is registered. Each plan has its own (a fallback round starts again from
+- **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region and the range of every
+  edit, shared by every output and checked against the units, so two ranges nest or are disjoint whatever outputs
+  their edits are scoped to; a range that partly overlaps another is a conflict as it is registered. Each plan has its own (a fallback round starts again from
   the units). What an output renders of the source (`OutputView`: whether a byte renders, the claims the output keeps,
   its erased parts) is read on that tree by climbing from a position's innermost range, so a question costs the
   nesting depth, not the number of edits. The renderer reads the output's edits sorted and nested (`RenderTree`).

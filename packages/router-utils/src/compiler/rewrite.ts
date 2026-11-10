@@ -163,8 +163,9 @@ interface PlannerEdit extends Edit {
 }
 
 /**
- * A range of the region tree: the module, a region, the range of planner
- * edits, or several of them (one node per range). Nodes nest or are disjoint.
+ * A range of the region tree: the module, a sub-region, the range of
+ * planner edits, or several of them (one node per range). Nodes nest or are
+ * disjoint, and nest or are disjoint with the units (`RegionTable.node`).
  * Zero-width ranges (inserts) are no nodes: they render at their position,
  * whose bytes decide whether they do.
  */
@@ -180,9 +181,9 @@ export interface RangeNode {
   edits: Array<PlannerEdit> | null
   /** The first claim of a region on exactly this range (a second is a conflict of the render tree). */
   claim: RegionClaim | null
+  /** Whether this node or one inside it holds an edit or a claim (the others decide nothing: every walk skips them). */
+  marked: boolean
 }
-
-const rangeKey = (start: number, end: number) => start * 0x4000000 + end
 
 /**
  * The regions of one plan and its region tree. Each unit is the region of
@@ -201,7 +202,8 @@ export class RegionTable {
   /** Sub-regions by `start:end:kind` (one region per range and kind). */
   private readonly subRegionByKey = new Map<string, RegionId>()
   private readonly root: RangeNode
-  private readonly nodes = new Map<number, RangeNode>()
+  /** The nodes by start (several start at one offset only when nested). */
+  private readonly nodes = new Map<number, RangeNode | Array<RangeNode>>()
 
   constructor(
     length: number,
@@ -215,8 +217,9 @@ export class RegionTable {
       by: 'the module',
       edits: null,
       claim: null,
+      marked: false,
     }
-    this.nodes.set(rangeKey(0, length), this.root)
+    this.nodes.set(0, this.root)
     for (const u of units) {
       const r: Region = {
         id: this.regions.length,
@@ -228,7 +231,6 @@ export class RegionTable {
       }
       this.regions.push(r)
       this.unitRegions.push(r)
-      this.node(u.range, `unit ${u.id}`)
     }
   }
 
@@ -313,6 +315,24 @@ export class RegionTable {
     }
   }
 
+  /** The index of the last unit region starting at or before `offset` (-1: none). */
+  private lastUnitStartingBy(offset: number): number {
+    const units = this.unitRegions
+    let lo = 0
+    let hi = units.length - 1
+    let found = -1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      if (units[mid]!.range.start <= offset) {
+        found = mid
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
+    }
+    return found
+  }
+
   /** The innermost region owning a reference. */
   ownerOf(ref: ClassifiedRef): RegionId {
     const id = this.innermostAt(ref.range.start, ref.range.end)
@@ -345,14 +365,37 @@ export class RegionTable {
     if (end <= start) {
       return null
     }
-    const hit = this.nodes.get(rangeKey(start, end))
-    if (hit !== undefined) {
+    const hit = this.nodeOn(range)
+    if (hit !== null) {
       return hit
     }
     if (start < 0 || end > this.root.end) {
       throw new Error(
         `conflict: ${by} [${start}, ${end}) is outside the module [0, ${this.root.end})`,
       )
+    }
+    // the units (disjoint, in source order) are ranges of the tree too: they
+    // hold no edit of their own, so they are checked here rather than kept
+    // as nodes (a node on exactly a unit's range is one of an edit)
+    const units = this.unitRegions
+    for (
+      let k = Math.max(0, this.lastUnitStartingBy(start));
+      k < units.length;
+      k++
+    ) {
+      const u = units[k]!.range
+      if (u.start >= end) {
+        break
+      }
+      if (
+        u.end > start &&
+        !(u.start <= start && u.end >= end) &&
+        !(u.start >= start && u.end <= end)
+      ) {
+        throw new Error(
+          `conflict: ${by} [${start}, ${end}) partially overlaps unit ${units[k]!.unit} [${u.start}, ${u.end})`,
+        )
+      }
     }
     let parent = this.root
     for (;;) {
@@ -363,6 +406,23 @@ export class RegionTable {
       parent = c
     }
     const siblings = parent.children
+    const last = siblings[siblings.length - 1]
+    if (last === undefined || last.end <= start) {
+      // (after every child)
+      const node: RangeNode = {
+        start,
+        end,
+        parent,
+        children: [],
+        by,
+        edits: null,
+        claim: null,
+        marked: false,
+      }
+      siblings.push(node)
+      this.index(node)
+      return node
+    }
     // the children inside the new range move under it; one cut by it conflicts
     let i = lastStartingBy(siblings, start)
     if (i < 0 || siblings[i]!.end <= start) {
@@ -386,45 +446,100 @@ export class RegionTable {
       by,
       edits: null,
       claim: null,
+      marked: false,
     }
     siblings.splice(i, 0, node)
     for (const c of node.children) {
       c.parent = node
+      node.marked ||= c.marked
     }
-    this.nodes.set(rangeKey(start, end), node)
+    this.index(node)
     return node
   }
 
   /** The tree node on exactly `range`, if any. */
   nodeOn(range: Range): RangeNode | null {
-    return this.nodes.get(rangeKey(range.start, range.end)) ?? null
+    const at = this.nodes.get(range.start)
+    if (at === undefined) {
+      return null
+    }
+    if (!Array.isArray(at)) {
+      return at.end === range.end ? at : null
+    }
+    for (const n of at) {
+      if (n.end === range.end) {
+        return n
+      }
+    }
+    return null
   }
 
-  /** The innermost tree node holding the byte at `offset` (none past the module's end). */
+  private index(node: RangeNode): void {
+    const at = this.nodes.get(node.start)
+    if (at === undefined) {
+      this.nodes.set(node.start, node)
+    } else if (Array.isArray(at)) {
+      at.push(node)
+    } else {
+      this.nodes.set(node.start, [at, node])
+    }
+  }
+
+  /** Whether the tree holds an edit or a claim at all. */
+  get marked(): boolean {
+    return this.root.marked
+  }
+
+  /** Marks `node` and the nodes around it as holding an edit or a claim. */
+  mark(node: RangeNode): void {
+    for (
+      let n: RangeNode | null = node;
+      n !== null && !n.marked;
+      n = n.parent
+    ) {
+      n.marked = true
+    }
+  }
+
+  /** The innermost marked tree node holding the byte at `offset` (none past the module's end). */
   nodeAt(offset: number): RangeNode | null {
     if (offset < 0 || offset >= this.root.end) {
       return null
     }
     let node = this.root
-    for (;;) {
-      const c = node.children[lastStartingBy(node.children, offset)]
-      if (c === undefined || c.end <= offset) {
-        return node
+    while (node.marked) {
+      const children = node.children
+      // (the last child starting at or before `offset`; a short list is read in order)
+      let c: RangeNode | undefined
+      if (children.length <= 8) {
+        for (const x of children) {
+          if (x.start > offset) {
+            break
+          }
+          c = x
+        }
+      } else {
+        c = children[lastStartingBy(children, offset)]
+      }
+      if (c === undefined || c.end <= offset || !c.marked) {
+        break
       }
       node = c
     }
+    return node
   }
 
-  /** The innermost tree node holding `range` whole. */
+  /** The innermost marked tree node holding `range` whole (the root at least). */
   nodeAround(range: Range): RangeNode {
     let node = this.root
-    for (;;) {
+    while (node.marked) {
       const c = node.children[lastStartingBy(node.children, range.start)]
-      if (c === undefined || c.end < range.end) {
-        return node
+      if (c === undefined || c.end < range.end || !c.marked) {
+        break
       }
       node = c
     }
+    return node
   }
 }
 
@@ -505,6 +620,7 @@ export class RewriteSet {
   private changes = 0
   private trees = new Map<string, { version: number; tree: RenderTree }>()
   private views = new Map<OutputId, OutputView>()
+  private envView: OutputView | undefined
   private owners: { version: number; owners: ReadonlySet<GenUnitId> } | null =
     null
 
@@ -515,6 +631,7 @@ export class RewriteSet {
     const node = this.regions.node(edit.range, edit.by)
     if (node !== null) {
       ;(node.edits ??= []).push(e)
+      this.regions.mark(node)
     }
     this.edits.push(e)
     this.bump()
@@ -558,6 +675,7 @@ export class RewriteSet {
     const node = this.regions.nodeOn(this.regions.get(claim.region).range)
     if (node !== null && node.claim === null) {
       node.claim = claim
+      this.regions.mark(node)
     }
     this.bump()
   }
@@ -617,6 +735,9 @@ export class RewriteSet {
 
   /** What `output` renders of the source (liveness). */
   view(output: OutputId): OutputView {
+    if (output === 'env') {
+      return (this.envView ??= new OutputView(this, 'env'))
+    }
     let view = this.views.get(output)
     if (view === undefined) {
       view = new OutputView(this, output)
@@ -759,10 +880,9 @@ export function erases(body: ReadonlyArray<Frag>, offset: number): boolean {
 }
 
 /** One edit or claim of a node, as the render tree of an output holds it (`OutputView.erasedParts`). */
-interface NodeItem {
-  edit: PlannerEdit | null
-  claim: RegionClaim | null
-}
+type NodeItem = PlannerEdit | RegionClaim
+
+const isClaim = (it: NodeItem): it is RegionClaim => 'owner' in it
 
 /**
  * What one output renders of the source, read on the region tree: whether
@@ -788,6 +908,8 @@ export class OutputView {
   private version = -1
   /** Per claim: an erasing edit strictly encloses its occurrence. */
   private readonly erasedClaims = new Map<RegionClaim, boolean>()
+  /** `erasedParts`, for this version. */
+  private erased: Array<Range> | null = null
 
   constructor(
     private readonly set: RewriteSet,
@@ -798,6 +920,7 @@ export class OutputView {
     if (this.version !== this.set.version) {
       this.version = this.set.version
       this.erasedClaims.clear()
+      this.erased = null
     }
   }
 
@@ -869,7 +992,7 @@ export class OutputView {
     const work = [...around.children]
     while (work.length > 0) {
       const n = work.pop()!
-      if (n.end <= range.start || n.start >= range.end) {
+      if (!n.marked || n.end <= range.start || n.start >= range.end) {
         continue
       }
       add(n.start)
@@ -933,40 +1056,62 @@ export class OutputView {
     return this.set.tree(this.output).edits
   }
 
-  /** The erased parts of this output (for provenance). */
-  erasedParts(): Array<Range> {
+  /** The erased parts of this output (for provenance; found once per version). */
+  erasedParts(): ReadonlyArray<Range> {
     this.sync()
+    this.erased ??= this.findErasedParts()
+    return this.erased
+  }
+
+  private findErasedParts(): Array<Range> {
     const out: Array<Range> = []
+    if (!this.set.regions.marked) {
+      return out
+    }
     const output = this.output
-    const claims = [...this.set.claims.values()]
-    const anyHidden = claims.some(
-      (c) => this.keeps(c) && this.occurrenceErased(c),
-    )
+    let anyHidden = false
+    for (const c of this.set.claims.values()) {
+      if (this.occurrenceErased(c) && this.keeps(c)) {
+        anyHidden = true
+        break
+      }
+    }
     // the items of each node in the render tree's order (identical edits of
     // one range are one)
     const itemsOf = new Map<RangeNode, Array<NodeItem>>()
-    const items = (node: RangeNode): Array<NodeItem> => {
+    const items = (node: RangeNode): ReadonlyArray<NodeItem> => {
+      const { edits, claim } = node
+      if (edits === null && claim === null) {
+        return NO_NODE_ITEMS
+      }
+      if (
+        claim === null &&
+        edits!.length === 1 &&
+        RewriteSet.inScope(edits![0]!.scope, output)
+      ) {
+        // (the common node: one edit)
+        return edits!
+      }
       let list = itemsOf.get(node)
       if (list !== undefined) {
         return list
       }
       list = []
-      const claim = node.claim
-      for (const e of node.edits ?? []) {
+      for (const e of edits ?? []) {
         if (
           RewriteSet.inScope(e.scope, output) &&
           !(claim !== null && e.scope === 'all-outputs')
         ) {
-          list.push({ edit: e, claim: null })
+          list.push(e)
         }
       }
       if (claim !== null) {
         if (this.keeps(claim)) {
-          list.push({ edit: null, claim })
+          list.push(claim)
         }
-        for (const e of node.edits ?? []) {
+        for (const e of edits ?? []) {
           if (e.scope === 'all-outputs') {
-            list.push({ edit: e, claim: null })
+            list.push(e)
           }
         }
       }
@@ -974,9 +1119,9 @@ export class OutputView {
         const prev = list![i - 1]
         return !(
           prev !== undefined &&
-          it.edit !== null &&
-          prev.edit !== null &&
-          fragsEqual(prev.edit.body, it.edit.body)
+          !isClaim(it) &&
+          !isClaim(prev) &&
+          fragsEqual(prev.body, it.body)
         )
       })
       itemsOf.set(node, list)
@@ -984,7 +1129,7 @@ export class OutputView {
     }
     /** Whether `it` is the edit replacing the placeholder of a kept claim on its range. */
     const overridesClaim = (node: RangeNode, it: NodeItem): boolean =>
-      it.edit !== null &&
+      !isClaim(it) &&
       node.claim !== null &&
       this.keeps(node.claim) &&
       items(node)[0] === it
@@ -993,7 +1138,7 @@ export class OutputView {
     const erased = (s: number, e: number, by: NodeItem) => {
       let pos = s
       const within = (c: RangeNode) => {
-        if (c.end <= pos || c.start >= e) {
+        if (!c.marked || c.end <= pos || c.start >= e) {
           return
         }
         if (
@@ -1006,11 +1151,7 @@ export class OutputView {
             out.push({ start: pos, end: c.start })
           }
           // (`by` may be on exactly the claim: it already erased what it erases)
-          visit(
-            c.start,
-            c.end,
-            new Set([items(c).find((it) => it.claim !== null)!, by]),
-          )
+          visit(c.start, c.end, new Set([c.claim, by]))
           pos = c.end
           return
         }
@@ -1047,7 +1188,7 @@ export class OutputView {
           }
         }
         for (const c of node.children) {
-          if (c.end <= s) {
+          if (!c.marked || c.end <= s) {
             continue
           }
           if (c.start >= e) {
@@ -1070,12 +1211,12 @@ export class OutputView {
     }
     const visit = (s: number, e: number, excluded: ReadonlySet<NodeItem>) => {
       for (const { node, item } of topLevel(s, e, excluded)) {
-        if (item.claim !== null || overridesClaim(node, item)) {
+        if (isClaim(item) || overridesClaim(node, item)) {
           // relocation, not erasure: look for erasing edits inside the region
           visit(node.start, node.end, new Set([...excluded, item]))
           continue
         }
-        const body = item.edit!.body
+        const body = item.body
         let pos = node.start
         const covered: Array<Range> = []
         for (const f of body) {
@@ -1193,6 +1334,7 @@ export class OutputView {
 }
 
 const NO_ITEMS: ReadonlySet<NodeItem> = new Set()
+const NO_NODE_ITEMS: ReadonlyArray<NodeItem> = []
 
 /**
  * Edits of one output sorted by (start asc, zero-width first, end desc,
