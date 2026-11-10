@@ -50,6 +50,54 @@ const stubs: Planner = {
   },
 }
 
+/**
+ * The provider side: every handler claimed and hoisted into a unit of its
+ * own (the owner renders the claimed region), and the same renames.
+ */
+const hoists: Planner = {
+  name: 'toy-hoists',
+  tier: 1,
+  gate: () => true,
+  plan(ctx) {
+    const code = ctx.analysis.source.code
+    let i = 0
+    for (const m of code.matchAll(/wrapServer\((.*)\)/g)) {
+      const start = m.index + 'wrapServer('.length
+      const range = { start, end: start + m[1]!.length }
+      const region = ctx.region(range, 'custom')
+      const local = ctx.names.alloc(`tsrH${i++}`)
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: local.sym }, ' = '] },
+          { k: 'region', id: region },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'toy-hoists',
+      })
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: local.sym }] }],
+        by: 'toy-hoists',
+      })
+    }
+    const rename = (start: number, end: number) =>
+      ctx.rewrites.add({
+        range: { start, end },
+        body: [{ k: 'text', parts: [`${code.slice(start, end)}_`] }],
+        scope: 'all-outputs',
+        by: 'toy-hoists',
+      })
+    for (const ref of ctx.t1.refs.all) {
+      rename(ref.range.start, ref.range.end)
+    }
+  },
+}
+
 describe('module-size scaling', () => {
   // (users' runs: the test runs' output checks are not what is measured)
   it('compiles a module of 1,600 server functions in less than 6 times one of 400', async () => {
@@ -72,6 +120,35 @@ describe('module-size scaling', () => {
         return samples.sort((a, b) => a - b)[3]!
       }
       // warm the compiler's code paths first
+      await time(400)
+      const small = await time(400)
+      const large = await time(1600)
+      expect(large / small).toBeLessThan(6)
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  }, 60_000)
+
+  it('compiles a module of 1,600 hoisted server functions in less than 6 times one of 400', async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    try {
+      const { MemoryHost } = await import('./helpers')
+      const time = async (n: number): Promise<number> => {
+        const code = serverModule(n)
+        const samples: Array<number> = []
+        for (let i = 0; i < 7; i++) {
+          const host = new MemoryHost({ files: { '/app/fns.ts': code } })
+          const t = performance.now()
+          const out = await host.compile('/app/fns.ts', [hoists])
+          samples.push(performance.now() - t)
+          expect(out!.code).toContain(
+            `const tsrH${n - 1} = () => helper${n - 1}_(${n - 1})`,
+          )
+        }
+        return samples.sort((a, b) => a - b)[3]!
+      }
       await time(400)
       const small = await time(400)
       const large = await time(1600)

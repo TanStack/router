@@ -253,11 +253,19 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             },
           ],
         })
-        // the chunk unit owning the option value
+        // the chunk unit owning the option value (an identifier the env
+        // module rewrites in place: the chunk names its binding)
+        const identifierEdit =
+          opts.identifierEdits === true && valueSym !== null
+        const region = identifierEdit
+          ? null
+          : ctx.region(valueRange, 'option-value')
         const owner = ctx.rewrites.addGenerated({
           body: [
             { k: 'text', parts: [`const ${split.name} = `] },
-            { k: 'slice', range: valueRange },
+            region === null
+              ? { k: 'text', parts: [{ sym: valueSym! }] }
+              : { k: 'region', id: region },
             { k: 'text', parts: [`\nexport { ${split.name} as ${key} }\n`] },
             ...(opts.homeIds && valueSym !== null
               ? [
@@ -293,7 +301,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             ],
           },
         ]
-        if (opts.identifierEdits && valueSym !== null) {
+        if (region === null) {
           ctx.rewrites.add({
             range: valueRange,
             body: placeholder,
@@ -303,7 +311,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           continue
         }
         ctx.rewrites.claim({
-          region: ctx.region(valueRange, 'option-value'),
+          region,
           owner,
           placeholder,
           by: 'toy-split',
@@ -750,7 +758,7 @@ export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
                 ') { return <>',
               ],
             },
-            { k: 'slice', range: b.children },
+            { k: 'region', id: region },
             { k: 'text', parts: ['</> }\n'] },
           ],
           declares: [comp.sym],

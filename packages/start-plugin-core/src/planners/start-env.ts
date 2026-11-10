@@ -57,6 +57,7 @@ import type {
   Planner,
   Range,
   SymbolId,
+  TextFrag,
   Unit,
 } from '@tanstack/router-utils/compiler'
 import type { CompileStartFrameworkOptions } from '../types'
@@ -128,7 +129,7 @@ const text = (
   ...parts: Array<
     string | { sym: SymbolId; ctx?: 'expr' | 'callee' | 'jsxTag' }
   >
-): Frag => ({
+): TextFrag => ({
   k: 'text',
   parts,
 })
@@ -1007,10 +1008,11 @@ function planStartEnv(
     if (lazySites.has(site)) {
       const { out, load } = lazyHandlerOutput()
       const local = names.alloc(`tsrHandler$${identifierBase(site.stableKey)}`)
+      const region = ctx.region(rangeOf(h), 'custom')
       const owner = rewrites.addGenerated({
         body: [
           text('const ', { sym: local.sym }, ' = '),
-          slice(rangeOf(h)),
+          { k: 'region', id: region },
           text('\nexport { ', { sym: local.sym }, ' }\n'),
         ],
         declares: [local.sym],
@@ -1021,7 +1023,7 @@ function planStartEnv(
       })
       ctx.addRoot(out, { t: 'gen', id: owner })
       rewrites.claim({
-        region: ctx.region(rangeOf(h), 'custom'),
+        region,
         owner,
         placeholder: [
           text(
@@ -1741,7 +1743,7 @@ function hoist(
     const owner: GenUnitId = rewrites.addGenerated({
       body: [
         text('const ', { sym: hoisted.sym }, ' = '),
-        slice(xRange),
+        { k: 'region', id: region },
         text('\n'),
       ],
       declares: [hoisted.sym],

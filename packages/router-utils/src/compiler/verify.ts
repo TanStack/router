@@ -157,21 +157,6 @@ export function verifyPlan(
         }
       }
     }
-    // (c) an output holds nothing its own rewrite tree erases (a handler
-    // body erased in every output of the client never reaches a chunk)
-    const erased = plan.rewrites.view(id).erasedParts()
-    for (const seg of recipe.segments) {
-      if (seg.k !== 'slice') {
-        continue
-      }
-      for (const e of erased) {
-        if (seg.start < e.end && seg.end > e.start) {
-          problems.push(
-            `${id}: holds text its output erases ([${e.start}, ${e.end}) in [${seg.start}, ${seg.end}))`,
-          )
-        }
-      }
-    }
     // (g) no output reads a module binding of the source, or a generated
     // binding, it neither declares nor imports (the read would fall through
     // to a global)

@@ -3,17 +3,18 @@
  * recipe (the env module with its statement-level dead-code edits, the
  * derived modules' header, glue imports, items and generated units in
  * order, the export glue), its edges and its side-effect flag. `Renderer`
- * applies the render tree, substitution environments and context-aware
- * reference rewrites; no Yuku object is reachable from the result.
+ * is the segment visitor of the output's walk (`OutputView.walk`), with
+ * substitution environments and context-aware reference rewrites; no Yuku
+ * object is reachable from the result.
  */
+import { walk } from 'yuku'
 import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
-import { EditBand, compareEditOrder, erases } from './rewrite'
-import { invariantViolated } from './self-checks'
+import { EditBand, compareCoreEdits, compareEditOrder, erases } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -24,30 +25,27 @@ import type {
   Segment,
 } from './plan'
 import type { OutputDecl, Placement } from './reach'
-import type { Diagnostic } from './diagnostics'
-import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
+  CoreEdit,
   Frag,
+  GenFrag,
   GeneratedUnit,
   OutputId,
+  OutputView,
+  RangeNode,
   RefTarget,
-  RenderTree,
   SubstEnv,
   SymRefContext,
-  TreeEdit,
 } from './rewrite'
 import type { Node } from 'yuku'
 
-/** `report`: the diagnostic of a violated invariant (only when the run reports it: `self-checks.ts`). */
-export function freezePlan(
-  plan: AnalysisPlan,
-  revision: string,
-  report: (v: InvariantViolation) => Diagnostic,
-): EmitPlan {
+export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   const placement = plan.placement ?? plan.resolve()
   const { analysis } = plan
+  // two edits of one range that differ in an output, rendered or not
+  plan.rewrites.checkConflicts(plan.outputs.keys())
   const code = analysis.source.code
   const outputs: Record<string, OutputRecipe> = {}
   const edges: Record<string, Array<EdgeRecord>> = {}
@@ -169,7 +167,6 @@ export function freezePlan(
         ...d,
         range: d.range ? { ...d.range } : undefined,
       })),
-      ...(renderer.violation !== undefined ? [report(renderer.violation)] : []),
     ],
     sideEffects,
   }
@@ -220,7 +217,7 @@ function renderEnv(
   const { t1, rewrites, analysis } = plan
   const { items, units } = t1
   const code = analysis.source.code
-  const extra: Array<TreeEdit> = []
+  const extra: Array<CoreEdit> = []
   let coreEdits = 0
   const envView = rewrites.view('env')
   // a statement only the line break inside the multi-line comment after it
@@ -238,7 +235,6 @@ function renderEnv(
         by: 'core:glue',
         band: EditBand.lineEnd,
         n: 0,
-        claim: null,
       })
     }
   }
@@ -259,9 +255,8 @@ function renderEnv(
       by: gen.by,
       band: EditBand.core,
       n: coreEdits++,
-      claim: null,
       gen: gen.id,
-    } as TreeEdit)
+    })
   }
   /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
   const siblingExports: Array<{ sym: SymbolId; name: string }> = []
@@ -319,7 +314,6 @@ function renderEnv(
         by: 'core:dce',
         band: EditBand.core,
         n: coreEdits++,
-        claim: null,
       })
     }
     previous = { item, intact: recipe === 'keep' }
@@ -332,7 +326,6 @@ function renderEnv(
       by: 'core:dce',
       band: EditBand.core,
       n: coreEdits++,
-      claim: null,
     })
   }
   // glue imports of the env output (from shared/derived homes) after the header
@@ -350,7 +343,6 @@ function renderEnv(
       by: 'core:glue',
       band: EditBand.glueImports,
       n: 0,
-      claim: null,
     })
   }
   // export glue at the end (re-exports of extracted exports first)
@@ -372,7 +364,6 @@ function renderEnv(
       by: 'core:glue',
       band: EditBand.core,
       n: coreEdits++,
-      claim: null,
     })
   }
   // text appended at the end starts on its own line
@@ -385,11 +376,10 @@ function renderEnv(
       first.body = [{ k: 'text', parts: ['\n'] }, ...first.body]
     }
   }
-  const tree = rewrites.tree('env', extra)
   // what the edits outside the region tree remove (statements placement
   // drops, cut declarator lists) decides the bytes nothing in it decides
   const removals = extra.filter((x) => x.range.end > x.range.start)
-  renderer.setTree(tree, (offset) => {
+  renderer.setView(envView, [...extra].sort(compareCoreEdits), (offset) => {
     const decided = envView.erasedBy(offset)
     if (decided !== null) {
       return decided
@@ -411,7 +401,16 @@ function renderEnv(
     return false
   })
   const out: Array<Segment> = []
-  renderer.renderRange(0, code.length, null, null, out, null, true)
+  renderer.renderSpan(
+    rewrites.regions.module,
+    0,
+    code.length,
+    null,
+    null,
+    out,
+    null,
+    true,
+  )
   return out
 }
 
@@ -612,9 +611,9 @@ function renderDerived(
   const { t1, rewrites, analysis } = plan
   const { items, units } = t1
   const code = analysis.source.code
-  const tree = rewrites.tree(decl.id)
   const view = rewrites.view(decl.id)
-  renderer.setTree(tree, (offset) => view.isErasedAt(offset))
+  renderer.setView(view, null, (offset) => view.isErasedAt(offset))
+  const root = rewrites.regions.module
   const out: Array<Segment> = []
   const anchored = anchoredGenerated(plan, decl.id, placement)
   const empty =
@@ -686,7 +685,8 @@ function renderDerived(
       intact: recipe === 'keep',
       render: () => {
         if (recipe === 'keep') {
-          renderer.renderRange(
+          renderer.renderSpan(
+            root,
             item.range.start,
             item.range.end,
             null,
@@ -694,7 +694,10 @@ function renderDerived(
             out,
           )
         } else {
-          renderer.renderFrags(recipe, null, null, out)
+          renderer.renderFrags(recipe, null, null, out, null, {
+            level: root,
+            skipAt: null,
+          })
         }
       },
     })
@@ -854,23 +857,31 @@ function isAmbientValueDeclaration(node: Node): boolean {
   }
 }
 
+/** Where an edit's body names source text: slices of `level` (the node it rewrites, the module for the core's statement recipes). */
+interface SliceLevel {
+  level: RangeNode
+  /** The inserts there render before the edit (a core edit's start). */
+  skipAt: number | null
+}
+
 /**
- * Renders ranges and fragments of one output into segments, applying the
- * render tree (edits, placeholders), substitution environments and
- * context-aware reference rewrites.
+ * Renders ranges and fragments of one output into segments: the segment
+ * visitor of the output's walk (`OutputView.walk`: source text, active nodes
+ * whole, inserts, and the env module's core edits), applying substitution
+ * environments and context-aware reference rewrites.
  */
 class Renderer {
-  tree!: RenderTree
+  view!: OutputView
   erasedAt!: (offset: number) => boolean
-  /** The first violated invariant (only when the run reports it: `self-checks.ts`). */
-  violation: InvariantViolation | undefined
+  /** The core edits of the output (the env module's), sorted (`compareCoreEdits`). */
+  private core: ReadonlyArray<CoreEdit> | null = null
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
-  /** Per offset: the statement list a statement starting there stands in (`program`, `nested`), or none. */
+  /** Per statement of the module: the statements of the lists inside it by start, found on first need (`statementStartsIn`). */
   private readonly statementStarts = new Map<
     number,
-    'program' | 'nested' | null
+    Map<number, 'program' | 'nested'>
   >()
 
   constructor(
@@ -884,86 +895,48 @@ class Renderer {
     this.edges = edges
   }
 
-  /** The tree to render, and whether an original byte renders in no text of its output (`sourceEdges`). */
-  setTree(tree: RenderTree, erasedAt: (offset: number) => boolean): void {
-    this.tree = tree
+  /** What the output renders, its core edits, and whether an original byte renders in no text of it (`sourceEdges`). */
+  setView(
+    view: OutputView,
+    core: ReadonlyArray<CoreEdit> | null,
+    erasedAt: (offset: number) => boolean,
+  ): void {
+    this.view = view
+    this.core = core
     this.erasedAt = erasedAt
   }
 
-  renderRange(
+  /** Renders `[start, end)` of `level`'s text (`OutputView.walk`). */
+  renderSpan(
+    level: RangeNode,
     start: number,
     end: number,
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
     out: Array<Segment>,
-    exclude: TreeEdit | null = null,
+    skipAt: number | null = null,
     includeEnd = false,
-    skipZeroWidthAt: number | null = null,
   ): void {
-    const cuts: Array<{
-      start: number
-      end: number
-      edit: TreeEdit | null
-      ref: ClassifiedRef | null
-    }> = []
-    for (const e of this.tree.topLevelWithin(
-      start,
-      end,
-      exclude,
-      includeEnd,
-      skipZeroWidthAt,
-    )) {
-      cuts.push({ start: e.range.start, end: e.range.end, edit: e, ref: null })
-    }
+    // the references a substitution environment rewrites in the source text
+    // (one inside an active node renders with it)
+    let subst: Array<ClassifiedRef> | null = null
     if (env && env.size > 0) {
+      subst = []
       for (const ref of this.plan.t1.refs.refsIn({ start, end })) {
         if (
-          !env.has(ref.sym) ||
-          ref.kind === 'implicitJsxFactory' ||
-          ref.kind === 'exportSpecifier'
+          env.has(ref.sym) &&
+          ref.kind !== 'implicitJsxFactory' &&
+          ref.kind !== 'exportSpecifier'
         ) {
-          continue
+          subst.push(ref)
         }
-        if (
-          cuts.some(
-            (c) =>
-              c.edit !== null &&
-              c.start <= ref.range.start &&
-              ref.range.start < c.end,
-          )
-        ) {
-          continue
-        }
-        cuts.push({
-          start: ref.range.start,
-          end: ref.range.end,
-          edit: null,
-          ref,
-        })
       }
-      cuts.sort((a, b) => a.start - b.start || a.end - b.end)
     }
-    let pos = start
+    let si = 0
     // the source text after an edit: the statement it starts may follow
     // what the edit left (a removed `const local = 1;` before `(mk)()`)
     let afterEdit = false
-    const sliceTo = (to: number) => {
-      // Safety net (R127): copied text applies every edit of the output
-      // under it; an edit it would lose is a compiler bug, and the output
-      // would ship the text that edit replaces. It exists to catch compiler
-      // bugs and can go once we trust the compiler's reliability.
-      if (this.violation === undefined) {
-        const lost = this.tree.editUnderCopy(pos, to, start, end, exclude)
-        if (lost !== null) {
-          this.violation = invariantViolated({
-            effect:
-              'part of the module would be copied without the changes the compiler makes to it',
-            detail: `render: ${this.output} copies the original text of [${pos}, ${to}) over an edit of ${lost.by} at [${lost.range.start}, ${lost.range.end})`,
-            range: { start: lost.range.start, end: lost.range.end },
-            severity: 'error',
-          })
-        }
-      }
+    const copy = (pos: number, to: number) => {
       if (!afterEdit) {
         out.push({ k: 'slice', start: pos, end: to })
         return
@@ -982,53 +955,92 @@ class Renderer {
       // (a statement of the module's own list has freeze's guard)
       this.guardStatementStart(this.tokenStart(from, to), out, at, true)
     }
-    for (const cut of cuts) {
-      if (cut.start > pos) {
-        sliceTo(cut.start)
-      }
-      afterEdit = cut.edit !== null
-      if (cut.edit !== null) {
-        const e = cut.edit
-        const gen = (e as TreeEdit & { gen?: number }).gen
-        const unit =
-          gen !== undefined ? this.plan.rewrites.generated[gen]! : owner
-        const nextEnv =
-          gen !== undefined
-            ? mergeEnv(env, this.plan.rewrites.generated[gen]!.env)
-            : env
-        const at = out.length
-        this.renderFrags(
-          e.body,
-          unit,
-          nextEnv,
-          out,
-          gen !== undefined ? this.plan.rewrites.generated[gen]! : null,
-          e,
-        )
-        this.guardStatementStart(e.range.start, out, at)
-      } else {
-        const ref = cut.ref!
-        const to = env!.get(ref.sym)!
-        const at = out.length
-        out.push({
-          k: 'text',
-          text: this.renderRefText(
-            ref.ctx,
-            to,
+    this.view.walk(
+      level,
+      start,
+      end,
+      {
+        source: (s, e) => {
+          let pos = s
+          if (subst !== null) {
+            while (si < subst.length && subst[si]!.range.start < s) {
+              si++ // (inside an active node)
+            }
+            while (si < subst.length && subst[si]!.range.start < e) {
+              const ref = subst[si++]!
+              if (ref.range.start > pos) {
+                copy(pos, ref.range.start)
+              }
+              afterEdit = false
+              const at = out.length
+              out.push({
+                k: 'text',
+                text: this.renderRefText(
+                  ref.ctx,
+                  env!.get(ref.sym)!,
+                  env,
+                  ref.exportShorthand,
+                  this.code.slice(ref.range.start, ref.range.end),
+                ),
+                mapTo: ref.range.start,
+              })
+              // a callee at a statement's start renders `(0, props.x)`: as an edit
+              this.guardStatementStart(ref.range.start, out, at)
+              pos = Math.max(pos, ref.range.end)
+            }
+          }
+          if (e > pos) {
+            copy(pos, e)
+          }
+        },
+        node: (n) => {
+          afterEdit = true
+          const at = out.length
+          this.renderFrags(
+            (this.view.placeOf(n) ?? this.view.textOf(n))!,
+            owner,
             env,
-            ref.exportShorthand,
-            this.code.slice(ref.range.start, ref.range.end),
-          ),
-          mapTo: ref.range.start,
-        })
-        // a callee at a statement's start renders `(0, props.x)`: as an edit
-        this.guardStatementStart(ref.range.start, out, at)
-      }
-      pos = Math.max(pos, cut.end)
-    }
-    if (end > pos) {
-      sliceTo(end)
-    }
+            out,
+            null,
+            { level: n, skipAt: null },
+          )
+          this.guardStatementStart(n.start, out, at)
+        },
+        insert: (e) => {
+          afterEdit = true
+          const at = out.length
+          this.renderFrags(e.body, owner, env, out)
+          this.guardStatementStart(e.range.start, out, at)
+        },
+      },
+      {
+        skipAt,
+        includeEnd,
+        core:
+          this.core === null
+            ? null
+            : {
+                edits: this.core,
+                visit: (x, at) => {
+                  afterEdit = true
+                  const gen =
+                    x.gen !== undefined
+                      ? this.plan.rewrites.generated[x.gen]!
+                      : null
+                  const from = out.length
+                  this.renderFrags(
+                    x.body,
+                    gen ?? owner,
+                    gen !== null ? mergeEnv(env, gen.env) : env,
+                    out,
+                    gen,
+                    gen !== null ? null : { level: at, skipAt: x.range.start },
+                  )
+                  this.guardStatementStart(x.range.start, out, from)
+                },
+              },
+      },
+    )
   }
 
   /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
@@ -1039,46 +1051,66 @@ class Renderer {
     return start + m![0].length
   }
 
+  /**
+   * Renders fragments: `slices` says where the body's slices are (none in a
+   * generated unit, which names source text as the regions it claims).
+   */
   renderFrags(
-    frags: ReadonlyArray<Frag>,
+    frags: ReadonlyArray<Frag | GenFrag>,
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
     out: Array<Segment>,
     entering: GeneratedUnit | null = null,
-    within: TreeEdit | null = null,
+    slices: SliceLevel | null = null,
   ): void {
     const unit = entering ?? owner
     const mergedEnv = mergeEnv(env, unit?.env)
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
-          // a claimed region embedded by its owner renders its content, not the placeholder
-          let exclude: TreeEdit | null = null
-          if (unit) {
-            for (const e of this.tree.edits) {
-              if (
-                e.claim !== null &&
-                e.range.start === f.range.start &&
-                e.range.end === f.range.end
-              ) {
-                const claim = this.plan.rewrites.claims.get(e.claim)
-                if (claim && claim.owner === unit.id) {
-                  exclude = e
-                }
-                break
-              }
-            }
+          const level = slices?.level
+          if (
+            level === undefined ||
+            f.range.start < level.start ||
+            f.range.end > level.end
+          ) {
+            throw new Error(
+              `conflict: a body copies [${f.range.start}, ${f.range.end}), outside the text it rewrites${level ? ` [${level.start}, ${level.end})` : ''}`,
+            )
           }
-          this.renderRange(
+          this.renderSpan(
+            level,
             f.range.start,
             f.range.end,
             unit,
             mergedEnv,
             out,
-            exclude,
-            false,
-            within?.range.start ?? null,
+            slices!.skipAt,
           )
+          break
+        }
+        case 'region': {
+          // a claimed region, rendered by its owner: its text
+          const claim = this.plan.rewrites.claims.get(f.id)
+          if (claim === undefined || unit === null || claim.owner !== unit.id) {
+            throw new Error(
+              `conflict: a generated unit renders region ${f.id}, which it does not claim`,
+            )
+          }
+          const node = this.plan.rewrites.regions.nodeOn(
+            this.plan.regions.get(f.id).range,
+          )!
+          const text = this.view.textOf(node)
+          if (text === null) {
+            this.renderSpan(node, node.start, node.end, unit, mergedEnv, out)
+          } else {
+            const at = out.length
+            this.renderFrags(text, unit, mergedEnv, out, null, {
+              level: node,
+              skipAt: null,
+            })
+            this.guardStatementStart(node.start, out, at)
+          }
           break
         }
         case 'text': {
@@ -1165,13 +1197,9 @@ class Renderer {
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
     }
-    let list = this.statementStarts.get(offset)
-    if (list === undefined) {
-      list = this.statementListAt(offset)
-      this.statementStarts.set(offset, list)
-    }
+    const list = this.statementListAt(offset)
     if (
-      list !== null &&
+      list !== undefined &&
       (list === 'nested' || !nestedOnly) &&
       this.continuable(out, from)
     ) {
@@ -1179,33 +1207,37 @@ class Renderer {
     }
   }
 
-  /** The statement list of a statement starting at `offset`: the module's (`program`), a nested one, or none. */
-  private statementListAt(offset: number): 'program' | 'nested' | null {
-    const file = this.plan.analysis.file
-    let node = file.nodeAt(offset)
-    if (!node || node.start !== offset) {
-      return null
+  /** The statement list a statement starting at `offset` stands in: the module's (`program`), a nested one, or none. */
+  private statementListAt(offset: number): 'program' | 'nested' | undefined {
+    const program = this.plan.analysis.file.program
+    const body = program.body
+    // (the module's statement holding `offset`)
+    let lo = 0
+    let hi = body.length - 1
+    let at = -1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      if (body[mid]!.start <= offset) {
+        at = mid
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
     }
-    let parent = file.parentOf(node)
-    while (parent && parent.start === offset) {
-      node = parent
-      parent = file.parentOf(node)
+    if (at < 0 || offset >= body[at]!.end) {
+      return undefined
     }
-    if (!parent) {
-      return null
+    const st = body[at]!
+    if (st.start === offset) {
+      // (the module's first statement: nothing renders before it)
+      return offset === program.start ? undefined : 'program'
     }
-    const list =
-      parent.type === 'Program' ||
-      parent.type === 'BlockStatement' ||
-      parent.type === 'StaticBlock'
-        ? parent.body
-        : parent.type === 'SwitchCase'
-          ? parent.consequent
-          : null
-    if (list === null || !(list as ReadonlyArray<Node>).includes(node)) {
-      return null
+    let starts = this.statementStarts.get(at)
+    if (starts === undefined) {
+      starts = statementStartsIn(st)
+      this.statementStarts.set(at, starts)
     }
-    return parent.type === 'Program' ? 'program' : 'nested'
+    return starts.get(offset)
   }
 
   /**
@@ -1303,6 +1335,36 @@ class Renderer {
         return t
     }
   }
+}
+
+/**
+ * The statements of the statement lists inside one statement of the module,
+ * by start (`nested`: a block's, a static block's, a case's). One walk of
+ * that statement.
+ */
+function statementStartsIn(statement: Node): Map<number, 'nested'> {
+  const out = new Map<number, 'nested'>()
+  const add = (holder: Node, list: ReadonlyArray<Node>) => {
+    for (const st of list) {
+      if (st.start !== holder.start) {
+        out.set(st.start, 'nested')
+      }
+    }
+  }
+  walk(statement, {
+    enter: (n) => {
+      switch (n.type) {
+        case 'BlockStatement':
+        case 'StaticBlock':
+          add(n, n.body)
+          break
+        case 'SwitchCase':
+          add(n, n.consequent)
+          break
+      }
+    },
+  })
+  return out
 }
 
 function mergeEnv(

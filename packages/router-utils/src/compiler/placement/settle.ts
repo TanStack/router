@@ -404,7 +404,7 @@ export function settleRoots(
   // claimed region renders in the owner's output already
   const claimHolders = new Set<ClusterId>()
   for (const claim of input.rewrites.claims.values()) {
-    const parent = regions.get(claim.region).parent
+    const parent = regions.parentOf(claim.region)
     if (parent !== null) {
       claimHolders.add(clusterOfRegion.get(parent)!)
     }

@@ -8,8 +8,7 @@
  * On: every output is re-parsed and verified (`verify.ts`), the internal
  * asserts run, and a violated invariant throws. Off (users' dev servers and
  * builds, production included): the invariants are still checked, and a
- * violation is one diagnostic for the module (`invariantDiagnostic`): a
- * warning, or an error when the output is known wrong.
+ * violation is one warning for the module (`invariantDiagnostic`).
  */
 import type { Diagnostic } from './diagnostics'
 
@@ -23,8 +22,6 @@ export interface InvariantViolation {
   detail: string
   /** Where in the module, when known. */
   range?: { start: number; end: number }
-  /** `error`: the output is known wrong (it would drop a planned change), so the compile fails. Default: a warning. */
-  severity?: 'error'
 }
 
 /** `v`, when the run reports it; in our test runs, throws its detail. */
@@ -41,10 +38,9 @@ export function invariantDiagnostic(
   file: string,
   v: InvariantViolation,
 ): Diagnostic {
-  const error = v.severity === 'error'
   return {
-    severity: error ? 'error' : 'warning',
-    message: `${tag}Internal compiler error in ${file}: the compiled output ${error ? 'would be' : 'may be'} wrong (${v.effect}). Please report it at https://github.com/TanStack/router/issues with this file.`,
+    severity: 'warning',
+    message: `${tag}Internal compiler error in ${file}: the compiled output may be wrong (${v.effect}). Please report it at https://github.com/TanStack/router/issues with this file.`,
     range: v.range,
     by: 'core',
     code: 'internal-invariant',

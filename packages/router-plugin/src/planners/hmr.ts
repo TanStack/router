@@ -40,7 +40,7 @@ import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
 import type {
-  Frag,
+  GenFrag,
   PlanContext,
   SymRef,
   SymbolId,
@@ -156,45 +156,46 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     }
     // inline value or method: hoist into a registrable binding before the options
     const hoisted = names.alloc(`Tsr${pascal(key)}`)
-    const body: Array<Frag> = []
-    let region: { start: number; end: number }
-    let placeholder: Array<Frag>
-    if (option.kind === 'method') {
-      const fn = value
-      body.push({
-        k: 'text',
-        parts: [`const ${hoisted.name} = ${methodPrefixOf(fn)}`],
-      })
-      body.push({ k: 'slice', range: { start: fn.start, end: fn.end } })
-      body.push({ k: 'text', parts: ['\n'] })
-      region = { start: option.prop.start, end: option.prop.end }
-      placeholder = [
-        { k: 'text', parts: [`${option.keyText}: `, { sym: hoisted.sym }] },
-      ]
-    } else {
-      // the hoist claims and copies the bare value (React Refresh registers
-      // a bare function); a cast around it stays in place, around the
-      // placeholder (`TsrComponent as any`), so every edit inside the
-      // claimed text reaches the hoist
-      const inner = unwrapExpression(value)
-      region = { start: inner.start, end: inner.end }
-      body.push({ k: 'text', parts: [`const ${hoisted.name} = `] })
-      body.push({ k: 'slice', range: region })
-      body.push({ k: 'text', parts: ['\n'] })
-      placeholder = [{ k: 'text', parts: [{ sym: hoisted.sym }] }]
-    }
+    // the hoist claims the bare value (React Refresh registers a bare
+    // function) and renders it whole: a cast around it stays in place,
+    // around the placeholder (`TsrComponent as any`), and so does a method's
+    // key, which the property's edit writes before the placeholder
+    const method = option.kind === 'method'
+    const inner = method ? value : unwrapExpression(value)
+    const range = { start: inner.start, end: inner.end }
+    const region = ctx.region(range, 'option-value')
     const owner = ctx.rewrites.addGenerated({
-      body,
+      body: [
+        {
+          k: 'text',
+          parts: [
+            `const ${hoisted.name} = ${method ? methodPrefixOf(value) : ''}`,
+          ],
+        },
+        { k: 'region', id: region },
+        { k: 'text', parts: ['\n'] },
+      ],
       declares: [hoisted.sym],
       effectful: false,
       anchor: { k: 'before-unit', unit: route.optionsUnit.id },
       home: 'auto',
       by: ROUTER_PLANNER,
     })
+    if (method) {
+      ctx.rewrites.add({
+        range: { start: option.prop.start, end: option.prop.end },
+        body: [
+          { k: 'text', parts: [`${option.keyText}: `] },
+          { k: 'slice', range },
+        ],
+        scope: 'all-outputs',
+        by: ROUTER_PLANNER,
+      })
+    }
     ctx.rewrites.claim({
-      region: ctx.region(region, 'option-value'),
+      region,
       owner,
-      placeholder,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
       by: ROUTER_PLANNER,
     })
     round.unsplit[key] = hoisted.name
@@ -243,7 +244,7 @@ export function planHmrBlock(
     { sym: route.routeSym },
     `, { ${metaParts.join(', ')}`,
   ]
-  const body: Array<Frag> = []
+  const body: Array<GenFrag> = []
   if (anchor) {
     // the exports plugin-react ignores: the route, the anchor and
     // (over-approximated) every module-level binding the core may export as
