@@ -95,6 +95,87 @@ export interface ModuleGraphLike<TNode> {
   ) => void
 }
 
+/** What a run's sessions read of a Vite environment. */
+interface RunEnvironment<TConfig> {
+  name: string
+  mode: string
+  getTopLevelConfig: () => TConfig
+}
+
+/**
+ * The sessions of a Vite plugin's runs: one per builder run (the plugin's
+ * `buildApp`, order pre, before any other plugin builds an environment) or
+ * per dev server (`configureServer`), shared by its environments. Each
+ * builder and dev server has environment objects of its own, so plugin
+ * objects a config reuses (inline plugins of a second build, of a restarted
+ * dev server) keep the state of each run apart. A build outside any
+ * `buildApp` (`vite.build()`, `builder.build(env)` by hand) has no run of
+ * its own: its environments join the last such run, until one of a name it
+ * holds builds again (another builder's, or a second `vite.build()`).
+ */
+export class ViteRunSessions<TSession, TConfig, TServer> {
+  private readonly sessions = new WeakMap<object, TSession>()
+  /** The run that environments built outside `buildApp` join, with their names. */
+  private loose: { session: TSession; names: Set<string> } | null = null
+
+  constructor(
+    private readonly create: (
+      config: TConfig,
+      server: TServer | null,
+    ) => TSession,
+    /** The plugin, as an error names it (`[tanstack-start] the compiler plugin`). */
+    private readonly label: string,
+  ) {}
+
+  /**
+   * The session of a builder's run or of a dev server, for all of its
+   * environments. An environment that built before (an app plugin's own
+   * `buildApp` listed first) began the run.
+   */
+  ofRun(
+    environments: Record<string, object>,
+    config: TConfig,
+    server: TServer | null,
+  ): TSession {
+    const all = Object.values(environments)
+    let s = all.map((e) => this.sessions.get(e)).find((known) => !!known)
+    if (!s) {
+      s = this.create(config, server)
+    }
+    for (const e of all) {
+      this.sessions.set(e, s)
+    }
+    return s
+  }
+
+  /** The session of an environment's run (a dev server's is known from `configureServer`). */
+  of(environment: RunEnvironment<TConfig>): TSession {
+    const known = this.sessions.get(environment)
+    if (known) {
+      return known
+    }
+    if (environment.mode !== 'build') {
+      throw new Error(
+        `${this.label} of the "${environment.name}" environment was not configured for this dev server`,
+      )
+    }
+    if (!this.loose || this.loose.names.has(environment.name)) {
+      this.loose = {
+        session: this.create(environment.getTopLevelConfig(), null),
+        names: new Set(),
+      }
+    }
+    this.loose.names.add(environment.name)
+    this.sessions.set(environment, this.loose.session)
+    return this.loose.session
+  }
+
+  /** The session of an environment, if its run has one. */
+  peek(environment: object): TSession | undefined {
+    return this.sessions.get(environment)
+  }
+}
+
 /**
  * The `load` of a derived id of a file of the project (`route.tsx?tsr-split=…`,
  * Start's `?tss-hydrate=…`, `?tss-serverfn-split`): the file's own text,

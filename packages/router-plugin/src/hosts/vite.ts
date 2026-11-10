@@ -25,6 +25,7 @@ import {
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
   viteLog,
+  ViteRunSessions,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -36,7 +37,7 @@ import { JS_ID_RE, RouterCompiler } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type { ModuleGraphLike } from '@tanstack/router-utils/compiler'
-import type { Plugin, ViteDevServer } from 'vite'
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
@@ -86,6 +87,14 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 
 export type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
+/** The plugin's state of one build run or dev server (`ViteRunSessions`). */
+interface Session {
+  compiler: RouterCompiler
+  server: ViteDevServer | null
+  /** Stops the session's route registry listener. */
+  unsubscribe: () => void
+}
+
 /**
  * The router compiler as a Vite plugin: route splitting (`autoCodeSplitting`)
  * and route HMR (`codeSplittingOptions.addHmr`, dev client envs only).
@@ -97,27 +106,25 @@ export function createRouterCompilerVitePlugin(
   let ROOT: string = process.cwd()
   let bundledDev = false
   let userConfig: Config
-  let compiler: RouterCompiler
-  let server: ViteDevServer | null = null
-  let unsubscribe: (() => void) | null = null
   let firstEnvironment: string | undefined
 
   const resolveUserConfig = () =>
     typeof options === 'function' ? options() : getConfig(options, ROOT)
 
   const invalidatePath = async (
+    s: Session,
     file: string,
     kind: 'change' | 'add' | 'unlink' | 'registry',
   ) => {
     const change = { path: normalizePath(file), kind }
-    const res = await compiler.invalidate(change.path, kind)
-    if (!server) {
+    const res = await s.compiler.invalidate(change.path, kind)
+    if (!s.server) {
       return
     }
     const now = Date.now()
     for (const environment of Object.values(
       (
-        server as unknown as {
+        s.server as unknown as {
           environments: Record<
             string,
             { name: string; moduleGraph: ModuleGraphLike<unknown> }
@@ -128,6 +135,35 @@ export function createRouterCompilerVitePlugin(
       applyViteInvalidation(environment, change, res, now)
     }
   }
+
+  const sessions = new ViteRunSessions<Session, ResolvedConfig, ViteDevServer>(
+    (config, server) => {
+      const s: Session = {
+        compiler: new RouterCompiler({
+          context: routerPluginContext,
+          config: userConfig,
+          root: config.root,
+          bundler: 'vite',
+          mode: config.command === 'build' ? 'build' : 'dev',
+        }),
+        server,
+        unsubscribe: () => {},
+      }
+      // a registry change (the generator published new route ids) re-plans
+      // the route modules concerned
+      s.unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {
+        for (const file of changedRoutePaths(next, previous)) {
+          void invalidatePath(s, file, 'registry').catch((error: unknown) => {
+            server?.config.logger.error(
+              `[tanstack-router] invalidating ${file} after a route change failed: ${String(error)}`,
+            )
+          })
+        }
+      })
+      return s
+    },
+    '[tanstack-router] the router plugin',
+  )
 
   const plugin: Plugin = {
     name: CODE_SPLITTER_PLUGIN_NAME,
@@ -154,23 +190,6 @@ export function createRouterCompilerVitePlugin(
         !!(config.experimental as { bundledDev?: boolean } | undefined)
           ?.bundledDev
       userConfig = resolveUserConfig()
-      compiler = new RouterCompiler({
-        context: routerPluginContext,
-        config: userConfig,
-        root: ROOT,
-        bundler: 'vite',
-        mode: config.command === 'build' ? 'build' : 'dev',
-      })
-      unsubscribe?.()
-      unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {
-        for (const file of changedRoutePaths(next, previous)) {
-          void invalidatePath(file, 'registry').catch((error: unknown) => {
-            server?.config.logger.error(
-              `[tanstack-router] invalidating ${file} after a route change failed: ${String(error)}`,
-            )
-          })
-        }
-      })
 
       // Validate plugin order - router must come before JSX transformation
       // plugins. Only route splitting needs the route file's source: without
@@ -218,18 +237,24 @@ export function createRouterCompilerVitePlugin(
       return true
     },
 
+    // a builder's run (before any other plugin builds an environment; Vite 7+)
+    buildApp: {
+      order: 'pre',
+      handler(builder) {
+        sessions.ofRun(builder.environments, builder.config, null)
+        return Promise.resolve()
+      },
+    },
+
     configureServer(viteServer) {
-      server = viteServer
-      viteServer.httpServer?.once('close', () => {
-        unsubscribe?.()
-        unsubscribe = null
-      })
+      sessions.ofRun(viteServer.environments, viteServer.config, viteServer)
     },
 
     buildStart() {
       // one warning per file per run (J2.19): a build of several environments
       // (Vite's builder) starts each in turn; the first configured
       // environment starts the run
+      const { compiler } = sessions.of(this.environment)
       if (
         compiler.mode === 'build' &&
         this.environment.name === firstEnvironment
@@ -238,17 +263,23 @@ export function createRouterCompilerVitePlugin(
       }
     },
 
+    /**
+     * A dev server calls it when it closes (or restarts): its session stops
+     * listening. A build's environment is finished: its plans go before the
+     * next environment builds.
+     */
     closeBundle() {
-      if (compiler.mode !== 'build') {
+      const environment = this.environment
+      const s = sessions.peek(environment)
+      if (!s) {
         return
       }
-      unsubscribe?.()
-      unsubscribe = null
-      // the environment's build is finished: its plans go before the next
-      // environment builds
-      const environment = this.environment
-      if (isFinalBuild(environment.config.build)) {
-        releaseEnvironment(compiler.caches, environment.name)
+      s.unsubscribe()
+      if (
+        s.compiler.mode === 'build' &&
+        isFinalBuild(environment.config.build)
+      ) {
+        releaseEnvironment(s.compiler.caches, environment.name)
       }
     },
 
@@ -261,7 +292,7 @@ export function createRouterCompilerVitePlugin(
       warnEagerExports(
         rollupEntryModuleIds(bundle),
         'rollup',
-        compiler.warnings,
+        sessions.of(this.environment).compiler.warnings,
         (m) => this.warn(m),
         (id) => this.getModuleInfo(id)?.importers ?? [],
         { root: ROOT, routeTree: userConfig.generatedRouteTree },
@@ -278,13 +309,16 @@ export function createRouterCompilerVitePlugin(
     load: {
       filter: { id: OWNED_QUERY_RE },
       handler(id) {
-        return compiler.wants(id) ? loadDerivedSource(this, id) : null
+        return sessions.of(this.environment).compiler.wants(id)
+          ? loadDerivedSource(this, id)
+          : null
       },
     },
 
     transform: {
       filter: { id: { include: JS_ID_RE, exclude: SCRIPT_ASSET_QUERY_RE } },
       async handler(code, id) {
+        const { compiler } = sessions.of(this.environment)
         if (!compiler.wants(id)) {
           return null
         }
@@ -339,13 +373,18 @@ export function createRouterCompilerVitePlugin(
 
     hotUpdate({ file, modules }) {
       // the update is of the modules the file's current plan produces
-      return liveModules(this.environment, compiler.caches, file, modules)
+      return liveModules(
+        this.environment,
+        sessions.of(this.environment).compiler.caches,
+        file,
+        modules,
+      )
     },
 
     async watchChange(id, { event }) {
       const kind =
         event === 'update' ? 'change' : event === 'create' ? 'add' : 'unlink'
-      await invalidatePath(id, kind)
+      await invalidatePath(sessions.of(this.environment), id, kind)
     },
   }
   return plugin
