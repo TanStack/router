@@ -38,7 +38,11 @@ export interface SplitDecision {
   shape: SplitShape
   /** The region claimed by the chunk (replaced by the lazy wrapper in the route module). */
   region: Range
-  /** The text the chunk declares its export from (the value, or a method's function). */
+  /**
+   * The text the chunk declares its export from: the region itself, or a
+   * method's function (the chunk writes the key's modifiers, `methodPrefix`;
+   * a non-computed key holds no other planner's edit).
+   */
   valueRange: Range
   /** The value node (a method's function; an object-form loader's handler). */
   valueNode: Node
@@ -229,13 +233,16 @@ function splitTarget(
   const value = prop.value!
   switch (prop.kind) {
     case 'init': {
-      // the chunk declares the bare value (casts and parentheses dropped, so
-      // React Refresh registers a function); the placeholder replaces it all
+      // the chunk claims and declares the bare value (so React Refresh
+      // registers a function); a cast around it stays in the route module,
+      // around the placeholder (`lazyFn(…) as any`): a claim's owner copies
+      // the whole claimed text, so every edit inside it reaches the chunk
       const inner = unwrapExpression(value)
+      const range = { start: inner.start, end: inner.end }
       return {
         shape: 'init',
-        region: { start: value.start, end: value.end },
-        valueRange: { start: inner.start, end: inner.end },
+        region: range,
+        valueRange: range,
         value,
         keyText: prop.keyText,
         wholeProperty: false,
