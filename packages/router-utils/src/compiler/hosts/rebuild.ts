@@ -16,12 +16,17 @@ import type { PlanKey } from '../identity'
 /** A compilation of the webpack family (`TModule`: its module type). */
 interface RebuildCompilationLike<
   TModule extends { identifier: () => string; resource?: string },
+  TDependency = unknown,
 > {
   modules: ReadonlySet<TModule>
   rebuildModule: (
     module: TModule,
     callback: (error?: Error | null) => void,
   ) => void
+  /** Rspack's compiler namespace names its version; webpack's does not. */
+  compiler?: { webpack?: { rspackVersion?: string } }
+  entries?: ReadonlyMap<string, { dependencies: ReadonlyArray<TDependency> }>
+  moduleGraph?: { getModule: (dependency: TDependency) => TModule | null }
 }
 
 /** A compiler of the webpack family, watching or not. */
@@ -76,33 +81,117 @@ export function invalidateFiles(
 }
 
 /**
+ * First `@rspack/core` whose `rebuildModule` calls every callback
+ * (web-infra-dev/rspack#16567). Unknown: still open at 2.3.2. Set it when
+ * the fix ships; the tripwire test (start-plugin-core,
+ * `rspack-rebuild-batch.test.ts`) goes red on the first Rspack without the
+ * defect.
+ */
+export const RSPACK_REBUILD_CALLBACKS_FIXED_IN: string | undefined = undefined
+
+/** Whether Rspack `version` has every `rebuildModule` callback called. */
+export function rspackCallsEveryRebuildCallback(version: string): boolean {
+  const fixed = RSPACK_REBUILD_CALLBACKS_FIXED_IN
+  if (fixed === undefined) {
+    return false
+  }
+  const parse = (v: string) =>
+    (/^(\d+)\.(\d+)\.(\d+)/.exec(v) ?? []).slice(1).map(Number)
+  const [a, b] = [parse(version), parse(fixed)]
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) {
+      return (a[i] ?? 0) > (b[i] ?? 0)
+    }
+  }
+  return true
+}
+
+/**
  * Rebuilds the modules of `compilation` whose resource `paths` holds
  * (`pathOf`: a resource as `paths` spells it), in place.
  */
 export async function rebuildModules<
   TModule extends { identifier: () => string; resource?: string },
+  TDependency,
 >(
-  compilation: RebuildCompilationLike<TModule>,
+  compilation: RebuildCompilationLike<TModule, TDependency>,
   paths: ReadonlySet<string>,
   pathOf: (resource: string) => string,
 ): Promise<void> {
   const pending = [...compilation.modules].filter(
     (m) => m.resource && paths.has(pathOf(m.resource)),
   )
-  for (let i = 0; i < pending.length; i++) {
-    const m = pending[i]!
-    if (i > 0) {
-      // the rebuild before it may have removed it (a handler module its
-      // importer no longer needs), and Rspack panics on a module outside its
-      // graph; `has` asks the graph (Rspack natively) instead of scanning it
-      if (!compilation.modules.has(m)) {
-        continue
-      }
-    }
-    await new Promise<void>((resolve, reject) => {
-      compilation.rebuildModule(m, (error) =>
+  if (pending.length === 0) {
+    return
+  }
+  const rspack = compilation.compiler?.webpack?.rspackVersion
+  if (rspack !== undefined && rspackCallsEveryRebuildCallback(rspack)) {
+    await Promise.all(pending.map((m) => rebuild(compilation, m)))
+    return
+  }
+  const lead =
+    rspack === undefined || pending.length === 1
+      ? undefined
+      : entryModuleOf(compilation)
+  if (lead !== undefined) {
+    // HACK(rspack#16567): Rspack rebuilds the calls of one tick in one pass
+    // (`AsyncTask` in its `Compilation`) and pairs its answer, the modules
+    // that kept their identifier, with the callbacks by position: when R
+    // modules left the graph or changed rule match, the last R callbacks are
+    // never called. An entry module, which no rebuild removes, leads the
+    // tick, so the first callback is always called, in the loop that follows
+    // the whole pass. Delete with the fix (RSPACK_REBUILD_CALLBACKS_FIXED_IN)
+    // for the `Promise.all` above.
+    return new Promise<void>((resolve, reject) => {
+      compilation.rebuildModule(lead, (error) =>
         error ? reject(error) : resolve(),
       )
+      for (const m of pending) {
+        if (m !== lead) {
+          compilation.rebuildModule(m, () => {})
+        }
+      }
     })
   }
+  // one pass per module, skipping one the rebuild before it removed (Rspack
+  // panics on a module outside its graph; `has` asks the graph natively
+  // instead of scanning it)
+  for (let i = 0; i < pending.length; i++) {
+    const m = pending[i]!
+    if (i === 0 || compilation.modules.has(m)) {
+      await rebuild(compilation, m)
+    }
+  }
+}
+
+function rebuild<TModule>(
+  compilation: {
+    rebuildModule: (m: TModule, cb: (error?: Error | null) => void) => void
+  },
+  m: TModule,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    compilation.rebuildModule(m, (error) => (error ? reject(error) : resolve()))
+  })
+}
+
+/** A module of a file that an entry of `compilation` starts at. */
+function entryModuleOf<
+  TModule extends { identifier: () => string; resource?: string },
+  TDependency,
+>(
+  compilation: RebuildCompilationLike<TModule, TDependency>,
+): TModule | undefined {
+  if (!compilation.entries || !compilation.moduleGraph) {
+    return undefined
+  }
+  for (const entry of compilation.entries.values()) {
+    for (const dependency of entry.dependencies) {
+      const m = compilation.moduleGraph.getModule(dependency)
+      if (m?.resource) {
+        return m
+      }
+    }
+  }
+  return undefined
 }
