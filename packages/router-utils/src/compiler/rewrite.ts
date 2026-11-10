@@ -640,56 +640,6 @@ function lastStartingBy(
 // ---- edits ----------------------------------------------------------------
 
 /**
- * The order of the core's edits of one range and of the inserts at one
- * position (`compareCoreEdits`): the lower is the outer edit and the first
- * insert. By band, then by `n` within it:
- * - `lineEnd`: the line end a statement needs, before anything else generated
- *   at that position;
- * - `glueImports`: the core's glue imports;
- * - `core`: the core's own edits of an output (statement-level removals,
- *   generated units, export glue), `n` in call order.
- */
-export const EditBand = {
-  lineEnd: 0,
-  glueImports: 1,
-  core: 2,
-} as const
-export type EditBand = (typeof EditBand)[keyof typeof EditBand]
-
-export interface EditOrder {
-  band: EditBand
-  n: number
-}
-
-export function compareEditOrder(a: EditOrder, b: EditOrder): number {
-  return a.band - b.band || a.n - b.n
-}
-
-/**
- * A core edit of one output, laid over its walk (`WalkOptions.core`): the
- * env module's statement-level edits, its generated units at their anchors,
- * its glue. Sorted by `compareCoreEdits`.
- */
-export interface CoreEdit extends EditOrder {
-  range: Range
-  body: ReadonlyArray<Frag | GenFrag>
-  by: string
-  /** The generated unit whose body this is. */
-  gen?: GenUnitId
-}
-
-/** The walk's order of core edits: by start, inserts first, the outer range first, then by band and number. */
-export function compareCoreEdits(a: CoreEdit, b: CoreEdit): number {
-  return (
-    a.range.start - b.range.start ||
-    Number(b.range.start === b.range.end) -
-      Number(a.range.start === a.range.end) ||
-    b.range.end - a.range.end ||
-    compareEditOrder(a, b)
-  )
-}
-
-/**
  * What a walk of an output's text meets at one level of the tree, in render
  * order (`OutputView.walk`).
  */
@@ -708,19 +658,17 @@ export interface WalkVisitor {
 }
 
 export interface WalkOptions {
-  /** The inserts at this offset render before the edit whose body is walked (its start). */
+  /**
+   * The inserts at this offset rendered before the text walked: at the
+   * start of an edit whose body is walked, or of a piece of the env module
+   * after the text before it (`includeEnd`).
+   */
   skipAt?: number | null
-  /** What is inserted at the module's end renders too (the env module). */
+  /** The inserts at the span's end render too (the env module's text up to its next piece, or to its end). */
   includeEnd?: boolean
-  /** Core edits laid over the walk (sorted: `compareCoreEdits`), each rendered by `visit` at the level that holds it. */
-  core?: {
-    edits: ReadonlyArray<CoreEdit>
-    visit: (x: CoreEdit, level: RangeNode) => void
-  } | null
 }
 
 const NO_OPTIONS: WalkOptions = {}
-const NO_CORE: ReadonlyArray<CoreEdit> = []
 
 export class RewriteSet {
   /** The edits of text and the inserts, in call order. */
@@ -1293,22 +1241,20 @@ export class OutputView {
     const root = level.parent === null
     const children = level.children
     const inserts = this.set.inserts
-    const core = opts.core?.edits ?? NO_CORE
     const skipAt = opts.skipAt ?? null
-    // the zero-width items rendering at this level of the span start in
-    // `[a, lastAt]` (from `a`: the cursors start there), but at `skipAt` and,
-    // inside the module, at the level's ends (they belong to the level around)
-    const lastAt = root && opts.includeEnd === true ? b : b - 1
+    // the inserts rendering at this level of the span are at `[a, lastAt]`
+    // (from `a`: the cursors start there), but at `skipAt` and, inside the
+    // module, at the level's ends (they belong to the level around); with
+    // `includeEnd`, those at `b` too where it is no end of the level
+    const lastAt =
+      opts.includeEnd === true && (root || b < level.end) ? b : b - 1
     const ownStart = root ? -1 : level.start
     const ownEnd = root ? -1 : level.end
     let ci =
       children.length === 0 ? 0 : Math.max(0, lastStartingBy(children, a))
     let ii = inserts.length === 0 ? 0 : firstFrom(inserts, a)
-    let xi = core.length === 0 ? 0 : firstFrom(core, a)
-    /** Where what this level walked ends: an item starting before it is inside it. */
+    /** Where what this level walked ends: an insert before it is inside it. */
     let cover = a
-    /** The active node walked last (a core edit on exactly its range is the same edit or a conflict). */
-    let last: RangeNode | null = null
     for (;;) {
       let c: RangeNode | undefined
       while (ci < children.length) {
@@ -1326,108 +1272,30 @@ export class OutputView {
       if (ins !== undefined && ins.range.start > b) {
         ins = undefined
       }
-      let x: CoreEdit | undefined = core[xi]
-      if (
-        x !== undefined &&
-        (x.range.start > b ||
-          (x.range.start === b && x.range.end > x.range.start))
-      ) {
-        x = undefined
-      }
-      if (c === undefined && ins === undefined && x === undefined) {
+      if (c === undefined && ins === undefined) {
         return
       }
-      // the next item: by position, inserts first (the planners' before the
-      // core's), then the outer range (an active node before a core edit on
-      // exactly its range, a core edit before a node it renders through)
-      const xZero = x !== undefined && x.range.end === x.range.start
-      let pick: 'insert' | 'core' | 'child'
-      const pIns = ins?.range.start ?? Infinity
-      const pX = x?.range.start ?? Infinity
-      const pC = c?.start ?? Infinity
-      const p = Math.min(pIns, pX, pC)
-      if (pIns === p) {
-        pick = 'insert'
-      } else if (pX === p && xZero) {
-        pick = 'core'
-      } else if (pX === p && pC === p) {
-        pick =
-          x!.range.end > c!.end || (x!.range.end === c!.end && !this.active(c!))
-            ? 'core'
-            : 'child'
-      } else {
-        pick = pX === p ? 'core' : 'child'
-      }
-      if (pick === 'insert') {
+      // the next item by position, an insert before a node at its position
+      if (
+        ins !== undefined &&
+        (c === undefined || ins.range.start <= c.start)
+      ) {
         ii++
-        const at = ins!.range.start
+        const at = ins.range.start
         if (
           at >= cover &&
           at <= lastAt &&
           at !== skipAt &&
           at !== ownStart &&
           at !== ownEnd &&
-          RewriteSet.inScope(ins!.scope, output)
+          RewriteSet.inScope(ins.scope, output)
         ) {
           if (at > st.pos) {
             v.source(st.pos, at)
             st.pos = at
           }
-          v.insert(ins!)
+          v.insert(ins)
         }
-        continue
-      }
-      if (pick === 'core') {
-        xi++
-        const { start, end } = x!.range
-        if (xZero) {
-          if (
-            start >= cover &&
-            start <= lastAt &&
-            start !== skipAt &&
-            start !== ownStart &&
-            start !== ownEnd
-          ) {
-            if (start > st.pos) {
-              v.source(st.pos, start)
-              st.pos = start
-            }
-            opts.core!.visit(x!, level)
-          }
-          continue
-        }
-        if (start < cover) {
-          if (end > cover) {
-            throw new Error(
-              `conflict: ${x!.by} [${start}, ${end}) partially overlaps what renders before it [${a}, ${cover})`,
-            )
-          }
-          if (
-            last !== null &&
-            last.start === start &&
-            last.end === end &&
-            !fragsEqual((this.placeOf(last) ?? this.textOf(last))!, x!.body)
-          ) {
-            throw new Error(
-              `conflict: ${last.by} and ${x!.by} both rewrite [${start}, ${end}) with different bodies`,
-            )
-          }
-          continue
-        }
-        if (start < a || end > b) {
-          if (start <= a && end >= b) {
-            continue // (the core edit whose body is walked)
-          }
-          throw new Error(
-            `conflict: ${x!.by} [${start}, ${end}) partially overlaps [${a}, ${b})`,
-          )
-        }
-        if (start > st.pos) {
-          v.source(st.pos, start)
-        }
-        opts.core!.visit(x!, level)
-        st.pos = end
-        cover = end
         continue
       }
       ci++
@@ -1441,14 +1309,6 @@ export class OutputView {
         this.walkLevel(n, Math.max(a, n.start), Math.min(b, n.end), v, opts, st)
         cover = Math.min(b, n.end)
         continue
-      }
-      if (n.start < cover) {
-        if (n.end <= cover) {
-          continue // (inside a core edit walked before it)
-        }
-        throw new Error(
-          `conflict: ${n.by} [${n.start}, ${n.end}) partially overlaps what renders before it [${a}, ${cover})`,
-        )
       }
       if (n.region !== null && v.member !== undefined) {
         if (n.start > st.pos) {
@@ -1468,7 +1328,6 @@ export class OutputView {
         }
         v.node(n)
         st.pos = n.end
-        last = n
       } else {
         this.walkLevel(n, n.start, n.end, v, opts, st)
       }
@@ -1504,33 +1363,31 @@ export class OutputView {
         this.walk(n, n.start, n.end, visitor)
       }
     }
-    /** `[s, e)` of `n` renders nowhere, but the kept claims inside it (read elsewhere: their text renders in their owners). */
+    /**
+     * `[s, e)` of `n` renders nowhere, but the kept claims inside it (read
+     * elsewhere: their text renders in their owners), which the walk of it
+     * finds (an active node inside is erased whole, but for those).
+     */
     const erased = (n: RangeNode, s: number, e: number) => {
-      let pos = s
-      const within = (x: RangeNode) => {
-        for (const c of x.children) {
-          if (!c.marked || c.end <= pos || c.start >= e) {
-            continue
-          }
-          if (
-            c.start >= pos &&
-            c.end <= e &&
-            c.claim !== null &&
-            this.keeps(c.claim)
-          ) {
-            if (c.start > pos) {
-              out.push({ start: pos, end: c.start })
+      let from = s
+      const v: WalkVisitor = {
+        source: () => {},
+        insert: () => {},
+        node: (c) => {
+          if (c.claim !== null && this.keeps(c.claim)) {
+            if (c.start > from) {
+              out.push({ start: from, end: c.start })
             }
             text(c)
-            pos = c.end
-            continue
+            from = c.end
+          } else {
+            this.walk(c, c.start, c.end, v)
           }
-          within(c)
-        }
+        },
       }
-      within(n)
-      if (e > pos) {
-        out.push({ start: pos, end: e })
+      this.walk(n, s, e, v)
+      if (e > from) {
+        out.push({ start: from, end: e })
       }
     }
     const erasedBy = (n: RangeNode, body: ReadonlyArray<Frag>) => {

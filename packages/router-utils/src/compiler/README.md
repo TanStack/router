@@ -71,6 +71,14 @@ emits its own output. Nothing depends on transform order.
   questions: a place without an owner erases the text, a claim's relocates it. A question costs the nesting depth,
   not the number of edits. Whether a region is claimed is asked per output (`OutputView.isClaimed`): a member reads
   a nested region claimed only for other outputs as its own text (its references, no edge to the owner).
+- **Outputs are put together from pieces** (`freeze.ts`). A derived output: its header, glue imports, the
+  statements it includes and its generated units in order, export glue. The env module: the walk's text between
+  its pieces, which are the statements placement rewrites (their recipes), the generated units at their anchors, the
+  glue imports after the header and the export glue at the end. At one position a planner's insert renders first
+  (with the text before it, even when the statement there is dropped), then a statement's line end, the glue
+  imports, the generated units, a statement's `;`, the statement. A planner's node that a piece's position cuts
+  fails the compile, as a slice cutting it does. Whether a byte renders in the env module is the tree's answer,
+  else the rewritten statement's.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are
