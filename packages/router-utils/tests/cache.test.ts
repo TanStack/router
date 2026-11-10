@@ -4,7 +4,12 @@
  * edits that change import targets, nor with unique files that come and go.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { invalidate, releaseEnvironment, restorePlans } from '../src/compiler'
+import {
+  compileModule,
+  invalidate,
+  releaseEnvironment,
+  restorePlans,
+} from '../src/compiler'
 import { PlanCache } from '../src/compiler/cache'
 import { planKeyString } from '../src/compiler/identity'
 import {
@@ -14,7 +19,7 @@ import {
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type { Planner } from '../src/compiler'
+import type { HostServices, Planner } from '../src/compiler'
 import type { PlanKey } from '../src/compiler/identity'
 
 const planners = () => [toySummaryPlanner()]
@@ -567,4 +572,98 @@ describe('a derived id compiled again after an edit', () => {
       expect(chunkFacts).toEqual(await factsOf(host, route))
     },
   )
+})
+
+// Rsbuild's RSC layer resolves with `react-server` through rule `resolve`
+// options, in the environment of the SSR layer: two resolvers of one
+// environment (`HostServices.resolveScope`, R35)
+describe('two resolvers of one environment', () => {
+  const files = {
+    '/app/page.ts': `import { make } from '#cond'\nexport const p = make\n`,
+    '/app/client.ts': 'export const make = 1\n',
+    '/app/server.ts': 'export const make = 2\n',
+    '/app/package.json': '{}\n',
+  }
+  const plain: PlanKey = {
+    env: env.name,
+    canonicalId: '/app/page.ts',
+    configKey: 'cfg',
+  }
+  const layered: PlanKey = { ...plain, configKey: 'cfg-layer' }
+  const setup = () => {
+    // what `#cond` names by each resolver's conditions
+    const targets = { plain: '/app/client.ts', layer: '/app/server.ts' }
+    const host = new MemoryHost({
+      files,
+      resolve: (specifier) => (specifier === '#cond' ? targets.plain : null),
+    })
+    const layerHost: HostServices = {
+      rawFacts: host.rawFacts,
+      resolveScope: 'layer',
+      resolve: (specifier) =>
+        Promise.resolve(specifier === '#cond' ? { id: targets.layer } : null),
+    }
+    const compile = (key: PlanKey) =>
+      compileModule(
+        {
+          id: key.canonicalId,
+          code: files['/app/page.ts'],
+          env: key === layered ? envInfo({ layer: 'layer' }) : env,
+          planners: [toySummaryPlanner({ subpathImports: true })],
+          config: { configKey: key.configKey, perPlanner: {} },
+          wantMap: false,
+        },
+        key === layered ? layerHost : host,
+        host.caches,
+      )
+    const hostOf = (key: PlanKey) =>
+      key.configKey === layered.configKey ? layerHost : host
+    const resolved = (key: PlanKey) =>
+      host.caches.plans
+        .get(env.name)!
+        .dependenciesOf(key)
+        ?.flatMap((fp) =>
+          fp.kind === 'resolution' && fp.specifier === '#cond'
+            ? [fp.resolved]
+            : [],
+        )
+    return { targets, host, compile, hostOf, resolved }
+  }
+  const manifestChange = {
+    path: '/app/package.json',
+    kind: 'change',
+  } as const
+
+  it("each resolver's answers are memoised apart", async () => {
+    const { compile, resolved } = setup()
+    await compile(plain)
+    await compile(layered)
+    expect(resolved(plain)).toEqual(['/app/client.ts'])
+    expect(resolved(layered)).toEqual(['/app/server.ts'])
+  })
+
+  it("an invalidation checks each plan with its own module's resolver", async () => {
+    const { targets, host, compile, hostOf } = setup()
+    await compile(plain)
+    await compile(layered)
+    const kept = await invalidate(host.caches, manifestChange, hostOf)
+    expect(kept.dependents).toEqual([])
+    await compile(plain)
+    await compile(layered)
+    // only the layer's conditions name another file now
+    targets.layer = '/app/client.ts'
+    const moved = await invalidate(host.caches, manifestChange, hostOf)
+    expect(moved.dependents.map(planKeyString)).toEqual([
+      planKeyString(layered),
+    ])
+  })
+
+  it("a restored plan is checked with its own module's resolver", async () => {
+    const out = await setup().compile(layered)
+    const persisted = JSON.parse(JSON.stringify(out!.persisted))
+    const restoring = setup()
+    expect(
+      await restorePlans(restoring.host.caches, [persisted], restoring.hostOf),
+    ).toEqual([])
+  })
 })

@@ -245,17 +245,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // (`esm`: the resolver of the imports it analyses, with their `exports` conditions)
       // at the first resolution, in a compilation: one got before the
       // compiler's first compilation keeps a file system cache that no
-      // compilation clears (Rspack 2.2: a created file is never seen)
+      // compilation clears (Rspack 2.2: a created file is never seen). A
+      // layer's rule options make its child (`withOptions`: one per options
+      // object, as Rspack merges a rule's `resolve` over the compiler's)
       let resolver: ReturnType<typeof compiler.resolverFactory.get> | undefined
       session.resolvers.set(
         environment.name,
-        (dir, request) =>
+        (dir, request, options) =>
           new Promise((resolve) => {
             try {
               resolver ??= compiler.resolverFactory.get('normal', {
                 dependencyType: 'esm',
               })
-              resolver.resolve({}, dir, request, {}, (error, result) => {
+              const resolving = options
+                ? resolver.withOptions(options)
+                : resolver
+              resolving.resolve({}, dir, request, {}, (error, result) => {
                 resolve(
                   !error && typeof result === 'string'
                     ? canonicalResource(result)

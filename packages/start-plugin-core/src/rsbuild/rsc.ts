@@ -5,7 +5,11 @@
  */
 import { rebuildModules } from '@tanstack/router-utils/compiler'
 import { CLIENT_REFERENCED_IDS_PLACEHOLDER } from '../server-fns/resolver'
-import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
+import {
+  RSBUILD_ENVIRONMENT_NAMES,
+  RSBUILD_RSC_LAYERS,
+  RSBUILD_RSC_LAYER_RESOLVE,
+} from './planning'
 import { START_MANIFEST_PLACEHOLDER } from './virtual-modules'
 import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { enableSwcReactServerComponents } from './swc-rsc'
@@ -84,24 +88,22 @@ export function registerRsc(
       moduleRules.push({
         resourceQuery: /(?:^|[?&])tss-serverfn-split(?:&|$)/,
         layer: RSBUILD_RSC_LAYERS.rsc,
-        resolve: {
-          conditionNames: ['react-server', '...'],
-        },
+        resolve: RSBUILD_RSC_LAYER_RESOLVE,
       })
 
       // All modules imported from the RSC layer inherit
       // the react-server condition (transitive propagation), except
       // route split virtual modules. Those remain ordinary SSR/client
       // route code, split and shared alike: no provider module imports
-      // them.
+      // them (and the layer's route modules are never split: the router
+      // planner does not run there), so the compiler resolves every module
+      // of the layer with these options.
       moduleRules.push({
         issuerLayer: RSBUILD_RSC_LAYERS.rsc,
         resourceQuery: {
           not: [/(?:^|[?&])tsr-split(?:=|&|$)/],
         },
-        resolve: {
-          conditionNames: ['react-server', '...'],
-        },
+        resolve: RSBUILD_RSC_LAYER_RESOLVE,
       })
 
       // The RSC ServerPlugin injects imports like

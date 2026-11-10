@@ -285,9 +285,12 @@ text compiles waits for it and emits its own output from the result.
 - `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an
   environment's plans as soon as that environment's build is finished (several environments build one after the
   other in one process). Raw facts are shared by the environments and stay.
-- Resolutions: each compile records its answers in its ledger; validation asks the environment's resolver again
-  only once a file appeared or disappeared since the plan's resolutions were validated (`CompilerCaches.fileSetVersion`).
-  The environment's `PlanCache` memoises the resolver's answers per (importer, specifier) for one `fileSetVersion`
+- Resolutions: each compile records its answers in its ledger; validation asks the module's resolver again (its
+  host's: `invalidate` and `restorePlans` take the host of each plan's key) only once a file appeared or disappeared
+  since the plan's resolutions were validated (`CompilerCaches.fileSetVersion`). An environment may have more than
+  one resolver (Rsbuild's RSC layer resolves with `react-server` through rule options): `HostServices.resolveScope`
+  names the host's. The environment's `PlanCache` memoises each resolver's answers per (importer, specifier) for one
+  `fileSetVersion`
   (the compiles of a build would otherwise ask for a barrel's re-exports once per importing module); the same version
   bump drops the memo, and `releaseEnvironment` releases it with the plans.
 - Not cached: emitted outputs (emission from a frozen recipe costs microseconds).

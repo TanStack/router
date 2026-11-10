@@ -49,9 +49,9 @@ export function invalidationHosts(
   state: ViteCompilerState,
   s: Session,
   own: DevEnvironment,
-): (env: string) => HostServices {
+): (key: { env: string }) => HostServices {
   const hosts = new Map<string, HostServices>()
-  return (name) => {
+  return ({ env: name }) => {
     let h = hosts.get(name)
     if (!h) {
       h = invalidationHost(state, s, s.server?.environments[name] ?? own)

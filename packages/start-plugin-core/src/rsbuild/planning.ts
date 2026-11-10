@@ -26,6 +26,19 @@ export const RSBUILD_RSC_LAYERS = {
   ssr: 'server-side-rendering',
 } as const
 
+/**
+ * The resolve options of the RSC layer's modules: the rules of `rsc.ts`
+ * give them to the provider and to every module an RSC-layer module imports
+ * (its own layer), so Rspack resolves the layer's imports with
+ * `react-server`. The compiler's resolver of the layer takes the same
+ * options (`StartRsbuildCompilerSession.hostFor`).
+ */
+export const RSBUILD_RSC_LAYER_RESOLVE: NonNullable<
+  Rspack.RuleSetRule['resolve']
+> = {
+  conditionNames: ['react-server', '...'],
+}
+
 export const RSBUILD_CLIENT_ASSETS_DIR = 'assets'
 
 export type RsbuildEnvironmentName =

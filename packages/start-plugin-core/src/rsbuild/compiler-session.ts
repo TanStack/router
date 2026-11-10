@@ -36,7 +36,10 @@ import {
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import {
+  RSBUILD_ENVIRONMENT_NAMES,
+  RSBUILD_RSC_LAYER_RESOLVE,
+} from './planning'
 import { runsAgainLater } from './vue'
 import type { StartCompilerSessionOptions } from '../compiler/session'
 import type { LoaderChainLike } from './vue'
@@ -44,6 +47,7 @@ import type { CompiledOutputLike } from '../import-protection/session'
 import type { DevViolationError } from '../import-protection/report'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
+import type { Rspack } from '@rsbuild/core'
 import type {
   CompileOutput,
   DiagnosticPosition,
@@ -162,15 +166,23 @@ export class StartRsbuildCompilerSession {
    */
   readonly resolvers = new Map<
     string,
-    (importerDir: string, specifier: string) => Promise<string | null>
+    (
+      importerDir: string,
+      specifier: string,
+      /** A layer's rule options over the environment's (`hostFor`). */
+      options: Rspack.RuleSetRule['resolve'],
+    ) => Promise<string | null>
   >()
   /**
    * Tells each environment's compiler that files changed (it builds their
    * modules again): the compilation it is starting, or its next one.
    */
   readonly rebuilders = new Map<string, (paths: Array<string>) => void>()
+  /** The RSC layer of the server environment (RSC on). */
+  private readonly rscLayer: string | undefined
 
   constructor(opts: StartRsbuildSessionOptions) {
+    this.rscLayer = opts.rscLayer
     for (const env of opts.environments) {
       this.envs.set(env.name, {
         name: env.name,
@@ -288,9 +300,17 @@ export class StartRsbuildCompilerSession {
 
   private readonly hosts = new Map<string, HostServices>()
 
-  /** The host services of an environment's compiles and invalidations (its own resolver: aliases and conditions differ). */
-  private hostFor(envName: string): HostServices {
-    let host = this.hosts.get(envName)
+  /**
+   * The host services of the compiles and invalidations of an environment's
+   * modules of `layer`: their own resolver (aliases and conditions differ by
+   * environment; the RSC layer's rules add `RSBUILD_RSC_LAYER_RESOLVE`).
+   */
+  private hostFor(envName: string, layer: string | undefined): HostServices {
+    const scope =
+      layer !== undefined && layer === this.rscLayer ? layer : undefined
+    const options = scope === undefined ? undefined : RSBUILD_RSC_LAYER_RESOLVE
+    const key = scope === undefined ? envName : `${envName}\0${scope}`
+    let host = this.hosts.get(key)
     if (!host) {
       const resolve = this.resolvers.get(envName)
       if (!resolve) {
@@ -303,14 +323,29 @@ export class StartRsbuildCompilerSession {
           const id = await resolve(
             path.dirname(identify(importer).path),
             specifier,
+            options,
           )
           return id === null ? null : { id }
         },
         { importRewrite: this.importRewrite(this.env(envName)) },
       )
-      this.hosts.set(envName, host)
+      if (scope !== undefined) {
+        host.resolveScope = scope
+      }
+      this.hosts.set(key, host)
     }
     return host
+  }
+
+  /** The host of a plan's module (its layer: the one the plan's configuration is of; the RSC layer is the server environment's). */
+  private hostOfPlan(key: PlanKey): HostServices {
+    const layer =
+      this.rscLayer !== undefined &&
+      key.env === RSBUILD_ENVIRONMENT_NAMES.server &&
+      this.start.configured(key.configKey, this.env(key.env), this.rscLayer)
+        ? this.rscLayer
+        : undefined
+    return this.hostFor(key.env, layer)
   }
 
   /** What each environment's last compilation depended on (its file events; dev: `retain`). */
@@ -378,7 +413,7 @@ export class StartRsbuildCompilerSession {
     return invalidate(
       this.start.caches,
       { path: normalizePath(file), kind },
-      (env) => this.hostFor(env),
+      (key) => this.hostOfPlan(key),
     )
   }
 
@@ -486,8 +521,8 @@ export class StartRsbuildCompilerSession {
       }
     }
     stale.push(
-      ...(await restorePlans(this.start.caches, current.values(), (name) =>
-        this.hostFor(name),
+      ...(await restorePlans(this.start.caches, current.values(), (key) =>
+        this.hostOfPlan(key),
       )),
     )
     return new Set(pathsOf(stale))
@@ -601,7 +636,7 @@ export class StartRsbuildCompilerSession {
         lines: 'lf',
         late,
       },
-      this.hostFor(env.name),
+      this.hostFor(env.name, ctx._module?.layer ?? undefined),
     )
     if (!out) {
       return passthrough
