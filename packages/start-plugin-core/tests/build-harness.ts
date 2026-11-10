@@ -95,7 +95,11 @@ import type {
 } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { TanStackStartInputConfig } from '../src'
 import type { ViolationInfo } from './importProtection/public-types'
-import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
+import type {
+  RsbuildConfig,
+  RsbuildInstance,
+  RsbuildPlugin,
+} from '@rsbuild/core'
 import type { InlineConfig, Plugin, Rolldown } from 'vite'
 
 /**
@@ -299,6 +303,14 @@ export interface StartBuildOptions {
    * an earlier build may fail.
    */
   builds?: number
+  /**
+   * Every build of the app (`builds`, `rebuild`) reuses the first one's
+   * plugins: Vite builds are given the same Start plugin objects, as a
+   * program that calls `createBuilder` again with the same inline config
+   * does; Rsbuild builds call `build()` again on the same Rsbuild instance.
+   * Default: each build has plugins of its own, as a config file gives them.
+   */
+  samePlugins?: boolean
   /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
   rsbuildConfig?: RsbuildConfig
   /**
@@ -591,6 +603,7 @@ export async function buildStart(
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
+    samePlugins: options.samePlugins ?? false,
     cwd: options.cwd,
     configuredRoot: options.root?.(app.root),
   }
@@ -775,6 +788,11 @@ interface BuildTarget {
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
+  samePlugins: boolean
+  /** Start's Vite plugins of every build (`samePlugins`), once created. */
+  startPlugins?: ReturnType<typeof startPlugins>
+  /** The Rsbuild instance of every build (`samePlugins`), once created, and the records of its current build. */
+  rsbuild?: { instance: RsbuildInstance; records: RsbuildRecords }
   cwd?: string
   /** The bundler's `root` as configured (`StartBuildOptions.root`). */
   configuredRoot?: string
@@ -802,6 +820,24 @@ const builders: Record<
 > = {
   vite: buildWithVite,
   rsbuild: buildWithRsbuild,
+}
+
+/** Start's Vite plugins of a build: the same objects for each build of a `samePlugins` target. */
+function viteStartPlugins(
+  target: BuildTarget,
+): ReturnType<typeof startPlugins> {
+  const plugins =
+    target.startPlugins ??
+    startPlugins(
+      target.framework,
+      target.root,
+      target.start,
+      harnessEntries(target.root),
+    )
+  if (target.samePlugins) {
+    target.startPlugins = plugins
+  }
+  return plugins
 }
 
 /**
@@ -912,12 +948,7 @@ async function buildWithVite(
             ssr: environmentBuild('ssr'),
           },
           plugins: [
-            startPlugins(
-              target.framework,
-              target.root,
-              target.start,
-              harnessEntries(target.root),
-            ),
+            viteStartPlugins(target),
             // A React app's own Vite plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
@@ -1127,6 +1158,16 @@ type Onwarn = (
   handler?: (warning: { message: string }) => void,
 ) => void
 
+/** What one Rsbuild build records (`buildWithRsbuild`). */
+interface RsbuildRecords {
+  outputs: Partial<Outputs>
+  errors: Array<string>
+  warnings: Record<Env, Array<ChannelDiagnostic>>
+  channel: Channel
+  compiles: ReturnType<typeof trackCompiles>
+  clientParsedModules: ReturnType<typeof parsedModules>
+}
+
 /**
  * Builds with Rsbuild. Compilation warnings go to `warnings` (per
  * environment) and to `channel`; errors reach the channel through the
@@ -1144,16 +1185,32 @@ async function buildWithRsbuild(
   const compiles = trackCompiles()
   /** The evidence of the client's dangling-name check (`describeBuild`). */
   const clientParsedModules = parsedModules()
+  const own: RsbuildRecords = {
+    outputs,
+    errors,
+    warnings,
+    channel,
+    compiles,
+    clientParsedModules,
+  }
+  if (target.rsbuild) {
+    target.rsbuild.records = own
+  }
+  /** This build's records (a reused instance's plugins record each build's: `samePlugins`). */
+  const records = () => target.rsbuild?.records ?? own
   /** Records what each environment emitted. */
   const outputPlugin: RsbuildPlugin = {
     name: 'start-build-harness:outputs',
     setup(api) {
       api.modifyRspackConfig((config, { environment }) => {
         if (environment.name === 'client' && target.mode === 'production') {
-          config.plugins.push(recordParsedModules(clientParsedModules))
+          config.plugins.push(
+            recordParsedModules(records().clientParsedModules),
+          )
         }
       })
       api.onAfterCreateCompiler(({ compiler }) => {
+        const { compiles, channel } = records()
         compiles.track(compiler)
         for (const child of 'compilers' in compiler
           ? compiler.compilers
@@ -1176,9 +1233,10 @@ async function buildWithRsbuild(
         }
       })
       api.onAfterBuild(() => {
-        compiles.done()
+        records().compiles.done()
       })
       api.onAfterEnvironmentCompile(({ stats, environment }) => {
+        const { outputs, errors, warnings, clientParsedModules } = records()
         const env = environment.name as Env
         if (!stats) {
           errors.push(`[${env}] no compilation stats`)
@@ -1202,26 +1260,34 @@ async function buildWithRsbuild(
     },
   }
   try {
-    const rsbuild = await createRsbuild({
-      cwd: target.root,
-      loadEnv: false,
-      rsbuildConfig: mergeRsbuildConfig(
-        {
-          root: target.configuredRoot ?? target.root,
-          mode: target.mode,
-          // Rsbuild prints nothing; its logger feeds the channel
-          logLevel: 'silent',
-          customLogger: rsbuildLogger(channel),
-          output: {
-            minify: target.minify,
-            sourceMap: target.sourcemap ? { js: 'source-map' } : false,
-            cleanDistPath: true,
+    const rsbuild =
+      target.rsbuild?.instance ??
+      (await createRsbuild({
+        cwd: target.root,
+        loadEnv: false,
+        rsbuildConfig: mergeRsbuildConfig(
+          {
+            root: target.configuredRoot ?? target.root,
+            mode: target.mode,
+            // Rsbuild prints nothing; its logger feeds the channel
+            logLevel: 'silent',
+            customLogger: rsbuildLogger({
+              reportLogged: (...args) =>
+                records().channel.reportLogged(...args),
+            } as Channel),
+            output: {
+              minify: target.minify,
+              sourceMap: target.sourcemap ? { js: 'source-map' } : false,
+              cleanDistPath: true,
+            },
+            plugins: [...rsbuildAppPlugins(target), outputPlugin],
           },
-          plugins: [...rsbuildAppPlugins(target), outputPlugin],
-        },
-        target.rsbuildConfig ?? {},
-      ),
-    })
+          target.rsbuildConfig ?? {},
+        ),
+      }))
+    if (target.samePlugins) {
+      target.rsbuild ??= { instance: rsbuild, records: own }
+    }
     if (target.watchEdits) {
       const watching = await rsbuild.build({ watch: true })
       try {
