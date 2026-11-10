@@ -139,7 +139,9 @@ export async function prerender({
 
         try {
           const res = await requestWithRedirects(
-            withTrailingSlash(withBase(page.path, routerBasePath)),
+            page.path === '/'
+              ? withTrailingSlash(withBase(page.path, routerBasePath))
+              : withBase(page.path, routerBasePath),
             {
               headers: {
                 ...(prerenderOptions.headers ?? {}),

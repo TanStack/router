@@ -87,7 +87,35 @@ describe('prerender public sinks', () => {
     })
 
     expect(request).toHaveBeenCalledWith(
-      '/about/',
+      '/about',
+      expect.objectContaining({ redirect: 'manual' }),
+    )
+  })
+
+  it('does not add trailing slash to non-root paths', async () => {
+    const request = vi.fn(async () => htmlResponse())
+
+    await prerender({
+      startConfig: makeStartConfig('/posts/1'),
+      handler: { getClientOutputDirectory: () => '/client', request },
+    })
+
+    expect(request).toHaveBeenCalledWith(
+      '/posts/1',
+      expect.objectContaining({ redirect: 'manual' }),
+    )
+  })
+
+  it('keeps trailing slash on root path', async () => {
+    const request = vi.fn(async () => htmlResponse())
+
+    await prerender({
+      startConfig: makeStartConfig('/'),
+      handler: { getClientOutputDirectory: () => '/client', request },
+    })
+
+    expect(request).toHaveBeenCalledWith(
+      '/',
       expect.objectContaining({ redirect: 'manual' }),
     )
   })
@@ -171,7 +199,7 @@ describe('prerender public sinks', () => {
     })
 
     expect(requestedUrls).toEqual([
-      'http://localhost/about/',
+      'http://localhost/about',
       'http://localhost//attacker.test/leak',
     ])
   })
@@ -197,7 +225,7 @@ describe('prerender public sinks', () => {
 
       expect(request).toHaveBeenCalledOnce()
       expect(request).toHaveBeenCalledWith(
-        '/app/page/',
+        '/app/page',
         expect.objectContaining({ redirect: 'manual' }),
       )
     },
@@ -205,7 +233,7 @@ describe('prerender public sinks', () => {
 
   it('follows a raw redirect on the preview origin and basepath', async () => {
     const request = vi.fn(async (requestPath: string) => {
-      if (requestPath === '/app/page/') {
+      if (requestPath === '/app/page') {
         return new Response(null, {
           status: 307,
           headers: { location: 'http://127.0.0.1:4173/app/next/' },
@@ -226,7 +254,7 @@ describe('prerender public sinks', () => {
     })
 
     expect(request.mock.calls.map(([requestPath]) => requestPath)).toEqual([
-      '/app/page/',
+      '/app/page',
       '/app/next/',
     ])
   })
