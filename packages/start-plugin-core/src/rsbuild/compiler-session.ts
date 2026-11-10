@@ -313,28 +313,21 @@ export class StartRsbuildCompilerSession {
     return host
   }
 
-  /** Per environment: the files its last compilation depended on (dev; see `retain`). */
-  private readonly liveFiles = new Map<string, ReadonlySet<string>>()
+  /** What each environment's last compilation depended on (its file events; dev: `retain`). */
+  readonly files = new CompilationFiles()
 
   /**
-   * After an environment's dev compilation: forget what the session holds of
+   * After an environment's dev compilation (`files` recorded its
+   * dependencies): forget what the session holds of
    * files the compilation no longer depends on (plans, raw facts, import
    * protection's importer records). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
    * `unlink`; without this its state stayed for the session (every cache
-   * must stay bounded by the live modules). The same files as the last
-   * compilation's (an edit): nothing to forget.
+   * must stay bounded by the live modules). Called only when the files
+   * changed (not on an edit).
    */
-  retain(envName: string, files: Iterable<string>): void {
-    const live = new Set<string>()
-    for (const f of files) {
-      live.add(normalizePath(f))
-    }
-    const before = this.liveFiles.get(envName)
-    this.liveFiles.set(envName, live)
-    if (before?.size === live.size && [...live].every((f) => before.has(f))) {
-      return
-    }
+  retain(envName: string): void {
+    const live = this.files.of(envName)
     const isFile = (path: string) =>
       path.startsWith('/') || /^[A-Za-z]:\//.test(path)
     const keepIn =
@@ -351,11 +344,9 @@ export class StartRsbuildCompilerSession {
       }
     }
     this.start.ip?.retain(keepEnv, envName)
-    if (this.liveFiles.size === this.envs.size) {
+    if (this.files.size === this.envs.size) {
       // shared state: kept while any environment depends on the file
-      const anyEnv = keepIn((p) =>
-        [...this.liveFiles.values()].some((set) => set.has(p)),
-      )
+      const anyEnv = keepIn((p) => this.files.known(p))
       this.start.rawFacts.retain((id) => anyEnv(identify(id).path))
       this.start.ip?.retain(anyEnv)
     }
@@ -368,6 +359,7 @@ export class StartRsbuildCompilerSession {
    */
   release(envName: string): void {
     this.start.release(envName)
+    this.files.forget(envName)
     const env = this.envs.get(envName)
     if (env) {
       env.compiled = new Set()
@@ -808,6 +800,90 @@ function throwLocated(ctx: LoaderContextLike, error: DevViolationError): never {
   failure.name = LOCATED_DIAGNOSTICS.errorName
   failure.stack = `${failure.name}: ${error.message}`
   throw failure
+}
+
+/**
+ * What each environment's last compilation depended on (`fileDependencies`,
+ * `contextDependencies`), normalized: tells a modified file's event. A file
+ * no environment's last compilation knows was created (an `add`: it may take
+ * resolutions that failed before); one any environment's knows was edited:
+ * under RSC, Rspack's coordinator tells the client compiler the server's
+ * changed files, which the client's compilation never read. A directory a
+ * compilation watched (Tailwind CSS's scan) is reported as modified when
+ * anything below it changes, which creates no file of its name.
+ */
+export class CompilationFiles {
+  private readonly byEnv = new Map<
+    string,
+    { files: ReadonlySet<string>; directories: ReadonlySet<string> }
+  >()
+
+  /** Records an environment's compilation; whether its files differ from the last one's. */
+  record(
+    envName: string,
+    files: Iterable<string>,
+    directories: Iterable<string>,
+  ): boolean {
+    const live = new Set<string>()
+    for (const f of files) {
+      live.add(normalizePath(f))
+    }
+    const dirs = new Set<string>()
+    for (const d of directories) {
+      dirs.add(normalizePath(d))
+    }
+    const before = this.byEnv.get(envName)?.files
+    this.byEnv.set(envName, { files: live, directories: dirs })
+    return !(
+      before?.size === live.size && [...live].every((f) => before.has(f))
+    )
+  }
+
+  /** Whether an environment's compilation finished before (its first restores a persistent cache). */
+  compiled(envName: string): boolean {
+    return this.byEnv.has(envName)
+  }
+
+  /** The event of `file`, modified for the compilation `envName` starts (nothing known before its first: an edit). */
+  eventOf(envName: string, file: string): FileEventKind | null {
+    if (!this.compiled(envName)) {
+      return 'change'
+    }
+    const path = normalizePath(file)
+    if (this.known(path)) {
+      return 'change'
+    }
+    for (const { directories } of this.byEnv.values()) {
+      if (directories.has(path)) {
+        return null
+      }
+    }
+    return 'add'
+  }
+
+  /** Whether any environment's last compilation depended on the file (a normalized path). */
+  known(path: string): boolean {
+    for (const { files } of this.byEnv.values()) {
+      if (files.has(path)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** The files an environment's last compilation depended on. */
+  of(envName: string): ReadonlySet<string> {
+    return this.byEnv.get(envName)?.files ?? new Set()
+  }
+
+  /** How many environments compiled. */
+  get size(): number {
+    return this.byEnv.size
+  }
+
+  forget(envName: string): void {
+    this.byEnv.delete(envName)
+  }
 }
 
 /** A file event of a compilation: an edit, a creation, a removal. */

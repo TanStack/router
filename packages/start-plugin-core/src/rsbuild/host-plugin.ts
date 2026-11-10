@@ -291,17 +291,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.start.compiles,
       )
 
-      /** The files of the last compilation (a modified file outside them is a created one: an `add`, which re-resolves
-       * imports that failed to resolve before). */
-      let knownFiles: ReadonlySet<string> | null = null
-      /**
-       * The directories the last compilation watched (`contextDependencies`:
-       * Tailwind CSS adds the ones it scans): Rspack reports such a directory
-       * as modified when anything below it changes, which creates no file of
-       * its name. A created file a resolution may take is reported itself (a
-       * missing dependency).
-       */
-      let knownDirectories: ReadonlySet<string> = new Set()
       let currentCompilation: Rspack.Compilation | null = null
       let reporterInstalled = false
       /**
@@ -340,7 +329,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         await opts.generator.beforeRun()
       })
 
-      const isKnown = (file: string) => !knownFiles || knownFiles.has(file)
+      /** A modified file's event (`CompilationFiles.eventOf`): edited, created, or a watched directory. */
+      const eventOf = (file: string) =>
+        session.files.eventOf(environment.name, file)
       // edits and removals of files the last compilation read, invalidated before this
       // compilation starts: the modules of their stale dependents are built with them (a
       // file's facts need no resolver, and a resolution that found a removed file is stale)
@@ -360,7 +351,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         try {
           await session.invalidateFileEvents([
             ...modified
-              .filter((file) => isKnown(file) && !isPackageManifest(file))
+              .filter(
+                (file) =>
+                  eventOf(file) === 'change' && !isPackageManifest(file),
+              )
               .map((file) => ({ file, kind: 'change' as const })),
             ...removed.map((file) => ({ file, kind: 'unlink' as const })),
           ])
@@ -382,9 +376,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         await session.invalidateFileEvents(
           [...(compiler.modifiedFiles ?? [])]
             .filter(
-              (file) =>
-                (!isKnown(file) && !knownDirectories.has(file)) ||
-                isPackageManifest(file),
+              (file) => eventOf(file) === 'add' || isPackageManifest(file),
             )
             .map((file) => ({
               file,
@@ -428,13 +420,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           }
         }
         session.compiledOnce = true
-        const deps = stats.compilation.fileDependencies
-        knownFiles = new Set<string>(deps as Iterable<string>)
-        knownDirectories = new Set<string>(
+        const changed = session.files.record(
+          environment.name,
+          stats.compilation.fileDependencies as Iterable<string>,
           stats.compilation.contextDependencies as Iterable<string>,
         )
         if (session.start.opts.mode === 'dev') {
-          session.retain(environment.name, knownFiles)
+          if (changed) {
+            session.retain(environment.name)
+          }
         } else if (!compiler.watchMode) {
           // a production build's end: nothing compiles in this environment any more
           session.release(environment.name)
@@ -704,7 +698,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (compilation.compiler !== compiler) {
             return
           }
-          if (!knownFiles && env.persistsModules) {
+          if (
+            !session.files.compiled(environment.name) &&
+            env.persistsModules
+          ) {
             const restored: Array<{
               plan: PersistedPlan
               layer: string | undefined
@@ -736,7 +733,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // a compiler's first compilation judges what it restored: its modules'
           // import-protection records are replayed first, the modules to judge
           // again are rebuilt before the server-fn snapshot
-          const judgesRestored = ipEnv !== null && !knownFiles
+          const judgesRestored =
+            ipEnv !== null && !session.files.compiled(environment.name)
           if (judgesRestored) {
             const unjudged = new Set<string>()
             for (const m of compilation.modules) {
