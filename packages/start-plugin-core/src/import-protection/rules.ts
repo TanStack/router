@@ -137,26 +137,20 @@ export async function fileOrMarkerRule(
   marker: MarkerReader,
 ): Promise<RuleRef | null> {
   const rules = rulesFor(config, envType)
-  const rule = await idRule(config, rules, envType, file, marker)
-  const cut = rule === null ? cutAtHash(file) : null
-  return cut === null ? rule : idRule(config, rules, envType, cut, marker)
-}
-
-async function idRule(
-  config: ImportProtectionConfig,
-  rules: ImportProtectionEnvRules,
-  envType: EnvType,
-  id: string,
-  marker: MarkerReader,
-): Promise<RuleRef | null> {
-  const rel = relativeTargetPath(config, id)
-  if (targetExcluded(rules, rel)) {
-    return null
+  let id: string | null = file
+  while (id !== null) {
+    const rel = relativeTargetPath(config, id)
+    if (!targetExcluded(rules, rel)) {
+      const rule =
+        matchFile(rules, rel) ??
+        (markerViolates(envType, await marker(id)) ? { type: 'marker' } : null)
+      if (rule) {
+        return rule
+      }
+    }
+    id = id === file ? cutAtHash(file) : null
   }
-  return (
-    matchFile(rules, rel) ??
-    (markerViolates(envType, await marker(id)) ? { type: 'marker' } : null)
-  )
+  return null
 }
 
 /** Whether a target's marker denies it in an env of `envType` (a conflict is reported in the marked file itself). */
