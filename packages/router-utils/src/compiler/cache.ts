@@ -43,6 +43,7 @@ export type DependencyFingerprint =
       env: string
       importer: string
       specifier: string
+      /** The target's canonical id; `EXTERNAL_RESOLUTION`: external; null: unresolved. */
       resolved: string | null
     }
 
@@ -74,21 +75,36 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
     case 'route-registry':
       return fp.path
     case 'resolution':
-      return fp.resolved === null ? null : pathOfId(fp.resolved)
+      return fp.resolved === null || fp.resolved === EXTERNAL_RESOLUTION
+        ? null
+        : pathOfId(fp.resolved)
   }
 }
 
 /**
- * Dependents-index bucket of failed resolutions. An unresolved
- * resolution has no path to watch: file add/unlink events re-resolve every
- * entry of this bucket instead (`invalidate`).
+ * The `resolved` of a resolution the resolver answered `external`: an
+ * answer like a found file (memoised, nothing readable behind it), which no
+ * file appearing or disappearing replaces.
+ */
+export const EXTERNAL_RESOLUTION = '\u0000external'
+
+/**
+ * Dependents-index buckets of the resolutions with no path to watch.
+ * Failed ones: file add/unlink events re-resolve every entry of their bucket
+ * (`invalidate`). External ones: a `package.json` or `tsconfig` change does.
  */
 export const UNRESOLVED_DEPENDENCY = '\u0000unresolved'
+export const EXTERNAL_DEPENDENCY = '\u0000externals'
 
-/** The dependents-index key of a fingerprint: its path, or the unresolved bucket. */
+/** The dependents-index key of a fingerprint: its path, or a bucket of resolutions without one. */
 function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
-  if (fp.kind === 'resolution' && fp.resolved === null) {
-    return UNRESOLVED_DEPENDENCY
+  if (fp.kind === 'resolution') {
+    if (fp.resolved === null) {
+      return UNRESOLVED_DEPENDENCY
+    }
+    if (fp.resolved === EXTERNAL_RESOLUTION) {
+      return EXTERNAL_DEPENDENCY
+    }
   }
   return fingerprintPath(fp)
 }
