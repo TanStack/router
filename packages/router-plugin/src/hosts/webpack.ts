@@ -69,6 +69,7 @@ export interface CompilerLike extends WatchingCompilerLike {
       ) => void
     }
     watchClose: { tap: (name: string, fn: () => void) => void }
+    shutdown: { tapPromise: (name: string, fn: () => Promise<void>) => void }
   }
 }
 
@@ -278,6 +279,14 @@ export function createRouterCompilerWebpackPlugin(
         for (const [file, kind] of [...changed, ...removed]) {
           await session.invalidate(normalizePath(file), kind)
         }
+      })
+      // the session lives as long as the compiler: until it shuts down
+      // (`compiler.close()`, after a one-shot `run()` too) or stops watching
+      // (a dev middleware closes its watching, not the compiler); the
+      // context outlives both (the separate plugins share the module's)
+      compiler.hooks.shutdown.tapPromise(PLUGIN_NAME, () => {
+        unsubscribe()
+        return Promise.resolve()
       })
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
         unsubscribe()
