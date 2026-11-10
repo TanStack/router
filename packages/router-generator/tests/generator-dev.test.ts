@@ -10,7 +10,7 @@
  * `tests/integration/{dev-server,rsbuild-dev-server}-{generator,new-routes}.test.ts`.
  */
 import { existsSync } from 'node:fs'
-import { mkdir, rm } from 'node:fs/promises'
+import { chmod, mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -649,4 +649,44 @@ describe('a batch that fails to publish', () => {
 
     expect(await fullPaths()).toEqual(published)
   })
+})
+
+describe('a batch whose read of another file fails', () => {
+  // A batch re-reads two route files: one lost its `Route`, the other can't
+  // be read (EACCES, EISDIR: not a parse error), so the batch fails. The
+  // next batch must still take the first file's change to the tree (D11:
+  // the tree is a function of the files' facts), not keep importing its
+  // `Route` until a file is added or removed.
+  test.skipIf(process.platform === 'win32')(
+    "a route file's change reaches the tree with the next batch",
+    async () => {
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/index.tsx': fileRoute('/'),
+        'src/routes/about.tsx': fileRoute('/about'),
+        'src/routes/posts.tsx': fileRoute('/posts'),
+      })
+      const { config, generator } = await startGenerator(root)
+      const about = await save(
+        root,
+        'src/routes/about.tsx',
+        'export const about = 1\n',
+      )
+      const posts = path.join(root, 'src/routes/posts.tsx')
+      await chmod(posts, 0o000)
+      try {
+        const runs = await Promise.allSettled([
+          generator.run({ type: 'update', path: about }),
+          generator.run({ type: 'update', path: posts }),
+        ])
+        expect(runs.map((run) => run.status)).toContain('rejected')
+      } finally {
+        await chmod(posts, 0o644)
+      }
+      await generator.run({ type: 'update', path: posts })
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+        await freshTree(root, config),
+      )
+    },
+  )
 })

@@ -29,7 +29,12 @@ function invalidationHost(
   return {
     ...state.hostFor(s, environment, async (specifier, importer) => {
       const r = await environment.pluginContainer.resolveId(specifier, importer)
-      return r ? { id: r.id, external: r.external === true } : null
+      return r
+        ? {
+            id: r.id,
+            external: r.external === true || typeof r.external === 'string',
+          }
+        : null
     }),
     onInvalidationError: (error) => {
       environment.logger.warnOnce(

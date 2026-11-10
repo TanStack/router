@@ -16,7 +16,11 @@ import {
 import { parseModule } from './source'
 import { ModuleAnalysis } from './analysis'
 import { AnalysisPlan } from './plan'
-import { DependencyLedger, fingerprintsCurrent } from './cache'
+import {
+  DependencyLedger,
+  EXTERNAL_RESOLUTION,
+  fingerprintsCurrent,
+} from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
 import { SourceText } from './output-builder'
@@ -467,7 +471,7 @@ async function runAttempt(
     // one answer per attempt: the ledger's recorded resolution is reused
     const known = ledger.resolved(env.name, importer, specifier)
     if (known !== undefined) {
-      return known
+      return known === EXTERNAL_RESOLUTION ? null : known
     }
     const resolved = await resolveForAnalysis(
       caches,
@@ -493,7 +497,8 @@ async function runAttempt(
       specifier,
       resolved,
     })
-    return resolved
+    // an external has nothing readable behind it
+    return resolved === EXTERNAL_RESOLUTION ? null : resolved
   }
   /** A wait on a module's raw facts (`HostServices.awaitVirtual`). */
   const awaitFacts = <T>(canonicalId: string, read: Promise<T>): Promise<T> =>

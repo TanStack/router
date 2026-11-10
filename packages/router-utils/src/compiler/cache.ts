@@ -43,6 +43,7 @@ export type DependencyFingerprint =
       env: string
       importer: string
       specifier: string
+      /** The target's canonical id; `EXTERNAL_RESOLUTION`: external; null: unresolved. */
       resolved: string | null
     }
 
@@ -74,21 +75,36 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
     case 'route-registry':
       return fp.path
     case 'resolution':
-      return fp.resolved === null ? null : pathOfId(fp.resolved)
+      return fp.resolved === null || fp.resolved === EXTERNAL_RESOLUTION
+        ? null
+        : pathOfId(fp.resolved)
   }
 }
 
 /**
- * Dependents-index bucket of failed resolutions. An unresolved
- * resolution has no path to watch: file add/unlink events re-resolve every
- * entry of this bucket instead (`invalidate`).
+ * The `resolved` of a resolution the resolver answered `external`: an
+ * answer like a found file (memoised, nothing readable behind it), which no
+ * file appearing or disappearing replaces.
+ */
+export const EXTERNAL_RESOLUTION = '\u0000external'
+
+/**
+ * Dependents-index buckets of the resolutions with no path to watch.
+ * Failed ones: file add/unlink events re-resolve every entry of their bucket
+ * (`invalidate`). External ones: a `package.json` or `tsconfig` change does.
  */
 export const UNRESOLVED_DEPENDENCY = '\u0000unresolved'
+export const EXTERNAL_DEPENDENCY = '\u0000externals'
 
-/** The dependents-index key of a fingerprint: its path, or the unresolved bucket. */
+/** The dependents-index key of a fingerprint: its path, or a bucket of resolutions without one. */
 function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
-  if (fp.kind === 'resolution' && fp.resolved === null) {
-    return UNRESOLVED_DEPENDENCY
+  if (fp.kind === 'resolution') {
+    if (fp.resolved === null) {
+      return UNRESOLVED_DEPENDENCY
+    }
+    if (fp.resolved === EXTERNAL_RESOLUTION) {
+      return EXTERNAL_DEPENDENCY
+    }
   }
   return fingerprintPath(fp)
 }
@@ -489,7 +505,7 @@ export class PlanCache {
   /** The compile in flight per key: requests at its revision wait for it instead of compiling again. */
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
-  /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
+  /** `TSR_COMPILER_NO_CACHE=plans`: no plan is a hit (measurement knob); dependencies are still kept. */
   private readonly disabled = cacheDisabled('plans')
   /** Use counts for `compilerStats()`: validated plan hits. */
   readonly counters = { planHits: 0 }
@@ -509,8 +525,9 @@ export class PlanCache {
   /**
    * Plans known by their dependencies only, whose outputs a bundler holds:
    * one an earlier process published (the bundler's persistent cache
-   * restored its module without a compile), or the last attempt of a
-   * compile every attempt of which was overtaken. Never a hit, found stale
+   * restored its module without a compile), the last attempt of a
+   * compile every attempt of which was overtaken, or every plan when plan
+   * caching is off (`TSR_COMPILER_NO_CACHE=plans`). Never a hit, found stale
    * by `invalidate` like a published plan, replaced by the key's next
    * publication.
    */
@@ -624,17 +641,28 @@ export class PlanCache {
     return this.entries.get(planKeyString(key)) ?? null
   }
 
-  /** Publishes; refuses stale completions (generation moved or a newer revision was seen). */
+  /**
+   * Publishes; refuses stale completions (generation moved or a newer
+   * revision was seen). With plan caching off, the plan is kept by its
+   * dependencies only (`restored`: never a hit, its dependents still reported).
+   */
   set(entry: CacheEntry): boolean {
     const ks = planKeyString(entry.key)
     if ((this.generations.get(ks) ?? 0) !== entry.generation) {
       return false
     }
-    if (this.latest.get(ks) !== entry.revision || this.disabled) {
+    if (this.latest.get(ks) !== entry.revision) {
       return false
     }
-    this.entries.set(ks, entry)
-    this.restored.delete(ks)
+    if (this.disabled) {
+      this.restored.set(ks, {
+        key: entry.key,
+        dependencies: entry.plan.dependencies,
+      })
+    } else {
+      this.entries.set(ks, entry)
+      this.restored.delete(ks)
+    }
     this.track(ks, entry.key)
     return true
   }

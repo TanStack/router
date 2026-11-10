@@ -473,7 +473,9 @@ dir)` is not a conflict by itself.
   navigation use the new options (stale derived route state is invalidated); generated options (`id`, `path`,
   `getParentRoute`) stay on the live route; the active match re-renders. A hot edit runs each changed loader at
   least once and the page shows its new data; an obsolete loader the edit replaced or removed does not run again.
-  Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue.
+  Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. A lazy route file (`createLazyFileRoute`,
+  `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
+  has not loaded them yet.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
   component and lazy-wrapper identity (React, and Solid and Vue split components too) and shows the new code. Where
   the framework's refresh can keep the mounted component and its state, the compiler and router must not cause a

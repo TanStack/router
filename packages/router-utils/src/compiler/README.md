@@ -381,8 +381,8 @@ Environment variables read by the bundler's Node process (never by a bundle). Th
 API: names and output may change. Unset, they cost one `process.env` read when a cache or session is created and
 nothing per compile.
 
-- `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is published, every request
-  compiles again), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
+- `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is a hit, every request
+  compiles again; each plan's dependencies are kept, so an edit still reports the modules that read it), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
   imported modules are rebuilt on every read), `registry` (a route file's `Route` is read from the file instead of
   answered from the route registry's `routerConstructor`), or `all`. Output must be identical with any combination; only speed
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a

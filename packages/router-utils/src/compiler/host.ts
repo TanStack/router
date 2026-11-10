@@ -6,6 +6,8 @@ import { stat } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
 import { OWNED_QUERY_KEYS, identify, pathOfId, planKeyString } from './identity'
 import {
+  EXTERNAL_DEPENDENCY,
+  EXTERNAL_RESOLUTION,
   PlanCache,
   UNRESOLVED_DEPENDENCY,
   fingerprintCurrent,
@@ -410,11 +412,10 @@ export async function invalidate(
   // failed ones now (they name no file whose dependents would be reported)
   const manifestAt = change.path.endsWith('/package.json')
   const manifest = change.kind === 'change' && manifestAt
+  const resolverConfig =
+    manifest || (change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
   const fileSetMoved =
-    change.kind === 'add' ||
-    change.kind === 'unlink' ||
-    manifest ||
-    (change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
+    change.kind === 'add' || change.kind === 'unlink' || resolverConfig
   if (fileSetMoved) {
     caches.fileSetVersion++
   }
@@ -488,6 +489,14 @@ export async function invalidate(
         (fp) => fp.kind === 'resolution' && fp.resolved === null,
       )
     }
+    if (resolverConfig) {
+      // an external answer stands until what decides it changes
+      await revalidate(
+        cache,
+        EXTERNAL_DEPENDENCY,
+        (fp) => fp.kind === 'resolution' && fp.resolved === EXTERNAL_RESOLUTION,
+      )
+    }
     if (shadows) {
       // a new file may take a resolution that found another file of its
       // name (`./x` found `x/index.ts`, and `x.ts` appeared)
@@ -549,7 +558,7 @@ export function dependencyPaths(
       addModule(fp.canonicalId)
     } else if (fp.kind === 'route-registry') {
       out.add(fp.path)
-    } else if (fp.resolved !== null) {
+    } else if (fp.resolved !== null && fp.resolved !== EXTERNAL_RESOLUTION) {
       addModule(fp.resolved)
     }
   }
@@ -688,11 +697,12 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
 /**
  * Resolves a specifier for the analysis through the host's resolver (the
  * environment's own, `resolveScope`); returns the canonical id of the
- * target, or null when nothing readable is behind it. The environment's memo
- * answers a pair that resolver resolved before at the current file-set
- * version, settling or settled (the compiles of a build ask for a barrel's
- * re-exports once per importing module); unresolved pairs are not kept. The
- * caller records the answer in its ledger.
+ * target, `EXTERNAL_RESOLUTION` for an external, or null when nothing
+ * readable is behind it. The environment's memo answers a pair that resolver
+ * resolved before at the current file-set version, settling or settled (the
+ * compiles of a build ask for a barrel's re-exports once per importing
+ * module); unresolved pairs are not kept. The caller records the answer in
+ * its ledger.
  */
 export function resolveForAnalysis(
   caches: CompilerCaches,
@@ -725,7 +735,11 @@ export function resolveForAnalysis(
   const asked: Promise<string | null> = host
     .resolve(specifier, importerCanonicalId)
     .then((r) => {
-      const resolved = r && !r.external ? identify(r.id).canonicalId : null
+      const resolved = !r
+        ? null
+        : r.external
+          ? EXTERNAL_RESOLUTION
+          : identify(r.id).canonicalId
       if (memo.get(specifier) === asked) {
         // the settled id replaces the promise; an unresolved specifier is
         // asked again next time: the file may be about to appear (a file's

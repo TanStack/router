@@ -279,6 +279,73 @@ describe('a package.json change', () => {
   })
 })
 
+describe('an import the resolver answers external', () => {
+  const resolving: Planner = {
+    name: 'resolving',
+    tier: 0,
+    gate: () => true,
+    plan() {},
+    async prefetch(t0, ctx) {
+      for (const i of t0.imports) {
+        await ctx.resolve(i.specifier)
+      }
+    },
+  }
+  const modules = 20
+  const setup = () => {
+    const files: Record<string, string> = { '/app/package.json': '{}' }
+    for (let m = 0; m < modules; m++) {
+      files[`/app/m${m}.ts`] =
+        `import a from 'pkg-a'\nimport b from 'pkg-b'\nexport const v = ${m}\n`
+    }
+    let local = false
+    const host = new MemoryHost({
+      files,
+      // packages are external, until one of them is aliased to a project file
+      resolve: (specifier) =>
+        local && specifier === 'pkg-a'
+          ? '/app/local-a.ts'
+          : { id: specifier, external: true },
+    })
+    return { host, aliasToFile: () => (local = true) }
+  }
+  const asked = (host: MemoryHost, from: number) =>
+    host.resolveCalls.slice(from).filter((c) => c.specifier.startsWith('pkg-'))
+      .length
+
+  it('is an answer: a file appearing or disappearing does not ask it again', async () => {
+    const { host } = setup()
+    for (let m = 0; m < modules; m++) {
+      await host.compile(`/app/m${m}.ts`, [resolving], { env })
+    }
+    for (const change of [
+      { path: '/app/new.ts', kind: 'add' },
+      { path: '/app/new.ts', kind: 'unlink' },
+    ] as const) {
+      const before = host.resolveCalls.length
+      if (change.kind === 'add') {
+        host.write(change.path, 'export {}\n')
+      }
+      const res = await invalidate(host.caches, change, host)
+      expect(asked(host, before)).toBe(0)
+      expect(res.dependents).toEqual([])
+    }
+  })
+
+  it('is asked again when a package.json changes, and reports the module it now resolves differently for', async () => {
+    const { host, aliasToFile } = setup()
+    host.write('/app/local-a.ts', 'export default 1\n')
+    await host.compile('/app/m0.ts', [resolving], { env })
+    aliasToFile()
+    const res = await invalidate(
+      host.caches,
+      { path: '/app/package.json', kind: 'change' },
+      host,
+    )
+    expect(res.dependents.map((k) => k.canonicalId)).toEqual(['/app/m0.ts'])
+  })
+})
+
 describe('plan cache bookkeeping', () => {
   it('a plan re-published with other import targets keeps only its current dependency rows', async () => {
     const files: Record<string, string> = { '/app/a.ts': '' }
