@@ -98,6 +98,67 @@ export { seen } from './seen'
   )
 
   test(
+    'an implementation in a type wrapper, called in place, runs in its environment',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/seen.ts': seen,
+          'src/iso-server.ts': `${reads('MARK_ISO_SERVER')}function impl() { use(label) }
+createIsomorphicFn().server(impl as any)()
+`,
+          'src/iso-client.ts': `${reads('MARK_ISO_CLIENT')}function impl() { use(label) }
+createIsomorphicFn().client(impl satisfies () => void)()
+`,
+          'src/iso-both.ts': `${reads('MARK_ISO_BOTH_SERVER')}const other = 'MARK_ISO_BOTH_CLIENT'
+function impl() { use(label) }
+function clientImpl() { use(other) }
+const value = createIsomorphicFn().server(impl as any).client(clientImpl as any)()
+export { value }
+`,
+          'src/server-only.ts': `${reads('MARK_SERVER_ONLY', 'createServerOnlyFn')}function impl() { use(label) }
+// (the client's stub throws)
+if (typeof window === 'undefined') createServerOnlyFn(impl as any)()
+`,
+          'src/client-only.ts': `${reads('MARK_CLIENT_ONLY', 'createClientOnlyFn')}function impl() { use(label) }
+// (the server's stub throws)
+if (typeof window !== 'undefined') createClientOnlyFn(impl as any)()
+`,
+          'src/statement.ts': `${reads('MARK_STATEMENT', 'createServerOnlyFn')}createServerOnlyFn(function () { use(label) } as any)
+`,
+          'entry.ts': `import './src/iso-server'
+import './src/iso-client'
+import './src/iso-both'
+import './src/server-only'
+import './src/client-only'
+import './src/statement'
+export { seen } from './src/seen'
+`,
+        },
+      })
+      expect((await ssr.run(`return entry.seen`)).result).toEqual([
+        'MARK_ISO_SERVER',
+        'MARK_ISO_BOTH_SERVER',
+        'MARK_SERVER_ONLY',
+      ])
+      expect((await client.run(`return entry.seen`)).result).toEqual([
+        'MARK_ISO_CLIENT',
+        'MARK_ISO_BOTH_CLIENT',
+        'MARK_CLIENT_ONLY',
+      ])
+      for (const marker of [
+        'MARK_ISO_SERVER',
+        'MARK_ISO_BOTH_SERVER',
+        'MARK_SERVER_ONLY',
+        'MARK_STATEMENT',
+      ]) {
+        expect(client.where(marker), marker).toBe('nowhere')
+      }
+    },
+    timeout,
+  )
+
+  test(
     'a route file with one: the page renders, and its server code stays out of the client',
     async () => {
       const cleanups: Array<() => Promise<void>> = []
