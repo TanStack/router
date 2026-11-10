@@ -14,7 +14,14 @@
  * `./app-directory`).
  */
 import { readFileSync, rmSync } from 'node:fs'
-import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { SourceMap as NodeSourceMap } from 'node:module'
 import path from 'node:path'
@@ -774,7 +781,7 @@ async function buildWithWebpackApi(
   }
   config.configure?.(options)
 
-  const stats = config.rebuildAfter
+  const json = config.rebuildAfter
     ? await watchAndRebuild(
         bundler,
         await createCompiler(
@@ -791,7 +798,7 @@ async function buildWithWebpackApi(
       )
     : await createCompiler(bundler, options, config.diagnosticChannel).then(
         (compiler) =>
-          new Promise<WebpackStats>((resolve, reject) => {
+          new Promise<StatsJson>((resolve, reject) => {
             compiler.run((error, result) => {
               compiler.close(() => {
                 if (error) {
@@ -799,14 +806,13 @@ async function buildWithWebpackApi(
                     new BuildError(bundler, [errorMessage(error)], warnings),
                   )
                 } else {
-                  resolve(result!)
+                  resolve(result!.toJson(statsOptions))
                 }
               })
             })
           }),
       )
 
-  const json = stats.toJson(statsOptions)
   warnings.push(...statsDiagnostics(json.warnings, 'warning'))
   if (json.errors?.length) {
     throw new BuildError(bundler, statsMessages(json.errors), warnings)
@@ -834,9 +840,12 @@ async function createCompiler(
 
 /**
  * Builds in the compiler's watch mode (`compiler.watch`, with `options`'
- * cache), waits for the builds to settle, writes `files` (paths relative to
- * `root`), and returns the stats of the last build once the rebuilds they
- * cause settle. Fails after 30 s without a settled rebuild.
+ * cache), writes `files` (paths relative to `root`) once the first build
+ * ended, and describes the build that took the edit: the first one the
+ * compiler reports after its builds started with every written file among
+ * their changes (`compiler.modifiedFiles` at `watchRun`). A build that ran
+ * while the files were written ends with what it read before (or is not
+ * reported: an invalidated build starts again). Fails after 30 s without it.
  */
 async function watchAndRebuild(
   bundler: 'webpack' | 'rspack',
@@ -844,39 +853,57 @@ async function watchAndRebuild(
   root: string,
   files: Record<string, string>,
   warnings: Array<ChannelDiagnostic>,
-): Promise<WebpackStats> {
-  let builds = 0
-  let last: { error: Error | null; stats?: WebpackStats } | undefined
+): Promise<StatsJson> {
+  type Build = { error: Error | null; json?: StatsJson }
+  /** The written files no build started with yet (each by its path and real path). */
+  let unseen: Array<Array<string>> | undefined
+  let outcome: Build | undefined
+  let reported = false
+  let wake = () => {}
+  compiler.hooks.watchRun.tap('compiler-test-utils', () => {
+    const changed = compiler.modifiedFiles ?? new Set<string>()
+    unseen = unseen?.filter((names) => !names.some((n) => changed.has(n)))
+  })
   const watching = compiler.watch({ aggregateTimeout: 50 }, (error, stats) => {
-    builds++
-    last = { error, stats }
+    reported = true
+    if (unseen?.length === 0) {
+      // (now: a later build reuses what Rspack's stats read)
+      outcome ??= { error, json: stats?.toJson(statsOptions) }
+    }
+    wake()
   })
   const deadline = Date.now() + 30_000
-  /** Waits for a build after the `after`th, then for 500 ms without one. */
-  const settle = async (after: number) => {
-    let seen = -1
-    while (builds <= after || seen !== builds) {
+  const until = async (done: () => boolean) => {
+    while (!done()) {
       if (Date.now() > deadline) {
         throw new BuildError(bundler, ['timed out waiting for a build'], [])
       }
-      seen = builds > after ? builds : -1
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, deadline - Date.now() + 1)
+        wake = () => {
+          clearTimeout(timer)
+          resolve()
+        }
+      })
     }
   }
   try {
-    await settle(0)
-    const before = builds
+    await until(() => reported)
+    const written: Array<Array<string>> = []
     for (const [file, code] of Object.entries(files)) {
-      await writeFile(path.join(root, file), code)
+      const filePath = path.join(root, file)
+      await writeFile(filePath, code)
+      written.push([filePath, await realpath(filePath)])
     }
-    await settle(before)
+    unseen = written
+    await until(() => outcome !== undefined)
   } finally {
     await new Promise<void>((resolve) => watching.close(() => resolve()))
   }
-  if (last!.error) {
-    throw new BuildError(bundler, [errorMessage(last!.error)], warnings)
+  if (outcome!.error) {
+    throw new BuildError(bundler, [errorMessage(outcome!.error)], warnings)
   }
-  return last!.stats!
+  return outcome!.json!
 }
 
 /** The `toJson` options of the stats `chunksOfStats` reads. */
@@ -1900,6 +1927,9 @@ interface WebpackStats {
 }
 
 interface WebpackCompiler {
+  hooks: { watchRun: { tap: (name: string, fn: () => void) => void } }
+  /** In watch mode: the files changed since the last build, as a build starts (`watchRun`). */
+  modifiedFiles?: ReadonlySet<string>
   run: (callback: (error: Error | null, stats?: WebpackStats) => void) => void
   watch: (
     options: { aggregateTimeout: number },
