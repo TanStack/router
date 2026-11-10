@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { EditBand, compareEditOrder } from '../src/compiler/rewrite'
-import { dedent } from './helpers'
+import { MemoryHost, dedent } from './helpers'
 import { engine, rangeOf } from './engine'
 import type { OutputId, Planner } from '../src/compiler'
 import type { Anchor } from '../src/compiler/rewrite'
@@ -1723,6 +1723,64 @@ describe('copied text keeps the edits under it', () => {
             'Internal compiler error in /app/route.tsx: the compiled output would be wrong (part of the module would be copied without the changes the compiler makes to it). Please report it at https://github.com/TanStack/router/issues with this file.',
         },
       ])
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+})
+
+// Source: design note 1 (rewrite tree), invariant I1: every range a planner
+// addresses is a region of one tree shared by every output, so two edits
+// that cut each other conflict whichever outputs they are scoped to.
+describe('one region tree for every output', () => {
+  const code = dedent(`
+    import { createFileRoute } from 'toy-router'
+    export const Route = createFileRoute('/')({ component: () => 1 + 2 + 3 })
+  `)
+  /** Edits `1 + 2` in the env module and `2 + 3` in a chunk only. */
+  const cutting: Planner = {
+    name: 'toy-cut',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const chunk = ctx.declareOutput({
+        kind: 'split',
+        key: 'component',
+        derived: { kind: 'split', value: 'component' },
+        roots: [{ t: 'unit', id: ctx.t1.units.length - 1 }],
+      })
+      ctx.rewrites.add({
+        range: rangeOf(code, '1 + 2'),
+        body: [{ k: 'text', parts: ['3'] }],
+        scope: ['env'],
+        by: 'toy-cut',
+      })
+      ctx.rewrites.add({
+        range: rangeOf(code, '2 + 3'),
+        body: [{ k: 'text', parts: ['5'] }],
+        scope: [chunk],
+        by: 'toy-cut',
+      })
+    },
+  }
+
+  it('fails the compile on a partial overlap of edits scoped to different outputs', async () => {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    await expect(host.compile('/app/route.tsx', [cutting])).rejects.toThrow(
+      /partially overlaps/,
+    )
+  })
+
+  it("fails the compile on it in users' runs", async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    try {
+      const { MemoryHost: Host } = await import('./helpers')
+      const host = new Host({ files: { '/app/route.tsx': code } })
+      await expect(host.compile('/app/route.tsx', [cutting])).rejects.toThrow(
+        /partially overlaps/,
+      )
     } finally {
       vi.unstubAllEnvs()
       vi.resetModules()
