@@ -58,9 +58,10 @@ Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`), 
 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle=stream --skipRemoteCache -- tests/code-splitter-scope.test.ts -t "unlike computed keys"
 ```
 
-- The whole oracle (this package's tests, the harness controls, are not part of it): the `nx run-many --parallel=1`
-  command of [oracle/README.md](oracle/README.md).
-- Always through Nx, one command at a time. A file path is a substring filter.
+- The whole oracle (this package's tests, the harness controls, are not part of it): the commands of
+  [oracle/README.md](oracle/README.md): one build, then its targets at once in two phases.
+- Always through Nx, one command at a time (the whole oracle's test commands excepted: they build nothing). A file path
+  is a substring filter.
 - 4 workers by default (`maxWorkers` in each `vite.config.ts`).
 - No `|` inside `-t`; run one command per filter.
 - `--skip-nx-cache` only for measurements.
@@ -69,7 +70,8 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
   (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for budget measurements.
 - Slow tier: at most two `test:integration` runs on the machine at once:
-  `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`.
+  `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`. A whole-oracle run takes the
+  machine: start it when none runs (`-lt 1`).
 - Tiers: `test:unit` (in process, the inner loop); `test:integration` (`tests/integration/`: real builds, dev servers,
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
   across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads
