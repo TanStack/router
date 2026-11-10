@@ -524,7 +524,7 @@ export interface MemoryHostOptions {
     specifier: string,
     importer: string,
     files: Record<string, string>,
-  ) => string | null
+  ) => string | { id: string; external: true } | null
   /** Hook to suspend reads (overlapping-save tests). */
   onRead?: (path: string) => Promise<void> | void
   /** Hook to suspend resolutions. */
@@ -559,12 +559,12 @@ export class MemoryHost implements HostServices {
   async resolve(
     specifier: string,
     importer: string,
-  ): Promise<{ id: string } | null> {
+  ): Promise<{ id: string; external?: boolean } | null> {
     this.resolveCalls.push({ specifier, importer })
     await this.opts.onResolve?.(specifier, importer)
     if (this.opts.resolve) {
       const r = this.opts.resolve(specifier, importer, this.files)
-      return r ? { id: r } : null
+      return typeof r === 'string' ? { id: r } : r
     }
     if (!specifier.startsWith('.')) {
       return null
