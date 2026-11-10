@@ -8,7 +8,8 @@
  * On: every output is re-parsed and verified (`verify.ts`), the internal
  * asserts run, and a violated invariant throws. Off (users' dev servers and
  * builds, production included): the invariants are still checked, and a
- * violation is one warning for the module (`invariantWarning`).
+ * violation is one diagnostic for the module (`invariantDiagnostic`): a
+ * warning, or an error when the output is known wrong.
  */
 import type { Diagnostic } from './diagnostics'
 
@@ -22,9 +23,11 @@ export interface InvariantViolation {
   detail: string
   /** Where in the module, when known. */
   range?: { start: number; end: number }
+  /** `error`: the output is known wrong (it would drop a planned change), so the compile fails. Default: a warning. */
+  severity?: 'error'
 }
 
-/** `v`, when the run warns; in our test runs, throws its detail. */
+/** `v`, when the run reports it; in our test runs, throws its detail. */
 export function invariantViolated(v: InvariantViolation): InvariantViolation {
   if (SELF_CHECKS) {
     throw new Error(v.detail)
@@ -32,15 +35,16 @@ export function invariantViolated(v: InvariantViolation): InvariantViolation {
   return v
 }
 
-/** The warning for a module whose compile violated an invariant (`tag` with its space, `file` as messages name it). */
-export function invariantWarning(
+/** The diagnostic of a module whose compile violated an invariant (`tag` with its space, `file` as messages name it). */
+export function invariantDiagnostic(
   tag: string,
   file: string,
   v: InvariantViolation,
 ): Diagnostic {
+  const error = v.severity === 'error'
   return {
-    severity: 'warning',
-    message: `${tag}Internal compiler error in ${file}: the compiled output may be wrong (${v.effect}). Please report it at https://github.com/TanStack/router/issues with this file.`,
+    severity: error ? 'error' : 'warning',
+    message: `${tag}Internal compiler error in ${file}: the compiled output ${error ? 'would be' : 'may be'} wrong (${v.effect}). Please report it at https://github.com/TanStack/router/issues with this file.`,
     range: v.range,
     by: 'core',
     code: 'internal-invariant',

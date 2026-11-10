@@ -45,6 +45,20 @@ emits its own output. Nothing depends on transform order.
   or `env-readers`: placement copies it into every derived output importing a binding of the env module other than
   the ones it names, once inclusion is decided (route HMR registers the chunks reading what the route module keeps); it
   declares nothing, owns no claim and reads only its own imports.
+- **Copied text keeps its edits.** Every byte of original text that reaches an output gets there through exactly one
+  path (the env module's own text, a retained slice, a claim's owner), and that path applies every edit of that
+  output's tree under it; only edits under erased text are dropped. A claim's owner therefore copies exactly its
+  claimed range (a cast around a split value stays around the placeholder). The renderer checks the rule where it
+  copies text as is (`RenderTree.editUnderCopy`): a copy over an edit is a compiler bug, which throws with
+  `TSR_COMPILER_VERIFY=1` and is an `internal-invariant` error in users' runs (it would ship the text the edit
+  replaces). It is a safety net and can go once we trust the compiler's reliability.
+- **An edit scoped to some outputs is absent from the others' trees**, so another output that copies its range
+  copies the original text. An edit is scoped to one output only where no other output copies its range, or where
+  what the others render there is right without it: the split's placeholder for an identifier value is the env
+  module's own (`split.ts`; the chunk reads the binding), and Start's in-place stub of a nested server-fn chain
+  overrides the claim's placeholder in the env module only, while a split chunk copying the enclosing function
+  renders the placeholder (`start-env.ts`). The renderer cannot check this one (the edit is not in the copying
+  output's tree): it is the planner's obligation.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are
@@ -378,9 +392,11 @@ nothing per compile.
   module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
   nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile. It is the one switch of the compiler's self-checks
-  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`) throws;
-  unset (users' dev servers, builds and their own tests), placement still checks its invariants and a violation is one
-  `internal-invariant` warning for the module (an internal compiler error, the output may be wrong, please report it).
+  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`) or
+  the renderer's copy check ("Copied text keeps its edits") throws; unset (users' dev servers, builds and their own
+  tests), they are still checked and a violation is one `internal-invariant` diagnostic for the module (an internal
+  compiler error, please report it): a warning for placement (the output may be wrong), an error for the copy check
+  (the output would be wrong).
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
   approximate bytes in a process-global registry, held through a `WeakRef` and read by a function outside the owner's

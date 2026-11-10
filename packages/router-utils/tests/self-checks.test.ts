@@ -7,8 +7,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   SELF_CHECKS,
+  invariantDiagnostic,
   invariantViolated,
-  invariantWarning,
 } from '../src/compiler/self-checks'
 
 const violation = {
@@ -39,7 +39,7 @@ describe('self-checks', () => {
   })
 
   it('word the warning of a module as an internal compiler error to report', () => {
-    const d = invariantWarning(
+    const d = invariantDiagnostic(
       '[tanstack-router] ',
       'src/routes/a.tsx',
       violation,

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { EditBand, compareEditOrder } from '../src/compiler/rewrite'
 import { dedent } from './helpers'
 import { engine, rangeOf } from './engine'
-import type { OutputId } from '../src/compiler'
+import type { OutputId, Planner } from '../src/compiler'
 import type { Anchor } from '../src/compiler/rewrite'
 
 describe('edit order', () => {
@@ -1636,5 +1636,96 @@ describe('replacements at a statement start', () => {
     expect(out).toContain('\n  \n  g()\n')
     expect(out).toContain('if (y) {  }\n  (mk)()\n')
     expect(out).toContain('let u = foo\n      \n      ;(mk)()\n')
+  })
+})
+
+// R127 (Fable review of the cast-split class, 2026-11-10): copied text
+// reaches an output through one path, which applies every edit of that
+// output's tree under it. A copy that would lose one is a compiler bug: the
+// renderer's safety net fails the compile instead of shipping the raw text.
+describe('copied text keeps the edits under it', () => {
+  const code = dedent(`
+    import { make } from './make'
+    export const opts = { loader: make(() => 'secret') as any }
+  `)
+  /** Hoists the option value (claimed with its cast) and copies `copied`; another planner replaces the call. */
+  const castHoist = (copied: string): Planner => ({
+    name: 'toy-hoist',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const local = ctx.names.alloc('tsrValue')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
+          { k: 'slice', range: rangeOf(code, copied) },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'env',
+        by: 'toy-hoist',
+      })
+      ctx.rewrites.claim({
+        region: ctx.region(
+          rangeOf(code, "make(() => 'secret') as any"),
+          'option-value',
+        ),
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: local.sym }] }],
+        by: 'toy-hoist',
+      })
+      ctx.rewrites.add({
+        range: rangeOf(code, "make(() => 'secret')"),
+        body: [{ k: 'text', parts: ['stub()'] }],
+        scope: 'all-outputs',
+        by: 'toy-env',
+      })
+    },
+  })
+
+  it('fails the compile when an owner copies part of its claim over an edit', () => {
+    const e = engine(code)
+    castHoist("make(() => 'secret')").plan(e.ctx)
+    expect(() => e.freeze()).toThrow(
+      /copies the original text of \[\d+, \d+\) over an edit of toy-env/,
+    )
+  })
+
+  it('renders the edits of a claim its owner copies whole', () => {
+    const e = engine(code)
+    castHoist("make(() => 'secret') as any").plan(e.ctx)
+    expect(e.render().code).toBe(
+      dedent(`
+      export const opts = { loader: tsrValue }
+      export const tsrValue = stub() as any
+    `),
+    )
+  })
+
+  it("is an error at the lost edit in users' runs", async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    try {
+      const { MemoryHost: Host } = await import('./helpers')
+      const host = new Host({ files: { '/app/route.tsx': code } })
+      const out = await host.compile('/app/route.tsx', [
+        castHoist("make(() => 'secret')"),
+      ])
+      expect(out!.diagnostics).toEqual([
+        {
+          severity: 'error',
+          code: 'internal-invariant',
+          by: 'core',
+          range: rangeOf(code, "make(() => 'secret')"),
+          message:
+            'Internal compiler error in /app/route.tsx: the compiled output would be wrong (part of the module would be copied without the changes the compiler makes to it). Please report it at https://github.com/TanStack/router/issues with this file.',
+        },
+      ])
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
   })
 })
