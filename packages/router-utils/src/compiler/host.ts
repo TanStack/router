@@ -201,6 +201,13 @@ export interface HostServices {
     specifier: string,
     importerCanonicalId: string,
   ) => Promise<{ id: string; external?: boolean } | null>
+  /**
+   * Which resolver of the environment `resolve` asks, when its modules do
+   * not all resolve alike (Rsbuild's RSC layer: `react-server` through rule
+   * `resolve` options); the resolution memo keeps each one's answers apart
+   * (R35). Absent: the environment's one resolver.
+   */
+  resolveScope?: string
   rawFacts: RawFactsCache
   /** The project root: messages name a file relative to it (`displayPath`). */
   root?: string
@@ -353,12 +360,12 @@ export interface InvalidateChange {
 }
 
 /**
- * The host of each environment for an invalidation: one host for every
- * environment, or a function of the environment name (an environment's
- * resolutions are re-validated with its own resolver: per-environment
- * aliases and conditions resolve a specifier differently).
+ * The hosts of an invalidation: one host for every plan, or a function of
+ * the plan's key (a plan's resolutions are re-validated with its module's
+ * own resolver: per-environment aliases and conditions, and an Rsbuild
+ * layer's rule options, resolve a specifier differently).
  */
-type InvalidationHosts = HostServices | ((env: string) => HostServices)
+type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
 
 /**
  * The ONE invalidation operation. Evicts the plans of the changed file
@@ -370,8 +377,9 @@ type InvalidationHosts = HostServices | ((env: string) => HostServices)
  * also re-resolve every failed resolution of every env: a plan whose
  * unresolved specifier now resolves is a dependent; an `add` also
  * re-resolves the resolutions the new file may take (`shadowTest`). Restored
- * plans (`restorePlans`) are checked like published ones. Each environment's
- * fingerprints are checked with that environment's host (its own resolver).
+ * plans (`restorePlans`) are checked like published ones. Each plan's
+ * fingerprints are checked with its host (`hosts` of its key: the resolver
+ * its module resolves with).
  */
 export async function invalidate(
   caches: CompilerCaches,
@@ -416,8 +424,6 @@ export async function invalidate(
     relevant: (fp: DependencyFingerprint) => boolean,
     seen = new Set<string>(),
   ): Promise<void> => {
-    const host = hostOf(cache.env)
-    const src = fingerprintSourceFor(caches, host, cache.env)
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
@@ -432,6 +438,8 @@ export async function invalidate(
       if (!fps) {
         continue
       }
+      const host = hostOf(entry.key)
+      const src = fingerprintSourceFor(caches, host, cache.env)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
         // a resolution that found the removed file is stale: no need to ask
@@ -606,8 +614,8 @@ function shadowTest(added: string): (resolved: string) => boolean {
  * persistent cache restored without compiling them: a plan whose
  * dependencies are all current joins its environment's plans (the session's
  * invalidation finds it stale like a plan compiled now); the keys of the
- * others are returned, their modules are to be compiled again. Each
- * environment's plans are checked with that environment's host.
+ * others are returned, their modules are to be compiled again. Each plan
+ * is checked with its host (`hosts` of its key).
  */
 export async function restorePlans(
   caches: CompilerCaches,
@@ -619,7 +627,7 @@ export async function restorePlans(
   await Promise.all(
     [...plans].map(async (plan) => {
       const env = plan.key.env
-      const src = fingerprintSourceFor(caches, hostOf(env), env)
+      const src = fingerprintSourceFor(caches, hostOf(plan.key), env)
       const current = await Promise.all(
         plan.dependencies.map((fp) => fingerprintCurrent(fp, src)),
       )
@@ -679,12 +687,12 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
 
 /**
  * Resolves a specifier for the analysis through the host's resolver (the
- * environment's own); returns the canonical id of the target, or null
- * when nothing readable is behind it. The environment's memo answers a
- * pair resolved before at the current file-set version, settling or
- * settled (the compiles of a build ask for a barrel's re-exports once per
- * importing module); unresolved pairs are not kept. The caller records the
- * answer in its ledger.
+ * environment's own, `resolveScope`); returns the canonical id of the
+ * target, or null when nothing readable is behind it. The environment's memo
+ * answers a pair that resolver resolved before at the current file-set
+ * version, settling or settled (the compiles of a build ask for a barrel's
+ * re-exports once per importing module); unresolved pairs are not kept. The
+ * caller records the answer in its ledger.
  */
 export function resolveForAnalysis(
   caches: CompilerCaches,
@@ -701,10 +709,14 @@ export function resolveForAnalysis(
     return Promise.resolve(null)
   }
   const memos = planCacheFor(caches, env).resolutionsAt(caches.fileSetVersion)
-  let memo = memos.get(importerCanonicalId)
+  const memoKey =
+    host.resolveScope === undefined
+      ? importerCanonicalId
+      : `${host.resolveScope}\0${importerCanonicalId}`
+  let memo = memos.get(memoKey)
   if (!memo) {
     memo = new Map()
-    memos.set(importerCanonicalId, memo)
+    memos.set(memoKey, memo)
   }
   const hit = memo.get(specifier)
   if (hit !== undefined) {
