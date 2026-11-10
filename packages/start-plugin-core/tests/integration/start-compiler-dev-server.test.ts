@@ -266,6 +266,43 @@ describe('Vite dev: virtual modules of other plugins', () => {
   )
 })
 
+describe('Vite dev: a Start factory exported by a virtual module', () => {
+  // Source: review round 3 (R3-G4-2): only the client environment could
+  // load another plugin's virtual module, so the SSR environment compiled
+  // its importer as if the factory were unknown code.
+  test(
+    'SSR: a server fn built on it, compiled first by the SSR environment, runs by id',
+    async () => {
+      const resolvedId = '\0virtual:kit'
+      const server = await startDevServer({
+        start: {},
+        plugins: [
+          {
+            name: 'kit',
+            resolveId: (source) =>
+              source === 'virtual:kit' ? resolvedId : undefined,
+            load: (id) =>
+              id === resolvedId
+                ? `import { createServerFn } from '@tanstack/react-start'
+export const authed = createServerFn()
+`
+                : undefined,
+          },
+        ],
+        files: {
+          ...startRequestFiles,
+          'src/fns.ts': `import { authed } from 'virtual:kit'
+export const getSecret = authed.handler(() => 'MARK_KIT')
+`,
+        },
+      })
+      const { getSecret } = await server.import('/src/fns.ts')
+      expect(await callServerFn(server, getSecret)).toBe('MARK_KIT')
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
