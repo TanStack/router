@@ -611,9 +611,6 @@ function planStartEnv(
     return { out: handlerOut, load: handlerLoad }
   }
 
-  /** The arguments the client erases, with their call. */
-  const serverCode: Array<{ arg: Node; call: Node }> = []
-
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
   for (const chain of analysis.chains) {
     if (chain.unsupported) {
@@ -641,15 +638,20 @@ function planStartEnv(
         continue
       }
       if (role === 'client') {
-        rewrites.add({
+        rewrites.serverOnly({
+          range: rangeOf(link.arg),
+          subject:
+            link.method === 'validator'
+              ? 'a validator'
+              : "a middleware's `.server()` implementation",
+          by,
+        })
+        // (the link goes with it)
+        rewrites.placeholder({
           range: { start: link.member.object.end, end: link.call.end },
           body: [],
           scope: 'all-outputs',
           by,
-        })
-        serverCode.push({
-          arg: link.arg,
-          call: link.call,
         })
       }
     }
@@ -726,18 +728,10 @@ function planStartEnv(
     })
   }
 
-  /** Handler arguments replaced by stubs: candidates on exactly these ranges are dead there. */
-  const stubbedHandlers = new Set<string>()
-  if (role !== 'provider' || providerOut) {
-    for (const site of sites) {
-      stubbedHandlers.add(`${site.handler.start}:${site.handler.end}`)
-    }
-  }
-
-  // Handlers that move to the lazy handler module (in-place provider). An
-  // all-outputs rewrite of exactly such a handler (the handler is itself a
-  // createServerOnlyFn / createIsomorphicFn call) travels with it into the
-  // handler module (the core nests it inside the claim).
+  // Handlers that move to the lazy handler module (in-place provider). The
+  // rewrite of exactly such a handler (the handler is itself an env-only or
+  // isomorphic call) is the handler's text: it renders in the handler
+  // module.
   const lazySites = new Set<ServerFnSite>()
   if (
     role === 'provider' &&
@@ -759,9 +753,9 @@ function planStartEnv(
       ctx.tagGlueExports(tagOfFile())
     }
   }
-  /** An environment rewrite: it applies in every output, inside a moved handler too. */
+  /** An environment rewrite: the text of the call, wherever it renders (a stubbed handler's place hides it). */
   const envEdit = (range: Range, body: Array<Frag>) => {
-    rewrites.add({ range, body, scope: 'all-outputs', by })
+    rewrites.edit({ range, body, by })
   }
 
   // ---- 3. isomorphic fns
@@ -773,13 +767,15 @@ function planStartEnv(
       continue
     }
     const X = chain.terminal
-    if (stubbedHandlers.has(`${chain.wrapped.start}:${chain.wrapped.end}`)) {
-      continue
-    }
     if (!isServer) {
       for (const l of chain.links) {
         if (l.method === 'server' && l.arg !== null) {
-          serverCode.push({ arg: l.arg, call: l.call })
+          // (erased with the rest of the chain, below)
+          rewrites.serverOnly({
+            range: rangeOf(l.arg),
+            subject: "an isomorphic function's `.server()` implementation",
+            by,
+          })
         }
       }
     }
@@ -825,9 +821,6 @@ function planStartEnv(
 
   // ---- 4. env-only fns
   for (const c of analysis.envOnlyCalls) {
-    if (stubbedHandlers.has(`${c.call.start}:${c.call.end}`)) {
-      continue
-    }
     const own = (c.kind === 'server') === isServer
     const parent = file.parentOf(c.call)
     const wrapped = c.call
@@ -852,8 +845,13 @@ function planStartEnv(
           : [slice(rangeOf(c.arg))],
       )
     } else {
-      if (c.arg !== null) {
-        serverCode.push({ arg: c.arg, call: c.call })
+      if (c.arg !== null && c.kind === 'server') {
+        // (the stub below is the call's text)
+        rewrites.serverOnly({
+          range: rangeOf(c.arg),
+          subject: 'a `createServerOnlyFn` implementation',
+          by,
+        })
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens(
@@ -873,10 +871,9 @@ function planStartEnv(
       if (!el.closingElement) {
         continue
       }
-      rewrites.add({
+      rewrites.edit({
         range: { start: el.openingElement.end - 1, end: el.end },
         body: [text('/>')],
-        scope: 'all-outputs',
         by,
       })
     }
@@ -930,10 +927,10 @@ function planStartEnv(
         config.idMode === 'dev'
           ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
           : `(${moduleLiteral(id)})`
-      rewrites.add({
+      rewrites.serverOnly({
         range: rangeOf(h),
-        body: [text({ sym: rpc, ctx: 'callee' }, args)],
-        scope: 'all-outputs',
+        subject: "a server function's handler",
+        placeholder: [text({ sym: rpc, ctx: 'callee' }, args)],
         by,
       })
       facts.serverFns.push(
@@ -943,39 +940,14 @@ function planStartEnv(
     }
     if (role === 'ssr-caller' || providerOut) {
       const rpc = glueImport(specs.ssrRpc, 'createSsrRpc', 'tsrSsrRpc')
-      rewrites.add({
+      // the handler's place: its text (an env-only or isomorphic call's,
+      // compiled) renders in the provider output
+      rewrites.placeholder({
         range: rangeOf(h),
         body: [text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
       })
-      if (providerOut && site.nested) {
-        // the hoist claims the chain for the provider output; the env module
-        // keeps the chain in place with its stub (an edit on exactly the
-        // claimed region overrides the placeholder there) instead of
-        // importing the hoisted binding from the provider module, which
-        // would evaluate the provider (and what its handlers import) in
-        // this env. The override is addressed to the env module: a chain
-        // inside a function that moves into a split chunk renders the
-        // placeholder there and the chunk imports the provider module. No
-        // environment loads such a chunk: a derived provider exists only where
-        // server components render (Vite's `rsc` environment, Rsbuild's RSC
-        // layer), which reaches route modules through their provider outputs
-        // alone and has no router planner (react-start-rsc
-        // `rsc-start-build.test.ts`, "a server fn nested in a function only
-        // the split component calls"; `rsc-start-nested-class.test.ts`).
-        const chain = rangeOf(site.chain.terminal)
-        rewrites.add({
-          range: chain,
-          body: [
-            slice({ start: chain.start, end: h.start }),
-            text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`),
-            slice({ start: h.end, end: chain.end }),
-          ],
-          scope: ['env'],
-          by,
-        })
-      }
       if (role === 'ssr-caller') {
         facts.serverFns.push(
           serverFnFact(site, id, name, exportName, providerDerived, rootRel),
@@ -1036,8 +1008,8 @@ function planStartEnv(
         by,
       })
     } else {
-      rewrites.add({
-        range: { start: h.start, end: h.start },
+      rewrites.insert({
+        at: h.start,
         body: [text({ sym: rpcLocal.sym }, ', ')],
         scope: providerScope,
         by,
@@ -1142,16 +1114,16 @@ function planStartEnv(
       SymbolId,
       { name: Node; fn: Node; direct: Node | null }
     >()
-    for (const { arg, call } of serverCode) {
-      const code = unwrapExpression(arg)
-      for (const { kind, sym, range } of t1.refs.refsIn(rangeOf(arg))) {
+    for (const { range: text } of rewrites.serverOnlyText) {
+      for (const { kind, sym, range } of t1.refs.refsIn(text)) {
         const param =
           kind === 'value' &&
           !ctx.symbols.isModuleLevel(sym) &&
-          parameterOf(ctx, sym, call)
+          parameterOf(ctx, sym, text)
         if (!param) {
           continue
         }
+        const code = unwrapExpression(nodeOn(ctx, text)!)
         const direct =
           code.type === 'Identifier' && code.start === range.start ? code : null
         if (!params.get(sym)?.direct) {
@@ -1194,14 +1166,32 @@ function planStartEnv(
   ctx.setFacts(START_ENV, facts)
 }
 
+/** The node on exactly `range`. */
+function nodeOn(ctx: PlanContext, range: Range): Node | null {
+  for (
+    let n = ctx.t1.nodeAt(range.start);
+    n;
+    n = ctx.analysis.file.parentOf(n)
+  ) {
+    if (n.start === range.start && n.end === range.end) {
+      return n
+    }
+    if (n.start < range.start || n.end > range.end) {
+      return null
+    }
+  }
+  return null
+}
+
 /**
  * The name node of `sym` when it is a parameter (or a binding of a
- * parameter's pattern) of a function enclosing `call`, with that function.
+ * parameter's pattern) of a function strictly enclosing `text`, with that
+ * function.
  */
 function parameterOf(
   ctx: PlanContext,
   sym: SymbolId,
-  call: Node,
+  text: Range,
 ): { name: Node; fn: Node } | null {
   const name = ctx.symbols.binding(sym)?.declarations[0]
   if (!name) {
@@ -1212,7 +1202,11 @@ function parameterOf(
       const isParam = fn.params.some((p) =>
         patternIdentifiers(p).some((id) => id === name),
       )
-      return isParam && fn.start <= call.start && call.end <= fn.end
+      // (of a function strictly enclosing the text: not the text's own parameters)
+      return isParam &&
+        fn.start <= text.start &&
+        text.end <= fn.end &&
+        (fn.start < text.start || text.end < fn.end)
         ? { name, fn }
         : null
     }
@@ -1756,6 +1750,11 @@ function hoist(
       region,
       owner,
       placeholder: [text({ sym: hoisted.sym })],
+      // (homed in a provider output: the env module keeps the chain in place,
+      // with its handler's stub, instead of importing the hoisted binding,
+      // which would evaluate the provider module and what its handlers
+      // import in this env)
+      ...(home === 'auto' ? {} : { scope: { except: ['env'] } }),
       by,
       subject:
         'a server function written in place, which TanStack Start moves to the module top level',

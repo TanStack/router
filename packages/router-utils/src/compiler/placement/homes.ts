@@ -81,6 +81,9 @@ export function assignHomes(
       for (const e of rewrites.edits) {
         add(e.body)
       }
+      for (const p of rewrites.places) {
+        add(p.body)
+      }
       for (const g of rewrites.generated) {
         add(g.body)
       }

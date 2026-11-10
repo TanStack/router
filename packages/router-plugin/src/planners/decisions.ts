@@ -451,15 +451,16 @@ export function splitPlanOf(
         })
         continue
       }
-      // another planner already moves exactly this text (Start hoists a
-      // server fn written in place): the chunk cannot take it as well
-      const claimed = ctx.rewrites.claimOn(target.region)
+      // another planner already puts something at exactly this text's place
+      // in the route module (Start hoists a server fn written in place): the
+      // chunk cannot take it as well
+      const claimed = ctx.rewrites.view('env').placeholderAt(target.region)
       if (claimed) {
         warnings.push({
           severity: 'error',
           code: 'split-claimed',
           by: ROUTER_PLANNER,
-          message: `[tanstack-router] The \`${key}\` option of ${file} is split into its own chunk, but its value is ${claimed.subject ?? 'moved elsewhere by the compiler'}, so it cannot move into the chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${target.keyText}: ${key}Fn\`.`,
+          message: `[tanstack-router] The \`${key}\` option of ${file} is split into its own chunk, but its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into the chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${target.keyText}: ${key}Fn\`.`,
           range: target.region,
         })
         continue

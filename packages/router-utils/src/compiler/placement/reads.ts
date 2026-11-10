@@ -103,7 +103,7 @@ export function readIndex(
   graph: ClusterGraph,
 ): ReadIndex {
   const { t1, rewrites } = input
-  const { refs, symbols } = t1
+  const { symbols } = t1
   const { regions } = rewrites
   const { clusters, clusterOfRegion, clusterOfSym, ownedRefs } = graph
   const { viewOf, isLive } = graph
@@ -179,12 +179,17 @@ export function readIndex(
     return hit
   }
 
-  function regionReads(r: Region, o: OutputId, into: MemberReads): void {
-    for (const cid of regions.childrenOf(r.id)) {
+  /** Pushes the regions nested in `id` that no output claims (its successors). */
+  const pushChildren = (id: RegionId, into: MemberReads) => {
+    for (const cid of regions.childrenOf(id)) {
       if (!rewrites.claims.has(cid)) {
         into.children.push(cid)
       }
     }
+  }
+
+  function regionReads(r: Region, o: OutputId, into: MemberReads): void {
+    pushChildren(r.id, into)
     const view = viewOf(o)
     const { own, around } = nodesOfRegion(r)
     const verdict = view.encloses(
@@ -196,70 +201,100 @@ export function readIndex(
       return
     }
     const partial = verdict === 'partial'
-    const owned = ownedRefs.get(r.id) ?? NO_REFS
     const liveRef = partial ? (ref: ClassifiedRef) => isLive(ref, o) : null
-    /** What a body standing for node `n` reads. */
-    const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
+    /** What a body standing for node `n` reads (its slices walked with `v`, its references among `owned`). */
+    const read = (
+      n: RangeNode,
+      body: ReadonlyArray<Frag>,
+      v: WalkVisitor,
+      owned: ReadonlyArray<ClassifiedRef>,
+    ) => {
       bodyReads(body, into)
       for (const f of body) {
         if (f.k === 'slice') {
-          view.walk(n, f.range.start, f.range.end, visitor)
+          view.walk(n, f.range.start, f.range.end, v)
         } else if (f.k === 'ref') {
           // (a rewritten reference keeps the one it rewrites)
           refReads(owned, f.range.start, f.range.end, liveRef, into)
         }
       }
     }
-    const visitor: WalkVisitor = {
-      source: (s, e) => refReads(owned, s, e, liveRef, into),
-      node: (n) => {
-        if (!(partial && view.isErasedAt(n.start))) {
-          read(n, (view.placeOf(n) ?? view.textOf(n))!)
-        }
-      },
-      insert: (e) => {
-        if (!partial || !view.isErasedAt(e.range.start)) {
-          bodyReads(e.body, into)
-        }
-      },
-      member: (n) => {
-        if (n === own) {
-          return false
-        }
-        // a claimed region's text is its owner's: what stands at its place
-        // is read here (the placeholder, or the edit replacing it and what
-        // that keeps of the region)
-        const place = rewrites.claims.has(n.region!) ? view.placeOf(n) : null
-        if (place !== null && !(partial && view.isErasedAt(n.start))) {
-          bodyReads(place, into)
-          for (const f of place) {
-            if (f.k === 'slice' || f.k === 'ref') {
-              refReads(
-                refs.refsIn(f.range),
-                f.range.start,
-                f.range.end,
-                liveRef,
-                into,
-              )
-            }
+    /** The walk of text whose references are `owned` (the member's, or a region's claimed only for other outputs). */
+    const reader = (owned: ReadonlyArray<ClassifiedRef>): WalkVisitor => {
+      const v: WalkVisitor = {
+        source: (s, e) => refReads(owned, s, e, liveRef, into),
+        node: (n) => {
+          if (n === own) {
+            readOwn()
+          } else if (!(partial && view.isErasedAt(n.start))) {
+            read(n, (view.placeOf(n) ?? view.textOf(n))!, v, owned)
           }
-        }
-        return true
-      },
+        },
+        insert: (e) => {
+          if (!partial || !view.isErasedAt(e.range.start)) {
+            bodyReads(e.body, into)
+          }
+        },
+        member: (n) => {
+          if (n === own) {
+            return false
+          }
+          const cid = n.region!
+          if (!rewrites.claims.has(cid)) {
+            return true // (a successor)
+          }
+          if (view.isClaimed(n)) {
+            // its text is its owner's: what stands at its place is read here
+            const place = view.placeOf(n)
+            if (place !== null && !(partial && view.isErasedAt(n.start))) {
+              bodyReads(place, into)
+            }
+            return true
+          }
+          // claimed for other outputs: in this one its text is this member's
+          const inner = reader(ownedRefs.get(cid) ?? NO_REFS)
+          const text = view.textOf(n)
+          if (text === null) {
+            view.walk(n, n.start, n.end, inner)
+          } else if (!(partial && view.isErasedAt(n.start))) {
+            read(n, text, inner, ownedRefs.get(cid) ?? NO_REFS)
+          }
+          pushChildren(cid, into)
+          return true
+        },
+      }
+      return v
     }
-    const text = own === null ? null : view.textOf(own)
-    if (text !== null) {
-      read(own!, text)
+    const owned = ownedRefs.get(r.id) ?? NO_REFS
+    const top = reader(owned)
+    /** The member's own node: its text (an unclaimed one's place, when a placeholder stands for it). */
+    const readOwn = () => {
+      const n = own!
+      const body = view.isClaimed(n)
+        ? view.textOf(n)
+        : (view.placeOf(n) ?? view.textOf(n))
+      if (body !== null) {
+        read(n, body, top, owned)
+      } else {
+        view.walk(n, r.range.start, r.range.end, top)
+      }
+    }
+    if (own === null) {
+      view.walk(around, r.range.start, r.range.end, top)
+    } else if (r.unit !== null && own.parent !== null) {
+      // (from the level around it: an insert at a unit's start is the unit's)
+      view.walk(own.parent, r.range.start, r.range.end, top)
     } else {
-      view.walk(around, r.range.start, r.range.end, visitor)
+      readOwn()
     }
   }
 
   /**
    * What a region's text names, rendered or not (the env module's source:
    * provenance and the export companions): the references it owns, the
-   * bodies of the edits and inserts of `o` inside it, the placeholders of the
-   * claimed regions nested in it.
+   * bodies of the edits, placeholders and inserts of `o` inside it, the
+   * places of the regions claimed in `o` nested in it (the text of one
+   * claimed only for other outputs is its own).
    */
   function sourceReads(r: Region, o: OutputId, into: MemberReads): void {
     refReads(
@@ -269,12 +304,29 @@ export function readIndex(
       null,
       into,
     )
+    const view = viewOf(o)
     const { start, end } = r.range
     const { own, around } = nodesOfRegion(r)
+    /** A claimed region nested in it: its place, or its text when claimed only for other outputs. */
+    const claimed = (c: RangeNode) => {
+      if (view.isClaimed(c)) {
+        const place = view.placeholderAt(c)!
+        bodyReads('owner' in place ? place.placeholder : place.body, into)
+        return
+      }
+      refReads(ownedRefs.get(c.region!) ?? NO_REFS, c.start, c.end, null, into)
+      visit(c)
+      pushChildren(c.region!, into)
+    }
     const visit = (n: RangeNode) => {
       for (const e of n.edits ?? []) {
         if (RewriteSet.inScope(e.scope, o)) {
           bodyReads(e.body, into)
+        }
+      }
+      for (const p of n.places ?? []) {
+        if (RewriteSet.inScope(p.scope, o)) {
+          bodyReads(p.body, into)
         }
       }
       for (const c of n.children) {
@@ -282,9 +334,8 @@ export function readIndex(
           continue
         }
         if (c.region !== null && c.region !== r.id) {
-          const claim = rewrites.claims.get(c.region)
-          if (claim !== undefined) {
-            bodyReads(claim.placeholder, into)
+          if (rewrites.claims.has(c.region)) {
+            claimed(c)
           }
           continue
         }
@@ -305,9 +356,8 @@ export function readIndex(
           continue
         }
         if (c.region !== null) {
-          const claim = rewrites.claims.get(c.region)
-          if (claim !== undefined) {
-            bodyReads(claim.placeholder, into)
+          if (rewrites.claims.has(c.region)) {
+            claimed(c)
           }
         } else {
           visit(c)
@@ -325,16 +375,12 @@ export function readIndex(
       }
       if (
         RewriteSet.inScope(e.scope, o) &&
-        regions.innermostAt(e.range.start) === r.id
+        regions.insertOwnerAt(e.range.start) === r.id
       ) {
         bodyReads(e.body, into)
       }
     }
-    for (const cid of regions.childrenOf(r.id)) {
-      if (!rewrites.claims.has(cid)) {
-        into.children.push(cid)
-      }
-    }
+    pushChildren(r.id, into)
   }
 
   function memberReads(m: number, o: OutputId, live: boolean): MemberReads {

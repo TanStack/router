@@ -135,13 +135,7 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       const next = names.alloc(`Tsr${pascal(key)}`)
       // the occurrences that are split option values are the splitter's
       // (its edit replaces them; the chunk reads the renamed symbol)
-      ctx.renameRefs(
-        sym,
-        { sym: next.sym },
-        'all-outputs',
-        ROUTER_PLANNER,
-        splitRegions,
-      )
+      ctx.renameRefs(sym, { sym: next.sym }, ROUTER_PLANNER, splitRegions)
       record(next.name)
       continue
     }
@@ -182,13 +176,12 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       by: ROUTER_PLANNER,
     })
     if (method) {
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: option.prop.start, end: option.prop.end },
         body: [
           { k: 'text', parts: [`${option.keyText}: `] },
           { k: 'slice', range },
         ],
-        scope: 'all-outputs',
         by: ROUTER_PLANNER,
       })
     }

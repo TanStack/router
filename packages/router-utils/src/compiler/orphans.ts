@@ -16,7 +16,16 @@ import type { Range } from './header'
 import type { PlanContext } from './plan'
 import type { OutputDecl } from './reach'
 import type { SymbolId } from './symbols'
-import type { EditScope, Frag, LivenessView, OutputId } from './rewrite'
+import type {
+  EditScope,
+  Frag,
+  LivenessView,
+  OutputId,
+  RewriteSet,
+} from './rewrite'
+
+/** The core's context: its scoped edits (`RewriteSet.scopedEdit`) are not the planners'. */
+type CoreContext = PlanContext & { readonly rewrites: RewriteSet }
 
 const text = (part: string): Frag => ({ k: 'text', parts: [part] })
 const slice = (range: Range): Frag => ({ k: 'slice', range })
@@ -62,7 +71,7 @@ const prune = (
  * the hook order is the same in every output. Iterates to a fixpoint.
  */
 export function cleanOrphanedDeclarations(
-  ctx: PlanContext,
+  ctx: CoreContext,
   outputs: ReadonlyMap<OutputId, OutputDecl>,
 ): void {
   const { t1, symbols, rewrites } = ctx
@@ -218,7 +227,7 @@ export function cleanOrphanedDeclarations(
         }
         handled.add(b.id)
         changed = true
-        rewrites.add({
+        rewrites.scopedEdit({
           range: {
             start: parent.start,
             end: extendOverTrailingLine(code, parent.end),
@@ -239,7 +248,7 @@ export function cleanOrphanedDeclarations(
       for (const { binding, range, refs } of restKept) {
         handled.add(binding)
         changed = true
-        rewrites.add({ range, body: [], scope: scopeOf(refs), by: BY })
+        rewrites.scopedEdit({ range, body: [], scope: scopeOf(refs), by: BY })
       }
     }
     if (!changed) {
@@ -255,7 +264,7 @@ export function cleanOrphanedDeclarations(
  * output renders the region).
  */
 function takenElsewhere(
-  ctx: PlanContext,
+  ctx: CoreContext,
   outputs: ReadonlyMap<OutputId, OutputDecl>,
   sym: SymbolId,
   refs: ReadonlyArray<ClassifiedRef>,
@@ -288,7 +297,7 @@ function takenElsewhere(
  * hook there.
  */
 function removeDeclarator(
-  ctx: PlanContext,
+  ctx: CoreContext,
   declarator: Node,
   scopeOf: ScopeOf,
   prunedDecls: Map<Node, Pruned>,
@@ -315,7 +324,7 @@ function removeDeclarator(
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
     }
-    ctx.rewrites.add(
+    ctx.rewrites.scopedEdit(
       effectsGo
         ? {
             range: {
@@ -358,7 +367,7 @@ function isStatementPosition(parent: Node | null): boolean {
  * has references and none is live.
  */
 function orphanedPatternDeclarator(
-  ctx: PlanContext,
+  ctx: CoreContext,
   decl: Node,
   live: LivenessView,
 ): Node | null {
@@ -410,7 +419,7 @@ function expressionStatement(code: string, init: Node): Array<Frag> {
  * (`removeListItems`).
  */
 function removeDeclarators(
-  ctx: PlanContext,
+  ctx: CoreContext,
   statement: Node,
   { items: pruned, refs }: Pruned,
   live: LivenessView,
@@ -432,7 +441,7 @@ function removeDeclarators(
         stmtParent.type === 'SwitchCase' ||
         stmtParent.type === 'StaticBlock')
     if (asStatement) {
-      ctx.rewrites.add({
+      ctx.rewrites.scopedEdit({
         range: {
           start: statement.start,
           end: extendOverTrailingLine(code, statement.end),
@@ -449,7 +458,9 @@ function removeDeclarators(
   const last = decls[decls.length - 1]!
   const keepLast = decls.every(gone)
   const isGone = (d: Node) => gone(d) && !(keepLast && d === last)
-  removeListItems(ctx, decls, isGone, pruned, null, { scope, by: BY })
+  removeItems(decls, isGone, pruned, null, (range) =>
+    ctx.rewrites.scopedEdit({ range, body: [], scope, by: BY }),
+  )
 }
 
 /** The ranges of the items of a list an earlier erasure removed (what a removal of their run encloses). */
@@ -468,7 +479,7 @@ function goneBefore(
  * a pattern losing every property becomes `{}`).
  */
 function removePatternProperties(
-  ctx: PlanContext,
+  ctx: CoreContext,
   pattern: Node,
   { items: pruned, refs }: Pruned,
   live: LivenessView,
@@ -486,10 +497,10 @@ function removePatternProperties(
   if (code[closing] === ',') {
     closing = nextToken(code, closing + 1)
   }
-  removeListItems(ctx, props, gone, pruned, closing, {
-    scope: scopeOf(refs, goneBefore(props, pruned, live)),
-    by: BY,
-  })
+  const scope = scopeOf(refs, goneBefore(props, pruned, live))
+  removeItems(props, gone, pruned, closing, (range) =>
+    ctx.rewrites.scopedEdit({ range, body: [], scope, by: BY }),
+  )
 }
 
 /**
@@ -510,17 +521,26 @@ export function removeListItems(
   gone: (item: Node) => boolean,
   pruned: ReadonlySet<Node>,
   closing: number | null,
-  edit: { scope: EditScope; by: string },
+  by: string,
+): void {
+  removeItems(items, gone, pruned, closing, (range) =>
+    ctx.rewrites.edit({ range, body: [], by }),
+  )
+}
+
+/** `removeListItems`, each removal by `remove`. */
+function removeItems(
+  items: ReadonlyArray<Node>,
+  gone: (item: Node) => boolean,
+  pruned: ReadonlySet<Node>,
+  closing: number | null,
+  remove: (range: Range) => void,
 ): void {
   const prunedNow = (from: number, to: number) =>
     items.slice(from, to + 1).some((item) => pruned.has(item))
   if (closing !== null && items.every(gone)) {
     if (prunedNow(0, items.length - 1)) {
-      ctx.rewrites.add({
-        range: { start: items[0]!.start, end: closing },
-        body: [],
-        ...edit,
-      })
+      remove({ start: items[0]!.start, end: closing })
     }
     return
   }
@@ -535,13 +555,11 @@ export function removeListItems(
     if (prunedNow(i, j)) {
       const next = items[j + 1]
       const prev = items[i - 1]
-      ctx.rewrites.add({
-        range: next
+      remove(
+        next
           ? { start: items[i]!.start, end: next.start }
           : { start: prev!.end, end: items[j]!.end },
-        body: [],
-        ...edit,
-      })
+      )
     }
     i = j
   }
@@ -590,7 +608,7 @@ function callsHook(init: Node): boolean {
  * element stays (it exhausts the iterator).
  */
 function prunePatternElement(
-  ctx: PlanContext,
+  ctx: CoreContext,
   decl: Node,
   refs: ReadonlyArray<ClassifiedRef>,
   scopeOf: ScopeOf,
@@ -627,7 +645,7 @@ function prunePatternElement(
     return true
   }
   if (parent.type === 'ArrayPattern') {
-    ctx.rewrites.add({
+    ctx.rewrites.scopedEdit({
       range: { start: node.start, end: node.end },
       body: commaFollows(ctx.analysis.source.code, node.end) ? [] : [text(',')],
       scope: scopeOf(refs),

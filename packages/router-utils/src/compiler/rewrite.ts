@@ -28,7 +28,11 @@ export type OutputId = 'env' | `derived:${string}`
 export function derivedIdOf(output: OutputId): string {
   return output.slice('derived:'.length)
 }
-export type EditScope = 'all-outputs' | ReadonlyArray<OutputId>
+/** The outputs an insert, a placeholder or a claim applies in (a planner's edit applies in every output). */
+export type EditScope =
+  | 'all-outputs'
+  | ReadonlyArray<OutputId>
+  | { readonly except: ReadonlyArray<OutputId> }
 export type RefTarget =
   | { sym: SymbolId }
   | { member: [SymbolId, ...Array<string>] }
@@ -85,6 +89,13 @@ export type TextFrag = {
   mapTo?: number
   declares?: ReadonlyArray<SymbolId>
 }
+
+/**
+ * A fragment of what stands at a place (a placeholder, a claim's): generated
+ * text only. A place names no source text: the region's text renders in its
+ * owner, or nowhere.
+ */
+export type PlaceFrag = Exclude<Frag, { k: 'slice' } | { k: 'ref' }>
 
 /** A claimed region, whole: its text, rendered by its owner. */
 export type RegionFrag = { k: 'region'; id: RegionId }
@@ -147,7 +158,9 @@ export interface GlueImport {
 interface RegionClaim {
   region: RegionId
   owner: GenUnitId
-  placeholder: ReadonlyArray<Frag>
+  placeholder: ReadonlyArray<PlaceFrag>
+  /** The outputs whose place of the region holds the placeholder (default: every output). */
+  scope?: EditScope
   by: string
   /**
    * What the claimed text is, in a message's words (`a server function
@@ -183,6 +196,18 @@ export interface PlannerEdit extends Edit {
   n: number
 }
 
+/** What a planner puts at a region's place in some outputs (`RewriteSet.placeholder`). */
+export interface Placeholder extends PlannerEdit {
+  body: ReadonlyArray<PlaceFrag>
+}
+
+/** Server-only source text a client compile removes (`RewriteSet.serverOnly`). */
+export interface ServerOnlyText {
+  range: Range
+  /** What the text is, in a message's words (`a server function's handler`). */
+  subject: string
+}
+
 /**
  * A range of the region tree: the module, a sub-region, the range of
  * planner edits, or several of them (one node per range). Nodes nest or are
@@ -198,13 +223,15 @@ export interface RangeNode {
   children: Array<RangeNode>
   /** What first addressed the range (a conflict names it). */
   readonly by: string
-  /** The planner edits on exactly this range, of every scope, in call order. */
+  /** The edits of this range's text (a planner's address every output, the core's orphan cleanup some), in call order. */
   edits: Array<PlannerEdit> | null
+  /** The placeholders standing at this range's place in some outputs, in call order. */
+  places: Array<Placeholder> | null
   /** The claim of the region on exactly this range (a second one is a conflict). */
   claim: RegionClaim | null
   /** The region on exactly this range, if any (a placement member). */
   region: RegionId | null
-  /** Whether this node or one inside it holds an edit or a claim (the others decide nothing: every walk skips them). */
+  /** Whether this node or one inside it holds an edit, a placeholder or a claim (the others decide nothing: every walk skips them). */
   marked: boolean
 }
 
@@ -222,7 +249,7 @@ export class RegionTable {
   readonly regions: Array<Region> = []
   /** Unit regions sorted by start (disjoint). */
   private readonly unitRegions: Array<Region> = []
-  /** Sub-regions by `start:end:kind` (one region per range and kind). */
+  /** Sub-regions by `start:end` (one region per range). */
   private readonly subRegionByKey = new Map<string, RegionId>()
   private readonly root: RangeNode
   /** The nodes by start (several start at one offset only when nested). */
@@ -241,6 +268,7 @@ export class RegionTable {
       children: [],
       by: 'the module',
       edits: null,
+      places: null,
       claim: null,
       region: null,
       marked: false,
@@ -258,11 +286,17 @@ export class RegionTable {
     }
   }
 
-  /** Registers a sub-region: its node of the tree. */
+  /** Registers a sub-region: its node of the tree (one region per range: another kind there is a conflict). */
   register(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
-    const key = `${range.start}:${range.end}:${kind}`
+    const key = `${range.start}:${range.end}`
     const existing = this.subRegionByKey.get(key)
     if (existing !== undefined) {
+      const other = this.regions[existing]!.kind
+      if (other !== kind) {
+        throw new Error(
+          `conflict: a ${kind} region [${range.start}, ${range.end}) is the ${other} region there`,
+        )
+      }
       return existing
     }
     const node = this.node(range, `a ${kind} region`)!
@@ -303,6 +337,30 @@ export class RegionTable {
         Math.max(end, start) > c.end ||
         (end <= start && start >= c.end)
       ) {
+        return found
+      }
+      if (c.region !== null) {
+        found = c.region
+      }
+      node = c
+    }
+  }
+
+  /**
+   * The region whose text holds an insert at `at` (the walk's rule): the
+   * innermost one strictly holding the position, else the unit starting
+   * there.
+   */
+  insertOwnerAt(at: number): RegionId | null {
+    const unit = this.unitAt(at, at)
+    if (unit === null) {
+      return null
+    }
+    let found = unit.id
+    let node = this.root
+    for (;;) {
+      const c = node.children[lastStartingBy(node.children, at - 1)]
+      if (c === undefined || at >= c.end) {
         return found
       }
       if (c.region !== null) {
@@ -477,6 +535,7 @@ export class RegionTable {
         children: [],
         by,
         edits: null,
+        places: null,
         claim: null,
         region: unit,
         marked: false,
@@ -508,6 +567,7 @@ export class RegionTable {
       children: siblings.splice(i, j - i),
       by,
       edits: null,
+      places: null,
       claim: null,
       region: unit,
       marked: false,
@@ -638,12 +698,7 @@ function lastStartingBy(
 /**
  * The order of the core's edits of one range and of the inserts at one
  * position (`compareCoreEdits`): the lower is the outer edit and the first
- * insert. By band, then by `n` within it, then `nested`:
- * - `planner`: planner edits, `n` in call order;
- * - `claim`: a claim's placeholder, `n` its region, after the planners' so that
- *   a planner edit scoped to one output on exactly the claimed region replaces
- *   it there; an edit addressed to every output on exactly that region shares
- *   its `n` and is `nested` inside it;
+ * insert. By band, then by `n` within it:
  * - `lineEnd`: the line end a statement needs, before anything else generated
  *   at that position;
  * - `glueImports`: the core's glue imports;
@@ -651,26 +706,19 @@ function lastStartingBy(
  *   generated units, export glue), `n` in call order.
  */
 export const EditBand = {
-  planner: 0,
-  claim: 1,
-  lineEnd: 2,
-  glueImports: 3,
-  core: 4,
+  lineEnd: 0,
+  glueImports: 1,
+  core: 2,
 } as const
 export type EditBand = (typeof EditBand)[keyof typeof EditBand]
 
 export interface EditOrder {
   band: EditBand
   n: number
-  nested?: boolean
 }
 
 export function compareEditOrder(a: EditOrder, b: EditOrder): number {
-  return (
-    a.band - b.band ||
-    a.n - b.n ||
-    Number(a.nested === true) - Number(b.nested === true)
-  )
+  return a.band - b.band || a.n - b.n
 }
 
 /**
@@ -731,12 +779,19 @@ const NO_OPTIONS: WalkOptions = {}
 const NO_CORE: ReadonlyArray<CoreEdit> = []
 
 export class RewriteSet {
+  /** The edits of text and the inserts, in call order. */
   readonly edits: Array<PlannerEdit> = []
   /** The inserts (zero-width edits), by position then call order. */
   readonly inserts: Array<PlannerEdit> = []
+  /** The placeholders, in call order. */
+  readonly places: Array<Placeholder> = []
   readonly generated: Array<GeneratedUnit> = []
   readonly claims = new Map<RegionId, RegionClaim>()
-  /** The nodes holding two edits or more (`checkConflicts`). */
+  /** The server-only text a client compile removes (what the server-code check reads). */
+  readonly serverOnlyText: Array<ServerOnlyText> = []
+  /** The node of each claim. */
+  readonly claimNodes = new Map<RegionClaim, RangeNode>()
+  /** The nodes holding two items or more: edits, placeholders, a claim (`checkConflicts`). */
   private readonly shared: Array<RangeNode> = []
   private nextEdit = 0
   private changes = 0
@@ -747,7 +802,86 @@ export class RewriteSet {
 
   constructor(readonly regions: RegionTable) {}
 
-  add(edit: Edit): void {
+  /**
+   * The text of `range` in every output where it renders: `body` in place
+   * of its source (an empty range: an insert in every output).
+   */
+  edit(edit: { range: Range; body: ReadonlyArray<Frag>; by: string }): void {
+    this.add({ ...edit, scope: 'all-outputs' })
+  }
+
+  /**
+   * The core's orphan cleanup only (not on `PlanContext`): an edit of the
+   * text in some outputs, where the code it removes is orphaned.
+   */
+  scopedEdit(edit: Edit): void {
+    this.add(edit)
+  }
+
+  /** Text inserted at `at` in `scope` (default: every output where the position renders). */
+  insert(insert: {
+    at: number
+    body: ReadonlyArray<Frag>
+    by: string
+    scope?: EditScope
+  }): void {
+    this.add({
+      range: { start: insert.at, end: insert.at },
+      body: insert.body,
+      scope: insert.scope ?? 'all-outputs',
+      by: insert.by,
+    })
+  }
+
+  /**
+   * What stands at the place of `range` in the outputs of `scope`: `body`,
+   * generated text, while the range's text renders nowhere there (or in its
+   * owner, when another output's claim has one). A claim in scope there too
+   * is a conflict.
+   */
+  placeholder(place: {
+    range: Range
+    body: ReadonlyArray<PlaceFrag>
+    scope: EditScope
+    by: string
+  }): void {
+    const p: Placeholder = { ...place, n: this.nextEdit++ }
+    const node = this.regions.node(place.range, place.by)
+    if (node === null) {
+      throw new Error(
+        `placeholder of ${place.by} at [${place.range.start}, ${place.range.end}): a place is a range`,
+      )
+    }
+    ;(node.places ??= []).push(p)
+    this.share(node)
+    this.regions.mark(node)
+    this.places.push(p)
+    this.bump()
+  }
+
+  /**
+   * Server-only text of a client compile: what the server-code check reads,
+   * replaced in every output by `placeholder` when given (else erased by
+   * another edit: an isomorphic call's `.server()` implementation).
+   */
+  serverOnly(text: {
+    range: Range
+    subject: string
+    by: string
+    placeholder?: ReadonlyArray<PlaceFrag>
+  }): void {
+    this.serverOnlyText.push({ range: text.range, subject: text.subject })
+    if (text.placeholder !== undefined) {
+      this.placeholder({
+        range: text.range,
+        body: text.placeholder,
+        scope: 'all-outputs',
+        by: text.by,
+      })
+    }
+  }
+
+  private add(edit: Edit): void {
     const e = { ...edit, n: this.nextEdit++ }
     if (edit.range.end <= edit.range.start) {
       // (after the inserts at its position: in call order)
@@ -765,15 +899,24 @@ export class RewriteSet {
       inserts.splice(lo, 0, e)
     } else {
       const node = this.regions.node(edit.range, edit.by)!
-      const edits = (node.edits ??= [])
-      edits.push(e)
-      if (edits.length === 2) {
-        this.shared.push(node)
-      }
+      ;(node.edits ??= []).push(e)
+      this.share(node)
       this.regions.mark(node)
     }
     this.edits.push(e)
     this.bump()
+  }
+
+  /** Records a node that now holds two items (an edit, a placeholder, a claim) or more. */
+  private share(node: RangeNode): void {
+    if (
+      (node.edits?.length ?? 0) +
+        (node.places?.length ?? 0) +
+        (node.claim === null ? 0 : 1) ===
+      2
+    ) {
+      this.shared.push(node)
+    }
   }
 
   addGenerated(unit: Omit<GeneratedUnit, 'id'>): GenUnitId {
@@ -798,6 +941,12 @@ export class RewriteSet {
     return id
   }
 
+  /**
+   * Claims a region for a generated unit: the owner renders its text
+   * (`{ k: 'region' }`) and the placeholder stands at its place, in the
+   * outputs of `scope` (default: every output). In another output a
+   * placeholder of that output stands at the place, or the region's text.
+   */
   claim(claim: RegionClaim): void {
     if (typeof this.generated[claim.owner]!.home === 'object') {
       throw new Error(
@@ -820,19 +969,16 @@ export class RewriteSet {
       )
     }
     this.claims.set(claim.region, claim)
+    this.claimNodes.set(claim, node)
     node.claim = claim
+    this.share(node)
     this.regions.mark(node)
     this.bump()
   }
 
-  /** The claim on exactly `range`, if any (a second claim there is a conflict: `RegionClaim.subject`). */
-  claimOn(range: Range): RegionClaim | undefined {
-    return this.regions.nodeOn(range)?.claim ?? undefined
-  }
-
   /** Rewrites one reference, context-aware (shorthand properties, import/export names, JSX tags, assignment targets). */
-  ref(ref: ClassifiedRef, to: RefTarget, scope: EditScope, by: string): void {
-    this.add({
+  ref(ref: ClassifiedRef, to: RefTarget, by: string): void {
+    this.edit({
       range: ref.range,
       body: [
         {
@@ -843,17 +989,15 @@ export class RewriteSet {
           exportShorthand: ref.exportShorthand,
         },
       ],
-      scope,
       by,
     })
   }
 
   /** Rewrites a declaration name (`declName` ctx; identifier targets only). */
-  declName(range: Range, to: RefTarget, scope: EditScope, by: string): void {
-    this.add({
+  declName(range: Range, to: RefTarget, by: string): void {
+    this.edit({
       range,
       body: [{ k: 'ref', range, to, ctx: 'declName' }],
-      scope,
       by,
     })
   }
@@ -869,7 +1013,12 @@ export class RewriteSet {
 
   /** Whether `output` is in `scope`. */
   static inScope(scope: EditScope, output: OutputId): boolean {
-    return scope === 'all-outputs' || scope.includes(output)
+    if (scope === 'all-outputs') {
+      return true
+    }
+    return 'except' in scope
+      ? !scope.except.includes(output)
+      : scope.includes(output)
   }
 
   /** What `output` renders of the source. */
@@ -933,6 +1082,10 @@ export class RewriteSet {
     for (const c of this.claims.values()) {
       scan(c.owner, c.placeholder)
     }
+    // (what a placeholder names is read where it stands, as a claim's)
+    for (const p of this.places) {
+      scan(-1, p.body)
+    }
     this.owners = { version: this.version, owners }
     return owners
   }
@@ -945,6 +1098,9 @@ export class RewriteSet {
     }
   }
 }
+
+/** The rewrite set as planners see it (`PlanContext.rewrites`): the core's scoped edit is its own. */
+export type PlannerRewrites = Omit<RewriteSet, 'scopedEdit'>
 
 export interface LivenessView {
   live: (ref: ClassifiedRef) => boolean
@@ -1016,20 +1172,23 @@ function firstFrom(
 /**
  * What one output renders of the source, read on the region tree.
  *
- * Per node: its text (`textOf`: an edit's body, else its source with the
- * nodes inside it) and its place (`placeOf`: what stands where it is
- * written; a kept claim's placeholder, or the edit scoped to this output
- * that replaces it). A claim is kept unless an erasing edit strictly
- * encloses its occurrence; one whose owner other generated code reads
- * (`readOwners`: the provider's hoisted server fn its RPC wrapper calls) is a
- * declaration in its own right and stays then, without its placeholder (read
- * elsewhere). An edit addressed to every output on exactly a claimed region
- * is the region's text: it renders where the region does, inside its owner.
+ * Per node, two answers (the only readers of its tables): its text
+ * (`editOf`: the edit in scope, else its source with the nodes inside it)
+ * and its place (`placeholderOf`: what stands where it is written, else its
+ * text). A place is a planner's placeholder, which has no owner and erases
+ * the text there, or a claim's, whose owner renders the text: the claim is
+ * kept unless an erasing edit strictly encloses its occurrence, and one
+ * whose owner other generated code reads (`readOwners`: the provider's
+ * hoisted server fn its RPC wrapper calls) is a declaration in its own right
+ * and stays then, without its placeholder (read elsewhere). A region claimed
+ * for other outputs is claimed in this one too when a placeholder of this
+ * output stands at its place (its text renders in its owner, if read), and
+ * otherwise its text stands at its place, as unclaimed text.
  *
  * Source text enters the output through one walk (`walk`): the renderer,
  * placement's reads and the erased parts are its visitors. The point
  * questions (`isErasedAt`, …) climb from a position's innermost range to the
- * root, reading the same edits and claims (memoised per claim for one
+ * root, asking each node the same two questions (memoised per claim for one
  * version of the set).
  */
 export class OutputView {
@@ -1054,58 +1213,101 @@ export class OutputView {
 
   // ---- what a node renders ------------------------------------------------
 
-  /**
-   * The body a node's text is in this output (null: its source): the edit in
-   * scope on exactly its range, or, on a claimed region, the edit addressed
-   * to every output (it travels with the region). Two that differ conflict.
-   */
-  textOf(n: RangeNode): ReadonlyArray<Frag> | null {
+  /** The edit of node `n`'s text in this output (null: its source). Two that differ conflict. */
+  editOf(n: RangeNode): PlannerEdit | null {
     const edits = n.edits
     if (edits === null) {
       return null
     }
-    const claimed = n.claim !== null
     let found: PlannerEdit | null = null
     for (const e of edits) {
-      if (
-        claimed
-          ? e.scope !== 'all-outputs'
-          : !RewriteSet.inScope(e.scope, this.output)
-      ) {
-        continue
-      }
-      found = same(found, e, n)
-    }
-    return found === null ? null : found.body
-  }
-
-  /**
-   * What stands at a claimed node's place in this output (null: its text):
-   * the edit scoped to this output on exactly the region, else the
-   * placeholder of a kept claim.
-   */
-  placeOf(n: RangeNode): ReadonlyArray<Frag> | null {
-    const claim = n.claim
-    if (claim === null) {
-      return null
-    }
-    let found: PlannerEdit | null = null
-    for (const e of n.edits ?? NO_EDITS) {
-      if (e.scope !== 'all-outputs' && e.scope.includes(this.output)) {
+      if (RewriteSet.inScope(e.scope, this.output)) {
         found = same(found, e, n)
       }
     }
-    if (found !== null) {
-      return found.body
+    return found
+  }
+
+  /**
+   * What stands at node `n`'s place in this output (null: its text): a
+   * planner's placeholder in scope, or the claim in scope while this output
+   * keeps it. A placeholder and a claim both in scope conflict.
+   */
+  placeholderOf(n: RangeNode): Placeholder | RegionClaim | null {
+    const own = this.ownPlaceholder(n)
+    const claim = n.claim
+    if (claim === null || !this.applies(claim)) {
+      return own
     }
-    return this.keeps(claim) ? claim.placeholder : null
+    if (own !== null) {
+      throw new Error(
+        `conflict: ${own.by} and ${claim.by} both put text at the place of [${n.start}, ${n.end})`,
+      )
+    }
+    return this.keeps(claim) ? claim : null
+  }
+
+  /** The text of node `n` in this output (null: its source). */
+  textOf(n: RangeNode): ReadonlyArray<Frag> | null {
+    return this.editOf(n)?.body ?? null
+  }
+
+  /** What renders at node `n`'s place in this output (null: its text). */
+  placeOf(n: RangeNode): ReadonlyArray<PlaceFrag> | null {
+    const p = this.placeholderOf(n)
+    return p === null ? null : 'owner' in p ? p.placeholder : p.body
+  }
+
+  /**
+   * Whether node `n`'s region is claimed in this output: its text is its
+   * owner's (a claim in scope, or a placeholder of this output at the place
+   * of a region claimed for others), not part of the text around it.
+   */
+  isClaimed(n: RangeNode): boolean {
+    const claim = n.claim
+    return (
+      claim !== null && (this.applies(claim) || this.ownPlaceholder(n) !== null)
+    )
+  }
+
+  /** What a planner put at exactly `range`'s place for this output, kept or not: a claim in scope, or a placeholder. */
+  placeholderAt(range: Range): Placeholder | RegionClaim | null {
+    const n = this.set.regions.nodeOn(range)
+    if (n === null) {
+      return null
+    }
+    return n.claim !== null && this.applies(n.claim)
+      ? n.claim
+      : this.ownPlaceholder(n)
+  }
+
+  /** The planner's placeholder in scope at node `n`'s place (two that differ conflict). */
+  private ownPlaceholder(n: RangeNode): Placeholder | null {
+    const places = n.places
+    if (places === null) {
+      return null
+    }
+    let found: Placeholder | null = null
+    for (const p of places) {
+      if (RewriteSet.inScope(p.scope, this.output)) {
+        found = same(found, p, n)
+      }
+    }
+    return found
+  }
+
+  /** Whether the claim's placeholder belongs at its place in this output. */
+  private applies(claim: RegionClaim): boolean {
+    return (
+      claim.scope === undefined || RewriteSet.inScope(claim.scope, this.output)
+    )
   }
 
   /** Whether a node renders otherwise than its source: a walk renders it whole, never through it. */
   active(n: RangeNode): boolean {
     return (
-      (n.edits !== null || n.claim !== null) &&
-      (this.placeOf(n) !== null || this.textOf(n) !== null)
+      (n.edits !== null || n.places !== null || n.claim !== null) &&
+      (this.placeholderOf(n) !== null || this.editOf(n) !== null)
     )
   }
 
@@ -1431,42 +1633,33 @@ export class OutputView {
 
   /**
    * How much of a range what encloses it lets render: `own` is the node on
-   * exactly the range (its edits are the range's text), `around` the first
-   * node strictly holding it; they decide as for a position (`decide`).
-   * `partial`: ask the positions.
+   * exactly the range (its claim in this output relocates the range's text,
+   * whose edits the caller reads), `around` the first node strictly holding
+   * it; they decide as for a position (`decide`). `partial`: ask the
+   * positions.
    */
   encloses(
     range: Range,
     own: RangeNode | null,
     around: RangeNode | null,
   ): 'all' | 'none' | 'partial' {
-    const output = this.output
-    if (own !== null && own.claim !== null && this.readElsewhere(own.claim)) {
-      return 'all'
+    if (own !== null && own.claim !== null) {
+      const d = this.decides(own)
+      if (d !== null) {
+        return d === 'owner' ? 'all' : 'none'
+      }
     }
     for (let x = around; x !== null; x = x.parent) {
-      const claim = x.claim
-      const edits = x.edits
-      if (claim !== null) {
-        for (const e of edits ?? NO_EDITS) {
-          if (e.scope === 'all-outputs') {
-            const k = keeps(e.body, range)
-            if (k !== 'all') {
-              return k
-            }
-          }
-        }
-        if (this.readElsewhere(claim)) {
-          return 'all'
+      const e = this.editOf(x)
+      if (e !== null) {
+        const k = keeps(e.body, range)
+        if (k !== 'all') {
+          return k
         }
       }
-      for (const e of claim === null ? (edits ?? NO_EDITS) : NO_EDITS) {
-        if (RewriteSet.inScope(e.scope, output)) {
-          const k = keeps(e.body, range)
-          if (k !== 'all') {
-            return k
-          }
-        }
+      const d = this.decides(x)
+      if (d !== null) {
+        return d === 'owner' ? 'all' : 'none'
       }
     }
     return 'all'
@@ -1560,17 +1753,20 @@ export class OutputView {
     return claim !== undefined && this.keeps(claim)
   }
 
-  /** Whether this output keeps the claim: its occurrence renders, or other generated code reads its owner. */
+  /**
+   * Whether this output keeps the claim: its placeholder in scope and its
+   * occurrence renders, or other generated code reads its owner (in scope,
+   * or with a placeholder of this output at its place).
+   */
   private keeps(claim: RegionClaim): boolean {
+    if (this.applies(claim)) {
+      return (
+        !this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner)
+      )
+    }
     return (
-      !this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner)
-    )
-  }
-
-  /** Whether a claim is read elsewhere: kept, its occurrence erased (its text renders inside its owner, decided there). */
-  private readElsewhere(claim: RegionClaim): boolean {
-    return (
-      this.occurrenceErased(claim) && this.set.readOwners().has(claim.owner)
+      this.ownPlaceholder(this.set.claimNodes.get(claim)!) !== null &&
+      this.set.readOwners().has(claim.owner)
     )
   }
 
@@ -1586,35 +1782,45 @@ export class OutputView {
   }
 
   /**
-   * Climbs from `from` to the root: the first edit of this output erasing
-   * the byte at `offset` in a node's text (`textOf`) decides it erased, the
-   * first claim read elsewhere decides it renders, inner first; null when
-   * nothing does. (What stands at a claimed node's place is no part of its
-   * text.)
+   * What node `x`'s place decides about the text inside it, its edit
+   * aside: `owner`, it renders in the owner of the claim read elsewhere
+   * (kept, its occurrence's text not rendered here); `erased`, a place
+   * without an owner stands for it; null, what is around it decides (an
+   * unclaimed node; a kept claim's text renders where its occurrence does).
+   */
+  private decides(x: RangeNode): 'owner' | 'erased' | null {
+    const p = this.placeholderOf(x)
+    const claim = x.claim
+    if (claim !== null && (p !== null || this.applies(claim))) {
+      if (p !== null && p !== claim) {
+        // (the placeholder of this output at the place of a region claimed for others)
+        return this.set.readOwners().has(claim.owner) ? 'owner' : 'erased'
+      }
+      return this.occurrenceErased(claim) &&
+        this.set.readOwners().has(claim.owner)
+        ? 'owner'
+        : null
+    }
+    return p !== null ? 'erased' : null
+  }
+
+  /**
+   * Climbs from `from` to the root: inner first, the first node whose
+   * edit erases the byte at `offset` decides it erased, the first whose
+   * place decides (`decides`) decides; null when nothing does.
    */
   private decide(offset: number, from: RangeNode | null): boolean | null {
-    const output = this.output
     for (let x = from; x !== null; x = x.parent) {
-      const claim = x.claim
-      const edits = x.edits
-      if (claim !== null) {
-        // edits addressed to every output nest inside the claim
-        if (edits !== null) {
-          for (const e of edits) {
-            if (e.scope === 'all-outputs' && erases(e.body, offset)) {
-              return true
-            }
-          }
-        }
-        if (this.readElsewhere(claim)) {
-          return false
+      if (x.edits !== null) {
+        const e = this.editOf(x)
+        if (e !== null && erases(e.body, offset)) {
+          return true
         }
       }
-      if (edits !== null && claim === null) {
-        for (const e of edits) {
-          if (RewriteSet.inScope(e.scope, output) && erases(e.body, offset)) {
-            return true
-          }
+      if (x.places !== null || x.claim !== null) {
+        const d = this.decides(x)
+        if (d !== null) {
+          return d === 'erased'
         }
       }
     }
@@ -1623,11 +1829,7 @@ export class OutputView {
 }
 
 /** `found`, or `e` when it is the first: two edits of one range that differ conflict. */
-function same(
-  found: PlannerEdit | null,
-  e: PlannerEdit,
-  n: RangeNode,
-): PlannerEdit {
+function same<T extends PlannerEdit>(found: T | null, e: T, n: RangeNode): T {
   if (found === null) {
     return e
   }
@@ -1639,4 +1841,3 @@ function same(
   return found
 }
 
-const NO_EDITS: ReadonlyArray<PlannerEdit> = []

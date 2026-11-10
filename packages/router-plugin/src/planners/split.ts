@@ -62,12 +62,11 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     for (const option of plan.deleted) {
       if (plan.shadowing.has(option)) {
         // (a spread before it may hold the key: it keeps its place, or that value would win)
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: { start: option.prop.start, end: option.prop.end },
           body: [
             { k: 'text', parts: [`${stringLiteral(option.key!)}: undefined`] },
           ],
-          scope: 'all-outputs',
           by: ROUTER_PLANNER,
         })
       } else {
@@ -80,7 +79,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       (p) => deleted.has(p),
       deleted,
       listEnd(ctx.analysis.source.code, props),
-      { scope: 'all-outputs', by: ROUTER_PLANNER },
+      ROUTER_PLANNER,
     )
   }
 
@@ -277,7 +276,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       `, ${stringLiteral(d.exportName)})`,
     ]
     if (region === null) {
-      ctx.rewrites.add({
+      ctx.rewrites.placeholder({
         range: d.region,
         body: [
           {
@@ -292,13 +291,12 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       if (d.wholeProperty) {
         // a method: the property's edit writes the key before the place of
         // the claimed function
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: d.region,
           body: [
             { k: 'text', parts: [`${d.keyText}: `] },
             { k: 'slice', range: d.valueRange },
           ],
-          scope: 'all-outputs',
           by: ROUTER_PLANNER,
         })
       }

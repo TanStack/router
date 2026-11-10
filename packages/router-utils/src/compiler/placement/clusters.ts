@@ -663,11 +663,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return false
   }
-  // a claimed region's text evaluates where its owner lands, not in the
-  // unit it is written in
+  // a region claimed in the env module evaluates where its owner lands,
+  // not in the unit it is written in
   const claimed = new Set<RegionId>()
-  for (const claim of rewrites.claims.values()) {
-    claimed.add(claim.region)
+  for (const [claim, node] of rewrites.claimNodes) {
+    if (envView.isClaimed(node)) {
+      claimed.add(claim.region)
+    }
   }
   const inClaim = (ref: ClassifiedRef) => {
     for (

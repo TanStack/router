@@ -1100,6 +1100,12 @@ class Renderer {
           const node = this.plan.rewrites.regions.nodeOn(
             this.plan.regions.get(f.id).range,
           )!
+          if (!this.view.isClaimed(node) && !this.view.isErasedAround(node)) {
+            // (claimed for other outputs: its text stands at its place here)
+            throw new Error(
+              `conflict: region ${f.id} renders in its owner and at its place in ${this.view.output}`,
+            )
+          }
           const text = this.view.textOf(node)
           if (text === null) {
             this.renderSpan(node, node.start, node.end, unit, mergedEnv, out)
