@@ -11,7 +11,8 @@
  * importers).
  *
  * The plugins share one `ViteCompilerState` (`compiler-state.ts`: the
- * session and the hooks' state). This file holds each environment's compiler
+ * options, and the session of each build run or dev server with the hooks'
+ * state). This file holds the run plugin and each environment's compiler
  * plugin; beside it: `invalidation.ts` (file events), `handler-reach.ts`
  * (the RSC provider's handler reach), `late-pass-plugin.ts` and
  * `server-fn-plugins.ts` (dev lookup, forward, resolver).
@@ -35,12 +36,8 @@ import {
   rollupEntryModuleIds,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
-import {
-  changedRoutePaths,
-  onRoutesChanged,
-} from '@tanstack/router-plugin/context'
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { NODE_MODULES_RE, dependencyTextFilter } from '../compiler/scope'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import { isVueSfc } from '../compiler/vue'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
@@ -50,7 +47,6 @@ import {
 } from '../import-protection/witness'
 import {
   ViteCompilerState,
-  cacheDirRe,
   inputMapOf,
   optimizedDependency,
 } from './compiler-state'
@@ -60,7 +56,6 @@ import {
   changeKindOf,
   changedDependents,
   forgetFile,
-  invalidateRegistry,
   invalidationHosts,
 } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
@@ -93,12 +88,34 @@ export function startCompilerPlugin(
 ): PluginOption {
   const state = new ViteCompilerState(opts)
   return [
+    runPlugin(state),
     ...opts.environments.flatMap((env) => envCompilerPlugins(state, env)),
     latePassPlugin(state),
     devLookupPlugin(state),
     forwardPlugin(state),
     resolverPlugin(state),
   ]
+}
+
+/**
+ * The transform filters of the resolved config, and the session of a
+ * builder's run: Start's `buildApp` comes before any other (plugin-rsc's and
+ * nitro's build the environments; Start's own config `buildApp` too).
+ */
+function runPlugin(state: ViteCompilerState): Plugin {
+  return {
+    name: 'tanstack-start:compiler:run',
+    configResolved(config) {
+      state.configure(config)
+    },
+    buildApp: {
+      order: 'pre',
+      handler(builder) {
+        state.sessionOfRun(builder.environments, builder.config, null)
+        return Promise.resolve()
+      },
+    },
+  }
 }
 
 /** An environment's compiler plugin, and the one of its dependency scripts. */
@@ -109,7 +126,7 @@ function envCompilerPlugins(
   const watches = env.name === state.watchingEnv
   const compileTransform: TransformHandler = async function (code, id) {
     const identity = identify(id)
-    const s = state.requireSession()
+    const s = state.sessionOf(this.environment)
     if (identity.lang === null || !s.start.compiles(identity.path, code)) {
       return null
     }
@@ -154,10 +171,10 @@ function envCompilerPlugins(
       mock = await mock
     }
     if (s.start.opts.mode === 'dev') {
-      let digests = state.outputDigests.get(identity.path)
+      let digests = s.outputDigests.get(identity.path)
       if (!digests) {
         digests = new Map()
-        state.outputDigests.set(identity.path, digests)
+        s.outputDigests.set(identity.path, digests)
       }
       digests.set(
         `${environment.name}\0${id}`,
@@ -183,47 +200,17 @@ function envCompilerPlugins(
     applyToEnvironment(e) {
       return e.name === env.name
     },
-    configResolved(config) {
-      if (!state.session) {
-        state.session = state.createSession({
-          root: config.root,
-          command: config.command,
-          bundledDev: !!config.experimental.bundledDev,
-          cacheDir: config.cacheDir,
-        })
-        // the optimizer's bundles are dependencies wherever the app keeps
-        // them: a custom `cacheDir` is outside every `node_modules`
-        state.dependencyFilter.id.include.push(
-          cacheDirRe(config.cacheDir, true),
-        )
-        state.ownExclude.push(cacheDirRe(config.cacheDir))
-        const text = dependencyTextFilter(state.session.start.ip)
-        if (text) {
-          state.dependencyFilter.code = text
-        }
-        state.unsubscribeRoutes?.()
-        state.unsubscribeRoutes = onRoutesChanged(
-          state.opts.routerPluginContext,
-          (next, previous) => {
-            for (const file of changedRoutePaths(next, previous)) {
-              void invalidateRegistry(state, file).catch((error: unknown) => {
-                state.server?.config.logger.error(
-                  `[tanstack-start] invalidating ${file} after a route change failed: ${String(error)}`,
-                )
-              })
-            }
-          },
-        )
-      }
-    },
     configureServer(viteServer) {
-      state.server = viteServer
-      const s = state.requireSession()
+      const s = state.sessionOfRun(
+        viteServer.environments,
+        viteServer.config,
+        viteServer,
+      )
       const environment = viteServer.environments[env.name]
       if (environment) {
         // each environment loads the virtual ids it resolved (Vite runs a
         // plugin's `buildStart` only for the client environment in dev)
-        state.virtualLoaders.set(env.name, async (id) => {
+        s.virtualLoaders.set(env.name, async (id) => {
           const loaded = await environment.pluginContainer.load(id)
           if (loaded === null || loaded === undefined) {
             return null
@@ -240,17 +227,13 @@ function envCompilerPlugins(
         const reporter = ipEnv.useDevReporter({
           warn: (message) => environment.logger.warn(message),
         })
-        viteServer.httpServer?.once('close', () => reporter.close())
+        s.disposers.push(() => reporter.close())
       }
-      viteServer.httpServer?.once('close', () => {
-        state.unsubscribeRoutes?.()
-        state.unsubscribeRoutes = null
-      })
     },
     async buildStart() {
-      const s = state.requireSession()
+      const s = state.sessionOf(this.environment)
       if (this.environment.mode === 'build') {
-        state.virtualLoaders.set(
+        s.virtualLoaders.set(
           env.name,
           async (id) => (await this.load({ id })).code,
         )
@@ -290,8 +273,9 @@ function envCompilerPlugins(
       if (this.environment.mode !== 'build' || env.type !== 'client') {
         return
       }
+      const s = state.sessionOf(this.environment)
       if (!this.meta.watchMode) {
-        state.clientFiles ??= []
+        s.clientFiles ??= []
         return
       }
       // a rebuild keeps the registry (a new build cleared it): the
@@ -309,8 +293,8 @@ function envCompilerPlugins(
           files.add(identity.path)
         }
       }
-      state.requireSession().start.registry.retain(env.name, graph)
-      state.clientFiles = [...files]
+      s.start.registry.retain(env.name, graph)
+      s.clientFiles = [...files]
     },
     /**
      * A build that writes its bundle (not a scan: plugin-rsc analyses the
@@ -318,15 +302,14 @@ function envCompilerPlugins(
      * again) outside watch mode is the environment's last: its compiler
      * state is released before the next environment builds. What later
      * environments read stays in the session: the server-fn registry and id
-     * allocator, the raw facts, the warnings ledger.
+     * allocator, the raw facts, the warnings ledger. A dev server calls it
+     * when it closes (or restarts).
      */
     closeBundle() {
-      if (this.environment.mode === 'build') {
-        state.unsubscribeRoutes?.()
-        state.unsubscribeRoutes = null
-        if (isFinalBuild(this.environment.config.build)) {
-          state.requireSession().start.release(env.name)
-        }
+      if (this.environment.mode !== 'build') {
+        state.closeServer(this.environment)
+      } else if (isFinalBuild(this.environment.config.build)) {
+        state.sessionOf(this.environment).start.release(env.name)
       }
     },
     resolveId: {
@@ -339,10 +322,11 @@ function envCompilerPlugins(
           // survived the TypeScript transform, and `allowImport` decides
           // before the module loads; a pending violation it does not allow
           // is reported, and `error` fails the importer's import analysis
-          const ipEnv =
-            importer !== undefined && state.session?.start.ip
-              ? state.session.start.ip.env(env.name, env.type)
-              : null
+          const ip =
+            importer === undefined
+              ? null
+              : state.sessionOf(this.environment).start.ip
+          const ipEnv = ip?.env(env.name, env.type) ?? null
           const confirmation = ipEnv?.confirm(edge) ?? null
           if (confirmation === null) {
             return edge
@@ -370,7 +354,7 @@ function envCompilerPlugins(
         id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE, ASSET_FILE_RE],
       },
       async handler(id) {
-        const s = state.requireSession()
+        const s = state.sessionOf(this.environment)
         if (IP_SPECIFIER_RE.test(id)) {
           const load = s.start.ip?.load(id)
           return load
@@ -407,34 +391,34 @@ function envCompilerPlugins(
       handler: compileTransform,
     },
     async hotUpdate(ctx) {
-      const s = state.requireSession()
+      const s = state.sessionOf(this.environment)
       // the file's path once, as every module id and compiler key holds it
       const change: InvalidateChange = {
         path: normalizePath(ctx.file),
         kind: changeKindOf(ctx.type),
       }
-      let pending = state.invalidations.get(ctx.read)
+      let pending = s.invalidations.get(ctx.read)
       if (!pending) {
         pending = invalidate(
           s.start.caches,
           change,
-          invalidationHosts(state, s, state.server, this.environment),
+          invalidationHosts(state, s, this.environment),
         )
-        state.invalidations.set(ctx.read, pending)
+        s.invalidations.set(ctx.read, pending)
       }
       const res = await pending
       if (change.kind === 'unlink') {
-        forgetFile(state, s, change.path)
+        forgetFile(s, change.path)
       }
       const extra = applyInvalidation(
-        state,
+        s,
         this.environment,
         change,
         res,
         ctx.timestamp,
       )
       const changed = await changedDependents(
-        state,
+        s,
         this.environment as DevEnvironment,
         extra,
       )
@@ -458,14 +442,11 @@ function envCompilerPlugins(
     // compiles their dependents again, against the caches the
     // invalidation left
     async watchChange(id, event) {
-      const s = state.requireSession()
       const environment = this.environment
+      const s = state.sessionOf(environment)
       if (
         environment.mode === 'dev' &&
-        !(
-          watches &&
-          (s.bundledDev || state.server?.config.server.hmr === false)
-        )
+        !(watches && (s.bundledDev || s.server?.config.server.hmr === false))
       ) {
         return
       }
@@ -479,7 +460,7 @@ function envCompilerPlugins(
         kind: changeKindOf(event.event),
       }
       if (change.kind === 'unlink') {
-        forgetFile(state, s, change.path)
+        forgetFile(s, change.path)
       }
       if (environment.mode !== 'dev') {
         await invalidate(
@@ -494,20 +475,20 @@ function envCompilerPlugins(
       const res = await invalidate(
         s.start.caches,
         change,
-        invalidationHosts(state, s, state.server, environment),
+        invalidationHosts(state, s, environment),
       )
       const now = Date.now()
-      const environments = state.server
-        ? Object.values(state.server.environments).filter((e) =>
+      const environments = s.server
+        ? Object.values(s.server.environments).filter((e) =>
             state.envNames.has(e.name),
           )
         : [environment]
       for (const environment of environments) {
-        applyInvalidation(state, environment, change, res, now)
+        applyInvalidation(s, environment, change, res, now)
       }
     },
     renderChunk(code, chunk) {
-      const s = state.requireSession()
+      const s = state.sessionOf(this.environment)
       if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
         return null
       }
@@ -546,10 +527,10 @@ function envCompilerPlugins(
      * warnings.
      */
     async generateBundle(_options, bundle) {
-      const s = state.requireSession()
       if (this.environment.mode !== 'build') {
         return
       }
+      const s = state.sessionOf(this.environment)
       if (env.type === 'client') {
         // an extracted-export output an entry chunk (or a chunk it imports
         // statically) holds is eager whatever the splitter did: say so

@@ -100,7 +100,7 @@ import type {
   RsbuildInstance,
   RsbuildPlugin,
 } from '@rsbuild/core'
-import type { InlineConfig, Plugin, Rolldown } from 'vite'
+import type { InlineConfig, Plugin, Rolldown, ViteBuilder } from 'vite'
 
 /**
  * Links (`AppOptions.symlinks`) that give an app Start's real runtime:
@@ -318,6 +318,12 @@ export interface StartBuildOptions {
    * app's `experimental.bundledDev`, which stays set for `vite build`.
    */
   viteConfig?: InlineConfig
+  /**
+   * Vite builds: builds the environments of the builder instead of
+   * `builder.buildApp()`, as a program that calls `builder.build(env)`
+   * itself does.
+   */
+  viteBuild?: (builder: ViteBuilder) => Promise<void>
   /**
    * Builds in watch mode (`vite build --watch`, `rsbuild build --watch`),
    * applies these app file edits (`null` deletes a file) once the first
@@ -602,6 +608,7 @@ export async function buildStart(
     violations,
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
+    viteBuild: options.viteBuild,
     watchEdits: options.watchEdits,
     samePlugins: options.samePlugins ?? false,
     cwd: options.cwd,
@@ -787,6 +794,7 @@ interface BuildTarget {
   violations: Array<ViolationInfo>
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
+  viteBuild?: (builder: ViteBuilder) => Promise<void>
   watchEdits?: Record<string, string | null>
   samePlugins: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
@@ -972,7 +980,7 @@ async function buildWithVite(
         target.viteConfig ?? {},
       ),
     )
-    await builder.buildApp()
+    await (target.viteBuild ? target.viteBuild(builder) : builder.buildApp())
     if (watch && target.watchEdits) {
       try {
         for (const error of await watch.first(watchTimeout)) {

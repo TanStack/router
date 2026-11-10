@@ -14,12 +14,7 @@ import type {
   HostServices,
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
-import type {
-  DevEnvironment,
-  Environment,
-  EnvironmentModuleNode,
-  ViteDevServer,
-} from 'vite'
+import type { DevEnvironment, Environment, EnvironmentModuleNode } from 'vite'
 import type { Session, ViteCompilerState } from './compiler-state'
 
 /** How many dependents of one file change `changedDependents` transforms at once. */
@@ -53,14 +48,13 @@ function invalidationHost(
 export function invalidationHosts(
   state: ViteCompilerState,
   s: Session,
-  viteServer: ViteDevServer | null,
   own: DevEnvironment,
 ): (env: string) => HostServices {
   const hosts = new Map<string, HostServices>()
   return (name) => {
     let h = hosts.get(name)
     if (!h) {
-      h = invalidationHost(state, s, viteServer?.environments[name] ?? own)
+      h = invalidationHost(state, s, s.server?.environments[name] ?? own)
       hosts.set(name, h)
     }
     return h
@@ -74,16 +68,16 @@ export function invalidationHosts(
  * update, and an `unlink`'s dependents wait for the next `add`.
  */
 export function applyInvalidation(
-  state: ViteCompilerState,
+  s: Session,
   environment: Environment,
   change: InvalidateChange,
   res: Awaited<ReturnType<typeof invalidate>>,
   timestamp: number,
 ): Array<EnvironmentModuleNode> {
-  let waiting = state.awaitingAdd.get(environment.name)
+  let waiting = s.awaitingAdd.get(environment.name)
   if (!waiting) {
     waiting = new Set()
-    state.awaitingAdd.set(environment.name, waiting)
+    s.awaitingAdd.set(environment.name, waiting)
   }
   return applyViteInvalidation(
     environment as DevEnvironment,
@@ -94,23 +88,15 @@ export function applyInvalidation(
   )
 }
 
-/** Digest of the compiler's last output of a module id in an environment (`ViteCompilerState.outputDigests`). */
-function digestOf(
-  state: ViteCompilerState,
-  id: string,
-  key: string,
-): string | undefined {
-  return state.outputDigests.get(identify(id).path)?.get(key)
+/** Digest of the compiler's last output of a module id in an environment (`Session.outputDigests`). */
+function digestOf(s: Session, id: string, key: string): string | undefined {
+  return s.outputDigests.get(identify(id).path)?.get(key)
 }
 
 /** Forgets what the session and the host hold of a deleted file (`file`: its normalized path). */
-export function forgetFile(
-  state: ViteCompilerState,
-  s: Session,
-  file: string,
-): void {
+export function forgetFile(s: Session, file: string): void {
   s.start.forget(file)
-  state.outputDigests.delete(file)
+  s.outputDigests.delete(file)
 }
 
 /**
@@ -134,7 +120,7 @@ export function forgetFile(
  * import was missing) is not told when the file is back.
  */
 export async function changedDependents(
-  state: ViteCompilerState,
+  s: Session,
   environment: DevEnvironment,
   dependents: Array<EnvironmentModuleNode>,
 ): Promise<Array<EnvironmentModuleNode>> {
@@ -151,12 +137,12 @@ export async function changedDependents(
       // node's transform result already; the compiler's last output is
       // what the page holds
       const key = `${environment.name}\0${node.id}`
-      const previous = digestOf(state, node.id, key)
+      const previous = digestOf(s, node.id, key)
       if (previous === undefined) {
         continue
       }
       await environment.transformRequest(node.url).catch(() => null)
-      unchanged[i] = digestOf(state, node.id, key) === previous
+      unchanged[i] = digestOf(s, node.id, key) === previous
     }
   }
   await Promise.all(
@@ -187,13 +173,13 @@ export async function changedDependents(
 /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
 export async function invalidateRegistry(
   state: ViteCompilerState,
+  s: Session,
   file: string,
 ): Promise<void> {
-  const s = state.session
-  if (!s || !state.server) {
+  if (!s.server) {
     return
   }
-  const environments = Object.values(state.server.environments)
+  const environments = Object.values(s.server.environments)
   const first = environments[0]
   if (!first) {
     return
@@ -205,12 +191,12 @@ export async function invalidateRegistry(
   const res = await invalidate(
     s.start.caches,
     change,
-    invalidationHosts(state, s, state.server, first),
+    invalidationHosts(state, s, first),
   )
   const now = Date.now()
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
-      applyInvalidation(state, environment, change, res, now)
+      applyInvalidation(s, environment, change, res, now)
     }
   }
 }

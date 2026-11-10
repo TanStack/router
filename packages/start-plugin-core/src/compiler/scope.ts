@@ -5,6 +5,7 @@
 import { isInsideDirectory } from '../import-protection/utils'
 import { escapeRegExp } from '../utils'
 import { startRecognizer } from './recognizer'
+import type { ImportProtectionConfig } from '../import-protection/config'
 import type { ImportProtection } from '../import-protection/session'
 
 export const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
@@ -24,7 +25,7 @@ export const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
 export function startCompileScope(
   ip: ImportProtection | null,
 ): (path: string, code: string) => boolean {
-  const startText = startTextTest(ip)
+  const startText = startTextTest(ip?.config ?? null)
   return (path, code) =>
     !NODE_MODULES_RE.test(path) ||
     (ip?.inScope(path) ?? false) ||
@@ -39,23 +40,20 @@ export function startCompileScope(
  * root's `node_modules`), which no text test sees.
  */
 export function dependencyTextFilter(
-  ip: ImportProtection | null,
+  config: ImportProtectionConfig | null,
 ): RegExp | null {
   if (
-    ip &&
-    (ip.config.include.length > 0 ||
-      isInsideDirectory(
-        `${ip.config.root}/node_modules/_`,
-        ip.config.srcDirectory,
-      ))
+    config &&
+    (config.include.length > 0 ||
+      isInsideDirectory(`${config.root}/node_modules/_`, config.srcDirectory))
   ) {
     return null
   }
-  return startTextTest(ip)
+  return startTextTest(config)
 }
 
 /** Whether a text names what the planners recognise (see `startCompileScope`). */
-function startTextTest(ip: ImportProtection | null): RegExp {
+function startTextTest(config: ImportProtectionConfig | null): RegExp {
   // (the table's exports include the `Hydrate` boundary)
   const names = new Set(
     Object.values(startRecognizer().factories).flatMap((exports) =>
@@ -66,7 +64,7 @@ function startTextTest(ip: ImportProtection | null): RegExp {
     [
       ...names,
       String.raw`\.\s*(?:handler|server|client)\s*\(`,
-      ...Object.keys(ip?.markerSpecifiers ?? {}).map(escapeRegExp),
+      ...Object.keys(config?.markerSpecifiers ?? {}).map(escapeRegExp),
     ].join('|'),
   )
 }
@@ -87,7 +85,7 @@ const REEXPORT_RE =
 export function opaquePackageModule(
   ip: ImportProtection | null,
 ): (path: string, text: string) => boolean {
-  const startText = startTextTest(ip)
+  const startText = startTextTest(ip?.config ?? null)
   return (path, text) =>
     NODE_MODULES_RE.test(path) &&
     !(ip?.inScope(path) ?? false) &&

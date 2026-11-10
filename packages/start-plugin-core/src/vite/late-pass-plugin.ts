@@ -40,7 +40,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
         code: { include: /\b(?:import|export)\b|\brequire\s*\(/ },
       },
       async handler(code, id, options) {
-        const s = state.requireSession()
+        const s = state.sessionOf(this.environment)
         const env = state.envOf(this.environment.name)
         if (!env || identify(id).lang !== null) {
           return null

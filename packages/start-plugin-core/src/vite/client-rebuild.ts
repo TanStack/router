@@ -13,8 +13,14 @@ export class ClientRebuild {
   private following = false
   private current: { ended: Promise<void>; end: () => void } | null = null
 
-  /** Follows the client's watcher: each rebuild ends with its bundle event. */
+  /**
+   * Follows the client's watcher of a build run (Start's `buildApp`): each
+   * rebuild ends with its bundle event. A rebuild an earlier run's watcher
+   * left open (closed before its bundle) is not this run's.
+   */
   follow(watcher: Rolldown.RolldownWatcher): void {
+    this.current?.end()
+    this.current = null
     this.following = true
     watcher.on('event', (event) => {
       if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
