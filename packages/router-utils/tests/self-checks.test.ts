@@ -7,8 +7,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   SELF_CHECKS,
-  invariantViolated,
   invariantDiagnostic,
+  invariantViolated,
 } from '../src/compiler/self-checks'
 
 const violation = {
