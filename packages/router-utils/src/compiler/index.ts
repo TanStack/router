@@ -30,6 +30,7 @@ export {
 export type { PlanKey } from './identity'
 export {
   isExpressionWrapper,
+  opensNonExpressionStatement,
   parseModule,
   patternIdentifiers,
   unwrapExpression,
