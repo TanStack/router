@@ -13,6 +13,12 @@ import {
   startBundlers,
 } from '../build-harness'
 import { rejection, reportedViolations } from '../importProtection/start-apps'
+import {
+  pageEntries,
+  rootDocument,
+  routerFile,
+  startPageEntries,
+} from './start-compose-app'
 
 const timeout = 60_000
 
@@ -221,6 +227,43 @@ export const secret = () => 'MARK_SECRET'
       expect(
         reportedViolations(error).map(({ environment }) => environment),
       ).toContain('client')
+    },
+    timeout,
+  )
+
+  // Source: review round 3 (R3-G4-1): the server's rebuild embedded the
+  // manifest of the previous client build, so its documents named client
+  // files the rebuild no longer emits.
+  test(
+    'the rebuilt server renders documents that load the rebuilt client files',
+    async () => {
+      const index = (
+        marker: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
+`
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...startPageEntries,
+          ...pageEntries,
+          'src/router.ts': routerFile,
+          'src/routes/__root.tsx': rootDocument(),
+          'src/routes/index.tsx': index('MARK_BEFORE'),
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        watchEdits: { 'src/routes/index.tsx': index('MARK_AFTER') },
+      })
+      expect(client.where('MARK_AFTER')).not.toBe('nowhere')
+      const { result: html } = await ssr.run(
+        `return await (await entry.startServerEntry.fetch(new Request('http://localhost/'))).text()`,
+      )
+      const named = [
+        ...(html as string).matchAll(/["']\/([^"'\s]+?\.js)["']/g),
+      ].map((m) => m[1]!)
+      const emitted = new Set(client.chunks.map((c) => c.fileName))
+      expect(named.length).toBeGreaterThan(0)
+      expect(named.filter((file) => !emitted.has(file))).toEqual([])
     },
     timeout,
   )
