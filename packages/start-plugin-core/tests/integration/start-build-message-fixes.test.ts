@@ -70,6 +70,24 @@ export const make = () => base.handler(async () => 'MARK_SECRET')
 `,
     at: 'createServerFn()\n',
   },
+  // (the assignment's target in a cast or with `!`: the message names it,
+  // and its fix is the same, the builder declared with its value)
+  {
+    name: 'a builder assigned after its declaration to a cast of the variable',
+    module: `${head}let base: any
+(base as any) = createServerFn()
+export const make = () => base.handler(async () => 'MARK_SECRET')
+`,
+    at: 'createServerFn()\n',
+  },
+  {
+    name: 'a builder assigned after its declaration to the variable with `!`',
+    module: `${head}let base: any
+base! = createServerFn()
+export const make = () => base.handler(async () => 'MARK_SECRET')
+`,
+    at: 'createServerFn()\n',
+  },
   {
     name: 'a builder kept in an object',
     module: `${head}export const builders = { authed: createServerFn().middleware([auth('admin')]) }
