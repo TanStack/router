@@ -517,7 +517,13 @@ export class PlanCache {
    * failed validation while no invalidation ran (a change no `invalidate()`
    * reported: a defect of a host, or of the core).
    */
-  readonly counters = { planHits: 0, staleHits: 0 }
+  /**
+   * `staleHits`: plan hits that failed validation on a fact (an
+   * invalidation missed it: a defect); `lazyHits`: on a resolution or a
+   * route-registry digest, which the next request asks again by design (a
+   * tsconfig edit).
+   */
+  readonly counters = { planHits: 0, staleHits: 0, lazyHits: 0 }
   /**
    * The environment's resolutions, importer → specifier → the resolver's
    * answer (settling, or the settled canonical id; unresolved pairs are not

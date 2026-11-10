@@ -276,20 +276,24 @@ text compiles waits for it and emits its own output from the result.
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it for every file event they see
   (every hook, every environment) and for registry changes. Repeating it is harmless: the raw-facts cache keeps the
-  revision of the text it read of each path (`seen`), the event reads the file once and returns when the text is what
-  the caches read (an echo, a touch, the same event through a second hook); calls for one path run one after the
+  revision of the text it read of each path (`seen`), the event reads the file once, and a change returns when the
+  text is what the caches read (an echo, a touch, the same event through a second hook). The same text proves that
+  no fact of the file moved, not that the file was there all along: an add, or a removal of a file that reads back,
+  with that text still moves the file set (what looked for the file meanwhile, and another environment's resolver
+  that answered before it existed, ask again) without marking its facts. Calls for one path run one after the
   other, and `caches.settled()` resolves once none runs. An event is judged by the file as it is (a removal of a file
-  that reads back is a change, a change of one that reads nothing a removal). A change marks the file's raw facts
+  that reads back is an add, a change of one that reads nothing a removal). A change marks the file's raw facts
   stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
   add/unlink also retry failed resolutions, and they or a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
   take: a file of the same name with another extension, or of a directory a resolution went into). The file's own
-  plans are keyed by its text and stay (a bundler that built the new text already keeps their rows); a removal
+  plans are keyed by its text and stay (a bundler that built the new text already keeps their rows) until a compile
+  of a newer text ends: with its plan, or, for a text without one (untouched, empty, not parsed), without; a removal
   evicts them and stales every plan that read the file, unasked. The plans found stale enter their environment's
   **stale set** (`caches.stale`): the files whose modules the bundler must build again and will not build on its own,
   kept until a host takes them (`take(env, { held })`; `held`: stale only because a file they read was removed). The
   other writers: a registry change (the file, in every environment that has compiled), a plan hit that fails
-  validation (the file, so its other outputs follow; counted as `staleHits` when no invalidation runs), and a compile
+  validation (the file, so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect: `invalidate()` checks every fact, and as `lazyHits` when only a resolution or a route-registry digest did, which the next request asks again by design), and a compile
   every attempt of which was overtaken. Today the call also returns `{ evicted, dependents }`, which the hosts
   hard-invalidate in the bundler. A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
