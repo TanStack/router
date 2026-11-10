@@ -1,7 +1,7 @@
 // Seeded random rewrite trees (design note 1, §5, widened after the review of
 // step 1): random edits of every scope, keep-slices, inserts and claims (of
 // sub-regions of two kinds, owned in the env module or a derived output;
-// live, dead and read elsewhere) on
+// live, dead and read elsewhere; with other text at their place in one output) on
 // nested calls, registered in source order, reversed or shuffled. What the
 // planners' liveness reports of every name must be what the env module
 // holds; in a derived output holding some claimed text, a name it holds is
@@ -173,12 +173,11 @@ function randomPlanner(
       for (const call of calls) {
         const range = { start: call.start, end: call.end }
         const pick = rand()
-        let edited: EditScope | null = null
         if (pick < 0.2) {
           ctx.rewrites.add({
             range,
             body: [{ k: 'text', parts: ['0'] }],
-            scope: (edited = scope()),
+            scope: scope(),
             by: 'toy-random',
           })
         } else if (pick < 0.4) {
@@ -190,7 +189,7 @@ function randomPlanner(
               { k: 'slice', range: kept },
               { k: 'text', parts: [')'] },
             ],
-            scope: (edited = scope()),
+            scope: scope(),
             by: 'toy-random',
           })
         }
@@ -206,16 +205,9 @@ function randomPlanner(
         if (call.top) {
           continue
         }
-        // Not generated (RT_OVERRIDE=1 does): an edit scoped to some outputs
-        // on exactly a claimed region, which replaces the placeholder there.
-        // Its owner may then render nowhere while liveness reports the
-        // region's text live (design note 1, step 3: `placeholder`)
-        if (
-          rand() < 0.6 ||
-          (process.env.RT_OVERRIDE !== '1' &&
-            edited !== null &&
-            edited !== 'all-outputs')
-        ) {
+        // (with an edit scoped to some outputs on exactly the claimed
+        // region: other text stands at its place there)
+        if (rand() < 0.6) {
           continue
         }
         const kind = rand() < 0.5 ? 'nested-chain' : 'custom'

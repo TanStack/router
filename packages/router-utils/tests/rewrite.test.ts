@@ -1953,3 +1953,168 @@ describe('one region tree for every output', () => {
     }
   })
 })
+
+// Source: the review of design 1, step 1 (finding 3, item 6): text stands at
+// a claimed region's place in one output only, and claims are read
+// elsewhere around and inside it. B, C and D are claimed (B and C read by
+// other generated code, D not), an erasure encloses B, and the env module
+// replaces C's placeholder with other text. C's text renders in C's owner,
+// so D, inside it, is kept and renders there; whichever claim is
+// registered first.
+describe('a claimed region whose place holds other text in one output', () => {
+  const code = dedent(`
+    import { b, c, d } from './m'
+    export const opts = { loader: () => b(c(d(1))) }
+  `)
+  const compile = (outerFirst: boolean) => {
+    const e = engine(code)
+    const { ctx } = e
+    const claim = (text: string, name: string, read: boolean) => {
+      const hoisted = ctx.names.alloc(name)
+      const region = ctx.region(rangeOf(code, text), 'nested-chain')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'region', id: region },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'toy-hoist',
+      })
+      if (read) {
+        const reader = ctx.names.alloc(`${name}Reader`)
+        const gen = ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                'export const ',
+                { sym: reader.sym },
+                ' = () => ',
+                { sym: hoisted.sym },
+                '\n',
+              ],
+            },
+          ],
+          declares: [reader.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: 'auto',
+          by: 'toy-hoist',
+        })
+        ctx.addRoot('env', { t: 'gen', id: gen })
+      }
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        by: 'toy-hoist',
+      })
+    }
+    const claims: Array<[string, string, boolean]> = [
+      ['b(c(d(1)))', 'gB', true],
+      ['c(d(1))', 'gC', true],
+      ['d(1)', 'gD', false],
+    ]
+    for (const args of outerFirst ? claims : [...claims].reverse()) {
+      claim(...args)
+    }
+    // the env module's text at C's place
+    ctx.rewrites.add({
+      range: rangeOf(code, 'c(d(1))'),
+      body: [{ k: 'text', parts: ['0'] }],
+      scope: ['env'],
+      by: 'toy-env',
+    })
+    ctx.rewrites.add({
+      range: rangeOf(code, 'loader: () => b(c(d(1))) '),
+      body: [],
+      scope: 'all-outputs',
+      by: 'toy-router',
+    })
+    const d = ctx.t1.refs.all.find(
+      (r) =>
+        code.slice(r.range.start, r.range.end) === 'd' && r.ctx === 'callee',
+    )!
+    const live = ctx.liveness('env').live(d)
+    return { live, code: e.render('env').code }
+  }
+
+  it.each([
+    ['outer', true],
+    ['inner', false],
+  ])(
+    'keeps D, rendered in the owner of C, with the %s claim registered first',
+    (_order, outerFirst) => {
+      const { live, code: out } = compile(outerFirst)
+      expect(live).toBe(true)
+      expect(out).toContain('const gB = b(0)')
+      expect(out).toContain('const gC = c(gD)')
+      expect(out).toContain('const gD = d(1)')
+    },
+  )
+})
+
+// Source: the review of design 1, step 2 (finding 2), invariant I5: an
+// insert belongs to the innermost region strictly holding its position. At
+// a unit's start that is the module, and the unit's member reads it: what
+// the insert names stays declared, also when an edit rewrites the unit.
+describe('an insert at the start of a unit', () => {
+  const code = `import { c0_, a1_ } from 'toy-names'\nconst helper = 1\na1_(helper)\nc0_(1)\n`
+  const inserting = (editUnit: boolean): Planner => ({
+    name: 'toy-insert',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const text = (r: { start: number; end: number }) =>
+        code.slice(r.start, r.end)
+      const unit = ctx.t1.units.find((u) => text(u.range).startsWith('c0_(1'))!
+      const helper = ctx.t1.units.find((u) =>
+        text(u.range).includes('helper = 1'),
+      )!.declares[0]!
+      ctx.rewrites.add({
+        range: rangeOf(code, 'helper', 1),
+        body: [{ k: 'text', parts: ['0'] }],
+        scope: 'all-outputs',
+        by: 'toy-insert',
+      })
+      if (editUnit) {
+        ctx.rewrites.add({
+          range: unit.range,
+          body: [
+            { k: 'text', parts: ['void '] },
+            {
+              k: 'slice',
+              range: { start: unit.range.start, end: unit.range.start + 6 },
+            },
+          ],
+          scope: 'all-outputs',
+          by: 'toy-insert',
+        })
+      }
+      ctx.rewrites.add({
+        range: { start: unit.range.start, end: unit.range.start },
+        body: [{ k: 'text', parts: [{ sym: helper }, ';'] }],
+        scope: 'all-outputs',
+        by: 'toy-insert',
+      })
+    },
+  })
+
+  it.each([
+    ['as written', false],
+    ['rewritten', true],
+  ])(
+    'keeps what it names declared, with the unit %s',
+    async (_name, editUnit) => {
+      const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+      const out = (await host.compile('/app/mod.ts', [inserting(editUnit)]))!
+        .code
+      expect(out).toContain('const helper = 1')
+      expect(out).toContain(editUnit ? 'helper;void c0_(1)' : 'helper;c0_(1)')
+    },
+  )
+})

@@ -354,6 +354,88 @@ export const register = (name: string) => name
     expect(provider).toContain('const db = connect()')
     expect(provider).toContain('db.q()')
   })
+
+  // J4.9, J4.10: a handler that is itself an env-only or isomorphic call is
+  // compiled for the server in the provider module, as every other env-only
+  // or isomorphic call there: the client-only fn throws, the isomorphic one
+  // is its server implementation. The env module keeps its SSR RPC stub.
+  it.each([
+    [
+      'a client-only fn',
+      `createClientOnlyFn(() => 'MARK_CLIENT_IMPL')`,
+      'createClientOnlyFn() functions can only be called on the client!',
+      'MARK_CLIENT_IMPL',
+    ],
+    [
+      'an isomorphic fn',
+      `createIsomorphicFn().server(() => db.q()).client(() => 'MARK_CLIENT_IMPL')`,
+      '() => db.q()',
+      'MARK_CLIENT_IMPL',
+    ],
+  ])(
+    'compiles a handler that is %s for the server in the provider module',
+    async (_name, handler, provided, client) => {
+      const r = await compile(
+        `import { createServerFn, createClientOnlyFn, createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createServerFn().handler(${handler})
+`,
+        { env: rsc, config, files },
+      )
+      expectValid(r.code)
+      expect(r.code).toMatch(
+        /export const fn = createServerFn\(\)\.handler\([\w$]+\(['"][^'"]+['"]\)\)/,
+      )
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).toContain(provided)
+      expect(provider).not.toContain(client)
+      expect(provider).not.toMatch(/createClientOnlyFn\(|createIsomorphicFn\(/)
+    },
+  )
+
+  // J4.10, J4.12: in the env module the chain of a nested server fn stays in
+  // place, and an env-only call outside its handler is compiled there: the
+  // imports only the client implementation read go, as in the provider.
+  it.each([
+    [
+      'its validator',
+      `.validator((d) => createClientOnlyFn(() => clientThing())(d))`,
+    ],
+    [
+      'its middleware',
+      `.middleware([{ f: (d) => createClientOnlyFn(() => clientThing())(d) }])`,
+    ],
+  ])(
+    'drops the imports only a client-only fn in %s reads from a nested chain',
+    async (_name, link) => {
+      const r = await compile(
+        `import { createServerFn, createClientOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+import { clientThing } from './client-thing'
+export const api = { get: createServerFn()${link}.handler(() => db.q()) }
+`,
+        {
+          env: rsc,
+          config,
+          files: {
+            ...files,
+            '/app/src/client-thing.ts': 'export const clientThing = () => 1\n',
+          },
+        },
+      )
+      expectValid(r.code)
+      expect(r.out.diagnostics).toEqual([])
+      expect(r.code).toContain(
+        'createClientOnlyFn() functions can only be called on the client!',
+      )
+      expect(r.code).not.toContain('./client-thing')
+      expect(r.code).not.toMatch(/import \{[^}]*createClientOnlyFn/)
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).not.toContain('./client-thing')
+    },
+  )
 })
 
 describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {

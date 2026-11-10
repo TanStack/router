@@ -225,6 +225,42 @@ function Page() {
   )
 }
 `,
+  // Server fns whose handler is itself an env-only or isomorphic call
+  'src/handler-fns/fns.ts': `import { createClientOnlyFn, createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+export const clientOnly = createServerFn().handler(createClientOnlyFn(() => 'MARK_CLIENT_ONLY_IMPL'))
+export const isomorphic = createServerFn().handler(
+  createIsomorphicFn().server(() => 'MARK_ISO_SERVER').client(() => 'MARK_ISO_CLIENT'),
+)
+`,
+  'src/routes/handler-fns.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { clientOnly, isomorphic } from '../handler-fns/fns'
+const outcome = () =>
+  clientOnly().then(
+    (value) => 'returned ' + value,
+    () => 'threw',
+  )
+export const Route = createFileRoute('/handler-fns')({
+  loader: async () => ({ isomorphic: await isomorphic(), clientOnly: await outcome() }),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  const [called, setCalled] = useState('')
+  return (
+    <main>
+      <p data-testid="loaded">loaded {data.isomorphic} {data.clientOnly}</p>
+      <p data-testid="called">called {called}</p>
+      <button
+        data-testid="call"
+        onClick={() => Promise.all([isomorphic(), outcome()]).then((values) => setCalled(values.join(' ')))}
+      >
+        call
+      </button>
+    </main>
+  )
+}
+`,
   'src/routes/control.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { render as renderable } from '../rows/renderable'
 import { render as composite } from '../rows/composite'
@@ -466,6 +502,33 @@ describe('Vite production build with RSC', () => {
     expect(
       client.some((code) => code.includes('MARK_ALIASED_SERVER_ONLY')),
     ).toBe(false)
+    expect(page.errors).toEqual([])
+  })
+
+  // SPEC J4.9, J4.10: a handler that is itself a client-only fn throws in
+  // the provider, and one that is an isomorphic fn runs its server
+  // implementation, whether SSR or the browser calls it; the provider holds
+  // neither client implementation.
+  test('a server fn whose handler is an env-only or isomorphic call runs it compiled for the server', async () => {
+    const expected = 'MARK_ISO_SERVER threw'
+    const page = await open('/handler-fns')
+    await page.waitForText(`loaded ${expected}`, {
+      selector: '[data-testid=loaded]',
+    })
+    await waitForHydration(page)
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText(`called ${expected}`, {
+      selector: '[data-testid=called]',
+    })
+    const rsc = await Promise.all(
+      (await filesOf(path.join(server.root, 'dist/server/rsc'))).map((file) =>
+        readFile(file, 'utf8'),
+      ),
+    )
+    expect({
+      clientOnly: rsc.some((code) => code.includes('MARK_CLIENT_ONLY_IMPL')),
+      isomorphicClient: rsc.some((code) => code.includes('MARK_ISO_CLIENT')),
+    }).toEqual({ clientOnly: false, isomorphicClient: false })
     expect(page.errors).toEqual([])
   })
 
