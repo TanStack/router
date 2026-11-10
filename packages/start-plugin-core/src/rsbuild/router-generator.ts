@@ -32,8 +32,8 @@ export interface RsbuildRouteGenerator {
     removed: ReadonlyArray<string>,
   ) => Promise<void>
   close: () => Promise<void>
-  /** Route files whose registry entry changed (the compilers invalidate their plans). */
-  onRoutesChanged: (listener: (files: Array<string>) => void) => void
+  /** Route files whose registry entry changed (the compilers invalidate their plans); gives the unsubscribe. */
+  onRoutesChanged: (listener: (files: Array<string>) => void) => () => void
   /** The client's route tree module. */
   clientRouteTree: {
     path: () => string
@@ -92,7 +92,7 @@ export function createRsbuildRouteGenerator(opts: {
     watchRun: (modified, removed) => session.watchRun(modified, removed),
     close: () => session.close(),
     onRoutesChanged(listener) {
-      onRoutesChanged(context, (next, previous) => {
+      return onRoutesChanged(context, (next, previous) => {
         const changed = changedRoutePaths(next, previous)
         if (changed.length > 0) {
           listener(changed)

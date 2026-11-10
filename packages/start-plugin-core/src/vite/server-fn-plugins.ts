@@ -45,7 +45,6 @@ function toDevSpecifier(id: string, root: string): string {
  */
 export function devLookupPlugin(state: ViteCompilerState): Plugin {
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
-  const devWarned = new Set<string>()
   return {
     name: 'tanstack-start:server-fn-lookup',
     apply: 'serve',
@@ -62,7 +61,8 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
       if (!id.startsWith(lookupPrefix)) {
         return undefined
       }
-      const { registry, opts: startOpts } = state.requireSession().start
+      const s = state.sessionOf(this.environment)
+      const { registry, opts: startOpts } = s.start
       const params = new URLSearchParams(id.slice(lookupPrefix.length))
       const fnId = params.get('id') ?? ''
       let entry = registry.get(fnId)
@@ -81,9 +81,9 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
       if (
         params.get('origin') === 'client' &&
         !entry.clientReferenced &&
-        !devWarned.has(fnId)
+        !s.devWarned.has(fnId)
       ) {
-        devWarned.add(fnId)
+        s.devWarned.add(fnId)
         this.warn(unreferencedWarning(entry))
       }
       const specifier = toDevSpecifier(providerModuleId(entry), startOpts.root)
@@ -115,12 +115,13 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
     enforce: 'pre',
     applyToEnvironment: (e) => state.resolverEnvironments.has(e.name),
     async load() {
+      const s = state.sessionOf(this.environment)
       if (
         this.environment.mode === 'build' &&
         this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
         // (not a scan: plugin-rsc analyses the ssr environment first)
         this.environment.config.build.write !== false &&
-        state.clientFiles === null
+        s.clientFiles === null
       ) {
         // the server would answer no client call (J4.2)
         this.error(
@@ -129,7 +130,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
       }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         await state.opts.clientRebuild.ended()
-        for (const file of state.clientFiles ?? []) {
+        for (const file of s.clientFiles ?? []) {
           this.addWatchFile(file)
         }
       }
@@ -143,9 +144,8 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // gates client-origin calls on the client build's references
             return callerGateModule(
               SERVER_FN_FORWARD_VIRTUAL_ID,
-              state
-                .requireSession()
-                .start.registry.entries()
+              s.start.registry
+                .entries()
                 .filter((e) => e.clientReferenced)
                 .map((e) => e.id),
             )
@@ -160,7 +160,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         return devResolverModule()
       }
       return productionResolverModule({
-        entries: state.requireSession().start.registry.entries(),
+        entries: s.start.registry.entries(),
         providerModuleId,
         clientReferencedOnly: state.ssrIsProvider,
       })

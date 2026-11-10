@@ -445,7 +445,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // builds them again. Before the first compilation finished nothing is
       // stale (the first publication lists every route; the modules are
       // built with it).
-      opts.generator.onRoutesChanged((files) => {
+      const unsubscribeRoutes = opts.generator.onRoutesChanged((files) => {
         void session
           .registryChanged(files)
           .then((paths) => {
@@ -461,6 +461,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           })
       })
 
+      // (the context outlives the compiler: a second `build()` of the
+      // Rsbuild instance creates another one)
+      compiler.hooks.shutdown.tapPromise(PLUGIN_NAME, () => {
+        unsubscribeRoutes()
+        return Promise.resolve()
+      })
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
         void opts.generator.close()
       })

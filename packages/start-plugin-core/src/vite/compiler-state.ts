@@ -1,8 +1,8 @@
 /**
  * What the compiler's Vite plugins (`compiler-plugin.ts`, `late-pass-plugin.ts`,
- * `server-fn-plugins.ts`) of one `startCompilerPlugin` share: its options, the
- * session of the dev server or build (created at `configResolved`) and the
- * state of the environments' hooks.
+ * `server-fn-plugins.ts`) of one `startCompilerPlugin` share: its options and
+ * what derives from them, and the session of each build run or dev server
+ * with the state of its environments' hooks.
  */
 import { promises as fs, readFileSync } from 'node:fs'
 import {
@@ -16,9 +16,16 @@ import {
   viteLog,
 } from '@tanstack/router-utils/compiler'
 import { RouteRegistryView } from '@tanstack/router-plugin/planners'
+import {
+  changedRoutePaths,
+  onRoutesChanged,
+} from '@tanstack/router-plugin/context'
 import { DEV_CLIENT_ENTRY, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { StartCompilerSession } from '../compiler/session'
+import { dependencyTextFilter } from '../compiler/scope'
+import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
+import { invalidateRegistry } from './invalidation'
 import { createVirtualWaits } from './virtual-waits'
 import type { ClientRebuild } from './client-rebuild'
 import type { StartCompilerEnvironment } from '../compiler/session'
@@ -45,6 +52,7 @@ import type {
   DevEnvironment,
   Environment,
   OptimizedDepInfo,
+  ResolvedConfig,
   ViteDevServer,
 } from 'vite'
 
@@ -184,43 +192,41 @@ export function inputMapOf(
   return map
 }
 
-/** What one dev server or build shares across the Start environments (created at `configResolved`). */
+/**
+ * What one run of the plugins shares across the Start environments: a build
+ * run (one `buildApp` of a builder: every environment it builds, the
+ * rebuilds of `build --watch` included) or a dev server (a restart creates
+ * another one). What a run compiled and learned dies with it: a second build
+ * or server of the same plugin objects starts from nothing, as one of new
+ * plugin objects does (a config file gives new ones each time).
+ */
 export interface Session {
   start: StartCompilerSession
   bundledDev: boolean
   /** The app's entry module ids (dev traces start there). */
   entries: Set<string>
-}
-
-/** The shared state of the compiler's Vite plugins (one per `startCompilerPlugin`). */
-export class ViteCompilerState {
-  readonly ssrIsProvider: boolean
-  readonly envNames: Set<string>
-  readonly resolverEnvironments: Set<string>
+  /** The dev server of the session (null in a build). */
+  server: ViteDevServer | null
   /**
    * Per-env loaders of genuinely virtual ids (the dev plugin container, or
    * `this.load` in a build): an id is loaded by the environment that
    * resolved it, never asked of another one (in `vite build --watch` the
    * environments build at once, and an id a build cannot load fails it).
    */
-  readonly virtualLoaders = new Map<
-    string,
-    (id: string) => Promise<string | null>
-  >()
-  session: Session | null = null
-  server: ViteDevServer | null = null
-  unsubscribeRoutes: (() => void) | null = null
+  readonly virtualLoaders: Map<string, (id: string) => Promise<string | null>>
+  /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
+  readonly virtualWaits: ReturnType<typeof createVirtualWaits>
   /**
    * One compiler invalidation per file event, applied by every env's
    * `hotUpdate`: Vite hands each environment's hook its own context over the
    * event's one `read` function, so the memo lives as long as the event.
    */
-  readonly invalidations = new WeakMap<
+  readonly invalidations: WeakMap<
     () => unknown,
     Promise<Awaited<ReturnType<typeof invalidate>>>
-  >()
+  >
   /**
-   * The client environment's build in this process: null until one ended.
+   * The client environment's build in this run: null until one ended.
    * The server's resolver of a build lists (or gates on) the functions the
    * client build references, which it reads from the client's compiles.
    * `build --watch`: the files of the client's module graph (else none),
@@ -228,21 +234,35 @@ export class ViteCompilerState {
    * rebuilds the server too), and it waits for the client rebuild a file
    * event started (`opts.clientRebuild`): the environments rebuild at once.
    */
-  clientFiles: Array<string> | null = null
-
+  clientFiles: Array<string> | null
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
    * re-transform when a file appears (see `applyInvalidation`).
    */
-  readonly awaitingAdd = new Map<string, Set<string>>()
-  /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
-  readonly virtualWaits: ReturnType<typeof createVirtualWaits>
+  readonly awaitingAdd: Map<string, Set<string>>
   /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
-  readonly outputDigests = new Map<string, Map<string, string>>()
+  readonly outputDigests: Map<string, Map<string, string>>
+  /** Dev: the server functions the dev lookup warned about (once each). */
+  readonly devWarned: Set<string>
+  /** Dev: stops what the session listens to (`closeServer`). */
+  readonly disposers: Array<() => void>
+}
+
+/**
+ * The shared state of the compiler's Vite plugins (one per
+ * `startCompilerPlugin`): the options, what derives from them and from the
+ * resolved config (the transform filters), and the session of each
+ * environment's run (`sessionOf`).
+ */
+export class ViteCompilerState {
+  readonly ssrIsProvider: boolean
+  readonly envNames: Set<string>
+  readonly resolverEnvironments: Set<string>
   /**
-   * The transform filter of dependency scripts. Its text test is set with
-   * the session (it depends on import protection's configuration); without
-   * one, every dependency script reaches the compiler, whose scope decides.
+   * The transform filter of dependency scripts. Its text test is set from
+   * the resolved config (it depends on import protection's configuration);
+   * without one, every dependency script reaches the compiler, whose scope
+   * decides.
    */
   readonly dependencyFilter: {
     id: { include: Array<RegExp>; exclude: Array<RegExp> }
@@ -250,10 +270,14 @@ export class ViteCompilerState {
   } = {
     id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [SCRIPT_ASSET_QUERY_RE] },
   }
-  /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added with the session). */
+  /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added from the resolved config). */
   readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   readonly watchingEnv: string | undefined
+  /** The session of each environment of a run (a builder's or a dev server's environments are its own objects). */
+  private readonly sessions = new WeakMap<Environment, Session>()
+  /** The run that environments built outside `buildApp` join (`sessionOf`), with their names. */
+  private loose: { session: Session; names: Set<string> } | null = null
 
   constructor(readonly opts: StartCompilerPluginOptions) {
     this.ssrIsProvider = opts.providerEnvName === VITE_ENVIRONMENT_NAMES.server
@@ -263,36 +287,106 @@ export class ViteCompilerState {
         ? [opts.providerEnvName]
         : [VITE_ENVIRONMENT_NAMES.server, opts.providerEnvName],
     )
-    registerCompilerStats(
-      'start:vite:awaitingAdd',
-      this.awaitingAdd,
-      readAwaitingAdd,
-    )
-    this.virtualWaits = createVirtualWaits()
     this.watchingEnv = opts.environments[0]?.name
   }
 
-  requireSession(): Session {
-    if (!this.session) {
+  /**
+   * The transform filters of a resolved config (`configResolved`; a build
+   * resolves one per environment, all alike). Before any hook reads them:
+   * Vite reads a dev server's lazily, Rolldown a build's when it starts.
+   */
+  configure(config: ResolvedConfig): void {
+    // the optimizer's bundles are dependencies wherever the app keeps
+    // them: a custom `cacheDir` is outside every `node_modules`
+    this.dependencyFilter.id.include.splice(
+      1,
+      Infinity,
+      cacheDirRe(config.cacheDir, true),
+    )
+    this.ownExclude.splice(2, Infinity, cacheDirRe(config.cacheDir))
+    const { startConfig, resolvedStartConfig } = this.opts.getConfig()
+    const text = dependencyTextFilter(
+      resolveImportProtectionConfig(startConfig.importProtection, {
+        root: config.root,
+        srcDirectory: resolvedStartConfig.srcDirectory,
+        mode: config.command === 'build' ? 'build' : 'dev',
+      }),
+    )
+    if (text) {
+      this.dependencyFilter.code = text
+    } else {
+      delete this.dependencyFilter.code
+    }
+  }
+
+  /**
+   * The session of a builder's run (Start's `buildApp`, before any other
+   * plugin's) or of a dev server (`configureServer`): one for all of its
+   * environments. An environment that built before (an app plugin's own
+   * `buildApp` listed first) began the run.
+   */
+  sessionOfRun(
+    environments: Record<string, Environment>,
+    config: ResolvedConfig,
+    server: ViteDevServer | null,
+  ): Session {
+    const all = Object.values(environments)
+    let s = all.map((e) => this.sessions.get(e)).find((known) => !!known)
+    if (!s) {
+      s = this.createSession(config, server)
+    }
+    for (const e of all) {
+      this.sessions.set(e, s)
+    }
+    return s
+  }
+
+  /**
+   * The session of an environment's run. A build outside any `buildApp`
+   * (`vite.build()`, `builder.build(env)` by hand) has no run of its own:
+   * its environments join the last such run, until one of a name it holds
+   * already builds again (another builder's, or a second `vite.build()`).
+   */
+  sessionOf(environment: Environment): Session {
+    const known = this.sessions.get(environment)
+    if (known) {
+      return known
+    }
+    if (environment.mode !== 'build') {
       throw new Error(
-        '[tanstack-start] the compiler plugin is used before `configResolved`',
+        `[tanstack-start] the compiler plugin of the "${environment.name}" environment was not configured for this dev server`,
       )
     }
-    return this.session
+    if (!this.loose || this.loose.names.has(environment.name)) {
+      this.loose = {
+        session: this.createSession(environment.getTopLevelConfig(), null),
+        names: new Set(),
+      }
+    }
+    this.loose.names.add(environment.name)
+    this.sessions.set(environment, this.loose.session)
+    return this.loose.session
+  }
+
+  /** Dev: the server of `environment` closed (Vite closes each environment's plugins): its session stops listening. */
+  closeServer(environment: Environment): void {
+    const s = this.sessions.get(environment)
+    for (const dispose of s?.disposers.splice(0) ?? []) {
+      dispose()
+    }
   }
 
   envOf(name: string): ViteStartEnvironment | undefined {
     return this.opts.environments.find((e) => e.name === name)
   }
 
-  createSession(config: {
-    root: string
-    command: 'serve' | 'build'
-    bundledDev: boolean
-    cacheDir: string
-  }): Session {
+  private createSession(
+    config: ResolvedConfig,
+    server: ViteDevServer | null,
+  ): Session {
     const cached = cacheDirRe(config.cacheDir)
     const { startConfig, resolvedStartConfig } = this.opts.getConfig()
+    const virtualLoaders: Session['virtualLoaders'] = new Map()
     const s: Session = {
       start: new StartCompilerSession({
         framework: this.opts.framework,
@@ -310,7 +404,7 @@ export class ViteCompilerState {
         routes: new RouteRegistryView(this.opts.routerPluginContext),
         readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
         loadVirtual: async (id, env) => {
-          const load = this.virtualLoaders.get(env)
+          const load = virtualLoaders.get(env)
           return load ? load(id).catch(() => null) : null
         },
         // pre-bundled dependencies, in the app's `cacheDir` (a Start library
@@ -320,10 +414,39 @@ export class ViteCompilerState {
         opaque: (p) => cached.test(normalizePath(p)),
         label: 'start:vite',
       }),
-      bundledDev: config.bundledDev,
+      bundledDev: !!config.experimental.bundledDev,
       entries: new Set(),
+      server,
+      virtualLoaders,
+      virtualWaits: createVirtualWaits(),
+      invalidations: new WeakMap(),
+      clientFiles: null,
+      awaitingAdd: new Map(),
+      outputDigests: new Map(),
+      devWarned: new Set(),
+      disposers: [],
     }
     registerCompilerStats('start:vite:entries', s.entries, readEntries)
+    registerCompilerStats(
+      'start:vite:awaitingAdd',
+      s.awaitingAdd,
+      readAwaitingAdd,
+    )
+    if (server) {
+      // a registry change (the generator published new route ids) re-plans
+      // the route modules concerned: the server's own listener
+      s.disposers.push(
+        onRoutesChanged(this.opts.routerPluginContext, (next, previous) => {
+          for (const file of changedRoutePaths(next, previous)) {
+            void invalidateRegistry(this, s, file).catch((error: unknown) => {
+              server.config.logger.error(
+                `[tanstack-start] invalidating ${file} after a route change failed: ${String(error)}`,
+              )
+            })
+          }
+        }),
+      )
+    }
     return s
   }
 
@@ -384,7 +507,7 @@ export class ViteCompilerState {
     if (compiling !== undefined && environment.mode === 'build') {
       const subject = identify(compiling).canonicalId
       if (isVirtualId(subject)) {
-        host.awaitVirtual = this.virtualWaits.of(environment.name, subject)
+        host.awaitVirtual = s.virtualWaits.of(environment.name, subject)
       }
     }
     return host

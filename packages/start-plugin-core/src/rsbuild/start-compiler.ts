@@ -50,7 +50,7 @@ interface RegisterStartCompilerOptions {
 }
 
 interface RegisteredStartCompiler {
-  /** The session, once the first environment's Rspack config is built. */
+  /** The session of the current compiler, once the first environment's Rspack config is built. */
   session: () => StartRsbuildCompilerSession | null
   resolverModule: () => string
 }
@@ -61,17 +61,30 @@ export function registerStartCompiler(
 ): RegisteredStartCompiler {
   const dev = api.context.action === 'dev'
   const rscEnabled = opts.corePluginOpts.rsc !== undefined
+  /**
+   * The session of the compiler being configured, or of the last one
+   * created: one per Rspack compiler of this Rsbuild instance (a `build()`
+   * or a dev server; `build()` again configures a new compiler), whose
+   * environments' configs it is built into. What a compiler compiled and
+   * learned dies with it.
+   */
   let session: StartRsbuildCompilerSession | null = null
+  /** Whether the compiler of `session` was created: the next configs are another compiler's. */
+  let created = false
+  api.onAfterCreateCompiler(() => {
+    created = true
+  })
 
   const generator = createRsbuildRouteGenerator({
     getConfig: opts.getConfig,
     corePluginOpts: opts.corePluginOpts,
     startPluginOpts: opts.startPluginOpts,
   })
-  const ensureSession = (): StartRsbuildCompilerSession => {
-    if (session) {
+  const configuredSession = (): StartRsbuildCompilerSession => {
+    if (session && !created) {
       return session
     }
+    created = false
     const { startConfig, resolvedStartConfig } = opts.getConfig()
     session = new StartRsbuildCompilerSession({
       framework: opts.corePluginOpts.framework,
@@ -108,7 +121,7 @@ export function registerStartCompiler(
     if (!environment) {
       return
     }
-    const s = ensureSession()
+    const s = configuredSession()
     s.env(environment.name).transformImport = transformImportRules(
       utils.environment.config.source.transformImport,
     )
@@ -211,7 +224,7 @@ export function registerStartCompiler(
 
   return {
     session: () => session,
-    resolverModule: () => ensureSession().resolverModule(),
+    resolverModule: () => (session ?? configuredSession()).resolverModule(),
   }
 }
 

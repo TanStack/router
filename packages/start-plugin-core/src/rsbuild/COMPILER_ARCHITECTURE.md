@@ -5,10 +5,11 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 
 ## Files
 
-- `start-compiler.ts` registers everything on the Rsbuild plugin API: the session, one `pre` loader rule per Start
-  environment, the late `post` pass for other module types, the rule of import-protection edge modules (in
-  development, the loader's `edge` pass), the `sideEffects` rules, the host plugin of each environment compiler, the
-  client route tree transform.
+- `start-compiler.ts` registers everything on the Rsbuild plugin API: the session (one per Rspack compiler the
+  instance creates: a second `build()` of the instance configures a new compiler and starts from nothing), one `pre`
+  loader rule per Start environment, the late `post` pass for other module types, the rule of import-protection edge
+  modules (in development, the loader's `edge` pass), the `sideEffects` rules, the host plugin of each environment
+  compiler, the client route tree transform.
 - `compiler-session.ts` is the state every environment compiler shares around the bundler-free Start session
   (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
   and id allocator, the planners and configuration per environment and layer, the reporting policy): the loader
