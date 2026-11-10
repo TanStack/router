@@ -11,7 +11,7 @@ import {
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type { Planner } from '../src/compiler'
+import type { PlanKey, Planner } from '../src/compiler'
 
 const ROUTE = dedent(`
   import { createFileRoute } from 'toy-router'
@@ -114,7 +114,8 @@ describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
   it.each(['plans', 'facts', 'targets', 'all'])(
     '%s off: identical outputs, nothing retained by the disabled cache',
     async (knob) => {
-      const reference = await compileAll(new MemoryHost({ files }))
+      const referenceHost = new MemoryHost({ files })
+      const reference = await compileAll(referenceHost)
       vi.stubEnv('TSR_COMPILER_NO_CACHE', knob)
       const host = new MemoryHost({ files })
       expect(await compileAll(host)).toEqual(reference)
@@ -122,13 +123,43 @@ describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
       const facts = host.rawFacts.stats(false)
       if (knob === 'plans' || knob === 'all') {
         expect(plans.plans).toBe(0)
-        expect(plans.dependentEntries).toBe(0)
+        // no plan is kept, but its dependencies are: an edit of one reports the module
+        expect(plans.dependentEntries).toBe(
+          referenceHost.caches.plans.get('client')!.stats(false)
+            .dependentEntries,
+        )
       } else {
         expect(plans.plans).toBe(1)
       }
       if (knob === 'facts' || knob === 'all') {
         expect(facts.rawFacts).toBe(0)
       }
+    },
+  )
+
+  it.each(['plans', 'facts', 'targets', 'all'])(
+    '%s off: an edit of a dependency reports the same dependents',
+    async (knob) => {
+      const dependentsOfHelperEdit = async () => {
+        const host = new MemoryHost({ files })
+        await compileAll(host)
+        host.write(
+          '/app/helper.ts',
+          'export const helper = (n: number) => n\nexport const other = 1\n',
+        )
+        const res = await invalidate(
+          host.caches,
+          { path: '/app/helper.ts', kind: 'change' },
+          host,
+        )
+        const ids = (keys: Array<PlanKey>) =>
+          keys.map((k) => `${k.env}:${k.canonicalId}`).sort()
+        return { evicted: ids(res.evicted), dependents: ids(res.dependents) }
+      }
+      const reference = await dependentsOfHelperEdit()
+      expect(reference.dependents.length).toBeGreaterThan(0)
+      vi.stubEnv('TSR_COMPILER_NO_CACHE', knob)
+      expect(await dependentsOfHelperEdit()).toEqual(reference)
     },
   )
 })
