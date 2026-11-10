@@ -89,43 +89,87 @@ test.each(builds)(
   timeout,
 )
 
+/**
+ * Builds the route with `vite` (the workspace's Vite 8 or an older major),
+ * the router plugin and `output` options, unminified, with maps.
+ */
+async function viteBuild(
+  vite: { build: (config: never) => Promise<unknown> },
+  output: Record<string, unknown> = {},
+) {
+  const app = await createApp({
+    dir: path.dirname(fileURLToPath(import.meta.url)),
+    prefix: '.map-sources-vite-',
+    files,
+    packageJson: { type: 'module' },
+    registerCleanup: onTestFinished,
+  })
+  const outDir = path.join(app.root, 'dist')
+  await vite.build({
+    root: app.root,
+    configFile: false,
+    logLevel: 'silent',
+    plugins: [
+      tanstackRouter({
+        target: 'react',
+        autoCodeSplitting: true,
+        routesDirectory: path.join(app.root, 'routes'),
+        generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
+      }),
+    ],
+    esbuild: { jsx: 'automatic' },
+    build: {
+      outDir,
+      minify: false,
+      sourcemap: true,
+      rollupOptions: {
+        input: path.join(app.root, 'entry.ts'),
+        preserveEntrySignatures: 'exports-only',
+        external: [/^react/, /^@tanstack\//],
+        output,
+      },
+    },
+  } as never)
+  return { root: app.root, outDir }
+}
+
 test(
   'a Vite 7 build names the route file once in every map',
   async () => {
     const vite = await viteVersions.find((v) => v.major === 7)!.load()
-    const app = await createApp({
-      dir: path.dirname(fileURLToPath(import.meta.url)),
-      prefix: '.map-sources-vite7-',
-      files,
-      packageJson: { type: 'module' },
-      registerCleanup: onTestFinished,
-    })
-    const outDir = path.join(app.root, 'dist')
-    await vite.build({
-      root: app.root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          autoCodeSplitting: true,
-          routesDirectory: path.join(app.root, 'routes'),
-          generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
-        }),
-      ],
-      esbuild: { jsx: 'automatic' },
-      build: {
-        outDir,
-        minify: false,
-        sourcemap: true,
-        rollupOptions: {
-          input: path.join(app.root, 'entry.ts'),
-          preserveEntrySignatures: 'exports-only',
-          external: [/^react/, /^@tanstack\//],
-        },
+    const { root, outDir } = await viteBuild(vite)
+    await expectRouteFileNamedOnce(root, outDir)
+  },
+  timeout,
+)
+
+// The app's own `sourcemapPathTransform` still names the sources, once,
+// from the file's name.
+test(
+  'a Vite build with its own sourcemapPathTransform names the route file once, through it',
+  async () => {
+    const vite = await import('vite')
+    const seen: Array<string> = []
+    const { outDir } = await viteBuild(vite, {
+      sourcemapPathTransform: (source: string) => {
+        seen.push(source)
+        return `${source}?from-app`
       },
     })
-    await expectRouteFileNamedOnce(app.root, outDir)
+    const routeSources = seen.filter((s) => s.includes('routes/index.tsx'))
+    expect(routeSources.length).toBeGreaterThan(0)
+    // (the app's transform sees the file's name, without the compiler's query)
+    for (const source of routeSources) {
+      expect(source).not.toContain('?')
+    }
+    // a query the app adds is the app's: it stays
+    const named = (await emittedMaps(outDir)).flatMap(({ map }) =>
+      map.sources.filter((s) => s?.includes('routes/index.tsx')),
+    )
+    expect(named.length).toBeGreaterThan(0)
+    for (const source of named) {
+      expect(source).toMatch(/routes\/index\.tsx\?from-app$/)
+    }
   },
   timeout,
 )
