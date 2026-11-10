@@ -821,8 +821,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     nameOf: (sym) => plan.nameOf(sym),
     glueExportName: (sym) => plan.glueExportName(sym),
     tagGlueExports: (tag) => plan.tagGlueExports(tag),
-    renameRefs: (sym, to, scope, by, except) =>
-      plan.renameRefs(sym, to, scope, by, except),
+    renameRefs: (sym, to, by, except) => plan.renameRefs(sym, to, by, except),
     setFacts: (planner, data) => plan.setFacts(planner, data),
     diagnostic: (d) => plan.diagnostic(d),
     liveDiagnostic: (d, when) => plan.liveDiagnostic(d, when),

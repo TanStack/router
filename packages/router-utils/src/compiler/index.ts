@@ -68,6 +68,8 @@ export type {
   GenUnitId,
   GlueImport,
   OutputId,
+  PlaceFrag,
+  PlannerRewrites,
   RefTarget,
   SymRef,
   TextFrag,

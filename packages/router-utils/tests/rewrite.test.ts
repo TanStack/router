@@ -1,29 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { EditBand, compareEditOrder } from '../src/compiler/rewrite'
 import { MemoryHost, dedent } from './helpers'
 import { engine, rangeOf } from './engine'
 import type { OutputId, Planner } from '../src/compiler'
-import type { Anchor } from '../src/compiler/rewrite'
-
-describe('edit order', () => {
-  it('is the band, then the number inside it, then nesting, whatever the numbers', () => {
-    // the numbers would have crossed the gaps of numeric bands
-    const big = 2 ** 40
-    const inOrder = [
-      { band: EditBand.planner, n: 0 },
-      { band: EditBand.planner, n: big },
-      { band: EditBand.claim, n: 0 },
-      { band: EditBand.claim, n: big },
-      { band: EditBand.claim, n: big, nested: true },
-      { band: EditBand.claim, n: big + 1 },
-      { band: EditBand.lineEnd, n: 0 },
-      { band: EditBand.glueImports, n: 0 },
-      { band: EditBand.core, n: 0 },
-      { band: EditBand.core, n: big },
-    ]
-    expect([...inOrder].reverse().sort(compareEditOrder)).toEqual(inOrder)
-  })
-})
+import type { Anchor, EditScope } from '../src/compiler/rewrite'
 
 describe('rewrite tree', () => {
   it('nests an inner edit inside a retained child slice and drops one inside erased text', () => {
@@ -42,35 +21,31 @@ describe('rewrite tree', () => {
       code,
       '() => { const inner = clientOnly(() => 1); return inner }',
     )
-    rewrites.add({
+    rewrites.edit({
       range: outer,
       body: [
         { k: 'text', parts: ['tsrRpc('] },
         { k: 'slice', range: arg },
         { k: 'text', parts: [')'] },
       ],
-      scope: 'all-outputs',
       by: 'a',
     })
     const innerCall = rangeOf(code, 'clientOnly(() => 1)')
-    rewrites.add({
+    rewrites.edit({
       range: innerCall,
       body: [{ k: 'text', parts: ['(() => {})'] }],
-      scope: 'all-outputs',
       by: 'b',
     })
     const second = rangeOf(code, 'wrapServer(() => 2)')
-    rewrites.add({
+    rewrites.edit({
       range: second,
       body: [{ k: 'text', parts: ['tsrStub()'] }],
-      scope: 'all-outputs',
       by: 'a',
     })
     // an edit inside the erased argument of the second call is dead
-    rewrites.add({
+    rewrites.edit({
       range: rangeOf(code, '2)'),
       body: [{ k: 'text', parts: ['3'] }],
-      scope: 'all-outputs',
       by: 'c',
     })
     const out = e.render().code
@@ -109,10 +84,9 @@ describe('rewrite tree', () => {
       by: 't',
     })
     // reads the generated symbol from an effect unit so it is needed
-    rewrites.add({
+    rewrites.edit({
       range: rangeOf(code, '2'),
       body: [{ k: 'text', parts: [{ sym: gen.sym, ctx: 'callee' }, '()'] }],
-      scope: 'all-outputs',
       by: 't',
     })
     expect(e.render().code).toBe(
@@ -124,58 +98,52 @@ describe('rewrite tree', () => {
     const code = 'const a = 1 + 2 + 3\n'
     {
       const e = engine(code)
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: rangeOf(code, '1 + 2'),
         body: [],
-        scope: 'all-outputs',
         by: 'x',
       })
       // (one region tree for every output: the second range conflicts as it
       // is registered)
       expect(() =>
-        e.ctx.rewrites.add({
+        e.ctx.rewrites.edit({
           range: rangeOf(code, '2 + 3'),
           body: [],
-          scope: 'all-outputs',
           by: 'y',
         }),
       ).toThrow(/partially overlaps/)
     }
     {
       const e = engine(code)
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: rangeOf(code, '1 + 2'),
         body: [{ k: 'text', parts: ['9'] }],
-        scope: 'all-outputs',
         by: 'x',
       })
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: rangeOf(code, '1 + 2'),
         body: [{ k: 'text', parts: ['8'] }],
-        scope: 'all-outputs',
         by: 'y',
       })
       expect(() => e.render()).toThrow(/different bodies/)
     }
     {
       const e = engine(code)
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: rangeOf(code, '1 + 2'),
         body: [{ k: 'text', parts: ['9'] }],
-        scope: 'all-outputs',
         by: 'x',
       })
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: rangeOf(code, '1 + 2'),
         body: [{ k: 'text', parts: ['9'] }],
-        scope: 'all-outputs',
         by: 'y',
       })
       expect(e.render().code).toBe('const a = 9 + 3\n')
     }
   })
 
-  it('scopes edits per output and erases a property in the env output only (deleteNodes)', () => {
+  it('erases a property in the env output only with a placeholder there (deleteNodes)', () => {
     const code = dedent(`
       export const Route = { ssr: false, component: 1 }
     `)
@@ -186,7 +154,7 @@ describe('rewrite tree', () => {
       derived: { kind: 'split', value: 'x' },
       roots: [{ t: 'unit', id: 0 }],
     })
-    e.ctx.rewrites.add({
+    e.ctx.rewrites.placeholder({
       range: rangeOf(code, 'ssr: false, '),
       body: [],
       scope: ['env'],
@@ -216,7 +184,7 @@ describe('context-aware reference rewrites', () => {
     const e = engine(code)
     const sym = e.ctx.t1.units[0]!.declares[0]!
     const to = e.ctx.names.alloc('TsrPage')
-    e.ctx.renameRefs(sym, { sym: to.sym }, 'all-outputs', 'hmr')
+    e.ctx.renameRefs(sym, { sym: to.sym }, 'hmr')
     const out = e.render().code
     expect(out).toBe(
       dedent(`
@@ -244,7 +212,7 @@ describe('context-aware reference rewrites', () => {
     const e = engine(code)
     const sym = e.ctx.t1.units[0]!.declares[0]!
     const to = e.ctx.names.alloc('TsrPage')
-    e.ctx.renameRefs(sym, { sym: to.sym }, 'all-outputs', 'hmr')
+    e.ctx.renameRefs(sym, { sym: to.sym }, 'hmr')
     expect(e.render().code).toBe(
       dedent(`
       var TsrPage = 1
@@ -263,12 +231,7 @@ describe('context-aware reference rewrites', () => {
     `)
     const e = engine(code)
     const sym = e.ctx.t1.units[0]!.declares[0]!
-    e.ctx.renameRefs(
-      sym,
-      { sym: e.ctx.names.alloc('TsrFoo').sym },
-      'all-outputs',
-      'hmr',
-    )
+    e.ctx.renameRefs(sym, { sym: e.ctx.names.alloc('TsrFoo').sym }, 'hmr')
     expect(e.render().code).toBe(
       dedent(`
       const TsrFoo = () => null
@@ -286,12 +249,7 @@ describe('context-aware reference rewrites', () => {
     const sym = e.ctx.t1.units[0]!.declares[0]!
     const props = e.ctx.names.alloc('props')
     for (const ref of e.ctx.t1.refs.refsOf(sym)) {
-      e.ctx.rewrites.ref(
-        ref,
-        { member: [props.sym, 'read'] },
-        'all-outputs',
-        'hydrate',
-      )
+      e.ctx.rewrites.ref(ref, { member: [props.sym, 'read'] }, 'hydrate')
     }
     const out = e.render().code
     expect(out).toContain(
@@ -308,18 +266,8 @@ describe('context-aware reference rewrites', () => {
     const e = engine(code)
     const pageSym = e.ctx.t1.units[0]!.declares[0]!
     const homeSym = e.ctx.t1.units[2]!.declares[0]!
-    e.ctx.renameRefs(
-      pageSym,
-      { sym: e.ctx.names.alloc('TsrPage').sym },
-      'all-outputs',
-      'hmr',
-    )
-    e.ctx.renameRefs(
-      homeSym,
-      { sym: e.ctx.names.alloc('TsrHome').sym },
-      'all-outputs',
-      'hmr',
-    )
+    e.ctx.renameRefs(pageSym, { sym: e.ctx.names.alloc('TsrPage').sym }, 'hmr')
+    e.ctx.renameRefs(homeSym, { sym: e.ctx.names.alloc('TsrHome').sym }, 'hmr')
     const out = e.render().code
     expect(out).toBe(
       dedent(`
@@ -339,16 +287,10 @@ describe('context-aware reference rewrites', () => {
     const e = engine(code)
     const [pageSym] = e.ctx.t1.units[0]!.declares
     const [otherSym] = e.ctx.t1.units[1]!.declares
-    e.ctx.renameRefs(
-      pageSym!,
-      { sym: e.ctx.names.alloc('TsrPage').sym },
-      'all-outputs',
-      'hmr',
-    )
+    e.ctx.renameRefs(pageSym!, { sym: e.ctx.names.alloc('TsrPage').sym }, 'hmr')
     e.ctx.renameRefs(
       otherSym!,
       { sym: e.ctx.names.alloc('TsrOther').sym },
-      'all-outputs',
       'hmr',
     )
     const out = e.render().code
@@ -405,7 +347,7 @@ describe('claims, homes and substitution', () => {
     )
   })
 
-  it('finds the claim on exactly a range, of any region kind, and none on a range inside it', () => {
+  it('finds what stands at exactly a range, and nothing on a range inside it', () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       export const Route = createFileRoute('/')({
@@ -435,11 +377,12 @@ describe('claims, homes and substitution', () => {
       subject: 'a hoisted call',
     })
     // (the planner that would claim the same text as an option value asks first)
-    expect(ctx.rewrites.claimOn(value)).toMatchObject({
+    const env = ctx.rewrites.view('env')
+    expect(env.placeholderAt(value)).toMatchObject({
       by: 'hoist',
       subject: 'a hoisted call',
     })
-    expect(ctx.rewrites.claimOn(rangeOf(code, '() => 1'))).toBeUndefined()
+    expect(env.placeholderAt(rangeOf(code, '() => 1'))).toBeNull()
   })
 
   it('homes the hoist in the chunk when only the chunk roots the placeholder', () => {
@@ -468,10 +411,12 @@ describe('claims, homes and substitution', () => {
       home: 'auto',
       by: 'hmr',
     })
+    // (the env module's place holds the split's lazy wrapper instead)
     ctx.rewrites.claim({
       region,
       owner,
       placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      scope: { except: ['env'] },
       by: 'hmr',
     })
     // the router planner's split part claims nothing new: it re-roots the placeholder's symbol in the chunk
@@ -503,8 +448,8 @@ describe('claims, homes and substitution', () => {
       by: 'split',
     })
     void exporter
-    // the env's option value becomes a lazy wrapper (text replacing the placeholder occurrence is the claim's job; here we erase the read)
-    ctx.rewrites.add({
+    // the env's option value becomes a lazy wrapper
+    ctx.rewrites.placeholder({
       range: value,
       body: [{ k: 'text', parts: ['tsrLazy()'] }],
       scope: ['env'],
@@ -530,10 +475,10 @@ describe('claims, homes and substitution', () => {
     )
   })
 
-  it('nests an edit addressed to every output on exactly a claimed region inside the claim: it travels with the region', () => {
+  it("renders a claimed region's text, an edit's, in its owner and the placeholder at its place", () => {
     // an environment rewrite of exactly the hoisted value (the value is
-    // itself an env-only call) renders where the value does, in the chunk;
-    // the env output keeps the placeholder
+    // itself an env-only call) is the value's text: it renders where the
+    // value does, in the chunk; the env output keeps the placeholder
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { serverOnly } from 'toy-start'
@@ -571,10 +516,9 @@ describe('claims, homes and substitution', () => {
       placeholder: [{ k: 'text', parts: ['tsrLazy()'] }],
       by: 'split',
     })
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: value,
       body: [{ k: 'slice', range: impl }],
-      scope: 'all-outputs',
       by: 'env',
     })
     expect(e.render('env').code).toBe(
@@ -634,10 +578,9 @@ describe('claims, homes and substitution', () => {
       by: 'hydrate',
     })
     // the client erases the handler
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: rangeOf(code, 'wrapServer(() => <Hydrate><Heavy/></Hydrate>)'),
       body: [{ k: 'text', parts: ['tsrStub()'] }],
-      scope: 'all-outputs',
       by: 'env',
     })
     const plan = e.freeze()
@@ -738,13 +681,12 @@ describe('claims, homes and substitution', () => {
         by: 'env',
       })
       // a later planner deletes the option
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: rangeOf(
           code,
           "loader: () => { const fn = make(() => 'hi'); return fn } ",
         ),
         body: [],
-        scope: 'all-outputs',
         by: 'router',
       })
       e.freeze()
@@ -822,10 +764,9 @@ describe('claims, homes and substitution', () => {
     }
     claimRead(rangeOf(code, 'inner(1)'), 'tsrInner')
     claimRead(rangeOf(code, 'make(() => inner(1))'), 'tsrOuter')
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: rangeOf(code, 'loader: () => make(() => inner(1)) '),
       body: [],
-      scope: 'all-outputs',
       by: 'router',
     })
     expect(e.render('env').code).toContain(
@@ -889,18 +830,12 @@ describe('claims, homes and substitution', () => {
       region,
       owner,
       placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      scope: { except: ['env'] },
       by: 'env',
     })
-    ctx.rewrites.add({
-      range: chain,
-      body: [{ k: 'slice', range: chain }],
-      scope: ['env'],
-      by: 'env',
-    })
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: rangeOf(code, 'loader: () => make(1) '),
       body: [],
-      scope: 'all-outputs',
       by: 'router',
     })
     e.freeze()
@@ -949,10 +884,9 @@ describe('claims, homes and substitution', () => {
       by: 'hydrate',
     })
     const name = rangeOf(code, 'tip={1}')
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: { start: name.start, end: name.start + 3 },
       body: [{ k: 'text', parts: [{ sym: tipSym }] }],
-      scope: [out],
       by: 'hydrate',
     })
     expect(e.render().code).toBe(
@@ -1175,22 +1109,19 @@ describe('statement-level edits (one edit per statement)', () => {
     `)
     const e = engine(code)
     // erase the readers of `a`, `bb` and `one`/`two` so they become orphaned by us
-    e.ctx.rewrites.add({
+    e.ctx.rewrites.edit({
       range: rangeOf(code, 'export { one, two }\n'),
       body: [],
-      scope: 'all-outputs',
       by: 'x',
     })
-    e.ctx.rewrites.add({
+    e.ctx.rewrites.edit({
       range: rangeOf(code, 'a()'),
       body: [{ k: 'text', parts: ['1'] }],
-      scope: 'all-outputs',
       by: 'x',
     })
-    e.ctx.rewrites.add({
+    e.ctx.rewrites.edit({
       range: rangeOf(code, 'bb()'),
       body: [{ k: 'text', parts: ['2'] }],
-      scope: 'all-outputs',
       by: 'x',
     })
     const out = e.render().code
@@ -1276,12 +1207,7 @@ describe('renaming an annotated declaration', () => {
     const sym = e.ctx.t1.units
       .flatMap((u) => u.declares)
       .find((s) => e.ctx.symbols.name(s) === name)!
-    e.ctx.renameRefs(
-      sym,
-      { sym: e.ctx.names.alloc('TsrPage').sym },
-      'all-outputs',
-      'hmr',
-    )
+    e.ctx.renameRefs(sym, { sym: e.ctx.names.alloc('TsrPage').sym }, 'hmr')
     return e.render().code
   }
 
@@ -1377,7 +1303,7 @@ describe('renaming a `var` declared again', () => {
     const e = engine(code)
     const to = e.ctx.names.alloc('b')
     const sym = e.ctx.t1.declaringUnits.keys().next().value!
-    e.ctx.renameRefs(sym, { sym: to.sym }, 'all-outputs', 'hmr')
+    e.ctx.renameRefs(sym, { sym: to.sym }, 'hmr')
     expect(e.render().code).toBe(
       `var b = 1\nvar b = 2\n{\n  var { a: b } = o\n}\nfor (var b of o) {}\nf(b)\n`,
     )
@@ -1478,14 +1404,13 @@ describe('replacements at a statement start', () => {
         start: start + 'wrap('.length,
         end: start + call.length - 1,
       }
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: { start, end: start + call.length },
         body: [
           { k: 'text', parts: ['('] },
           { k: 'slice', range: arg },
           { k: 'text', parts: [')'] },
         ],
-        scope: 'all-outputs',
         by: 'toy',
       })
     }
@@ -1507,10 +1432,9 @@ describe('replacements at a statement start', () => {
     const e = engine(code)
     const replace = (call: string, replacement: string) => {
       const start = code.indexOf(call)
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: { start, end: start + call.length },
         body: [{ k: 'text', parts: [replacement] }],
-        scope: 'all-outputs',
         by: 'toy',
       })
     }
@@ -1549,10 +1473,9 @@ describe('replacements at a statement start', () => {
     const e = engine(code)
     const remove = (from: number, text: string) => {
       const start = code.indexOf(text, from)
-      e.ctx.rewrites.add({
+      e.ctx.rewrites.edit({
         range: { start, end: start + text.length },
         body: [],
-        scope: 'all-outputs',
         by: 'toy',
       })
       return start + text.length
@@ -1614,10 +1537,9 @@ describe('a claim its owner renders', () => {
       placeholder: [{ k: 'text', parts: [{ sym: local.sym }] }],
       by: 'toy-hoist',
     })
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: rangeOf(code, "make(() => 'secret')"),
       body: [{ k: 'text', parts: ['stub()'] }],
-      scope: 'all-outputs',
       by: 'toy-env',
     })
     expect(e.render().code).toBe(
@@ -1649,20 +1571,18 @@ describe('a kept slice cuts no edited region', () => {
     tier: 1,
     gate: () => true,
     plan(ctx) {
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: lastRangeOf(code, outerText),
         body: [
           { k: 'text', parts: ['keep('] },
           { k: 'slice', range: lastRangeOf(code, kept) },
           { k: 'text', parts: [')'] },
         ],
-        scope: 'all-outputs',
         by: 'toy-outer',
       })
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: lastRangeOf(code, innerText),
         body: [{ k: 'text', parts: ['stub()'] }],
-        scope: 'all-outputs',
         by: 'toy-inner',
       })
     },
@@ -1765,7 +1685,7 @@ describe('an insert at the edge of a claimed region', () => {
       by: 'toy',
     })
     for (const at of [range.start, range.end]) {
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: at, end: at },
         body: [
           {
@@ -1776,7 +1696,6 @@ describe('an insert at the edge of a claimed region', () => {
                 : [' + ', { sym: tag.sym }],
           },
         ],
-        scope: 'all-outputs',
         by: 'toy',
       })
     }
@@ -1828,14 +1747,13 @@ describe('claims on the tree', () => {
           by: 'toy-unit',
         })
       const edit = () =>
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: u.range,
           body: [
             { k: 'text', parts: ['k('] },
             { k: 'slice', range: rangeOf(code, 'a1_', 1) },
             { k: 'text', parts: [')\n'] },
           ],
-          scope: 'all-outputs',
           by: 'toy-unit',
         })
       if (claimFirst) {
@@ -1863,7 +1781,7 @@ describe('claims on the tree', () => {
     ])
   })
 
-  it('rejects a second claim on one range, of another region kind', () => {
+  it('rejects a second region on one range, of another kind', () => {
     const e = engine(`export const a = { x: value() }\n`)
     const { ctx } = e
     const range = rangeOf(e.code, 'value()')
@@ -1891,7 +1809,7 @@ describe('claims on the tree', () => {
     }
     claimAs('custom', 'first')
     expect(() => claimAs('nested-chain', 'second')).toThrow(
-      /conflict: two claims on \[\d+, \d+\) \(by first and second\)/,
+      /conflict: a nested-chain region \[\d+, \d+\) is the custom region there/,
     )
   })
 })
@@ -1916,13 +1834,13 @@ describe('one region tree for every output', () => {
         derived: { kind: 'split', value: 'component' },
         roots: [{ t: 'unit', id: ctx.t1.units.length - 1 }],
       })
-      ctx.rewrites.add({
+      ctx.rewrites.placeholder({
         range: rangeOf(code, '1 + 2'),
         body: [{ k: 'text', parts: ['3'] }],
         scope: ['env'],
         by: 'toy-cut',
       })
-      ctx.rewrites.add({
+      ctx.rewrites.placeholder({
         range: rangeOf(code, '2 + 3'),
         body: [{ k: 'text', parts: ['5'] }],
         scope: [chunk],
@@ -1969,7 +1887,12 @@ describe('a claimed region whose place holds other text in one output', () => {
   const compile = (outerFirst: boolean) => {
     const e = engine(code)
     const { ctx } = e
-    const claim = (text: string, name: string, read: boolean) => {
+    const claim = (
+      text: string,
+      name: string,
+      read: boolean,
+      scope?: EditScope,
+    ) => {
       const hoisted = ctx.names.alloc(name)
       const region = ctx.region(rangeOf(code, text), 'nested-chain')
       const owner = ctx.rewrites.addGenerated({
@@ -2011,28 +1934,28 @@ describe('a claimed region whose place holds other text in one output', () => {
         region,
         owner,
         placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        ...(scope ? { scope } : {}),
         by: 'toy-hoist',
       })
     }
-    const claims: Array<[string, string, boolean]> = [
+    const claims: Array<[string, string, boolean, EditScope?]> = [
       ['b(c(d(1)))', 'gB', true],
-      ['c(d(1))', 'gC', true],
+      ['c(d(1))', 'gC', true, { except: ['env'] }],
       ['d(1)', 'gD', false],
     ]
     for (const args of outerFirst ? claims : [...claims].reverse()) {
       claim(...args)
     }
     // the env module's text at C's place
-    ctx.rewrites.add({
+    ctx.rewrites.placeholder({
       range: rangeOf(code, 'c(d(1))'),
       body: [{ k: 'text', parts: ['0'] }],
       scope: ['env'],
       by: 'toy-env',
     })
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: rangeOf(code, 'loader: () => b(c(d(1))) '),
       body: [],
-      scope: 'all-outputs',
       by: 'toy-router',
     })
     const d = ctx.t1.refs.all.find(
@@ -2075,14 +1998,13 @@ describe('an insert at the start of a unit', () => {
       const helper = ctx.t1.units.find((u) =>
         text(u.range).includes('helper = 1'),
       )!.declares[0]!
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: rangeOf(code, 'helper', 1),
         body: [{ k: 'text', parts: ['0'] }],
-        scope: 'all-outputs',
         by: 'toy-insert',
       })
       if (editUnit) {
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: unit.range,
           body: [
             { k: 'text', parts: ['void '] },
@@ -2091,14 +2013,12 @@ describe('an insert at the start of a unit', () => {
               range: { start: unit.range.start, end: unit.range.start + 6 },
             },
           ],
-          scope: 'all-outputs',
           by: 'toy-insert',
         })
       }
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: unit.range.start, end: unit.range.start },
         body: [{ k: 'text', parts: [{ sym: helper }, ';'] }],
-        scope: 'all-outputs',
         by: 'toy-insert',
       })
     },

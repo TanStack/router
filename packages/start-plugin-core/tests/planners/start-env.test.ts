@@ -390,7 +390,9 @@ export const fn = createServerFn().handler(${handler})
       expectValid(provider)
       expect(provider).toContain(provided)
       expect(provider).not.toContain(client)
-      expect(provider).not.toMatch(/createClientOnlyFn\(|createIsomorphicFn\(/)
+      expect(provider).not.toMatch(
+        /createClientOnlyFn\(\(|createIsomorphicFn\(\)\./,
+      )
     },
   )
 

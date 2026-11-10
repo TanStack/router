@@ -26,18 +26,16 @@ const stubs: Planner = {
   plan(ctx) {
     const code = ctx.analysis.source.code
     for (const m of code.matchAll(/wrapServer\(.*\)/g)) {
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: m.index, end: m.index + m[0].length },
         body: [{ k: 'text', parts: ['tsrStub()'] }],
-        scope: 'all-outputs',
         by: 'toy-stubs',
       })
     }
     const rename = (start: number, end: number) =>
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start, end },
         body: [{ k: 'text', parts: [`${code.slice(start, end)}_`] }],
-        scope: 'all-outputs',
         by: 'toy-stubs',
       })
     for (const ref of ctx.t1.refs.all) {
@@ -86,10 +84,9 @@ const hoists: Planner = {
       })
     }
     const rename = (start: number, end: number) =>
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start, end },
         body: [{ k: 'text', parts: [`${code.slice(start, end)}_`] }],
-        scope: 'all-outputs',
         by: 'toy-hoists',
       })
     for (const ref of ctx.t1.refs.all) {

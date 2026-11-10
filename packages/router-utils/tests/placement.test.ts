@@ -291,7 +291,7 @@ describe('glue and renames (lane router)', () => {
           : null
         if (sym !== null) {
           const next = ctx.names.alloc('TsrPendingComponent')
-          ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
+          ctx.renameRefs(sym, { sym: next.sym }, 'toy-rename')
         }
       },
     }
@@ -334,12 +334,7 @@ describe('glue and renames (lane router)', () => {
             ctx.symbols.name(u.declares[0]!) === 'page',
         )!
         const next = ctx.names.alloc('TsrPendingComponent')
-        ctx.renameRefs(
-          unit.declares[0]!,
-          { sym: next.sym },
-          'all-outputs',
-          'toy-rename',
-        )
+        ctx.renameRefs(unit.declares[0]!, { sym: next.sym }, 'toy-rename')
       },
     }
     const planners = [rename, toySplitPlanner()]
@@ -376,12 +371,7 @@ describe('glue and renames (lane router)', () => {
             ctx.symbols.name(u.declares[0]!) === 'page',
         )!
         const next = ctx.names.alloc('TsrPendingComponent')
-        ctx.renameRefs(
-          unit.declares[0]!,
-          { sym: next.sym },
-          'all-outputs',
-          'toy-rename',
-        )
+        ctx.renameRefs(unit.declares[0]!, { sym: next.sym }, 'toy-rename')
       },
     }
     const main = await host.compile('/app/route.tsx', [
@@ -418,7 +408,7 @@ describe('glue and renames (lane router)', () => {
         )!
         const sym = unit.declares.find((d) => ctx.symbols.name(d) === 'render')!
         const next = ctx.names.alloc('TsrPendingComponent')
-        ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
+        ctx.renameRefs(sym, { sym: next.sym }, 'toy-rename')
       },
     }
     const planners = [rename, toySplitPlanner()]
@@ -474,7 +464,7 @@ describe('glue and renames (lane router)', () => {
           home: out,
           by: 'toy-erase',
         })
-        ctx.rewrites.add({
+        ctx.rewrites.placeholder({
           range: { start: p.value.start, end: p.value.end },
           body: [{ k: 'text', parts: ['null'] }],
           scope: ['env'],
@@ -1610,7 +1600,7 @@ describe('extracted-export outputs', () => {
             const arg =
               call?.type === 'CallExpression' ? call.arguments[0] : undefined
             if (arg) {
-              ctx.rewrites.add({
+              ctx.rewrites.placeholder({
                 range: { start: arg.start, end: arg.end },
                 body: [{ k: 'text', parts: ['0'] }],
                 scope: ['env'],
@@ -2839,7 +2829,7 @@ describe('route-module specifics (lane router)', () => {
           home: out,
           by: 'toy-erase',
         })
-        ctx.rewrites.add({
+        ctx.rewrites.placeholder({
           range: { start: p.value.start, end: p.value.end },
           body: [{ k: 'text', parts: ['null'] }],
           scope: ['env'],
@@ -4032,7 +4022,7 @@ describe('clusters an env root reads after homing', () => {
             },
           ],
         })
-        ctx.rewrites.add({
+        ctx.rewrites.placeholder({
           range: { start: init, end: init + handler.length },
           body: [{ k: 'text', parts: [{ sym: stub.sym }, "('id')"] }],
           scope: ['env'],
@@ -4135,22 +4125,17 @@ describe('overridden placeholders', () => {
           home: out,
           by: 'toy-provider',
         })
+        // the env module keeps the chain in place, with its stub
         ctx.rewrites.claim({
           region: ctx.region(range, 'nested-chain'),
           owner,
           placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+          scope: { except: ['env'] },
           by: 'toy-provider',
         })
-        ctx.rewrites.add({
-          range,
-          body: [
-            { k: 'slice', range: { start, end: hStart } },
-            { k: 'text', parts: [{ sym: stub.sym }, "('id')"] },
-            {
-              k: 'slice',
-              range: { start: hStart + handler.length, end: range.end },
-            },
-          ],
+        ctx.rewrites.placeholder({
+          range: { start: hStart, end: hStart + handler.length },
+          body: [{ k: 'text', parts: [{ sym: stub.sym }, "('id')"] }],
           scope: ['env'],
           by: 'toy-provider',
         })
@@ -5375,10 +5360,9 @@ describe('generated imports', () => {
       })
       for (const literal of literals) {
         const start = ctx.analysis.source.code.indexOf(literal)
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: { start, end: start + literal.length },
           body: [{ k: 'text', parts: [{ sym: stub.sym }, `(${literal})`] }],
-          scope: 'all-outputs',
           by: 'toy-wrap',
         })
       }

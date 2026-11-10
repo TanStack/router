@@ -452,7 +452,8 @@ describe('Vite production build with RSC', () => {
   // the handler's body is in no client file. The rsc build holds the
   // provider outputs the resolver reaches, not the route module or its
   // split chunk (the chunk would import the provider module, see the
-  // `start-env` planner's nested-chain override): a route's component code
+  // `start-env` planner's claim of the nested chain for the provider
+  // output only): a route's component code
   // is in no file of the rsc environment.
   test('a server fn nested in a function only the split component calls', async () => {
     const page = await open('/nested')

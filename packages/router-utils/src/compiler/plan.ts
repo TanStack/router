@@ -30,10 +30,10 @@ import type { SymbolId, SymbolTable } from './symbols'
 import type { RegionId, UnitId } from './units'
 import type {
   EdgeProvenance,
-  EditScope,
   GlueImport,
   LivenessView,
   OutputId,
+  PlannerRewrites,
   RefTarget,
   RegionKind,
 } from './rewrite'
@@ -147,7 +147,7 @@ export interface PlanContext<TName extends string = string> {
   readonly displayPath: string
   readonly env: EnvInfo
   readonly config: PlannerConfig<TName>
-  readonly rewrites: RewriteSet
+  readonly rewrites: PlannerRewrites
   readonly names: NameAllocator
   readonly symbols: SymbolTable
   /** Phase A results, by planner name. */
@@ -199,7 +199,6 @@ export interface PlanContext<TName extends string = string> {
   renameRefs: (
     sym: SymbolId,
     to: RefTarget,
-    scope: EditScope,
     by: string,
     /** References inside these ranges are left to their owner (another planner rewrites them). */
     except?: ReadonlyArray<Range>,
@@ -305,10 +304,9 @@ export class AnalysisPlan implements PlanContext {
         imp.attributesRange.start,
       )
       if (code.startsWith('assert', start)) {
-        this.rewrites.add({
+        this.rewrites.edit({
           range: { start, end: start + 'assert'.length },
           body: [{ k: 'text', parts: ['with'] }],
-          scope: 'all-outputs',
           by: 'core:attributes',
         })
       }
@@ -455,7 +453,6 @@ export class AnalysisPlan implements PlanContext {
   renameRefs(
     sym: SymbolId,
     to: RefTarget,
-    scope: EditScope,
     by: string,
     except: ReadonlyArray<Range> = [],
   ): void {
@@ -479,7 +476,7 @@ export class AnalysisPlan implements PlanContext {
       ) {
         continue
       }
-      this.rewrites.ref(ref, to, scope, by)
+      this.rewrites.ref(ref, to, by)
     }
     const name = this.symbols.name(sym)
     for (const uid of declaringUnits.get(sym) ?? []) {
@@ -491,14 +488,13 @@ export class AnalysisPlan implements PlanContext {
         }
         if (this.isShorthandPatternName(r)) {
           // `const { a } = …` / `{ a = d }`: the key stays, the binding is renamed
-          this.rewrites.add({
+          this.rewrites.edit({
             range: r,
             body: [{ k: 'ref', range: r, to, ctx: 'shorthandPattern' }],
-            scope,
             by,
           })
         } else {
-          this.rewrites.declName(r, to, scope, by)
+          this.rewrites.declName(r, to, by)
         }
       }
       // an exported declaration exports each binding under its own name

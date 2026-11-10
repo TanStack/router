@@ -1196,10 +1196,9 @@ function toyEnvPlanner(): Planner {
               parent?.type === 'CallExpression' &&
               ctx.env.type === 'client'
             ) {
-              ctx.rewrites.add({
+              ctx.rewrites.edit({
                 range: { start: parent.start, end: parent.end },
                 body: [{ k: 'text', parts: ['(() => { throw 0 })'] }],
-                scope: 'all-outputs',
                 by: 'start-env',
               })
             }
@@ -1211,13 +1210,12 @@ function toyEnvPlanner(): Planner {
               element.closingElement &&
               ctx.env.type === 'server'
             ) {
-              ctx.rewrites.add({
+              ctx.rewrites.edit({
                 range: {
                   start: element.openingElement.end,
                   end: element.closingElement.start,
                 },
                 body: [],
-                scope: 'all-outputs',
                 by: 'start-env',
               })
             }

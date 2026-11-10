@@ -53,7 +53,6 @@ import type {
   Diagnostic,
   ImportEntry,
   ModuleAnalysis,
-  OutputId,
   PlanContext,
   Planner,
   PrefetchContext,
@@ -670,10 +669,9 @@ function prefix(ctx: PlanContext, b: Boundary, lazy: SymbolId | null): void {
   if (lazy !== null) {
     parts.push(' p={', { sym: lazy }, '.preload}')
   }
-  ctx.rewrites.add({
+  ctx.rewrites.edit({
     range: { start: b.insertAt, end: b.insertAt },
     body: [{ k: 'text', parts }],
-    scope: 'all-outputs',
     by: HYDRATE_PLANNER,
   })
 }
@@ -1208,22 +1206,20 @@ function extract(
       props !== null ? { member: [props, a.name] } : { sym: a.sym },
     )
   }
-  const scopeChunk: ReadonlyArray<OutputId> = [out]
+  // (inside the children: their text, rendered in the chunk)
   for (const r of scan.argumentsRefs) {
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: r,
       body: [{ k: 'text', parts: [{ sym: shared.args }], mapTo: r.start }],
-      scope: scopeChunk,
       by: HYDRATE_PLANNER,
     })
   }
   for (const s of setterProps) {
     const setter = symbols.declare(s.prop, 'synthetic')
     env.set(setter, { member: [props!, s.prop] })
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range: s.range,
       body: [{ k: 'text', parts: [{ sym: setter }], mapTo: s.range.start }],
-      scope: scopeChunk,
       by: HYDRATE_PLANNER,
     })
   }
@@ -1407,10 +1403,9 @@ function addLazyConst(
 /** Erases a statically visible `fallback` (what only it read goes with it: the core's orphan cleanup). */
 function stripFallback(ctx: PlanContext, b: Boundary): void {
   const erase = (range: Range) => {
-    ctx.rewrites.add({
+    ctx.rewrites.edit({
       range,
       body: [],
-      scope: 'all-outputs',
       by: HYDRATE_PLANNER,
     })
   }
@@ -1439,7 +1434,7 @@ function stripFallback(ctx: PlanContext, b: Boundary): void {
           (p) => fallbacks.has(p),
           fallbacks,
           listEnd(ctx.analysis.source.code, props),
-          { scope: 'all-outputs', by: HYDRATE_PLANNER },
+          HYDRATE_PLANNER,
         )
       }
     }

@@ -626,10 +626,9 @@ describe('forwarded glue and markers', () => {
       const imp = ctx.analysis.imports.find(
         (i) => i.specifier === './secret.server',
       )!
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: imp.declRange,
         body: [],
-        scope: 'all-outputs',
         by: 'toy-forward',
       })
       const local = ctx.names.alloc('forwardedSecret')

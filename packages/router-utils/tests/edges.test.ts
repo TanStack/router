@@ -506,13 +506,12 @@ describe('policy context', () => {
       tier: 1,
       gate: () => true,
       plan(ctx) {
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range: { start: 0, end },
           body: [
             { k: 'slice', range: { start: 0, end: mid } },
             { k: 'slice', range: { start: mid, end } },
           ],
-          scope: 'all-outputs',
           by: 'splitter',
         })
       },

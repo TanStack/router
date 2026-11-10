@@ -31,41 +31,45 @@ emits its own output. Nothing depends on transform order.
   one declarator, one function/class/enum/namespace (merged declarations together), one export specifier, every other
   statement. **Regions** are ranges planned as one thing; every unit is one, and planners register sub-regions
   (route option values, Hydrate children, nested server-fn chains).
-- **Rewrite tree** (`rewrite.ts`): planners emit edits against _original_ UTF-16 ranges: remove, replace with
-  fragments, insert. An edit's body names source text only as slices of the range it rewrites (rendered with what the
-  output does inside them), next to structured text with symbol references (`SymRef`), glue specifiers and
-  context-aware reference rewrites (shorthand properties expand, export names stay). A _generated unit_ can claim a
-  region: the owner renders the region whole (`{ k: 'region' }`, its only way to name source text), wherever the
-  owner is placed, and a placeholder renders at the original position. An erasure enclosing the occurrence kills the
-  claim and its owner, unless other generated code reads the owner (the provider's hoisted server fn its RPC wrapper
-  calls): then only the placeholder goes. A route option written as a method claims its function; an edit of the
-  property writes the key before the placeholder. Edits nest, so a range moved into a chunk carries the env edits
-  inside it; an edit addressed to every output on exactly a claimed region is the region's text and travels with it
-  (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while an edit
-  scoped to one output on exactly the region replaces the placeholder there (the env module keeps a nested
-  server-fn chain in place with its stub). A generated unit has a home (`auto`: placement decides; an output),
-  or `env-readers`: placement copies it into every derived output importing a binding of the env module other than
-  the ones it names, once inclusion is decided (route HMR registers the chunks reading what the route module keeps); it
-  declares nothing, owns no claim and reads only its own imports.
-- **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region and the range of every
-  edit and claim, shared by every output and checked against the units, so two ranges nest or are disjoint whatever
-  outputs their edits are scoped to; a range that partly overlaps another is a conflict as it is registered, and so
-  is a second claim on one range. Each plan has its own (a fallback round starts again from the units). How regions
-  nest is read on the tree (`parentOf`, `childrenOf`, `innermostAt`).
+- **Rewrite tree** (`rewrite.ts`): every range a planner addresses has two answers per output: its **text** (what it
+  reads as wherever it renders) and its **place** (what stands where it is written). `edit` sets the text, in every
+  output: an edit's body names source text only as slices of the range it rewrites (rendered with what the output
+  does inside them), next to structured text with symbol references (`SymRef`), glue specifiers and context-aware
+  reference rewrites (shorthand properties expand, export names stay). `insert` adds text at a position, in some
+  outputs. `placeholder` puts generated text at a range's place in some outputs; the range's text then renders
+  nowhere there. A _generated unit_ can `claim` a region: the owner renders the region's text whole
+  (`{ k: 'region' }`, its only way to name source text), wherever the owner is placed, and the claim's placeholder
+  stands at its place, in the outputs of the claim's scope. An erasure enclosing the occurrence kills the claim and
+  its owner, unless other generated code (a unit, a placeholder) reads the owner (the provider's hoisted server fn
+  its RPC wrapper calls): then only the placeholder goes. In an output outside the claim's scope a placeholder of
+  that output stands at the place, and the text renders in the owner if it is read; with none, the region's text is
+  the text around it (Start's nested server-fn chain stays in place in the RSC env module, with its handler's stub,
+  while the provider output hoists it). Text and place never conflict: a handler that is itself an env-only or
+  isomorphic call has its stub as its place and its compiled call as its text, which renders in the provider or
+  handler module. Two edits, or two placeholders (a claim's included), on one range in one output conflict. A route
+  option written as a method claims its function; an edit of the property writes the key before the placeholder.
+  `serverOnly` records server-only text of a client compile (a handler, a `.server()` implementation, a
+  `createServerOnlyFn` body, a validator), with its placeholder when it has one. The core's orphan cleanup is the
+  only edit with a scope (`scopedEdit`, not on `PlanContext`). A generated unit has a home (`auto`: placement
+  decides; an output), or `env-readers`: placement copies it into every derived output importing a binding of the
+  env module other than the ones it names, once inclusion is decided (route HMR registers the chunks reading what
+  the route module keeps); it declares nothing, owns no claim and reads only its own imports.
+- **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region (one per range) and the
+  range of every edit, placeholder and claim, shared by every output and checked against the units, so two ranges
+  nest or are disjoint whatever outputs they apply in; a range that partly overlaps another is a conflict as it is
+  registered, and so is a second claim on one range. Each plan has its own (a fallback round starts again from the
+  units). How regions nest is read on the tree (`parentOf`, `childrenOf`, `innermostAt`).
 - **One walk per output** (`OutputView.walk`): source text enters an output only through it. A node renders its
-  place (a kept claim's placeholder, or the edit replacing it) or its text (its edit's body, or its source with the
-  nodes inside it); a node that renders as its source is walked through, and an insert belongs to the innermost node
-  strictly holding its position (one at a claimed region's edge renders once, beside the placeholder). A slice that
-  cuts a node rewritten in that output fails the compile in every mode (it would copy the text the node replaces).
-  The renderer (`freeze.ts`), placement's reads (`placement/reads.ts`) and the erased parts are the walk's visitors;
-  the point questions (whether a byte renders, the claims an output keeps) climb the tree from a position's innermost
-  range with the same rules, so a question costs the nesting depth, not the number of edits.
-- **An edit scoped to some outputs is absent from the others' text**, so another output that copies its range
-  copies the original text. An edit is scoped to one output only where no other output copies its range, or where
-  what the others render there is right without it: the split's placeholder for an identifier value is the env
-  module's own (`split.ts`; the chunk reads the binding), and Start's in-place stub of a nested server-fn chain
-  overrides the claim's placeholder in the env module only, while a split chunk copying the enclosing function
-  renders the placeholder (`start-env.ts`). It is the planner's obligation.
+  place (`placeholderOf`: a placeholder, or a kept claim's) or its text (`editOf`: its edit's body, or its source
+  with the nodes inside it); a node that renders as its source is walked through, and an insert belongs to the
+  innermost node strictly holding its position (one at a claimed region's edge renders once, beside the
+  placeholder; one at a unit's start is the unit's). A slice that cuts a node rewritten in that output fails the
+  compile in every mode (it would copy the text the node replaces). The renderer (`freeze.ts`), placement's reads
+  (`placement/reads.ts`) and the erased parts are the walk's visitors; the point questions (whether a byte renders,
+  the claims an output keeps) climb the tree from a position's innermost range asking each node the same two
+  questions: a place without an owner erases the text, a claim's relocates it. A question costs the nesting depth,
+  not the number of edits. Whether a region is claimed is asked per output (`OutputView.isClaimed`): a member reads
+  a nested region claimed only for other outputs as its own text (its references, no edge to the owner).
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are

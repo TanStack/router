@@ -28,10 +28,9 @@ function toyLivePlanner(
         return out
       }
       for (const range of all('OWN')) {
-        ctx.rewrites.add({
+        ctx.rewrites.edit({
           range,
           body: [{ k: 'text', parts: ['0'] }],
-          scope: 'all-outputs',
           by: 'toy-live',
         })
       }

@@ -14,8 +14,8 @@ import type {
   CompileOutput,
   CompilerCaches,
   EnvInfo,
-  Frag,
   HostServices,
+  PlaceFrag,
   PlanContext,
   Planner,
   Range,
@@ -167,7 +167,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       for (const key of opts.deleteNodes ?? []) {
         const p = propertyOf(options, key)
         if (p) {
-          ctx.rewrites.add({
+          ctx.rewrites.placeholder({
             range: propertyRangeWithComma(options, p.prop),
             body: [],
             scope: ['env'],
@@ -289,7 +289,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         if (valueSym !== null) {
           ctx.addRoot(output, { t: 'sym', id: valueSym })
         }
-        const placeholder: Array<Frag> = [
+        const placeholder: Array<PlaceFrag> = [
           {
             k: 'text',
             parts: [
@@ -302,7 +302,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           },
         ]
         if (region === null) {
-          ctx.rewrites.add({
+          ctx.rewrites.placeholder({
             range: valueRange,
             body: placeholder,
             scope: ['env'],
@@ -378,39 +378,35 @@ export function toyEnvPlanner(spec = 'toy-start'): Planner {
             }
             if (s.imported === 'wrapServer') {
               if (env.type === 'server') {
-                ctx.rewrites.add({
+                ctx.rewrites.edit({
                   range: { start: call.start, end: call.end },
                   body: [
                     { k: 'text', parts: ['tsrRpc('] },
                     { k: 'slice', range: { start: arg.start, end: arg.end } },
                     { k: 'text', parts: [')'] },
                   ],
-                  scope: 'all-outputs',
                   by: 'toy-env',
                 })
               } else {
-                ctx.rewrites.add({
+                ctx.rewrites.edit({
                   range: { start: call.start, end: call.end },
                   body: [{ k: 'text', parts: ['tsrStub()'] }],
-                  scope: 'all-outputs',
                   by: 'toy-env',
                 })
               }
             } else if (s.imported === 'clientOnly') {
               if (env.type === 'client') {
-                ctx.rewrites.add({
+                ctx.rewrites.edit({
                   range: { start: call.start, end: call.end },
                   body: [
                     { k: 'slice', range: { start: arg.start, end: arg.end } },
                   ],
-                  scope: 'all-outputs',
                   by: 'toy-env',
                 })
               } else {
-                ctx.rewrites.add({
+                ctx.rewrites.edit({
                   range: { start: call.start, end: call.end },
                   body: [{ k: 'text', parts: ['(() => {})'] }],
-                  scope: 'all-outputs',
                   by: 'toy-env',
                 })
               }

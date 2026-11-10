@@ -77,10 +77,9 @@ function planRscCss(
       if (arg.type === 'SpreadElement') {
         continue
       }
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: arg.end, end: arg.end },
         body: [text(`, { ${RSC_CSS_OPTIONS_KEY}: ${loadCss} }`)],
-        scope: 'all-outputs',
         by,
       })
       continue
@@ -115,16 +114,14 @@ function wrapJsxLeaves(
     case 'JSXElement':
     case 'JSXFragment': {
       const bare = inner === expr
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: expr.start, end: expr.start },
         body: [text(bare ? `<>{${loadCss}}` : `<>{${loadCss}}{`)],
-        scope: 'all-outputs',
         by,
       })
-      ctx.rewrites.add({
+      ctx.rewrites.edit({
         range: { start: expr.end, end: expr.end },
         body: [text(bare ? '</>' : '}</>')],
-        scope: 'all-outputs',
         by,
       })
       return true

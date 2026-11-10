@@ -1,15 +1,18 @@
-// Seeded random rewrite trees (design note 1, §5, widened after the review of
-// step 1): random edits of every scope, keep-slices, inserts and claims (of
-// sub-regions of two kinds, owned in the env module or a derived output;
-// live, dead and read elsewhere; with other text at their place in one output) on
-// nested calls, registered in source order, reversed or shuffled. What the
-// planners' liveness reports of every name must be what the env module
-// holds; in a derived output holding some claimed text, a name it holds is
-// live. Text reported erased (calls whole and inside their parentheses) is
-// held by neither. Users' runs (self-checks off, as the review's
-// generator): what is checked is the rendered text. A claim of a statement's
-// unit is not generated (a core test covers it: 'claims on the tree').
+// Seeded random rewrite trees (design note 1, §5, widened after the reviews
+// of steps 1 and 2): random edits, keep-slices, placeholders and inserts of
+// every scope, and claims (of sub-regions of two kinds, owned in the env
+// module or a derived output; live, dead and read elsewhere; for every
+// output, for the outputs other than those a placeholder stands in, or for
+// the derived output only) on nested calls, registered in source order,
+// reversed or shuffled. What the planners' liveness reports of every name
+// must be what the env module holds; in a derived output holding some
+// claimed text, a name it holds is live. Text reported erased (calls whole
+// and inside their parentheses) is held by neither. Users' runs (self-checks
+// off, as the review's generator): what is checked is the rendered text. A
+// claim of a statement's unit is not generated (a core test covers it:
+// 'claims on the tree').
 import { describe, expect, it, vi } from 'vitest'
+import { RewriteSet } from '../src/compiler/rewrite'
 import type { PlanContext, Planner } from '../src/compiler'
 import type { EditScope, GenFrag, OutputId } from '../src/compiler/rewrite'
 import type { RegionId } from '../src/compiler/units'
@@ -124,7 +127,20 @@ function randomPlanner(
       const scopes: Array<EditScope> = ['all-outputs', ['env'], [other]]
       const scope = () => scopes[Math.floor(rand() * scopes.length)]!
       let gens = 0
-      const claim = (region: RegionId, read: boolean) => {
+      /** The claims made: their range, their owner's home, whether the env module claims them. */
+      const made: Array<{
+        start: number
+        end: number
+        home: unknown
+        inEnv: boolean
+      }> = []
+      const claim = (
+        region: RegionId,
+        read: boolean,
+        scope: EditScope,
+        home: 'auto' | OutputId,
+        envPlace: boolean,
+      ) => {
         const hoisted = ctx.names.alloc(`g${gens++}`)
         const body: Array<GenFrag> = [
           { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
@@ -136,8 +152,7 @@ function randomPlanner(
           declares: [hoisted.sym],
           effectful: false,
           anchor: { k: 'end' },
-          // (the derived output holds the claimed text it owns)
-          home: rand() < 0.3 ? other : 'auto',
+          home,
           by: 'toy-random',
         })
         if (read) {
@@ -167,36 +182,54 @@ function randomPlanner(
           region,
           owner,
           placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+          scope,
           by: 'toy-random',
+        })
+        const { start, end } = ctx.rewrites.regions.get(region).range
+        made.push({
+          start,
+          end,
+          home,
+          inEnv: RewriteSet.inScope(scope, 'env') || envPlace,
         })
       }
       for (const call of calls) {
         const range = { start: call.start, end: call.end }
         const pick = rand()
+        /** The outputs of a placeholder at the call's place. */
+        let placed: ReadonlyArray<OutputId> | null = null
         if (pick < 0.2) {
-          ctx.rewrites.add({
-            range,
-            body: [{ k: 'text', parts: ['0'] }],
-            scope: scope(),
-            by: 'toy-random',
-          })
+          const s = scope()
+          if (s === 'all-outputs') {
+            ctx.rewrites.edit({
+              range,
+              body: [{ k: 'text', parts: ['0'] }],
+              by: 'toy-random',
+            })
+          } else {
+            placed = s as ReadonlyArray<OutputId>
+            ctx.rewrites.placeholder({
+              range,
+              body: [{ k: 'text', parts: ['0'] }],
+              scope: placed,
+              by: 'toy-random',
+            })
+          }
         } else if (pick < 0.4) {
           const kept = call.args[Math.floor(rand() * call.args.length)]!
-          ctx.rewrites.add({
+          ctx.rewrites.edit({
             range,
             body: [
               { k: 'text', parts: ['k('] },
               { k: 'slice', range: kept },
               { k: 'text', parts: [')'] },
             ],
-            scope: scope(),
             by: 'toy-random',
           })
         }
         if (rand() < 0.15) {
-          const at = rand() < 0.5 ? call.start : call.end
-          ctx.rewrites.add({
-            range: { start: at, end: at },
+          ctx.rewrites.insert({
+            at: rand() < 0.5 ? call.start : call.end,
             body: [{ k: 'text', parts: ['/*i*/'] }],
             scope: scope(),
             by: 'toy-random',
@@ -205,13 +238,37 @@ function randomPlanner(
         if (call.top) {
           continue
         }
-        // (with an edit scoped to some outputs on exactly the claimed
-        // region: other text stands at its place there)
         if (rand() < 0.6) {
           continue
         }
         const kind = rand() < 0.5 ? 'nested-chain' : 'custom'
-        claim(ctx.region(range, kind), rand() < 0.5)
+        const read = rand() < 0.5
+        // (the derived output holds the claimed text it owns)
+        const home = rand() < 0.3 ? other : 'auto'
+        if (placed !== null) {
+          // claimed for the other outputs: the placeholder stands at its
+          // place in these, where its text renders in its owner, if read
+          claim(
+            ctx.region(range, kind),
+            read,
+            { except: placed },
+            home,
+            placed.includes('env'),
+          )
+        } else if (rand() < 0.2) {
+          // claimed for the derived output, owned there: in the env module
+          // its text stands at its place (a server fn nested in the RSC
+          // provider's env module)
+          claim(
+            ctx.region(range, kind),
+            read,
+            { except: ['env'] },
+            other,
+            false,
+          )
+        } else {
+          claim(ctx.region(range, kind), read, 'all-outputs', home, true)
+        }
       }
       for (const o of ['env', 'other'] as const) {
         const view = ctx.liveness(o === 'env' ? 'env' : other)
@@ -224,22 +281,17 @@ function randomPlanner(
           if (ref.ctx === 'callee' || ref.ctx === 'plain') {
             const name = ctx.symbols.name(ref.sym)
             r.live.set(name, view.live(ref))
-            let innermost: {
-              start: number
-              end: number
-              home: unknown
-            } | null = null
-            for (const cl of ctx.rewrites.claims.values()) {
-              const range = ctx.rewrites.regions.get(cl.region).range
+            // (the innermost claim the env module claims: one claimed for
+            // other outputs only is text in place there)
+            let innermost: (typeof made)[number] | null = null
+            for (const cl of made) {
               if (
-                range.start <= ref.range.start &&
-                ref.range.end <= range.end &&
-                (innermost === null || range.start >= innermost.start)
+                cl.inEnv &&
+                cl.start <= ref.range.start &&
+                ref.range.end <= cl.end &&
+                (innermost === null || cl.start >= innermost.start)
               ) {
-                innermost = {
-                  ...range,
-                  home: ctx.rewrites.generated[cl.owner]!.home,
-                }
+                innermost = cl
               }
             }
             if (innermost?.home === other) {
