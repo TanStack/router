@@ -435,7 +435,8 @@ function envCompilerPlugins(
         ? [...live, ...changed]
         : undefined
     },
-    // The one invalidation of a file event. Bundled dev: applied to every
+    // The one invalidation of a file event. Bundled dev, and a dev server
+    // without HMR (`server.hmr: false`, as Vitest's): applied to every
     // environment's module graph (Vite's `hotUpdate` is not called there;
     // the watching environment's hook applies it). `build --watch`: each
     // environment's watcher reports the files it bundles, and the rebuild
@@ -444,7 +445,13 @@ function envCompilerPlugins(
     async watchChange(id, event) {
       const s = state.requireSession()
       const environment = this.environment
-      if (environment.mode === 'dev' && !(watches && s.bundledDev)) {
+      if (
+        environment.mode === 'dev' &&
+        !(
+          watches &&
+          (s.bundledDev || state.server?.config.server.hmr === false)
+        )
+      ) {
         return
       }
       if (environment.mode === 'build' && env.type === 'client') {
