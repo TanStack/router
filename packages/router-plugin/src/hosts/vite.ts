@@ -14,6 +14,7 @@ import {
   OWNED_QUERY_RE,
   SAME_FILE_SPECIFIER_RE,
   SCRIPT_ASSET_QUERY_RE,
+  ViteRunSessions,
   applyViteInvalidation,
   displayPath,
   identify,
@@ -25,7 +26,6 @@ import {
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
   viteLog,
-  ViteRunSessions,
   warnEagerExports,
   watchDependencies,
 } from '@tanstack/router-utils/compiler'

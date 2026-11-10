@@ -7,6 +7,7 @@
 import { promises as fs, readFileSync } from 'node:fs'
 import {
   SCRIPT_ASSET_QUERY_RE,
+  ViteRunSessions,
   collectionSizes,
   displayPath,
   identify,
@@ -14,7 +15,6 @@ import {
   normalizePath,
   registerCompilerStats,
   viteLog,
-  ViteRunSessions,
 } from '@tanstack/router-utils/compiler'
 import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import {
