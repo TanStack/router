@@ -10,13 +10,15 @@
  * development builds, on every bundler the router plugin builds with. Maps
  * are read from the emitted `.map` files with a standard consumer.
  */
-import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import {
+  emittedMaps,
+  emittedSourcePath,
+  expectNamesFileOnce,
   originalPositionOf,
   positionAt,
   tokenOffsets,
@@ -42,72 +44,18 @@ const files = routeApp(route, {
   files: { 'lib/label.ts': `export const label = 'MARK_LABEL'\n` },
 })
 
-interface EmittedMap {
-  sources: Array<string>
-  sourcesContent?: Array<string | null>
-  sourceRoot?: string
-}
-
-/** Every emitted JavaScript file with the map next to it (`<file>.map`). */
-async function emittedMaps(outDir: string) {
-  const out: Array<{ file: string; code: string; map: EmittedMap }> = []
-  for (const entry of await readdir(outDir, { recursive: true })) {
-    if (!/\.m?js$/.test(entry)) {
-      continue
-    }
-    const file = path.join(outDir, entry)
-    const map = await readFile(`${file}.map`, 'utf8').then(
-      (text) => JSON.parse(text) as EmittedMap,
-      () => undefined,
-    )
-    if (map) {
-      out.push({ file, code: await readFile(file, 'utf8'), map })
-    }
-  }
-  return out
-}
-
-/**
- * Where a source of the map of `file` points, as a debugger resolves it:
- * webpack and Rspack name it `webpack://<namespace>/<path from the root>`,
- * the others relative to the map (or absolute). The query stays.
- */
-function resolveSource(source: string, file: string, root: string) {
-  const webpack = /^webpack:\/\/[^/]*\/(.*)$/.exec(source)
-  if (webpack) {
-    return path.resolve(root, webpack[1]!)
-  }
-  if (source.startsWith('file://')) {
-    return fileURLToPath(source)
-  }
-  return path.resolve(path.dirname(file), source)
-}
-
 async function expectRouteFileNamedOnce(root: string, outDir: string) {
   const routeFile = path.join(root, 'routes/index.tsx')
   const maps = await emittedMaps(outDir)
-  // every source naming the route file, in any map
-  const named = maps.flatMap(({ file, map }) =>
-    map.sources.flatMap((source, i) => {
-      const at = resolveSource(`${map.sourceRoot ?? ''}${source}`, file, root)
-      return at.split('?')[0] === routeFile
-        ? [{ at, content: map.sourcesContent?.[i] ?? null }]
-        : []
-    }),
-  )
-  expect(named.length).toBeGreaterThan(0)
-  expect(new Set(named.map((n) => n.at))).toEqual(new Set([routeFile]))
-  for (const { content } of named) {
-    expect(content).toBe(route)
-  }
+  expectNamesFileOnce(maps, root, routeFile, route)
   // a position of the split component's code maps to its line in the route file
   const page = maps.find(({ code }) => code.includes('MARK_PAGE '))
   expect(page, 'the chunk of the split component').toBeDefined()
   const original = originalPositionOf(
-    page!.map as never,
+    page!.map,
     positionAt(page!.code, page!.code.indexOf('MARK_PAGE ')),
   )
-  expect(original && resolveSource(original.source, page!.file, root)).toBe(
+  expect(original && emittedSourcePath(original.source, page!.file, root)).toBe(
     routeFile,
   )
   expect(original?.line).toBe(

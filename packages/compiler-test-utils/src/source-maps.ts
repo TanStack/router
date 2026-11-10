@@ -22,12 +22,19 @@
  *   column }` of a generated position, or `undefined` when unmapped.
  * - `traceStack(stack, mapOf)`: the frames of an executed throw's stack,
  *   each resolved through the map `mapOf` gives for its file.
+ * - `emittedMaps(outDir)`: every emitted JavaScript file of a build with the
+ *   map next to it (`<file>.map`); `emittedSourcePath(source, file, root)`:
+ *   where a source of such a map points, query kept.
+ * - `expectNamesFileOnce(maps, root, file, text)`: every source of the maps
+ *   naming `file` names its path alone (no query) and holds `text`.
  * - `expectMapsTo(map, generated, expected)`: asserts a generated position
  *   resolves to `expected.file` (any spelling `mentionsFile` accepts, a
  *   relative source resolved against `expected.mapUrl`, the module the map
  *   belongs to), `expected.line` and, when given, `expected.column` and
  *   the file's text `expected.text`.
  */
+import { readFile, readdir } from 'node:fs/promises'
+import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   TraceMap,
@@ -348,4 +355,84 @@ export function expectMapsTo(
     ).toBe(expected.text)
   }
   return original!
+}
+
+/** An emitted JavaScript file and its map. */
+export interface EmittedMap {
+  file: string
+  code: string
+  map: LooseSourceMap
+}
+
+/** Every emitted JavaScript file under `outDir` with the map next to it (`<file>.map`). */
+export async function emittedMaps(outDir: string): Promise<Array<EmittedMap>> {
+  const out: Array<EmittedMap> = []
+  for (const entry of await readdir(outDir, { recursive: true })) {
+    if (!/\.[cm]?js$/.test(entry)) {
+      continue
+    }
+    const file = path.join(outDir, entry)
+    const map = await readFile(`${file}.map`, 'utf8').then(
+      (text) => JSON.parse(text) as LooseSourceMap,
+      () => undefined,
+    )
+    if (map) {
+      out.push({ file, code: await readFile(file, 'utf8'), map })
+    }
+  }
+  return out
+}
+
+/**
+ * Where a source of the map of the emitted `file` points, as a debugger
+ * resolves it (the map's `sourceRoot` applied by the caller): webpack and
+ * Rspack name it `webpack://<namespace>/<path from the root>`, the others
+ * relative to the map, absolute, or as a file URL. A query stays.
+ */
+export function emittedSourcePath(
+  source: string,
+  file: string,
+  root: string,
+): string {
+  const webpack = /^webpack:\/\/[^/]*\/(.*)$/.exec(source)
+  if (webpack) {
+    return path.resolve(root, webpack[1]!)
+  }
+  if (source.startsWith('file://')) {
+    return fileURLToPath(source)
+  }
+  return path.resolve(path.dirname(file), source)
+}
+
+/**
+ * Asserts that the sources of `maps` naming `file` (absolute; whatever
+ * query a source adds) name it by its path alone, so a debugger shows one
+ * file, and hold `text` for it; at least one source names it.
+ */
+export function expectNamesFileOnce(
+  maps: ReadonlyArray<EmittedMap>,
+  root: string,
+  file: string,
+  text: string,
+): void {
+  const named = maps.flatMap(({ file: emitted, map }) =>
+    map.sources.flatMap((source, i) => {
+      if (source === null) {
+        return []
+      }
+      const at = emittedSourcePath(
+        `${map.sourceRoot ?? ''}${source}`,
+        emitted,
+        root,
+      )
+      return at.split('?')[0] === file
+        ? [{ at, content: map.sourcesContent?.[i] ?? null }]
+        : []
+    }),
+  )
+  expect(named.length, `a source names ${file}`).toBeGreaterThan(0)
+  expect(new Set(named.map((n) => n.at))).toEqual(new Set([file]))
+  for (const { content } of named) {
+    expect(content).toBe(text)
+  }
 }
