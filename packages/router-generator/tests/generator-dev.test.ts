@@ -656,8 +656,9 @@ describe('a batch whose read of another file fails', () => {
   // be read (EACCES, EISDIR: not a parse error), so the batch fails. The
   // next batch must still take the first file's change to the tree (D11:
   // the tree is a function of the files' facts), not keep importing its
-  // `Route` until a file is added or removed.
-  test.skipIf(process.platform === 'win32')(
+  // `Route` until a file is added or removed. The unreadable file is made
+  // with `chmod`, which neither Windows nor root (CI containers) honours.
+  test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
     "a route file's change reaches the tree with the next batch",
     async () => {
       const root = await createApp({
