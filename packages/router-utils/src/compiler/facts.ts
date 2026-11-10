@@ -12,7 +12,7 @@
  * That includes a file a read found missing: its facts are not kept, and the
  * host that saw the miss marks it stale when the file may have appeared.
  */
-import { digestOf, identify, isCommonJsPath } from './identity'
+import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary, exportKeysOf } from './summary'
@@ -117,13 +117,30 @@ const MISSING_DIGEST = digestOf(MISSING_TARGET)
 const SAVE_RETRIES = 10
 const SAVE_RETRY_MS = 10
 
+const EMPTY_REVISION = revision('')
+/**
+ * `seen` of a path read since the last event that changed it, by a read not
+ * compared with the event's text (a cold read is not hashed: an event of the
+ * path applies) or that differed from it.
+ */
+const UNKNOWN = '\u0000unknown'
+/** Prefix of a `seen` revision an `add` applied: a repeat of the `add` is a repeat (a `change` vouches for the text only). */
+const ADDED = '+'
+const textOf = (seen: string | undefined): string | undefined =>
+  seen?.startsWith(ADDED) ? seen.slice(ADDED.length) : seen
+
 interface FactsEntry {
   stale: boolean
   facts: RawFacts | null
   pending: Promise<RawFacts> | null
   /** Whether the text since the last `markStale` holds no marker literal (`marker` answered without a parse). */
   markerless: boolean
-  pendingMarker: Promise<TargetFacts['marker']> | null
+  /**
+   * The text of the entry's next build: a read in flight, or the text a
+   * file event read (`readChange`). `get` and `marker` share it, and the
+   * answer built from it takes it.
+   */
+  reading: Promise<string | null> | null
 }
 
 export class RawFactsCache {
@@ -133,8 +150,19 @@ export class RawFactsCache {
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
   private readonly noFacts = cacheDisabled('facts')
   private readonly noTargets = cacheDisabled('targets')
+  /**
+   * Path → the revision of the text the last file event that changed it
+   * read, while every read since read the same (`UNKNOWN` once a read was
+   * not compared or differed): what a file event compares the file with
+   * (`readChange`). Kept for the paths with entries, and for the paths an
+   * event read (a file with a plan only, a `package.json`, a created file)
+   * until they are removed.
+   */
+  private readonly seen = new Map<string, string>()
+  /** Path → reads of it in flight: their texts are not in `seen` yet. */
+  private readonly reads = new Map<string, number>()
   /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
-  private readonly counters = { factsHits: 0, factsReads: 0 }
+  private readonly counters = { factsHits: 0, factsReads: 0, eventReads: 0 }
   private changes = 0
 
   constructor(private readonly opts: RawFactsOptions) {}
@@ -166,16 +194,86 @@ export class RawFactsCache {
     return this.opts.recognizer
   }
 
-  markStale(path: string): void {
+  /**
+   * Marks the facts at `path` stale. `text`: what a file event read
+   * (`readChange`): the path's text from now on, which the entries' next
+   * builds take instead of reading the file again; `added`: the event moved
+   * the file set (an `add`).
+   */
+  markStale(path: string, text?: string | null, added = false): void {
     this.changes++
+    if (text !== undefined && !this.noFacts) {
+      if (text === null) {
+        this.seen.delete(path)
+      } else {
+        const was = this.seen.get(path)
+        this.seen.set(
+          path,
+          (added || (was?.startsWith(ADDED) ?? false) ? ADDED : '') +
+            revision(text),
+        )
+      }
+    }
     for (const id of this.byPath.get(path) ?? []) {
       const e = this.entries.get(id)!
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
       e.markerless = false
-      e.pendingMarker = null
+      e.reading = text === undefined ? null : Promise.resolve(text)
     }
+  }
+
+  /**
+   * Whether the cache holds anything read of `path`, or reads it now: an
+   * event of a path it does not know changes no answer of it.
+   */
+  knows(path: string): boolean {
+    return this.byPath.has(path) || this.seen.has(path) || this.reads.has(path)
+  }
+
+  /**
+   * A file event's read of `path`: its text when it differs from what the
+   * cache read of the path since the last event that changed it (or when a
+   * read of the path is in flight, which may hold another text), undefined
+   * when it is the same. `readable`: false for a file the compiler has no
+   * language for (an asset), which is never read (its text is `''`, as for
+   * its facts). The caller applies a differing text with `markStale`. An
+   * empty read is read again for a moment (`readSaved`: an in-place save
+   * reported between truncation and write), unless an event already read
+   * it empty (and waited). An `add` (or a removal of a file that reads
+   * back) repeats an `add` only: a `change` vouches for the text, not for
+   * the file set.
+   */
+  async readChange(
+    path: string,
+    readable: boolean,
+    kind: 'change' | 'add' | 'unlink',
+  ): Promise<{ text: string | null } | undefined> {
+    const seen = () => this.seen.get(path)
+    let text: string | null = ''
+    if (readable) {
+      text = await this.readEvent(path)
+      if (text === '' && textOf(seen()) !== EMPTY_REVISION) {
+        for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
+          await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
+          text = await this.readEvent(path)
+        }
+      }
+    }
+    const was = seen()
+    const same =
+      !this.noFacts &&
+      text !== null &&
+      textOf(was) === revision(text) &&
+      (kind === 'change' || was!.startsWith(ADDED)) &&
+      !this.reads.has(path)
+    return same ? undefined : { text }
+  }
+
+  private readEvent(path: string): Promise<string | null> {
+    this.counters.eventReads++
+    return this.opts.readFile(path)
   }
 
   /**
@@ -185,11 +283,12 @@ export class RawFactsCache {
    */
   forget(path: string): void {
     this.changes++
+    this.seen.delete(path)
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
       const e = this.entries.get(id)!
       e.pending = null
-      e.pendingMarker = null
+      e.reading = null
       this.deleteEntry(id)
     }
   }
@@ -231,8 +330,12 @@ export class RawFactsCache {
       if (!keep(id)) {
         this.changes++
         e.pending = null
-        e.pendingMarker = null
+        e.reading = null
         this.deleteEntry(id)
+        const path = identify(id).path
+        if (!this.byPath.has(path)) {
+          this.seen.delete(path)
+        }
       }
     }
   }
@@ -265,7 +368,8 @@ export class RawFactsCache {
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
       const prior = entry.facts
-      const text = await this.readSaved(canonicalId, env, prior)
+      const reading = this.textOf(entry, canonicalId, env)
+      const text = await this.readSaved(canonicalId, env, prior, reading)
       const built = this.build(canonicalId, text)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
@@ -285,6 +389,9 @@ export class RawFactsCache {
         entry.facts = facts
         entry.stale = false
         entry.pending = null
+        if (entry.reading === reading) {
+          entry.reading = null
+        }
         if (text === null && this.entries.get(canonicalId) === entry) {
           // a missing file's facts are not kept (`forget`)
           this.deleteEntry(canonicalId)
@@ -302,8 +409,17 @@ export class RawFactsCache {
       facts,
       pending: null,
       markerless: false,
-      pendingMarker: null,
+      reading: null,
     }
+  }
+
+  /** The entry's next text: its read in flight or carried, else a new read. */
+  private textOf(
+    entry: FactsEntry,
+    canonicalId: string,
+    env: string,
+  ): Promise<string | null> {
+    return (entry.reading ??= this.read(canonicalId, env))
   }
 
   /**
@@ -321,12 +437,12 @@ export class RawFactsCache {
       if (e.facts && !e.stale) {
         return e.facts.targetFacts.marker
       }
-      // (`markerless` and a pending scan are of the text since the last `markStale`)
+      // (`markerless` and a build in flight are of the text since the last `markStale`)
       if (e.markerless) {
         return null
       }
-      if (e.pendingMarker) {
-        return e.pendingMarker
+      if (e.pending) {
+        return (await e.pending).targetFacts.marker
       }
     }
     if (this.isKnownSpecifier(canonicalId)) {
@@ -336,38 +452,31 @@ export class RawFactsCache {
     if (!e && !this.noTargets) {
       this.setEntry(canonicalId, entry)
     }
-    const holder: { p: Promise<TargetFacts['marker']> | null } = { p: null }
-    holder.p = (async () => {
-      const text = await this.read(canonicalId, env)
-      // (an empty read of a file that held a module goes to `get`, which
-      // reads it again for a moment: `readSaved`. A file event checks the
-      // importers' markers at once, maybe while an in-place save has the
-      // file empty)
-      if (
-        text !== null &&
-        (this.mayHaveMarker(text) ||
-          (text === '' &&
-            entry.facts !== null &&
-            this.heldModule(canonicalId, entry.facts)))
-      ) {
-        if (entry.pendingMarker === holder.p) {
-          entry.pendingMarker = null
-        }
-        return (await this.getTarget(canonicalId, env)).targetFacts.marker
+    const reading = this.textOf(entry, canonicalId, env)
+    const text = await reading
+    // (an empty read of a file that held a module goes to `get`, which
+    // reads it again for a moment: `readSaved`. A file event checks the
+    // importers' markers at once, maybe while an in-place save has the
+    // file empty)
+    if (
+      text !== null &&
+      (this.mayHaveMarker(text) ||
+        (text === '' &&
+          entry.facts !== null &&
+          this.heldModule(canonicalId, entry.facts)))
+    ) {
+      return (await this.getTarget(canonicalId, env)).targetFacts.marker
+    }
+    if (entry.reading === reading) {
+      entry.reading = null
+      if (text !== null && !this.noTargets) {
+        entry.markerless = true
+      } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
+        // a missing file is not kept (`forget`)
+        this.deleteEntry(canonicalId)
       }
-      if (entry.pendingMarker === holder.p) {
-        entry.pendingMarker = null
-        if (text !== null && !this.noTargets) {
-          entry.markerless = true
-        } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
-          // a missing file is not kept (`forget`)
-          this.deleteEntry(canonicalId)
-        }
-      }
-      return null
-    })()
-    entry.pendingMarker = holder.p
-    return holder.p
+    }
+    return null
   }
 
   /** Whether a text can hold a marker import: it contains a marker specifier's literal. */
@@ -439,6 +548,7 @@ export class RawFactsCache {
       rawFactsEmpty: empty,
       rawFactsMarkerless: markerless,
       rawFactsOpaque: opaque,
+      seenPaths: this.seen.size,
       ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }
@@ -490,7 +600,34 @@ export class RawFactsCache {
       return ''
     }
     this.counters.factsReads++
-    return this.opts.readFile(id.path)
+    const path = id.path
+    this.reads.set(path, (this.reads.get(path) ?? 0) + 1)
+    let text: string | null
+    try {
+      text = await this.opts.readFile(path)
+    } finally {
+      const n = this.reads.get(path)! - 1
+      if (n > 0) {
+        this.reads.set(path, n)
+      } else {
+        this.reads.delete(path)
+      }
+    }
+    if (!this.noFacts) {
+      // (in the same step as the read's end: an event never finds a read
+      // that ended and is not in `seen`)
+      // (the text is hashed only to check an event's: a cold read is not)
+      const seen = this.seen.get(path)
+      if (text === null) {
+        this.seen.delete(path)
+      } else if (
+        seen === undefined ||
+        (seen !== UNKNOWN && textOf(seen) !== revision(text))
+      ) {
+        this.seen.set(path, UNKNOWN)
+      }
+    }
+    return text
   }
 
   /**
@@ -506,8 +643,9 @@ export class RawFactsCache {
     canonicalId: string,
     env: string,
     prior: RawFacts | null,
+    first: Promise<string | null>,
   ): Promise<string | null> {
-    let text = await this.read(canonicalId, env)
+    let text = await first
     if (
       text !== '' ||
       prior === null ||

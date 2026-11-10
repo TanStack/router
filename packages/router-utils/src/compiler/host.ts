@@ -13,11 +13,13 @@ import {
   fingerprintCurrent,
   fingerprintPath,
 } from './cache'
+import { isVirtualId } from './facts'
 import type {
   DependencyFingerprint,
   DependencyLedger,
   FingerprintSource,
   PersistedPlan,
+  StaleSets,
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic } from './diagnostics'
@@ -339,6 +341,12 @@ export interface CompilerCaches {
    * bundler's own aliases need a restart of its resolver.
    */
   fileSetVersion: number
+  /** Per environment, the files whose modules its bundler must build again (`invalidate` and the compiles fill them, hosts take them). */
+  stale: StaleSets
+  /** Resolves once no `invalidate()` is running. */
+  settled: () => Promise<void>
+  /** The `invalidate()` running per path: calls for one path run one after the other. */
+  invalidations: Map<string, Promise<unknown>>
 }
 
 /** The plan cache of an environment (created at its first use). */
@@ -370,47 +378,132 @@ export interface InvalidateChange {
 type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
 
 /**
- * The ONE invalidation operation. Evicts the plans of the changed file
- * in every env, bumps generations (published and in-flight), marks raw facts
- * stale and re-validates dependents' fingerprints; the host hard-invalidates
- * `evicted ∪ dependents` in the same operation (the Vite hosts through the
- * module graph, the webpack family by reporting the files as changed to the
- * watching compiler: `invalidateFiles`). File `add`/`unlink` events
- * also re-resolve every failed resolution of every env: a plan whose
- * unresolved specifier now resolves is a dependent; an `add` also
- * re-resolves the resolutions the new file may take (`shadowTest`). Restored
- * plans (`restorePlans`) are checked like published ones. Each plan's
- * fingerprints are checked with its host (`hosts` of its key: the resolver
- * its module resolves with).
+ * The ONE invalidation operation, for a file event or a registry change.
+ * Repeating it is harmless: a file whose text is what the caches read of it
+ * (an echo, a touch, the same event through a second hook) changes nothing,
+ * and calls for one path run one after the other (a repeat waits for the
+ * first, then finds the text unchanged); an event is judged by the file as
+ * it is (a removal of a file that reads back is a change). A change marks
+ * the file's raw facts stale and re-validates dependents' fingerprints (the
+ * file's own plans are keyed by its text and stay); the dependents
+ * found stale enter their environment's stale set (`CompilerCaches.stale`),
+ * and the host has its bundler build them again (the file's own modules are
+ * its bundler's, which reported the event). A removed file's plans are
+ * evicted, and every plan that read it is stale, unasked (held: their
+ * modules wait for a file to appear).
+ * File `add`/`unlink` events also re-resolve every failed resolution of
+ * every env: a plan whose unresolved specifier now resolves is a dependent;
+ * an `add` also re-resolves the resolutions the new file may take
+ * (`shadowTest`). A registry change stales the file in every environment
+ * that has compiled. Restored plans (`restorePlans`) are checked like
+ * published ones. Each plan's fingerprints are checked with its host
+ * (`hosts` of its key: the resolver its module resolves with). The returned
+ * keys are the evicted and stale plans.
  */
-export async function invalidate(
+export function invalidate(
   caches: CompilerCaches,
   change: InvalidateChange,
   hosts: InvalidationHosts,
 ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-  const hostOf = typeof hosts === 'function' ? hosts : () => hosts
-  const evicted: Array<PlanKey> = []
-  const dependents: Array<PlanKey> = []
-  for (const cache of caches.plans.values()) {
-    for (const key of cache.keysAt(change.path)) {
-      if (cache.delete(key)) {
-        evicted.push(key)
-      }
-      cache.bump(key)
+  const path = change.path
+  const before = caches.invalidations.get(path)
+  const apply = () => applyChange(caches, change, hosts)
+  const run = before ? before.then(apply, apply) : apply()
+  caches.invalidations.set(path, run)
+  const done = () => {
+    if (caches.invalidations.get(path) === run) {
+      caches.invalidations.delete(path)
     }
   }
-  if (change.kind === 'unlink') {
-    caches.rawFacts.forget(change.path)
-  } else {
-    caches.rawFacts.markStale(change.path)
+  run.then(done, done)
+  return run
+}
+
+/** Whether a plan, a compile or the raw facts hold anything of `path`. */
+function knownAt(caches: CompilerCaches, path: string): boolean {
+  if (caches.rawFacts.knows(path)) {
+    return true
   }
+  for (const cache of caches.plans.values()) {
+    if (cache.keysAt(path).length > 0 || cache.dependents.has(path)) {
+      return true
+    }
+  }
+  return false
+}
+
+async function applyChange(
+  caches: CompilerCaches,
+  event: InvalidateChange,
+  hosts: InvalidationHosts,
+): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
+  const none = { evicted: [], dependents: [] }
+  const path = event.path
   // `imports` and `exports` decide what specifiers resolve to, as files
   // appearing do. (A resolution from a package to a target outside its
   // directory stays until its importer compiles again.) So do a tsconfig's
   // `paths`: each plan asks its resolutions again at its next request (the
   // bundler requests every module again after such an edit), and the
   // failed ones now (they name no file whose dependents would be reported)
-  const manifestAt = change.path.endsWith('/package.json')
+  const manifestAt = path.endsWith('/package.json')
+  const resolverFile = manifestAt || RESOLVER_CONFIG.test(path)
+  let kind = event.kind
+  let read: { text: string | null } | undefined
+  // (a virtual module has no file to read: its event always applies)
+  if (kind !== 'registry' && !isVirtualId(path)) {
+    if (kind === 'change' && !resolverFile && !knownAt(caches, path)) {
+      return none
+    }
+    // an event is judged by the file as it is: one delivered late (a
+    // removal of a file that is back, a change of one that is gone) is
+    // what the file says. A file the compiler has no language for is not
+    // read: its event's kind stands
+    const readable = resolverFile || identify(path).lang !== null
+    if (readable || kind !== 'unlink') {
+      read = await caches.rawFacts.readChange(path, readable, kind)
+      if (!read) {
+        return none
+      }
+      if (readable) {
+        kind = read.text === null ? 'unlink' : kind === 'unlink' ? 'add' : kind
+      }
+    }
+    if (kind === 'unlink' && !knownAt(caches, path)) {
+      // nothing read the file, but a resolution memo may still name it
+      caches.fileSetVersion++
+      return none
+    }
+  }
+  const change: InvalidateChange = { path, kind }
+  const hostOf = typeof hosts === 'function' ? hosts : () => hosts
+  const evicted: Array<PlanKey> = []
+  const dependents: Array<PlanKey> = []
+  if (kind === 'unlink' || kind === 'registry') {
+    // a changed file's plans are keyed by its text: a request of the new
+    // text compiles it again, and a bundler that built it already keeps
+    // the plan and its rows (its dependencies' events must find it)
+    for (const cache of caches.plans.values()) {
+      for (const key of cache.keysAt(path)) {
+        if (cache.delete(key)) {
+          evicted.push(key)
+        }
+        cache.bump(key)
+      }
+    }
+  }
+  if (kind === 'unlink') {
+    caches.rawFacts.forget(path)
+    caches.stale.remove(path)
+  } else {
+    caches.rawFacts.markStale(path, read?.text, kind === 'add')
+  }
+  if (kind === 'registry') {
+    // a module the host's route gate skipped has no plan to evict, and its
+    // bundler sees no file event
+    for (const env of caches.plans.keys()) {
+      caches.stale.add(env, path)
+    }
+  }
   const manifest = change.kind === 'change' && manifestAt
   const resolverConfig =
     manifest || (change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
@@ -443,12 +536,10 @@ export async function invalidate(
       const src = fingerprintSourceFor(caches, host, cache.env)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
-        // a resolution that found the removed file is stale: no need to ask
-        // a resolver (one may still cache the file until its next compile)
+        // what read the removed file is stale, unasked (a resolver may
+        // still cache the file until its next compile)
         if (
-          (change.kind === 'unlink' &&
-            fp.kind === 'resolution' &&
-            fingerprintPath(fp) === change.path) ||
+          (change.kind === 'unlink' && fingerprintPath(fp) === change.path) ||
           // what can't be checked isn't known to be current. This operation
           // runs from file events and registry publications, where a
           // rejection would have nobody to answer to
@@ -465,6 +556,11 @@ export async function invalidate(
         dependents.push(entry.key)
         cache.delete(entry.key)
         cache.bump(entry.key)
+        caches.stale.add(
+          cache.env,
+          identify(entry.key.canonicalId).path,
+          change.kind === 'unlink',
+        )
       }
     }
   }
@@ -661,6 +757,7 @@ export async function restorePlans(
  */
 export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.plans.delete(env)
+  caches.stale.release(env)
 }
 
 export function fingerprintSourceFor(

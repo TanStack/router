@@ -274,13 +274,24 @@ text compiles waits for it and emits its own output from the result.
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
   module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
   rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
-- `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
-  evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
+- `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it for every file event they see
+  (every hook, every environment) and for registry changes. Repeating it is harmless: the raw-facts cache keeps the
+  revision of the text it read of each path (`seen`), the event reads the file once and returns when the text is what
+  the caches read (an echo, a touch, the same event through a second hook); calls for one path run one after the
+  other, and `caches.settled()` resolves once none runs. An event is judged by the file as it is (a removal of a file
+  that reads back is a change, a change of one that reads nothing a removal). A change marks the file's raw facts
+  stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
   add/unlink also retry failed resolutions, and they or a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
-  take: a file of the same name with another extension, or of a directory a resolution went into; a resolution that
-  found an unlinked file is stale without asking) and returns
-  `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates an importer
+  take: a file of the same name with another extension, or of a directory a resolution went into). The file's own
+  plans are keyed by its text and stay (a bundler that built the new text already keeps their rows); a removal
+  evicts them and stales every plan that read the file, unasked. The plans found stale enter their environment's
+  **stale set** (`caches.stale`): the files whose modules the bundler must build again and will not build on its own,
+  kept until a host takes them (`take(env, { held })`; `held`: stale only because a file they read was removed). The
+  other writers: a registry change (the file, in every environment that has compiled), a plan hit that fails
+  validation (the file, so its other outputs follow; counted as `staleHits` when no invalidation runs), and a compile
+  every attempt of which was overtaken. Today the call also returns `{ evicted, dependents }`, which the hosts
+  hard-invalidate in the bundler. A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per

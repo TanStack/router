@@ -89,7 +89,7 @@ describe('plan keys by path', () => {
     })
   })
 
-  it('a file change evicts the plans of every identity at that path', async () => {
+  it('a file removal evicts the plans of every identity at that path', async () => {
     const host = new MemoryHost({
       files: {
         '/app/a.ts': `import { make } from './shared'\nexport const a = make\n`,
@@ -99,9 +99,10 @@ describe('plan keys by path', () => {
     await host.compile('/app/a.ts', planners())
     await host.compile('/app/a.ts?flavour=b', planners())
     expect(stats(host)).toMatchObject({ plans: 2, keyPaths: 1, trackedKeys: 2 })
+    delete host.files['/app/a.ts']
     const res = await invalidate(
       host.caches,
-      { path: '/app/a.ts', kind: 'change' },
+      { path: '/app/a.ts', kind: 'unlink' },
       host,
     )
     expect(res.evicted.map((k) => k.canonicalId).sort()).toEqual([
@@ -719,6 +720,7 @@ describe('two resolvers of one environment', () => {
     await compile(layered)
     // only the layer's conditions name another file now
     targets.layer = '/app/client.ts'
+    host.write('/app/package.json', '{ "imports": {} }\n')
     const moved = await invalidate(host.caches, manifestChange, hostOf)
     expect(moved.dependents.map(planKeyString)).toEqual([
       planKeyString(layered),

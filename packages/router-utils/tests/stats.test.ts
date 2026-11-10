@@ -78,15 +78,16 @@ describe('compiler stats (TSR_COMPILER_STATS=1)', () => {
     expect(compilerStats().compiler?.instances ?? 0).toBeLessThanOrEqual(before)
   })
 
-  it('evicts a changed file’s plan in every env and keeps generation bookkeeping per live key', async () => {
+  it('evicts a removed file’s plan in every env and keeps generation bookkeeping per live key', async () => {
     vi.stubEnv('TSR_COMPILER_STATS', '1')
     const host = new MemoryHost({ files })
     await compileAll(host)
     const plans = host.caches.plans.get('client')!
     expect(plans.stats(false).plans).toBe(1)
+    delete host.files['/app/route.tsx']
     await invalidate(
       host.caches,
-      { path: '/app/route.tsx', kind: 'change' },
+      { path: '/app/route.tsx', kind: 'unlink' },
       host,
     )
     expect(plans.stats(false).plans).toBe(0)

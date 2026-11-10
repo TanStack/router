@@ -98,7 +98,7 @@ export type { AbstractValue, RecognizerTable } from './values'
 export { LookupPath } from './resolve'
 export { buildSummary } from './summary'
 export { isVirtualId, RawFactsCache } from './facts'
-export type { PersistedPlan } from './cache'
+export type { PersistedPlan, StaleSets } from './cache'
 export {
   fileModifiedAt,
   invalidate,
