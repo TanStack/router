@@ -9,6 +9,7 @@ import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
 import {
+  boundValueOf,
   declaratorOf,
   identifierSymbol,
   isAlreadyLazy,
@@ -438,10 +439,11 @@ export function splitPlanOf(
       if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
         continue
       }
-      if (readsOwnThis(unwrapExpression(target.value))) {
+      if (readsOwnThis(ctx, calledFunctionOf(ctx, target))) {
         // #8688: the router calls a method or function-expression callback as
         // a method of the options object; a split chunk's detached call would
-        // change its `this` (J2.8: informed, never broken)
+        // change its `this` (J2.8: informed, never broken), wherever the
+        // function is declared
         notSplit.push({
           key,
           reason: 'this-reference',
@@ -566,12 +568,32 @@ function describeReason(
 }
 
 /**
- * Whether a function expression's own body (or parameters) reads `this`,
- * not that of a nested function, class or object method inside it (#8688).
- * Arrow functions have the module's `this` wherever they evaluate.
+ * The function the router calls for a split target: what its value names
+ * (`boundValueOf`), or the `handler` of the loader object it names.
  */
-function readsOwnThis(fn: Node): boolean {
-  if (fn.type !== 'FunctionExpression') {
+function calledFunctionOf(
+  ctx: PlanContext,
+  target: { value: Node; member: string | null },
+): Node {
+  const value = boundValueOf(ctx, target.value)
+  const handler =
+    target.member !== null && value.type === 'ObjectExpression'
+      ? handlerPropertyOf(value)
+      : null
+  return handler ? boundValueOf(ctx, handler.value) : value
+}
+
+/**
+ * Whether a function expression's or declaration's own body (or parameters)
+ * reads `this`, not that of a nested function, class or object method inside
+ * it (#8688). Arrow functions have the module's `this` wherever they evaluate.
+ */
+function readsOwnThis(ctx: PlanContext, fn: Node): boolean {
+  if (
+    (fn.type !== 'FunctionExpression' && fn.type !== 'FunctionDeclaration') ||
+    // (most named functions are components: no walk of a body without the word)
+    !ctx.analysis.source.code.slice(fn.start, fn.end).includes('this')
+  ) {
     return false
   }
   let found = false
