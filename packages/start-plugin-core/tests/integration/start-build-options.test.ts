@@ -12,6 +12,11 @@ import {
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
 import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -399,48 +404,47 @@ return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ??
 
   // A loader that is a server fn, in a chunk of its own: each build
   // compiles it, and the client's loader calls the server's. Written in
-  // place (R3-G7-4, open: awaiting a ruling), the server build throws an
-  // internal `conflict: two claims on region N` error: Start's planner hoists
-  // the server fn and the code splitter relocates the same text.
-  const splitServerFnLoader = async (declarations: string, loader: string) => {
-    let build: StartBuild
-    try {
-      build = await buildStart({
-        bundler,
-        files: {
-          ...routeFiles,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  // place as the split option's value, the build fails at the server fn
+  // (R3-G7-4): Start moves a server fn written in place to the module top
+  // level, and the code splitter cannot move the same text into the chunk.
+  const routeModule = (declarations: string, loader: string) =>
+    `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 ${declarations}export const Route = createFileRoute('/')({
   loader: ${loader},
   component: () => 'MARK_COMPONENT',
 })
-`,
-          'src/client-entry.ts': `export { getRouter } from './router'\n`,
-          'src/ssr-entry.ts': `export { getRouter } from './router'
+`
+  const buildSplitLoader = (module: string) =>
+    buildStart({
+      bundler,
+      files: {
+        ...routeFiles,
+        'src/routes/index.tsx': module,
+        'src/client-entry.ts': `export { getRouter } from './router'\n`,
+        'src/ssr-entry.ts': `export { getRouter } from './router'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: {
-          router: {
-            codeSplittingOptions: {
-              defaultBehavior: [['loader'], ['component']] as Array<
-                Array<'loader' | 'component'>
-              >,
-            },
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      start: {
+        router: {
+          codeSplittingOptions: {
+            defaultBehavior: [['loader'], ['component']] as Array<
+              Array<'loader' | 'component'>
+            >,
           },
         },
-      })
-    } catch (error) {
-      // (an assertion: the pin below asserts its own bug)
-      expect.fail(`the build failed: ${String(error)}`)
-    }
+      },
+    })
+  const splitServerFnLoader = async (declarations: string, loader: string) => {
+    const build = await buildSplitLoader(routeModule(declarations, loader))
     const requests = (
       await build.client.run(
         `${requestsOfPrelude}const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
-return requestsOf((options) => route.options.loader(options))`,
+const { loader } = route.options
+return requestsOf((options) => (typeof loader === 'function' ? loader : loader.handler)(options))`,
       )
     ).result as Array<{ url: string }>
     expect(requests).toHaveLength(1)
@@ -450,27 +454,51 @@ return requestsOf((options) => route.options.loader(options))`,
       )
     ).result
   }
-  test(
-    'router.codeSplittingOptions: a loader that is a server fn declared before the route, split into its own chunk, runs on the server',
-    async () => {
+  // (the fix the error below gives, for each shape)
+  test.each([
+    { name: 'a loader', loader: 'loaderFn' },
+    {
+      name: "an object-form loader's handler",
+      loader: '{ handler: loaderFn }',
+    },
+  ])(
+    'router.codeSplittingOptions: $name that is a server fn declared before the route, split into its own chunk, runs on the server',
+    async ({ loader }) => {
       expect(
         await splitServerFnLoader(
           `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
-          'loaderFn',
+          loader,
         ),
       ).toBe('MARK_LOADER_FN')
     },
     timeout,
   )
-  test.fails(
-    'router.codeSplittingOptions: a loader that is a server fn written in place, split into its own chunk, runs on the server',
-    async () => {
-      expect(
-        await splitServerFnLoader(
-          '',
-          `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
-        ),
-      ).toBe('MARK_LOADER_FN')
+  test.each([
+    {
+      name: 'a loader',
+      loader: `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
+    },
+    {
+      name: "an object-form loader's handler",
+      loader: `{ handler: createServerFn().handler(async () => 'MARK_LOADER_FN') }`,
+    },
+  ])(
+    'router.codeSplittingOptions: $name that is a server fn written in place, split into its own chunk, fails the build at the server fn',
+    async ({ loader }) => {
+      const module = routeModule('', loader)
+      const error = await buildSplitLoader(module).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/routes/index.tsx',
+        root: error.root,
+        position: diagnosticPosition(module, 'createServerFn().handler'),
+      })
     },
     timeout,
   )

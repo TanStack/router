@@ -1296,31 +1296,31 @@ function escapeMessage(
   return message
 }
 
-/** The variable `node` is assigned to by a statement (`x = node`, through parentheses and TS wrappers), or null. */
+/**
+ * The variable `node` is assigned to by a statement (`x = node`, both sides
+ * through the wrappers of `isExpressionWrapper`: `(x as T) = node`), or null.
+ */
 function assignedTo(
   file: PlanContext['analysis']['file'],
   node: Node,
 ): string | null {
   let child = node
   let a = file.parentOf(node)
-  while (
-    a?.type === 'ParenthesizedExpression' ||
-    a?.type === 'TSAsExpression' ||
-    a?.type === 'TSSatisfiesExpression' ||
-    a?.type === 'TSNonNullExpression' ||
-    a?.type === 'TSTypeAssertion'
-  ) {
+  while (a && isExpressionWrapper(a)) {
     child = a
     a = file.parentOf(a)
   }
-  return a?.type === 'AssignmentExpression' &&
-    file.parentOf(a)?.type === 'ExpressionStatement' &&
-    a.operator === '=' &&
-    a.right.start === child.start &&
-    a.right.end === child.end &&
-    a.left.type === 'Identifier'
-    ? a.left.name
-    : null
+  if (
+    a?.type !== 'AssignmentExpression' ||
+    file.parentOf(a)?.type !== 'ExpressionStatement' ||
+    a.operator !== '=' ||
+    a.right.start !== child.start ||
+    a.right.end !== child.end
+  ) {
+    return null
+  }
+  const target = unwrapExpression(a.left)
+  return target.type === 'Identifier' ? target.name : null
 }
 
 /** A middleware builder without `.server()`: server code can still be attached to it. */
@@ -1726,6 +1726,8 @@ function hoist(
       owner,
       placeholder: [text({ sym: hoisted.sym })],
       by,
+      subject:
+        'a server function written in place, which TanStack Start moves to the module top level',
     })
   }
   return { sym: hoisted.sym, anchor, commit }

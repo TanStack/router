@@ -9,9 +9,10 @@
  *   the pattern import; its suggested fix, a negative pattern, leaves the
  *   file out;
  * - a server render of a browser-only (`*.client.*`) component is
- *   reported at its import; the suggested fix, rendering it inside
- *   `<ClientOnly>` (React and Solid), builds, and the server output has
- *   none of the component;
+ *   reported at its import (also as a route option through `Widget<P>` or
+ *   `UI?.Widget`); the suggested fix, rendering it inside `<ClientOnly>`
+ *   (React and Solid, `<UI.Widget />` for a namespace member), builds, and
+ *   the server output has none of the component;
  * - a module importing both markers fails at the second marker.
  */
 import { describe, expect, test } from 'vitest'
@@ -203,4 +204,68 @@ ${page}
       timeout,
     )
   })
+
+  // React only below: the analysis choosing the suggestion is the same for
+  // every framework. A route option's value through what passes it on
+  // unchanged: the report suggests `<ClientOnly>` (the fixes above and
+  // below), not `createClientOnlyFn`
+  test.each([
+    {
+      value: 'an instantiation expression',
+      module: `import { Widget } from './widget.client'
+export const options = { component: Widget<{}> }
+`,
+      use: 'src/entry.tsx:1:24',
+    },
+    {
+      value: 'an optional chain',
+      module: `import * as UI from './widget.client'
+export const options = { component: UI?.Widget }
+`,
+      use: 'src/entry.tsx:1:21',
+    },
+  ])(
+    'a server render of a *.client.* component as a route option through $value fails the build at its import',
+    async ({ module, use }) => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/widget.client.tsx': widget,
+            'src/entry.tsx': module,
+          },
+          entry: 'src/entry.tsx',
+        }),
+      )
+      expectViolationsAt(error, [{ environment: 'server', use }])
+    },
+    timeout,
+  )
+
+  test(
+    'rendered as a namespace member in a route option inside <ClientOnly>, it builds and only the client has the component',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/widget.client.tsx': widget,
+          'src/entry.tsx': `import { ClientOnly } from '@tanstack/react-router'
+import * as UI from './widget.client'
+export const options = {
+  component: () => (
+    <ClientOnly fallback={<span>loading</span>}>
+      <UI.Widget />
+    </ClientOnly>
+  ),
+}
+`,
+        },
+        entry: 'src/entry.tsx',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
+      expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
+    },
+    timeout,
+  )
 })

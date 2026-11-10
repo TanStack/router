@@ -172,6 +172,10 @@ A route option written as a method or a function expression whose body reads `th
 
 A split option cannot write a module binding the route module also uses (`let count = 0` read by the `loader` and incremented by the component, inline or declared as `function Page() { count++ }`), nor one another split option writes: a split chunk cannot assign another module's binding. Such an option stays in the route file, and the build warns once, naming the binding. Keep that state in an object (`const state = { count: 0 }`, then `state.count++`) or in a module of its own to have it split.
 
+#### A split loader written as a server function in place (TanStack Start)
+
+In a TanStack Start app, a split `loader` whose value is a server function written in place (`loader: createServerFn().handler(…)`, or the `handler` of an object-form loader) fails the build, positioned at the server function: Start moves such a server function to the top of the module, and the split chunk cannot take the same code. Declare it as a module-level `const` before the route and pass it by name (`const loaderFn = createServerFn().handler(…)`, then `loader: loaderFn`).
+
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
 ## Granular control
