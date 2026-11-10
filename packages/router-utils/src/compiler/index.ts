@@ -135,6 +135,8 @@ export {
   liveModules,
   loadDerivedSource,
   viteLog,
+  ViteRunSessions,
+  watchDependencies,
 } from './hosts/vite'
 export type { ModuleGraphLike } from './hosts/vite'
 export { composeLoaderMap, webpackResourceId } from './hosts/loader'

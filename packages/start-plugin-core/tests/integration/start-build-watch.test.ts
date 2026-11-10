@@ -231,6 +231,34 @@ export const secret = () => 'MARK_SECRET'
     timeout,
   )
 
+  // Source: Fable 5.2 review (F6-4: the Vite hosts declared no plan
+  // dependency outside the module graph to the watcher, so the client kept
+  // the mock of a file that is no longer denied).
+  test(
+    'a module an edit stops marking server-only replaces its mock in the unchanged client',
+    async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          'src/lib.ts': `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_LIB'
+`,
+          'src/entry.ts': `import { secret } from './lib'
+export const read = () => secret()
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock' } },
+        watchEdits: {
+          'src/lib.ts': `export const secret = () => 'MARK_LIB'
+`,
+        },
+      })
+      expect((await client.run(`return entry.read()`)).result).toBe('MARK_LIB')
+    },
+    timeout,
+  )
+
   // Source: review round 3 (R3-G5-4: the Rsbuild host reported the
   // allocator's error once per watch session).
   test(

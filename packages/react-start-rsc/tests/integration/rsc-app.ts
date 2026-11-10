@@ -18,6 +18,7 @@
  * package is linked (`workspacePackageLinks`); the `test:integration` Nx
  * target depends on its `build`.
  */
+import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -297,6 +298,12 @@ export async function startRscRsbuildPreviewServer(options: {
   files: Record<string, string>
   start?: Record<string, unknown>
   registerCleanup?: (cleanup: () => Promise<void>) => void
+  /**
+   * Files written after a first build, which a second `build()` of the
+   * same Rsbuild instance (the same plugins) then builds: the build served
+   * is the second.
+   */
+  rebuildWith?: Record<string, string>
 }): Promise<RscPreviewServer & { errors: Array<string> }> {
   const registerCleanup = options.registerCleanup ?? onTestFinished
   // Loaded by Node: Start's preview middleware imports the built server
@@ -372,8 +379,16 @@ export async function startRscRsbuildPreviewServer(options: {
         },
       })
     await withBuildEnvironment('production', reported, async () => {
-      const built = await (await rsbuild()).build()
+      const instance = await rsbuild()
+      const built = await instance.build()
       await built.close()
+      if (options.rebuildWith) {
+        for (const [file, content] of Object.entries(options.rebuildWith)) {
+          await writeFile(path.join(app.root, file), content)
+        }
+        const rebuilt = await instance.build()
+        await rebuilt.close()
+      }
     }).catch((error: unknown) => {
       // Rsbuild's error says only that the build failed: the errors are
       // its compilations' and what it reported meanwhile

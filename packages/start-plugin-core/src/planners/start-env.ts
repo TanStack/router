@@ -285,6 +285,16 @@ interface ServerFnSite {
   topLevelSym: SymbolId | null
   topLevelUnit: Unit | null
   nested: boolean
+  /**
+   * The provider wrapper: a binding and an export of the same name (an
+   * export list `export { name }` survives tools that re-export bindings by
+   * their local name), with the file's tag (`fileTag`). Allocated for every
+   * site as it is found, before anything that differs between environments
+   * (a nested site erased in one is skipped there), so every output names
+   * the same function by it (the resolver of one environment imports the
+   * wrapper another environment's registry entry names).
+   */
+  wrapper: { local: { name: string; sym: SymbolId }; exportName: string }
 }
 
 function describeServerFn(
@@ -683,16 +693,33 @@ function planStartEnv(
     const baseKey = `${described.base || 'fn'}${described.path.length > 0 ? `@${described.path.join('/')}` : ''}`
     const n = keyCount.get(baseKey) ?? 0
     keyCount.set(baseKey, n + 1)
+    const stableKey = n === 0 ? baseKey : `${baseKey}#${n}`
+    const wrapperBase = providerExportBase(
+      identifierBase(stableKey),
+      tagOfFile(),
+    )
+    let wrapperName = wrapperBase
+    for (
+      let i = 1;
+      !(names.isFree(wrapperName) && names.isExportNameFree(wrapperName));
+      i++
+    ) {
+      wrapperName = `${wrapperBase}$${i}`
+    }
     sites.push({
       chain,
       handler: handlerLink.arg,
       base: described.base || 'fn',
-      stableKey: n === 0 ? baseKey : `${baseKey}#${n}`,
+      stableKey,
       functionName: handlerFunctionName(described.base || 'fn', functionNames),
       ordinal: sites.length,
       topLevelSym: described.topLevelSym,
       topLevelUnit: described.topLevelUnit,
       nested: described.nested,
+      wrapper: {
+        local: names.alloc(wrapperName),
+        exportName: names.allocExportName(wrapperName),
+      },
     })
   }
 
@@ -871,24 +898,8 @@ function planStartEnv(
           : defaultFunctionId({ rootRel, functionName: site.functionName })
     const name = metaName(site)
     const h = site.handler
-    // the provider wrapper's name: a binding and an export of the same name (an export list
-    // `export { name }` survives tools that re-export bindings by their local name), allocated
-    // identically in every env (the resolver is generated from the client's registry), with
-    // the file's tag (`tagOfFile`); the manifest's `functionName` stays `site.functionName`
-    const wrapperBase = providerExportBase(
-      identifierBase(site.stableKey),
-      tagOfFile(),
-    )
-    let wrapperName = wrapperBase
-    for (
-      let n = 1;
-      !(names.isFree(wrapperName) && names.isExportNameFree(wrapperName));
-      n++
-    ) {
-      wrapperName = `${wrapperBase}$${n}`
-    }
-    const rpcLocal = names.alloc(wrapperName)
-    const exportName = names.allocExportName(wrapperName)
+    // (the manifest's `functionName` stays `site.functionName`)
+    const { local: rpcLocal, exportName } = site.wrapper
     const providerDerived = derivesProvider
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')

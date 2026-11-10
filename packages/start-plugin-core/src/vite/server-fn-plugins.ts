@@ -6,6 +6,7 @@
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { normalizePath } from '@tanstack/router-utils/compiler'
+import { isFileLoadingAllowed } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
@@ -18,7 +19,7 @@ import {
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createVirtualModule } from './createVirtualModule'
-import type { Plugin } from 'vite'
+import type { Plugin, ResolvedConfig } from 'vite'
 import type { ViteCompilerState } from './compiler-state'
 
 /** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
@@ -35,13 +36,26 @@ function toDevSpecifier(id: string, root: string): string {
 }
 
 /**
+ * Whether Vite's dev server may serve `file` (`server.fs`, the check of a
+ * `/@fs/` request, on the path and on the path without its query, as Vite
+ * does). A server environment's own requests skip that check.
+ */
+function servable(config: ResolvedConfig, file: string): boolean {
+  return (
+    isFileLoadingAllowed(config, file) &&
+    isFileLoadingAllowed(config, file.replace(/[?#].*$/s, ''))
+  )
+}
+
+/**
  * J4.2 in development: a client-origin call of a function whose defining
  * module the client environment has not compiled (no client module in the
  * dev server's graph references it: a stale page after a restart, an
  * external caller, a serialized function) is answered, with one warning
  * per function saying a production build refuses it. The dev server
  * compiles lazily, so nothing short of crawling the client graph could
- * prove reachability; it is not attempted.
+ * prove reachability; it is not attempted. An id is the caller's: its
+ * file is compiled only if the dev server may serve it.
  */
 export function devLookupPlugin(state: ViteCompilerState): Plugin {
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
@@ -69,9 +83,14 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
       if (!entry) {
         // a fresh server: compile the defining module through the normal transform
         const key = decodeDevFunctionId(fnId)
-        if (key && this.environment.mode === 'dev') {
-          const abs = path.resolve(startOpts.root, key.rootRel)
-          await this.environment.transformRequest(abs).catch(() => null)
+        const file =
+          key && normalizePath(path.resolve(startOpts.root, key.rootRel))
+        if (
+          file &&
+          this.environment.mode === 'dev' &&
+          servable(this.environment.getTopLevelConfig(), file)
+        ) {
+          await this.environment.transformRequest(file).catch(() => null)
           entry = registry.get(fnId)
         }
       }

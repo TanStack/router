@@ -7,6 +7,7 @@
 import { promises as fs, readFileSync } from 'node:fs'
 import {
   SCRIPT_ASSET_QUERY_RE,
+  ViteRunSessions,
   collectionSizes,
   displayPath,
   identify,
@@ -274,10 +275,15 @@ export class ViteCompilerState {
   readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
   readonly watchingEnv: string | undefined
-  /** The session of each environment of a run (a builder's or a dev server's environments are its own objects). */
-  private readonly sessions = new WeakMap<Environment, Session>()
-  /** The run that environments built outside `buildApp` join (`sessionOf`), with their names. */
-  private loose: { session: Session; names: Set<string> } | null = null
+  /** The session of each environment's run (a builder's or a dev server's environments are its own objects). */
+  private readonly runs = new ViteRunSessions<
+    Session,
+    ResolvedConfig,
+    ViteDevServer
+  >(
+    (config, server) => this.createSession(config, server),
+    '[tanstack-start] the compiler plugin',
+  )
 
   constructor(readonly opts: StartCompilerPluginOptions) {
     this.ssrIsProvider = opts.providerEnvName === VITE_ENVIRONMENT_NAMES.server
@@ -319,58 +325,23 @@ export class ViteCompilerState {
     }
   }
 
-  /**
-   * The session of a builder's run (Start's `buildApp`, before any other
-   * plugin's) or of a dev server (`configureServer`): one for all of its
-   * environments. An environment that built before (an app plugin's own
-   * `buildApp` listed first) began the run.
-   */
+  /** The session of a builder's run (Start's `buildApp`) or of a dev server (`configureServer`). */
   sessionOfRun(
     environments: Record<string, Environment>,
     config: ResolvedConfig,
     server: ViteDevServer | null,
   ): Session {
-    const all = Object.values(environments)
-    let s = all.map((e) => this.sessions.get(e)).find((known) => !!known)
-    if (!s) {
-      s = this.createSession(config, server)
-    }
-    for (const e of all) {
-      this.sessions.set(e, s)
-    }
-    return s
+    return this.runs.ofRun(environments, config, server)
   }
 
-  /**
-   * The session of an environment's run. A build outside any `buildApp`
-   * (`vite.build()`, `builder.build(env)` by hand) has no run of its own:
-   * its environments join the last such run, until one of a name it holds
-   * already builds again (another builder's, or a second `vite.build()`).
-   */
+  /** The session of an environment's run (`ViteRunSessions.of`). */
   sessionOf(environment: Environment): Session {
-    const known = this.sessions.get(environment)
-    if (known) {
-      return known
-    }
-    if (environment.mode !== 'build') {
-      throw new Error(
-        `[tanstack-start] the compiler plugin of the "${environment.name}" environment was not configured for this dev server`,
-      )
-    }
-    if (!this.loose || this.loose.names.has(environment.name)) {
-      this.loose = {
-        session: this.createSession(environment.getTopLevelConfig(), null),
-        names: new Set(),
-      }
-    }
-    this.loose.names.add(environment.name)
-    this.sessions.set(environment, this.loose.session)
-    return this.loose.session
+    return this.runs.of(environment)
   }
 
   /** Dev: the server of `environment` closed (Vite closes each environment's plugins): its session stops listening. */
   closeServer(environment: Environment): void {
-    const s = this.sessions.get(environment)
+    const s = this.runs.peek(environment)
     for (const dispose of s?.disposers.splice(0) ?? []) {
       dispose()
     }
