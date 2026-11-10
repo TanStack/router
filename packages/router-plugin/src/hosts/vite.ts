@@ -27,6 +27,7 @@ import {
   viteLog,
   ViteRunSessions,
   warnEagerExports,
+  watchDependencies,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -351,6 +352,7 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
+        watchDependencies(this, out.dependencies, file)
         const name = displayPath(identity.path, ROOT)
         // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
         const dev = compiler.mode === 'dev' && !bundledDev

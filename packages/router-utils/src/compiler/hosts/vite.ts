@@ -95,6 +95,32 @@ export interface ModuleGraphLike<TNode> {
   ) => void
 }
 
+/**
+ * `vite build --watch`: declares the files a module's plan read to the
+ * watcher, so an edit of one outside the module graph (a denied file its
+ * mock replaced, a marker file) rebuilds the module, as the webpack-family
+ * loader's `addDependency` does. A dev server watches the project itself
+ * and invalidates through `watchChange`.
+ */
+export function watchDependencies(
+  ctx: {
+    addWatchFile: (id: string) => void
+    meta: { watchMode: boolean }
+    environment: { mode: string }
+  },
+  dependencies: Iterable<string>,
+  file: string,
+): void {
+  if (ctx.environment.mode !== 'build' || !ctx.meta.watchMode) {
+    return
+  }
+  for (const dep of dependencies) {
+    if (dep !== file) {
+      ctx.addWatchFile(dep)
+    }
+  }
+}
+
 /** What a run's sessions read of a Vite environment. */
 interface RunEnvironment<TConfig> {
   name: string

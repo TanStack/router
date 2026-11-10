@@ -35,6 +35,7 @@ import {
   revision,
   rollupEntryModuleIds,
   warnEagerExports,
+  watchDependencies,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { NODE_MODULES_RE } from '../compiler/scope'
@@ -156,6 +157,7 @@ function envCompilerPlugins(
     if (!out) {
       return null
     }
+    watchDependencies(this, out.dependencies, normalizePath(identity.path))
     state.reportDiagnostics(
       s,
       this,
