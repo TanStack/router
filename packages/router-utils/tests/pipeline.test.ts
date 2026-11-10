@@ -816,7 +816,8 @@ describe('slice gates: invalidation', () => {
       },
       rawFacts: client.rawFacts,
     }
-    const hosts = (env: string) => (env === 'ssr' ? server : client)
+    const hosts = ({ env }: { env: string }) =>
+      env === 'ssr' ? server : client
     const planners = [toySummaryPlanner()]
     const ssr = envInfo({ name: 'ssr', type: 'server' })
     await client.compile('/app/a.ts', planners)
