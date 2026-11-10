@@ -677,7 +677,7 @@ async function runAttempt(
     if (violation !== undefined) {
       plan.diagnostic(report(violation))
     }
-    emitPlan = plan.freeze(rev, report)
+    emitPlan = plan.freeze(rev)
     if (langFromId(input.id) === null && plan.outputs.size > 1) {
       throw new Error(
         `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,

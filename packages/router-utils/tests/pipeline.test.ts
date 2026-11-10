@@ -1625,7 +1625,7 @@ describe('planning rounds', () => {
         const owner = ctx.rewrites.addGenerated({
           body: [
             { k: 'text', parts: ['export const moved = () => { '] },
-            { k: 'slice', range },
+            { k: 'region', id: ctx.region(range, 'custom') },
             { k: 'text', parts: [' }\n'] },
           ],
           declares: [ctx.names.alloc('moved').sym],

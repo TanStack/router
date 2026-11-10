@@ -28,10 +28,11 @@ import type { SplitDecision } from './decisions'
 import type { RouterRound } from './router'
 import type {
   Anchor,
-  Frag,
+  GenFrag,
   GlueImport,
   OutputId,
   PlanContext,
+  RegionId,
   SymRef,
   SymbolId,
   Unit,
@@ -203,7 +204,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         : d.shape === 'init'
           ? identifierSymbol(ctx, d.valueNode)
           : null
-    const body: Array<Frag> = []
+    const body: Array<GenFrag> = []
     // an identifier value is exported as it is (`export { Page as
     // component }`: no alias for the minifier to keep); a member of it,
     // an imported binding or any other value gets the chunk's own
@@ -213,6 +214,8 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     const direct =
       valueSym !== null && d.member === null && !symbols.isImport(valueSym)
     const exported: SymRef = { sym: direct ? valueSym : split.sym }
+    /** The value the chunk claims (null: an identifier, read as a symbol). */
+    let region: RegionId | null = null
     if (valueSym !== null) {
       // the original symbol: placement follows its declaring unit; a
       // rename renders at emit time. The core reports it when its
@@ -229,11 +232,13 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       }
       ctx.addRoot(g.output, { t: 'sym', id: valueSym })
     } else {
+      // the chunk claims the value (a method's function) and renders it whole
+      region = ctx.region(d.valueRange, 'option-value')
       body.push({
         k: 'text',
         parts: [`const ${split.name} = ${d.methodPrefix}`],
       })
-      body.push({ k: 'slice', range: d.valueRange })
+      body.push({ k: 'region', id: region })
       body.push({ k: 'text', parts: ['\n'] })
     }
     body.push({
@@ -271,22 +276,38 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       { sym: g.importer },
       `, ${stringLiteral(d.exportName)})`,
     ]
-    const placeholder: Array<Frag> = [
-      {
-        k: 'text',
-        parts: d.wholeProperty ? [`${d.keyText}: `, ...call] : call,
-      },
-    ]
-    if (valueSym !== null) {
+    if (region === null) {
       ctx.rewrites.add({
         range: d.region,
-        body: placeholder,
+        body: [
+          {
+            k: 'text',
+            parts: d.wholeProperty ? [`${d.keyText}: `, ...call] : call,
+          },
+        ],
         scope: ['env'],
         by: ROUTER_PLANNER,
       })
     } else {
-      const region = ctx.region(d.region, 'option-value')
-      ctx.rewrites.claim({ region, owner, placeholder, by: ROUTER_PLANNER })
+      if (d.wholeProperty) {
+        // a method: the property's edit writes the key before the place of
+        // the claimed function
+        ctx.rewrites.add({
+          range: d.region,
+          body: [
+            { k: 'text', parts: [`${d.keyText}: `] },
+            { k: 'slice', range: d.valueRange },
+          ],
+          scope: 'all-outputs',
+          by: ROUTER_PLANNER,
+        })
+      }
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: call }],
+        by: ROUTER_PLANNER,
+      })
     }
   }
 

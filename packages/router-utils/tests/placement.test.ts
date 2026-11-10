@@ -4126,7 +4126,7 @@ describe('overridden placeholders', () => {
         const owner = ctx.rewrites.addGenerated({
           body: [
             { k: 'text', parts: [`const ${hoisted.name} = `] },
-            { k: 'slice', range },
+            { k: 'region', id: ctx.region(range, 'nested-chain') },
             { k: 'text', parts: ['\n'] },
           ],
           declares: [hoisted.sym],

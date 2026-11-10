@@ -57,18 +57,20 @@ export { derivedIdOf } from './rewrite'
 export type { SymbolId } from './symbols'
 export type { Range } from './header'
 export { isPureExpression } from './purity'
-export type { Unit } from './units'
+export type { RegionId, Unit } from './units'
 export { ModuleAnalysis } from './analysis'
 export type { ClassifiedRef, ImportEntry, Tier1 } from './analysis'
 export type {
   Anchor,
   EditScope,
   Frag,
+  GenFrag,
   GenUnitId,
   GlueImport,
   OutputId,
   RefTarget,
   SymRef,
+  TextFrag,
 } from './rewrite'
 export type {
   EdgeRecord,

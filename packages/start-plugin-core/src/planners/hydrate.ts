@@ -1282,10 +1282,11 @@ function extract(
     )
   }
   tail.push('export { ', { sym: comp.sym }, ` as ${chunkExportName(b)} }\n`)
+  const regionId = ctx.region(region, 'hydrate-children')
   const owner = ctx.rewrites.addGenerated({
     body: [
       { k: 'text', parts: head, mapTo: b.element.start },
-      { k: 'slice', range: region },
+      { k: 'region', id: regionId },
       { k: 'text', parts: tail },
     ],
     declares: [comp.sym],
@@ -1333,7 +1334,6 @@ function extract(
     placeholderSyms.push({ sym: s.sym, pos: b.element.start })
   }
   parts.push('/>')
-  const regionId = ctx.region(region, 'hydrate-children')
   ctx.rewrites.claim({
     region: regionId,
     owner,

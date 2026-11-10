@@ -7,7 +7,6 @@ import {
 } from '../src/compiler'
 import { AnalysisPlan } from '../src/compiler/plan'
 import { emitRecipe } from '../src/compiler/emit'
-import { invariantDiagnostic } from '../src/compiler/self-checks'
 import { envInfo } from './helpers'
 import type { EmitPlan, EnvInfo, OutputId, PlanContext } from '../src/compiler'
 
@@ -46,9 +45,7 @@ export function engine(
   let frozen: EmitPlan | null = null
   const freeze = () => {
     if (!frozen) {
-      frozen = plan.freeze(revision(code), (v) =>
-        invariantDiagnostic('', identity.path, v),
-      )
+      frozen = plan.freeze(revision(code))
     }
     return frozen
   }

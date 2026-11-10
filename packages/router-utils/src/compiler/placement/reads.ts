@@ -1,18 +1,65 @@
 /**
  * Placement, stage 2: what each cluster reads, per output. A cluster's
- * reads in an output are the live references of its regions there (not
- * inside text that output erases), the symbols the generated text rendered
- * there declares it reads, and the placeholders of claimed regions (or the
- * edits replacing them); its successors are the clusters those reads lead
- * to. Memoised per output: a pure function of the cluster and the output's
- * render tree.
+ * reads in an output are what the walk of its members' text there renders
+ * (`OutputView.walk`): the references of the source it renders, the symbols
+ * the generated text and the placeholders it renders name; its successors
+ * are the clusters those reads lead to. Memoised per output: a pure
+ * function of the cluster and the output's tree.
  */
+import { RewriteSet } from '../rewrite'
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
+import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { RegionId } from '../units'
-import type { Frag, OutputId, Region } from '../rewrite'
+import type {
+  Frag,
+  GenFrag,
+  OutputId,
+  PlannerEdit,
+  RangeNode,
+  Region,
+  WalkVisitor,
+} from '../rewrite'
 import type { PlacementInput } from '../reach'
+
+const NO_REFS: ReadonlyArray<ClassifiedRef> = []
+
+/** The index of the first node starting at or after `offset`. */
+function firstNodeFrom(
+  nodes: ReadonlyArray<RangeNode>,
+  offset: number,
+): number {
+  let lo = 0
+  let hi = nodes.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (nodes[mid]!.start < offset) {
+      lo = mid + 1
+    } else {
+      hi = mid
+    }
+  }
+  return lo
+}
+
+/** The index of the first insert at or after `offset`. */
+function firstInsertFrom(
+  inserts: ReadonlyArray<PlannerEdit>,
+  offset: number,
+): number {
+  let lo = 0
+  let hi = inserts.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (inserts[mid]!.range.start < offset) {
+      lo = mid + 1
+    } else {
+      hi = mid
+    }
+  }
+  return lo
+}
 
 export interface ClusterReads {
   syms: Set<SymbolId>
@@ -71,118 +118,225 @@ export function readIndex(
     Array<MemberReads | undefined>
   >()
   const deadMemberReads: Array<MemberReads | undefined> = []
-  // regions by range, for the slices generated code retains (built on the first slice)
-  const rangeKey = (start: number, end: number) => start * 0x4000000 + end
-  let regionByRange: Map<number, Region> | null = null
-  const regionOfRange = (start: number, end: number): Region | undefined => {
-    if (regionByRange === null) {
-      regionByRange = new Map()
-      for (const r of regions.regions) {
-        regionByRange.set(rangeKey(r.range.start, r.range.end), r)
-      }
-    }
-    return regionByRange.get(rangeKey(start, end))
-  }
-
-  function regionReads(
-    r: Region,
-    o: OutputId,
-    live: boolean,
+  /** Pushes the module-level reads of a body (its `SymRef`s and reference targets). */
+  const bodyReads = (
+    body: ReadonlyArray<Frag | GenFrag>,
     into: MemberReads,
-  ): void {
-    for (const ref of ownedRefs.get(r.id) ?? []) {
-      if (!NEED_KINDS.has(ref.kind)) {
-        continue
-      }
-      if (live && !isLive(ref, o)) {
-        continue
-      }
-      into.syms.push(ref.sym)
+  ) => {
+    for (const s of symRefsOf(body)) {
+      into.syms.push(s)
     }
-    // generated text inside the region declares its reads structurally (symbol fragments)
-    const view = viewOf(o)
-    const edits = view.edits
-    // (sorted by start: from the first edit inside the region)
+  }
+  /** Pushes the references of `refs` (sorted) starting in `[s, e)` that `keep` lets through. */
+  const refReads = (
+    list: ReadonlyArray<ClassifiedRef>,
+    s: number,
+    e: number,
+    keep: ((ref: ClassifiedRef) => boolean) | null,
+    into: MemberReads,
+  ) => {
     let lo = 0
-    let hi = edits.length
+    let hi = list.length
     while (lo < hi) {
       const mid = (lo + hi) >> 1
-      if (edits[mid]!.range.start < r.range.start) {
+      if (list[mid]!.range.start < s) {
         lo = mid + 1
       } else {
         hi = mid
       }
     }
-    for (let i = lo; i < edits.length; i++) {
-      const e = edits[i]!
-      if (e.range.start >= r.range.end) {
+    for (let i = lo; i < list.length; i++) {
+      const ref = list[i]!
+      if (ref.range.start >= e) {
+        break
+      }
+      if (NEED_KINDS.has(ref.kind) && (keep === null || keep(ref))) {
+        into.syms.push(ref.sym)
+      }
+    }
+  }
+
+  /**
+   * What a region reads in output `o`: one walk of its text there
+   * (`OutputView.walk`). The source it renders reads the references it owns
+   * (inside it, outside the regions nested in it); an active node, an insert
+   * and the place of a claimed region nested in it read what their bodies
+   * name. Whether the text renders at all is decided around it
+   * (`OutputView.encloses`); when only part of it does, each read asks its
+   * position. The regions nested in it are its successors, unless claimed.
+   */
+  /** Per region: the node on exactly its range, and the node its walk starts in (that one, or the first marked one around it). */
+  const nodesOf: Array<
+    { own: RangeNode | null; around: RangeNode } | undefined
+  > = []
+  const nodesOfRegion = (r: Region) => {
+    let hit = nodesOf[r.id]
+    if (hit === undefined) {
+      const own = regions.nodeOn(r.range)
+      hit = { own, around: own ?? regions.nodeAround(r.range) }
+      nodesOf[r.id] = hit
+    }
+    return hit
+  }
+
+  function regionReads(r: Region, o: OutputId, into: MemberReads): void {
+    for (const cid of regions.childrenOf(r.id)) {
+      if (!rewrites.claims.has(cid)) {
+        into.children.push(cid)
+      }
+    }
+    const view = viewOf(o)
+    const { own, around } = nodesOfRegion(r)
+    const verdict = view.encloses(
+      r.range,
+      own,
+      own !== null ? own.parent : around,
+    )
+    if (verdict === 'none') {
+      return
+    }
+    const partial = verdict === 'partial'
+    const owned = ownedRefs.get(r.id) ?? NO_REFS
+    const liveRef = partial ? (ref: ClassifiedRef) => isLive(ref, o) : null
+    /** What a body standing for node `n` reads. */
+    const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
+      bodyReads(body, into)
+      for (const f of body) {
+        if (f.k === 'slice') {
+          view.walk(n, f.range.start, f.range.end, visitor)
+        } else if (f.k === 'ref') {
+          // (a rewritten reference keeps the one it rewrites)
+          refReads(owned, f.range.start, f.range.end, liveRef, into)
+        }
+      }
+    }
+    const visitor: WalkVisitor = {
+      source: (s, e) => refReads(owned, s, e, liveRef, into),
+      node: (n) => {
+        if (!(partial && view.isErasedAt(n.start))) {
+          read(n, (view.placeOf(n) ?? view.textOf(n))!)
+        }
+      },
+      insert: (e) => {
+        if (!partial || !view.isErasedAt(e.range.start)) {
+          bodyReads(e.body, into)
+        }
+      },
+      member: (n) => {
+        if (n === own) {
+          return false
+        }
+        // a claimed region's text is its owner's: what stands at its place
+        // is read here (the placeholder, or the edit replacing it and what
+        // that keeps of the region)
+        const place = rewrites.claims.has(n.region!) ? view.placeOf(n) : null
+        if (place !== null && !(partial && view.isErasedAt(n.start))) {
+          bodyReads(place, into)
+          for (const f of place) {
+            if (f.k === 'slice' || f.k === 'ref') {
+              refReads(
+                refs.refsIn(f.range),
+                f.range.start,
+                f.range.end,
+                liveRef,
+                into,
+              )
+            }
+          }
+        }
+        return true
+      },
+    }
+    const text = own === null ? null : view.textOf(own)
+    if (text !== null) {
+      read(own!, text)
+    } else {
+      view.walk(around, r.range.start, r.range.end, visitor)
+    }
+  }
+
+  /**
+   * What a region's text names, rendered or not (the env module's source:
+   * provenance and the export companions): the references it owns, the
+   * bodies of the edits and inserts of `o` inside it, the placeholders of the
+   * claimed regions nested in it.
+   */
+  function sourceReads(r: Region, o: OutputId, into: MemberReads): void {
+    refReads(
+      ownedRefs.get(r.id) ?? NO_REFS,
+      r.range.start,
+      r.range.end,
+      null,
+      into,
+    )
+    const { start, end } = r.range
+    const { own, around } = nodesOfRegion(r)
+    const visit = (n: RangeNode) => {
+      for (const e of n.edits ?? []) {
+        if (RewriteSet.inScope(e.scope, o)) {
+          bodyReads(e.body, into)
+        }
+      }
+      for (const c of n.children) {
+        if (!c.marked || c.end <= start || c.start >= end) {
+          continue
+        }
+        if (c.region !== null && c.region !== r.id) {
+          const claim = rewrites.claims.get(c.region)
+          if (claim !== undefined) {
+            bodyReads(claim.placeholder, into)
+          }
+          continue
+        }
+        visit(c)
+      }
+    }
+    if (own !== null) {
+      visit(own)
+    } else {
+      // (the nodes inside the region, under the node around it)
+      const children = around.children
+      for (let i = firstNodeFrom(children, start); i < children.length; i++) {
+        const c = children[i]!
+        if (c.start >= end) {
+          break
+        }
+        if (!c.marked || c.end > end) {
+          continue
+        }
+        if (c.region !== null) {
+          const claim = rewrites.claims.get(c.region)
+          if (claim !== undefined) {
+            bodyReads(claim.placeholder, into)
+          }
+        } else {
+          visit(c)
+        }
+      }
+    }
+    for (
+      let i = firstInsertFrom(rewrites.inserts, start);
+      i < rewrites.inserts.length;
+      i++
+    ) {
+      const e = rewrites.inserts[i]!
+      if (e.range.start >= end) {
         break
       }
       if (
-        e.claim !== null ||
-        e.range.start < r.range.start ||
-        e.range.end > r.range.end
+        RewriteSet.inScope(e.scope, o) &&
+        regions.innermostAt(e.range.start) === r.id
       ) {
-        continue
+        bodyReads(e.body, into)
       }
-      const owner = regions.innermostAt(
-        e.range.start,
-        Math.max(e.range.end, e.range.start + 1),
-      )
-      if (owner !== r.id || (live && !view.editRenders(e))) {
-        continue
-      }
-      into.syms.push(...symRefsOf(e.body))
     }
-    for (const cid of r.children) {
-      const claim = rewrites.claims.get(cid)
-      if (claim) {
-        // the placeholder's reads belong to the enclosing region where it
-        // renders; an edit on exactly the claimed region replaces the
-        // placeholder in this output, and what it renders (its SymRefs and
-        // the parts of the region it keeps) is read by this region there
-        if (!live || view.placeholderRenders(cid)) {
-          into.syms.push(...symRefsOf(claim.placeholder))
-        } else {
-          const override = view.overrideOf(cid)
-          if (override && view.editRenders(override)) {
-            fragReads(override.body, o, live, into)
-          }
-        }
-      } else {
+    for (const cid of regions.childrenOf(r.id)) {
+      if (!rewrites.claims.has(cid)) {
         into.children.push(cid)
       }
     }
   }
-  function fragReads(
-    frags: ReadonlyArray<Frag>,
-    o: OutputId,
-    live: boolean,
-    into: MemberReads,
-  ): void {
-    for (const f of frags) {
-      if (f.k === 'text') {
-        for (const p of f.parts) {
-          if (typeof p !== 'string') {
-            into.syms.push(p.sym)
-          }
-        }
-      } else if (f.k === 'ref') {
-        into.syms.push('sym' in f.to ? f.to.sym : f.to.member[0])
-      } else if (f.k === 'slice') {
-        const region = regionOfRange(f.range.start, f.range.end)
-        if (region) {
-          regionReads(region, o, live, into)
-        } else {
-          for (const ref of refs.refsIn(f.range)) {
-            if (NEED_KINDS.has(ref.kind) && (!live || isLive(ref, o))) {
-              into.syms.push(ref.sym)
-            }
-          }
-        }
-      }
-    }
-  }
+
   function memberReads(m: number, o: OutputId, live: boolean): MemberReads {
     let byMember: Array<MemberReads | undefined>
     if (live) {
@@ -202,9 +356,14 @@ export function readIndex(
     }
     const into: MemberReads = { syms: [], children: [] }
     if (m < regionCount) {
-      regionReads(regions.get(m), o, live, into)
+      if (live) {
+        regionReads(regions.get(m), o, into)
+      } else {
+        sourceReads(regions.get(m), o, into)
+      }
     } else {
-      fragReads(gens[m - regionCount]!.body, o, live, into)
+      // (a claimed region it names reads itself: the same cluster)
+      bodyReads(gens[m - regionCount]!.body, into)
     }
     byMember[m] = into
     return into

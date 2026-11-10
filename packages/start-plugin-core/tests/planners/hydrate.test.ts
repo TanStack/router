@@ -1383,7 +1383,7 @@ function toySplitPlanner(): Planner {
           const owner = ctx.rewrites.addGenerated({
             body: [
               { k: 'text', parts: ['const ', { sym: split.sym }, ' = '] },
-              { k: 'slice', range: value },
+              { k: 'region', id: region },
               {
                 k: 'text',
                 parts: [`\nexport { ${split.name} as component }\n`],

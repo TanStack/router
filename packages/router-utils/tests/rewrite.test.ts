@@ -379,7 +379,7 @@ describe('claims, homes and substitution', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range: value },
+        { k: 'region', id: region },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],
@@ -418,7 +418,7 @@ describe('claims, homes and substitution', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range: value },
+        { k: 'region', id: ctx.region(value, 'nested-chain') },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],
@@ -459,7 +459,7 @@ describe('claims, homes and substitution', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range: value },
+        { k: 'region', id: region },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],
@@ -556,7 +556,7 @@ describe('claims, homes and substitution', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range: value },
+        { k: 'region', id: region },
         { k: 'text', parts: ['\nexport { ', { sym: hoisted.sym }, ' }\n'] },
       ],
       declares: [hoisted.sym],
@@ -616,7 +616,7 @@ describe('claims, homes and substitution', () => {
           k: 'text',
           parts: ['export function ', { sym: comp.sym }, '() { return <>'],
         },
-        { k: 'slice', range: children },
+        { k: 'region', id: region },
         { k: 'text', parts: ['</> }\n'] },
       ],
       declares: [comp.sym],
@@ -677,7 +677,7 @@ describe('claims, homes and substitution', () => {
       const inner = ctx.rewrites.addGenerated({
         body: [
           { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
-          { k: 'slice', range: handler },
+          { k: 'region', id: ctx.region(handler, 'custom') },
           { k: 'text', parts: ['\n'] },
         ],
         declares: [local.sym],
@@ -699,7 +699,7 @@ describe('claims, homes and substitution', () => {
       const owner = ctx.rewrites.addGenerated({
         body: [
           { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-          { k: 'slice', range: chain },
+          { k: 'region', id: region },
           { k: 'text', parts: ['\n'] },
         ],
         declares: [hoisted.sym],
@@ -782,7 +782,7 @@ describe('claims, homes and substitution', () => {
       const owner = ctx.rewrites.addGenerated({
         body: [
           { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-          { k: 'slice', range },
+          { k: 'region', id: region },
           { k: 'text', parts: ['\n'] },
         ],
         declares: [hoisted.sym],
@@ -820,7 +820,7 @@ describe('claims, homes and substitution', () => {
       })
       return { hoisted, region }
     }
-    const inner = claimRead(rangeOf(code, 'inner(1)'), 'tsrInner')
+    claimRead(rangeOf(code, 'inner(1)'), 'tsrInner')
     claimRead(rangeOf(code, 'make(() => inner(1))'), 'tsrOuter')
     ctx.rewrites.add({
       range: rangeOf(code, 'loader: () => make(() => inner(1)) '),
@@ -828,8 +828,6 @@ describe('claims, homes and substitution', () => {
       scope: 'all-outputs',
       by: 'router',
     })
-    e.freeze()
-    expect(ctx.rewrites.view('env').placeholderRenders(inner.region)).toBe(true)
     expect(e.render('env').code).toContain(
       'const tsrOuter = make(() => tsrInner)',
     )
@@ -857,7 +855,7 @@ describe('claims, homes and substitution', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range: chain },
+        { k: 'region', id: region },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],
@@ -935,7 +933,7 @@ describe('claims, homes and substitution', () => {
           k: 'text',
           parts: ['export function ', { sym: comp.sym }, '() { return ('],
         },
-        { k: 'slice', range: children },
+        { k: 'region', id: region },
         { k: 'text', parts: [') }\n'] },
       ],
       declares: [comp.sym],
@@ -1012,7 +1010,7 @@ describe('claims, homes and substitution', () => {
             ') { return (',
           ],
         },
-        { k: 'slice', range: children },
+        { k: 'region', id: ctx.region(children, 'hydrate-children') },
         { k: 'text', parts: [') }\n'] },
       ],
       declares: [comp.sym],
@@ -1091,7 +1089,7 @@ describe('claims, homes and substitution', () => {
               ') { return <>',
             ],
           },
-          { k: 'slice', range: children },
+          { k: 'region', id: region },
           { k: 'text', parts: ['</> }\n'] },
         ],
         declares: [comp.sym],
@@ -1386,64 +1384,6 @@ describe('renaming a `var` declared again', () => {
   })
 })
 
-describe('erased parts around a claim read elsewhere', () => {
-  it('ends with an edit erasing exactly a hidden claim', () => {
-    const code = `export const a = { x: hoisted() }\n`
-    const e = engine(code)
-    const { ctx } = e
-    const range = rangeOf(code, 'hoisted()')
-    const hoisted = ctx.names.alloc('tsrHoisted')
-    const owner = ctx.rewrites.addGenerated({
-      body: [
-        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range },
-        { k: 'text', parts: ['\n'] },
-      ],
-      declares: [hoisted.sym],
-      effectful: false,
-      anchor: { k: 'after-header' },
-      home: 'auto',
-      by: 'env',
-    })
-    ctx.rewrites.claim({
-      region: ctx.region(range, 'custom'),
-      owner,
-      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
-      by: 'env',
-    })
-    const gen = ctx.rewrites.addGenerated({
-      body: [
-        {
-          k: 'text',
-          parts: ['export const wrapper = () => ', { sym: hoisted.sym }, '\n'],
-        },
-      ],
-      declares: [],
-      effectful: true,
-      anchor: { k: 'end' },
-      home: 'auto',
-      by: 'env',
-    })
-    ctx.addRoot('env', { t: 'gen', id: gen })
-    ctx.rewrites.add({
-      range: rangeOf(code, '{ x: hoisted() }'),
-      body: [{ k: 'text', parts: ['stub()'] }],
-      scope: 'all-outputs',
-      by: 'erases',
-    })
-    ctx.rewrites.add({
-      range,
-      body: [{ k: 'text', parts: ['inner()'] }],
-      scope: 'all-outputs',
-      by: 'erases',
-    })
-    expect(ctx.rewrites.view('env').erasedParts()).toEqual([
-      { start: code.indexOf('{ x'), end: range.start },
-      { start: range.end, end: code.indexOf('\n') },
-    ])
-  })
-})
-
 describe('generated units next to what the source wrote', () => {
   const unit = (e: ReturnType<typeof engine>, anchor: Anchor) =>
     e.ctx.rewrites.addGenerated({
@@ -1642,94 +1582,50 @@ describe('replacements at a statement start', () => {
   })
 })
 
-// R127 (Fable review of the cast-split class, 2026-11-10): copied text
-// reaches an output through one path, which applies every edit of that
-// output's tree under it. A copy that would lose one is a compiler bug: the
-// renderer's safety net fails the compile instead of shipping the raw text.
-describe('copied text keeps the edits under it', () => {
+// R127 (Fable review of the cast-split class, 2026-11-10): an owner renders
+// its claimed region whole (`{ k: 'region' }`), with every edit of the output
+// inside it.
+describe('a claim its owner renders', () => {
   const code = dedent(`
     import { make } from './make'
     export const opts = { loader: make(() => 'secret') as any }
   `)
-  /** Hoists the option value (claimed with its cast) and copies `copied`; another planner replaces the call. */
-  const castHoist = (copied: string): Planner => ({
-    name: 'toy-hoist',
-    tier: 1,
-    gate: () => true,
-    plan(ctx) {
-      const local = ctx.names.alloc('tsrValue')
-      const owner = ctx.rewrites.addGenerated({
-        body: [
-          { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
-          { k: 'slice', range: rangeOf(code, copied) },
-          { k: 'text', parts: ['\n'] },
-        ],
-        declares: [local.sym],
-        effectful: false,
-        anchor: { k: 'end' },
-        home: 'env',
-        by: 'toy-hoist',
-      })
-      ctx.rewrites.claim({
-        region: ctx.region(
-          rangeOf(code, "make(() => 'secret') as any"),
-          'option-value',
-        ),
-        owner,
-        placeholder: [{ k: 'text', parts: [{ sym: local.sym }] }],
-        by: 'toy-hoist',
-      })
-      ctx.rewrites.add({
-        range: rangeOf(code, "make(() => 'secret')"),
-        body: [{ k: 'text', parts: ['stub()'] }],
-        scope: 'all-outputs',
-        by: 'toy-env',
-      })
-    },
-  })
-
-  it('fails the compile when an owner copies part of its claim over an edit', () => {
+  it('renders the edits inside the claimed text', () => {
     const e = engine(code)
-    castHoist("make(() => 'secret')").plan(e.ctx)
-    expect(() => e.freeze()).toThrow(
-      /copies the original text of \[\d+, \d+\) over an edit of toy-env/,
-    )
-  })
-
-  it('renders the edits of a claim its owner copies whole', () => {
-    const e = engine(code)
-    castHoist("make(() => 'secret') as any").plan(e.ctx)
+    const { ctx } = e
+    const local = ctx.names.alloc('tsrValue')
+    const claimed = rangeOf(code, "make(() => 'secret') as any")
+    const region = ctx.region(claimed, 'option-value')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
+        { k: 'region', id: region },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [local.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: 'env',
+      by: 'toy-hoist',
+    })
+    ctx.rewrites.claim({
+      region,
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: local.sym }] }],
+      by: 'toy-hoist',
+    })
+    ctx.rewrites.add({
+      range: rangeOf(code, "make(() => 'secret')"),
+      body: [{ k: 'text', parts: ['stub()'] }],
+      scope: 'all-outputs',
+      by: 'toy-env',
+    })
     expect(e.render().code).toBe(
       dedent(`
       export const opts = { loader: tsrValue }
       export const tsrValue = stub() as any
     `),
     )
-  })
-
-  it("is an error at the lost edit in users' runs", async () => {
-    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
-    vi.resetModules()
-    try {
-      const { MemoryHost: Host } = await import('./helpers')
-      const host = new Host({ files: { '/app/route.tsx': code } })
-      const out = await host.compile('/app/route.tsx', [
-        castHoist("make(() => 'secret')"),
-      ])
-      expect(out!.diagnostics).toEqual([
-        {
-          severity: 'error',
-          code: 'internal-invariant',
-          by: 'core',
-          range: rangeOf(code, "make(() => 'secret')"),
-          message:
-            'Internal compiler error in /app/route.tsx: the compiled output would be wrong (part of the module would be copied without the changes the compiler makes to it). Please report it at https://github.com/TanStack/router/issues with this file.',
-        },
-      ])
-    } finally {
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
   })
 })
 
@@ -1738,6 +1634,10 @@ describe('copied text keeps the edits under it', () => {
 // edits, and a slice that cuts a region another edit rewrites would copy the
 // text that edit replaces. Such a body fails the compile, in every mode.
 describe('a kept slice cuts no edited region', () => {
+  const lastRangeOf = (code: string, text: string) => {
+    const start = code.lastIndexOf(text)
+    return { start, end: start + text.length }
+  }
   /** `outer` rewrites `outerText` keeping `kept`; `inner` rewrites `innerText`. */
   const cutting = (
     code: string,
@@ -1750,17 +1650,17 @@ describe('a kept slice cuts no edited region', () => {
     gate: () => true,
     plan(ctx) {
       ctx.rewrites.add({
-        range: rangeOf(code, outerText),
+        range: lastRangeOf(code, outerText),
         body: [
           { k: 'text', parts: ['keep('] },
-          { k: 'slice', range: rangeOf(code, kept) },
+          { k: 'slice', range: lastRangeOf(code, kept) },
           { k: 'text', parts: [')'] },
         ],
         scope: 'all-outputs',
         by: 'toy-outer',
       })
       ctx.rewrites.add({
-        range: rangeOf(code, innerText),
+        range: lastRangeOf(code, innerText),
         body: [{ k: 'text', parts: ['stub()'] }],
         scope: 'all-outputs',
         by: 'toy-inner',
@@ -1849,7 +1749,7 @@ describe('an insert at the edge of a claimed region', () => {
     const owner = ctx.rewrites.addGenerated({
       body: [
         { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'slice', range },
+        { k: 'region', id: ctx.region(range, 'custom') },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],
@@ -1887,6 +1787,111 @@ describe('an insert at the edge of a claimed region', () => {
       export const a = { x: tsrTag + tsrHoisted + tsrTag }
       const tsrHoisted = value()
     `),
+    )
+  })
+})
+
+// Source: the Fable review of design 1 step 1 (findings 1 and 2), invariants
+// I1 and I4: a claim is a node of the one tree, whatever region it claims, so
+// what renders does not depend on the order of the calls, and a second claim
+// on one range is a conflict.
+describe('claims on the tree', () => {
+  const code = `import { c0_, a1_ } from 'toy-names'\nc0_(a1_)\n`
+  /** Claims the unit `c0_(a1_)` (with its line end) and rewrites it for every output, in either order. */
+  const claimingUnit = (claimFirst: boolean): Planner => ({
+    name: 'toy-unit',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const u = ctx.t1.units.find((x) =>
+        code.slice(x.range.start, x.range.end).startsWith('c0_('),
+      )!
+      const hoisted = ctx.names.alloc('g')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'region', id: u.region },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'toy-unit',
+      })
+      const claim = () =>
+        ctx.rewrites.claim({
+          region: u.region,
+          owner,
+          placeholder: [
+            { k: 'text', parts: ['void ', { sym: hoisted.sym }, '\n'] },
+          ],
+          by: 'toy-unit',
+        })
+      const edit = () =>
+        ctx.rewrites.add({
+          range: u.range,
+          body: [
+            { k: 'text', parts: ['k('] },
+            { k: 'slice', range: rangeOf(code, 'a1_', 1) },
+            { k: 'text', parts: [')\n'] },
+          ],
+          scope: 'all-outputs',
+          by: 'toy-unit',
+        })
+      if (claimFirst) {
+        claim()
+        edit()
+      } else {
+        edit()
+        claim()
+      }
+    },
+  })
+
+  it('renders a claim on a unit region the same, claimed before or after an edit of its range', async () => {
+    const outputs: Array<string> = []
+    for (const claimFirst of [true, false]) {
+      const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+      outputs.push(
+        (await host.compile('/app/mod.ts', [claimingUnit(claimFirst)]))!.code,
+      )
+    }
+    // the edit is the region's text: it travels with it into the owner
+    expect(outputs).toEqual([
+      "import { a1_ } from 'toy-names'\nvoid g\nconst g = k(a1_)\n",
+      "import { a1_ } from 'toy-names'\nvoid g\nconst g = k(a1_)\n",
+    ])
+  })
+
+  it('rejects a second claim on one range, of another region kind', () => {
+    const e = engine(`export const a = { x: value() }\n`)
+    const { ctx } = e
+    const range = rangeOf(e.code, 'value()')
+    const claimAs = (kind: 'custom' | 'nested-chain', name: string) => {
+      const region = ctx.region(range, kind)
+      const hoisted = ctx.names.alloc(name)
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'region', id: region },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: name,
+      })
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        by: name,
+      })
+    }
+    claimAs('custom', 'first')
+    expect(() => claimAs('nested-chain', 'second')).toThrow(
+      /conflict: two claims on \[\d+, \d+\) \(by first and second\)/,
     )
   })
 })

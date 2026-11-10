@@ -24,7 +24,7 @@ import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
 import type { RegionId, Unit } from '../units'
-import type { Frag, OutputId } from '../rewrite'
+import type { Frag, GenFrag, OutputId } from '../rewrite'
 import type { Fallback, Home, OutputDecl, PlacementInput } from '../reach'
 
 export interface Homes {
@@ -73,7 +73,7 @@ export function assignHomes(
   const readByGeneratedText = (s: SymbolId): boolean => {
     if (generatedReads === null) {
       generatedReads = new Set()
-      const add = (frags: ReadonlyArray<Frag>) => {
+      const add = (frags: ReadonlyArray<Frag | GenFrag>) => {
         for (const r of symRefsOf(frags)) {
           generatedReads!.add(r)
         }

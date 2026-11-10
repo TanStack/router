@@ -1,11 +1,18 @@
-// Seeded random rewrite trees (design note 1, §5): random edits of every
-// scope, keep-slices and claims (live, dead and read elsewhere) on nested
-// calls; what the planners' liveness reports of each name must be what the
-// compiled module holds.
-import { describe, expect, it } from 'vitest'
-import { MemoryHost } from './helpers'
+// Seeded random rewrite trees (design note 1, §5, widened after the review of
+// step 1): random edits of every scope, keep-slices, inserts and claims (of
+// sub-regions of two kinds, owned in the env module or a derived output;
+// live, dead and read elsewhere) on
+// nested calls, registered in source order, reversed or shuffled. What the
+// planners' liveness reports of every name must be what the env module
+// holds; in a derived output holding some claimed text, a name it holds is
+// live. Text reported erased (calls whole and inside their parentheses) is
+// held by neither. Users' runs (self-checks off, as the review's
+// generator): what is checked is the rendered text. A claim of a statement's
+// unit is not generated (a core test covers it: 'claims on the tree').
+import { describe, expect, it, vi } from 'vitest'
 import type { PlanContext, Planner } from '../src/compiler'
-import type { EditScope, Frag, OutputId } from '../src/compiler/rewrite'
+import type { EditScope, GenFrag, OutputId } from '../src/compiler/rewrite'
+import type { RegionId } from '../src/compiler/units'
 
 /** A small seeded generator (mulberry32). */
 function random(seed: number): () => number {
@@ -61,15 +68,18 @@ interface Call {
   top: boolean
 }
 
-/**
- * Edits and claims at random on the calls of the module, then records what
- * `liveness` reports for the env module: of each name, and the calls it
- * reports erased whole.
- */
+/** What `liveness` reports for one output: of each name, and of each call (whole, inside its parentheses). */
+interface Reported {
+  live: Map<string, boolean>
+  erased: Array<string>
+  /** The names whose innermost claimed text the derived output owns (they render there, with its edits). */
+  elsewhere: Set<string>
+}
+
+/** Edits and claims at random on the calls of the module, then records what `liveness` reports for the env module and the derived one. */
 function randomPlanner(
   seed: number,
-  live: Map<string, boolean>,
-  erased: Array<string>,
+  reported: Map<'env' | 'other', Reported>,
 ): Planner {
   return {
     name: 'toy-random',
@@ -78,6 +88,7 @@ function randomPlanner(
     plan(ctx: PlanContext) {
       const rand = random(seed * 7919 + 1)
       const { t1 } = ctx
+      const code = ctx.analysis.source.code
       const other: OutputId = ctx.declareOutput({
         kind: 'split',
         key: 'other',
@@ -99,54 +110,25 @@ function randomPlanner(
           top: t1.parentOf(call)?.type === 'ExpressionStatement',
         })
       }
+      const all = [...calls]
+      // registration order: source order, reversed, or shuffled
+      const order = rand()
+      if (order < 0.33) {
+        calls.reverse()
+      } else if (order < 0.66) {
+        for (let i = calls.length - 1; i > 0; i--) {
+          const j = Math.floor(rand() * (i + 1))
+          ;[calls[i], calls[j]] = [calls[j]!, calls[i]!]
+        }
+      }
       const scopes: Array<EditScope> = ['all-outputs', ['env'], [other]]
       const scope = () => scopes[Math.floor(rand() * scopes.length)]!
       let gens = 0
-      const keptSlices = new Set<string>()
-      for (const call of calls) {
-        const range = { start: call.start, end: call.end }
-        const pick = rand()
-        let edited: EditScope | null = null
-        if (pick < 0.2) {
-          ctx.rewrites.add({
-            range,
-            body: [{ k: 'text', parts: ['0'] }],
-            scope: (edited = scope()),
-            by: 'toy-random',
-          })
-        } else if (pick < 0.4) {
-          const kept = call.args[Math.floor(rand() * call.args.length)]!
-          keptSlices.add(`${kept.start}:${kept.end}`)
-          ctx.rewrites.add({
-            range,
-            body: [
-              { k: 'text', parts: ['k('] },
-              { k: 'slice', range: kept },
-              { k: 'text', parts: [')'] },
-            ],
-            scope: (edited = scope()),
-            by: 'toy-random',
-          })
-        }
-        if (
-          call.top ||
-          rand() < 0.6 ||
-          (edited !== null && edited !== 'all-outputs') ||
-          keptSlices.has(`${range.start}:${range.end}`)
-        ) {
-          continue
-        }
-        // a claim, read elsewhere one time in two; on an edited range only
-        // when the edit is addressed to every output (it travels with the
-        // region). Not generated: an edit scoped to some outputs on exactly a
-        // claimed region (the placeholder's override), and a claim on exactly
-        // a slice another edit keeps: the model renders them otherwise than
-        // its liveness reports (design note 1, steps 2 and 3)
+      const claim = (region: RegionId, read: boolean) => {
         const hoisted = ctx.names.alloc(`g${gens++}`)
-        const region = ctx.region(range, 'nested-chain')
-        const body: Array<Frag> = [
+        const body: Array<GenFrag> = [
           { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-          { k: 'slice', range },
+          { k: 'region', id: region },
           { k: 'text', parts: ['\n'] },
         ]
         const owner = ctx.rewrites.addGenerated({
@@ -154,10 +136,11 @@ function randomPlanner(
           declares: [hoisted.sym],
           effectful: false,
           anchor: { k: 'end' },
-          home: 'auto',
+          // (the derived output holds the claimed text it owns)
+          home: rand() < 0.3 ? other : 'auto',
           by: 'toy-random',
         })
-        if (rand() < 0.5) {
+        if (read) {
           const reader = ctx.names.alloc(`r${gens}`)
           const gen = ctx.rewrites.addGenerated({
             body: [
@@ -187,48 +170,161 @@ function randomPlanner(
           by: 'toy-random',
         })
       }
-      const view = ctx.liveness('env')
-      for (const ref of t1.refs.all) {
-        if (ref.ctx === 'callee' || ref.ctx === 'plain') {
-          live.set(ctx.symbols.name(ref.sym), view.live(ref))
-        }
-      }
       for (const call of calls) {
-        if (view.isErased(call)) {
-          erased.push(ctx.analysis.source.code.slice(call.start, call.end))
+        const range = { start: call.start, end: call.end }
+        const pick = rand()
+        let edited: EditScope | null = null
+        if (pick < 0.2) {
+          ctx.rewrites.add({
+            range,
+            body: [{ k: 'text', parts: ['0'] }],
+            scope: (edited = scope()),
+            by: 'toy-random',
+          })
+        } else if (pick < 0.4) {
+          const kept = call.args[Math.floor(rand() * call.args.length)]!
+          ctx.rewrites.add({
+            range,
+            body: [
+              { k: 'text', parts: ['k('] },
+              { k: 'slice', range: kept },
+              { k: 'text', parts: [')'] },
+            ],
+            scope: (edited = scope()),
+            by: 'toy-random',
+          })
         }
+        if (rand() < 0.15) {
+          const at = rand() < 0.5 ? call.start : call.end
+          ctx.rewrites.add({
+            range: { start: at, end: at },
+            body: [{ k: 'text', parts: ['/*i*/'] }],
+            scope: scope(),
+            by: 'toy-random',
+          })
+        }
+        if (call.top) {
+          continue
+        }
+        // Not generated (RT_OVERRIDE=1 does): an edit scoped to some outputs
+        // on exactly a claimed region, which replaces the placeholder there.
+        // Its owner may then render nowhere while liveness reports the
+        // region's text live (design note 1, step 3: `placeholder`)
+        if (
+          rand() < 0.6 ||
+          (process.env.RT_OVERRIDE !== '1' &&
+            edited !== null &&
+            edited !== 'all-outputs')
+        ) {
+          continue
+        }
+        const kind = rand() < 0.5 ? 'nested-chain' : 'custom'
+        claim(ctx.region(range, kind), rand() < 0.5)
+      }
+      for (const o of ['env', 'other'] as const) {
+        const view = ctx.liveness(o === 'env' ? 'env' : other)
+        const r: Reported = {
+          live: new Map(),
+          erased: [],
+          elsewhere: new Set(),
+        }
+        for (const ref of t1.refs.all) {
+          if (ref.ctx === 'callee' || ref.ctx === 'plain') {
+            const name = ctx.symbols.name(ref.sym)
+            r.live.set(name, view.live(ref))
+            let innermost: {
+              start: number
+              end: number
+              home: unknown
+            } | null = null
+            for (const cl of ctx.rewrites.claims.values()) {
+              const range = ctx.rewrites.regions.get(cl.region).range
+              if (
+                range.start <= ref.range.start &&
+                ref.range.end <= range.end &&
+                (innermost === null || range.start >= innermost.start)
+              ) {
+                innermost = {
+                  ...range,
+                  home: ctx.rewrites.generated[cl.owner]!.home,
+                }
+              }
+            }
+            if (innermost?.home === other) {
+              r.elsewhere.add(name)
+            }
+          }
+        }
+        for (const call of all) {
+          for (const range of [
+            call,
+            { start: call.start + 1, end: call.end - 1 },
+          ]) {
+            if (view.isErased(range)) {
+              r.erased.push(code.slice(range.start, range.end))
+            }
+          }
+        }
+        reported.set(o, r)
       }
     },
   }
 }
 
 describe('random rewrite trees', () => {
-  it('report as live exactly the names the env module holds, and as erased only calls it holds nothing of', async () => {
+  it('report as live the names each output holds (exactly, in the env module), and as erased only text it holds nothing of', async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    const { MemoryHost } = await import('./helpers')
     const bad: Array<string> = []
-    for (let seed = 1; seed <= 1000; seed++) {
+    const seeds = Number(process.env.RT_SEEDS ?? 1000)
+    for (let seed = 1; seed <= seeds; seed++) {
       const { code, names } = randomModule(random(seed))
       const host = new MemoryHost({ files: { '/app/mod.ts': code } })
-      const live = new Map<string, boolean>()
-      const erased: Array<string> = []
-      const out = await host.compile('/app/mod.ts', [
-        randomPlanner(seed, live, erased),
-      ])
-      const body = out!.code.slice(out!.code.indexOf('\n') + 1)
-      const holds = (name: string) => new RegExp(`\\b${name}(?!\\w)`).test(body)
-      for (const name of names) {
-        const held = holds(name)
-        if (live.get(name) !== held) {
-          bad.push(`seed ${seed}: ${name} is ${held ? '' : 'not '}held`)
-        }
+      const reported = new Map<'env' | 'other', Reported>()
+      const planners = [randomPlanner(seed, reported)]
+      const outputs = {
+        env: (await host.compile('/app/mod.ts', planners))!.code,
+        other: (await host.compile('/app/mod.ts?tsr-split=other', planners))!
+          .code,
       }
-      for (const call of erased) {
-        for (const name of call.match(/\w+_/g)!) {
-          if (holds(name)) {
-            bad.push(`seed ${seed}: ${name} is held in erased ${call}`)
+      /** The module's text in an output, past the glue imports. */
+      const bodyOf = (out: string) =>
+        out
+          .split('\n')
+          .filter((l) => !l.startsWith('import '))
+          .join('\n')
+      const held = {
+        env: bodyOf(outputs.env),
+        other: bodyOf(outputs.other),
+      }
+      const holds = (o: 'env' | 'other', name: string) =>
+        new RegExp(`\\b${name}(?!\\w)`).test(held[o])
+      for (const o of ['env', 'other'] as const) {
+        const { live, erased, elsewhere } = reported.get(o)!
+        for (const name of names) {
+          // (claimed text renders in its owner's output, with that output's edits)
+          const ok =
+            o === 'env'
+              ? elsewhere.has(name) || live.get(name) === holds('env', name)
+              : !holds('other', name) || live.get(name) === true
+          if (!ok) {
+            bad.push(
+              `seed ${seed} ${o}: ${name} is ${live.get(name) ? 'live' : 'erased'}, ${holds(o, name) ? '' : 'not '}held`,
+            )
+          }
+        }
+        for (const text of erased) {
+          for (const name of text.match(/\w+_/g) ?? []) {
+            if (holds(o, name)) {
+              bad.push(`seed ${seed} ${o}: ${name} is held in erased ${text}`)
+            }
           }
         }
       }
     }
+    vi.unstubAllEnvs()
+    vi.resetModules()
     expect(bad).toEqual([])
-  })
+  }, 120_000)
 })

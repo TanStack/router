@@ -20,6 +20,7 @@ import type { Range } from '../header'
 import type { RegionId, Unit, UnitId } from '../units'
 import type {
   Frag,
+  GenFrag,
   GenUnitId,
   GeneratedUnit,
   OutputId,
@@ -259,7 +260,9 @@ export function isDuplicable(
 }
 
 /** The symbols generated text reads (its `SymRef`s and reference rewrites). */
-export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
+export function symRefsOf(
+  frags: ReadonlyArray<Frag | GenFrag>,
+): Array<SymbolId> {
   const out: Array<SymbolId> = []
   for (const f of frags) {
     if (f.k === 'text') {
@@ -670,7 +673,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     for (
       let r = regions.innermostAt(ref.range.start, ref.range.end);
       r !== null;
-      r = regions.get(r).parent
+      r = regions.parentOf(r)
     ) {
       if (claimed.has(r)) {
         return true

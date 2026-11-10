@@ -32,39 +32,40 @@ emits its own output. Nothing depends on transform order.
   statement. **Regions** are ranges planned as one thing; every unit is one, and planners register sub-regions
   (route option values, Hydrate children, nested server-fn chains).
 - **Rewrite tree** (`rewrite.ts`): planners emit edits against _original_ UTF-16 ranges: remove, replace with
-  fragments, insert. Fragments are retained original slices (rendered with their own nested edits), structured text
-  with symbol references (`SymRef`), glue specifiers and context-aware reference rewrites (shorthand properties
-  expand, export names stay). A _generated unit_ can claim a region: the region renders inside its owner, wherever the
+  fragments, insert. An edit's body names source text only as slices of the range it rewrites (rendered with what the
+  output does inside them), next to structured text with symbol references (`SymRef`), glue specifiers and
+  context-aware reference rewrites (shorthand properties expand, export names stay). A _generated unit_ can claim a
+  region: the owner renders the region whole (`{ k: 'region' }`, its only way to name source text), wherever the
   owner is placed, and a placeholder renders at the original position. An erasure enclosing the occurrence kills the
   claim and its owner, unless other generated code reads the owner (the provider's hoisted server fn its RPC wrapper
-  calls): then only the placeholder goes. Edits nest, so a range moved into a chunk
-  carries the env edits inside it; an edit addressed to every output on exactly a claimed region travels with the
-  region (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while
-  an edit scoped to one output on exactly the region replaces the placeholder there (the env module keeps a
-  nested server-fn chain in place with its stub). A generated unit has a home (`auto`: placement decides; an output),
+  calls): then only the placeholder goes. A route option written as a method claims its function; an edit of the
+  property writes the key before the placeholder. Edits nest, so a range moved into a chunk carries the env edits
+  inside it; an edit addressed to every output on exactly a claimed region is the region's text and travels with it
+  (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while an edit
+  scoped to one output on exactly the region replaces the placeholder there (the env module keeps a nested
+  server-fn chain in place with its stub). A generated unit has a home (`auto`: placement decides; an output),
   or `env-readers`: placement copies it into every derived output importing a binding of the env module other than
   the ones it names, once inclusion is decided (route HMR registers the chunks reading what the route module keeps); it
   declares nothing, owns no claim and reads only its own imports.
 - **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region and the range of every
-  edit, shared by every output and checked against the units, so two ranges nest or are disjoint whatever outputs
-  their edits are scoped to; a range that partly overlaps another is a conflict as it is registered. Each plan has its own (a fallback round starts again from
-  the units). What an output renders of the source (`OutputView`: whether a byte renders, the claims the output keeps,
-  its erased parts) is read on that tree by climbing from a position's innermost range, so a question costs the
-  nesting depth, not the number of edits. The renderer reads the output's edits sorted and nested (`RenderTree`).
-- **Copied text keeps its edits.** Every byte of original text that reaches an output gets there through exactly one
-  path (the env module's own text, a retained slice, a claim's owner), and that path applies every edit of that
-  output's tree under it; only edits under erased text are dropped. A claim's owner therefore copies exactly its
-  claimed range (a cast around a split value stays around the placeholder). The renderer checks the rule where it
-  copies text as is (`RenderTree.editUnderCopy`): a copy over an edit is a compiler bug, which throws with
-  `TSR_COMPILER_VERIFY=1` and is an `internal-invariant` error in users' runs (it would ship the text the edit
-  replaces). It is a safety net and can go once we trust the compiler's reliability.
-- **An edit scoped to some outputs is absent from the others' trees**, so another output that copies its range
+  edit and claim, shared by every output and checked against the units, so two ranges nest or are disjoint whatever
+  outputs their edits are scoped to; a range that partly overlaps another is a conflict as it is registered, and so
+  is a second claim on one range. Each plan has its own (a fallback round starts again from the units). How regions
+  nest is read on the tree (`parentOf`, `childrenOf`, `innermostAt`).
+- **One walk per output** (`OutputView.walk`): source text enters an output only through it. A node renders its
+  place (a kept claim's placeholder, or the edit replacing it) or its text (its edit's body, or its source with the
+  nodes inside it); a node that renders as its source is walked through, and an insert belongs to the innermost node
+  strictly holding its position (one at a claimed region's edge renders once, beside the placeholder). A slice that
+  cuts a node rewritten in that output fails the compile in every mode (it would copy the text the node replaces).
+  The renderer (`freeze.ts`), placement's reads (`placement/reads.ts`) and the erased parts are the walk's visitors;
+  the point questions (whether a byte renders, the claims an output keeps) climb the tree from a position's innermost
+  range with the same rules, so a question costs the nesting depth, not the number of edits.
+- **An edit scoped to some outputs is absent from the others' text**, so another output that copies its range
   copies the original text. An edit is scoped to one output only where no other output copies its range, or where
   what the others render there is right without it: the split's placeholder for an identifier value is the env
   module's own (`split.ts`; the chunk reads the binding), and Start's in-place stub of a nested server-fn chain
   overrides the claim's placeholder in the env module only, while a split chunk copying the enclosing function
-  renders the placeholder (`start-env.ts`). The renderer cannot check this one (the edit is not in the copying
-  output's tree): it is the planner's obligation.
+  renders the placeholder (`start-env.ts`). It is the planner's obligation.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are
@@ -399,16 +400,15 @@ nothing per compile.
   names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
 - `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan's
   invariants (`verify.ts`): no output assigns a binding it imports, every glue import names an export of its home
-  output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
+  output, every surviving effect statement is emitted exactly once across
   the outputs that import from the env module, an extracted export's module never reads a binding of the env
   module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
   nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile. It is the one switch of the compiler's self-checks
-  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`) or
-  the renderer's copy check ("Copied text keeps its edits") throws; unset (users' dev servers, builds and their own
-  tests), they are still checked and a violation is one `internal-invariant` diagnostic for the module (an internal
-  compiler error, please report it): a warning for placement (the output may be wrong), an error for the copy check
-  (the output would be wrong).
+  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`)
+  throws; unset (users' dev servers, builds and their own tests), they are still checked and a violation is one
+  `internal-invariant` warning for the module (an internal compiler error, please report it: the output may be
+  wrong).
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
   approximate bytes in a process-global registry, held through a `WeakRef` and read by a function outside the owner's
