@@ -1450,7 +1450,7 @@ describe('generated units next to what the source wrote', () => {
       home: out,
       by: 'toy',
     })
-    for (const output of ['env', out]) {
+    for (const output of ['env' as const, out]) {
       e.ctx.addRoot(output, { t: 'gen', id: gen })
       e.ctx.addRoot(output, { t: 'unit', id: 0 })
       e.ctx.addRoot(output, { t: 'unit', id: 1 })
