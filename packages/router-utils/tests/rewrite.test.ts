@@ -2038,3 +2038,87 @@ describe('an insert at the start of a unit', () => {
     },
   )
 })
+
+describe("the env module's pieces", () => {
+  const text = (t: string) => ({ k: 'text' as const, parts: [t] })
+  const unit = (e: ReturnType<typeof engine>, anchor: Anchor) =>
+    e.ctx.rewrites.addGenerated({
+      body: [text('const gen = 1\n')],
+      declares: [e.ctx.names.alloc('gen').sym],
+      effectful: true,
+      anchor,
+      home: 'auto',
+      by: 'toy',
+    })
+
+  it("renders a planner's insert first at a position, then the generated unit and the statement's `;`", () => {
+    const code = `const a = 1;\n(a).b = 2\n`
+    const e = engine(code)
+    e.ctx.rewrites.insert({
+      at: rangeOf(code, '(a)').start,
+      body: [text('/*i*/')],
+      by: 'toy',
+    })
+    e.ctx.addRoot('env', {
+      t: 'gen',
+      id: unit(e, { k: 'after-unit', unit: 0 }),
+    })
+    expect(e.render().code).toBe(
+      `const a = 1;\n/*i*/const gen = 1\n;(a).b = 2\n`,
+    )
+  })
+
+  it('renders the inserts at the edges of a statement placement drops', () => {
+    const code = `const h = 1\nexport const y = h\n`
+    const e = engine(code)
+    // (`h` is orphaned by the edit of its only reader)
+    e.ctx.rewrites.edit({
+      range: rangeOf(code, 'h', 1),
+      body: [text('2')],
+      by: 'toy',
+    })
+    e.ctx.rewrites.insert({ at: 0, body: [text('a0;')], by: 'toy' })
+    e.ctx.rewrites.insert({
+      at: rangeOf(code, 'export').start,
+      body: [text('b0;')],
+      by: 'toy',
+    })
+    expect(e.render().code).toBe(`a0;b0;export const y = 2\n`)
+  })
+
+  it('fails the compile when a planner edit across two statements holds an anchored unit', () => {
+    const code = `const a = 1\nconst b = 2\nexport const c = a + b\n`
+    const e = engine(code)
+    e.ctx.rewrites.edit({
+      range: rangeOf(code, 'const a = 1\nconst b = 2'),
+      body: [
+        text('/*x*/'),
+        { k: 'slice', range: rangeOf(code, 'const a = 1\nconst b = 2') },
+      ],
+      by: 'toy',
+    })
+    e.ctx.addRoot('env', {
+      t: 'gen',
+      id: unit(e, { k: 'before-unit', unit: 1 }),
+    })
+    expect(() => e.render()).toThrow(/conflict: the text .* cuts toy/)
+  })
+
+  it('fails the compile when a planner edit on exactly a statement keeps text placement cuts', () => {
+    const code = `const a = 1, b = 2\nexport const c = b\n`
+    const e = engine(code)
+    const statement = rangeOf(code, 'const a = 1, b = 2\n')
+    e.ctx.rewrites.edit({
+      range: statement,
+      body: [text('/*x*/'), { k: 'slice', range: statement }],
+      by: 'toy',
+    })
+    // (`a` is orphaned by the edit of its only reader: the declarator list is cut)
+    e.ctx.rewrites.edit({
+      range: rangeOf(code, 'b', 1),
+      body: [text('2')],
+      by: 'toy',
+    })
+    expect(() => e.render()).toThrow(/conflict: the text .* cuts toy/)
+  })
+})

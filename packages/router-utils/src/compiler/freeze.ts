@@ -1,8 +1,10 @@
 /**
  * Freezing a resolved plan into the plain-data `EmitPlan`: each output's
- * recipe (the env module with its statement-level dead-code edits, the
- * derived modules' header, glue imports, items and generated units in
- * order, the export glue), its edges and its side-effect flag. `Renderer`
+ * recipe, put together from pieces (the env module: its source text between
+ * the statements placement rewrites, the generated units at their anchors
+ * and the glue; the derived modules: header, glue imports, items and
+ * generated units in order, the export glue), its edges and its side-effect
+ * flag. `Renderer`
  * is the segment visitor of the output's walk (`OutputView.walk`), with
  * substitution environments and context-aware reference rewrites; no Yuku
  * object is reachable from the result.
@@ -14,7 +16,7 @@ import { specifierLiteral, specifierName, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
-import { EditBand, compareCoreEdits, compareEditOrder, erases } from './rewrite'
+import { erases } from './rewrite'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -28,7 +30,6 @@ import type { OutputDecl, Placement } from './reach'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
-  CoreEdit,
   Frag,
   GenFrag,
   GeneratedUnit,
@@ -38,6 +39,8 @@ import type {
   RefTarget,
   SubstEnv,
   SymRefContext,
+  WalkOptions,
+  WalkVisitor,
 } from './rewrite'
 import type { Node } from 'yuku'
 
@@ -206,6 +209,26 @@ function includedUnitsOf(
   return set
 }
 
+/**
+ * A piece of the env module at `start` of the source: generated text
+ * (`end === start`), or a statement placement rewrites (its owned range,
+ * `body` its recipe). The text between the pieces is the walk's.
+ */
+interface EnvPiece {
+  start: number
+  end: number
+  body: ReadonlyArray<Frag | GenFrag>
+  gen: GeneratedUnit | null
+}
+
+/**
+ * The env module: the source's text (the walk) between its pieces, which are
+ * the statements placement rewrites, the generated units at their anchors,
+ * the glue imports after the header and the export glue at the end. The
+ * pieces at one position render in that order: a statement's line end, the
+ * glue imports, the generated units, a statement's `;`, the statement; what
+ * a planner inserts there renders before them.
+ */
 function renderEnv(
   plan: AnalysisPlan,
   renderer: Renderer,
@@ -217,9 +240,12 @@ function renderEnv(
   const { t1, rewrites, analysis } = plan
   const { items, units } = t1
   const code = analysis.source.code
-  const extra: Array<CoreEdit> = []
-  let coreEdits = 0
   const envView = rewrites.view('env')
+  const lineEnds: Array<EnvPiece> = []
+  /** The `;`s statements need and the statements placement rewrites, in source order. */
+  const statements: Array<EnvPiece> = []
+  /** The statements placement rewrites (their removals), in source order. */
+  const rewritten: Array<EnvPiece> = []
   // a statement only the line break inside the multi-line comment after it
   // ends: that comment leads what follows and may not render, so the statement
   // gets a line end of its own (before anything else generated there)
@@ -229,12 +255,11 @@ function renderEnv(
       code[statementEnd - 1] !== ';' &&
       !isLineTerminator(code.charCodeAt(at - 1))
     ) {
-      extra.push({
-        range: { start: at, end: at },
+      lineEnds.push({
+        start: at,
+        end: at,
         body: [{ k: 'text', parts: ['\n'] }],
-        by: 'core:glue',
-        band: EditBand.lineEnd,
-        n: 0,
+        gen: null,
       })
     }
   }
@@ -245,27 +270,20 @@ function renderEnv(
   /** Offsets where generated text renders right before what the source wrote. */
   const generatedAt = new Set<number>()
   // generated units homed here, at their anchors (before a statement's `;`)
+  const generated: Array<EnvPiece> = []
   for (const { at, gen } of anchored) {
     if (gen.body.length > 0) {
       generatedAt.add(at)
     }
-    extra.push({
-      range: { start: at, end: at },
-      body: gen.body,
-      by: gen.by,
-      band: EditBand.core,
-      n: coreEdits++,
-      gen: gen.id,
-    })
+    generated.push({ start: at, end: at, body: gen.body, gen })
   }
   /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
   const siblingExports: Array<{ sym: SymbolId; name: string }> = []
-  // statement-level DCE edits
   /** The statement rendered before the current one (as the source wrote it, or rewritten). */
   let previous: RenderedStatement | undefined
   for (const item of items) {
     if (envView.isErasedAt(item.nodeRange.start)) {
-      continue
+      continue // (its text is a planner's)
     }
     endLine(item.nodeRange.end, item.range.end)
     const retained = includedUnitsOf(plan, item, included, placement, false)
@@ -304,29 +322,29 @@ function renderEnv(
       (generatedAt.has(item.range.start) ||
         (item.index > 0 && generatedAt.has(items[item.index - 1]!.range.end)))
     if (
-      recipe !== 'drop' &&
+      // (a statement placement rewrites starts with its keyword)
+      recipe === 'keep' &&
       (item.index > 0 || afterGenerated) &&
       needsLeadingSemicolon(code, item, afterGenerated ? undefined : previous)
     ) {
-      extra.push({
-        range: { start: item.nodeRange.start, end: item.nodeRange.start },
+      statements.push({
+        start: item.nodeRange.start,
+        end: item.nodeRange.start,
         body: [{ k: 'text', parts: [';'] }],
-        by: 'core:dce',
-        band: EditBand.core,
-        n: coreEdits++,
+        gen: null,
       })
     }
     previous = { item, intact: recipe === 'keep' }
-    if (recipe === 'keep') {
-      continue
+    if (recipe !== 'keep') {
+      const piece: EnvPiece = {
+        start: item.range.start,
+        end: item.range.end,
+        body: recipe === 'drop' ? [] : recipe,
+        gen: null,
+      }
+      statements.push(piece)
+      rewritten.push(piece)
     }
-    extra.push({
-      range: item.range,
-      body: recipe === 'drop' ? [] : recipe,
-      by: 'core:dce',
-      band: EditBand.core,
-      n: coreEdits++,
-    })
   }
   // glue imports of the env output (from shared/derived homes) after the header
   const glueImports = glueImportText(
@@ -336,15 +354,6 @@ function renderEnv(
     exportNameOf,
     anchored.map((a) => a.gen),
   )
-  if (glueImports.length > 0) {
-    extra.push({
-      range: { start: analysis.header.end, end: analysis.header.end },
-      body: glueImports,
-      by: 'core:glue',
-      band: EditBand.glueImports,
-      n: 0,
-    })
-  }
   // export glue at the end (re-exports of extracted exports first)
   const exportsText = [
     ...reexportGlue(plan, placement, exportNameOf),
@@ -357,42 +366,49 @@ function renderEnv(
       siblingExports,
     ),
   ]
+  // (in the order they render at one position: by start, stable)
+  const pieces: Array<EnvPiece> = [...lineEnds]
+  if (glueImports.length > 0) {
+    const at = analysis.header.end
+    pieces.push({ start: at, end: at, body: glueImports, gen: null })
+  }
+  pieces.push(...generated, ...statements)
   if (exportsText.length > 0) {
-    extra.push({
-      range: { start: code.length, end: code.length },
+    pieces.push({
+      start: code.length,
+      end: code.length,
       body: exportsText,
-      by: 'core:glue',
-      band: EditBand.core,
-      n: coreEdits++,
+      gen: null,
     })
   }
+  pieces.sort((x, y) => x.start - y.start)
   // text appended at the end starts on its own line
   if (code.length > 0 && !isLineTerminator(code.charCodeAt(code.length - 1))) {
-    const atEnd = extra
-      .filter((e) => e.range.start === code.length && e.body.length > 0)
-      .sort(compareEditOrder)
-    const first = atEnd[0]
-    if (first) {
-      first.body = [{ k: 'text', parts: ['\n'] }, ...first.body]
+    const i = pieces.findIndex(
+      (p) => p.start === code.length && p.body.length > 0,
+    )
+    if (i >= 0) {
+      pieces[i] = {
+        ...pieces[i]!,
+        body: [{ k: 'text', parts: ['\n'] }, ...pieces[i]!.body],
+      }
     }
   }
-  // what the edits outside the region tree remove (statements placement
-  // drops, cut declarator lists) decides the bytes nothing in it decides
-  const removals = extra.filter((x) => x.range.end > x.range.start)
-  renderer.setView(envView, [...extra].sort(compareCoreEdits), (offset) => {
+  // what the rewritten statements remove decides the bytes nothing in the
+  // tree decides (in source order, disjoint)
+  renderer.setView(envView, (offset) => {
     const decided = envView.erasedBy(offset)
     if (decided !== null) {
       return decided
     }
-    // (in source order, disjoint: one per statement)
     let lo = 0
-    let hi = removals.length - 1
+    let hi = rewritten.length - 1
     while (lo <= hi) {
       const mid = (lo + hi) >> 1
-      const x = removals[mid]!
-      if (offset < x.range.start) {
+      const x = rewritten[mid]!
+      if (offset < x.start) {
         hi = mid - 1
-      } else if (offset >= x.range.end) {
+      } else if (offset >= x.end) {
         lo = mid + 1
       } else {
         return erases(x.body, offset)
@@ -400,17 +416,29 @@ function renderEnv(
     }
     return false
   })
+  const root = rewrites.regions.module
   const out: Array<Segment> = []
-  renderer.renderSpan(
-    rewrites.regions.module,
-    0,
-    code.length,
-    null,
-    null,
-    out,
-    null,
-    true,
-  )
+  let pos = 0
+  /** The inserts at `pos` rendered with the text before it (a piece followed them). */
+  let skipAt: number | null = null
+  /** Something other than source text rendered before (the walk's `afterEdit`). */
+  let afterEdit = false
+  for (const p of pieces) {
+    afterEdit = renderer.renderSpan(root, pos, p.start, null, null, out, {
+      skipAt,
+      includeEnd: true,
+      afterEdit,
+    })
+    renderer.renderPiece(p.start, p.end, p.body, p.gen, out)
+    afterEdit = true
+    pos = p.end
+    skipAt = p.end === p.start ? pos : null
+  }
+  renderer.renderSpan(root, pos, code.length, null, null, out, {
+    skipAt,
+    includeEnd: true,
+    afterEdit,
+  })
   return out
 }
 
@@ -612,7 +640,7 @@ function renderDerived(
   const { items, units } = t1
   const code = analysis.source.code
   const view = rewrites.view(decl.id)
-  renderer.setView(view, null, (offset) => view.isErasedAt(offset))
+  renderer.setView(view, (offset) => view.isErasedAt(offset))
   const root = rewrites.regions.module
   const out: Array<Segment> = []
   const anchored = anchoredGenerated(plan, decl.id, placement)
@@ -624,22 +652,27 @@ function renderDerived(
     out.push({ k: 'text', text: 'export {}\n' })
     return out
   }
-  // header: pragmas and directives (leadingness preserved), never license comments
+  // header: pragmas and directives (leadingness preserved), never license
+  // comments; a comment holding two pragmas renders once
   const header = analysis.header
+  let lastPragma = -1
   for (const p of header.pragmas) {
-    if (!header.license.some((l) => l.start === p.range.start)) {
-      if (!out.some((s) => s.k === 'slice' && s.start === p.range.start)) {
-        out.push({ k: 'slice', start: p.range.start, end: p.range.end })
-        out.push({ k: 'text', text: '\n' })
-      }
+    const { start, end } = p.range
+    if (
+      start !== lastPragma &&
+      !header.license.some((l) => l.start === start)
+    ) {
+      renderer.renderSpan(root, start, end, null, null, out)
+      out.push({ k: 'text', text: '\n' })
     }
+    lastPragma = start
   }
   const afterPragmas = out.length
   for (const d of header.directives) {
     if (decl.header?.dropDirectives?.includes(d.value)) {
       continue
     }
-    out.push({ k: 'slice', start: d.range.start, end: d.range.end })
+    renderer.renderSpan(root, d.range.start, d.range.end, null, null, out)
     out.push({ k: 'text', text: '\n' })
   }
   if (decl.header?.addDirective) {
@@ -857,24 +890,29 @@ function isAmbientValueDeclaration(node: Node): boolean {
   }
 }
 
+interface SpanOptions extends WalkOptions {
+  /** Something other than source text rendered before the span (its source runs are guarded as after an edit). */
+  afterEdit?: boolean
+}
+
+const NO_SPAN_OPTIONS: SpanOptions = {}
+
 /** Where an edit's body names source text: slices of `level` (the node it rewrites, the module for the core's statement recipes). */
 interface SliceLevel {
   level: RangeNode
-  /** The inserts there render before the edit (a core edit's start). */
+  /** The inserts there render before the edit (a statement recipe's start). */
   skipAt: number | null
 }
 
 /**
  * Renders ranges and fragments of one output into segments: the segment
  * visitor of the output's walk (`OutputView.walk`: source text, active nodes
- * whole, inserts, and the env module's core edits), applying substitution
- * environments and context-aware reference rewrites.
+ * whole, inserts), applying substitution environments and context-aware
+ * reference rewrites.
  */
 class Renderer {
   view!: OutputView
   erasedAt!: (offset: number) => boolean
-  /** The core edits of the output (the env module's), sorted (`compareCoreEdits`). */
-  private core: ReadonlyArray<CoreEdit> | null = null
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
@@ -895,18 +933,118 @@ class Renderer {
     this.edges = edges
   }
 
-  /** What the output renders, its core edits, and whether an original byte renders in no text of it (`sourceEdges`). */
-  setView(
-    view: OutputView,
-    core: ReadonlyArray<CoreEdit> | null,
-    erasedAt: (offset: number) => boolean,
-  ): void {
+  /** What the output renders, and whether an original byte renders in no text of it (`sourceEdges`). */
+  setView(view: OutputView, erasedAt: (offset: number) => boolean): void {
     this.view = view
-    this.core = core
     this.erasedAt = erasedAt
   }
 
-  /** Renders `[start, end)` of `level`'s text (`OutputView.walk`). */
+  /** Renders a piece of the env module standing at `start` (`EnvPiece`). */
+  renderPiece(
+    start: number,
+    end: number,
+    body: ReadonlyArray<Frag | GenFrag>,
+    gen: GeneratedUnit | null,
+    out: Array<Segment>,
+  ): void {
+    const from = out.length
+    this.renderFrags(
+      body,
+      gen,
+      null,
+      out,
+      null,
+      end > start
+        ? { level: this.plan.rewrites.regions.module, skipAt: start }
+        : null,
+    )
+    this.guardStatementStart(start, out, from)
+  }
+
+  // ---- the span being rendered (`renderSpan`; saved around a nested one) ----
+  private spanOwner: GeneratedUnit | null = null
+  private spanEnv: SubstEnv | null = null
+  private spanOut: Array<Segment> = []
+  /** The references the substitution environment rewrites in the span's source (one inside an active node renders with it). */
+  private spanSubst: Array<ClassifiedRef> | null = null
+  private spanSi = 0
+  /**
+   * The source text after an edit: the statement it starts may follow what
+   * the edit left (a removed `const local = 1;` before `(mk)()`).
+   */
+  private spanAfterEdit = false
+  /** The segment visitor of the walk, one per renderer (its state is the span's). */
+  private readonly spanVisitor: WalkVisitor = {
+    source: (s, e) => {
+      const subst = this.spanSubst
+      let pos = s
+      if (subst !== null) {
+        const env = this.spanEnv!
+        const out = this.spanOut
+        while (
+          this.spanSi < subst.length &&
+          subst[this.spanSi]!.range.start < s
+        ) {
+          this.spanSi++ // (inside an active node)
+        }
+        while (
+          this.spanSi < subst.length &&
+          subst[this.spanSi]!.range.start < e
+        ) {
+          const ref = subst[this.spanSi++]!
+          if (ref.range.start > pos) {
+            this.copy(pos, ref.range.start)
+          }
+          this.spanAfterEdit = false
+          const at = out.length
+          out.push({
+            k: 'text',
+            text: this.renderRefText(
+              ref.ctx,
+              env.get(ref.sym)!,
+              env,
+              ref.exportShorthand,
+              this.code.slice(ref.range.start, ref.range.end),
+            ),
+            mapTo: ref.range.start,
+          })
+          // a callee at a statement's start renders `(0, props.x)`: as an edit
+          this.guardStatementStart(ref.range.start, out, at)
+          pos = Math.max(pos, ref.range.end)
+        }
+      }
+      if (e > pos) {
+        this.copy(pos, e)
+      }
+    },
+    node: (n) => {
+      this.spanAfterEdit = true
+      const out = this.spanOut
+      const at = out.length
+      this.renderFrags(
+        (this.view.placeOf(n) ?? this.view.textOf(n))!,
+        this.spanOwner,
+        this.spanEnv,
+        out,
+        null,
+        { level: n, skipAt: null },
+      )
+      this.guardStatementStart(n.start, out, at)
+    },
+    insert: (e) => {
+      this.spanAfterEdit = true
+      const out = this.spanOut
+      const at = out.length
+      this.renderFrags(e.body, this.spanOwner, this.spanEnv, out)
+      this.guardStatementStart(e.range.start, out, at)
+    },
+  }
+
+  /**
+   * Renders `[start, end)` of `level`'s text (`OutputView.walk`); returns
+   * whether something other than source text rendered (`afterEdit`, given:
+   * before it).
+   */
   renderSpan(
     level: RangeNode,
     start: number,
@@ -914,11 +1052,8 @@ class Renderer {
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
     out: Array<Segment>,
-    skipAt: number | null = null,
-    includeEnd = false,
-  ): void {
-    // the references a substitution environment rewrites in the source text
-    // (one inside an active node renders with it)
+    opts: SpanOptions = NO_SPAN_OPTIONS,
+  ): boolean {
     let subst: Array<ClassifiedRef> | null = null
     if (env && env.size > 0) {
       subst = []
@@ -932,115 +1067,50 @@ class Renderer {
         }
       }
     }
-    let si = 0
-    // the source text after an edit: the statement it starts may follow
-    // what the edit left (a removed `const local = 1;` before `(mk)()`)
-    let afterEdit = false
-    const copy = (pos: number, to: number) => {
-      if (!afterEdit) {
-        out.push({ k: 'slice', start: pos, end: to })
-        return
-      }
-      // a `;` goes after the indentation, before a comment (an annotation
-      // stays with its call)
-      let from = pos
-      while (from < to && /\s/.test(this.code[from]!)) {
-        from++
-      }
-      if (from > pos) {
-        out.push({ k: 'slice', start: pos, end: from })
-      }
-      const at = out.length
-      out.push({ k: 'slice', start: from, end: to })
-      // (a statement of the module's own list has freeze's guard)
-      this.guardStatementStart(this.tokenStart(from, to), out, at, true)
+    // (a span renders spans inside it, through the bodies it renders)
+    const outerOwner = this.spanOwner
+    const outerEnv = this.spanEnv
+    const outerOut = this.spanOut
+    const outerSubst = this.spanSubst
+    const outerSi = this.spanSi
+    const outerAfterEdit = this.spanAfterEdit
+    this.spanOwner = owner
+    this.spanEnv = env
+    this.spanOut = out
+    this.spanSubst = subst
+    this.spanSi = 0
+    this.spanAfterEdit = opts.afterEdit === true
+    this.view.walk(level, start, end, this.spanVisitor, opts)
+    const afterEdit = this.spanAfterEdit
+    this.spanOwner = outerOwner
+    this.spanEnv = outerEnv
+    this.spanOut = outerOut
+    this.spanSubst = outerSubst
+    this.spanSi = outerSi
+    this.spanAfterEdit = outerAfterEdit
+    return afterEdit
+  }
+
+  /** Copies source text of the span (after an edit, a statement it starts is guarded). */
+  private copy(pos: number, to: number): void {
+    const out = this.spanOut
+    if (!this.spanAfterEdit) {
+      out.push({ k: 'slice', start: pos, end: to })
+      return
     }
-    this.view.walk(
-      level,
-      start,
-      end,
-      {
-        source: (s, e) => {
-          let pos = s
-          if (subst !== null) {
-            while (si < subst.length && subst[si]!.range.start < s) {
-              si++ // (inside an active node)
-            }
-            while (si < subst.length && subst[si]!.range.start < e) {
-              const ref = subst[si++]!
-              if (ref.range.start > pos) {
-                copy(pos, ref.range.start)
-              }
-              afterEdit = false
-              const at = out.length
-              out.push({
-                k: 'text',
-                text: this.renderRefText(
-                  ref.ctx,
-                  env!.get(ref.sym)!,
-                  env,
-                  ref.exportShorthand,
-                  this.code.slice(ref.range.start, ref.range.end),
-                ),
-                mapTo: ref.range.start,
-              })
-              // a callee at a statement's start renders `(0, props.x)`: as an edit
-              this.guardStatementStart(ref.range.start, out, at)
-              pos = Math.max(pos, ref.range.end)
-            }
-          }
-          if (e > pos) {
-            copy(pos, e)
-          }
-        },
-        node: (n) => {
-          afterEdit = true
-          const at = out.length
-          this.renderFrags(
-            (this.view.placeOf(n) ?? this.view.textOf(n))!,
-            owner,
-            env,
-            out,
-            null,
-            { level: n, skipAt: null },
-          )
-          this.guardStatementStart(n.start, out, at)
-        },
-        insert: (e) => {
-          afterEdit = true
-          const at = out.length
-          this.renderFrags(e.body, owner, env, out)
-          this.guardStatementStart(e.range.start, out, at)
-        },
-      },
-      {
-        skipAt,
-        includeEnd,
-        core:
-          this.core === null
-            ? null
-            : {
-                edits: this.core,
-                visit: (x, at) => {
-                  afterEdit = true
-                  const gen =
-                    x.gen !== undefined
-                      ? this.plan.rewrites.generated[x.gen]!
-                      : null
-                  const from = out.length
-                  this.renderFrags(
-                    x.body,
-                    gen ?? owner,
-                    gen !== null ? mergeEnv(env, gen.env) : env,
-                    out,
-                    gen,
-                    gen !== null ? null : { level: at, skipAt: x.range.start },
-                  )
-                  this.guardStatementStart(x.range.start, out, from)
-                },
-              },
-      },
-    )
+    // a `;` goes after the indentation, before a comment (an annotation
+    // stays with its call)
+    let from = pos
+    while (from < to && /\s/.test(this.code[from]!)) {
+      from++
+    }
+    if (from > pos) {
+      out.push({ k: 'slice', start: pos, end: from })
+    }
+    const at = out.length
+    out.push({ k: 'slice', start: from, end: to })
+    // (a statement of the module's own list has freeze's guard)
+    this.guardStatementStart(this.tokenStart(from, to), out, at, true)
   }
 
   /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
@@ -1085,7 +1155,9 @@ class Renderer {
             unit,
             mergedEnv,
             out,
-            slices!.skipAt,
+            slices!.skipAt === null
+              ? NO_SPAN_OPTIONS
+              : { skipAt: slices!.skipAt },
           )
           break
         }

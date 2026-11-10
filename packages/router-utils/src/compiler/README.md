@@ -58,7 +58,8 @@ emits its own output. Nothing depends on transform order.
   range of every edit, placeholder and claim, shared by every output and checked against the units, so two ranges
   nest or are disjoint whatever outputs they apply in; a range that partly overlaps another is a conflict as it is
   registered, and so is a second claim on one range. Each plan has its own (a fallback round starts again from the
-  units). How regions nest is read on the tree (`parentOf`, `childrenOf`, `innermostAt`).
+  units). How regions nest is read on the tree (`parentOf`, `innermostAt`); placement derives the nesting, where
+  each unit is, and what each region's text holds of the tree, once per plan.
 - **One walk per output** (`OutputView.walk`): source text enters an output only through it. A node renders its
   place (`placeholderOf`: a placeholder, or a kept claim's) or its text (`editOf`: its edit's body, or its source
   with the nodes inside it); a node that renders as its source is walked through, and an insert belongs to the
@@ -70,6 +71,14 @@ emits its own output. Nothing depends on transform order.
   questions: a place without an owner erases the text, a claim's relocates it. A question costs the nesting depth,
   not the number of edits. Whether a region is claimed is asked per output (`OutputView.isClaimed`): a member reads
   a nested region claimed only for other outputs as its own text (its references, no edge to the owner).
+- **Outputs are put together from pieces** (`freeze.ts`). A derived output: its header, glue imports, the
+  statements it includes and its generated units in order, export glue. The env module: the walk's text between
+  its pieces, which are the statements placement rewrites (their recipes), the generated units at their anchors, the
+  glue imports after the header and the export glue at the end. At one position a planner's insert renders first
+  (with the text before it, even when the statement there is dropped), then a statement's line end, the glue
+  imports, the generated units, a statement's `;`, the statement. A planner's node that a piece's position cuts
+  fails the compile, as a slice cutting it does. Whether a byte renders in the env module is the tree's answer,
+  else the rewritten statement's.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
   Glue export names avoid the module's export names; in a module with `export * from …`, whose re-exported names are
