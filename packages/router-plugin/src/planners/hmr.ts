@@ -169,16 +169,15 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
         { k: 'text', parts: [`${option.keyText}: `, { sym: hoisted.sym }] },
       ]
     } else {
-      // casts and parentheses around the value are dropped from the hoist
-      // (`(() => …) as any`): React Refresh registers a bare function
+      // the hoist claims and copies the bare value (React Refresh registers
+      // a bare function); a cast around it stays in place, around the
+      // placeholder (`TsrComponent as any`), so every edit inside the
+      // claimed text reaches the hoist
       const inner = unwrapExpression(value)
+      region = { start: inner.start, end: inner.end }
       body.push({ k: 'text', parts: [`const ${hoisted.name} = `] })
-      body.push({
-        k: 'slice',
-        range: { start: inner.start, end: inner.end },
-      })
+      body.push({ k: 'slice', range: region })
       body.push({ k: 'text', parts: ['\n'] })
-      region = { start: value.start, end: value.end }
       placeholder = [{ k: 'text', parts: [{ sym: hoisted.sym }] }]
     }
     const owner = ctx.rewrites.addGenerated({

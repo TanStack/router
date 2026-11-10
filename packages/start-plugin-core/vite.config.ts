@@ -12,7 +12,8 @@ import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json
 
 /**
  * Slow-tier tests that read process-global state (the compiler's stats knob,
- * `TSR_COMPILER_STATS`): each runs in a process of its own (project
+ * `TSR_COMPILER_STATS`; the self-checks switch, `TSR_COMPILER_VERIFY`, read
+ * once when the compiler loads): each runs in a process of its own (project
  * `integration-alone`), as a state an earlier file left in a shared process
  * would count too (Vite 8 keeps the plugins of every finished build and
  * closed server, and so their Start sessions, alive: Rolldown's native
@@ -22,6 +23,7 @@ const aloneTests = [
   'integration/start-build-environment-release.test.ts',
   'integration/start-build-compile-scope.test.ts',
   'integration/start-dev-cache-dir.test.ts',
+  'integration/start-build-split-wrapped-values-unchecked.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */

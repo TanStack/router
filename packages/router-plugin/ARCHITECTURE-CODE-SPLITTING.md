@@ -56,7 +56,8 @@ dev nothing is bundled: the binding stays in the route module and the chunk copi
   option of a root route is split: its components render on every page, or on error and not-found responses, where a
   lazy chunk only adds a round trip.
 - Any value form splits: identifiers, inline functions, method shorthands, casts, `satisfies`, calls (`memo(Page)`),
-  options held in a module-level constant.
+  options held in a module-level constant. The chunk takes the value inside a cast (`as`, `satisfies`, `!`), as
+  every other compiler of the build left it; the cast stays in the route module, around the lazy wrapper.
 - Not split, with one warning per file: routes whose options object cannot be read statically (imported from another
   module, built by a call), and methods/function expressions whose own body reads `this` (`not-split:this-reference`:
   the router calls them as methods; a lazy wrapper would call them detached). When the limitation is ours, it is a
