@@ -645,29 +645,73 @@ export const Route = createRootRouteWithContext<Ctx>()({
 // detached (`this` undefined): such a callback stays in the route module,
 // with a warning naming the file (SPEC J2.8: informed, never broken). An
 // arrow function has the module's `this` wherever it evaluates and splits.
+// The same holds for the function an option names, wherever it is declared.
 describe('route callbacks reading this (#8688)', () => {
+  const body = `return this !== undefined && 'loader' in this ? 'MARK_THIS' : 'MARK_OTHER'`
   it.each([
+    ['a method', '', `loader() { ${body} },`],
+    ['a function expression', '', `loader: function () { ${body} },`],
     [
-      'a method',
-      `loader() { return this !== undefined && 'loader' in this ? 'MARK_THIS' : 'MARK_OTHER' },`,
+      'a function expression in a module const',
+      `const load = function () { ${body} }\n`,
+      'loader: load,',
     ],
     [
-      'a function expression',
-      `loader: function () { return this !== undefined && 'loader' in this ? 'MARK_THIS' : 'MARK_OTHER' },`,
+      'a function declaration',
+      `function load() { ${body} }\n`,
+      'loader: load,',
     ],
-  ])('keeps %s in the route module and warns', async (_name, option) => {
-    const route = await loadRoute(
-      `${head}export const Route = createFileRoute('/')({
+    [
+      'a function declaration named by shorthand',
+      `function loader() { ${body} }\n`,
+      'loader,',
+    ],
+    [
+      'a function expression through a const naming another',
+      `const load = function () { ${body} }\nconst chosen = load as any\n`,
+      'loader: chosen,',
+    ],
+  ])(
+    'keeps %s in the route module and warns',
+    async (_name, before, option) => {
+      const route = await loadRoute(
+        `${head}${before}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
   ${option}
   component: () => <p>page</p>,
 })
 `,
+        // (the same warning prints once per file and run of a dev server)
+        { fresh: true },
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('loader')).toBe(false)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run('return options.loader()')).toBe('MARK_THIS')
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: 'route.tsx',
+        root: route.host.root,
+      })
+    },
+  )
+
+  it('keeps the handler of a loader object a const holds in the route module and warns', async () => {
+    const route = await loadRoute(
+      `${head}const load = {
+  handler: function () { return this !== undefined && 'handler' in this ? 'MARK_THIS' : 'MARK_OTHER' },
+}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: load,
+  component: () => <p>page</p>,
+})
+`,
+      { fresh: true },
     )
     await expectValidModules(route)
     expect(await route.isLazy('loader')).toBe(false)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run('return options.loader()')).toBe('MARK_THIS')
+    expect(await route.run('return options.loader.handler()')).toBe('MARK_THIS')
     expectDiagnostic(await route.diagnostics(), {
       severity: 'warning',
       file: 'route.tsx',

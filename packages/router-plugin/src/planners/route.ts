@@ -206,6 +206,42 @@ export function declaratorOf(
   return { unit, init: unit.node.init }
 }
 
+/**
+ * What a value denotes through the module's bindings, wrappers dropped: the
+ * initialiser of the `const` it names (`declaratorOf`), followed through
+ * each `const` naming another (`const b = a as any`), or the function
+ * declaration it names; the value itself (an identifier when it names
+ * anything else) otherwise.
+ */
+export function boundValueOf(ctx: PlanContext, value: Node): Node {
+  let node = unwrapExpression(value)
+  const seen = new Set<SymbolId>()
+  while (node.type === 'Identifier') {
+    const b = ctx.analysis.file.referenceOf(node)?.binding ?? null
+    const sym = b ? ctx.symbols.ofBinding(b) : null
+    if (sym === null || seen.has(sym)) {
+      break
+    }
+    seen.add(sym)
+    const decl = declaratorOf(ctx, sym)
+    if (decl) {
+      node = unwrapExpression(decl.init)
+      continue
+    }
+    const unit = ctx.symbols.isModuleLevel(sym)
+      ? onlyValueUnit(ctx, sym)
+      : undefined
+    if (
+      unit?.node.type === 'FunctionDeclaration' &&
+      !ctx.t1.mutation.isReassigned(sym, liveInEnv(ctx))
+    ) {
+      return unit.node
+    }
+    break
+  }
+  return node
+}
+
 /** The mutation model as the env output sees it (a write inside code the environment erases imposes nothing). */
 export function liveInEnv(ctx: PlanContext): (ref: ClassifiedRef) => boolean {
   return ctx.liveness('env').live
@@ -213,24 +249,20 @@ export function liveInEnv(ctx: PlanContext): (ref: ClassifiedRef) => boolean {
 
 /**
  * The `codeSplitGroupings` the route file writes (an array literal, or a
- * local `const` holding one), or what keeps the compiler from reading it.
+ * local `const` holding one, `boundValueOf`), or what keeps the compiler
+ * from reading it.
  */
 function readGroupings(
   ctx: PlanContext,
   value: Node,
 ): CodeSplitGroupings | { problem: string } {
   const shape = `must be ${GROUPINGS_SHAPE}`
-  let node = unwrapExpression(value)
+  const node = boundValueOf(ctx, value)
   if (node.type === 'Identifier') {
-    const b = ctx.analysis.file.referenceOf(node)?.binding ?? null
-    const decl = b ? declaratorOf(ctx, ctx.symbols.ofBinding(b)) : null
-    if (!decl) {
-      return {
-        problem:
-          'must be written in the route file, as an array literal or a local `const`: the compiler cannot read an imported or computed value',
-      }
+    return {
+      problem:
+        'must be written in the route file, as an array literal or a local `const`: the compiler cannot read an imported or computed value',
     }
-    node = unwrapExpression(decl.init)
   }
   if (node.type !== 'ArrayExpression') {
     return { problem: shape }

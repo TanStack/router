@@ -59,9 +59,10 @@ dev nothing is bundled: the binding stays in the route module and the chunk copi
   options held in a module-level constant. The chunk takes the value inside a cast (`as`, `satisfies`, `!`), as
   every other compiler of the build left it; the cast stays in the route module, around the lazy wrapper.
 - Not split, with one warning per file: routes whose options object cannot be read statically (imported from another
-  module, built by a call), and methods/function expressions whose own body reads `this` (`not-split:this-reference`:
-  the router calls them as methods; a lazy wrapper would call them detached). When the limitation is ours, it is a
-  bug, not a warning.
+  module, built by a call), and methods/functions whose own body reads `this` (`not-split:this-reference`: the
+  router calls them as methods; a lazy wrapper would call them detached), inline or named by the option (a `const`,
+  through `const`s naming each other, or a function declaration; `boundValueOf`). When the limitation is ours, it is
+  a bug, not a warning.
 - Single writer and evaluation order: a split that would make two outputs write one binding, or move a read of
   state something writes (an option value reading a binding a function assigns, or one written below it), is a core
   _fallback_; the option stays in the route module. The core re-plans with each fallback kept in place until no new

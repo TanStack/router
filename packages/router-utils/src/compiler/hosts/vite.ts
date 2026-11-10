@@ -70,6 +70,31 @@ function codeFrame(code: string, at: DiagnosticPosition): string {
   return out.join('\n')
 }
 
+type SourcemapPathTransform = (source: string, sourcemapPath: string) => string
+
+/**
+ * The output options of a Rollup or Rolldown build with a
+ * `sourcemapPathTransform` that names a derived output's source by its file
+ * (DECISIONS D3): those bundlers name a map's sources by module id
+ * (`route.tsx?tsr-split=component`), so every output of one file would be
+ * another file to devtools and error trackers. Only the compiler's own query
+ * keys go (`identify`); a foreign query stays, and the transform the options
+ * already have runs after, once (each plugin's hook composes onto the last).
+ * The webpack family names sources by resource path already.
+ */
+export function withOwnSourcesNamedByFile<
+  T extends { sourcemapPathTransform?: SourcemapPathTransform },
+>(options: T): T {
+  const next = options.sourcemapPathTransform
+  return {
+    ...options,
+    sourcemapPathTransform: (source: string, sourcemapPath: string) => {
+      const file = identify(source).canonicalId
+      return next ? next(file, sourcemapPath) : file
+    },
+  }
+}
+
 /**
  * Whether a Vite environment build (its `build` config) is the last one of
  * the logical build, after which `releaseEnvironment` is due: a written

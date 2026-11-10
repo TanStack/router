@@ -28,6 +28,7 @@ import {
   viteLog,
   warnEagerExports,
   watchDependencies,
+  withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -282,6 +283,11 @@ export function createRouterCompilerVitePlugin(
       ) {
         releaseEnvironment(s.compiler.caches, environment.name)
       }
+    },
+
+    // a split chunk's map names the route file, not `route.tsx?tsr-split=…`
+    outputOptions(options) {
+      return withOwnSourcesNamedByFile(options)
     },
 
     generateBundle(_options, bundle) {

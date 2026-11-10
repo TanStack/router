@@ -100,6 +100,21 @@ export function unwrapExpression(node: Node): Node {
   return n
 }
 
+/**
+ * Whether code whose first token is at `start` would, written as a
+ * statement, start a block, a declaration or a `let` declaration instead of
+ * an expression (`{ a: f() };`, `function () {}();`): an expression put
+ * there needs parentheses.
+ */
+export function opensNonExpressionStatement(
+  code: string,
+  start: number,
+): boolean {
+  return /^(?:\{|function\b|class\b|async\s+function\b|let\s*\[)/.test(
+    code.slice(start, start + 16),
+  )
+}
+
 /** The identifiers a binding pattern declares, in source order. */
 export function patternIdentifiers(
   p: Node,

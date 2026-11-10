@@ -9,7 +9,7 @@
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureClass } from './purity'
-import { patternIdentifiers } from './source'
+import { opensNonExpressionStatement, patternIdentifiers } from './source'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
@@ -397,11 +397,7 @@ function orphanedPatternDeclarator(
  * start whose first token could continue the previous line.
  */
 function expressionStatement(code: string, init: Node): Array<Frag> {
-  const first = code.slice(init.start, init.start + 16)
-  const wrap = /^(?:\{|function\b|class\b|async\s+function\b|let\s*\[)/.test(
-    first,
-  )
-  if (wrap) {
+  if (opensNonExpressionStatement(code, init.start)) {
     return [text('('), slice(rangeOf(init)), text(');')]
   }
   return [slice(rangeOf(init)), text(';')]

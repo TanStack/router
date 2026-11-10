@@ -30,6 +30,7 @@ export {
 export type { PlanKey } from './identity'
 export {
   isExpressionWrapper,
+  opensNonExpressionStatement,
   parseModule,
   patternIdentifiers,
   unwrapExpression,
@@ -137,6 +138,7 @@ export {
   viteLog,
   ViteRunSessions,
   watchDependencies,
+  withOwnSourcesNamedByFile,
 } from './hosts/vite'
 export type { ModuleGraphLike } from './hosts/vite'
 export { composeLoaderMap, webpackResourceId } from './hosts/loader'

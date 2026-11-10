@@ -18,6 +18,7 @@ import {
   identifierBase,
   isExpressionWrapper,
   isPureExpression,
+  opensNonExpressionStatement,
   patternIdentifiers,
   revision,
   sameFileSpecifier,
@@ -134,16 +135,24 @@ const text = (
 const slice = (range: Range): Frag => ({ k: 'slice', range })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
 
-/** Whether `expr` needs parentheses when it replaces the expression `original` under `parent`. */
+/**
+ * Whether the text of `kept` (or a generated arrow) needs parentheses when it
+ * replaces the expression `original` under `parent`. Decided on the node whose
+ * text is kept, wrappers included: `impl as any` is no callee.
+ */
 function needsParens(
-  expr: Node | 'arrow',
+  code: string,
+  kept: Node | 'arrow',
   original: Node,
   parent: Node | null,
 ): boolean {
   if (!parent) {
     return false
   }
-  const kind = expr === 'arrow' ? 'ArrowFunctionExpression' : expr.type
+  if (parent.type === 'ExpressionStatement') {
+    return kept !== 'arrow' && opensNonExpressionStatement(code, kept.start)
+  }
+  const kind = kept === 'arrow' ? 'ArrowFunctionExpression' : kept.type
   const loose = new Set([
     'Identifier',
     'Literal',
@@ -159,13 +168,6 @@ function needsParens(
     'TaggedTemplateExpression',
     'ChainExpression',
   ])
-  if (parent.type === 'ExpressionStatement') {
-    return (
-      kind === 'FunctionExpression' ||
-      kind === 'ClassExpression' ||
-      kind === 'ObjectExpression'
-    )
-  }
   if (loose.has(kind)) {
     return false
   }
@@ -791,7 +793,8 @@ function planStartEnv(
       }
       // (the edit replaces the terminal inside its wrappers: `x as T` keeps its `as`)
       const parens = needsParens(
-        unwrapExpression(link.arg),
+        ctx.analysis.source.code,
+        link.arg,
         X,
         file.parentOf(X),
       )
@@ -804,7 +807,12 @@ function planStartEnv(
       continue
     }
     if (chain.headIsFactoryCall) {
-      const parens = needsParens('arrow', X, file.parentOf(X))
+      const parens = needsParens(
+        ctx.analysis.source.code,
+        'arrow',
+        X,
+        file.parentOf(X),
+      )
       envEdit(rangeOf(X), [text(parens ? '(() => {})' : '() => {}')])
       continue
     }
@@ -830,7 +838,12 @@ function planStartEnv(
         )
         continue
       }
-      const parens = needsParens(unwrapExpression(c.arg), wrapped, parent)
+      const parens = needsParens(
+        ctx.analysis.source.code,
+        c.arg,
+        wrapped,
+        parent,
+      )
       envEdit(
         rangeOf(c.call),
         parens
@@ -842,7 +855,12 @@ function planStartEnv(
         serverCode.push({ arg: c.arg, call: c.call })
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
-      const parens = needsParens('arrow', wrapped, parent)
+      const parens = needsParens(
+        ctx.analysis.source.code,
+        'arrow',
+        wrapped,
+        parent,
+      )
       const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
       envEdit(rangeOf(c.call), [text(parens ? `(${stub})` : stub)])
     }
