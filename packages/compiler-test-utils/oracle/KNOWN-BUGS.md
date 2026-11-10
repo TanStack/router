@@ -73,11 +73,6 @@ code.test.ts`: "a root route's %s loads lazily".
   `start-plugin-core/tests/integration/importProtection/fragment-specifier.test.ts`: "of a file its server-only marker
   denies fails the build, naming the importer", "of a file a rule naming its extension denies fails the build, naming
   the importer" (Vite). Fix: judged as the file, as on Rsbuild.
-- **Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) cannot import a denied module**:
-  Start compiles it as a module of its environment, but its import of the mock (an edge module, a virtual file of the
-  environment's compiler) does not resolve in the child compiler, so the build fails whatever the behavior (safe: no
-  server code ships). SPEC J6.1. `start-plugin-core/tests/integration/rsbuild/child-compiler.test.ts`: "a worker
-  importing a .server file gets its mock, and the build reports it". Fix: the mock, and the report of a client module.
 
 - **Rolldown: a `var` declared again in a for-in/of head or a pattern, read by a split chunk, reads its first value.**
   The compiler's output is correct: the route module holds both declarations and exports the binding, and Rolldown

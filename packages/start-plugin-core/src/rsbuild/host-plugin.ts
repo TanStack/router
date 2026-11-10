@@ -255,6 +255,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             ip.define(data.request)
           })
         })
+        // a child compiler of this one (a worker or service-worker plugin's) takes
+        // these taps but not the virtual files: its requests of them fail the build
+        // with the violations they stand for (in this environment's compilation,
+        // which Rsbuild prints), and resolve to nothing
+        compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation, params) => {
+          if (compilation.compiler === compiler) {
+            return
+          }
+          params.normalModuleFactory.hooks.beforeResolve.tapPromise(
+            PLUGIN_NAME,
+            async (data) => {
+              const reports = await ipEnvOf()?.childCompilerRequest(
+                data.request,
+                data.contextInfo.issuer,
+              )
+              if (!reports) {
+                return undefined
+              }
+              const target = currentCompilation ?? compilation
+              for (const message of reports) {
+                target.errors.push(new WebpackError(message))
+              }
+              return false
+            },
+          )
+        })
       }
 
       const cache = compiler.options.cache

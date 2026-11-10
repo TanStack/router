@@ -441,6 +441,8 @@ export function formatViolation(
   v: EdgeViolation,
   info: ReportedInfo,
   ctx: ReportContext,
+  /** The importer is a module of a child compiler (`ImportProtectionEnv.childCompilerRequest`). */
+  opts: { childCompiler?: boolean } = {},
 ): string {
   const { root } = ctx.config
   const rel = (p: string) => relativizePath(p, root)
@@ -479,6 +481,11 @@ export function formatViolation(
     if (info.resolved) {
       lines.push(`  Resolved: ${rel(info.resolved)}`)
     }
+  }
+  if (opts.childCompiler) {
+    lines.push(
+      `  Built by: a child compiler (a worker or service-worker plugin), which cannot load the mock of a denied import: it fails the build whatever the behavior, and allowImport is not asked`,
+    )
   }
 
   const printed = printedSteps(trace, root, ctx.config.maxTraceDepth)

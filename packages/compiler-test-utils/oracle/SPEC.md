@@ -713,7 +713,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   dev-time warning), and calling a mock gives a runtime diagnostic at the severity `mockAccess` sets (default
   `error`; `warn`; `off` silences), wherever a mock is served: dev and production, client and server. `mockAccess`
   changes nothing else. Which uses of a mock beyond a call it reports is free (§5.18). A test that expects silence
-  sets `mockAccess: 'off'`.
+  sets `mockAccess: 'off'`. Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) gets
+  no mock: its violation fails the build at the import, whatever the behaviour, and `allowImport` is not asked
+  (ruling of review round 3, F1).
 - **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking.
   Dev: an edge the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
   server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,
