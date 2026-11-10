@@ -19,6 +19,7 @@ import { AnalysisPlan } from './plan'
 import {
   DependencyLedger,
   EXTERNAL_RESOLUTION,
+  StaleSets,
   fingerprintsCurrent,
 } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
@@ -68,10 +69,18 @@ export function createCompilerCaches(
   rawFacts: HostServices['rawFacts'],
   label = 'compiler',
 ): CompilerCaches {
+  const invalidations = new Map<string, Promise<unknown>>()
   const caches: CompilerCaches = {
     plans: new Map(),
     rawFacts,
     fileSetVersion: 0,
+    stale: new StaleSets(),
+    invalidations,
+    settled: async () => {
+      while (invalidations.size > 0) {
+        await Promise.allSettled([...invalidations.values()])
+      }
+    },
   }
   registerCompilerStats(label, caches, readCacheStats)
   return caches
@@ -79,7 +88,11 @@ export function createCompilerCaches(
 
 function readCacheStats(c: CompilerCaches) {
   const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
-  const out: Record<string, number> = c.rawFacts.stats(withBytes)
+  const out: Record<string, number> = {
+    ...c.rawFacts.stats(withBytes),
+    ...c.stale.stats(),
+    invalidationsRunning: c.invalidations.size,
+  }
   for (const plans of c.plans.values()) {
     for (const [k, v] of Object.entries(plans.stats(withBytes))) {
       out[k] = (out[k] ?? 0) + v
@@ -153,6 +166,12 @@ export async function compileModule(
         }
         cache.delete(key)
         cache.bump(key)
+        // this request compiles the file again; its other outputs, which
+        // the bundler holds from the plan, follow
+        caches.stale.add(env.name, identity.path)
+        if (caches.invalidations.size === 0) {
+          cache.counters.staleHits++
+        }
       }
       // evicted, or evicted and published again, meanwhile: look again
       continue
@@ -324,6 +343,8 @@ async function settle(
     // output, so the plan's dependencies stay indexed (never a hit): a
     // later event of what it read reports the module.
     unpublished = overtaken
+    // its modules are built again once the files it read settle
+    caches.stale.add(key.env, identity.path)
     return { kind: 'plan', entry: overtaken, overtaken: true }
   } finally {
     cache.end(key)

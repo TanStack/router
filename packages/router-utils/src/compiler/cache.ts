@@ -241,6 +241,11 @@ class DependentsIndex {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
 
+  /** Whether a plan or a compile depends on `path`. */
+  has(path: string): boolean {
+    return this.byPath.has(path)
+  }
+
   /** The dependency paths with rows (and the unresolved bucket, if it has any). */
   paths(): IterableIterator<string> {
     return this.byPath.keys()
@@ -507,8 +512,12 @@ export class PlanCache {
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: no plan is a hit (measurement knob); dependencies are still kept. */
   private readonly disabled = cacheDisabled('plans')
-  /** Use counts for `compilerStats()`: validated plan hits. */
-  readonly counters = { planHits: 0 }
+  /**
+   * Use counts for `compilerStats()`: validated plan hits, and hits that
+   * failed validation while no invalidation ran (a change no `invalidate()`
+   * reported: a defect of a host, or of the core).
+   */
+  readonly counters = { planHits: 0, staleHits: 0 }
   /**
    * The environment's resolutions, importer → specifier → the resolver's
    * answer (settling, or the settled canonical id; unresolved pairs are not
@@ -745,5 +754,80 @@ export class PlanCache {
       dependentEntries: d.entries,
       ...(withBytes && { planBytes }),
     }
+  }
+}
+
+/**
+ * The stale set of each environment: the files whose modules its bundler
+ * must build again and will not build on its own (the dependents an
+ * invalidation found stale, a registry change's file, a plan hit that
+ * failed validation, a compile every attempt of which was overtaken). A
+ * path stays until a host takes it. `held`: stale only because a file it
+ * read was removed (a host may wait for a file to appear before it builds
+ * the module again).
+ */
+export class StaleSets {
+  private readonly byEnv = new Map<string, Map<string, boolean>>()
+
+  add(env: string, path: string, held = false): void {
+    let set = this.byEnv.get(env)
+    if (!set) {
+      set = new Map()
+      this.byEnv.set(env, set)
+    }
+    const was = set.get(path)
+    set.set(path, was === undefined ? held : was && held)
+  }
+
+  /** Reads and empties the environment's set; the held paths stay unless `held`. */
+  take(env: string, opts: { held?: boolean } = {}): Array<string> {
+    const set = this.byEnv.get(env)
+    if (!set) {
+      return []
+    }
+    const out: Array<string> = []
+    for (const [path, held] of set) {
+      if (!held || opts.held === true) {
+        out.push(path)
+        set.delete(path)
+      }
+    }
+    if (set.size === 0) {
+      this.byEnv.delete(env)
+    }
+    return out
+  }
+
+  /** Whether the environment's set holds a path (held ones included). */
+  has(env: string): boolean {
+    return this.byEnv.has(env)
+  }
+
+  /** A removed file: no environment builds its modules again. */
+  remove(path: string): void {
+    for (const [env, set] of this.byEnv) {
+      set.delete(path)
+      if (set.size === 0) {
+        this.byEnv.delete(env)
+      }
+    }
+  }
+
+  /** An environment that compiles nothing more (`releaseEnvironment`). */
+  release(env: string): void {
+    this.byEnv.delete(env)
+  }
+
+  /** Sizes for `compilerStats()`. */
+  stats(): { stalePaths: number; staleHeld: number } {
+    let stalePaths = 0
+    let staleHeld = 0
+    for (const set of this.byEnv.values()) {
+      stalePaths += set.size
+      for (const held of set.values()) {
+        staleHeld += held ? 1 : 0
+      }
+    }
+    return { stalePaths, staleHeld }
   }
 }

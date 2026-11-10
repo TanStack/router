@@ -1232,8 +1232,15 @@ describe('attempts that are overtaken or throw', () => {
     expect(out!.diagnostics).toContainEqual(
       expect.objectContaining({ code: 'compile-overtaken' }),
     )
-    // the last attempt read the factory before the third flip: a save of
-    // the file as it is now (a formatter) is a change of what it read
+    // its module is built again once the files it read settle (the
+    // consumer's stale set)
+    expect(host.caches.stale.take('client')).toEqual(['/app/consumer.ts'])
+    // the last attempt read the factory before the third flip: the next
+    // change of what it read reports it
+    host.write(
+      '/app/factory-inner.ts',
+      `${FACTORY('createClientOnlyFn')}// formatted\n`,
+    )
     const res = await invalidate(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
@@ -1400,12 +1407,15 @@ describe('attempts that are overtaken or throw', () => {
     )
     const validated = host.compile('/app/consumer.ts', planners)
     await validating.promise
-    // meanwhile the file is touched (same text) and another request republishes it
+    // meanwhile the file is removed and written back (same text), and
+    // another request republishes it
+    delete host.files['/app/consumer.ts']
     await invalidate(
       host.caches,
-      { path: '/app/consumer.ts', kind: 'change' },
+      { path: '/app/consumer.ts', kind: 'unlink' },
       host,
     )
+    host.write('/app/consumer.ts', CONSUMER)
     await invalidate(
       host.caches,
       { path: '/app/other-2.ts', kind: 'add' },
