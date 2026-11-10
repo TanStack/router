@@ -645,6 +645,54 @@ export class RenderTree {
   }
 
   /**
+   * The first edit of this tree under original text `[from, to)` that the
+   * renderer copies as is: a gap, between the edits it applies, of the range
+   * `[start, end)` it renders (`Renderer.renderRange`). Copied text applies
+   * every edit of the output under it, so an edit found here would be lost
+   * (only a compiler bug gets here: an owner copying the left part of its
+   * claim, whose placeholder sorts first and ends `topLevelWithin`). Not lost:
+   * `exclude` (a claim its owner renders), the edits enclosing the rendered
+   * range (the edit whose body it is, a claim around it) and the inserts at
+   * the copy's start (they precede the edit whose body renders); an insert at
+   * `to` belongs to the text after it.
+   */
+  editUnderCopy(
+    from: number,
+    to: number,
+    start: number,
+    end: number,
+    exclude: TreeEdit | null,
+  ): TreeEdit | null {
+    const edits = this.edits
+    let lo = 0
+    let hi = edits.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (edits[mid]!.range.start < from) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    for (let i = lo; i < edits.length; i++) {
+      const e = edits[i]!
+      if (e.range.start >= to) {
+        return null
+      }
+      if (
+        e === exclude ||
+        (e.range.start === e.range.end
+          ? e.range.start === from
+          : e.range.start <= start && e.range.end > end)
+      ) {
+        continue
+      }
+      return e
+    }
+    return null
+  }
+
+  /**
    * Whether the original byte at `offset` renders in no output text (erased
    * by an edit). With `until`, only edits enclosing `until` are consulted
    * (does the text at `until`'s position render?). Claim placeholders are

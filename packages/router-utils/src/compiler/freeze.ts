@@ -13,6 +13,7 @@ import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { EditBand, compareEditOrder } from './rewrite'
+import { invariantViolated } from './self-checks'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -23,6 +24,8 @@ import type {
   Segment,
 } from './plan'
 import type { OutputDecl, Placement } from './reach'
+import type { Diagnostic } from './diagnostics'
+import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
@@ -37,7 +40,12 @@ import type {
 } from './rewrite'
 import type { Node } from 'yuku'
 
-export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
+/** `report`: the diagnostic of a violated invariant (only when the run reports it: `self-checks.ts`). */
+export function freezePlan(
+  plan: AnalysisPlan,
+  revision: string,
+  report: (v: InvariantViolation) => Diagnostic,
+): EmitPlan {
   const placement = plan.placement ?? plan.resolve()
   const { analysis } = plan
   const code = analysis.source.code
@@ -156,10 +164,13 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
       planners: plan.facts,
     },
     dependencies: [],
-    diagnostics: plan.diagnostics.map((d) => ({
-      ...d,
-      range: d.range ? { ...d.range } : undefined,
-    })),
+    diagnostics: [
+      ...plan.diagnostics.map((d) => ({
+        ...d,
+        range: d.range ? { ...d.range } : undefined,
+      })),
+      ...(renderer.violation !== undefined ? [report(renderer.violation)] : []),
+    ],
     sideEffects,
   }
 }
@@ -827,6 +838,8 @@ function isAmbientValueDeclaration(node: Node): boolean {
  */
 class Renderer {
   tree!: RenderTree
+  /** The first violated invariant (only when the run reports it: `self-checks.ts`). */
+  violation: InvariantViolation | undefined
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
@@ -909,6 +922,22 @@ class Renderer {
     // what the edit left (a removed `const local = 1;` before `(mk)()`)
     let afterEdit = false
     const sliceTo = (to: number) => {
+      // Safety net (R127): copied text applies every edit of the output
+      // under it; an edit it would lose is a compiler bug, and the output
+      // would ship the text that edit replaces. It exists to catch compiler
+      // bugs and can go once we trust the compiler's reliability.
+      if (this.violation === undefined) {
+        const lost = this.tree.editUnderCopy(pos, to, start, end, exclude)
+        if (lost !== null) {
+          this.violation = invariantViolated({
+            effect:
+              'part of the module would be copied without the changes the compiler makes to it',
+            detail: `render: ${this.output} copies the original text of [${pos}, ${to}) over an edit of ${lost.by} at [${lost.range.start}, ${lost.range.end})`,
+            range: { start: lost.range.start, end: lost.range.end },
+            severity: 'error',
+          })
+        }
+      }
       if (!afterEdit) {
         out.push({ k: 'slice', start: pos, end: to })
         return

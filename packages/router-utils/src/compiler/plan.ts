@@ -26,6 +26,7 @@ import type { ModuleAnalysis, Tier1 } from './analysis'
 import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
 import type { DerivedQuery, SourceIdentity } from './identity'
+import type { InvariantViolation } from './self-checks'
 import type { SymbolId, SymbolTable } from './symbols'
 import type { RegionId, RegionKind, UnitId } from './units'
 import type {
@@ -611,8 +612,12 @@ export class AnalysisPlan implements PlanContext {
     return out
   }
 
-  freeze(revision: string): EmitPlan {
-    return freezePlan(this, revision)
+  /** `report`: the diagnostic of a violated invariant (`self-checks.ts`). */
+  freeze(
+    revision: string,
+    report: (v: InvariantViolation) => Diagnostic,
+  ): EmitPlan {
+    return freezePlan(this, revision, report)
   }
 }
 
