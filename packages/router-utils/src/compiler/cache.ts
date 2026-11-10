@@ -481,8 +481,8 @@ export class PlanCache {
    * The memo is good for one `fileSetVersion` (a file appearing or
    * disappearing, a `package.json` changing) and dropped as one at the next
    * (`resolutionsAt`): the plans' resolution fingerprints have the same
-   * authority and no other. A `tsconfig` `paths` edit moves neither: the
-   * bundler's resolver keeps its old answer until a restart too.
+   * authority and no other. A `tsconfig` edit moves it too
+   * (`fileSetVersion`); the bundler's own aliases need a restart.
    */
   private readonly resolutions = new Map<string, ResolutionMemo>()
   private resolvedAt = -1

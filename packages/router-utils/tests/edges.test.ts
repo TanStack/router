@@ -715,13 +715,18 @@ describe('unresolved resolutions (J6.13)', () => {
     expect(host.caches.plans.get('client')!.get(key('/app/a.ts'))).toBeNull()
   })
 
-  // `imports` and `exports` decide what a specifier resolves to: the answers
-  // of the memo and the plans' resolutions don't outlive a package.json edit.
+  // `imports` and `exports` decide what a specifier resolves to, as a
+  // tsconfig's `paths` do: the answers of the memo and the plans'
+  // resolutions don't outlive an edit of either.
   it.each([
     ['change', '/app/package.json', true],
     ['add', '/app/package.json', true],
+    ['change', '/app/tsconfig.json', true],
+    ['change', '/app/tsconfig.app.json', true],
+    ['change', '/app/jsconfig.json', true],
     ['change', '/app/other.ts', false],
     ['change', '/app/my-package.json', false],
+    ['change', '/app/my-tsconfig.json', false],
   ] as const)(
     'a %s of %s re-asks the resolver: %s',
     async (kind, path, again) => {
