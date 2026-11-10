@@ -180,4 +180,36 @@ self.onmessage = () => {
     },
     timeout,
   )
+
+  test(
+    'a worker reaching a .server file through a pattern import fails the build, naming the file',
+    async () => {
+      const built = await buildStart({
+        ...config,
+        files: {
+          'src/server/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+`,
+          'src/worker.ts': `const modules = import.meta.webpackContext('./server', { regExp: /\\.ts$/ })
+self.onmessage = () => {
+  self.postMessage(modules.keys().map((key) => modules(key).secret()))
+}
+`,
+          'src/entry.ts': `export const ready = true
+`,
+        },
+        start: { importProtection: { behavior: 'mock' } },
+      }).catch((error: unknown) => error)
+      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+      const error = built as StartBuildError
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/server/db.server.ts',
+        root: error.root,
+      })
+      expect(
+        error.violations.map((v) => path.relative(error.root, v.importer)),
+      ).toEqual([path.join('src', 'server', 'db.server.ts')])
+    },
+    timeout,
+  )
 })
