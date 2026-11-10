@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
+import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 // Main's tests of features that are not compilers (Start manifest, sitemap,
@@ -30,6 +32,53 @@ const aloneTests = [
 const builtPackage = new RegExp(
   `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
 )
+
+/**
+ * The slow-tier files the other platforms run (`test:integration:smoke`,
+ * `.github/workflows/compiler-platforms.yml`): whole files, so a test
+ * renamed inside one stays in the set. Paths relative to `tests/`; a file
+ * renamed or deleted fails every Vitest run until this list names it again.
+ */
+const smokeTests = [
+  'integration/importProtection/build.test.ts',
+  'integration/start-compose-project-path.test.ts',
+  'integration/start-build-unparsed-module.test.ts',
+]
+if (process.env.VITEST) {
+  const testsDir = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'tests',
+  )
+  for (const file of smokeTests) {
+    if (!existsSync(path.join(testsDir, file))) {
+      throw new Error(
+        `vite.config.ts: the smoke test file tests/${file} does not exist; update \`smokeTests\``,
+      )
+    }
+  }
+}
+
+/** The slow tier (`test:integration`): real builds, Rsbuild dev servers, child Node runs and browsers. */
+const integrationProject = {
+  extends: true,
+  test: {
+    name: 'integration',
+    // A test process keeps its modules (and its browser) across test
+    // files; the setup file gives each file the environment it
+    // started with (see `test-scope-setup`)
+    isolate: false,
+    include: ['integration/**/*.test.ts'],
+    exclude: [...configDefaults.exclude, 'integration/pages/**', ...aloneTests],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    // The tests import this package's built public entries
+    // (`@tanstack/start-plugin-core/vite`, `/rsbuild`): Node loads
+    // them, as it loads an installed package, so the plugin and the
+    // loaders Rspack loads from the same `dist` share one module
+    // instance.
+    server: { deps: { external: [builtPackage] } },
+  },
+} satisfies TestProjectInlineConfiguration
 
 const config = defineConfig({
   test: {
@@ -78,30 +127,15 @@ const config = defineConfig({
           typecheck: { enabled: true },
         },
       },
+      integrationProject,
       {
-        // Slow tier (`test:integration`): real builds, Rsbuild dev servers,
-        // child Node runs and browsers.
-        extends: true,
+        // `smokeTests` alone, as the slow tier runs them
+        ...integrationProject,
         test: {
-          name: 'integration',
-          // A test process keeps its modules (and its browser) across test
-          // files; the setup file gives each file the environment it
-          // started with (see `test-scope-setup`)
-          isolate: false,
-          include: ['integration/**/*.test.ts'],
-          exclude: [
-            ...configDefaults.exclude,
-            'integration/pages/**',
-            ...aloneTests,
-          ],
-          testTimeout: 30_000,
-          hookTimeout: 30_000,
-          // The tests import this package's built public entries
-          // (`@tanstack/start-plugin-core/vite`, `/rsbuild`): Node loads
-          // them, as it loads an installed package, so the plugin and the
-          // loaders Rspack loads from the same `dist` share one module
-          // instance.
-          server: { deps: { external: [builtPackage] } },
+          ...integrationProject.test,
+          name: 'integration-smoke',
+          include: smokeTests,
+          exclude: [...configDefaults.exclude],
         },
       },
       {
