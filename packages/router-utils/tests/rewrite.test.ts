@@ -402,6 +402,43 @@ describe('claims, homes and substitution', () => {
     )
   })
 
+  it('finds the claim on exactly a range, of any region kind, and none on a range inside it', () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const Route = createFileRoute('/')({
+        loader: wrapServer(() => 1),
+      })
+    `)
+    const { ctx } = engine(code)
+    const value = rangeOf(code, 'wrapServer(() => 1)')
+    const hoisted = ctx.names.alloc('tsrHoisted')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range: value },
+        { k: 'text', parts: ['\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'after-header' },
+      home: 'auto',
+      by: 'hoist',
+    })
+    ctx.rewrites.claim({
+      region: ctx.region(value, 'nested-chain'),
+      owner,
+      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+      by: 'hoist',
+      subject: 'a hoisted call',
+    })
+    // (the planner that would claim the same text as an option value asks first)
+    expect(ctx.rewrites.claimOn(value)).toMatchObject({
+      by: 'hoist',
+      subject: 'a hoisted call',
+    })
+    expect(ctx.rewrites.claimOn(rangeOf(code, '() => 1'))).toBeUndefined()
+  })
+
   it('homes the hoist in the chunk when only the chunk roots the placeholder', () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

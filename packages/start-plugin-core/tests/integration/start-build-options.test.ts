@@ -443,7 +443,8 @@ ${callByIdExports}`,
         `${requestsOfPrelude}const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
-return requestsOf((options) => route.options.loader(options))`,
+const { loader } = route.options
+return requestsOf((options) => (typeof loader === 'function' ? loader : loader.handler)(options))`,
       )
     ).result as Array<{ url: string }>
     expect(requests).toHaveLength(1)
@@ -453,25 +454,38 @@ return requestsOf((options) => route.options.loader(options))`,
       )
     ).result
   }
-  test(
-    'router.codeSplittingOptions: a loader that is a server fn declared before the route, split into its own chunk, runs on the server',
-    async () => {
+  // (the fix the error below gives, for each shape)
+  test.each([
+    { name: 'a loader', loader: 'loaderFn' },
+    {
+      name: "an object-form loader's handler",
+      loader: '{ handler: loaderFn }',
+    },
+  ])(
+    'router.codeSplittingOptions: $name that is a server fn declared before the route, split into its own chunk, runs on the server',
+    async ({ loader }) => {
       expect(
         await splitServerFnLoader(
           `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
-          'loaderFn',
+          loader,
         ),
       ).toBe('MARK_LOADER_FN')
     },
     timeout,
   )
-  test(
-    'router.codeSplittingOptions: a loader that is a server fn written in place, split into its own chunk, fails the build at the server fn',
-    async () => {
-      const module = routeModule(
-        '',
-        `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
-      )
+  test.each([
+    {
+      name: 'a loader',
+      loader: `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
+    },
+    {
+      name: "an object-form loader's handler",
+      loader: `{ handler: createServerFn().handler(async () => 'MARK_LOADER_FN') }`,
+    },
+  ])(
+    'router.codeSplittingOptions: $name that is a server fn written in place, split into its own chunk, fails the build at the server fn',
+    async ({ loader }) => {
+      const module = routeModule('', loader)
       const error = await buildSplitLoader(module).then(
         () => expect.fail('the build succeeded'),
         (e: unknown) => e,

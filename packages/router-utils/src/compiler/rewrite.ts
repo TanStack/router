@@ -127,6 +127,13 @@ interface RegionClaim {
   owner: GenUnitId
   placeholder: ReadonlyArray<Frag>
   by: string
+  /**
+   * What the claimed text is, in a message's words (`a server function
+   * written in place, …`): a later planner that would claim exactly the
+   * same text reports it at that text instead (two claims on one range have
+   * no order).
+   */
+  subject?: string
 }
 
 const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
@@ -230,6 +237,17 @@ export class RewriteSet {
     }
     this.claims.set(claim.region, claim)
     this.bump()
+  }
+
+  /** The claim on exactly `range`, if any (a second claim there is a conflict: `RegionClaim.subject`). */
+  claimOn(range: Range): RegionClaim | undefined {
+    for (const claim of this.claims.values()) {
+      const r = this.regions.get(claim.region).range
+      if (r.start === range.start && r.end === range.end) {
+        return claim
+      }
+    }
+    return undefined
   }
 
   /** Rewrites one reference, context-aware (shorthand properties, import/export names, JSX tags, assignment targets). */

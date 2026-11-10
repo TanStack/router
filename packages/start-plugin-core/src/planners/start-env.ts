@@ -1726,6 +1726,8 @@ function hoist(
       owner,
       placeholder: [text({ sym: hoisted.sym })],
       by,
+      subject:
+        'a server function written in place, which TanStack Start moves to the module top level',
     })
   }
   return { sym: hoisted.sym, anchor, commit }
