@@ -23,7 +23,7 @@ import type {
   GenUnitId,
   GeneratedUnit,
   OutputId,
-  RenderTree,
+  OutputView,
 } from '../rewrite'
 import type { Fallback, PlacementInput } from '../reach'
 
@@ -121,8 +121,8 @@ export interface ClusterGraph {
   mutableReaders: Set<ClusterId>
   /** `ordered-effect`: a relocated read (a claimed option value) of state something writes after it, or at an unknown time, keeps the option in place. */
   fallbacks: Array<Fallback>
-  /** The render tree of an output (built once per output). */
-  treeOf: (o: OutputId) => RenderTree
+  /** What an output renders of the source (`OutputView`). */
+  viewOf: (o: OutputId) => OutputView
   /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** Whether a unit survives in the env module (its statement is not erased there). */
@@ -219,7 +219,7 @@ export function clusterRange(
   cl: Cluster,
 ): { start: number; end: number } | undefined {
   const r = cl.regions[0]
-  return r === undefined ? undefined : input.t1.regions.get(r).range
+  return r === undefined ? undefined : input.rewrites.regions.get(r).range
 }
 
 /**
@@ -313,33 +313,26 @@ const importsOnly = (g: GeneratedUnit): boolean =>
 
 export function buildClusters(input: PlacementInput): ClusterGraph {
   const { t1, rewrites } = input
-  const { units, regions, refs, items } = t1
+  const { units, refs, items } = t1
+  const { regions } = rewrites
   const regionCount = regions.regions.length
   const gens = rewrites.generated
   // union-find members: regions by id, then generated units
   const memberOfGen = (g: GenUnitId) => regionCount + g
   const uf = new UnionFind(regionCount + gens.length)
 
-  const trees = new Map<OutputId, RenderTree>()
-  const treeOf = (o: OutputId): RenderTree => {
-    let t = trees.get(o)
-    if (!t) {
-      t = rewrites.tree(o)
-      trees.set(o, t)
-    }
-    return t
-  }
-  const envTree = treeOf('env')
+  const viewOf = (o: OutputId): OutputView => rewrites.view(o)
+  const envView = viewOf('env')
   const isLive = (ref: ClassifiedRef, o: OutputId) =>
-    !treeOf(o).isErasedAt(ref.range.start)
+    !viewOf(o).isErasedAt(ref.range.start)
   /**
    * Whether a statement stays: an edit that starts with it may keep the rest
    * (`createIsomorphicFn().server(f)()` keeps `f` and the call), and only an
    * edit that leaves nothing of it but its `;` removes it.
    */
   const statementSurvives = ({ start, end }: Range): boolean =>
-    !envTree.isErasedAt(start) ||
-    !envTree.isErasedRange({
+    !envView.isErasedAt(start) ||
+    !envView.isErasedRange({
       start,
       end: input.code.charCodeAt(end - 1) === 59 ? end - 1 : end,
     })
@@ -348,7 +341,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     const item = items[unit.item]!
     return unit.range.start === item.range.start
       ? statementSurvives(item.nodeRange)
-      : !envTree.isErasedAt(unit.range.start)
+      : !envView.isErasedAt(unit.range.start)
   }
 
   // ---- owner index: refs by owning region --------------------------------
@@ -426,7 +419,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (u.augments.length === 0) {
       continue
     }
-    const live = !envTree.isErasedAt(items[u.item]!.nodeRange.start)
+    const live = !envView.isErasedAt(items[u.item]!.nodeRange.start)
     for (const s of u.augments) {
       addWrite({
         sym: s,
@@ -886,7 +879,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     regionWrittenSyms,
     mutableReaders,
     fallbacks,
-    treeOf,
+    viewOf,
     isLive,
     unitSurvives,
     // built on first use: most modules never ask (candidates, static outputs)

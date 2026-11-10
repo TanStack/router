@@ -46,7 +46,8 @@ export function assignHomes(
   roots: Roots,
 ): Homes {
   const { t1, rewrites, outputs, routeModule } = input
-  const { units, regions, symbols } = t1
+  const { units, symbols } = t1
+  const { regions } = rewrites
   const { clusters, clusterOfRegion, clusterOfGen, clusterOfSym } = graph
   const { liveEnv, derivedReach, movable, pinned, copied } = roots
   const pure = (c: ClusterId) => !clusters[c]!.effectful
@@ -334,7 +335,7 @@ export function assignHomes(
       const uses: Array<RegionId | null> = []
       for (const ref of t1.refs.valueRefsOf(w.sym)) {
         if (READ_KINDS.has(ref.kind) && liveInEnv(ref)) {
-          uses.push(t1.ownerOf(ref))
+          uses.push(regions.ownerOf(ref))
         }
       }
       for (const other of graph.writesOfSym.get(w.sym) ?? []) {

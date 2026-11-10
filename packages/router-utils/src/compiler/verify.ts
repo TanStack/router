@@ -30,7 +30,7 @@ export function verifyPlan(
 ): void {
   const source = new SourceText(code)
   const { t1 } = plan
-  const envTree = plan.rewrites.tree('env')
+  const envView = plan.rewrites.view('env')
   const problems: Array<string> = []
   const outputs = new Map<
     OutputId,
@@ -159,7 +159,7 @@ export function verifyPlan(
     }
     // (c) an output holds nothing its own rewrite tree erases (a handler
     // body erased in every output of the client never reaches a chunk)
-    const erased = plan.rewrites.tree(id).erasedParts()
+    const erased = plan.rewrites.view(id).erasedParts()
     for (const seg of recipe.segments) {
       if (seg.k !== 'slice') {
         continue
@@ -210,7 +210,7 @@ export function verifyPlan(
   // claim (Hydrate children inside a statement render in their chunk).
   const placement = plan.placement
   const claimedRanges = [...plan.rewrites.claims.values()].map(
-    (c) => t1.regions.get(c.region).range,
+    (c) => plan.regions.get(c.region).range,
   )
   const inClaimed = (start: number, end: number) =>
     claimedRanges.some((r) => start >= r.start && end <= r.end)
@@ -219,7 +219,7 @@ export function verifyPlan(
       continue
     }
     const { start, end } = t1.items[u.item]!.nodeRange
-    if (envTree.isErasedAt(start)) {
+    if (envView.isErasedAt(start)) {
       continue
     }
     const cluster = placement?.clusterOfRegion.get(u.region)

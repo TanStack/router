@@ -267,7 +267,7 @@ function takenElsewhere(
     }
   }
   for (const claim of ctx.rewrites.claims.values()) {
-    const { start, end } = ctx.t1.regions.get(claim.region).range
+    const { start, end } = ctx.rewrites.regions.get(claim.region).range
     if (
       refs.some(
         (r) =>

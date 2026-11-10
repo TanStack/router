@@ -210,7 +210,7 @@ export function includeAndImport(
       }
     }
     const liveInEnv = (ref: { range: { start: number } }) =>
-      !graph.treeOf('env').isErasedAt(ref.range.start)
+      !graph.viewOf('env').isErasedAt(ref.range.start)
     for (const cl of clusters) {
       if (
         holders[cl.id]! > 1 &&

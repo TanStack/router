@@ -120,10 +120,9 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   // placeholder (the options object, or an option's object declared by
   // itself): no effects between them, so a minifier inlines it there
   const firstReader = new Map<string, Unit>()
-  const { regions, units } = ctx.t1
+  const { units } = ctx.t1
   for (const d of plan.decisions) {
-    const region = regions.innermostAt(d.region.start, d.region.end)
-    const unit = region === null ? null : regions.unitOf(region)
+    const unit = ctx.t1.unitAt(d.region)
     const prev = firstReader.get(d.groupKey)
     if (
       unit !== null &&

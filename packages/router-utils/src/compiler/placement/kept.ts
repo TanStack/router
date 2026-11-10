@@ -26,7 +26,8 @@ export function keptDeclarations(
 ): Array<KeptDeclaration> {
   const { t1, outputs } = input
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
-  const { units, regions, symbols } = t1
+  const { units, symbols } = t1
+  const { regions } = input.rewrites
   const { clusters, clusterOfRegion, clusterOfSym } = graph
   const { cancelled, derivedReach, envRoots, movable, remaining } = roots
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
@@ -244,6 +245,7 @@ function stateReaders(
 ): void {
   const { t1, outputs } = input
   const { units, refs, symbols } = t1
+  const { regions } = input.rewrites
   const { clusterOfRegion, clusterOfSym } = graph
   const { liveEnv, derivedReach } = roots
   const mutated = new Set<SymbolId>()
@@ -259,7 +261,8 @@ function stateReaders(
     return
   }
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
-  const clusterOf = (ref: ClassifiedRef) => clusterOfRegion.get(t1.ownerOf(ref))
+  const clusterOf = (ref: ClassifiedRef) =>
+    clusterOfRegion.get(regions.ownerOf(ref))
   for (const u of units) {
     const c = clusterOfRegion.get(u.region)
     if (
@@ -282,7 +285,7 @@ function stateReaders(
           clusterOfSym.get(ref.sym) === c &&
           !u.declares.includes(ref.sym) &&
           liveInEnv(ref) &&
-          t1.ownerOf(ref) === u.region,
+          regions.ownerOf(ref) === u.region,
       )
     if (read === undefined) {
       continue

@@ -153,7 +153,7 @@ export function seedRoots(
     const g = gens[claim.owner]!
     // (a unit for the env module's readers owns no claim)
     const o = (g.home === 'auto' ? 'env' : g.home) as OutputId
-    if (!graph.treeOf(o).hasClaim(claim.region)) {
+    if (!graph.viewOf(o).hasClaim(claim.region)) {
       deadGens.add(claim.owner)
     }
   }
@@ -263,7 +263,7 @@ export function seedRoots(
 
   // ---- provenance: clusters reachable in G0 from erased reads -------------
   const erasedSeeds = new Set<ClusterId>()
-  for (const part of graph.treeOf('env').erasedParts()) {
+  for (const part of graph.viewOf('env').erasedParts()) {
     for (const ref of refs.refsIn(part)) {
       // a write names the binding too: an initialiser only an erased
       // handler assigns is orphaned with it
