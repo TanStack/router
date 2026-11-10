@@ -4,7 +4,7 @@
  * validation, and the dependents index. Only plain data is retained.
  */
 import { pathOfId, planKeyString } from './identity'
-import { ownEntry } from './strings'
+import { exportKeyOf, summaryDigest } from './summary'
 import { approxBytes, cacheDisabled } from './stats'
 import type { OutputId } from './rewrite'
 import type { PlanKey } from './identity'
@@ -18,7 +18,7 @@ export type DependencyFingerprint =
   | { kind: 'summary'; canonicalId: string; digest: string | null }
   /**
    * The exports a plan read of one module, one record however many names it
-   * read: per name, its `ModuleSummary.exportKeys` entry (null: the module
+   * read: per name, its `exportKeyOf` answer (null: the module
    * has no such export); `keys` is null when the module has none of them (a
    * star target a lookup passed through). `stars`: the module's `export *`
    * list, when a lookup of a name it does not export itself went through it.
@@ -118,17 +118,17 @@ export async function fingerprintCurrent(
   src: FingerprintSource,
 ): Promise<boolean> {
   switch (fp.kind) {
-    case 'summary':
-      return ((await src.summary(fp.canonicalId))?.digest ?? null) === fp.digest
+    case 'summary': {
+      const summary = await src.summary(fp.canonicalId)
+      return (summary ? summaryDigest(summary) : null) === fp.digest
+    }
     case 'exports': {
       const summary = await src.summary(fp.canonicalId)
       const stars = fp.stars
       return (
         summary !== null &&
         fp.names.every(
-          (n, i) =>
-            (ownEntry(summary.exportKeys, n) ?? null) ===
-            (fp.keys?.[i] ?? null),
+          (n, i) => exportKeyOf(summary, n) === (fp.keys?.[i] ?? null),
         ) &&
         (stars === undefined ||
           (summary.stars.length === stars.length &&
@@ -302,7 +302,7 @@ class DependentsIndex {
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
   private readonly byId = new Map<string, DependencyFingerprint>()
-  /** What lookups read of a module: name → `exportKeys` entry (null: no such export), and its `export *` list if they walked it. */
+  /** What lookups read of a module: name → `exportKeyOf` answer (null: no such export), and its `export *` list if they walked it. */
   private readonly exportReads = new Map<string, ExportReads>()
   /** The dependents-index buckets of `entries` and `exportReads`. */
   private readonly indexKeys = new Set<string>()
@@ -322,7 +322,7 @@ export class DependencyLedger {
     this.indexPath(fingerprintIndexKey(fp))
   }
 
-  /** A lookup read export `name` of a module (`key`: its `exportKeys` entry, null when it has none). */
+  /** A lookup read export `name` of a module (`key`: its `exportKeyOf` answer, null when it has none). */
   recordExport(canonicalId: string, name: string, key: string | null): void {
     const { keys } = this.readsOf(canonicalId)
     if (!keys.has(name)) {

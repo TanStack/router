@@ -253,7 +253,7 @@ text compiles waits for it and emits its own output from the result.
   take: a file of the same name with another extension, or of a directory a resolution went into; a resolution that
   found an unlinked file is stale without asking) and returns
   `{ evicted, dependents }`, which the host hard-invalidates in the bundler. A summary change invalidates an importer
-  only when what it read changed: the digest of an export it looked up (`ModuleSummary.exportKeys`; an absent name
+  only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per
   module it looked names up in: the names and their keys, or none when the module exports none of them (a barrel's

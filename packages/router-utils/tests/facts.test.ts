@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
+import { summaryDigest } from '../src/compiler/summary'
 import type { RecognizerTable } from '../src/compiler'
 import type { RawFacts } from '../src/compiler/facts'
 
@@ -592,7 +593,7 @@ describe('facts of a file that stops parsing', () => {
     cache.markStale('/app/a.ts')
     const broken = await cache.get('/app/a.ts', 'client')
     expect(broken.targetFacts.digest).toBe(parsed.targetFacts.digest)
-    expect(broken.summary?.digest).toBe(parsed.summary?.digest)
+    expect(summaryDigest(broken.summary!)).toBe(summaryDigest(parsed.summary!))
     expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
     // parsing again with other exports: the facts follow the file
     files['/app/a.ts'] = 'export const b = 1\n'
