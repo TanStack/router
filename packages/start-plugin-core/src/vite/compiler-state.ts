@@ -20,6 +20,7 @@ import { DEV_CLIENT_ENTRY, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { StartCompilerSession } from '../compiler/session'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { createVirtualWaits } from './virtual-waits'
+import type { ClientRebuild } from './client-rebuild'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type {
   CompileOutcome,
@@ -57,6 +58,8 @@ export interface StartCompilerPluginOptions {
   getConfig: GetConfigFn
   /** The generator's registry (route modules by file), shared with the generator plugin. */
   routerPluginContext: RouterPluginContext
+  /** `build --watch`: the client's running rebuild, shared with the start manifest. */
+  clientRebuild: ClientRebuild
   /** The app's resolved entries (import protection's trace roots). */
   resolveEntries: () => {
     entryPaths: {
@@ -190,12 +193,10 @@ export class ViteCompilerState {
    * client build references, which it reads from the client's compiles.
    * `build --watch`: the files of the client's module graph (else none),
    * which the server's resolver watches (an edit only the client bundles
-   * rebuilds the server too), and it waits for the client build a file event
-   * started (`clientRebuild`, until its `buildEnd`): the environments rebuild
-   * at once.
+   * rebuilds the server too), and it waits for the client rebuild a file
+   * event started (`opts.clientRebuild`): the environments rebuild at once.
    */
   clientFiles: Array<string> | null = null
-  clientRebuild: { ended: Promise<void>; end: () => void } | null = null
 
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to

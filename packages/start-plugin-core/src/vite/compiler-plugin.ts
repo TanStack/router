@@ -300,8 +300,6 @@ function envCompilerPlugins(
       }
       state.requireSession().start.registry.retain(env.name, graph)
       state.clientFiles = [...files]
-      state.clientRebuild?.end()
-      state.clientRebuild = null
     },
     /**
      * A build that writes its bundle (not a scan: plugin-rsc analyses the
@@ -445,11 +443,7 @@ function envCompilerPlugins(
         return
       }
       if (environment.mode === 'build' && env.type === 'client') {
-        if (!state.clientRebuild) {
-          let end!: () => void
-          const ended = new Promise<void>((resolve) => (end = resolve))
-          state.clientRebuild = { ended, end }
-        }
+        state.opts.clientRebuild.begin()
       }
       // the file's path once, as every module id and compiler key holds it
       // (Rolldown reports its watcher's native path: backslashes on Windows)
