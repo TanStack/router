@@ -294,7 +294,8 @@ text compiles waits for it and emits its own output from the result.
   kept until a host takes them (`take(env, { held })`; `held`: stale only because a file they read was removed). The
   other writers: a registry change (the file, in every environment that has compiled), a plan hit that fails
   validation (the file, so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect: `invalidate()` checks every fact, and as `lazyHits` when only a resolution or a route-registry digest did, which the next request asks again by design), and a compile
-  every attempt of which was overtaken. Today the call also returns `{ evicted, dependents }`, which the hosts
+  every attempt of which was overtaken. Start's Rsbuild host takes its environments' sets at `finishMake`; the call
+  also returns `{ evicted, dependents }`, which the router's webpack-family host and the Vite hosts still
   hard-invalidate in the bundler. A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export

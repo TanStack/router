@@ -43,9 +43,10 @@ const bounded = [
 describe('Rsbuild dev: created and deleted files', () => {
   // 200 modules defining server fns are created with their import, deleted
   // while imported (the importer fails), and their import removed, 20 at a
-  // time. Afterwards every collection is as small as before the first one,
-  // and the stale sets are empty: each compilation took what it was to
-  // build again.
+  // time, after a first round of 20 (the modules the first server fns bring,
+  // compiled once). Afterwards every collection is as small as after the
+  // first round, and the stale sets are empty: each compilation took what it
+  // was to build again.
   // Bug: the stale sets filled and no Rsbuild hook took them.
   // Source: F3-6a (Fable review 2026-11-10; design 3 §5).
   test(
@@ -59,8 +60,8 @@ describe('Rsbuild dev: created and deleted files', () => {
       const stats = (): Record<string, number> =>
         compilerStats()['start:rsbuild'] ?? {}
       expect(server.errors).toEqual([])
-      const before = stats()
-      for (let round = 0; round < 10; round++) {
+      let before: Record<string, number> = {}
+      for (let round = 0; round <= 10; round++) {
         const names = Array.from({ length: 20 }, (_, i) => `f${round * 20 + i}`)
         await server.edit({
           ...Object.fromEntries(
@@ -75,6 +76,9 @@ describe('Rsbuild dev: created and deleted files', () => {
         expect(server.errors).not.toEqual([])
         await server.edit({ 'src/entry.ts': entry([]) })
         expect(server.errors).toEqual([])
+        if (round === 0) {
+          before = stats()
+        }
       }
       const after = stats()
       expect({

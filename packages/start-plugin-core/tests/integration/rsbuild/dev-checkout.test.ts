@@ -124,6 +124,7 @@ describe('Rsbuild dev: a dependent saved while its dependency is invalidated', (
     { name: '300 importers of the dependency', importers: 300 },
   ])(
     'still re-plans its importers ($name)',
+    { timeout },
     async ({ importers }) => {
       const writer = writeOnWatchRun()
       const server = await startRsbuildStartDevServer({
@@ -143,7 +144,6 @@ describe('Rsbuild dev: a dependent saved while its dependency is invalidated', (
       expect(output).not.toContain('MARK_A')
       expect(output).not.toContain('MARK_PAGE')
     },
-    timeout,
   )
 
   // The same checkout with `l.ts` saved in place (truncated, then written),
