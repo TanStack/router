@@ -80,6 +80,22 @@ export const Route = createFileRoute('/')({
     expect(await route.isLazy('loader')).toBe(true)
     expectNoProblems(await route.diagnostics())
   })
+
+  it('are read through a const naming another', async () => {
+    const route = await loadRoute(
+      `${head}const groupings = [['loader'], ['component']] as const
+const chosen = groupings as any
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: chosen,
+  loader: () => 'data',
+  component: () => <p>page</p>,
+})
+`,
+      { fresh: true },
+    )
+    expect(await route.isLazy('loader')).toBe(true)
+    expectNoProblems(await route.diagnostics())
+  })
 })
 
 describe('plugin options with invalid groupings', () => {
