@@ -80,7 +80,7 @@ export const routerConfigs: Array<Config> = (
         label: `${framework} ${envType} ${label}`,
         router: `@tanstack/${framework}-router`,
         file,
-        compile: (code, mode) => {
+        compile: async (code, mode) => {
           const host = new Host({
             [file]: code,
             '/app/src/routes/lib.ts': LIB_TS,
@@ -96,7 +96,7 @@ export const routerConfigs: Array<Config> = (
               autoCodeSplitting: true,
             },
           )
-          return collect(file, (id) =>
+          const outputs = await collect(file, (id) =>
             compileModule(
               {
                 id,
@@ -117,6 +117,12 @@ export const routerConfigs: Array<Config> = (
               host.caches,
             ),
           )
+          // a throwaway host per compile: what its compiles left stale has no
+          // later compile to take it (the per-file stale-path check)
+          for (const env of host.caches.plans.keys()) {
+            host.caches.stale.take(env, { held: true })
+          }
+          return outputs
         },
       }),
     ),
