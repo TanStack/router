@@ -278,3 +278,47 @@ test.each(unterminated.map((row, i) => [row.name, i] as const))(
   },
   60_000,
 )
+
+// A route option value may be a parenthesized sequence: the option is what
+// the last expression gives, and the ones before it run as the value is
+// evaluated. The split component's chunk evaluates the whole value, in
+// order, when it loads (it was a chunk that did not parse: `const X = a, …`).
+test.each(['vite', 'rspack'] as const)(
+  'a component option written as a parenthesized sequence is split and renders (%s)',
+  async (bundler) => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: {
+        'routes/__root.tsx': rootRoute,
+        'routes/index.tsx': `${head}import { track } from '../track'
+export const Route = createFileRoute('/')({
+  component: (track('MARK_SEQUENCE_HEAD'), () => <p>MARK_SEQUENCE</p>),
+})
+`,
+        'track.ts': `export function track(name: string) {
+  ;((globalThis as any).tracked ??= []).push(name)
+}
+`,
+        'entry.ts': clientMountEntry,
+      },
+    })
+    const run = await app.run(
+      `const atLoad = [...(globalThis.tracked ?? [])]
+await entry.mount(entry.Route.options.component)
+return { atLoad, after: globalThis.tracked }`,
+    )
+    expect({
+      component: app.where('MARK_SEQUENCE'),
+      head: app.where('MARK_SEQUENCE_HEAD'),
+      html: run.html,
+      tracked: run.result,
+    }).toEqual({
+      component: 'lazy',
+      head: 'lazy',
+      html: '<div id="root"><p>MARK_SEQUENCE</p></div>',
+      tracked: { atLoad: [], after: ['MARK_SEQUENCE_HEAD'] },
+    })
+  },
+  120_000,
+)
