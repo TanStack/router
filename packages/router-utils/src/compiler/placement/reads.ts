@@ -1,20 +1,23 @@
 /**
- * Placement, stage 2: what each cluster reads, per output. A cluster's
- * reads in an output are what the walk of its members' text there renders
- * (`OutputView.walk`): the references of the source it renders, the symbols
- * the generated text and the placeholders it renders name; its successors
- * are the clusters those reads lead to. Memoised per output: a pure
- * function of the cluster and the output's tree.
+ * Placement, stage 2: what each cluster reads, per output, and what each
+ * member's evaluation runs. A cluster's reads in an output are what the
+ * walk of its members' text there renders (`OutputView.walk`): the
+ * references of the source it renders, the symbols the generated text and
+ * the placeholders it renders name; its successors are the clusters those
+ * reads lead to. Memoised per output: a pure function of the cluster and
+ * the output's tree. What a member runs when it evaluates (`runs`) is the
+ * same walk of its text in the env module, read for its references.
  */
+import { visitRuns } from '../analysis'
 import { RewriteSet } from '../rewrite'
-import { NEED_KINDS } from './clusters'
+import { callsWhenEvaluated } from '../units'
+import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
-import type { RegionId } from '../units'
+import type { EvaluatedCalls, RegionId, UnitId } from '../units'
 import type {
   Frag,
-  GenFrag,
   OutputId,
   OutputView,
   PlannerEdit,
@@ -23,6 +26,7 @@ import type {
   WalkVisitor,
 } from '../rewrite'
 import type { PlacementInput } from '../reach'
+import type { Range } from '../header'
 
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
@@ -56,11 +60,28 @@ export interface ReadIndex {
     stopAt?: ReadonlySet<ClusterId> | null,
     readsOutput?: ((c: ClusterId) => OutputId) | null,
   ) => Set<ClusterId>
+  /**
+   * What evaluating region `r` in the env module runs (`visitRuns`, the one
+   * definition): the references of its text there (a region nested in it
+   * that the env module does not claim is its text, a claimed one
+   * evaluates with its owner), the functions it passes to a call and the
+   * bodies it may call. A function declaration evaluates nothing. `visit`
+   * sees each reference with where it runs; true ends the walk (the
+   * result).
+   */
+  runs: (r: RegionId, visit: RunVisitor) => boolean
+  /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
+  clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
 }
+
+/** Sees a reference an evaluation runs, with where it runs; true ends the walk. */
+export type RunVisitor = (ref: ClassifiedRef, at: number) => boolean
 
 interface MemberReads {
   syms: Array<SymbolId>
   children: Array<RegionId>
+  /** In the env module (live): the references of the text the walk renders (what `runs` reads; the children's are theirs). */
+  refs: Array<ClassifiedRef> | null
 }
 
 /**
@@ -144,10 +165,8 @@ export function readIndex(
     }
     visit(regions.module, null)
     for (const e of rewrites.inserts) {
-      const id = regions.insertOwnerAt(e.range.start)
-      if (id !== null) {
-        push(inserts, id, e)
-      }
+      // (`RewriteSet` refused an insert without an owner)
+      push(inserts, regions.insertOwnerAt(e.range.start)!.region, e)
     }
     // where each unit is: a merge of the units with the module's nodes (both
     // in source order); a unit no node holds has none inside or around it
@@ -180,24 +199,11 @@ export function readIndex(
     Array<MemberReads | undefined>
   >()
   const deadMemberReads: Array<MemberReads | undefined> = []
-  /** Pushes the module-level reads of a body (its `SymRef`s and reference targets, as `symRefsOf`). */
-  const bodyReads = (
-    body: ReadonlyArray<Frag | GenFrag>,
-    into: MemberReads,
-  ) => {
-    for (const f of body) {
-      if (f.k === 'text') {
-        for (const p of f.parts) {
-          if (typeof p !== 'string') {
-            into.syms.push(p.sym)
-          }
-        }
-      } else if (f.k === 'ref') {
-        into.syms.push('sym' in f.to ? f.to.sym : f.to.member[0])
-      }
-    }
-  }
-  /** Pushes the references of `list` (sorted) starting in `[s, e)`, those live in `live` only when given. */
+  /**
+   * Pushes the reads of the references of `list` (sorted) starting in
+   * `[s, e)`, those live in `live` only when given; and, in the env module,
+   * the references themselves (`MemberReads.refs`, every kind).
+   */
   const refReads = (
     list: ReadonlyArray<ClassifiedRef>,
     s: number,
@@ -205,6 +211,7 @@ export function readIndex(
     live: OutputId | null,
     into: MemberReads,
   ) => {
+    const refs = into.refs
     let lo = 0
     let hi = list.length
     while (lo < hi) {
@@ -220,7 +227,13 @@ export function readIndex(
       if (ref.range.start >= e) {
         break
       }
-      if (NEED_KINDS.has(ref.kind) && (live === null || isLive(ref, live))) {
+      if (live !== null && !isLive(ref, live)) {
+        continue
+      }
+      if (refs !== null) {
+        refs.push(ref)
+      }
+      if (NEED_KINDS.has(ref.kind)) {
         into.syms.push(ref.sym)
       }
     }
@@ -248,7 +261,7 @@ export function readIndex(
   let partial = false
   /** What a body standing for node `n` reads (its slices walked, its references among `owned`). */
   const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
-    bodyReads(body, into)
+    symRefsOf(body, into.syms)
     for (const f of body) {
       if (f.k === 'slice') {
         view.walk(n, f.range.start, f.range.end, reader)
@@ -287,7 +300,7 @@ export function readIndex(
     },
     insert: (e) => {
       if (!partial || !view.isErasedAt(e.range.start)) {
-        bodyReads(e.body, into)
+        symRefsOf(e.body, into.syms)
       }
     },
     member: (n) => {
@@ -302,7 +315,7 @@ export function readIndex(
         // its text is its owner's: what stands at its place is read here
         const place = view.placeOf(n)
         if (place !== null && !(partial && view.isErasedAt(n.start))) {
-          bodyReads(place, into)
+          symRefsOf(place, into.syms)
         }
         return true
       }
@@ -380,7 +393,7 @@ export function readIndex(
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
       if (RewriteSet.inScope(e.scope, o)) {
-        bodyReads(e.body, into)
+        symRefsOf(e.body, into.syms)
       }
     }
     pushChildren(r.id, into)
@@ -396,7 +409,10 @@ export function readIndex(
         // claimed only for other outputs
         if (view.isClaimed(n)) {
           const place = view.placeholderAt(n)!
-          bodyReads('owner' in place ? place.placeholder : place.body, into)
+          symRefsOf(
+            'owner' in place ? place.placeholder : place.body,
+            into.syms,
+          )
         } else {
           refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, null, into)
           textReads(nested, o, into)
@@ -406,12 +422,12 @@ export function readIndex(
       }
       for (const e of n.edits ?? []) {
         if (RewriteSet.inScope(e.scope, o)) {
-          bodyReads(e.body, into)
+          symRefsOf(e.body, into.syms)
         }
       }
       for (const p of n.places ?? []) {
         if (RewriteSet.inScope(p.scope, o)) {
-          bodyReads(p.body, into)
+          symRefsOf(p.body, into.syms)
         }
       }
     }
@@ -434,7 +450,11 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const into: MemberReads = { syms: [], children: [] }
+    const into: MemberReads = {
+      syms: [],
+      children: [],
+      refs: live && o === 'env' && m < regionCount ? [] : null,
+    }
     if (m < regionCount) {
       if (live) {
         regionReads(regions.get(m), o, into)
@@ -443,7 +463,7 @@ export function readIndex(
       }
     } else {
       // (a claimed region it names reads itself: the same cluster)
-      bodyReads(gens[m - regionCount]!.body, into)
+      symRefsOf(gens[m - regionCount]!.body, into.syms)
     }
     byMember[m] = into
     return into
@@ -577,5 +597,83 @@ export function readIndex(
     return included
   }
 
-  return { clusterReads, successors, reach }
+  // ---- what an evaluation runs: the references of its reads' walk --------
+  /**
+   * Per region: the references of its text in the env module, those of the
+   * unclaimed regions nested in it with them (its successors there: their
+   * text evaluates with it). The env module's walk of its reads gives them.
+   */
+  const textOfRegion: Array<ReadonlyArray<ClassifiedRef> | undefined> = []
+  function regionText(id: RegionId): ReadonlyArray<ClassifiedRef> {
+    const hit = textOfRegion[id]
+    if (hit !== undefined) {
+      return hit
+    }
+    const own = memberReads(id, 'env', true)
+    let text: ReadonlyArray<ClassifiedRef> = own.refs!
+    if (own.children.length > 0) {
+      text = [...text]
+      for (const c of own.children) {
+        ;(text as Array<ClassifiedRef>).push(...regionText(c))
+      }
+    }
+    textOfRegion[id] = text
+    return text
+  }
+  /** Per unit: what its evaluation calls (`callsWhenEvaluated`). */
+  const callsOfUnit: Array<EvaluatedCalls | undefined> = []
+  const unitCalls = (u: UnitId): EvaluatedCalls =>
+    (callsOfUnit[u] ??= callsWhenEvaluated(t1.units[u]!.node))
+  /**
+   * What a region nested in a unit calls when it evaluates: the unit's
+   * calls inside it, but for those inside a function it holds that only a
+   * call around it receives (`createServerFn().handler(() => …)`: the
+   * handler's region evaluates a function, the call around it may run it).
+   */
+  const callsOfRegion: Array<EvaluatedCalls | null | undefined> = []
+  const regionCalls = (r: Region, unit: UnitId): EvaluatedCalls | null => {
+    const hit = callsOfRegion[r.id]
+    if (hit !== undefined) {
+      return hit
+    }
+    const all = unitCalls(unit)
+    const { start, end } = r.range
+    const inside = (x: Range) => x.start >= start && x.end <= end
+    const held = all.callbacks.filter((f) => inside(f) && !inside(f.call))
+    const own = (x: Range) =>
+      inside(x) && !held.some((f) => x.start >= f.start && x.end <= f.end)
+    const calls = all.calls.filter(own)
+    const result: EvaluatedCalls | null =
+      calls.length === 0
+        ? null
+        : {
+            calls,
+            callbacks: all.callbacks.filter((f) => own(f) && inside(f.call)),
+          }
+    callsOfRegion[r.id] = result
+    return result
+  }
+  const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
+  function runs(id: RegionId, visit: RunVisitor): boolean {
+    const r = regions.get(id)
+    let calls: EvaluatedCalls | null = null
+    if (r.unit !== null) {
+      const all = unitCalls(r.unit)
+      calls = all.calls.length > 0 ? all : null
+    } else {
+      const unit = regions.unitAt(r.range.start, r.range.end)?.unit
+      calls = unit === undefined || unit === null ? null : regionCalls(r, unit)
+    }
+    return visitRuns(t1, regionText(id), calls, bodyOf, visit)
+  }
+  function clusterRuns(c: ClusterId, visit: RunVisitor): boolean {
+    for (const r of clusters[c]!.regions) {
+      if (runs(r, visit)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  return { clusterReads, successors, reach, runs, clusterRuns }
 }

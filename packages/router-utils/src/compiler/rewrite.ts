@@ -345,24 +345,33 @@ export class RegionTable {
   }
 
   /**
-   * The region whose text holds an insert at `at` (the walk's rule): the
-   * innermost one strictly holding the position, else the unit starting
-   * there.
+   * The one owner of an insert at `at`: the text holding its position, the
+   * innermost node strictly holding it. Its `level` renders the insert (the
+   * innermost marked such node, the module's root when none: `OutputView.walk`)
+   * and its `region` reads what the insert names (the innermost region
+   * strictly holding the position, else the unit holding the byte there: an
+   * insert at a unit's start is the unit's). A position no unit holds (a
+   * statement's keyword, between statements, the module's end) has none:
+   * `RewriteSet` refuses an insert there.
    */
-  insertOwnerAt(at: number): RegionId | null {
+  insertOwnerAt(at: number): { level: RangeNode; region: RegionId } | null {
     const unit = this.unitAt(at, at)
     if (unit === null) {
       return null
     }
-    let found = unit.id
+    let region = unit.id
+    let level = this.root
     let node = this.root
     for (;;) {
       const c = node.children[lastStartingBy(node.children, at - 1)]
       if (c === undefined || at >= c.end) {
-        return found
+        return { level, region }
       }
       if (c.region !== null) {
-        found = c.region
+        region = c.region
+      }
+      if (c.marked) {
+        level = c
       }
       node = c
     }
@@ -691,6 +700,11 @@ export class RewriteSet {
   private envView: OutputView | undefined
   private owners: { version: number; owners: ReadonlySet<GenUnitId> } | null =
     null
+  /** The level each insert renders at (`insertLevel`), for one version of the set. */
+  private levels: {
+    version: number
+    of: Map<PlannerEdit, RangeNode>
+  } | null = null
 
   constructor(readonly regions: RegionTable) {}
 
@@ -776,6 +790,11 @@ export class RewriteSet {
   private add(edit: Edit): void {
     const e = { ...edit, n: this.nextEdit++ }
     if (edit.range.end <= edit.range.start) {
+      if (this.regions.unitAt(edit.range.start, edit.range.start) === null) {
+        throw new Error(
+          `conflict: an insert of ${edit.by} at ${edit.range.start} stands in no statement's text (no unit holds its position): nothing would read what it names`,
+        )
+      }
       // (after the inserts at its position: in call order)
       const inserts = this.inserts
       let lo = 0
@@ -896,6 +915,20 @@ export class RewriteSet {
 
   private bump(): void {
     this.changes++
+  }
+
+  /** The node whose level renders an insert: its owner's (`RegionTable.insertOwnerAt`). */
+  insertLevel(e: PlannerEdit): RangeNode {
+    if (this.levels === null || this.levels.version !== this.version) {
+      this.levels = { version: this.version, of: new Map() }
+    }
+    let level = this.levels.of.get(e)
+    if (level === undefined) {
+      // (`add` refused an insert without an owner)
+      level = this.regions.insertOwnerAt(e.range.start)!.level
+      this.levels.of.set(e, level)
+    }
+    return level
   }
 
   /** Bumped by every change of the set (`OutputView` is read for one version). */
@@ -1242,19 +1275,15 @@ export class OutputView {
     const children = level.children
     const inserts = this.set.inserts
     const skipAt = opts.skipAt ?? null
-    // the inserts rendering at this level of the span are at `[a, lastAt]`
-    // (from `a`: the cursors start there), but at `skipAt` and, inside the
-    // module, at the level's ends (they belong to the level around); with
-    // `includeEnd`, those at `b` too where it is no end of the level
+    // the inserts rendering at this level of the span are those it owns
+    // (`RegionTable.insertOwnerAt`) at `[a, lastAt]` (from `a`: the cursors
+    // start there), but at `skipAt`; with `includeEnd`, those at `b` too
+    // where it is no end of the level
     const lastAt =
       opts.includeEnd === true && (root || b < level.end) ? b : b - 1
-    const ownStart = root ? -1 : level.start
-    const ownEnd = root ? -1 : level.end
     let ci =
       children.length === 0 ? 0 : Math.max(0, lastStartingBy(children, a))
     let ii = inserts.length === 0 ? 0 : firstFrom(inserts, a)
-    /** Where what this level walked ends: an insert before it is inside it. */
-    let cover = a
     for (;;) {
       let c: RangeNode | undefined
       while (ci < children.length) {
@@ -1283,11 +1312,9 @@ export class OutputView {
         ii++
         const at = ins.range.start
         if (
-          at >= cover &&
           at <= lastAt &&
           at !== skipAt &&
-          at !== ownStart &&
-          at !== ownEnd &&
+          this.set.insertLevel(ins) === level &&
           RewriteSet.inScope(ins.scope, output)
         ) {
           if (at > st.pos) {
@@ -1307,7 +1334,6 @@ export class OutputView {
           )
         }
         this.walkLevel(n, Math.max(a, n.start), Math.min(b, n.end), v, opts, st)
-        cover = Math.min(b, n.end)
         continue
       }
       if (n.region !== null && v.member !== undefined) {
@@ -1317,7 +1343,6 @@ export class OutputView {
         }
         if (v.member(n)) {
           st.pos = n.end
-          cover = n.end
           continue
         }
       }
@@ -1331,7 +1356,6 @@ export class OutputView {
       } else {
         this.walkLevel(n, n.start, n.end, v, opts, st)
       }
-      cover = n.end
     }
   }
 

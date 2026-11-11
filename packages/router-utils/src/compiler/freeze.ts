@@ -423,10 +423,14 @@ function renderEnv(
   let skipAt: number | null = null
   /** Something other than source text rendered before (the walk's `afterEdit`). */
   let afterEdit = false
+  // an insert at the start of a statement placement rewrites is that
+  // statement's text (its owner is a unit of it): it renders with what the
+  // statement keeps, never with the text before it
+  const rewrittenAt = new Set(rewritten.map((p) => p.start))
   for (const p of pieces) {
     afterEdit = renderer.renderSpan(root, pos, p.start, null, null, out, {
       skipAt,
-      includeEnd: true,
+      includeEnd: !rewrittenAt.has(p.start),
       afterEdit,
     })
     renderer.renderPiece(p.start, p.end, p.body, p.gen, out)

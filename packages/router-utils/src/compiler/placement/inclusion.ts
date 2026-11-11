@@ -241,31 +241,34 @@ export function includeAndImport(
         continue
       }
       for (const c of included.get(o)!) {
-        for (const r of clusters[c]!.regions) {
-          for (const ref of graph.ownedRefs.get(r) ?? []) {
-            if (
-              !graph.atLoad(ref) ||
-              !READ_KINDS.has(ref.kind) ||
-              !symbols.isModuleLevel(ref.sym) ||
-              !graph.isLive(ref, o)
-            ) {
-              continue
-            }
-            const d = clusterOfSym.get(ref.sym)
-            if (
-              d !== undefined &&
-              d !== c &&
-              !clusters[d]!.copyable &&
-              clusters[d]!.kind !== 'import' &&
-              home.get(d) === 'env'
-            ) {
-              return invariantViolated({
-                effect: `a split module may read ${namesOf(input, clusters[d]!) ?? 'a value'} before it exists`,
-                detail: `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
-                range: ref.range,
-              })
-            }
+        let found: InvariantViolation | undefined
+        reads.clusterRuns(c, (ref) => {
+          if (
+            !READ_KINDS.has(ref.kind) ||
+            !symbols.isModuleLevel(ref.sym) ||
+            !graph.isLive(ref, o)
+          ) {
+            return false
           }
+          const d = clusterOfSym.get(ref.sym)
+          if (
+            d !== undefined &&
+            d !== c &&
+            !clusters[d]!.copyable &&
+            clusters[d]!.kind !== 'import' &&
+            home.get(d) === 'env'
+          ) {
+            found = invariantViolated({
+              effect: `a split module may read ${namesOf(input, clusters[d]!) ?? 'a value'} before it exists`,
+              detail: `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
+              range: ref.range,
+            })
+            return true
+          }
+          return false
+        })
+        if (found !== undefined) {
+          return found
         }
       }
     }

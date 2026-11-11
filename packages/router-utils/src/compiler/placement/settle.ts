@@ -4,7 +4,7 @@
  * needer (the movable test) and the extracted exports are one monotone
  * fixed point over the final placement; nothing is rooted after it.
  */
-import { isDuplicable } from './clusters'
+import { NEED_KINDS, isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Candidate, Seeds } from './roots'
@@ -69,25 +69,31 @@ export function derivedNeeds(
  * module's body: such a read there would run before the binding's
  * initialisation, a TDZ the user never wrote. A read inside a function the
  * evaluation may call (`const config = build()`, `o.m()`, `apply(read)`)
- * happens then too (`graph.loadReads`). A copyable cluster is duplicated
- * into the reading output instead and is no such read.
+ * happens then too (`ReadIndex.runs`). A copyable cluster is duplicated
+ * into the reading output instead and is no such read. (A cluster `c`
+ * reads that is not kept and reads what is kept stays in the env module
+ * itself, `settleRoots`' static outputs, and then is kept.)
  */
 export function readsKeptEagerly(
+  input: PlacementInput,
   graph: ClusterGraph,
+  reads: ReadIndex,
   roots: Pick<Roots, 'liveEnv' | 'envRoots'>,
   c: ClusterId,
 ): boolean {
-  const { clusters } = graph
-  const kept = (d: ClusterId) =>
-    roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned
-  // what `c` reads when it evaluates (`graph.loadReads`: its own reads that
-  // run at load, then those of the functions the load may call); a copied
-  // cluster is duplicated into the reading output
-  return graph.loadReads(c, (ref, d) => {
-    if (d === undefined || d === c || clusters[d]!.copyable) {
-      return 'skip'
+  const { clusters, clusterOfSym } = graph
+  const { symbols } = input.t1
+  return reads.clusterRuns(c, (ref) => {
+    if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
+      return false
     }
-    return kept(d) ? 'stop' : undefined
+    const d = clusterOfSym.get(ref.sym)
+    return (
+      d !== undefined &&
+      d !== c &&
+      !clusters[d]!.copyable &&
+      (roots.liveEnv.has(d) || roots.envRoots.has(d) || clusters[d]!.envPinned)
+    )
   })
 }
 
@@ -96,11 +102,12 @@ export function settleRoots(
   graph: ClusterGraph,
   reads: ReadIndex,
   seeds: Seeds,
+  stateReaders: ReadonlySet<ClusterId>,
 ): Roots {
   const { t1, outputs, isBenign } = input
   const { units, refs, symbols } = t1
   const { regions } = input.rewrites
-  const { clusters, clusterOfRegion } = graph
+  const { clusters, clusterOfRegion, clusterOfSym } = graph
   const { envRoots, pinned, derivedRoots, candidates } = seeds
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
@@ -113,7 +120,7 @@ export function settleRoots(
   const pure = (c: ClusterId) => !clusters[c]!.effectful
   const needs = (c: ClusterId) => derivedNeeds(input, derivedReach, c)
   const keepsEagerly = (c: ClusterId) =>
-    readsKeptEagerly(graph, { liveEnv, envRoots }, c)
+    readsKeptEagerly(input, graph, reads, { liveEnv, envRoots }, c)
 
   /**
    * The output whose tree decides the live reads of cluster `c` reached from
@@ -168,7 +175,7 @@ export function settleRoots(
     cl.kind === 'declaration' &&
     !cl.exported &&
     !envRoots.has(cl.id) &&
-    (cl.effectful || graph.mutableReaders.has(cl.id))
+    (cl.effectful || stateReaders.has(cl.id))
 
   /** The only needer `cl` may move to (one derived output, and no ordered-evaluation constraint), else why not. */
   function movableTo(cl: Cluster): OutputId | Pin {
@@ -219,20 +226,21 @@ export function settleRoots(
       }
       return { reason: 'written', at: unit.range.start }
     }
-    // what it reads (or assigns) when it evaluates (`graph.loadReads`: its
-    // own references that run at load, then those of the functions the load
-    // may call, which run where it evaluates, not where they are written)
+    // what it reads (or assigns) when it evaluates (`ReadIndex.runs`: its
+    // own references that run, then those of the functions it may call,
+    // which run where it evaluates, not where they are written)
     let pin: Pin | undefined
-    graph.loadReads(cl.id, (ref, d) => {
-      if (!liveInEnv(ref) || d === undefined || d === cl.id) {
-        return 'skip'
+    reads.clusterRuns(cl.id, (ref, at) => {
+      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
+        return false
       }
-      const at = ref.eager
-        ? ref.range.start
-        : Math.min(ref.range.start, cl.start)
+      const d = clusterOfSym.get(ref.sym)
+      if (d === undefined || d === cl.id) {
+        return false
+      }
       if (graph.mutatedOutside(ref.sym, at, cl.id)) {
         pin = { reason: 'state', read: ref.sym }
-        return 'stop'
+        return true
       }
       // (c) imports (read lazily: the chunk loads after the route module,
       // whoever else reads them), pure module clusters, or a `const` the
@@ -244,9 +252,9 @@ export function settleRoots(
         !(liveEnv.has(d) && symbols.isConst(ref.sym))
       ) {
         pin = { reason: 'reads', read: ref.sym }
-        return 'stop'
+        return true
       }
-      return undefined
+      return false
     })
     if (pin !== undefined) {
       return pin
@@ -424,7 +432,7 @@ export function settleRoots(
     if (carriedStop === null) {
       carriedStop = new Set(candidates.keys())
       for (const cl of clusters) {
-        if (cl.effectful || cl.envPinned || graph.mutableReaders.has(cl.id)) {
+        if (cl.effectful || cl.envPinned || stateReaders.has(cl.id)) {
           carriedStop.add(cl.id)
         }
       }
@@ -444,7 +452,7 @@ export function settleRoots(
     hit = false
     if (
       !clusters[c]!.effectful &&
-      !graph.mutableReaders.has(c) &&
+      !stateReaders.has(c) &&
       !claimHolders.has(c)
     ) {
       const stop = new Set(stopSet())

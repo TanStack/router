@@ -62,9 +62,12 @@ emits its own output. Nothing depends on transform order.
   each unit is, and what each region's text holds of the tree, once per plan.
 - **One walk per output** (`OutputView.walk`): source text enters an output only through it. A node renders its
   place (`placeholderOf`: a placeholder, or a kept claim's) or its text (`editOf`: its edit's body, or its source
-  with the nodes inside it); a node that renders as its source is walked through, and an insert belongs to the
-  innermost node strictly holding its position (one at a claimed region's edge renders once, beside the
-  placeholder; one at a unit's start is the unit's). A slice that cuts a node rewritten in that output fails the
+  with the nodes inside it); a node that renders as its source is walked through. An insert has one owner, the
+  text holding its position (`RegionTable.insertOwnerAt`): the innermost node strictly holding it, whose level
+  renders it, and that text's region, else the unit holding the byte there, which reads what it names (one at a
+  claimed region's edge renders once, beside the placeholder; one at a unit's start is the unit's: it renders and
+  is read where the unit is). An insert where no unit holds the position (a statement's keyword, between
+  statements, the module's end) is refused: nothing would read what it names. A slice that cuts a node rewritten in that output fails the
   compile in every mode (it would copy the text the node replaces). The renderer (`freeze.ts`), placement's reads
   (`placement/reads.ts`) and the erased parts are the walk's visitors; the point questions (whether a byte renders,
   the claims an output keeps) climb the tree from a position's innermost range asking each node the same two
@@ -75,8 +78,9 @@ emits its own output. Nothing depends on transform order.
   statements it includes and its generated units in order, export glue. The env module: the walk's text between
   its pieces, which are the statements placement rewrites (their recipes), the generated units at their anchors, the
   glue imports after the header and the export glue at the end. At one position a planner's insert renders first
-  (with the text before it, even when the statement there is dropped), then a statement's line end, the glue
-  imports, the generated units, a statement's `;`, the statement. A planner's node that a piece's position cuts
+  (with the text before it), then a statement's line end, the glue imports, the generated units, a statement's
+  `;`, the statement; at a statement placement rewrites, the insert is the statement's and renders with what it
+  keeps. A planner's node that a piece's position cuts
   fails the compile, as a slice cutting it does. Whether a byte renders in the env module is the tree's answer,
   else the rewritten statement's.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
@@ -161,15 +165,16 @@ extends Z`, directly or through what they carry) share the module of the first i
   cluster writes the binding after it, or at an unknown time (inside a function; and code that evaluates with
   the module but runs later: an async or generator function invoked where it is written, an instance field's
   initialiser, `t1.runsLaterAt`). "After it" compares positions where the code runs: a read inside a function
-  the load calls runs where the first such call is (`runsAtLoad`), and for a cluster that may move, where it
-  evaluates. What a cluster reads at load
-  has one definition (`ClusterGraph.loadReads`): its eager reads, the reads inside any function a unit that
-  calls something may run (a function it passes directly, `['x'].map((k) => n + k)`, or calls; not a method
-  nested in an object argument, `defineComponent({ setup() {} })`), and those
-  of the declarations such reads reach, transitively (`n++`, `n += 1` and `n = v` count as reads: a cluster
-  whose load assigns state, `init()` writing `mode`, is ordered like one reading it); a claimed region's text
-  evaluates where its owner lands, and an option value that calls something (`withPrefix(Page)`) reads what that
-  call may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
+  an evaluation calls runs where that evaluation reaches it. What an evaluation runs has one definition, asked
+  of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
+  module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
+  owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
+  and the text of the module's declarations its running references name, transitively (`n++`, `n += 1` and
+  `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
+  reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
+  holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
+  option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
+  may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
   Such a reader never moves to a lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }`

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_RECOGNIZER } from '../src/compiler'
+import { walk } from 'yuku'
+import {
+  EMPTY_RECOGNIZER,
+  parseModule,
+  unwrapExpression,
+} from '../src/compiler'
 import {
   MemoryHost,
+  compileLog,
   dedent,
   envInfo,
   findRouteOptions,
@@ -10,12 +16,16 @@ import {
   toyHydratePlanner,
   toySplitPlanner,
 } from './helpers'
+import type { Node } from 'yuku'
 import type {
   EnvInfo,
   Planner,
   RecognizerTable,
   SymbolId,
 } from '../src/compiler'
+
+// every compile of this file is logged: the last test reads their reports
+compileLog.enabled = true
 
 async function split(
   code: string,
@@ -4679,6 +4689,281 @@ describe('one mutation model: eager reads of state something writes', () => {
   })
 })
 
+// What a declaration's evaluation reads, writes and calls has one
+// definition, asked of each declaration (design 2, P1): its own text that
+// runs (unclaimed regions inside it included), the callbacks it passes to a
+// call, and, when it calls anything, the bodies of the module's functions
+// those name. Source: review of 2026-11-10, F1 (F1-1, F1-2, F1-3a, F1-5a,
+// Q2).
+describe('what an evaluation runs: one walk for every rule', () => {
+  const files = {
+    '/app/lib.ts':
+      'export const open = () => ({})\nexport const wrap = (x: unknown) => x\nexport const define = (x: unknown) => x\nexport const f = (x: unknown) => x\n',
+  }
+  async function compile(
+    code: string,
+    planners: Array<Planner> = [toySplitPlanner()],
+    env: EnvInfo = envInfo({ mode: 'build' }),
+  ) {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code, ...files } })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      { env },
+    )
+    return {
+      main,
+      env: main?.code ?? '',
+      chunk: chunk?.code ?? '',
+      kept: (main?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      ),
+    }
+  }
+
+  // F1-1: a binding a top-level `if` or `try` also assigns joins that
+  // statement, so the walk stopped at its cluster and never saw the write
+  it.each([
+    [
+      'a top-level if assigns it too',
+      'let seq = 0\nif (import.meta.env.DEV) { seq = 1000 }\nconst nextId = () => ++seq\nconst firstId = nextId()',
+      'firstId',
+      'seq',
+      'loader: () => nextId(),',
+    ],
+    [
+      'nothing else assigns it (control)',
+      'let seq = 0\nconst nextId = () => ++seq\nconst firstId = nextId()',
+      'firstId',
+      'seq',
+      'loader: () => nextId(),',
+    ],
+    [
+      'a top-level try assigns it too',
+      "import { open, wrap } from './lib'\nlet conn\ntry { conn = open() } catch { conn = null }\nconst reconnect = () => (conn = open())\nconst first = wrap(reconnect())",
+      'first',
+      'conn',
+      'loader: () => reconnect(),',
+    ],
+    [
+      'its initialiser assigns it (control)',
+      "import { open, wrap } from './lib'\nlet conn = open()\nconst reconnect = () => (conn = open())\nconst first = wrap(reconnect())",
+      'first',
+      'conn',
+      'loader: () => reconnect(),',
+    ],
+  ])(
+    'keeps a declaration whose load calls a function assigning module state in the route module when %s',
+    async (_, declarations, name, state, loader) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          ${loader}
+          component: () => ${name},
+        })
+      `)
+      const r = await compile(code)
+      expect(r.env).toMatch(new RegExp(`const ${name} = `))
+      expect(r.chunk).not.toMatch(new RegExp(`const ${name} = `))
+      expect(r.chunk).toContain(`import { ${name} } from '/app/route.tsx'`)
+      expect(r.kept).toMatchObject([
+        {
+          severity: 'warning',
+          code: 'eager-split:state',
+          range: { start: code.indexOf(`${name} = `) },
+        },
+      ])
+      expect(r.kept[0]!.message).toContain(`\`${state}\``)
+    },
+  )
+
+  // F1-5a: holding a function runs nothing, whoever else calls it at load
+  it('moves a holder of a function another declaration calls at load with the chunk', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrap } from './lib'
+      let cache
+      function getCached() { return (cache ??= wrap({})) }
+      const warm = getCached()
+      const api = { getCached }
+      export const Route = createFileRoute('/')({
+        loader: () => warm,
+        component: () => api,
+      })
+    `)
+    const r = await compile(code)
+    expect(r.env).toContain('const warm = getCached()')
+    expect(r.env).not.toContain('const api')
+    expect(r.chunk).toContain('const api = { getCached }')
+    expect(r.kept).toEqual([])
+  })
+
+  // F1-3a: a method nested in an object argument runs only when called,
+  // in an option value as in a declaration
+  it.each([
+    [
+      'written inline',
+      'let client\nfunction getClient() { return (client ??= {}) }',
+      'define({ setup() { return getClient() } })',
+    ],
+    [
+      'a const',
+      'let client\nfunction getClient() { return (client ??= {}) }\nconst Page = define({ setup() { return getClient() } })',
+      'Page',
+    ],
+  ])(
+    'splits an option value passing a method reading lazily written state to a call, %s',
+    async (_, declarations, value) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { define } from './lib'
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => getClient(),
+          component: ${value},
+        })
+      `)
+      const r = await compile(code)
+      expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+      expect(r.env).not.toContain('define({')
+      expect(r.chunk).toContain('define({ setup() { return getClient() } })')
+      expect(r.kept).toEqual([])
+    },
+  )
+
+  it('keeps an option value passing state something writes later to a call in place (ordered-effect, control)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrap } from './lib'
+      let n = 0
+      export function inc() { n++ }
+      export const Route = createFileRoute('/')({
+        component: wrap(n),
+      })
+    `)
+    const r = await compile(code)
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      notSplittable: 'component',
+      reasons: { component: 'ordered-effect' },
+    })
+    expect(r.env).toContain('component: wrap(n)')
+  })
+
+  // Q2: an unclaimed region inside a declaration (a planner's region left
+  // unclaimed, a Start `custom` region) is the declaration's text
+  it('reads an unclaimed region inside a declaration as the declaration text', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { f } from './lib'
+      let n = 0
+      export function inc() { n++ }
+      const x = f(n + 1)
+      export const Route = createFileRoute('/')({
+        component: () => x,
+      })
+    `)
+    const region: Planner = {
+      name: 'toy-region',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const start = ctx.analysis.source.code.indexOf('n + 1')
+        ctx.region({ start, end: start + 'n + 1'.length }, 'custom')
+      },
+    }
+    const r = await compile(code, [toySplitPlanner(), region])
+    expect(r.env).toContain('const x = f(n + 1)')
+    expect(r.chunk).not.toContain('f(n + 1)')
+    expect(r.kept).toMatchObject([
+      { code: 'eager-split:state', range: { start: code.indexOf('x = ') } },
+    ])
+  })
+
+  // a function passed to a call evaluates nothing itself: what reads state
+  // in it runs when the call around it calls it (a server fn's handler)
+  it.each([
+    ['a function passed to a call', '() => String(n)', null],
+    ['a call (control)', '(() => String(n))()', 'ordered-effect'],
+  ])(
+    'reports a region that is %s as observing lazily written state accordingly',
+    async (_, argument, reason) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { f } from './lib'
+        let n = 0
+        export function inc() { n++ }
+        export const job = f(${argument})
+        export const Route = createFileRoute('/')({ component: () => null })
+      `)
+      const region: Planner = {
+        name: 'toy-region',
+        tier: 1,
+        gate: () => true,
+        plan(ctx) {
+          const start = ctx.analysis.source.code.indexOf(argument)
+          const range = { start, end: start + argument.length }
+          ctx.region(range, 'custom')
+          ctx.setFacts('toy-region', {
+            fallback: ctx.fallbackAt(range)?.reason ?? null,
+          })
+        },
+      }
+      const r = await compile(code, [toySplitPlanner(), region])
+      expect(r.main?.facts.planners['toy-region']).toEqual({
+        fallback: reason,
+      })
+    },
+  )
+
+  // F1-2: an extracted export's module evaluates when something first
+  // imports it (with the chunk, once nothing imports the binding through
+  // the route file): a snapshot of state the route module's functions write
+  // would then see a later value. Design 2 step 2 fixes it.
+  const snapshot = dedent(`
+    import { createFileRoute } from 'toy-router'
+    let n = 0
+    export function inc() { n++ }
+    export const initial = [n]
+    export const Route = createFileRoute('/')({
+      component: () => { inc(); return initial },
+    })
+  `)
+  it.fails(
+    'keeps an exported snapshot of state an exported function writes in the route module in a build',
+    async () => {
+      const r = await compile(snapshot, [
+        toySplitPlanner({ extractExports: true }),
+      ])
+      expect(r.env).toContain('export const initial = [n]')
+      expect(r.env).not.toContain('export---initial')
+      expect(r.kept).toMatchObject([
+        {
+          code: 'eager-export:state',
+          range: { start: snapshot.indexOf('initial = ') },
+        },
+      ])
+    },
+  )
+
+  it.fails(
+    'places an exported snapshot of written state as dev does, in a build',
+    async () => {
+      const planners = [toySplitPlanner({ extractExports: true })]
+      const build = await compile(
+        snapshot,
+        planners,
+        envInfo({ mode: 'build' }),
+      )
+      const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
+      expect(build.env).toBe(dev.env)
+      expect(build.chunk).toBe(dev.chunk)
+      expect(build.kept).toEqual(dev.kept)
+    },
+  )
+})
+
 // A declaration only split code needs that the movable test keeps in the
 // route module (evaluation order, writes, eager reads) is reported once, at its
 // cause, positioned at the declaration and naming why; nothing is reported
@@ -5560,6 +5845,54 @@ describe('builder chains in a compile', () => {
       }
     }
   })
+
+  // A builder in a `const` and its one link is the inline chain spelled in
+  // two statements (spelling variants §7): the link writes the builder, a
+  // write with pure operands, not an opaque effect (R139). Design 2 step 4
+  // fixes it.
+  it.fails(
+    'compiles an exported server fn built on a const builder as the inline chain',
+    async () => {
+      const outputs = async (
+        declarations: string,
+        type: 'client' | 'server',
+      ) => {
+        const host = new MemoryHost({
+          files: { '/app/route.tsx': route(declarations) },
+          recognizer,
+        })
+        const planners = [
+          toySplitPlanner({ keys: ['component'], extractExports: true }),
+        ]
+        const env = envInfo({ mode: 'build', type, name: type })
+        const out: Array<string> = []
+        for (const id of [
+          '/app/route.tsx',
+          '/app/route.tsx?tsr-split=component',
+          '/app/route.tsx?tsr-split=export---fn',
+        ]) {
+          const o = await host.compile(id, planners, { env })
+          out.push(o?.code ?? '')
+          out.push(
+            ...(o?.diagnostics ?? []).map((d) => `${d.severity} ${d.code}`),
+          )
+        }
+        return out
+      }
+      const inline = 'export const fn = createServerFn().handler(async () => 1)'
+      const hoisted =
+        'const base = createServerFn()\nexport const fn = base.handler(async () => 1)'
+      for (const type of ['client', 'server'] as const) {
+        // the hoisted spelling's text, written as the inline chain
+        const hoistedOut = (await outputs(hoisted, type)).map((s) =>
+          s
+            .replace('const base = createServerFn()\n', '')
+            .replace('base.handler(', 'createServerFn().handler('),
+        )
+        expect(hoistedOut, type).toEqual(await outputs(inline, type))
+      }
+    },
+  )
 })
 
 describe('a statement an edit rewrites from its first byte', () => {
@@ -5785,5 +6118,157 @@ describe('generated units for the env module readers', () => {
         ]),
       ),
     ).rejects.toThrow(/reads only its own imports/)
+  })
+})
+
+/**
+ * What the evaluation of some module-level bindings may read, by name: a
+ * reference written apart from the compiler. The names their declarations
+ * and the top-level statements assigning them evaluate (a function nested
+ * in them only when it is passed to a call or called in place) and, once
+ * that text calls anything, every name in the module's declarations of
+ * those names, transitively.
+ */
+function evaluatedNames(
+  code: string,
+  subjects: ReadonlySet<string>,
+): Set<string> | null {
+  const parsed = parseModule(code, { lang: 'tsx', sourceType: 'module' })
+  if (!parsed.ok) {
+    return null
+  }
+  const declarations = new Map<string, Node>()
+  const evaluated: Array<Node> = []
+  for (const statement of parsed.file.program.body) {
+    const d =
+      statement.type === 'ExportNamedDeclaration' && statement.declaration
+        ? statement.declaration
+        : statement
+    if (
+      (d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') &&
+      d.id
+    ) {
+      declarations.set(d.id.name, d)
+    } else if (d.type === 'VariableDeclaration') {
+      for (const declarator of d.declarations) {
+        if (declarator.id.type === 'Identifier') {
+          declarations.set(declarator.id.name, declarator)
+        }
+      }
+    } else {
+      // a statement assigning a subject evaluates with it
+      let assigns = false as boolean
+      walk(d, {
+        enter: (n) => {
+          const target =
+            n.type === 'AssignmentExpression'
+              ? n.left
+              : n.type === 'UpdateExpression'
+                ? n.argument
+                : null
+          assigns ||= target?.type === 'Identifier' && subjects.has(target.name)
+        },
+      })
+      if (assigns) {
+        evaluated.push(d)
+      }
+    }
+  }
+  for (const name of subjects) {
+    const d = declarations.get(name)
+    if (d === undefined) {
+      return null
+    }
+    evaluated.push(d)
+  }
+  const names = new Set<string>()
+  let calls = false as boolean
+  const collect = (node: Node, whole: boolean) => {
+    const passed = new Set<Node>()
+    walk(node, {
+      enter: (n, w) => {
+        switch (n.type) {
+          case 'CallExpression':
+          case 'NewExpression':
+            calls = true
+            // (called in place: the callee, or the function of its
+            // `.call`/`.apply`/`.bind`)
+            for (const a of [n.callee, ...n.arguments]) {
+              const v = unwrapExpression(a)
+              passed.add(
+                v.type === 'MemberExpression' ? unwrapExpression(v.object) : v,
+              )
+            }
+            return
+          case 'TaggedTemplateExpression':
+            calls = true
+            return
+          case 'FunctionExpression':
+          case 'ArrowFunctionExpression':
+          case 'FunctionDeclaration':
+            if (!whole && n !== node && !passed.has(n)) {
+              w.skip()
+            }
+            return
+          case 'Identifier':
+            names.add(n.name)
+        }
+      },
+    })
+  }
+  for (const node of evaluated) {
+    collect(node, false)
+  }
+  if (calls) {
+    const seen = new Set<Node>(evaluated)
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const name of [...names]) {
+        const d = declarations.get(name)
+        if (d !== undefined && !seen.has(d)) {
+          seen.add(d)
+          collect(d, true)
+          grew = true
+        }
+      }
+    }
+  }
+  return names
+}
+
+// P4: a kept declaration's message names a binding its evaluation reads,
+// for every `state` and `reads` record this file's compiles report (F1-5b:
+// a holder of a function another declaration calls was said to use what
+// that function reads)
+describe('the binding a kept declaration is reported reading', () => {
+  it('is one its evaluation reads, in every report of this file', () => {
+    const wrong: Array<string> = []
+    let checked = 0
+    for (const { code, out } of compileLog.entries) {
+      for (const d of out?.diagnostics ?? []) {
+        if (d.code !== 'eager-split:state' && d.code !== 'eager-split:reads') {
+          continue
+        }
+        const read = /(?:uses?|reads?) `([^`]+)` when the module loads/.exec(
+          d.message,
+        )?.[1]
+        // the kept bindings: the names before the file
+        const subjects = new Set(
+          [...d.message.split(' in /')[0]!.matchAll(/`([^`]+)`/g)].map(
+            (m) => m[1]!,
+          ),
+        )
+        const names = evaluatedNames(code, subjects)
+        if (read === undefined || names === null) {
+          continue
+        }
+        checked++
+        if (!names.has(read)) {
+          wrong.push(`${d.message}\n${code}`)
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(10)
+    expect(wrong).toEqual([])
   })
 })

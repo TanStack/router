@@ -541,6 +541,16 @@ export interface MemoryHostOptions {
   virtual?: Record<string, string>
 }
 
+/**
+ * The compiles of a test file, when it turns the log on (`enabled`): each
+ * compile's source and output, for properties over every compile the file
+ * runs. Off by default: the heap tests count what compiles leave behind.
+ */
+export const compileLog: {
+  enabled: boolean
+  entries: Array<{ code: string; out: CompileOutput | null }>
+} = { enabled: false, entries: [] }
+
 export class MemoryHost implements HostServices {
   readonly files: Record<string, string>
   readonly rawFacts: RawFactsCache
@@ -612,7 +622,7 @@ export class MemoryHost implements HostServices {
     if (code === undefined) {
       throw new Error(`no such file: ${path}`)
     }
-    return compileModule(
+    const out = compileModule(
       {
         id,
         code,
@@ -628,6 +638,13 @@ export class MemoryHost implements HostServices {
       this,
       this.caches,
     )
+    if (!compileLog.enabled) {
+      return out
+    }
+    return out.then((o) => {
+      compileLog.entries.push({ code, out: o })
+      return o
+    })
   }
 }
 

@@ -13,7 +13,7 @@
 // 'claims on the tree').
 import { describe, expect, it, vi } from 'vitest'
 import { RewriteSet } from '../src/compiler/rewrite'
-import type { PlanContext, Planner } from '../src/compiler'
+import type { PlanContext, Planner, SymbolId } from '../src/compiler'
 import type { EditScope, GenFrag, OutputId } from '../src/compiler/rewrite'
 import type { RegionId } from '../src/compiler/units'
 
@@ -364,6 +364,225 @@ describe('random rewrite trees', () => {
               bad.push(`seed ${seed} ${o}: ${name} is held in erased ${text}`)
             }
           }
+        }
+      }
+    }
+    vi.unstubAllEnvs()
+    vi.resetModules()
+    expect(bad).toEqual([])
+  }, 120_000)
+})
+
+// Seeded random modules for the env module's pieces (final review of
+// design 1, finding 4): declarations (one or two declarators), functions
+// and effect statements reading each other, edits that orphan some of them
+// (placement drops their statements), `custom` regions over statement
+// edges (rendered as their source), generated units anchored before and
+// after units (some rooted in the env module), and inserts naming a
+// binding at unit starts and call edges. I5: an insert renders at most
+// once; I2: every binding name the env module renders is declared there
+// (an insert renders only where the member reading what it names does).
+/** A module of statements naming the earlier ones: `d<i>`/`e<i>` consts, `f<i>` functions, effect calls `c<i>_(…)`. */
+function randomStatements(rand: () => number): {
+  code: string
+  names: Array<string>
+} {
+  const names: Array<string> = []
+  const callees: Array<string> = []
+  const ref = () =>
+    names.length > 0 && rand() < 0.8
+      ? names[Math.floor(rand() * names.length)]!
+      : '1'
+  const lines: Array<string> = []
+  const count = 3 + Math.floor(rand() * 5)
+  for (let i = 0; i < count; i++) {
+    const c = `c${i}_`
+    const kind = rand()
+    if (kind < 0.35) {
+      callees.push(c)
+      lines.push(`const d${i} = ${c}(${ref()})`)
+      names.push(`d${i}`)
+    } else if (kind < 0.55) {
+      lines.push(`const d${i} = ${ref()}, e${i} = ${ref()}`)
+      names.push(`d${i}`, `e${i}`)
+    } else if (kind < 0.75) {
+      lines.push(`function f${i}() { return ${ref()} }`)
+      names.push(`f${i}`)
+    } else {
+      callees.push(c)
+      lines.push(`${c}(${ref()})`)
+    }
+  }
+  lines.push(`export const y = [${ref()}, ${ref()}]`)
+  callees.push('k')
+  return {
+    code: `import { ${callees.join(', ')} } from 'toy-names'\n${lines.join('\n')}\n`,
+    names,
+  }
+}
+
+function piecesPlanner(
+  seed: number,
+  names: ReadonlyArray<string>,
+  made: { span: boolean },
+): Planner {
+  return {
+    name: 'toy-pieces',
+    tier: 1,
+    gate: () => true,
+    plan(ctx: PlanContext) {
+      const rand = random(seed * 104729 + 7)
+      const { t1 } = ctx
+      const code = ctx.analysis.source.code
+      const symOf = new Map<string, SymbolId>()
+      for (const u of t1.units) {
+        for (const s of u.declares) {
+          symOf.set(ctx.symbols.name(s), s)
+        }
+      }
+      const binding = () => symOf.get(names[Math.floor(rand() * names.length)]!)
+      // statements after the imports, and their units
+      const units = t1.units.filter(
+        (u) => u.kind === 'declaration' || u.kind === 'effect',
+      )
+      // edits: a reference of a binding becomes `0` (what only it read is orphaned)
+      for (const r of t1.refs.all) {
+        if (
+          r.kind === 'value' &&
+          names.includes(ctx.symbols.name(r.sym)) &&
+          rand() < 0.3
+        ) {
+          ctx.rewrites.edit({
+            range: r.range,
+            body: [{ k: 'text', parts: ['0'] }],
+            by: 'toy-pieces',
+          })
+        }
+      }
+      // a region over two neighbouring statements (renders as its source)
+      if (units.length > 1 && rand() < 0.5) {
+        const i = Math.floor(rand() * (units.length - 1))
+        const a = t1.items[units[i]!.item]!
+        const b = t1.items[units[i + 1]!.item]!
+        if (a !== b) {
+          made.span = true
+          const ofItem = (x: typeof a) =>
+            t1.units.filter((u) => u.item === x.index).map((u) => u.range)
+          ctx.region(
+            {
+              start: Math.min(a.range.start, ...ofItem(a).map((r) => r.start)),
+              end: Math.max(b.range.end, ...ofItem(b).map((r) => r.end)),
+            },
+            'custom',
+          )
+        }
+      }
+      // generated units at statements, naming a binding
+      let gens = 0
+      for (let n = Math.floor(rand() * 3); n > 0; n--) {
+        const s = binding()
+        const u = units[Math.floor(rand() * units.length)]!
+        const g = ctx.names.alloc(`g${gens++}`)
+        const id = ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                'const ',
+                { sym: g.sym },
+                ' = ',
+                ...(s ? [{ sym: s }] : ['1']),
+                '\n',
+              ],
+            },
+          ],
+          declares: [g.sym],
+          effectful: false,
+          anchor: {
+            k: rand() < 0.5 ? 'before-unit' : 'after-unit',
+            unit: u.id,
+          },
+          home: 'auto',
+          by: 'toy-pieces',
+        })
+        if (rand() < 0.5) {
+          ctx.addRoot('env', { t: 'gen', id })
+        }
+      }
+      // inserts naming a binding: at a unit's start or end, at a call's edges
+      let inserts = 0
+      const positions: Array<number> = []
+      for (const u of units) {
+        positions.push(u.range.start)
+      }
+      for (const r of t1.refs.all) {
+        if (r.ctx !== 'callee') {
+          continue
+        }
+        const call = t1.parentOf(t1.nodeAt(r.range.start)!)!
+        if (call.type === 'CallExpression') {
+          positions.push(call.start, call.end - 1)
+        }
+      }
+      for (const at of positions) {
+        if (rand() < 0.25) {
+          const s = binding()
+          ctx.rewrites.insert({
+            at,
+            body: [
+              {
+                k: 'text',
+                parts: [`/*i${inserts++}*/`, ...(s ? [{ sym: s }, ','] : [])],
+              },
+            ],
+            by: 'toy-pieces',
+          })
+        }
+      }
+      void code
+    },
+  }
+}
+
+describe('random env pieces', () => {
+  it('render each insert at most once, and declare every binding they name', async () => {
+    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
+    vi.resetModules()
+    const { MemoryHost } = await import('./helpers')
+    const bad: Array<string> = []
+    const seeds = Number(process.env.RT_SEEDS ?? 1000)
+    for (let seed = 1; seed <= seeds; seed++) {
+      const { code, names } = randomStatements(random(seed))
+      const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+      const made = { span: false }
+      let out: string
+      try {
+        out = (await host.compile('/app/mod.ts', [
+          piecesPlanner(seed, names, made),
+        ]))!.code
+      } catch (e) {
+        bad.push(`seed ${seed}: throws ${String(e).split('\n')[0]}\n${code}`)
+        continue
+      }
+      for (const m of new Set(out.match(/\/\*i\d+\*\//g) ?? [])) {
+        if (out.split(m).length > 2) {
+          bad.push(`seed ${seed}: ${m} renders twice\n${code}---\n${out}`)
+        }
+      }
+      // (a region over whole statements owns their references: placement
+      // reads them for no unit, outside its model; only I5 is checked then)
+      for (const name of made.span
+        ? []
+        : [...names, ...(out.match(/\bg\d+\b/g) ?? [])]) {
+        const used = new RegExp(`\\b${name}\\b`).test(out)
+        // (nothing is assigned: `<name> =` is its declarator)
+        const declared = new RegExp(
+          `(?:\\b${name} =|\\bfunction ${name}\\()`,
+        ).test(out)
+        if (used && !declared) {
+          bad.push(
+            `seed ${seed}: ${name} is named, not declared\n${code}---\n${out}`,
+          )
         }
       }
     }
