@@ -446,6 +446,19 @@ function unknownEdgeLoad(
   }
 }
 
+/**
+ * What an environment handed to the bundler (the served ledger), written when
+ * it was handed: an edge module's state (`real`: `allowImport` allowed its
+ * import, a transparent re-export), or the verdict on a denied file compiled
+ * under its own id (`self`: its own violation; `real`: an unchecked importer
+ * imports it, or an allowed import brought it). Every reader (the edge
+ * module's code, the witness, the build report) reads it; none decides again.
+ */
+interface Served {
+  verdict: 'mock' | 'real'
+  self: EdgeViolation | null
+}
+
 interface RegisteredModule {
   content: EdgeModuleContent
   /** Violations importing it, by `${importerId}\0${edgeKey}`. */
@@ -481,15 +494,16 @@ class ImportProtectionEnv {
   private readonly importersByFile = new IdsByFile()
   /** `allowImport`'s answers: one per import (`dedupeKey`) for this environment's session or build. */
   private readonly answers = new Map<string, Promise<boolean>>()
-  /** The edge modules (by key: edge and target) `allowImport` answered `true` for: transparent. A module that is its own violation counts by its mock's key. */
-  private readonly allowed = new Set<string>()
+  /**
+   * The served ledger (`Served`): an edge module by its key, a denied file
+   * compiled under its own id by that id (`normalizePath`).
+   */
+  private readonly served = new Map<string, Served>()
   /** The imports `onViolation` was told about (`dedupeKey`): per dev session with `log: 'once'`, per build. */
   private readonly notified = new Set<string>()
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
   private runtimeEmitted = false
-  /** Build: the compiled modules that are their own violation, by id: the witness reads their survival (as their mock or as they are). */
-  private readonly selfModules = new Map<string, string>()
 
   constructor(
     private readonly ip: ImportProtection,
@@ -535,7 +549,9 @@ class ImportProtectionEnv {
         v.env !== this.name ||
         v.behavior !== 'mock' ||
         v.pending ||
-        (await (v.self ? this.allowsSelf(v) : this.allows(v)))
+        (v.self
+          ? this.served.get(normalizePath(v.importerId))?.verdict !== 'mock'
+          : await this.allows(v))
       ) {
         continue
       }
@@ -628,8 +644,9 @@ class ImportProtectionEnv {
    * resolve) and, in dev, reports the violations it holds and returns the
    * error of `behavior: 'error'` ones (the module must not be served), but
    * for those `allowImport` allows. A module that is its own violation is
-   * served as its mock unless it is allowed (`allowsSelf`); a build reports it
-   * on survival (`surviving`), a dev compile now, as its only violation (its
+   * served as its mock unless it has real demand (`allowsSelf`), and the
+   * verdict is written to the served ledger; a build reports a served mock on
+   * survival (`surviving`), a dev compile now, as its only violation (its
    * imports reach nothing).
    */
   afterCompile(
@@ -638,21 +655,28 @@ class ImportProtectionEnv {
   ): CompileOutcome | Promise<CompileOutcome> {
     const violations = violationsOf(out)
     this.register(importerId, violations)
+    if (!(IMPORT_EDGES_PLANNER in out.facts.planners)) {
+      // the planner did not run (the module imports nothing now): what it
+      // imported before is no edge any more, nor a real demand it made
+      this.edges.delete(importerId)
+    }
     const dev = this.ip.config.mode === 'dev'
     const self = violations.find((v) => v.self && v.env === this.name)
     if (!self) {
-      if (!dev && this.selfModules.size > 0) {
-        this.selfModules.delete(normalizePath(importerId))
+      if (this.served.size > 0) {
+        this.served.delete(normalizePath(importerId))
       }
       return dev && violations.length > 0
         ? this.reportDev(violations)
         : { error: null }
     }
-    if (!dev) {
-      this.selfModules.set(normalizePath(importerId), self.module!.key)
-    }
     const decided = async (): Promise<CompileOutcome> => {
-      if (await this.allowsSelf(self)) {
+      const real = await this.allowsSelf(self)
+      this.served.set(normalizePath(importerId), {
+        verdict: real ? 'real' : 'mock',
+        self,
+      })
+      if (real) {
         return dev
           ? this.reportDev(violations.filter((v) => v !== self))
           : { error: null }
@@ -691,9 +715,10 @@ class ImportProtectionEnv {
 
   /**
    * `allowImport`'s answer on an import: the one owner of the decision, asked
-   * once per import (`dedupeKey`) before anything depends on it. `true` makes
-   * its edge module transparent and brings the module into environments of
-   * this type; `false` or nothing is the normal outcome under `behavior`.
+   * once per import (`dedupeKey`) before anything depends on it. The answer
+   * is the state of its edge module (`served`); `true` also brings the module
+   * into environments of this type; `false` or nothing is the normal outcome
+   * under `behavior`.
    */
   private async allows(v: EdgeViolation): Promise<boolean> {
     const { allowImport } = this.ip.config
@@ -707,28 +732,28 @@ class ImportProtectionEnv {
         (await allowImport(allowImportInfo(v, this.ip.config))) === true)()
       this.answers.set(key, answer)
     }
-    if (!(await answer)) {
-      return false
+    const allowed = await answer
+    if (v.module && !v.self) {
+      this.served.set(v.module.key, {
+        verdict: allowed ? 'real' : 'mock',
+        self: null,
+      })
     }
-    if (v.module) {
-      this.allowed.add(v.module.key)
+    if (allowed) {
+      this.ip.allowTarget(this.type, v.resolved)
     }
-    this.ip.allowTarget(this.type, v.resolved)
-    return true
+    return allowed
   }
 
   /**
-   * Whether a module that is its own violation is served as it is, known
+   * Whether a module that is its own violation has real demand, known
    * without asking: an allowed import brought it (one module, one identity, in
-   * every environment of this type), it was allowed itself, or an exempt
-   * importer imports it (SPEC J6.7: it gets the real module; compiled before
-   * the module, its imports are indexed).
+   * every environment of this type; its own allowed import included), or an
+   * exempt importer imports it (SPEC J6.7: it gets the real module; compiled
+   * before the module, its imports are indexed).
    */
   private selfAllowed(self: EdgeViolation): boolean {
-    if (
-      this.allowed.has(self.module!.key) ||
-      this.ip.targetAllowed(this.type, self.resolved!)
-    ) {
+    if (this.ip.targetAllowed(this.type, self.resolved!)) {
       return true
     }
     // (an importer merely outside the scope: only of a file outside it too, R89)
@@ -790,14 +815,29 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Replays an Rspack module's `buildInfo` record (a module restored from the persistent cache). */
+  /**
+   * Replays an Rspack module's `buildInfo` record (a module restored from the
+   * persistent cache): an importer's violations and edges, and what was
+   * served (`mismatches` compares it with this compilation's importers). A
+   * module compiled in this process wrote its own.
+   */
   replay(importerId: string, info: unknown): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
+      const ref = this.ip.ids.parse(importerId)
+      if (ref?.kind === 'edge') {
+        if (record.served && !this.served.has(ref.key)) {
+          this.served.set(ref.key, { verdict: record.served, self: null })
+        }
+        return
+      }
       this.register(importerId, record.violations)
       const self = record.violations.find((v) => v.self)
-      if (self && this.ip.config.mode === 'build') {
-        this.selfModules.set(normalizePath(importerId), self.module!.key)
+      if (self && !this.served.has(normalizePath(importerId))) {
+        this.served.set(normalizePath(importerId), {
+          verdict: record.served ?? 'mock',
+          self,
+        })
       }
       // a module compiled in this process indexed its edges itself
       if (record.edges && !this.edges.has(importerId)) {
@@ -807,58 +847,74 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Whether a module this session compiled as its own violation is now
-   * served as it is (`selfAllowed`): an importer Rspack restored from the
-   * persistent cache, whose edges were replayed after the module compiled,
-   * is exempt. The host builds it again.
+   * What the ledger says was served and what the compilation's importers now
+   * ask for disagree (design 4, I3): a denied file served the mock whose
+   * exempt importer was compiled or restored after it, one served real whose
+   * exempt import is gone, a restored edge module or file whose
+   * `allowImport` answer (asked once per import, now if not yet) differs. The
+   * ids of the modules to build again (an edge module by its id among our
+   * modules). Edge modules first: an allowed import brings the module it
+   * allows (`allowTarget`).
    */
-  selfAllowedNow(importerId: string): boolean {
-    for (const key of this.byImporter.get(importerId) ?? []) {
-      for (const v of this.modules.get(key)?.violations.values() ?? []) {
-        if (v.self && v.importerId === importerId && this.selfAllowed(v)) {
-          return true
-        }
+  async mismatches(): Promise<Array<string>> {
+    const out: Array<string> = []
+    for (const [key, entry] of this.served) {
+      const m = entry.self ? undefined : this.modules.get(key)
+      if (!m) {
+        continue
+      }
+      const [first] = m.violations.values()
+      const real = await this.allows(
+        first ?? this.violationOfContent(key, m.content),
+      )
+      if (real !== (entry.verdict === 'real')) {
+        // (the state its rebuild loads)
+        this.served.set(key, { verdict: real ? 'real' : 'mock', self: null })
+        out.push(this.ip.ids.specifier({ env: this.name, kind: 'edge', key }))
       }
     }
-    return false
+    for (const [id, entry] of this.served) {
+      if (
+        entry.self &&
+        (await this.allowsSelf(entry.self)) !== (entry.verdict === 'real')
+      ) {
+        out.push(id)
+      }
+    }
+    return out
   }
 
   /**
-   * Whether an Rspack module's record holds what this session must judge
-   * again (a module restored from the persistent cache): in dev its violations
-   * (another session reported them); with `allowImport`, its being its own
-   * violation (another session's answer chose its output).
+   * Development: whether an Rspack module's record holds violations this
+   * session must report again (a module restored from the persistent cache:
+   * another session reported them).
    */
   unjudged(importerId: string, info: unknown): boolean {
     const record = info as RspackImportProtectionBuildInfo | undefined
-    if (record?.version !== 1 || record.env !== this.name) {
-      return false
-    }
-    return this.ip.config.mode === 'dev'
-      ? record.violations.length > 0 && !this.byImporter.has(importerId)
-      : this.ip.config.allowImport !== undefined &&
-          record.violations.some((v) => v.self)
+    return (
+      this.ip.config.mode === 'dev' &&
+      record?.version === 1 &&
+      record.env === this.name &&
+      record.violations.length > 0 &&
+      !this.byImporter.has(importerId)
+    )
   }
 
   /**
-   * Whether an edge module of the compilation must be built again by this
-   * session: with `allowImport`, one Rspack restored from the persistent cache
-   * without building it (`built`: another session's answer chose its state); in
-   * dev, pending violations it never confirmed were another session's to report.
+   * Development: whether an edge module of the compilation must be built
+   * again by this session: pending violations it never confirmed were another
+   * session's to report.
    */
-  unconfirmed(resource: string, built: boolean): boolean {
+  unconfirmed(resource: string): boolean {
+    if (this.ip.config.mode !== 'dev') {
+      return false
+    }
     const ref = this.ip.ids.parse(resource)
     const m =
       ref?.kind === 'edge' && ref.env === this.name
         ? this.modules.get(ref.key)
         : undefined
     if (!m) {
-      return false
-    }
-    if (this.ip.config.allowImport && !built) {
-      return true
-    }
-    if (this.ip.config.mode !== 'dev') {
       return false
     }
     for (const [key, v] of m.violations) {
@@ -880,6 +936,7 @@ class ImportProtectionEnv {
     const violations = violationsOf(out)
     const edges = this.edges.edgesOf(importerId)
     const revision = this.edges.revisionOf(importerId)
+    const served = this.served.get(normalizePath(importerId))?.verdict
     return violations.length > 0 || edges.length > 0
       ? {
           key: RSPACK_BUILD_INFO_KEY,
@@ -889,7 +946,22 @@ class ImportProtectionEnv {
             violations,
             ...(edges.length > 0 && { edges }),
             ...(revision !== null && { revision }),
+            ...(served && { served }),
           },
+        }
+      : null
+  }
+
+  /** What the Rspack loader stores in an edge module's `buildInfo`: the state it was served in (null: never decided, the mock). */
+  edgeBuildInfo(
+    id: string,
+  ): { key: string; value: RspackImportProtectionBuildInfo } | null {
+    const ref = this.ip.ids.parse(id)
+    const served = ref?.kind === 'edge' && this.served.get(ref.key)?.verdict
+    return served
+      ? {
+          key: RSPACK_BUILD_INFO_KEY,
+          value: { version: 1, env: this.name, violations: [], served },
         }
       : null
   }
@@ -949,7 +1021,7 @@ class ImportProtectionEnv {
   /** The module an edge module `allowImport` allowed re-exports (by its facts id); null for any other id. */
   allowedTarget(id: string): string | null {
     const ref = this.ip.ids.parse(id)
-    return ref?.kind === 'edge' && this.allowed.has(ref.key)
+    return ref?.kind === 'edge' && this.served.get(ref.key)?.verdict === 'real'
       ? (this.modules.get(ref.key)?.content.resolved ?? null)
       : null
   }
@@ -1122,6 +1194,7 @@ class ImportProtectionEnv {
   forget(path: string): void {
     this.edges.forget(path)
     for (const importerId of this.importersByFile.take(path)) {
+      this.served.delete(normalizePath(importerId))
       const keys = this.byImporter.get(importerId)
       this.byImporter.delete(importerId)
       for (const key of keys ?? []) {
@@ -1154,7 +1227,7 @@ class ImportProtectionEnv {
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
-    if (this.allowed.has(key)) {
+    if (this.served.get(key)?.verdict === 'real') {
       return {
         code: allowedModuleCode(c, c.resolved ?? c.specifier),
         moduleSideEffects: null,
@@ -1163,20 +1236,30 @@ class ImportProtectionEnv {
     return { code: mockModuleCode(c, runtime), moduleSideEffects: null }
   }
 
-  /** The witness readers' view of this environment's edge modules and of the modules that are their own violation; an allowed one is no violation. */
+  /**
+   * The witness readers' view of this environment's edge modules and of the
+   * modules that are their own violation, as the ledger says they were
+   * served: one served real (an allowed edge, a file with real demand) is no
+   * violation.
+   */
   witness(): WitnessLookup {
-    const effectfulOf = (key: string) => {
+    const mockOf = (key: string) => {
       const m = this.modules.get(key)
-      return m && !this.allowed.has(key) ? m.content.effectful : null
+      return m && this.served.get(key)?.verdict !== 'real'
+        ? m.content.effectful
+        : null
     }
-    const edges = witnessLookup(this.ip.ids, this.name, effectfulOf)
-    if (this.selfModules.size === 0) {
-      return edges
-    }
+    const edges = witnessLookup(this.ip.ids, this.name, mockOf)
     return (id) => {
-      const key = this.selfModules.get(normalizePath(id))
-      const effectful = key === undefined ? null : effectfulOf(key)
-      return effectful === null ? edges(id) : { key: key!, effectful }
+      const served = this.served.get(normalizePath(id))
+      if (served?.self && served.verdict === 'mock') {
+        const key = served.self.module!.key
+        const m = this.modules.get(key)
+        if (m) {
+          return { key, effectful: m.content.effectful }
+        }
+      }
+      return edges(id)
     }
   }
 
@@ -1220,11 +1303,15 @@ class ImportProtectionEnv {
           add(v)
           continue
         }
+        // (the witness finds a served mock; the key may stand for other ids too)
+        if (this.served.get(normalizePath(v.importerId))?.verdict !== 'mock') {
+          continue
+        }
         const importers = [...(graph?.importers(v.importerId) ?? [])]
         const checked = this.importsOf(v, importers)
         checked.forEach(add)
         const others = importers.filter((id) => this.ip.ids.parse(id) === null)
-        if (!checked.length && others.length && !this.selfAllowed(v)) {
+        if (!checked.length && others.length) {
           unchecked.set(v.edgeKey, [v, [...new Set(others.map(traceFile))]])
         }
       }

@@ -559,7 +559,14 @@ export class StartRsbuildCompilerSession {
         // (it fails the edge module: Rspack reports it there, not at the importer)
         throwLocated(ctx, error as DevViolationError)
       }
-      return { code: ip?.load(ctx.resource)?.code ?? bytes, map: null }
+      const code = ip?.load(ctx.resource)?.code ?? bytes
+      // (after the load: the state it served, for a restore to compare)
+      const info = ipEnv?.edgeBuildInfo(ctx.resource)
+      const buildInfo = ctx._module?.buildInfo
+      if (info && buildInfo) {
+        buildInfo[info.key] = info.value
+      }
+      return { code, map: null }
     }
     const id = canonicalResource(ctx.resource)
     if (options.pass === 'asset') {
