@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import {
   EXTRACTED_EXPORT_QUERY_RE,
   StaleSetDrain,
+  displayPath,
   emittedMapTexts,
   identify,
   initialChunkResources,
@@ -102,6 +103,9 @@ interface CompilationLike extends InitialChunksLike {
   hooks: {
     processAssets: { tap: (name: string, fn: () => void) => void }
     afterSeal: { tap: (name: string, fn: () => void) => void }
+    finishModules: {
+      tap: (name: string, fn: (modules: Iterable<ModuleLike>) => void) => void
+    }
   }
   errors: Array<Error>
   warnings: Array<Error>
@@ -110,6 +114,8 @@ interface CompilationLike extends InitialChunksLike {
 const PLUGIN_NAME = 'tanstack-router:compiler'
 
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
+/** The files the loader rule leaves out: the loader never runs on a dependency's modules. */
+const DEPENDENCY_RE = /[\\/]node_modules[\\/]/
 
 let loaderPath: string | null = null
 
@@ -224,7 +230,7 @@ export function createRouterCompilerWebpackPlugin(
       compiler.options.module.rules.unshift(
         {
           test: JS_FILE_RE,
-          exclude: /[\\/]node_modules[\\/]/,
+          exclude: DEPENDENCY_RE,
           enforce: 'pre',
           use: [{ loader: routerLoaderPath(), options: { instance } }],
         },
@@ -275,6 +281,28 @@ export function createRouterCompilerWebpackPlugin(
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
           locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS),
         )
+        // a route file the loader rule leaves out is not split: say so once
+        // per file (a routes package resolved without following symlinks,
+        // a `physical()` mount of an installed package)
+        compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+          for (const m of modules) {
+            const resource = m.resource
+            if (!resource || !DEPENDENCY_RE.test(resource)) {
+              continue
+            }
+            const file = normalizePath(
+              identify(webpackResourceId(resource)).path,
+            )
+            if (!isRouteFile(file)) {
+              continue
+            }
+            const shown = displayPath(file, compiler.context)
+            const message = `[tanstack-router] ${shown} is not code-split: it is a route file under node_modules, and the router plugin does not compile files there on webpack and Rspack. Keep route files outside node_modules to have them split.`
+            if (session.warnings.once(file, { message })) {
+              compilation.warnings.push(new WebpackError(message))
+            }
+          }
+        })
         if (envType === 'client' && mode === 'build') {
           compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
             // an extracted-export output an initial chunk holds is eager
