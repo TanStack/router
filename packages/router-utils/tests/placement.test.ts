@@ -4800,6 +4800,83 @@ describe('what an evaluation runs: one walk for every rule', () => {
     expect(r.kept).toEqual([])
   })
 
+  // A name's value is its declaration and the top-level statements writing
+  // it: a function a later statement attaches (or assigns) runs when a call
+  // at load reaches the name. Source: review of design 2 steps 0-1
+  // (2026-11-11), finding 1 (wrong output at the base: `x` moved and read
+  // `n` after `inc()` ran).
+  it.each([
+    [
+      'attached to an object, called through a function',
+      "const handlers = {}\nhandlers.count = () => n\nfunction run(k) { return handlers[k]() }\nconst x = run('count')",
+      'handlers',
+      'state',
+      'n',
+    ],
+    [
+      'attached to an object, the call pure',
+      'const api = {}\napi.get = () => n\nconst call = () => api.get()\nconst x = /* @__PURE__ */ call()',
+      'api',
+      'state',
+      'n',
+    ],
+    [
+      'assigned to a `let`, the call pure',
+      'let g\ng = () => n\nconst call = () => g()\nconst x = /* @__PURE__ */ call()',
+      'g',
+      'reads',
+      'g',
+    ],
+  ])(
+    'keeps a declaration whose load calls a function %s in the route module',
+    async (_, declarations, object, reason, read) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let n = 0
+        export function inc() { n++ }
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => { inc(); return ${object} },
+          component: () => x,
+        })
+      `)
+      const r = await compile(code)
+      expect(r.env).toMatch(/const x = /)
+      expect(r.chunk).not.toMatch(/const x = /)
+      expect(r.chunk).toContain("import { x } from '/app/route.tsx'")
+      expect(r.kept).toMatchObject([
+        {
+          code: `eager-split:${reason}`,
+          range: { start: code.indexOf('x = ') },
+        },
+      ])
+      expect(r.kept[0]!.message).toContain(`\`${read}\``)
+    },
+  )
+
+  // the direct spelling: `x` joins the cluster of what it reads, which an
+  // augmentation writes (step 4 makes that a plain write: the walk decides)
+  it('keeps a declaration whose load calls a method a later statement attaches in the route module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      export function inc() { n++ }
+      const handlers = {}
+      handlers.count = () => n
+      const x = handlers.count()
+      export const Route = createFileRoute('/')({
+        loader: () => { inc(); return handlers },
+        component: () => x,
+      })
+    `)
+    const r = await compile(code)
+    expect(r.env).toContain('const x = handlers.count()')
+    expect(r.chunk).not.toContain('const x = ')
+    expect(r.chunk).toContain("import { x } from '/app/route.tsx'")
+    expect(r.kept).toHaveLength(1)
+    expect(r.kept[0]!.code).toMatch(/^eager-split:/)
+  })
+
   // F1-3a: a method nested in an object argument runs only when called,
   // in an option value as in a declaration
   it.each([

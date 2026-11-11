@@ -2138,6 +2138,28 @@ describe("the env module's pieces", () => {
     ).toThrow(/stands in no statement/)
   })
 
+  // A region nests in one unit: one over whole statements would own their
+  // references, which placement then reads for no unit (it dropped a
+  // declaration kept code reads). Source: design 2 steps 0-1 lane, finding 3.
+  it.each([
+    ['two statements', 'const a = 1\nfunction b() { return 2 }\n'],
+    ['a whole declaration', 'const a = 1\n'],
+  ])('refuses a region over %s', (_, over) => {
+    const code = `const a = 1\nfunction b() { return 2 }\nexport const c = a + b\n`
+    const e = engine(code)
+    expect(() => e.ctx.region(rangeOf(code, over), 'custom')).toThrow(
+      /^conflict: a custom region \[\d+, \d+\) holds unit \d+/,
+    )
+  })
+
+  it('accepts a region on exactly a statement', () => {
+    const code = `createServerFn().handler(h)\nexport const c = 1\n`
+    const e = engine(code)
+    expect(() =>
+      e.ctx.region(rangeOf(code, 'createServerFn().handler(h)'), 'custom'),
+    ).not.toThrow()
+  })
+
   it('fails the compile when a planner edit across two statements holds an anchored unit', () => {
     const code = `const a = 1\nconst b = 2\nexport const c = a + b\n`
     const e = engine(code)
