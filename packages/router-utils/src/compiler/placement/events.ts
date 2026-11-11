@@ -325,19 +325,8 @@ export function eventTable(
         }
       }
     }
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (unit.kind === 'declaration') {
-        continue
-      }
-      if (
-        unit.augments.length > 0 &&
-        unit.augments.every((s) => cl.declares.has(s))
-      ) {
-        continue
-      }
-      return { reason: 'written', other: { at: unit.range.start } }
-    }
+    // (a unit that is no declaration and no own augmentation makes its
+    // cluster an effect, which the lazy slot rules are not asked of)
     return volatile(c)
   }
 
