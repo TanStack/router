@@ -530,7 +530,7 @@ export class StartCompilerSession {
         ) {
           return {
             severity: 'error',
-            message: `[tanstack-start] The compiler cannot parse ${displayPath(file, this.opts.root)}, so it cannot remove server code from it for the client: ${d.message}. If the file is no JavaScript or TypeScript (a binary asset such as a video segment named .ts), give it an extension other than .js, .jsx, .ts, .tsx, .mjs, .cjs, .mts and .cts, and import it under that name.`,
+            message: `[tanstack-start] The compiler cannot parse ${displayPath(file, this.opts.root)}, so it cannot remove server code from it for the client: ${d.message}`,
             range: d.range,
             by: 'parse',
             code: 'parse',
