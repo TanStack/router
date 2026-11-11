@@ -1342,7 +1342,9 @@ return [await render('component'), heavy.weight]`,
       extracted: true,
     },
     {
-      name: 'a displayName after a surviving effect (kept in the route module)',
+      // (R139: the write is no effect, so it is no longer ordered against
+      // `see()`; the row asserted that it stayed in the route module)
+      name: 'a displayName after a surviving effect (the write is no effect)',
       code: `${head}import { see } from './see'
 see('before')
 export function Page() {
@@ -1359,7 +1361,7 @@ return [await render('component'), Page.displayName, seen]`,
         'PageDisplay',
         ['before'],
       ],
-      extracted: false,
+      extracted: true,
     },
     {
       name: 'a displayName before a surviving effect (the effect keeps its order)',
