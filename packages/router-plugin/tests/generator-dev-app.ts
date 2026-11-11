@@ -243,6 +243,7 @@ export async function generatorDevApp(
             symlinks,
             options.pluginOptions,
             options.webpack,
+            () => printed().map((diagnostic) => diagnostic.text),
           )
         : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
             printed().map((diagnostic) => diagnostic.text),
@@ -597,7 +598,8 @@ async function rsbuildApp(
 /**
  * `webpack-dev-server` (`hot: true`) on the app, its TypeScript and JSX
  * compiled by the harness's loader (webpack has no transform of its own).
- * `settle()` waits until a compile started after the last write and webpack
+ * `settle()` waits until a compile started after the last write (or the
+ * generator reported a written file, which no compile then reads) and webpack
  * has nothing compiling or pending, checked twice in a row
  * (`waitForOutcome`).
  */
@@ -606,6 +608,7 @@ async function webpackApp(
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
   config: GeneratorDevAppOptions['webpack'] = {},
+  printedTexts: () => Array<string>,
 ): Promise<AppServer> {
   const app = await createApp({
     dir: harnessDir,
@@ -718,8 +721,18 @@ async function webpackApp(
   const port = (server.server!.address() as AddressInfo).port
   /** `started` at the last write; `-1`: the first compile is owed. */
   let writtenAt = -1
+  /** The files of the last write (relative), and what the process had printed before it. */
+  let lastWrite: { files: Array<string>; printed: number } = {
+    files: [],
+    printed: 0,
+  }
+  const reportedByGenerator = () =>
+    printedTexts()
+      .slice(lastWrite.printed)
+      .some((text) => lastWrite.files.some((file) => text.includes(file)))
   const write = async (written: Record<string, string | null>) => {
     writtenAt = started
+    lastWrite = { files: Object.keys(written), printed: printedTexts().length }
     for (const [file, code] of Object.entries(written)) {
       const absolute = path.join(root, file)
       if (code === null) {
@@ -736,12 +749,13 @@ async function webpackApp(
     write,
     rename: async (from, to) => {
       writtenAt = started
+      lastWrite = { files: [from, to], printed: printedTexts().length }
       await rename(path.join(root, from), path.join(root, to))
     },
     settle: (settleOptions = {}) =>
       waitForOutcome({
         timeout: settleOptions.timeout ?? 20_000,
-        applied: () => started > writtenAt,
+        applied: () => started > writtenAt || reportedByGenerator(),
         quiet: () => !compiling && !invalidated,
         describe: () =>
           `webpack did not compile the app after the last write (${started} compiles started)`,
