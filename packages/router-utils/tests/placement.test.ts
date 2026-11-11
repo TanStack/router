@@ -2642,7 +2642,10 @@ describe('extracted-export outputs', () => {
     ["Page.displayName = 'Page'", true],
     ["Page.preload = () => import('./heavy')", true],
     ['Page.count += 1', true],
-    ['Page.meta.title = `x`', true],
+    // (it writes what `Page.meta` holds, which may be another binding's
+    // object: an effect since R139 made a pure write of the binding itself
+    // no effect; extracted before)
+    ['Page.meta.title = `x`', false],
     ["Object.assign(Page, { title: 'x' })", true],
     ["Page['k'] = 1", true],
     ["Page.x = track('page')", false],
@@ -3486,6 +3489,31 @@ describe('ordered evaluation and movable effects', () => {
       "function Inner() { return Inner.displayName }\nInner.displayName = 'X'",
     )
     expect(r.main?.diagnostics).toEqual([])
+  })
+
+  // a write through a binding that names another one's object writes that
+  // object: an effect, ordered against the read of the other binding
+  it.each([
+    ['an alias', 'const alias = cfg\nconst y = [cfg.a]\nalias.a = 2'],
+    [
+      'a member of a holder',
+      'const holder = { c: cfg }\nconst y = [cfg.a]\nholder.c.a = 2',
+    ],
+    [
+      'a reassigned binding',
+      'let other = {}\nother = cfg\nconst y = [cfg.a]\nother.a = 2',
+    ],
+  ])('keeps a read before a write through %s in order', async (_, decls) => {
+    const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        const cfg = { a: 1 }
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          component: () => y,
+        })
+      `)
+    const r = await split(code)
+    expect(r.env).toContain('const y = [cfg.a]')
   })
 
   // its first effect is the call after the unknown one: the pure write
