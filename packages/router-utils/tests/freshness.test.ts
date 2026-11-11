@@ -531,7 +531,8 @@ describe('after any edits', () => {
     for (const [seed, stretch] of rows) {
       await drive(run(seed, stretch))
     }
-  }, 30_000)
+    // (about 2 s here; CI's macOS runners took over 30 s beside the other files)
+  }, 180_000)
 
   it('keeps no stale path and no read record beyond the live files', async () => {
     const host = memoryHost({ '/app/shared.ts': 'export const make = 1\n' })
