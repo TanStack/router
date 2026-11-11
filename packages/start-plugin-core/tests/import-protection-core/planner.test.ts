@@ -722,13 +722,12 @@ describe('invalidation (J6.13)', () => {
     await a.compile('src/a.ts', 'client')
     expect(rec.calls).toEqual([])
     a.write('src/db.ts', `export const db = 2\n`)
-    expect((await a.invalidate('src/db.ts')).dependents).toEqual([])
+    expect(await a.invalidate('src/db.ts')).toEqual([])
     a.write(
       'src/db.ts',
       `import '@tanstack/react-start/server-only'\nexport const db = 1\n`,
     )
-    const { dependents } = await a.invalidate('src/db.ts')
-    expect(dependents.map((k) => k.canonicalId)).toEqual([`${ROOT}/src/a.ts`])
+    expect(await a.invalidate('src/db.ts')).toEqual([`${ROOT}/src/a.ts`])
     const { out } = await a.compile('src/a.ts', 'client')
     expect(edgeImports(out!.code)).toHaveLength(1)
     expect(rec.calls.map((c) => c.type)).toEqual(['marker'])

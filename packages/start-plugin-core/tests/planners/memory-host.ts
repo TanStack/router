@@ -28,6 +28,17 @@ export function envInfo(partial: Partial<EnvInfo> = {}): EnvInfo {
   }
 }
 
+/** The paths in the stale sets of every environment that compiled (held ones too), taken: sorted, once each. */
+export function takeStale(caches: CompilerCaches): Array<string> {
+  const out = new Set<string>()
+  for (const env of caches.plans.keys()) {
+    for (const path of caches.stale.take(env, { held: true })) {
+      out.add(path)
+    }
+  }
+  return [...out].sort()
+}
+
 export const clientEnv = envInfo()
 export const ssrEnv = envInfo({ name: 'ssr', type: 'server' })
 

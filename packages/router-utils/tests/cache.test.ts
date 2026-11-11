@@ -1,6 +1,6 @@
 /**
- * The plan cache's bookkeeping (generations, latest revisions, the
- * dependents index) is bounded by the live plans: it does not grow with
+ * The plan cache's bookkeeping (a record per live key, the dependents
+ * index) is bounded by the live plans: it does not grow with
  * edits that change import targets, nor with unique files that come and go.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -16,6 +16,7 @@ import {
   MemoryHost,
   dedent,
   envInfo,
+  staleAfter,
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
@@ -60,12 +61,12 @@ describe('plan keys by path', () => {
       strings([plain, flavoured]),
     )
     expect(cache.keysAt('/app/other.tsx')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({ keyPaths: 1, trackedKeys: 2 })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 1, records: 2 })
     cache.delete(flavoured)
     expect(strings(cache.keysAt('/app/page.tsx'))).toEqual(strings([plain]))
     cache.delete(plain)
     expect(cache.keysAt('/app/page.tsx')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, trackedKeys: 0 })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, records: 0 })
   })
 
   it('an attempt in flight is found at its path until it ends unpublished', () => {
@@ -81,12 +82,7 @@ describe('plan keys by path', () => {
     expect(cache.keysAt('/app/mod.ts')).toEqual([k])
     cache.end(k)
     expect(cache.keysAt('/app/mod.ts')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({
-      keyPaths: 0,
-      trackedKeys: 0,
-      generations: 0,
-      latest: 0,
-    })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, records: 0 })
   })
 
   it('a file removal evicts the plans of every identity at that path', async () => {
@@ -98,18 +94,10 @@ describe('plan keys by path', () => {
     })
     await host.compile('/app/a.ts', planners())
     await host.compile('/app/a.ts?flavour=b', planners())
-    expect(stats(host)).toMatchObject({ plans: 2, keyPaths: 1, trackedKeys: 2 })
+    expect(stats(host)).toMatchObject({ plans: 2, keyPaths: 1, records: 2 })
     delete host.files['/app/a.ts']
-    const res = await invalidate(
-      host.caches,
-      { path: '/app/a.ts', kind: 'unlink' },
-      host,
-    )
-    expect(res.evicted.map((k) => k.canonicalId).sort()).toEqual([
-      '/app/a.ts',
-      '/app/a.ts?flavour=b',
-    ])
-    expect(stats(host)).toMatchObject({ plans: 0, keyPaths: 0, trackedKeys: 0 })
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'unlink' }, host)
+    expect(stats(host)).toMatchObject({ plans: 0, keyPaths: 0, records: 0 })
   })
 })
 
@@ -125,34 +113,32 @@ describe('a changed dependency', () => {
     // a change that keeps the export facts: no importer is stale
     host.write('/app/shared.ts', 'export const make = 2\n')
     host.resolveCalls.length = 0
-    const same = await invalidate(
+    const same = await staleAfter(
       host.caches,
       { path: '/app/shared.ts', kind: 'change' },
       host,
     )
-    expect(same.dependents).toEqual([])
+    expect(same).toEqual([])
     expect(host.resolveCalls).toEqual([])
     // a new export: the importer reads `make` only, and stays current
     host.write(
       '/app/shared.ts',
       'export const make = 2\nexport const more = 2\n',
     )
-    const added = await invalidate(
+    const added = await staleAfter(
       host.caches,
       { path: '/app/shared.ts', kind: 'change' },
       host,
     )
-    expect(added.dependents).toEqual([])
+    expect(added).toEqual([])
     // a change of the export it reads: the importer is stale, still without a resolution
     host.write('/app/shared.ts', "export { make } from './elsewhere'\n")
-    const changed = await invalidate(
+    const changed = await staleAfter(
       host.caches,
       { path: '/app/shared.ts', kind: 'change' },
       host,
     )
-    expect(changed.dependents.map((k) => k.canonicalId)).toEqual([
-      '/app/consumer.ts',
-    ])
+    expect(changed).toEqual(['/app/consumer.ts'])
     expect(host.resolveCalls).toEqual([])
   })
 })
@@ -192,12 +178,12 @@ describe('a dependency with a query or a virtual id', () => {
       } else {
         host.write(file, text)
       }
-      const r = await invalidate(
+      const r = await staleAfter(
         host.caches,
         { path: file, kind: 'change' },
         host,
       )
-      return r.dependents.map((k) => k.canonicalId)
+      return r
     }
     const at = Object.values(ids)
     for (const [i, id] of at.entries()) {
@@ -227,8 +213,8 @@ describe('a lookup through `export *`', () => {
     await host.compile('/app/consumer.ts', planners())
     const edit = async (path: string, text: string) => {
       host.write(path, text)
-      const r = await invalidate(host.caches, { path, kind: 'change' }, host)
-      return r.dependents.map((k) => k.canonicalId)
+      const r = await staleAfter(host.caches, { path, kind: 'change' }, host)
+      return r
     }
     // a star target without the name: another export of it is not read
     expect(await edit('/app/a.ts', 'export const other = 2\n')).toEqual([])
@@ -327,9 +313,9 @@ describe('an import the resolver answers external', () => {
       if (change.kind === 'add') {
         host.write(change.path, 'export {}\n')
       }
-      const res = await invalidate(host.caches, change, host)
+      const res = await staleAfter(host.caches, change, host)
       expect(asked(host, before)).toBe(0)
-      expect(res.dependents).toEqual([])
+      expect(res).toEqual([])
     }
   })
 
@@ -338,12 +324,12 @@ describe('an import the resolver answers external', () => {
     host.write('/app/local-a.ts', 'export default 1\n')
     await host.compile('/app/m0.ts', [resolving], { env })
     aliasToFile()
-    const res = await invalidate(
+    const res = await staleAfter(
       host.caches,
       { path: '/app/package.json', kind: 'change' },
       host,
     )
-    expect(res.dependents.map((k) => k.canonicalId)).toEqual(['/app/m0.ts'])
+    expect(res).toEqual(['/app/m0.ts'])
   })
 })
 
@@ -367,12 +353,12 @@ describe('plan cache bookkeeping', () => {
     expect(after.dependentEntries).toBe(once.dependentEntries)
     expect(after.dependentPaths).toBe(once.dependentPaths)
     // an earlier target's edit no longer concerns the plan
-    const res = await invalidate(
+    const res = await staleAfter(
       host.caches,
       { path: '/app/t0.ts', kind: 'change' },
       host,
     )
-    expect(res.dependents).toEqual([])
+    expect(res).toEqual([])
   })
 
   it('forgets the bookkeeping of files that were deleted', async () => {
@@ -391,11 +377,9 @@ describe('plan cache bookkeeping', () => {
     }
     expect(stats(host)).toMatchObject({
       plans: 0,
-      generations: 0,
-      latest: 0,
+      records: 0,
       inFlight: 0,
       keyPaths: 0,
-      trackedKeys: 0,
       dependentPaths: 0,
       dependentEntries: 0,
     })
@@ -426,7 +410,7 @@ describe('plan cache bookkeeping', () => {
   it('forgets the bookkeeping of a module no planner applies to', async () => {
     const host = new MemoryHost({ files: { '/app/plain.ts': 'export {}\n' } })
     await host.compile('/app/plain.ts', planners())
-    expect(stats(host)).toMatchObject({ generations: 0, latest: 0 })
+    expect(stats(host)).toMatchObject({ records: 0 })
   })
 })
 
@@ -503,12 +487,12 @@ describe('plans restored from an earlier process', () => {
     )
     expect(stats(host)).toMatchObject({ plans: 0, restored: 1 })
     host.write('/app/helper.ts', edited)
-    const res = await invalidate(
+    const res = await staleAfter(
       host.caches,
       { path: '/app/helper.ts', kind: 'change' },
       host,
     )
-    expect(res.dependents.map((k) => k.canonicalId)).toEqual(['/app/page.ts'])
+    expect(res).toEqual(['/app/page.ts'])
     expect(stats(host)).toMatchObject({ restored: 0, dependentEntries: 0 })
   })
 
@@ -714,17 +698,19 @@ describe('two resolvers of one environment', () => {
     const { targets, host, compile, hostOf } = setup()
     await compile(plain)
     await compile(layered)
-    const kept = await invalidate(host.caches, manifestChange, hostOf)
-    expect(kept.dependents).toEqual([])
+    const kept = await staleAfter(host.caches, manifestChange, hostOf)
+    expect(kept).toEqual([])
     await compile(plain)
     await compile(layered)
     // only the layer's conditions name another file now
     targets.layer = '/app/client.ts'
     host.write('/app/package.json', '{ "imports": {} }\n')
-    const moved = await invalidate(host.caches, manifestChange, hostOf)
-    expect(moved.dependents.map(planKeyString)).toEqual([
-      planKeyString(layered),
-    ])
+    const moved = await staleAfter(host.caches, manifestChange, hostOf)
+    expect(moved).toEqual(['/app/page.ts'])
+    // (the layer's plan only)
+    const cache = host.caches.plans.get(env.name)!
+    expect(cache.get(plain)).not.toBeNull()
+    expect(cache.get(layered)).toBeNull()
   })
 
   it("a restored plan is checked with its own module's resolver", async () => {

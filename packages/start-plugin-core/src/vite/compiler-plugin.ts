@@ -23,7 +23,6 @@ import {
   OutputBuilder,
   SAME_FILE_SPECIFIER_RE,
   SourceText,
-  auditStaleSet,
   identify,
   invalidate,
   isAssetId,
@@ -46,12 +45,15 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { inputMapOf, optimizedDependency } from './compiler-state'
+import {
+  inputMapOf,
+  optimizedDependency,
+  watchesSentinel,
+} from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
 import {
   buildInvalidationHosts,
   changeKindOf,
-  forgetRemoved,
   invalidateFor,
 } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
@@ -95,6 +97,12 @@ export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
 function runPlugin(state: ViteCompilerState): Plugin {
   return {
     name: 'tanstack-start:compiler:run',
+    // `build --watch`: a server environment watches the sentinel
+    configEnvironment(name, config) {
+      return state.envOf(name)?.type === 'server'
+        ? (watchesSentinel(config.build?.watch) ?? undefined)
+        : undefined
+    },
     configResolved(config) {
       state.configure(config)
     },
@@ -146,7 +154,6 @@ function envCompilerPlugins(
     if (!out) {
       return null
     }
-    s.builds.get(env.name)?.compiled.add(identity.path)
     watchDependencies(this, out.dependencies, normalizePath(identity.path))
     state.reportDiagnostics(
       s,
@@ -225,16 +232,14 @@ function envCompilerPlugins(
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         s.start.ip?.env(env.name, env.type).beginBuild()
         // a file event's invalidation asks this environment's resolutions
-        // with its resolver; the build embeds the client build afresh; what
-        // it is to build again is audited at its end
+        // with its resolver; the build embeds the client build afresh, and
+        // compiles every module again (Rolldown's watch rebuilds run every
+        // `load` and `transform`): its stale set is built
         s.resolvers.set(env.name, (source, importer, options) =>
           this.resolve(source, importer, options),
         )
         s.embedded.delete(env.name)
-        s.builds.set(env.name, {
-          stale: new Set(s.start.caches.stale.paths(env.name)),
-          compiled: new Set(),
-        })
+        s.start.caches.stale.take(env.name, { held: true })
       }
       if (this.environment.mode === 'build' && env.type === 'client') {
         if (!this.meta.watchMode) {
@@ -269,11 +274,6 @@ function envCompilerPlugins(
         return
       }
       const s = state.sessionOf(this.environment)
-      const build = s.builds.get(env.name)
-      if (build) {
-        s.builds.delete(env.name)
-        auditStaleSet(s.start.caches, env.name, build, this.getModuleIds())
-      }
       if (env.type === 'client') {
         // a rebuild keeps the registry (a new build cleared it): the
         // functions the client references are those of the modules this
@@ -401,10 +401,7 @@ function envCompilerPlugins(
         s.start.caches,
         change,
         ctx.modules,
-        async () => {
-          await invalidateFor(state, s, environment, change)
-          forgetRemoved(s, change)
-        },
+        () => invalidateFor(state, s, environment, change),
       )
     },
     // The one invalidation of a file event. Bundled dev, and a dev server
@@ -441,11 +438,9 @@ function envCompilerPlugins(
             this.resolve(source, importer, { skipSelf: true }),
           ),
         )
-        forgetRemoved(s, change)
         return
       }
       await invalidateFor(state, s, environment, change)
-      forgetRemoved(s, change)
       const environments = s.server
         ? Object.values(s.server.environments).filter((e) =>
             state.envNames.has(e.name),

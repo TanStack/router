@@ -4,6 +4,7 @@ import {
   MemoryHost,
   dedent,
   envInfo,
+  staleAfter,
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
@@ -604,12 +605,12 @@ describe('target markers', () => {
     await host.compile('/app/a.ts', planners, { env })
     const edit = async (code: string) => {
       host.write('/app/b.ts', code)
-      const res = await invalidate(
+      const res = await staleAfter(
         host.caches,
         { path: '/app/b.ts', kind: 'change' },
         host,
       )
-      return res.dependents.map((k) => k.canonicalId)
+      return res
     }
 
     expect(
@@ -704,12 +705,13 @@ describe('unresolved resolutions (J6.13)', () => {
       resolve: () => Promise.reject(new Error('resolver failed')),
       onInvalidationError: (error: unknown) => errors.push(error),
     }
-    const res = await invalidate(
+    const res = await staleAfter(
       host.caches,
       { path: '/app/secret.server.ts', kind: 'registry' },
       failing,
     )
-    expect(res.dependents).toEqual([key('/app/a.ts')])
+    // (a registry change stales its own file too)
+    expect(res).toEqual(['/app/a.ts', '/app/secret.server.ts'])
     expect(errors).toEqual([new Error('resolver failed')])
     expect(host.caches.plans.get('client')!.get(key('/app/a.ts'))).toBeNull()
   })
@@ -765,35 +767,35 @@ describe('unresolved resolutions (J6.13)', () => {
 
     // a resolved target deleted: its path is a dependency of the importer
     delete host.files['/app/secret.server.ts']
-    const removed = await invalidate(
+    const removed = await staleAfter(
       host.caches,
       { path: '/app/secret.server.ts', kind: 'unlink' },
       host,
     )
-    expect(removed.dependents).toEqual([key('/app/a.ts')])
+    expect(removed).toEqual(['/app/a.ts'])
     const second = await host.compile('/app/a.ts', planners)
     expect(second!.code).toContain(`from './secret.server'`)
 
     // an unrelated add re-resolves the failed resolution, which still fails
     host.write('/app/other.ts', `export {}\n`)
-    const unrelated = await invalidate(
+    const unrelated = await staleAfter(
       host.caches,
       { path: '/app/other.ts', kind: 'add' },
       host,
     )
-    expect(unrelated.dependents).toEqual([])
+    expect(unrelated).toEqual([])
     expect(
       host.caches.plans.get('client')!.get(key('/app/a.ts')),
     ).not.toBeNull()
 
     // the target recreated: the failed resolution now resolves
     host.write('/app/secret.server.ts', `export const s = 2\n`)
-    const added = await invalidate(
+    const added = await staleAfter(
       host.caches,
       { path: '/app/secret.server.ts', kind: 'add' },
       host,
     )
-    expect(added.dependents).toEqual([key('/app/a.ts')])
+    expect(added).toEqual(['/app/a.ts'])
     const third = await host.compile('/app/a.ts', planners)
     expect(third!.code).toContain(`from 'mock:./secret.server'`)
     expect(verdicts).toEqual([
@@ -815,17 +817,14 @@ describe('unresolved resolutions (J6.13)', () => {
     }
     host.write('/app/secret.server.ts', `export const s = 1\n`)
     host.resolveCalls.length = 0
-    const r = await invalidate(
+    await invalidate(
       host.caches,
       { path: '/app/secret.server.ts', kind: 'add' },
       host,
     )
-    expect(r.dependents).toEqual([
-      key('/app/a.ts'),
-      key('/app/b.ts'),
-      key('/app/a.ts', 'ssr'),
-      key('/app/b.ts', 'ssr'),
-    ])
+    for (const env of ['client', 'ssr']) {
+      expect(host.caches.stale.take(env)).toEqual(['/app/a.ts', '/app/b.ts'])
+    }
     expect(host.resolveCalls).toHaveLength(4)
     // a plain change re-resolves nothing
     host.resolveCalls.length = 0
@@ -862,12 +861,12 @@ describe('unresolved resolutions (J6.13)', () => {
     }
     await host.compile('/app/a.ts', [resolveOnly])
     host.write('/app/x.ts', `export const x = 1\n`)
-    const r = await invalidate(
+    const r = await staleAfter(
       host.caches,
       { path: '/app/x.ts', kind: 'add' },
       host,
     )
-    expect(r.dependents).toEqual([key('/app/a.ts')])
+    expect(r).toEqual(['/app/a.ts'])
   })
 
   it('forgets the failed resolutions of an evicted plan', async () => {
@@ -878,12 +877,12 @@ describe('unresolved resolutions (J6.13)', () => {
     await host.compile('/app/a.ts', [denyServer([])])
     host.write('/app/secret.server.ts', `export const s = 1\n`)
     host.resolveCalls.length = 0
-    const r = await invalidate(
+    const r = await staleAfter(
       host.caches,
       { path: '/app/secret.server.ts', kind: 'add' },
       host,
     )
-    expect(r.dependents).toEqual([])
+    expect(r).toEqual([])
     expect(host.resolveCalls).toEqual([])
   })
 })

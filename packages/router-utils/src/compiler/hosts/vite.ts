@@ -162,6 +162,7 @@ export async function staleHotUpdate<
     id: string | null
     url: string
     importers: ReadonlySet<unknown>
+    isSelfAccepting?: boolean | undefined
   },
 >(
   environment: StaleEnvironment<T> & {
@@ -206,38 +207,6 @@ export function reloadStaleModules<TNode extends { file: string | null }>(
         `${tag} sending the update of ${node.file ?? 'a module'} failed: ${String(error)}`,
       )
     })
-  }
-}
-
-/**
- * `vite build --watch`: an environment's build ended (`buildEnd`). A watch
- * build builds what its watcher reported (and a module whose plan read a
- * reported file: `watchDependencies`), never one module on request, so its
- * stale set is an audit: taken whole (the held paths too), and a path that
- * was stale when the build began (`build.stale`), which the build bundles
- * (`moduleIds`) and did not compile (`build.compiled`), is a stale hit
- * (`staleHits`: a dependency the watcher was not told of).
- */
-export function auditStaleSet(
-  caches: CompilerCaches,
-  env: string,
-  build: { stale: ReadonlySet<string>; compiled: ReadonlySet<string> },
-  moduleIds: Iterable<string>,
-): void {
-  const taken = caches.stale.take(env, { held: true })
-  const owed = taken.filter(
-    (path) => build.stale.has(path) && !build.compiled.has(path),
-  )
-  if (owed.length === 0) {
-    return
-  }
-  const bundled = new Set<string>()
-  for (const id of moduleIds) {
-    bundled.add(identify(id).path)
-  }
-  const counters = caches.plans.get(env)?.counters
-  if (counters) {
-    counters.staleHits += owed.filter((path) => bundled.has(path)).length
   }
 }
 
@@ -405,13 +374,18 @@ export async function loadDerivedSource(
  * is transformed first, so its plan is current (Vite invalidated it before
  * the hooks ran); without a plan (the file does not parse, or is not the
  * compiler's), a derived module without importers is stale.
- * `undefined` when every module is live.
+ * `undefined` when every module is live, or when no derived module was
+ * analysed: one that nothing requested (the route's import analysis created
+ * it, `isSelfAccepting` unset) stops Vite's propagation whether kept or
+ * dropped, so the file is not transformed for it (a route not on the page,
+ * a checkout rewriting many).
  */
 export async function liveModules<
   T extends {
     id: string | null
     url: string
     importers: ReadonlySet<unknown>
+    isSelfAccepting?: boolean | undefined
   },
 >(
   environment: {
@@ -423,7 +397,14 @@ export async function liveModules<
   modules: Array<T>,
 ): Promise<Array<T> | undefined> {
   const identities = modules.map((m) => (m.id === null ? null : identify(m.id)))
-  if (!identities.some((i) => i !== null && i.derived !== null)) {
+  if (
+    !identities.some(
+      (identity, i) =>
+        identity !== null &&
+        identity.derived !== null &&
+        modules[i]!.isSelfAccepting !== undefined,
+    )
+  ) {
     return undefined
   }
   for (const [i, identity] of identities.entries()) {

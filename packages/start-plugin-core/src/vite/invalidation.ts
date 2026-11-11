@@ -134,17 +134,6 @@ export async function invalidateRegistry(
   }
 }
 
-/**
- * A removed file's server functions leave the registry, when the core
- * judged the event a removal: a removal of a file that reads back (a
- * removal and re-creation delivered late) is a change and keeps them.
- */
-export function forgetRemoved(s: Session, change: InvalidateChange): void {
-  if (change.kind === 'unlink' && !s.start.caches.rawFacts.knows(change.path)) {
-    s.start.forget(change.path)
-  }
-}
-
 /** The compiler's change kind of a Vite file event. */
 export function changeKindOf(
   event: 'create' | 'update' | 'delete',

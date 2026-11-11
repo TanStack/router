@@ -10,7 +10,6 @@ import {
   identify,
   isCommonJsPath,
   langFromId,
-  planKeyString,
   revision,
 } from './identity'
 import { parseModule } from './source'
@@ -68,14 +67,17 @@ const MAX_ATTEMPTS = 3
 export function createCompilerCaches(
   rawFacts: HostServices['rawFacts'],
   label = 'compiler',
+  opts: { removed?: (path: string) => void } = {},
 ): CompilerCaches {
   const invalidations = new Map<string, Promise<unknown>>()
   const caches: CompilerCaches = {
     plans: new Map(),
     rawFacts,
     fileSetVersion: 0,
+    events: 0,
     stale: new StaleSets(),
     invalidations,
+    removed: opts.removed,
     settled: async () => {
       while (invalidations.size > 0) {
         await Promise.allSettled([...invalidations.values()])
@@ -133,7 +135,6 @@ export async function compileModule(
   }
   const rev = revision(input.code)
   const requested = outputOf(identity)
-  const keyString = planKeyString(key)
   const note = await textDiffers(
     cache.get(key),
     rev,
@@ -153,8 +154,10 @@ export async function compileModule(
       // what was validated at the current versions stands (not asked again)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
+      // (every file event asks a published plan's failed resolutions)
       const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
         resolutions: hit.resolvedAt === fileSetVersion,
+        failed: true,
         facts: hit.factsAt === factsVersion,
       })
       if (cache.lookup(key, rev) === hit) {
@@ -177,7 +180,7 @@ export async function compileModule(
               (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
             ),
             src,
-            { resolutions: true, facts: false },
+            { resolutions: true, failed: true, facts: false },
           )
           cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
         }
@@ -185,7 +188,7 @@ export async function compileModule(
       // evicted, or evicted and published again, meanwhile: look again
       continue
     }
-    const flight = cache.inFlight.get(keyString)
+    const flight = cache.flight(key)
     if (flight && flight.revision === rev) {
       // another request of this text is compiling it: its outcome answers this request too
       const settled = await flight.settled.catch(() => null)
@@ -201,7 +204,7 @@ export async function compileModule(
       revision: rev,
       settled: settle(input, identity, tier0Only, host, caches, key, rev),
     }
-    cache.inFlight.set(keyString, record)
+    cache.fly(key, record)
     try {
       return noted(
         emitSettled(
@@ -214,9 +217,7 @@ export async function compileModule(
         ),
       )
     } finally {
-      if (cache.inFlight.get(keyString) === record) {
-        cache.inFlight.delete(keyString)
-      }
+      cache.land(key, record)
     }
   }
 }
@@ -296,6 +297,7 @@ async function settle(
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
+      let events = caches.events
       const ledger = new DependencyLedger(key, cache.dependents)
       const result = await runAttempt(
         input,
@@ -331,15 +333,22 @@ async function settle(
       const src = fingerprintSourceFor(caches, host, key.env)
       // the snapshot: whether every fact the attempt recorded is still
       // current. Standing answers (no file appeared or disappeared, no raw
-      // fact went stale since the attempt started) are not asked again
-      const snapshotOk = await fingerprintsCurrent(
-        entry.plan.dependencies,
-        src,
-        {
+      // fact went stale since the attempt started) are not asked again; a
+      // failed resolution is asked again once a file event ran since (no
+      // event restarts the attempt for it), until a check overlaps none
+      let snapshotOk: boolean
+      for (;;) {
+        const checkedAt = caches.events
+        snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
           resolutions: caches.fileSetVersion === fileSetVersion,
+          failed: checkedAt === events,
           facts: caches.rawFacts.version === factsVersion,
-        },
-      )
+        })
+        if (!snapshotOk || caches.events === checkedAt) {
+          break
+        }
+        events = checkedAt
+      }
       if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {
           ledger.publish()

@@ -15,7 +15,13 @@ import { startRecognizer } from '../../src/compiler/recognizer'
 import { createHydratePlanner } from '../../src/planners/hydrate'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
 import { NAME, shape } from '../generated-names'
-import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
+import {
+  MemoryHost,
+  clientEnv,
+  envInfo,
+  ssrEnv,
+  takeStale,
+} from './memory-host'
 import type {
   CompileConfig,
   CompileOutput,
@@ -300,12 +306,9 @@ export const Page = () => <Hydrate><p>child</p></Hydrate>
       [local, []],
     ] as const) {
       host.files[UI] = text
-      const { dependents } = await invalidate(
-        host.caches,
-        { path: UI, kind: 'change' },
-        host,
-      )
-      expect(dependents.map((k) => k.canonicalId)).toContain(FILE)
+      takeStale(host.caches)
+      await invalidate(host.caches, { path: UI, kind: 'change' }, host)
+      expect(takeStale(host.caches)).toContain(FILE)
       expect(await boundaries()).toEqual(expected)
     }
   })

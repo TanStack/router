@@ -316,8 +316,10 @@ text compiles waits for it and emits its own output from the result.
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read and a
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
-  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
-  rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
+  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans. A row holds two facts: the
+  key's published plan depends on the path (until it is evicted or replaced), and a compile of the key running now
+  asked for it (until the key's last compile ends: two quick saves overlap). An event restarts the compiles that asked,
+  and checks the published plan.
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it for every file event they see
   (every hook, every environment) and for registry changes. Repeating it is harmless: the raw-facts cache keeps the
   revision of the text it read of each path (`seen`), the event reads the file once, and a change returns when the
@@ -326,8 +328,9 @@ text compiles waits for it and emits its own output from the result.
   with that text still moves the file set (what looked for the file meanwhile, and another environment's resolver
   that answered before it existed, ask again) without marking its facts. Any file event may hide a creation
   (chokidar folds a removal and a re-creation within its window into one change; Rspack lists a file back in its
-  batch as modified): every one, a repeated change included, asks the failed resolutions again (a compile in flight
-  that met one is restarted only when one resolves now: its row carries the failed resolutions it recorded), and a
+  batch as modified): every one, a repeated change included, asks the failed resolutions of the published plans again (a compile running now asks its own: a failed answer
+  whose ask a file event overlapped is asked again before it is recorded, and a compile's snapshot asks its failed
+  resolutions again once a file event ran since it began), and a
   change of a path the caches hold nothing of that reads as a file is judged an add. A repeat moves no file set (a
   `package.json` or tsconfig saved once moved it). An event that reads the file empty reads it again for a moment
   (an in-place save reported between truncation and write), unless an event read it empty and waited in vain and
@@ -338,9 +341,10 @@ text compiles waits for it and emits its own output from the result.
   that reads back is an add, a change of one that reads nothing a removal). A change marks the file's raw facts
   stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
-  add/unlink and a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
-  take: a file of the same name with another extension, or of a directory a resolution went into, looked up in the
-  dependents index by directory and name, not scanned). The file's own
+  add/unlink and a `package.json` change drop the resolution memo; any event of a file but its removal also
+  re-asks the resolutions the file may take, past the memo when the file set stands (a creation may hide in a
+  change): a file of the same name with another extension, or of a directory a resolution went into, looked up in
+  the dependents index by directory and name, not scanned). The file's own
   plans are keyed by its text and stay (a bundler that built the new text already keeps their rows) until a compile
   of a newer text ends: with its plan, or, for a text without one (untouched, empty, not parsed), without; a removal
   evicts them and stales every plan that read the file, unasked. The plans found stale enter their environment's
@@ -351,10 +355,11 @@ text compiles waits for it and emits its own output from the result.
   validation (the file, so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect: `invalidate()` checks every fact, and as `lazyHits` when only a resolution or a route-registry digest did, which the next request asks again by design), and a compile
   every attempt of which was overtaken. The webpack-family hosts take their environments' sets at `finishMake`
   (`StaleSetDrain`), the Vite dev hosts in each environment's `hotUpdate` (`staleHotUpdate`: the event's own file
-  leaves the set first, its modules are the event's), and a Vite watch build at each environment's `buildEnd`, as
-  an audit (`auditStaleSet`: a watch build builds what its watcher reports; a path stale when the build began that
-  it bundles and did not compile counts as a stale hit). The call also returns `{ evicted, dependents }`, which no
-  host reads (design 3 step 6 removes it). A summary change invalidates an importer
+  leaves the set first, its modules are the event's), and a Vite watch build at each environment's `buildStart`: a
+  Rolldown watch rebuild runs every `load` and `transform` again, so it builds every stale module (a tripwire test in
+  `start-build-watch.test.ts` fails if a rebuild stops doing so). The call returns nothing; a removal it applies is told to
+  the session (`createCompilerCaches`' `removed`: Start forgets the file's server functions and import protection's
+  records there). A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per

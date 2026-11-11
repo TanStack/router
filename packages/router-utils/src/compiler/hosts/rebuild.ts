@@ -79,7 +79,7 @@ export async function reportingFailure(
   }
 }
 
-/** The paths of the plans `invalidate()` evicted or found stale, for `env` (every environment when omitted). */
+/** The paths of plan keys (`restorePlans`' stale ones), for `env` (every environment when omitted). */
 export function pathsOf(keys: Iterable<PlanKey>, env?: string): Array<string> {
   const out = new Set<string>()
   for (const key of keys) {

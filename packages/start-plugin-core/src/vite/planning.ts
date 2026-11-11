@@ -196,8 +196,8 @@ export function createViteDefineConfig(opts: {
 export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
-  /** `build --watch`: the client environment's watcher, to follow its builds. */
-  followClientWatcher: (
+  /** `build --watch`: an environment's watcher, to follow its builds. */
+  followWatcher: (
     environment: vite.BuildEnvironment,
     watcher: vite.Rolldown.RolldownWatcher,
   ) => void
@@ -221,13 +221,16 @@ export async function buildStartViteEnvironments(opts: {
     // the server by cause (`ViteCompilerState.publishClientBuild`)
     const output = await opts.builder.build(client)
     if ('on' in output) {
-      opts.followClientWatcher(client, output)
+      opts.followWatcher(client, output)
     }
     await firstBuildEnd(output)
   }
 
   if (!server.isBuilt) {
-    await opts.builder.build(server)
+    const output = await opts.builder.build(server)
+    if ('on' in output) {
+      opts.followWatcher(server, output)
+    }
   }
 
   // the SSR environment is the provider unless an RSC environment is
@@ -242,7 +245,10 @@ export async function buildStartViteEnvironments(opts: {
   )
 
   if (!providerEnv.isBuilt) {
-    await opts.builder.build(providerEnv)
+    const output = await opts.builder.build(providerEnv)
+    if ('on' in output) {
+      opts.followWatcher(providerEnv, output)
+    }
   }
 }
 

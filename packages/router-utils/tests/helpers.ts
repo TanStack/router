@@ -7,6 +7,7 @@ import {
   RawFactsCache,
   compileModule,
   createCompilerCaches,
+  invalidate,
   sameFileSpecifier,
 } from '../src/compiler'
 import type {
@@ -15,6 +16,7 @@ import type {
   CompilerCaches,
   EnvInfo,
   HostServices,
+  InvalidateChange,
   PlaceFrag,
   PlanContext,
   Planner,
@@ -25,6 +27,28 @@ import type {
 import type { Node } from 'yuku'
 
 export const ROUTER_SPEC = 'toy-router'
+
+/** The paths in the stale sets of every environment that compiled (held ones too), taken: sorted, once each. */
+export function takeStale(caches: CompilerCaches): Array<string> {
+  const out = new Set<string>()
+  for (const env of caches.plans.keys()) {
+    for (const path of caches.stale.take(env, { held: true })) {
+      out.add(path)
+    }
+  }
+  return [...out].sort()
+}
+
+/** What one invalidation made stale (`takeStale` after it; what was stale before is taken first). */
+export async function staleAfter(
+  caches: CompilerCaches,
+  change: InvalidateChange,
+  hosts: Parameters<typeof invalidate>[2],
+): Promise<Array<string>> {
+  takeStale(caches)
+  await invalidate(caches, change, hosts)
+  return takeStale(caches)
+}
 
 export function envInfo(partial: Partial<EnvInfo> = {}): EnvInfo {
   return {
