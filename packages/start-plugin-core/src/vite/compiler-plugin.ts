@@ -17,13 +17,13 @@
  * (the RSC provider's handler reach), `late-pass-plugin.ts` and
  * `server-fn-plugins.ts` (dev lookup, forward, resolver).
  */
-import path from 'node:path'
 import {
   ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   OutputBuilder,
   SAME_FILE_SPECIFIER_RE,
   SourceText,
+  auditStaleSet,
   identify,
   invalidate,
   isAssetId,
@@ -39,7 +39,6 @@ import {
   withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { NODE_MODULES_RE } from '../compiler/scope'
 import { isVueSfc } from '../compiler/vue'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
@@ -47,13 +46,14 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import {
-  ViteCompilerState,
-  inputMapOf,
-  optimizedDependency,
-} from './compiler-state'
+import { inputMapOf, optimizedDependency } from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
-import { changeKindOf, forgetRemoved, invalidateFor } from './invalidation'
+import {
+  buildInvalidationHosts,
+  changeKindOf,
+  forgetRemoved,
+  invalidateFor,
+} from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
 import {
   devLookupPlugin,
@@ -65,10 +65,7 @@ import type {
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
-import type {
-  StartCompilerPluginOptions,
-  ViteStartEnvironment,
-} from './compiler-state'
+import type { ViteCompilerState, ViteStartEnvironment } from './compiler-state'
 
 /** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
 type TransformHandler = Extract<
@@ -79,13 +76,10 @@ type TransformHandler = Extract<
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
-export function startCompilerPlugin(
-  opts: StartCompilerPluginOptions,
-): PluginOption {
-  const state = new ViteCompilerState(opts)
+export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
   return [
     runPlugin(state),
-    ...opts.environments.flatMap((env) => envCompilerPlugins(state, env)),
+    ...state.opts.environments.flatMap((env) => envCompilerPlugins(state, env)),
     latePassPlugin(state),
     devLookupPlugin(state),
     forwardPlugin(state),
@@ -152,6 +146,7 @@ function envCompilerPlugins(
     if (!out) {
       return null
     }
+    s.builds.get(env.name)?.compiled.add(identity.path)
     watchDependencies(this, out.dependencies, normalizePath(identity.path))
     state.reportDiagnostics(
       s,
@@ -229,6 +224,17 @@ function envCompilerPlugins(
       }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         s.start.ip?.env(env.name, env.type).beginBuild()
+        // a file event's invalidation asks this environment's resolutions
+        // with its resolver; the build embeds the client build afresh; what
+        // it is to build again is audited at its end
+        s.resolvers.set(env.name, (source, importer, options) =>
+          this.resolve(source, importer, options),
+        )
+        s.embedded.delete(env.name)
+        s.builds.set(env.name, {
+          stale: new Set(s.start.caches.stale.paths(env.name)),
+          compiled: new Set(),
+        })
       }
       if (this.environment.mode === 'build' && env.type === 'client') {
         if (!this.meta.watchMode) {
@@ -259,31 +265,25 @@ function envCompilerPlugins(
       }
     },
     buildEnd() {
-      if (this.environment.mode !== 'build' || env.type !== 'client') {
+      if (this.environment.mode !== 'build' || !this.meta.watchMode) {
         return
       }
       const s = state.sessionOf(this.environment)
-      if (!this.meta.watchMode) {
-        s.clientFiles ??= []
-        return
+      const build = s.builds.get(env.name)
+      if (build) {
+        s.builds.delete(env.name)
+        auditStaleSet(s.start.caches, env.name, build, this.getModuleIds())
       }
-      // a rebuild keeps the registry (a new build cleared it): the
-      // functions the client references are those of the modules this
-      // build bundles (the server's resolver gates on them)
-      const graph = new Set<string>()
-      const files = new Set<string>()
-      for (const id of this.getModuleIds()) {
-        const identity = identify(id)
-        graph.add(identity.canonicalId)
-        if (
-          path.isAbsolute(identity.path) &&
-          !NODE_MODULES_RE.test(identity.path)
-        ) {
-          files.add(identity.path)
+      if (env.type === 'client') {
+        // a rebuild keeps the registry (a new build cleared it): the
+        // functions the client references are those of the modules this
+        // build bundles (the server's resolver gates on them)
+        const graph = new Set<string>()
+        for (const id of this.getModuleIds()) {
+          graph.add(identify(id).canonicalId)
         }
+        s.start.registry.retain(env.name, graph)
       }
-      s.start.registry.retain(env.name, graph)
-      s.clientFiles = [...files]
     },
     /**
      * A build that writes its bundle (not a scan: plugin-rsc analyses the
@@ -423,21 +423,22 @@ function envCompilerPlugins(
       ) {
         return
       }
-      if (environment.mode === 'build' && env.type === 'client') {
-        state.opts.clientRebuild.begin()
-      }
       // the file's path once, as every module id and compiler key holds it
       // (Rolldown reports its watcher's native path: backslashes on Windows)
       const change: InvalidateChange = {
         path: normalizePath(id),
         kind: changeKindOf(event.event),
       }
+      if (change.path === s.sentinel) {
+        // ours (the client build a server build embeds), not a source
+        return
+      }
       if (environment.mode !== 'dev') {
         await invalidate(
           s.start.caches,
           change,
-          state.hostFor(s, environment, (source, importer, options) =>
-            this.resolve(source, importer, options),
+          buildInvalidationHosts(state, s, environment, (source, importer) =>
+            this.resolve(source, importer, { skipSelf: true }),
           ),
         )
         forgetRemoved(s, change)

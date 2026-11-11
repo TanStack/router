@@ -210,6 +210,38 @@ export function reloadStaleModules<TNode extends { file: string | null }>(
 }
 
 /**
+ * `vite build --watch`: an environment's build ended (`buildEnd`). A watch
+ * build builds what its watcher reported (and a module whose plan read a
+ * reported file: `watchDependencies`), never one module on request, so its
+ * stale set is an audit: taken whole (the held paths too), and a path that
+ * was stale when the build began (`build.stale`), which the build bundles
+ * (`moduleIds`) and did not compile (`build.compiled`), is a stale hit
+ * (`staleHits`: a dependency the watcher was not told of).
+ */
+export function auditStaleSet(
+  caches: CompilerCaches,
+  env: string,
+  build: { stale: ReadonlySet<string>; compiled: ReadonlySet<string> },
+  moduleIds: Iterable<string>,
+): void {
+  const taken = caches.stale.take(env, { held: true })
+  const owed = taken.filter(
+    (path) => build.stale.has(path) && !build.compiled.has(path),
+  )
+  if (owed.length === 0) {
+    return
+  }
+  const bundled = new Set<string>()
+  for (const id of moduleIds) {
+    bundled.add(identify(id).path)
+  }
+  const counters = caches.plans.get(env)?.counters
+  if (counters) {
+    counters.staleHits += owed.filter((path) => bundled.has(path)).length
+  }
+}
+
+/**
  * `vite build --watch`: declares the files a module's plan read to the
  * watcher, so an edit of one outside the module graph (a denied file its
  * mock replaced, a marker file) rebuilds the module, as the webpack-family

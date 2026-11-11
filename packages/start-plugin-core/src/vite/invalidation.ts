@@ -12,7 +12,7 @@ import type {
   HostServices,
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
-import type { DevEnvironment } from 'vite'
+import type { DevEnvironment, Environment } from 'vite'
 import type { Session, ViteCompilerState } from './compiler-state'
 
 /** The host of the invalidation operation (a dev environment's own resolver). */
@@ -55,6 +55,30 @@ export function invalidationHosts(
     let h = hosts.get(name)
     if (!h) {
       h = invalidationHost(state, s, s.server?.environments[name] ?? own)
+      hosts.set(name, h)
+    }
+    return h
+  }
+}
+
+/**
+ * `build --watch`: the hosts of a file event's invalidation, per
+ * environment: a plan's resolutions are asked again with its own
+ * environment's resolver (`Session.resolvers`: the plugin context of its
+ * last build), or the calling hook's (`own`) for an environment that has
+ * not built.
+ */
+export function buildInvalidationHosts(
+  state: ViteCompilerState,
+  s: Session,
+  own: Environment,
+  resolve: NonNullable<ReturnType<Session['resolvers']['get']>>,
+): (key: { env: string }) => HostServices {
+  const hosts = new Map<string, HostServices>()
+  return ({ env: name }) => {
+    let h = hosts.get(name)
+    if (!h) {
+      h = state.hostFor(s, own, s.resolvers.get(name) ?? resolve)
       hosts.set(name, h)
     }
     return h

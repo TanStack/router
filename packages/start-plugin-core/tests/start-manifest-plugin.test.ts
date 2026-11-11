@@ -3,12 +3,25 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
 import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
+import type { ClientBuilds, ClientManifest } from '../src/vite/compiler-state'
 
 vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {
     startManifest: 'tanstack-start-manifest:v',
   },
 }))
+
+/** The client build of one run, as the compiler's sessions keep it. */
+function clientBuilds() {
+  let manifest: ClientManifest | null = null
+  return {
+    publishClientBuild: (_environment: unknown, published: ClientManifest) => {
+      manifest = published
+    },
+    embedClientBuild: () =>
+      manifest && { digest: '', manifest, functionIds: new Set<string>() },
+  } as unknown as ClientBuilds
+}
 
 describe('startManifestPlugin', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -23,6 +36,7 @@ describe('startManifestPlugin', () => {
             resolvedStartConfig: { basePaths: { publicBase: '/assets' } },
             startConfig: { server: { build: { inlineCss: { enabled } } } },
           }) as any,
+        clientBuilds: clientBuilds(),
       }) as Array<any>
       const capture = plugins.find(
         (item) =>
@@ -109,6 +123,7 @@ function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
           },
         },
       }) as any,
+    clientBuilds: clientBuilds(),
   }) as Array<any>
   const capture = plugins.find(
     (item) =>

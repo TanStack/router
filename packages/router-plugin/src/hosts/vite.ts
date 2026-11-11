@@ -15,6 +15,7 @@ import {
   SAME_FILE_SPECIFIER_RE,
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
+  auditStaleSet,
   displayPath,
   identify,
   isFinalBuild,
@@ -94,6 +95,11 @@ interface Session {
   server: ViteDevServer | null
   /** Stops the session's route registry listener. */
   unsubscribe: () => void
+  /**
+   * `build --watch`: per environment, what its running build is to build
+   * again and the files it compiled (`auditStaleSet` at its end).
+   */
+  builds: Map<string, { stale: Set<string>; compiled: Set<string> }>
 }
 
 /**
@@ -154,6 +160,7 @@ export function createRouterCompilerVitePlugin(
         }),
         server,
         unsubscribe: () => {},
+        builds: new Map(),
       }
       // a registry change (the generator published new route ids) re-plans
       // the route modules concerned
@@ -262,12 +269,34 @@ export function createRouterCompilerVitePlugin(
       // one warning per file per run (J2.19): a build of several environments
       // (Vite's builder) starts each in turn; the first configured
       // environment starts the run
-      const { compiler } = sessions.of(this.environment)
+      const s = sessions.of(this.environment)
+      const { compiler } = s
       if (
         compiler.mode === 'build' &&
         this.environment.name === firstEnvironment
       ) {
         compiler.warnings.reset()
+      }
+      if (compiler.mode === 'build' && this.meta.watchMode) {
+        s.builds.set(this.environment.name, {
+          stale: new Set(compiler.caches.stale.paths(this.environment.name)),
+          compiled: new Set(),
+        })
+      }
+    },
+
+    // `build --watch`: the build's audit of its stale set
+    buildEnd() {
+      const s = sessions.peek(this.environment)
+      const build = s?.builds.get(this.environment.name)
+      if (s && build) {
+        s.builds.delete(this.environment.name)
+        auditStaleSet(
+          s.compiler.caches,
+          this.environment.name,
+          build,
+          this.getModuleIds(),
+        )
       }
     },
 
@@ -331,7 +360,8 @@ export function createRouterCompilerVitePlugin(
     transform: {
       filter: { id: { include: JS_ID_RE, exclude: SCRIPT_ASSET_QUERY_RE } },
       async handler(code, id) {
-        const { compiler } = sessions.of(this.environment)
+        const s = sessions.of(this.environment)
+        const { compiler } = s
         if (!compiler.wants(id)) {
           return null
         }
@@ -364,6 +394,7 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
+        s.builds.get(environment.name)?.compiled.add(identity.path)
         watchDependencies(this, out.dependencies, file)
         const name = displayPath(identity.path, ROOT)
         // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
