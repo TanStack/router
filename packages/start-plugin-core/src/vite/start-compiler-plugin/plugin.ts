@@ -36,7 +36,12 @@ import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { Environment, EnvironmentModuleNode, PluginOption } from 'vite'
+import type {
+  DevEnvironment,
+  Environment,
+  EnvironmentModuleNode,
+  PluginOption,
+} from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
@@ -65,8 +70,17 @@ async function loadViteModuleFromEnvironment(
   id: string,
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
-  if (environment.mode === 'build') {
-    const loaded = await opts.load({ id })
+  if (
+    environment.mode === 'build' ||
+    (environment.mode === 'dev' &&
+      environment.config.experimental.bundledDev &&
+      environment.name === VITE_ENVIRONMENT_NAMES.client)
+  ) {
+    // Bundled dev must load through its current driver; transformRequest starts
+    // a separate client container and can reset the compiler mid-transform.
+    const loaded = await opts.load({
+      id: environment.mode === 'dev' ? (opts.devId ?? id) : id,
+    })
     return loaded?.code ?? ''
   }
 
@@ -284,9 +298,98 @@ export function startCompilerPlugin(
       compilerTransforms,
       compilerPlugins,
     })
+    function invalidateCompilerState(
+      viteEnvironment: DevEnvironment,
+      modules: Array<EnvironmentModuleNode>,
+    ) {
+      const compiler = compilers.get(viteEnvironment.name)
+      const idsToInvalidate = new Set<string>()
+      const transitiveCompilerImportersToInvalidate = new Set<string>()
+      const importerModulesToInvalidate = new Set<EnvironmentModuleNode>()
+      const changedIds: Array<string> = []
+
+      modules.forEach((m) => {
+        if (m.id) {
+          idsToInvalidate.add(m.id)
+          changedIds.push(m.id)
+        }
+      })
+
+      const deletedIds = compiler?.invalidateModules(changedIds) ?? new Set()
+
+      modules.forEach((m) => {
+        if (m.id) {
+          if (deletedIds.has(cleanId(m.id))) {
+            transitiveCompilerImportersToInvalidate.add(cleanId(m.id))
+
+            m.importers.forEach((importer) => {
+              if (importer.id) {
+                idsToInvalidate.add(importer.id)
+                importerModulesToInvalidate.add(importer)
+                transitiveCompilerImportersToInvalidate.add(
+                  cleanId(importer.id),
+                )
+              }
+            })
+          }
+        }
+      })
+
+      const finishHotUpdate = async () => {
+        if (
+          environment.type === 'server' &&
+          compiler &&
+          transitiveCompilerImportersToInvalidate.size > 0
+        ) {
+          const seenImporters = new Set(transitiveCompilerImportersToInvalidate)
+          const nestedImporters =
+            await compiler.getTransitiveImporters(seenImporters)
+
+          for (const nestedImporterId of nestedImporters) {
+            seenImporters.add(nestedImporterId)
+          }
+
+          for (const importerId of seenImporters) {
+            idsToInvalidate.add(importerId)
+          }
+          compiler.invalidateModules(seenImporters)
+        }
+
+        invalidateModuleNodes(viteEnvironment, importerModulesToInvalidate)
+        invalidateServerFnLookupModules(viteEnvironment, idsToInvalidate)
+        const compilerVirtualModules = invalidateCompilerVirtualModules(
+          viteEnvironment,
+          idsToInvalidate,
+          compilerVirtualModuleIdPattern,
+        )
+
+        if (environment.type !== 'server') {
+          return mergeHotUpdateModules(modules, compilerVirtualModules)
+        }
+
+        invalidateModuleNodes(viteEnvironment, modules)
+
+        const providerIdsToInvalidate = getServerFnProviderIds(idsToInvalidate)
+        compiler?.invalidateModules(providerIdsToInvalidate)
+
+        const providerModules = invalidateServerFnProviderModules(
+          viteEnvironment,
+          [...idsToInvalidate, ...providerIdsToInvalidate],
+        )
+
+        return mergeHotUpdateModules(modules, [
+          ...compilerVirtualModules,
+          ...providerModules,
+        ])
+      }
+
+      return finishHotUpdate()
+    }
+
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
+      perEnvironmentWatchChangeDuringDev: true,
       applyToEnvironment(env) {
         return env.name === environment.name
       },
@@ -306,9 +409,18 @@ export function startCompilerPlugin(
           compilers.delete(this.environment.name)
         }
       },
-      watchChange(id) {
+      async watchChange(id) {
         if (bundledDev && this.environment.mode === 'dev') {
-          compilers.get(this.environment.name)?.invalidateModule(id)
+          if (environment.type === 'server') {
+            await invalidateCompilerState(
+              this.environment,
+              Array.from(
+                this.environment.moduleGraph.getModulesByFile(id) ?? [],
+              ),
+            )
+          } else {
+            compilers.get(this.environment.name)?.invalidateModule(id)
+          }
         }
       },
       transform: {
@@ -396,91 +508,7 @@ export function startCompilerPlugin(
       },
 
       hotUpdate(ctx) {
-        const compiler = compilers.get(this.environment.name)
-        const idsToInvalidate = new Set<string>()
-        const transitiveCompilerImportersToInvalidate = new Set<string>()
-        const importerModulesToInvalidate = new Set<EnvironmentModuleNode>()
-        const changedIds: Array<string> = []
-
-        ctx.modules.forEach((m) => {
-          if (m.id) {
-            idsToInvalidate.add(m.id)
-            changedIds.push(m.id)
-          }
-        })
-
-        const deletedIds = compiler?.invalidateModules(changedIds) ?? new Set()
-
-        ctx.modules.forEach((m) => {
-          if (m.id) {
-            if (deletedIds.has(cleanId(m.id))) {
-              transitiveCompilerImportersToInvalidate.add(cleanId(m.id))
-
-              m.importers.forEach((importer) => {
-                if (importer.id) {
-                  idsToInvalidate.add(importer.id)
-                  importerModulesToInvalidate.add(importer)
-                  transitiveCompilerImportersToInvalidate.add(
-                    cleanId(importer.id),
-                  )
-                }
-              })
-            }
-          }
-        })
-
-        const finishHotUpdate = async () => {
-          if (
-            environment.type === 'server' &&
-            compiler &&
-            transitiveCompilerImportersToInvalidate.size > 0
-          ) {
-            const seenImporters = new Set(
-              transitiveCompilerImportersToInvalidate,
-            )
-            const nestedImporters =
-              await compiler.getTransitiveImporters(seenImporters)
-
-            for (const nestedImporterId of nestedImporters) {
-              seenImporters.add(nestedImporterId)
-            }
-
-            for (const importerId of seenImporters) {
-              idsToInvalidate.add(importerId)
-            }
-            compiler.invalidateModules(seenImporters)
-          }
-
-          invalidateModuleNodes(this.environment, importerModulesToInvalidate)
-          invalidateServerFnLookupModules(this.environment, idsToInvalidate)
-          const compilerVirtualModules = invalidateCompilerVirtualModules(
-            this.environment,
-            idsToInvalidate,
-            compilerVirtualModuleIdPattern,
-          )
-
-          if (environment.type !== 'server') {
-            return mergeHotUpdateModules(ctx.modules, compilerVirtualModules)
-          }
-
-          invalidateModuleNodes(this.environment, ctx.modules)
-
-          const providerIdsToInvalidate =
-            getServerFnProviderIds(idsToInvalidate)
-          compiler?.invalidateModules(providerIdsToInvalidate)
-
-          const providerModules = invalidateServerFnProviderModules(
-            this.environment,
-            [...idsToInvalidate, ...providerIdsToInvalidate],
-          )
-
-          return mergeHotUpdateModules(ctx.modules, [
-            ...compilerVirtualModules,
-            ...providerModules,
-          ])
-        }
-
-        return finishHotUpdate()
+        return invalidateCompilerState(this.environment, ctx.modules)
       },
     }
   }
@@ -499,6 +527,13 @@ export function startCompilerPlugin(
           id: new RegExp(`${SERVER_FN_LOOKUP}$`),
         },
         handler(code, id) {
+          if (
+            bundledDev &&
+            this.environment.name === VITE_ENVIRONMENT_NAMES.client
+          ) {
+            // The bundled load returns its code directly to the compiler host.
+            return
+          }
           const compiler = compilers.get(this.environment.name)
           compiler?.ingestModule({
             code,

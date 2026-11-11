@@ -18,7 +18,7 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
-    setupFiles: ['./tests/setupTests.tsx'],
+    setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
   },
 })
 

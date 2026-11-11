@@ -16,6 +16,11 @@ import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
 import { cleanId } from './utils'
+import {
+  customIdCheck,
+  customIdError,
+  customIdWarning,
+} from './server-fn-id-check'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
@@ -425,6 +430,31 @@ function isTopLevelDirectCallCandidate(
   )
 }
 
+/**
+ * Whether the call is `receiver.method()` with a receiver that is not a
+ * namespace import, e.g. `z.object()` with `import { z } from 'zod'`.
+ *
+ * Resolution gives such a call the kind of the receiver itself, which only
+ * yields a direct-call candidate when the receiver is a factory and the code
+ * calls one of its properties (`createServerOnlyFn.bind()`). Skipping these
+ * calls saves loading the receiver's module (all of zod, here) only to learn
+ * that `z` is not a Start factory.
+ */
+function isMemberCallOnNonNamespaceReceiver(
+  node: t.CallExpression,
+  bindings: Map<string, Binding>,
+): boolean {
+  if (
+    !t.isMemberExpression(node.callee) ||
+    !t.isIdentifier(node.callee.object)
+  ) {
+    return false
+  }
+
+  const binding = bindings.get(node.callee.object.name)
+  return !(binding?.type === 'import' && binding.importedName === '*')
+}
+
 function isDirectCallCandidateForKind(
   kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
   externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
@@ -606,11 +636,15 @@ export class StartCompiler {
    * In dev mode, uses a base64-encoded JSON with file path and export name.
    * In build mode, uses SHA256 hash or custom generator.
    */
-  private generateFunctionId(opts: {
-    filename: string
-    functionName: string
-    extractedFilename: string
-  }): string {
+  private generateFunctionId(
+    opts: {
+      filename: string
+      functionName: string
+      variableName: string
+      extractedFilename: string
+    },
+    warn: ((message: string) => void) | undefined,
+  ): string {
     if (this.mode === 'dev') {
       // In dev, encode the file path and export name for direct lookup.
       // Each bundler adapter supplies its own strategy for encoding
@@ -648,11 +682,25 @@ export class StartCompiler {
         functionId = knownFn.functionId
       }
 
-      if (this.options.generateFunctionId) {
-        functionId ??= this.options.generateFunctionId({
+      if (functionId === undefined && this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
           filename: opts.filename,
           functionName: opts.functionName,
         })
+        if (functionId) {
+          const subject = {
+            name: opts.variableName,
+            functionName: opts.functionName,
+            rootRel: opts.filename,
+          }
+          const check = customIdCheck(functionId)
+          if (check === 'error') {
+            throw new Error(customIdError(subject, functionId))
+          }
+          if (check === 'deprecated') {
+            warn?.(customIdWarning(subject, functionId))
+          }
+        }
       }
       if (!functionId) {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
@@ -1125,7 +1173,13 @@ export class StartCompiler {
                     }
                   }
 
-                  if (isTopLevelDirectCallCandidate(path)) {
+                  if (
+                    isTopLevelDirectCallCandidate(path) &&
+                    !isMemberCallOnNonNamespaceReceiver(
+                      node,
+                      moduleInfo.bindings,
+                    )
+                  ) {
                     candidatePaths.push({ path })
                   }
                 },
@@ -1172,7 +1226,11 @@ export class StartCompiler {
               }
             }
 
-            if (checkDirectCalls && isTopLevelDirectCallCandidate(path)) {
+            if (
+              checkDirectCalls &&
+              isTopLevelDirectCallCandidate(path) &&
+              !isMemberCallOnNonNamespaceReceiver(node, moduleInfo.bindings)
+            ) {
               candidatePaths.push({ path })
               return
             }
@@ -1297,8 +1355,6 @@ export class StartCompiler {
         const methodChain: MethodChainPaths = {
           middleware: null,
           validator: null,
-          // TODO remove upon stable
-          inputValidator: null,
           handler: null,
           server: null,
           client: null,
@@ -1367,7 +1423,7 @@ export class StartCompiler {
           })(),
         warn: warnFn,
 
-        generateFunctionId: (opts) => this.generateFunctionId(opts),
+        generateFunctionId: (opts) => this.generateFunctionId(opts, warnFn),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

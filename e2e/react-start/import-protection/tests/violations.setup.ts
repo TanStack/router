@@ -172,6 +172,20 @@ async function navigateAllRoutes(
   const context = await browser.newContext()
   const page = await context.newPage()
 
+  // Safe factory imports must actually compile and hydrate. A crashed lazy
+  // compiler must not pass simply because it emitted no violation diagnostics.
+  await page.goto(baseURL)
+  await expect(page.getByTestId('hydration-status')).toHaveText('hydrated', {
+    timeout: 30_000,
+  })
+  for (const testId of [
+    'factory-safe',
+    'cross-boundary-safe-sf',
+    'cross-boundary-safe-mw',
+  ]) {
+    await expect(page.getByTestId(testId)).toHaveText('function')
+  }
+
   for (const [route, testId, expectedViolation] of routeDefinitions) {
     try {
       // Prefer 'networkidle' (ensures route chunks are actually fetched), but

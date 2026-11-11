@@ -67,29 +67,22 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
 
-    // First 3 should appear quickly (initial batch)
-    await expect(page.getByTestId('notification-list')).toBeVisible()
-
-    // Wait a bit and check that notifications are accumulating
-    await page.waitForTimeout(500)
-    const initialCount = await page
+    const notifications = page
       .getByTestId('notification-list')
       .locator('[data-testid^="notification-notif_"]')
-      .count()
-    expect(initialCount).toBeGreaterThanOrEqual(3)
 
-    // Wait for more to stream in
-    await page.waitForTimeout(2000)
-    const laterCount = await page
-      .getByTestId('notification-list')
-      .locator('[data-testid^="notification-notif_"]')
-      .count()
-    expect(laterCount).toBeGreaterThan(initialCount)
+    // The initial batch of 3 renders while the stream is still open
+    await expect(notifications.nth(2)).toBeVisible()
+    await expect(page.getByTestId('streaming-status')).toBeVisible()
+    const initialCount = await notifications.count()
+    expect(initialCount).toBeLessThan(7)
 
-    // Wait for completion
+    // The remaining notifications stream in afterwards
+    await expect(notifications.nth(initialCount)).toBeVisible()
     await expect(page.getByTestId('stream-complete')).toBeVisible({
       timeout: 10000,
     })
+    await expect(notifications).toHaveCount(7)
   })
 
   test('Each notification is a complete RSC with server data', async ({

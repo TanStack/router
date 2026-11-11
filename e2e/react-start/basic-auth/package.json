@@ -19,6 +19,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
+    "iron-session": "^9.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "catalog:",

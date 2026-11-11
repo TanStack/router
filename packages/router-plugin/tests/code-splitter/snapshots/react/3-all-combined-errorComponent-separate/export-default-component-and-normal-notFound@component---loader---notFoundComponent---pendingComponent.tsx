@@ -1,5 +1,5 @@
-import React from 'react';
+import React from 'react'
 function NotFoundComponent() {
-  return <div>Not Found</div>;
+  return <div>Not Found</div>
 }
-export { NotFoundComponent as notFoundComponent };
+export { NotFoundComponent as notFoundComponent }

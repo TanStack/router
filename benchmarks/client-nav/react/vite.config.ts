@@ -34,5 +34,6 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     setupFiles: [`${rootDir}vitest.setup.ts`],
+    benchmark: { include: ['react/speed.bench.ts'] },
   },
 })

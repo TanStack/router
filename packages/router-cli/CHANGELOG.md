@@ -1,5 +1,60 @@
 # @tanstack/router-cli
 
+## 1.168.0
+
+### Minor Changes
+
+- [#8855](https://github.com/TanStack/router/pull/8855) [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6) - Require Node `^20.19.0 || >=22.12.0` (was `>=20.19`), so the CommonJS builds can load ESM-only dependencies through `require(esm)`. Node 21 and Node 22.0–22.11 do not enable it by default, so they are no longer supported.
+
+### Patch Changes
+
+- Updated dependencies [[`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6)]:
+  - @tanstack/router-generator@1.168.0
+
+## 1.167.46
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.46
+
+## 1.167.45
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.45
+
+## 1.167.44
+
+### Patch Changes
+
+- [#8711](https://github.com/TanStack/router/pull/8711) [`a80cd74`](https://github.com/TanStack/router/commit/a80cd7410591396aa203f754c34caff2628f21fd) - Replace `yargs` with the dependency-free `cac` for parsing `tsr` arguments. `tsr generate` and `tsr watch` work as before. Running `tsr` with no command now prints help, and unknown commands, unknown options, or extra arguments now print an error and exit with code 1 instead of being ignored.
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.44
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.43
+
+## 1.167.42
+
+### Patch Changes
+
+- Updated dependencies [[`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e)]:
+  - @tanstack/router-generator@1.167.42
+
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.41
+
 ## 1.167.40
 
 ### Patch Changes

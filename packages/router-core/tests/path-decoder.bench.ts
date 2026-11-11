@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -51,11 +51,16 @@ describe.each(['stable', 'new-router', 'no-update'] as const)(
     }
     run()
     verify()
-    bench('update and build 200 locations', run, {
-      time: 1500,
-      warmupTime: 500,
-      throws: true,
-      teardown: verify,
+    test('update and build 200 locations', async ({ bench }) => {
+      await bench(
+        'update and build 200 locations',
+        { afterAll: verify },
+        run,
+      ).run({
+        time: 1500,
+        warmupTime: 500,
+        throws: true,
+      })
     })
   },
 )

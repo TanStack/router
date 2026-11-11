@@ -12,3 +12,11 @@
 
 - [ ] This change affects published code, and I have generated a [changeset](https://github.com/changesets/changesets/blob/main/docs/adding-a-changeset.md).
 - [ ] This change is docs/CI/dev-only (no release).
+
+<!--
+AI-authored PR rules:
+- disclose AI authorship
+- be respectful, use terse, human-readable language
+- short code snippets are better than many words
+- maintainers know their own codebase, no need to explain it to them
+-->

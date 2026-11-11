@@ -1,5 +1,62 @@
 # @tanstack/router-generator
 
+## 1.168.0
+
+### Minor Changes
+
+- [#8855](https://github.com/TanStack/router/pull/8855) [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6) - Require Node `^20.19.0 || >=22.12.0` (was `>=20.19`), so the CommonJS builds can load ESM-only dependencies through `require(esm)`. Node 21 and Node 22.0–22.11 do not enable it by default, so they are no longer supported.
+
+### Patch Changes
+
+- [#8857](https://github.com/TanStack/router/pull/8857) [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6) - A pathless layout inside a route group (`routes/(group)/_layout.tsx`) or a route group's own layout (`routes/(group)/route.tsx`) is typed with the full path `'/'` in `FileRoutesByPath`, like the router gives it at runtime, instead of `''`. When no index route claims `/`, the layout also appears under `'/'` in `FileRoutesByFullPath` and `FileRoutesByTo`, as a pathless layout outside a group already does.
+
+- Updated dependencies [[`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ff157f0`](https://github.com/TanStack/router/commit/ff157f0079982e90d62be7fdeecfb77e4fdcec69)]:
+  - @tanstack/router-utils@1.163.0
+
+## 1.167.46
+
+### Patch Changes
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
+  - @tanstack/router-core@1.171.39
+
+## 1.167.45
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+
+## 1.167.44
+
+### Patch Changes
+
+- Updated dependencies [[`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e)]:
+  - @tanstack/router-utils@1.162.4
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/router-core@1.171.37
+
+## 1.167.42
+
+### Patch Changes
+
+- [#8664](https://github.com/TanStack/router/pull/8664) [`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e) - Avoid overwriting a route file with the scaffold template when an in-place save finishes while the generator is reading the file.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+
 ## 1.167.40
 
 ### Patch Changes

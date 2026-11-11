@@ -1,3 +1,4 @@
+import { isPromise } from '@tanstack/router-core'
 import { createMiddleware } from './createMiddleware'
 import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
@@ -100,6 +101,20 @@ function dedupeSerializationAdapters(
   }
 }
 
+function dedupeOptions<
+  T extends { serializationAdapters?: ReadonlyArray<AnySerializationAdapter> },
+>(options: T): T {
+  if (options.serializationAdapters) {
+    const deduped = new Set<AnySerializationAdapter>()
+    dedupeSerializationAdapters(
+      deduped,
+      options.serializationAdapters as Array<AnySerializationAdapter>,
+    )
+    options.serializationAdapters = Array.from(deduped)
+  }
+  return options
+}
+
 export const createStart = <
   const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter> =
     [],
@@ -135,17 +150,14 @@ export const createStart = <
   TFunctionMiddlewares
 > => {
   return {
-    getOptions: async () => {
-      const options = await getOptions()
-      if (options.serializationAdapters) {
-        const deduped = new Set<AnySerializationAdapter>()
-        dedupeSerializationAdapters(
-          deduped,
-          options.serializationAdapters as unknown as Array<AnySerializationAdapter>,
-        )
-        options.serializationAdapters = Array.from(deduped) as any
-      }
-      return options
+    // A synchronous factory returns synchronously so callers can skip a
+    // microtask per request.
+    getOptions: () => {
+      const options = getOptions()
+      // Promise.resolve adopts any thenable and returns a native promise as is.
+      return isPromise(options)
+        ? Promise.resolve(options).then(dedupeOptions)
+        : dedupeOptions(options)
     },
     createMiddleware: createMiddleware,
   } as StartInstance<

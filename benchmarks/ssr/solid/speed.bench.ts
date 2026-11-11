@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import { runSsrRequestLoop } from '../bench-utils'
 import type { StartRequestHandler } from '../bench-utils'
 
@@ -11,14 +11,12 @@ const { default: handler } = (await import(
   default: StartRequestHandler
 }
 
-describe('ssr', () => {
-  bench(
-    'ssr request loop (solid)',
-    () => runSsrRequestLoop(handler, { seed: benchmarkSeed }),
-    {
-      warmupIterations: 100,
-      time: 10_000,
-      throws: true,
-    },
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr request loop (solid)', async () =>
+    runSsrRequestLoop(handler, { seed: benchmarkSeed }),
+  ).run({
+    warmupIterations: 100,
+    time: 10_000,
+    throws: true,
+  })
 })

@@ -1,5 +1,5 @@
 // Query-owned RSC pattern.
-// Assumes your router context provides a queryClient for SSR prefetch.
+// Assumes your router context provides a queryClient for SSR queries.
 
 import type { ReactNode } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -68,7 +68,10 @@ const postQueryOptions = (postId: string) => ({
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context, params }) => {
-    await context.queryClient.ensureQueryData(postQueryOptions(params.postId))
+    await context.queryClient.query({
+      ...postQueryOptions(params.postId),
+      staleTime: 'static',
+    })
   },
   component: PostPage,
 })

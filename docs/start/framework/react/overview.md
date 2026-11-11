@@ -5,9 +5,7 @@ description: Build full-stack React applications with TanStack Start, including 
 ---
 
 > [!NOTE]
-> TanStack Start is currently in the **Release Candidate** stage! This means it is considered feature-complete and its API is considered stable.
-> **This does not mean it is bug-free or without issues, which is why we invite you to try it out and provide feedback!**
-> The road to v1 will likely be a quick one, so don't wait too long to try it out!
+> TanStack Start is stable. If you're upgrading from a release candidate, follow [Migrate from the Release Candidate](./migrate-from-release-candidate).
 
 TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, client/server builds, and more. With [Vite](https://vite.dev/) and [Rsbuild](https://rsbuild.dev/) support, it's ready to develop and deploy to the hosting provider or runtime you want.
 

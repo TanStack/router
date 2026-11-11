@@ -390,7 +390,7 @@ Stream typed data from server functions to the client. See the [Streaming Data f
 
 ### Raw Responses
 
-Return `Response` objects binary data, or custom content types.
+Return a `Response` for binary data or custom content types, and the call resolves with it. Throw a `Response` instead to reject the call with it. Either way, the caller receives its body and headers, and its status unless a response helper set one. The browser follows a `Response` with a redirect status and a `Location` header before the caller sees it, so use `redirect()` to send the user elsewhere.
 
 ### Progressive Enhancement
 
@@ -425,7 +425,9 @@ Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
-Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41` for `A`, lowercase hex, `%2E`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.
 

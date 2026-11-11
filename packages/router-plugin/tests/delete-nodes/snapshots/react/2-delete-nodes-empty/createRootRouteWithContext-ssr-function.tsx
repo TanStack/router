@@ -1,6 +1,5 @@
 import { createRootRouteWithContext } from '@tanstack/react-router'
 import crypto from 'node:crypto'
-
 export const Route = createRootRouteWithContext<{}>()({
   ssr: () => {
     if (crypto.randomInt(0, 2) === 0) {

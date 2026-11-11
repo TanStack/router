@@ -17,9 +17,25 @@ export function createDevClientEntryPlugin(opts: {
     moduleId: DEV_CLIENT_ENTRY,
     enforce: 'pre',
     async load() {
-      const clientEntry = JSON.stringify(
-        normalizePath(opts.getClientEntry()).replaceAll('\\', '/'),
+      const clientEntryId = normalizePath(opts.getClientEntry()).replaceAll(
+        '\\',
+        '/',
       )
+      const clientEntry = JSON.stringify(clientEntryId)
+
+      if (
+        this.environment.mode === 'dev' &&
+        this.environment.config.experimental.bundledDev
+      ) {
+        // Bundled dev imports the hydration entry from this virtual module.
+        // Its package's sideEffects: false can otherwise remove that import,
+        // leaving only SSR HTML. Preserve the entry's initialization calls.
+        const resolvedEntry = await this.resolve(clientEntryId)
+        const entry = await this.load({
+          id: resolvedEntry?.id ?? clientEntryId,
+        })
+        entry.moduleSideEffects = true
+      }
 
       if (shouldInjectReactRefreshPreamble(this.environment, opts.framework)) {
         const reactRefresh = await this.resolve?.('/@react-refresh')

@@ -12,7 +12,14 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { hydrateIdAttribute } from '@tanstack/start-client-core/hydration/constants'
 import { Hydrate } from '../Hydrate'
-import { condition, idle, interaction, load, never } from '../hydration'
+import {
+  condition,
+  idle,
+  interaction,
+  load,
+  never,
+  visible,
+} from '../hydration'
 import type { HydrateProps, HydrationPrefetchStrategy } from '../Hydrate'
 
 const InternalHydrate = Hydrate as React.ComponentType<
@@ -672,5 +679,85 @@ describe('Hydrate', () => {
     } finally {
       await unmountHydratedRoot(root, container)
     }
+  })
+
+  // `visible()` reads its gate's mutable flag during render (`if (!g.r) use(g.p)`).
+  // React replays a component that suspended in `use` with its re-render
+  // dispatcher, and only `use` switches away from it: when the intersection
+  // arrives while React waits to replay, the flag is true, the replay skips
+  // `use`, and a hook after it would throw "Update hook called on initial render"
+  // (#467 in production). React would then discard the boundary's server HTML.
+  // Which task the intersection lands in is the browser's choice, so this runs
+  // it in each of the tasks around the boundary's first hydration attempt.
+  it('hydrates a visible boundary whichever task the intersection arrives in', async () => {
+    const actEnvironment = globalThis as {
+      IS_REACT_ACT_ENVIRONMENT?: boolean
+    }
+    const wasActEnvironment = actEnvironment.IS_REACT_ACT_ENVIRONMENT
+    actEnvironment.IS_REACT_ACT_ENVIRONMENT = false
+    const nextTask = () => new Promise((resolve) => setImmediate(resolve))
+    const app = (onHydrated?: () => void) => (
+      <Hydrate
+        when={visible()}
+        fallback={<p>fallback</p>}
+        onHydrated={onHydrated}
+      >
+        <p>child</p>
+      </Hydrate>
+    )
+    vi.stubGlobal('window', undefined)
+    const html = renderToString(app())
+    vi.unstubAllGlobals()
+    const failed: Array<{ tasks: number; errors: Array<string> }> = []
+    try {
+      for (let tasks = 0; tasks < 12; tasks++) {
+        vi.stubGlobal(
+          'IntersectionObserver',
+          class {
+            constructor(private notify: IntersectionObserverCallback) {}
+            observe() {
+              void (async () => {
+                for (let task = 0; task < tasks; task++) {
+                  await nextTask()
+                }
+                this.notify(
+                  [{ isIntersecting: true } as IntersectionObserverEntry],
+                  this as unknown as IntersectionObserver,
+                )
+              })()
+            }
+            disconnect() {}
+          },
+        )
+        const container = document.createElement('div')
+        document.body.append(container)
+        container.innerHTML = html
+        const errors: Array<string> = []
+        const hydrated = new Promise<void>((resolve) => {
+          const root = hydrateRoot(
+            container,
+            app(() => {
+              resolve()
+              setImmediate(() => {
+                root.unmount()
+                container.remove()
+              })
+            }),
+            {
+              onRecoverableError: (error) => {
+                errors.push(String((error as Error).cause ?? error))
+              },
+            },
+          )
+        })
+        await hydrated
+        if (errors.length > 0) {
+          failed.push({ tasks, errors })
+        }
+      }
+    } finally {
+      actEnvironment.IS_REACT_ACT_ENVIRONMENT = wasActEnvironment
+    }
+    expect(failed).toEqual([])
   })
 })

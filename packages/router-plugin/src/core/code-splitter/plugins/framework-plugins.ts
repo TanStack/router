@@ -2,7 +2,8 @@ import { createReactRefreshIgnoredRouteExportsPlugin } from './react-refresh-ign
 import { createReactRefreshRouteComponentsPlugin } from './react-refresh-route-components'
 import { createReactStableHmrSplitRouteComponentsPlugin } from './react-stable-hmr-split-route-components'
 import type { CodeSplitCompilerPlugin } from '../plugins'
-import type { Config, HmrStyle } from '../../config'
+import type { Config } from '../../config'
+import type { HmrStyle } from '../../hmr'
 
 export function getFrameworkHmrCompilerPlugins(opts: {
   targetFramework: Config['target']

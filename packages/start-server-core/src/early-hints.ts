@@ -191,7 +191,7 @@ export function collectStaticHintsFromManifest(
         rel: attrs.rel,
         as: 'script',
       }
-      if (attrs.crossOrigin !== undefined) hint.crossOrigin = attrs.crossOrigin
+      addEarlyHintFetchAttrs(hint, attrs)
       hints.push(hint)
     }
 

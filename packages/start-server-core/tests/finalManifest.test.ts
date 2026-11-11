@@ -135,6 +135,51 @@ describe('final manifest resolver', () => {
     expect(transformAssets).toHaveBeenCalledTimes(1)
   })
 
+  it('returns a settled cached manifest without a promise', async () => {
+    const getBaseManifest = vi.fn(async () => baseManifest)
+    const resolver = createFinalManifestResolver({ cacheCreateTransform: true })
+    const request = new Request('http://localhost/')
+
+    const first = await resolver.resolveCached({
+      request,
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+    const second = resolver.resolveCached({
+      request,
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+
+    expect(second).toBe(first)
+    expect(getBaseManifest).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolves each request when inline CSS is decided per request', async () => {
+    const getBaseManifest = vi.fn(async () => baseManifest)
+    const inlineCss = vi.fn(() => false)
+    const resolver = createFinalManifestResolver({
+      cacheCreateTransform: true,
+      inlineCss,
+    })
+    const request = new Request('http://localhost/')
+
+    const first = await resolver.resolveCached({
+      request,
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+    const second = resolver.resolveCached({
+      request,
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+
+    expect(second).toBeInstanceOf(Promise)
+    await expect(second).resolves.toBe(first)
+    expect(inlineCss).toHaveBeenCalledTimes(2)
+  })
+
   it('does not warm up when the inline CSS default is request-dependent', () => {
     const getBaseManifest = vi.fn(async () => baseManifest)
     const transformAssets: TransformAssetsFn = ({ url }) => url

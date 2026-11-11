@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnScenario,
   runServerFnRedirectRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnBench(handler)
 
 await assertServerFnScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn redirect (react)',
-    () => runServerFnRedirectRequestLoop(handler, context),
-    serverFnBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn redirect (react)', async () =>
+    runServerFnRedirectRequestLoop(handler, context),
+  ).run(serverFnBenchOptions)
 })

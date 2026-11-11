@@ -1,2 +1,2 @@
-const HEADER = 'Page';
-export { HEADER };
+const HEADER = 'Page'
+export { HEADER }

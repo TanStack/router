@@ -8,16 +8,19 @@
 ## Work and validation
 
 - Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
+- When removing an API, option, or behavior, delete its tests. Never add tests that assert the removed thing is gone, such as `not.toHaveProperty('oldName')`, a type error for the old call, or a runtime throw.
 - For suspected dependency issues, verify the upstream root cause, then propose an upstream fix to the user, including for other `@tanstack/*` packages. **Never implement a workaround in this repository unless the user explicitly authorizes it.**
 - During debugging/prototyping, keep fixes aligned with the PR's intended architecture. If making a test pass requires another flag, counter, copied deadline, or duplicate completion authority, stop and consolidate state and ownership. Remove superseded paths instead of accumulating patches and bundle growth.
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.
 - For sandbox-blocked registry/store access, escalate the same command; report the blocker if unavailable. Do not change stores, delete dependencies/lockfiles, use `--force`/`--ignore-scripts`, or weaken workspace trust/build policies to bypass it.
 - Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.
 - Always use control-flow braces. Run `pnpm format` before validation.
-- Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets; some are inferred.
+- Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets with `pnpm nx show project <project> --json`; some are inferred.
+- Run finite validation through `run-many` with explicit projects and targets, including a single project/target. Nx automatically selects `summary` output when it detects an AI agent: omit `--outputStyle` for normal runs. Read the reported full log files for failures; use `--outputStyle=summary` if agent detection is unavailable.
+- Use `--outputStyle=static` or `pnpm nx run <project>:<target>` only when diagnosing a task and its full output is needed. Continuous/watch targets may use live output.
 
 ```sh
-CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run-many -p <project> -t <target> --skipRemoteCache
 ```
 
 - Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.

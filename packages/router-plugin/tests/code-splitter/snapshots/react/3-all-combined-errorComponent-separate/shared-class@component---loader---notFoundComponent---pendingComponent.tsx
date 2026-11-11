@@ -1,16 +1,16 @@
 class DataStore {
-  data = new Map();
+  data = new Map()
   get(k: string) {
-    return this.data.get(k);
+    return this.data.get(k)
   }
   set(k: string, v: unknown) {
-    this.data.set(k, v);
+    this.data.set(k, v)
   }
 }
-const store = new DataStore();
+const store = new DataStore()
 const SplitLoader = async () => {
-  store.set('items', await fetch('/api'));
-};
-export { SplitLoader as loader };
-const SplitComponent = () => <div>{store.get('items')}</div>;
-export { SplitComponent as component };
+  store.set('items', await fetch('/api'))
+}
+export { SplitLoader as loader }
+const SplitComponent = () => <div>{store.get('items')}</div>
+export { SplitComponent as component }

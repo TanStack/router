@@ -1,8 +1,3 @@
 export function getObjectCallback() {
-  return {
-    getObject: () => ({
-      constA: 10,
-      constB: 5
-    })
-  };
+  return { getObject: () => ({ constA: 10, constB: 5 }) }
 }

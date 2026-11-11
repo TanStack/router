@@ -1,18 +1,29 @@
 import { createServerFn } from '@tanstack/react-start'
 import { redirect } from '@tanstack/react-router'
-import { useSession } from '@tanstack/react-start/server'
+import { getCookie, setCookie } from '@tanstack/react-start/server'
+import { getIronSession } from 'iron-session'
 
 function getSession() {
-  return useSession<{ email?: string }>({
-    name: 'auth-docs-test',
-    password: 'authentication-docs-browser-test-secret-only-2026',
-  })
+  return getIronSession<{ email: string }>(
+    { read: getCookie, write: setCookie },
+    {
+      cookieName: 'auth-docs-test',
+      password: 'authentication-docs-browser-test-secret-only-2026',
+      ttl: 60 * 60,
+      cookieOptions: {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+  )
 }
 
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const session = await getSession()
-    return session.data.email ? { email: session.data.email } : null
+    return session.email ? { email: session.email } : null
   },
 )
 
@@ -27,20 +38,21 @@ export const loginFn = createServerFn({ method: 'POST' })
       return { error: 'Invalid credentials' }
     }
     const session = await getSession()
-    await session.update({ email: data.email })
+    session.email = data.email
+    await session.save()
     throw redirect({ to: '/auth-docs/private' })
   })
 
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
   const session = await getSession()
-  await session.clear()
+  session.destroy()
   throw redirect({ to: '/auth-docs' })
 })
 
 export const getPrivateDataFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const session = await getSession()
-    if (!session.data.email) {
+    if (!session.email) {
       throw new Error('Unauthorized')
     }
     return 'Private account data'

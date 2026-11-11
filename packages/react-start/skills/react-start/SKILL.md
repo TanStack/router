@@ -291,6 +291,6 @@ Without `<Scripts />` in the root route's `<body>`, client JavaScript doesn't lo
 
 ## Cross-References
 
-- [start-core](../../../start-client-core/skills/start-core/SKILL.md) — core Start concepts
-- [router-core](../../../router-core/skills/router-core/SKILL.md) — routing fundamentals
-- [react-router](../../../react-router/skills/react-router/SKILL.md) — React Router hooks and components
+- `@tanstack/start-client-core#start-core` — core Start concepts
+- `@tanstack/router-core#router-core` — routing fundamentals
+- `@tanstack/react-router#react-router` — React Router hooks and components

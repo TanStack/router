@@ -21,7 +21,6 @@
     "@types/node",
     "@types/react",
     "@types/react-dom",
-    "h3",
     "node",
     "react",
     "react-dom",

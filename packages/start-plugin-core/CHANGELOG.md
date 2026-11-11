@@ -1,5 +1,116 @@
 # @tanstack/start-plugin-core
 
+## 1.171.57
+
+### Patch Changes
+
+- [#8889](https://github.com/TanStack/router/pull/8889) [`3f22686`](https://github.com/TanStack/router/commit/3f226869e0af211ff7f1de5d7343e43462dbb101) - fix: Rsbuild dev SSR now includes stylesheet links when the server environment runs outside the build process, such as in workerd with `rsbuild-plugin-cloudflare`. The dev manifest is written into the server's manifest module instead of being stored on the build process's `globalThis`.
+
+- [#8892](https://github.com/TanStack/router/pull/8892) [`559c7de`](https://github.com/TanStack/router/commit/559c7ded6e2a6eeda3f91c80d8c03f4cfeb9a206) - fix: Rsbuild dev with React Server Components includes stylesheet links in SSR again. The client and server compile concurrently, so the server's manifest module is now rebuilt once the client build is available, as in production builds.
+
+## 1.171.56
+
+### Patch Changes
+
+- [#8863](https://github.com/TanStack/router/pull/8863) [`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c) - The Rsbuild plugin keeps the app's `server.compress` setting instead of always setting it to `false`. Compression stays off by default: a compressed streamed page reaches the browser only once the stream ends. The optional `@rsbuild/core` peer is now `^2.0.5`, the first version whose compression keeps SSR response headers intact.
+
+- [#8805](https://github.com/TanStack/router/pull/8805) [`c5320d7`](https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02) - With `spa.enabled`, the Rsbuild dev server answers the SPA shell, as Vite's dev server does, instead of rendering the route and running its loaders on the server.
+
+- [#8871](https://github.com/TanStack/router/pull/8871) [`545a8d3`](https://github.com/TanStack/router/commit/545a8d3790989ca502153c3292c6b1e8063257f4) - Require `exsolve` `^1.1.3`: a failed lookup that exsolve caches no longer keeps its callers alive, so Start's cached failed lookups no longer hold on to each build's objects. Entry lookups bypass exsolve's process-wide cache, so a dev server restart finds an entry file (such as `src/start.ts`) created since.
+
+- [#8861](https://github.com/TanStack/router/pull/8861) [`da8c28c`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) - Start's router options now reach the route generator and the code splitter as they do in a router app:
+  - Generator plugins given as `router.plugins` run ([#7768](https://github.com/TanStack/router/issues/7768)). Start's own generator plugins used to replace them.
+  - A function-form `router.routeTreeFileFooter` is called at every print of the route tree. Start's Vite plugin used to print its first result for the whole dev server.
+  - Start's Rsbuild plugin keeps `router.codeSplittingOptions.deleteNodes` for the server build. It used to drop the option there.
+  - Start's Vite plugin finds the client route tree by its exact module id ([#8839](https://github.com/TanStack/router/issues/8839)). With a regular-expression character in the project path, such as `+`, the client used to get the full route tree, server-only routes included; a file whose name differed from the route tree's by one character (`routeTree-gen.ts`) was replaced by the client route tree.
+
+- Updated dependencies [[`1ba19a0`](https://github.com/TanStack/router/commit/1ba19a04456983ee0f8adffd038b6b1194441e15), [`94f36c4`](https://github.com/TanStack/router/commit/94f36c4a9ecf3062b326a8eb772e73b00c0644d9), [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6), [`533ca27`](https://github.com/TanStack/router/commit/533ca2704452f36c5fef5c5fe084554d9b5db1ab), [`13b6256`](https://github.com/TanStack/router/commit/13b625683030ea4ab359495ecda570e05e472587), [`b5e2ac9`](https://github.com/TanStack/router/commit/b5e2ac9c4cee4c5c6f464adc6cfddcddf6c84171), [`d250819`](https://github.com/TanStack/router/commit/d25081952dd04a5f5a44db7c8df5cbbf50fad054), [`f420d4a`](https://github.com/TanStack/router/commit/f420d4a6dacfaa81d306b7bbc9af8f1010d1a1bc), [`ff157f0`](https://github.com/TanStack/router/commit/ff157f0079982e90d62be7fdeecfb77e4fdcec69)]:
+  - @tanstack/router-plugin@1.169.0
+  - @tanstack/router-generator@1.168.0
+  - @tanstack/router-utils@1.163.0
+
+## 1.171.55
+
+### Patch Changes
+
+- [#8748](https://github.com/TanStack/router/pull/8748) [`ed55775`](https://github.com/TanStack/router/commit/ed5577593a749b8c7193cc7b5d945fd084bfac2f) - Skip the Rsbuild import-protection loader and its plugins when import protection is disabled, so modules no longer pass through the loader.
+
+- [#8750](https://github.com/TanStack/router/pull/8750) [`63a886d`](https://github.com/TanStack/router/commit/63a886da9040c4b039ea3bf5b3a841771375cddb) - Skip the server function resolver rebuild in Rsbuild dev when the resolver has not changed, so most edits no longer rebuild the whole server chunk graph.
+
+- [#8758](https://github.com/TanStack/router/pull/8758) [`d9b07e8`](https://github.com/TanStack/router/commit/d9b07e8d3b724cdbfac0aa2fba4c1f7a3a241100) - Stop resolving top-level calls such as `z.object()` whose receiver is not a namespace import. They can never be a `createServerOnlyFn` or `createClientOnlyFn` call, and resolving them made the dev compiler load and parse the receiver's module (all of zod, for example).
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`647cb73`](https://github.com/TanStack/router/commit/647cb737a5622813d276d6042766692ca5ae67ed)]:
+  - @tanstack/router-core@1.171.39
+  - @tanstack/router-plugin@1.168.48
+  - @tanstack/start-server-core@1.169.45
+  - @tanstack/router-generator@1.167.46
+
+## 1.171.54
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/start-server-core@1.169.44
+  - @tanstack/router-generator@1.167.45
+  - @tanstack/router-plugin@1.168.47
+
+## 1.171.53
+
+### Patch Changes
+
+- [#8708](https://github.com/TanStack/router/pull/8708) [`fdc10fa`](https://github.com/TanStack/router/commit/fdc10fa13fbac758615f9a3d37075088d1cc1e1f) - Update `srvx` to `^1.0.0`.
+
+- Updated dependencies [[`71d9694`](https://github.com/TanStack/router/commit/71d9694da6346fbece2cda4ecde92b0b12a7ee08), [`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e)]:
+  - @tanstack/start-server-core@1.169.43
+  - @tanstack/router-utils@1.162.4
+  - @tanstack/router-generator@1.167.44
+  - @tanstack/router-plugin@1.168.46
+
+## 1.171.52
+
+### Patch Changes
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-server-core@1.169.42
+  - @tanstack/router-core@1.171.37
+  - @tanstack/router-generator@1.167.43
+  - @tanstack/router-plugin@1.168.45
+
+## 1.171.51
+
+### Patch Changes
+
+- [#8694](https://github.com/TanStack/router/pull/8694) [`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549) - Remove the deprecated `.inputValidator()` from `createServerFn` and `createMiddleware`. Use `.validator()`, which takes the same validator.
+
+- [#8692](https://github.com/TanStack/router/pull/8692) [`f3d7ee3`](https://github.com/TanStack/router/commit/f3d7ee3374c660e0fe82a03ac580a90ed2e2fa98) - Image and news sitemap entries are now emitted in their declared XML namespaces, so sitemaps with images or news are valid XML.
+
+- [#8695](https://github.com/TanStack/router/pull/8695) [`4104b8e`](https://github.com/TanStack/router/commit/4104b8ef11498706b5059c5a915f2ae47ffbc5ba) - Walk the static import graph when building route preloads so Rolldown and Rsbuild builds preload every dependency chunk, and derive Rsbuild chunk imports from the module graph so shared chunks no longer attach unrelated route CSS to the SSR response.
+
+- [#8696](https://github.com/TanStack/router/pull/8696) [`f243c61`](https://github.com/TanStack/router/commit/f243c61e95dae64fe04da4499c0c4ec44f26abae) - Require Vite 8 for Vite builds. Vite 7 is no longer supported.
+
+- [#8691](https://github.com/TanStack/router/pull/8691) [`19524cc`](https://github.com/TanStack/router/commit/19524ccdd75870ce1db2f324518eeb3f23cc0f97) - Publish only validated public page fields in pages.json and sitemap.xml so prerender headers and other private page data, including extra data returned by `prerender.onSuccess`, stay private. Invalid sitemap metadata returned by `prerender.onSuccess` now fails the build instead of being written to sitemap.xml without validation.
+
+- Updated dependencies [[`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`e66da18`](https://github.com/TanStack/router/commit/e66da18266859ab49e20a7b8c858232449ee5290), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-generator@1.167.42
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-server-core@1.169.41
+  - @tanstack/router-plugin@1.168.44
+
+## 1.171.50
+
+### Patch Changes
+
+- [#7830](https://github.com/TanStack/router/pull/7830) [`4191640`](https://github.com/TanStack/router/commit/41916400b93fdb62189722266ed1d77ba9c26be9) - Fix dev SSR style collection to preserve CSS order without duplicating imported styles, while retaining styles from code-split routes. Keep layered imports from inline styles out of the global dev stylesheet. In bundled development, collect styles from a complete client bundle and load compiler dependencies through the bundler to avoid restarting client plugins. Preserve client hydration and reload SSR modules on file changes instead of clearing them on every request.
+
+  Support newer Vite bundled dev versions by loading their separate client runtime before hydration and awaiting the client build through the updated environment API.
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/start-server-core@1.169.40
+  - @tanstack/router-generator@1.167.41
+  - @tanstack/router-plugin@1.168.43
+
 ## 1.171.49
 
 ### Patch Changes

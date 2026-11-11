@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -42,9 +42,11 @@ for (const size of [0, 100, 1000, 5000]) {
   expect(router._cache.size).toBe(size)
   expect(router.state.location.pathname).toBe('/')
   describe(`${size} cached preloads`, () => {
-    bench('two unrelated navigations', navigate, {
-      time: 1000,
-      warmupTime: 200,
+    test('two unrelated navigations', async ({ bench }) => {
+      await bench('two unrelated navigations', navigate).run({
+        time: 1000,
+        warmupTime: 200,
+      })
     })
   })
 }

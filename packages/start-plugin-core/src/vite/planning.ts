@@ -56,21 +56,17 @@ export function createViteConfigPlan(opts: {
     environments: {
       [START_ENVIRONMENT_NAMES.client]: {
         consumer: 'client',
-        build: (() => {
-          const input =
-            opts.command === 'serve' ? DEV_CLIENT_ENTRY : ENTRY_POINTS.client
-
-          const bundlerOptions = {
+        build: {
+          rolldownOptions: {
             input: {
-              index: input,
+              index:
+                opts.command === 'serve'
+                  ? DEV_CLIENT_ENTRY
+                  : ENTRY_POINTS.client,
             },
-          }
-          return {
-            rollupOptions: bundlerOptions,
-            rolldownOptions: bundlerOptions,
-            outDir: opts.clientOutputDirectory,
-          }
-        })(),
+          },
+          outDir: opts.clientOutputDirectory,
+        },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
           entries: escapeEntries([
@@ -83,19 +79,13 @@ export function createViteConfigPlan(opts: {
         consumer: 'server',
         build: {
           ssr: true,
-          ...(() => {
-            const bundlerOptions = {
-              input:
-                getBundlerOptions(
-                  opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]
-                    ?.build,
-                )?.input ?? opts.entryAliases.server,
-            }
-            return {
-              rollupOptions: bundlerOptions,
-              rolldownOptions: bundlerOptions,
-            }
-          })(),
+          rolldownOptions: {
+            input:
+              getBundlerOptions(
+                opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]
+                  ?.build,
+              )?.input ?? opts.entryAliases.server,
+          },
           outDir: opts.serverOutputDirectory,
           commonjsOptions: {
             include: [/node_modules/],

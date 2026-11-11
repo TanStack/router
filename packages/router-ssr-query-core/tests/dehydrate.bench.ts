@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { QueryClient, dehydrate, dehydrateQuery } from '@tanstack/query-core'
-import { afterAll, bench, describe, expect } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import type { Query } from '@tanstack/query-core'
 
 type DehydratedQuery = ReturnType<typeof dehydrateQuery>
@@ -49,20 +49,24 @@ describe.each([
 
     afterAll(() => queryClient.clear())
 
-    bench('filter full query cache', () => {
-      const dehydratedQueries = dehydrate(queryClient, {
-        shouldDehydrateQuery: (query) =>
-          selectedQueryHashes.has(query.queryHash),
-      }).queries
-      benchmarkSink = consumeQueries(dehydratedQueries)
+    test('filter full query cache', async ({ bench }) => {
+      await bench('filter full query cache', () => {
+        const dehydratedQueries = dehydrate(queryClient, {
+          shouldDehydrateQuery: (query) =>
+            selectedQueryHashes.has(query.queryHash),
+        }).queries
+        benchmarkSink = consumeQueries(dehydratedQueries)
+      }).run()
     })
 
-    bench('dehydrate direct query references', () => {
-      const dehydratedQueries = new Array<DehydratedQuery>()
-      for (const query of selectedQueries.values()) {
-        dehydratedQueries.push(dehydrateQuery(query))
-      }
-      benchmarkSink = consumeQueries(dehydratedQueries)
+    test('dehydrate direct query references', async ({ bench }) => {
+      await bench('dehydrate direct query references', () => {
+        const dehydratedQueries = new Array<DehydratedQuery>()
+        for (const query of selectedQueries.values()) {
+          dehydratedQueries.push(dehydrateQuery(query))
+        }
+        benchmarkSink = consumeQueries(dehydratedQueries)
+      }).run()
     })
   },
 )

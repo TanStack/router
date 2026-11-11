@@ -1,32 +1,19 @@
-import { afterEach, beforeEach, bench, describe } from 'vitest'
+import { test } from 'vitest'
+import { benchLifecycle } from '../../../../cpu-simulation'
 import { benchOptions, ticksPerIteration } from '../shared'
 import { setup } from './setup'
 
-describe('client-nested-params', () => {
-  const test = setup()
+test('client-nested-params', async ({ bench }) => {
+  const scenario = setup()
 
-  /**
-   * Running `vitest bench` ignores suite hooks, so Tinybench uses the `setup`
-   * and `teardown` options below. CodSpeed bypasses those options but supports
-   * `beforeEach` and `afterEach`. Only one lifecycle path runs in either
-   * environment, and every measured invocation receives fresh application state.
-   */
-
-  beforeEach(test.before)
-  afterEach(test.after)
-
-  bench(
+  await bench(
     'client-nested-params navigation loop (react)',
+    benchLifecycle(scenario),
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
-        await test.tick()
+        await scenario.tick()
       }
-      await test.finishBatch()
+      await scenario.finishBatch()
     },
-    {
-      ...benchOptions,
-      setup: test.before,
-      teardown: test.after,
-    },
-  )
+  ).run(benchOptions)
 })

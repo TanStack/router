@@ -13,7 +13,8 @@
     "build:vite": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e-full": "pnpm build && playwright test --project=chromium"
+    "test:e2e-full": "pnpm build && playwright test --project=chromium",
+    "test:e2e:dev:rsbuild": "MODE=dev E2E_TOOLCHAIN=rsbuild playwright test --project=chromium"
   },
   "nx": {
     "metadata": {
@@ -40,7 +41,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
-    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/core": "^2.3.1",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/eslint-plugin-start": "workspace:^",
     "@tanstack/router-e2e-utils": "workspace:^",
@@ -49,9 +50,9 @@
     "@types/react-dom": "^19.0.3",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.30",
+    "@vitejs/plugin-rsc": "^0.5.37",
     "eslint": "^9.22.0",
-    "srvx": "^0.10.0",
+    "srvx": "^1.0.0",
     "typescript": "^5.7.2",
     "vite": "^8.0.14"
   }

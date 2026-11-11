@@ -48,6 +48,7 @@ export default mergeConfig(
         './src/empty-plugin-adapters.ts',
       ],
       externalDeps: [
+        'cookie-es',
         ...Object.values(VIRTUAL_MODULES),
         '#tanstack-start-entry',
         '#tanstack-router-entry',
