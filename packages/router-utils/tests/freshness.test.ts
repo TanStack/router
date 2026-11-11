@@ -260,6 +260,127 @@ describe('repeating an invalidation', () => {
     )
   })
 
+  // The same restart, for a key that already has a plan: `x.ts` was
+  // compiled, and its plan has a failed import of its own (`./types`, a
+  // types-only `.d.ts`). The new text imports `./a` while `a.ts` is gone;
+  // `a.ts` comes back reported as a change. The compile must not publish
+  // its failed `./a` because the old plan's `./types` still fails.
+  // Source: design 3 step 5 review, finding 5 (the published plan and the
+  // compile in flight shared one row, which said "published").
+  it('a compile in flight that met a failed import is restarted when the import resolves now, beside a published plan with a failed import', async () => {
+    const reads: Array<() => void> = []
+    let hold = false
+    const host = new MemoryHost({
+      files: {
+        '/app/k.ts': 'export const other = 1\n',
+        '/app/h.ts': 'export const h = 1\n',
+        '/app/x.ts': dedent(`
+          import { T } from './types'
+          import { other } from './k'
+          export const use = other
+        `),
+      },
+      recognizer: RECOGNIZER,
+      onRead: (path) =>
+        hold && path === '/app/h.ts'
+          ? new Promise<void>((r) => reads.push(r))
+          : undefined,
+    })
+    await host.compile('/app/x.ts', planners())
+    host.write(
+      '/app/x.ts',
+      dedent(`
+        import { T } from './types'
+        import { make } from './a'
+        import { other } from './k'
+        import { h } from './h'
+        export const use = make
+      `),
+    )
+    await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
+    hold = true
+    const compiling = host.compile('/app/x.ts', planners())
+    while (reads.length === 0) {
+      await new Promise((r) => setTimeout(r, 1))
+    }
+    host.write('/app/a.ts', SERVER_ONLY)
+    host.write(
+      '/app/y.ts',
+      "import { make } from './a'\nexport const use = make\n",
+    )
+    await host.compile('/app/y.ts', planners())
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    hold = false
+    while (reads.length > 0) {
+      reads.splice(0).forEach((release) => release())
+      await new Promise((r) => setTimeout(r, 1))
+    }
+    await compiling
+    const factsOf = (out: CompileOutput | null) => out?.facts.planners
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+    )
+  })
+
+  // A compile asks `./a` while `a.ts` is gone, and the resolver answers
+  // after `a.ts` came back and its event was applied (the answer was made
+  // from before: the file was checked, then the event ran). The change
+  // moves no file set (a module compiled meanwhile read `a.ts`), so only
+  // the failed resolutions are asked at the event, and the compile had
+  // recorded none yet. The answer is asked again before it is recorded.
+  // Source: design 3 step 5 review, step 6 item 2 (rows at ask time: a
+  // failed answer whose ask an event overlapped).
+  it('a failed resolution answered after an event that made it resolve is asked again', async () => {
+    const asks: Array<() => void> = []
+    let hold = false
+    /** The files as the resolver checked them when a held ask began, by importer and specifier. */
+    const checked = new Map<string, Record<string, string>>()
+    const host: MemoryHost = new MemoryHost({
+      files: {
+        '/app/k.ts': 'export const other = 1\n',
+        '/app/x.ts': dedent(`
+          import { make } from './a'
+          import { other } from './k'
+          export const use = make
+        `),
+      },
+      recognizer: RECOGNIZER,
+      onResolve: (specifier, importer) => {
+        if (hold && specifier === './a') {
+          hold = false
+          checked.set(`${importer} ${specifier}`, { ...host.files })
+          return new Promise<void>((r) => asks.push(r))
+        }
+        return undefined
+      },
+      resolve: (specifier, importer, files) => {
+        const dir = importer.slice(0, importer.lastIndexOf('/'))
+        const id = `${dir}/${specifier.slice(2)}.ts`
+        const seen = checked.get(`${importer} ${specifier}`) ?? files
+        checked.delete(`${importer} ${specifier}`)
+        return id in seen ? id : null
+      },
+    })
+    hold = true
+    const compiling = host.compile('/app/x.ts', planners())
+    while (asks.length === 0) {
+      await new Promise((r) => setTimeout(r, 1))
+    }
+    host.write('/app/a.ts', SERVER_ONLY)
+    host.write(
+      '/app/y.ts',
+      "import { make } from './a'\nexport const use = make\n",
+    )
+    await host.compile('/app/y.ts', planners())
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    asks.splice(0).forEach((release) => release())
+    await compiling
+    const factsOf = (out: CompileOutput | null) => out?.facts.planners
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+    )
+  })
+
   // A `package.json` or tsconfig saved once moves the file set (what
   // specifiers resolve to may have changed); the same event through a
   // second hook, or a touch, finds the text the caches read.
