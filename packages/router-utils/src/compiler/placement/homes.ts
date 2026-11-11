@@ -171,12 +171,13 @@ export function assignHomes(
     if (derived.length === 0) {
       // nobody needs it: a gen unit disappears; an import stays or leaves
       // by `importStays`; a pure unexported declaration that was not
-      // rooted (dead code that would pull a chunk's dependency) is dropped;
-      // other source stays in the env module (harmless)
+      // rooted (dead code that would pull a chunk's dependency) is dropped,
+      // pure as deletion judges it (`runsCode`); other source stays in the
+      // env module (harmless)
       const dead =
         cl.kind === 'gen' ||
         (cl.kind === 'import' && !importStays(cl)) ||
-        (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
+        (cl.kind === 'declaration' && !cl.exported && !graph.runsCode(cl.id))
       home.set(cl.id, dead ? 'removed' : 'env')
       continue
     }

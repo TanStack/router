@@ -66,7 +66,9 @@ export interface PurityContext {
  * proxies, iterators and `toString` stay outside the model, as for reads
  * (R97): the language defines what these operations do, a library does not.
  * Only placement's timing takes it: what may be deleted (`effects()`, the
- * orphans) still counts every operation that may run code.
+ * orphans, placement's dead declarations: `Tier1.deletionEffects`) and an
+ * extracted export's side-effect-free flag still count every operation
+ * that may run code.
  */
 export function languagePurity(ctx: PurityContext): PurityContext {
   return { ...ctx, language: true }

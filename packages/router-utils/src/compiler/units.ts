@@ -73,11 +73,11 @@ export interface Unit {
   declares: Array<SymbolId>
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
-  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L). */
+  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L); what may be deleted asks `unitEffects` with the planners' purity. */
   effectful: boolean
   /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
   augments: Array<SymbolId>
-  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it. */
+  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it (placement's purity, as `effectful`). */
   augmentEffects: boolean
   /** Single unexported unwritten `const` with a primitive initialiser: may be duplicated. */
   copyable: boolean
@@ -615,6 +615,65 @@ interface UnitBuildResult {
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
 
+/**
+ * Whether evaluating `node`, the code of a unit of its own, has an effect
+ * under `purity`: a declarator's initialiser, a class (its heritage,
+ * computed keys and static parts), an enum's or a namespace's body, an
+ * expression statement, an `export default` expression; nothing else a
+ * unit holds evaluates code. The one judge of a unit's code: `buildUnits`
+ * asks it with placement's purity (`Unit.effectful`), `unitEffects` with
+ * the planners'.
+ */
+function evaluationHasEffects(purity: PurityContext, node: Node): boolean {
+  switch (node.type) {
+    case 'VariableDeclarator':
+      return !isPureDeclarator(purity, node)
+    case 'ClassDeclaration':
+      return !node.declare && !isPureClass(purity, node)
+    case 'TSEnumDeclaration':
+    case 'TSModuleDeclaration':
+      return statementHasEffects(purity, node)
+    case 'ExpressionStatement':
+      return !isPureExpression(purity, node.expression)
+    case 'ExportDefaultDeclaration': {
+      const d = node.declaration
+      return d.type === 'ClassDeclaration'
+        ? !isPureClass(purity, d)
+        : d.type !== 'FunctionDeclaration' &&
+            d.type !== 'TSInterfaceDeclaration' &&
+            !isPureExpression(purity, d)
+    }
+    default:
+      return false
+  }
+}
+
+/** A unit's effects as one purity judges them (`Unit.effectful`, `Unit.augmentEffects`). */
+export type UnitEffects = Pick<Unit, 'effectful' | 'augmentEffects'>
+
+/**
+ * Unit `u`'s effects as `purity` judges them, a purity that counts every
+ * operation the unit's own (placement's: rule L, language operations are
+ * no effect) counts, and more: the planners', every operation that may run
+ * code or throw (`JSON.parse(x)`, `new URL(x)`, a member read). What may be
+ * deleted asks this (`Tier1.deletionEffects`), never the unit's fields:
+ * rule L decides when code runs, not whether it is kept.
+ */
+export function unitEffects(purity: PurityContext, u: Unit): UnitEffects {
+  if (u.kind === 'type') {
+    return u
+  }
+  const node = u.node
+  return {
+    effectful: u.effectful || evaluationHasEffects(purity, node),
+    augmentEffects:
+      u.augmentEffects ||
+      (u.augments.length > 0 &&
+        node.type === 'ExpressionStatement' &&
+        !writesOnly(purity, node.expression)),
+  }
+}
+
 /** The unit model; `purity` judges effects (`ModuleAnalysis.effectPurity`). */
 export function buildUnits(
   file: SourceFile,
@@ -785,12 +844,7 @@ export function buildUnits(
         const u = base(node, 'export-default', itemRange)
         u.declares.push(symbols.declare('default', 'synthetic'))
         u.exported.push('default')
-        u.effectful =
-          d.type === 'FunctionDeclaration' ||
-          d.type === 'ClassDeclaration' ||
-          d.type === 'TSInterfaceDeclaration'
-            ? d.type === 'ClassDeclaration' && !isPureClass(purity, d)
-            : !isPureExpression(purity, d)
+        u.effectful = evaluationHasEffects(purity, node)
         add(item, u)
         break
       }
@@ -816,7 +870,7 @@ export function buildUnits(
         break
       case 'ExpressionStatement': {
         const u = base(node, 'effect', itemRange)
-        u.effectful = !isPureExpression(purity, node.expression)
+        u.effectful = evaluationHasEffects(purity, node)
         u.augments = augmentationsOf(node.expression)
         // a link on a `const` holding a writing builder writes it (R139),
         // also under the links chained on it (`b.middleware([a]).server(f)`)
@@ -887,9 +941,9 @@ export function buildUnits(
             u.declNameRanges.push(bindingNameRange(file.source, id))
           }
           u.effectful =
-            decl.kind === 'using' || decl.kind === 'await using'
-              ? true
-              : !isPureDeclarator(purity, d)
+            decl.kind === 'using' ||
+            decl.kind === 'await using' ||
+            evaluationHasEffects(purity, d)
           u.identityFree =
             d.id.type === 'Identifier' &&
             decl.kind !== 'using' &&
@@ -942,13 +996,13 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
         }
-        u.effectful = !decl.declare && !isPureClass(purity, decl)
+        u.effectful = evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }
       case 'TSEnumDeclaration': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
-        u.effectful = statementHasEffects(purity, decl)
+        u.effectful = evaluationHasEffects(purity, decl)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
@@ -973,7 +1027,7 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: id!.start, end: id!.end })
         }
-        u.effectful = runtime && statementHasEffects(purity, decl)
+        u.effectful = runtime && evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }

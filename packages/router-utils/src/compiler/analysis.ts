@@ -16,7 +16,7 @@ import {
   patternIdentifiers,
 } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, memberUse } from './units'
+import { buildItems, buildUnits, memberUse, unitEffects } from './units'
 import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
   languagePurity,
@@ -29,7 +29,13 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
+import type {
+  EvaluatedCalls,
+  TopLevelItem,
+  Unit,
+  UnitEffects,
+  UnitId,
+} from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -261,6 +267,14 @@ export interface Tier1 {
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
+  /**
+   * Unit `u`'s effects as deletion judges them (`unitEffects` with the
+   * planners' purity, `ModuleAnalysis.purity`: every operation that may run
+   * code or throw): what may be dropped as dead code, and whether an output
+   * is side-effect free. The unit's own fields are placement's timing (rule
+   * L). Asked of a few units; each once.
+   */
+  deletionEffects: (u: UnitId) => UnitEffects
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
@@ -1362,6 +1376,8 @@ export class ModuleAnalysis {
       }
     }
 
+    const purity = this.purity
+    const deletion = new Map<UnitId, UnitEffects>()
     const tier1: Tier1 = {
       items,
       units,
@@ -1373,6 +1389,14 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
+      deletionEffects: (u) => {
+        let hit = deletion.get(u)
+        if (hit === undefined) {
+          hit = unitEffects(purity, units[u]!)
+          deletion.set(u, hit)
+        }
+        return hit
+      },
       snapshotDiffers: (sym, at, live) => {
         if (mutation.isReassigned(sym, live)) {
           return true

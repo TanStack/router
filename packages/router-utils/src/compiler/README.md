@@ -306,8 +306,11 @@ directives, never license comments.
   (`Object.keys`, `new Set`, `Math.max`, `JSON.stringify`, `new Intl.NumberFormat`) and a method of what one returns
   or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
   runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
-  is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). What may be
-  deleted (`effects()` of raw facts, function-scope orphans) still counts every operation that may run code.
+  is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). Rule L decides
+  when code runs, never whether it is kept: what may be deleted (`effects()` of raw facts, function-scope orphans, the
+  dead declarations placement drops: `ClusterGraph.runsCode`, `Tier1.deletionEffects`) still counts every operation
+  that may run code or throw, and so does an extracted export's side-effect-free flag (`export const url = new URL(x)`
+  moves to its module, which is not flagged).
 - **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's

@@ -170,6 +170,8 @@ export interface Placement {
   kept: Array<KeptDeclaration>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
+  /** Whether a cluster may run code or throw when it evaluates, as deletion judges it (`ClusterGraph.runsCode`; `Cluster.effectful` is placement's timing). */
+  runsCode: (c: ClusterId) => boolean
   /**
    * The placement's invariants (`self-checks.ts`): the first violated one,
    * when the run warns instead of throwing. Asked by the pipeline of the
@@ -238,6 +240,7 @@ export function computePlacement(input: PlacementInput): Placement {
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
+    runsCode: graph.runsCode,
     check: () => inclusion.violation,
   }
 }

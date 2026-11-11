@@ -456,19 +456,25 @@ export function settleRoots(
   }
   // a pure declaration cluster nobody reads (and no derived output roots) is harmless in the
   // env module and keeps what it reads alive; clusters only read by each other (a dead pure cycle)
-  // are such dead code too: code that was dead before the transform is never removed (G16)
+  // are such dead code too: code that was dead before the transform is never removed (G16).
+  // Pure as deletion judges it (`runsCode`): one that may run code or throw is no candidate, it
+  // stays (rule L decides when code runs, never whether it is kept), as an unread effect does
+  // (`timed`: an env root, or orphaned by us)
   const deadCandidates = new Set<ClusterId>()
   for (const cl of clusters) {
     if (
       cl.kind !== 'declaration' ||
       cl.effectful ||
       cl.exported ||
-      !cl.units.every(graph.unitSurvives)
+      !cl.units.every(graph.unitSurvives) ||
+      needs(cl.id)
     ) {
       continue
     }
-    if (!needs(cl.id)) {
+    if (!graph.runsCode(cl.id)) {
       deadCandidates.add(cl.id)
+    } else if (!seeds.fromErased.has(cl.id)) {
+      envRoots.add(cl.id)
     }
   }
   for (let changed = true; changed; ) {

@@ -14,7 +14,13 @@ import { callsWhenEvaluated } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
+import type {
+  EvaluatedCalls,
+  RegionId,
+  Unit,
+  UnitEffects,
+  UnitId,
+} from '../units'
 import type {
   Frag,
   GenFrag,
@@ -119,6 +125,15 @@ export interface ClusterGraph {
   ownAugmentations: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
+  /**
+   * Whether cluster `c` may run code or throw when it evaluates: `effectful`
+   * with its units judged as deletion judges them (`Tier1.deletionEffects`:
+   * every operation that may, rule L's language operations included).
+   * `effectful` is placement's timing (rule L) and decides no deletion:
+   * unread code that may run stays (`settle.ts`, `homes.ts`), and an output
+   * holding it is not side-effect free (`freeze.ts`).
+   */
+  runsCode: (c: ClusterId) => boolean
   /**
    * What evaluating region `r` calls (`callsWhenEvaluated`), null when it
    * calls nothing: a unit's own; a region nested in one, its unit's calls
@@ -547,14 +562,39 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       set.add(w.sym)
     }
   }
-  const pureWrite = (unit: Unit, own: boolean): boolean =>
-    !unit.augmentEffects &&
+  const pureWrite = (
+    unit: Unit,
+    own: boolean,
+    augmentEffects = unit.augmentEffects,
+  ): boolean =>
+    !augmentEffects &&
     own &&
     unit.augments.every(
       (sym) =>
         !(memberWritesOf.get(unit.region)?.has(sym) ?? false) ||
         t1.mutation.ownsObject(sym),
     )
+
+  /**
+   * Whether cluster `cl` has an effect, its units judged by `effects`: what
+   * purity calls one, but for a write of pure values to a binding it
+   * declares (R139: `Page.displayName = …`, a link on a `const` builder),
+   * which is a write (the write table), ordered against what reads the
+   * binding.
+   */
+  const hasEffects = (
+    cl: Cluster,
+    effects: (unit: Unit) => UnitEffects,
+  ): boolean =>
+    cl.units.some((u) => {
+      const unit = units[u]!
+      const e = effects(unit)
+      return (
+        e.effectful &&
+        statementSurvives(items[unit.item]!.nodeRange) &&
+        !pureWrite(unit, ownAugmentations.has(u), e.augmentEffects)
+      )
+    })
 
   // ---- materialise clusters ------------------------------------------------
   const clusters: Array<Cluster> = []
@@ -688,20 +728,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
-    // its effects: what purity calls one, but for a write of pure values
-    // to a binding it declares (R139: `Page.displayName = …`, a link on a
-    // `const` builder), which is a write (the write table), ordered against
-    // what reads the binding
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (
-        unit.effectful &&
-        statementSurvives(items[unit.item]!.nodeRange) &&
-        !pureWrite(unit, own(unit))
-      ) {
-        cl.effectful = true
-      }
-    }
+    cl.effectful ||= hasEffects(cl, (unit) => unit)
   }
   for (const w of writes) {
     if (w.live && w.eager && w.owner !== null) {
@@ -748,6 +775,17 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return undefined
   }
+  const runsCodeOf = new Map<ClusterId, boolean>()
+  const runsCode = (c: ClusterId): boolean => {
+    let hit = runsCodeOf.get(c)
+    if (hit === undefined) {
+      const cl = clusters[c]!
+      hit =
+        cl.effectful || hasEffects(cl, (unit) => t1.deletionEffects(unit.id))
+      runsCodeOf.set(c, hit)
+    }
+    return hit
+  }
   return {
     clusters,
     clusterOfRegion,
@@ -762,6 +800,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     isLive,
     ownAugmentations,
     unitSurvives,
+    runsCode,
     callsOf,
     lateWrite,
     laterWrite,
