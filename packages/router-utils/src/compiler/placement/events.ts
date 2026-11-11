@@ -186,9 +186,6 @@ export function eventTable(
     return false
   }
 
-  /** A write at an unknown time of what `t`, run by cluster `by`, touches (V's pair), if any. */
-  const late = (t: Touch, by: ClusterId): Write | undefined =>
-    writesOfSym.has(t.sym) ? graph.lateWrite(t.sym, by) : undefined
   const statePin = (t: Touch, w: Write): Pin => ({
     reason: 'state',
     other: { at: w.at },
@@ -437,14 +434,47 @@ export function eventTable(
     // stays unless no other output includes the import and nothing in its
     // own output reads it at load, as `const y = f(registry.page = 1)`
     // stays with its import.
+    /**
+     * Whether binding `sym`, written by the value of cluster `rc` (homed in
+     * `hr`), is confined to that output: it evaluates there (an import: no
+     * other output includes it), and no other evaluation there touches it.
+     * A binding with no home of its own (removed, duplicated) is.
+     */
+    const confined = (rc: ClusterId, hr: Home, sym: SymbolId): boolean => {
+      const bc = clusterOfSym.get(sym)
+      if (bc === undefined) {
+        return false
+      }
+      const hb = home.get(bc)
+      if (clusters[bc]!.kind === 'import') {
+        for (const [o, set] of included) {
+          if (o !== hr && set.has(bc)) {
+            return false
+          }
+        }
+      } else if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
+        return true
+      } else if (hb !== hr) {
+        return false
+      }
+      for (const d of clusters) {
+        if (
+          d.id !== rc &&
+          home.get(d.id) === hr &&
+          touches(d.id, (t) => t.sym === sym)
+        ) {
+          return false
+        }
+      }
+      return true
+    }
     const writtenAt = new Map<RegionId, SymbolId>()
     for (const w of graph.writes) {
       const r = w.owner
       if (!w.live || !w.eager || r === null || !claimed.has(r)) {
         continue
       }
-      const bc = clusterOfSym.get(w.sym)
-      if (bc === undefined || writtenAt.has(r)) {
+      if (!clusterOfSym.has(w.sym) || writtenAt.has(r)) {
         continue
       }
       const rc = clusterOfRegion.get(r)!
@@ -452,34 +482,7 @@ export function eventTable(
       if (hr === 'env' || hr === undefined) {
         continue // in place: everything evaluates in source order
       }
-      const hb = home.get(bc)
-      let elsewhere: boolean
-      if (clusters[bc]!.kind === 'import') {
-        elsewhere = false
-        for (const [o, set] of included) {
-          if (o !== hr && set.has(bc)) {
-            elsewhere = true
-            break
-          }
-        }
-      } else if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
-        continue
-      } else {
-        elsewhere = hr !== hb
-      }
-      const readHere = (): boolean => {
-        for (const d of clusters) {
-          if (
-            d.id !== rc &&
-            home.get(d.id) === hr &&
-            touches(d.id, (t) => t.sym === w.sym)
-          ) {
-            return true
-          }
-        }
-        return false
-      }
-      if (elsewhere || readHere()) {
+      if (!confined(rc, hr, w.sym)) {
         writtenAt.set(r, w.sym)
       }
     }
@@ -489,24 +492,67 @@ export function eventTable(
       }
       const written = writtenAt.get(r.id)
       if (written !== undefined) {
-        out.push({ region: r.id, reason: 'ordered-effect', binding: written })
+        out.push({
+          region: r.id,
+          reason: 'ordered-effect',
+          binding: written,
+          writes: true,
+        })
         continue
       }
       const c = clusterOfRegion.get(r.id)!
+      const h = home.get(c)
+      const hr = h === 'env' || h === undefined ? null : (h as OutputId)
+      /**
+       * V's writes of `sym` (`lateWrite`): whether one evaluates outside
+       * the value's output, else whether they all evaluate in it (the
+       * value's own text, or a function only that output holds: run by
+       * code there alone), which is then judged as a write by the value.
+       */
+      const lateOf = (sym: SymbolId): 'outside' | 'inside' | null => {
+        if (graph.lateWrite(sym, c) === undefined) {
+          return null
+        }
+        for (const w of writesOfSym.get(sym)!) {
+          if (!w.live || w.eager) {
+            continue
+          }
+          const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
+          if (wc === c && !w.passed) {
+            continue // its own, not run when it evaluates
+          }
+          if (hr === null || wc === undefined || home.get(wc) !== hr) {
+            return 'outside'
+          }
+        }
+        return 'inside'
+      }
       // V, and a write after it (as if what it touches stays: the planner
       // decides its slot). Not judged on both slots: a relocated value
       // evaluates after its chunk's own code, so in one chunk with what it
       // touches a write after it in the source would run before it
-      // (`component: wrap(Page)`, then `Page.displayName = 'P'`)
+      // (`component: wrap(Page)`, then `Page.displayName = 'P'`). A write
+      // at an unknown time that only the value's output runs
+      // (`memo(function Page() { didInit = true })`) pins it only when the
+      // binding is not confined there, as a write at load by the value.
       touchesOfRegion(r.id, c, (t) => {
+        if (!writesOfSym.has(t.sym)) {
+          return false
+        }
+        const late = lateOf(t.sym)
+        const later = graph.laterWrite(t.sym, t.at, c) !== undefined
         if (
-          late(t, c) === undefined &&
-          (!writesOfSym.has(t.sym) ||
-            graph.laterWrite(t.sym, t.at, c) === undefined)
+          (late === null || (late === 'inside' && confined(c, hr!, t.sym))) &&
+          !later
         ) {
           return false
         }
-        out.push({ region: r.id, reason: 'ordered-effect', binding: t.sym })
+        out.push({
+          region: r.id,
+          reason: 'ordered-effect',
+          binding: t.sym,
+          ...(late === 'inside' && !later && { writes: true as const }),
+        })
         return true
       })
     }
@@ -654,6 +700,18 @@ export function checkPlacement(
       for (const w of writesOfSym.get(sym)!) {
         const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
         if (!w.live || wc === cl.id) {
+          continue
+        }
+        // a write at an unknown time by code only this output holds, of a
+        // binding it holds: only this output's code runs it, after it
+        // loads, so the touch and the write keep their order
+        if (
+          !w.eager &&
+          wc !== undefined &&
+          home.get(wc) === own &&
+          bc !== undefined &&
+          home.get(bc) === own
+        ) {
           continue
         }
         const wt = wc === undefined ? 1 : timeOf(wc)

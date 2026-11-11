@@ -198,7 +198,9 @@ extends Z`, directly or through what they carry) share the module of the first i
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
   (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
-  one is kept in place (`ordered-effect`). An effectful,
+  one is kept in place (`ordered-effect`), unless that write is only its output's code (its own text, or a function
+  only that output holds: `memo(function Page() { didInit = true })`) and the binding is confined there, the rule
+  for an option value's writes at load (it evaluates in that output, and nothing else there touches it). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
   preserved) when nothing outside it writes it eagerly, it observes no mutable state, what it reads at load of
   another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =

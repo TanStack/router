@@ -104,6 +104,9 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       expect(r.where).toBe('eager')
       expect(r.text).toBe('MARK_PAGEtrue')
       expect(r.warnings).toHaveLength(1)
+      expect(r.warnings[0]).toContain(
+        "The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which other code also uses, so a split would change when that code sees the write. Use `didInit` only inside the option's functions.",
+      )
     },
     timeout,
   )

@@ -5527,7 +5527,10 @@ describe('readers and writers of state written at load', () => {
     'splits an option value whose call runs a function writing a binding nothing else touches (%s)',
     async (_, decls, options) => {
       const r = await split(route(decls, options), { files: lib })
-      expect(r.main?.facts.planners['toy-split']?.notSplittable).toBeUndefined()
+      const facts = r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+      expect(facts?.notSplittable).toBeUndefined()
       expect(r.chunks.component).toContain('function Page()')
       expect(r.main?.diagnostics).toEqual([])
     },

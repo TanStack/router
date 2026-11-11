@@ -114,8 +114,10 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
-  /** The name of the binding a writer fallback writes. */
+  /** The name of the binding a writer fallback writes (`ordered-effect`: writes or reads). */
   binding?: string
+  /** `ordered-effect`: the value writes `binding` (`Fallback.writes`). */
+  writes?: true
 }
 
 interface OutputSpec {
@@ -606,6 +608,7 @@ export class AnalysisPlan implements PlanContext {
         ...(f.binding !== undefined && {
           binding: this.symbols.name(f.binding),
         }),
+        ...(f.writes && { writes: true }),
       })
     }
     return out
