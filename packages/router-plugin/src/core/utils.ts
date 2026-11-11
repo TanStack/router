@@ -20,6 +20,8 @@ export const routeFactoryCallCodeFilter = [
   /\bcreateFileRoute\s*\(/,
   /\bcreateRootRoute\s*\(/,
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
+  // The root of a route module, from its generated scope.
+  /\bcreateModuleRoot\s*(?:<|\()/,
 ]
 
 export function getObjectPropertyKeyName(

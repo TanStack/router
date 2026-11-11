@@ -1,0 +1,19 @@
+{
+  "name": "@benchmarks/feature",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "tanstack": {
+    "router": {
+      "module": true
+    }
+  },
+  "exports": {
+    "./route-module": "./src/routeModule.gen.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "react": "^19.0.0"
+  }
+}

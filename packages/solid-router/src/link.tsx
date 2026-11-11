@@ -13,6 +13,7 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { nearestMatchContext } from './matchContext'
 
@@ -24,13 +25,26 @@ import type {
   Constrain,
   LinkOptions,
   ParsedLocation,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RoutePaths,
+  ScopedRouteOptions,
 } from '@tanstack/router-core'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+export type UseLinkPropsFn<TDefaultRegister> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TFrom extends string = string,
+  TTo extends string = '',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Solid.ComponentProps<'a'>
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -90,6 +104,11 @@ function createLinkProps(
       ) {
         currentLocation()
       }
+    }
+    // The nearest route resolves module destinations to the installation the
+    // Link renders under. Only the route-module translation reads it.
+    if (routeModules) {
+      dest._nearestRoute = routeId
     }
     return dest
   }
@@ -461,7 +480,7 @@ const NAVIGATION_KEYS = [
   'unsafeRelative',
   'from',
   'href',
-] as const
+]
 // Options the Link consumes; every other option is an element prop.
 const LINK_OPTION_KEYS = [
   ...NAVIGATION_KEYS,
@@ -486,6 +505,18 @@ const LINK_OPTION_KEYS = [
 ]
 // A Link also consumes its children and component, and drops `type`.
 const LINK_ELEMENT_KEYS = [...LINK_OPTION_KEYS, '_asChild', 'children', 'type']
+
+/**
+ * Called by route-module code: its scopes pass these internal options, which
+ * decide where a Link navigates (see `scopeLocationOptions` in router-core).
+ */
+export function addRouteModuleLinkOptions(): void {
+  if (!NAVIGATION_KEYS.includes('_module')) {
+    for (const keys of [NAVIGATION_KEYS, LINK_OPTION_KEYS, LINK_ELEMENT_KEYS]) {
+      keys.push('_module', '_fromRoute')
+    }
+  }
+}
 const STATIC_EVENT_PROPS = [
   'onClick',
   'onBlur',
@@ -616,8 +647,9 @@ export type CreateLinkProps = LinkProps<
 export type LinkComponent<
   in out TComp,
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
@@ -628,10 +660,11 @@ export type LinkComponent<
 
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > {
   defaultFrom: TDefaultFrom;
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
@@ -645,6 +678,14 @@ export interface LinkComponentRoute<
     >,
   ): Solid.JSX.Element
 }
+
+/**
+ * The signature of `createLink`, creating links typed against the router of `TDefaultRegister`.
+ * Route modules export a `createLink` of this type.
+ */
+export type CreateLinkFn<TDefaultRegister = Register> = <const TComp>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
+) => LinkComponent<TComp, string, TDefaultRegister>
 
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
@@ -702,12 +743,12 @@ export type LinkOptionsFnOptions<
     ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
     : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
-export type LinkOptionsFn<TComp> = <
+export type LinkOptionsFn<TComp, TDefaultRegister = Register> = <
   const TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
 >(
   options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
-) => TOptions
+) => ScopedRouteOptions<TOptions, TRouter>
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any

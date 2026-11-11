@@ -109,6 +109,15 @@ describe('getUniqueProgramIdentifier', () => {
 })
 
 describe('routeFactoryCallCodeFilter', () => {
+  it('matches the module root factory of a route module', () => {
+    expect(matchesRouteFactoryCallCodeFilter('createModuleRoot()({})')).toBe(
+      true,
+    )
+    expect(
+      matchesRouteFactoryCallCodeFilter('createModuleRoot<Register>()({})'),
+    ).toBe(true)
+  })
+
   it('matches route factory calls with TypeScript type arguments', () => {
     expect(
       matchesRouteFactoryCallCodeFilter(

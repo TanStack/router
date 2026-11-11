@@ -159,7 +159,7 @@ describe('add-hmr works', () => {
     const output = compileResult.code
 
     expect(output).toContain(
-      'router._replaceRouteChunk(oldRoute, newRoute.lazyFn);',
+      'router._replaceRouteChunk(liveRoute, newRoute.lazyFn);',
     )
     expect(output).toContain('void router._refreshRoute?.();')
     expect(output).not.toContain('__routeContext')
@@ -190,6 +190,20 @@ describe('add-hmr works', () => {
       '"operator":"??","left":{"type":"StringLiteral","value":"/current-route"',
     )
     expect(output).toContain('"object":{"type":"Identifier","name":"hotData"}')
+  })
+
+  it('prefers the current generated route id over stale webpack hot data', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'webpack',
+      targetFramework: 'react',
+      routeId: '@acme/feature:',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('"name":"routeId"')
+    expect(output).toContain(
+      '"operator":"??","left":{"type":"StringLiteral","value":"@acme/feature:"',
+    )
   })
 
   it('normalizes the generated root route id for Vite HMR', async () => {

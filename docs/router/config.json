@@ -117,6 +117,10 @@
           "to": "routing/virtual-file-routes"
         },
         {
+          "label": "Route Modules (Experimental)",
+          "to": "routing/route-modules"
+        },
+        {
           "label": "Code-Based Routing",
           "to": "routing/code-based-routing"
         },
@@ -360,6 +364,10 @@
         {
           "label": "Create Route Property Order",
           "to": "eslint/create-route-property-order"
+        },
+        {
+          "label": "Route Module Imports (Experimental)",
+          "to": "eslint/route-module-imports"
         }
       ]
     },

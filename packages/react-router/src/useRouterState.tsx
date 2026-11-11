@@ -6,7 +6,9 @@ import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RouterState,
 } from '@tanstack/router-core'
 import type {
@@ -29,6 +31,18 @@ export type UseRouterStateResult<
   TRouter extends AnyRouter,
   TSelected,
 > = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+
+/**
+ * The signature of `useRouterState`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useRouterState` of this type.
+ */
+export type UseRouterStateFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseRouterStateOptions<TRouter, TSelected, TStructuralSharing>,
+) => UseRouterStateResult<TRouter, TSelected>
 
 /**
  * Subscribe to the router's state store with optional selection and
@@ -59,7 +73,7 @@ export function useRouterState<
   // The expression must stay inlined in the `if` so bundlers fold the
   // browser-build constant `isServer = false` and drop this server block.
   if (isServer ?? router.isServer) {
-    const state = router.stores.__store.get() as RouterState<
+    const state = router.stores.__store.get() as unknown as RouterState<
       TRouter['routeTree']
     >
     return (opts?.select ? opts.select(state) : state) as UseRouterStateResult<

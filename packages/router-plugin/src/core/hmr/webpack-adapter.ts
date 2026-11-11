@@ -23,6 +23,9 @@ export function createWebpackHmrStatement(
   },
 ): Array<t.Statement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
+  // The generated id is current, like in the Vite adapter: hot data can be
+  // stale and the replacement Route object is uninitialized (a file route or a
+  // module root has no id and reads as a root).
   const staticRouteIdLiteral =
     typeof opts.routeId === 'string'
       ? JSON.stringify(opts.routeId)
@@ -69,16 +72,16 @@ export function createWebpackHmrStatement(
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = hot.data ??= {}
-  const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : ${staticRouteIdLiteral})
+  const routeId = ${staticRouteIdLiteral} ?? hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : undefined)
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && routeId
-      ? window.__TSR_ROUTER__?.routesById?.[routeId]
-      : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
+  if (
+    routeId &&
+    typeof window !== 'undefined' &&
+    window.__TSR_ROUTER__ &&
+    (${handleRouteUpdateCode})(routeId, Route)
+  ) {${reactRefreshCall}
   }
   hot.dispose((data) => {
     if (routeId) {

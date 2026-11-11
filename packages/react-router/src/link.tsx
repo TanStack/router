@@ -10,18 +10,23 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { routeModules } from '@tanstack/router-core/_internal/route-module'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
-
 import type {
   ActiveOptions,
   AnyRouter,
   Constrain,
   LinkOptions,
   ParsedLocation,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
+  RouteModuleScope,
   RoutePaths,
+  ScopedRouteOptions,
 } from '@tanstack/router-core'
+
 import type { ReactNode } from 'react'
 import type {
   ValidateLinkOptions,
@@ -131,6 +136,17 @@ function resolveIsActive(
  * @returns React anchor props suitable for `<a>` or custom components.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLinkPropsHook
  */
+export type UseLinkPropsFn<TDefaultRegister> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TFrom extends string = string,
+  TTo extends string = '',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef?: React.ForwardedRef<Element>,
+) => React.ComponentPropsWithRef<'a'>
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -188,7 +204,14 @@ export function useLinkProps<
   // browser-build constant `isServer = false` and drop this server block,
   // together with `getServerLinkProps` and the key sets only it references.
   if (isServer ?? router.isServer) {
-    return getServerLinkProps(router, options, forwardedRef, host)
+    return getServerLinkProps(
+      router,
+      options,
+      forwardedRef,
+      host,
+      // eslint-disable-next-line react-hooks/rules-of-hooks -- the server condition is static
+      React.useContext(matchContext),
+    )
   }
 
   // ==========================================================================
@@ -247,8 +270,10 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // The links of a route share its location source. Links outside every
-  // match share one that never departs.
+  // The route of the nearest match: it scopes the links of a route, and
+  // module destinations resolve to the installation it belongs to. The links
+  // of a route share its location source. Links outside every match share
+  // one that never departs.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const routeId = React.useContext(matchContext)
   const scope = ((router.stores._linkScopes ??= {})[routeId!] ??=
@@ -271,6 +296,11 @@ export function useLinkProps<
     }
 
     const dest = { ...options } as any
+    // The nearest route resolves module destinations to the installation
+    // the link renders under. Only the route-module translation reads it.
+    if (routeModules) {
+      dest._nearestRoute = routeId
+    }
     let source: ParsedLocation | undefined
     let state: LinkState
     let hydrationState: LinkState | undefined
@@ -337,6 +367,12 @@ export function useLinkProps<
     options.unsafeRelative,
     stableActiveOptions,
     disabled,
+    // Spread route-module link options can change the scope of the same
+    // destination. The `_fromRoute` of a route's own `Link` is constant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the condition is constant for an application
+    ...(routeModules
+      ? [(options as { _module?: RouteModuleScope })._module]
+      : []),
   ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -450,9 +486,18 @@ export function useLinkProps<
       cancelPreload(innerRef)
 
       // The current options carry the navigation controls; `dest` only
-      // contributes the location the link displays. Navigation builds again
-      // to run `validateSearch` before committing.
-      router.navigate({ ...options, _fromLocation: dest._fromLocation })
+      // contributes the location the link displays and the installation of a
+      // module destination. Navigation builds again to run `validateSearch`
+      // before committing.
+      router.navigate(
+        routeModules
+          ? {
+              ...options,
+              _fromLocation: dest._fromLocation,
+              _nearestRoute: routeId,
+            }
+          : { ...options, _fromLocation: dest._fromLocation },
+      )
     }
   }
 
@@ -480,7 +525,8 @@ export function useLinkProps<
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 // Options the router consumes; they never reach the element. Every other
-// option is an element prop and passes through.
+// option is an element prop and passes through. Route-module code adds the
+// options of its scopes (`addRouteModuleLinkOptions`).
 const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'to',
   'params',
@@ -505,6 +551,11 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'activeOptions',
   '_asChild',
 ])
+
+/** Called by route-module code: its scopes pass these internal options. */
+export function addRouteModuleLinkOptions(): void {
+  ROUTER_OPTION_KEYS.add('_module').add('_fromRoute')
+}
 
 // Copies the element props. An object rest would test every key against the
 // whole exclusion list; the key set is much cheaper. `Link` hosts never render
@@ -588,6 +639,7 @@ function getServerLinkProps(
   options: any,
   forwardedRef: React.ForwardedRef<Element> | undefined,
   host: 'a' | React.ElementType | undefined,
+  routeId: string | undefined,
 ): React.ComponentPropsWithRef<'a'> {
   const { to, disabled, activeOptions } = options as {
     to: string | undefined
@@ -600,7 +652,13 @@ function getServerLinkProps(
   // Direct-scheme links need no route resolution. Blocked links still use
   // the shared inactive-prop merge so their server and client markup agree.
   const next =
-    directExternalLink === undefined ? router.buildLocation(options) : undefined
+    directExternalLink === undefined
+      ? router.buildLocation(
+          options._module === undefined
+            ? options
+            : { ...options, _nearestRoute: routeId },
+        )
+      : undefined
 
   const hrefOption = next
     ? getHrefOption(next, router, disabled)
@@ -778,8 +836,9 @@ export type CreateLinkProps = LinkProps<
 export type LinkComponent<
   in out TComp,
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
@@ -790,10 +849,11 @@ export type LinkComponent<
 
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
+  in out TDefaultRegister = Register,
 > {
   defaultFrom: TDefaultFrom;
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
@@ -807,6 +867,14 @@ export interface LinkComponentRoute<
     >,
   ): React.ReactElement
 }
+
+/**
+ * The signature of `createLink`, creating links typed against the router of `TDefaultRegister`.
+ * Route modules export a `createLink` of this type.
+ */
+export type CreateLinkFn<TDefaultRegister = Register> = <const TComp>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+) => LinkComponent<TComp, string, TDefaultRegister>
 
 /**
  * Creates a typed Link-like component that preserves TanStack Router's
@@ -899,12 +967,12 @@ export type LinkOptionsFnOptions<
     ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
     : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
-export type LinkOptionsFn<TComp> = <
+export type LinkOptionsFn<TComp, TDefaultRegister = Register> = <
   const TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
 >(
   options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
-) => TOptions
+) => ScopedRouteOptions<TOptions, TRouter>
 
 /**
  * Validate and reuse navigation options for `Link`, `navigate` or `redirect`.

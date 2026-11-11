@@ -1,3 +1,4 @@
+import type { CompatibleRouteScope, RouteModuleScope } from './route-module'
 import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
 import type {
   AllParams,
@@ -18,6 +19,7 @@ import type {
   ViewTransitionOptions,
 } from './router'
 import type {
+  Assign,
   ConstrainLiteral,
   Expand,
   MakeDifferenceOptional,
@@ -371,6 +373,22 @@ export interface MaskOptions<
   in out TMaskTo extends string,
 > {
   _fromLocation?: ParsedLocation
+  /**
+   * Internal: absolute `to`/`from` are local to this route module. Set by the
+   * scoped APIs of a route module; do not set it manually.
+   */
+  _module?: RouteModuleScope<CompatibleRouteScope<TRouter>>
+  /**
+   * Internal: resolve `from` as the current full path of the route with this
+   * id. Set by route-bound APIs of route-module routes.
+   */
+  _fromRoute?: string
+  /**
+   * Internal: the route id of the caller's nearest match. `_module` and
+   * `_fromRoute` of a module installed several times resolve to the
+   * installation it belongs to. Set by the framework bindings.
+   */
+  _nearestRoute?: string
   mask?: ToMaskOptions<TRouter, TMaskFrom, TMaskTo>
 }
 
@@ -379,6 +397,7 @@ export type ToMaskOptions<
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
 > = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
+  _module?: RouteModuleScope<CompatibleRouteScope<TRouter>>
   unmaskOnReload?: boolean
 }
 
@@ -503,7 +522,29 @@ type ResolveAllToParams<
   ? AllParams<TRouter['routeTree']>
   : FullSearchSchemaInput<TRouter['routeTree']>
 
+/**
+ * The path params of a destination, with the host params of a route module
+ * installation for its `HostedRouter`.
+ */
+type WithHostParams<TRouter, TParams> = TRouter extends {
+  '~hostParams': infer THostParams
+}
+  ? Assign<THostParams, TParams>
+  : TParams
+
 export type ResolveToParams<
+  TRouter extends AnyRouter,
+  TParamVariant extends ParamVariant,
+  TFrom,
+  TTo,
+> = TParamVariant extends 'PATH'
+  ? WithHostParams<
+      TRouter,
+      ResolveDestinationParams<TRouter, 'PATH', TFrom, TTo>
+    >
+  : ResolveDestinationParams<TRouter, TParamVariant, TFrom, TTo>
+
+type ResolveDestinationParams<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,

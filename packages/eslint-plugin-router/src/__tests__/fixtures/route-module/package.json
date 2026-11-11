@@ -1,0 +1,17 @@
+{
+  "name": "@fixture/route-module",
+  "private": true,
+  "tanstack": {
+    "router": {
+      "module": {
+        "uses": [
+          "@fixture/used",
+          {
+            "module": "@fixture/other",
+            "as": "other"
+          }
+        ]
+      }
+    }
+  }
+}

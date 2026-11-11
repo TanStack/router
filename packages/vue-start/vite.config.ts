@@ -28,6 +28,7 @@ export default mergeConfig(
     exclude: ['./src/default-entry'],
     entry: [
       './src/index.ts',
+      './src/route-module-internal.ts',
       './src/client.tsx',
       './src/client-rpc.ts',
       './src/ssr-rpc.ts',

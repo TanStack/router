@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmitOnError": true,
+    "declarationMap": true,
+    "rootDir": ".",
+    "outDir": ".tanstack/types"
+  },
+  "include": ["src"]
+}

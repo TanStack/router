@@ -7,7 +7,9 @@ import type {
   ParseRoute,
   RouteById,
   RouteIds,
+  RoutesById,
 } from './routeInfo'
+import type { RouteScopeMarker } from './route-module'
 import type { AnyRouter, RegisteredRouter, SSROption } from './router'
 import type { Constrain } from './utils'
 
@@ -126,6 +128,8 @@ export interface RouteMatch<
 > extends RouteMatchExtensions {
   id: string
   routeId: TRouteId
+  /** The authored route ID for module matches, independent of installation. */
+  localRouteId?: string
   fullPath: TFullPath
   index: number
   pathname: string
@@ -186,29 +190,76 @@ export type MakePreValidationErrorHandlingRouteMatchUnion<
 > = TRoute extends any
   ? PreValidationErrorHandlingRouteMatch<
       TRoute['id'],
-      TRoute['fullPath'],
+      MatchFullPath<TRoute['id'], TRoute['fullPath']>,
       TRoute['types']['allParams'],
       TRoute['types']['fullSearchSchema']
     >
   : never
 
+type LocalRouteId<TRouteId> = TRouteId extends `/${string}`
+  ? never
+  : TRouteId extends `${infer TNamespace}:${infer TPath}`
+    ? TNamespace extends `${infer TModule}#${string}`
+      ? `${TModule}:${TPath}`
+      : TRouteId
+    : never
+
+type NonModuleRouteId<TRouteId> = TRouteId extends `/${string}`
+  ? TRouteId
+  : TRouteId extends `${string}:${string}`
+    ? never
+    : TRouteId
+
+type ModuleMatchIdentity<TRouteId> = string extends TRouteId
+  ? {}
+  : [NonModuleRouteId<TRouteId>] extends [never]
+    ? { localRouteId: LocalRouteId<TRouteId> }
+    : {}
+
+type MatchFullPath<TRouteId, TFullPath> = [LocalRouteId<TRouteId>] extends [
+  never,
+]
+  ? TFullPath
+  : string
+
+type InstalledRouteId<TRouteId> = TRouteId extends `/${string}`
+  ? TRouteId
+  : TRouteId extends `${infer TModule}:${infer TPath}`
+    ? TModule extends `${string}#${string}`
+      ? TRouteId
+      : TRouteId | `${TModule}#${string}:${TPath}`
+    : TRouteId
+
+type MatchRouteId<TRouteTree, TRouteId> =
+  TRouteTree extends RouteScopeMarker<infer TModuleId>
+    ? TModuleId extends `${infer TModule}#${string}`
+      ? TRouteId extends `${TModule}:${infer TPath}`
+        ? `${TModuleId}:${TPath}`
+        : InstalledRouteId<TRouteId>
+      : InstalledRouteId<TRouteId>
+    : TRouteId
+
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
-  TRoute['types']['id'],
-  TRoute['types']['fullPath'],
+  InstalledRouteId<TRoute['types']['id']>,
+  MatchFullPath<TRoute['id'], TRoute['types']['fullPath']>,
   TRoute['types']['allParams'],
   TRoute['types']['fullSearchSchema'],
   TRoute['types']['loaderData'],
   TRoute['types']['allContext'],
   TRoute['types']['loaderDeps']
->
+> &
+  ModuleMatchIdentity<TRoute['types']['id']>
 
 export type MakeRouteMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
 > = RouteMatch<
-  TRouteId,
-  RouteById<TRouteTree, TRouteId>['types']['fullPath'],
+  MatchRouteId<TRouteTree, TRouteId>,
+  MatchFullPath<
+    RouteById<TRouteTree, TRouteId>['id'],
+    RouteById<TRouteTree, TRouteId>['types']['fullPath']
+  >,
   TStrict extends false
     ? AllParams<TRouteTree>
     : RouteById<TRouteTree, TRouteId>['types']['allParams'],
@@ -222,24 +273,50 @@ export type MakeRouteMatch<
     ? AllContext<TRouteTree>
     : RouteById<TRouteTree, TRouteId>['types']['allContext'],
   RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
->
+> &
+  ModuleMatchIdentity<RouteById<TRouteTree, TRouteId>['id']>
 
 export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
-export type MakeRouteMatchUnion<
+/** A full-chain match whose route-specific contract is unknown to a scope. */
+export type ForeignRouteMatch = RouteMatch<
+  string,
+  string,
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  unknown
+>
+
+type MatchRoutes<TRouteTree extends AnyRoute> =
+  TRouteTree extends RouteScopeMarker
+    ? ParseRoute<TRouteTree>
+    : Extract<RoutesById<TRouteTree>[keyof RoutesById<TRouteTree>], AnyRoute>
+
+/** The known routes only, used by generated scope membership guards. */
+export type KnownRouteMatchUnion<
   TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+  TRoute extends AnyRoute = MatchRoutes<TRouter['routeTree']>,
 > = TRoute extends any
   ? RouteMatch<
-      TRoute['id'],
-      TRoute['fullPath'],
+      MatchRouteId<TRouter['routeTree'], TRoute['id']>,
+      MatchFullPath<TRoute['id'], TRoute['fullPath']>,
       TRoute['types']['allParams'],
       TRoute['types']['fullSearchSchema'],
       TRoute['types']['loaderData'],
       TRoute['types']['allContext'],
       TRoute['types']['loaderDeps']
-    >
+    > &
+      ModuleMatchIdentity<TRoute['id']>
   : never
+
+export type MakeRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = MatchRoutes<TRouter['routeTree']>,
+> =
+  | KnownRouteMatchUnion<TRouter, TRoute>
+  | (TRouter['routeTree'] extends RouteScopeMarker ? ForeignRouteMatch : never)
 
 /**
  * The `MatchRouteOptions` type is used to describe the options that can be used when matching a route.

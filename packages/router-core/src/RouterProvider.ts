@@ -1,7 +1,8 @@
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RoutePaths } from './routeInfo'
-import type { RegisteredRouter, ViewTransitionOptions } from './router'
+import type { AnyRouter, Register, ViewTransitionOptions } from './router'
+import type { RegisteredRouterOf } from './route-module'
 
 export interface MatchLocation {
   to?: string | number | null
@@ -22,9 +23,11 @@ export interface CommitLocationOptions {
   ignoreBlocker?: boolean
 }
 
-export type NavigateFn = <
-  TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
+export type NavigateFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  // A default equal to the constraint keeps the inference of a destination-less
+  // call unchanged while allowing the router type to have a default.
+  TTo extends string | undefined = string | undefined,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
@@ -32,9 +35,11 @@ export type NavigateFn = <
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
-export type BuildLocationFn = <
-  TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
+export type BuildLocationFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  // A default equal to the constraint keeps the inference of a destination-less
+  // call unchanged while allowing the router type to have a default.
+  TTo extends string | undefined = string | undefined,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',

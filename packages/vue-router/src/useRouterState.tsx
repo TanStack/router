@@ -4,7 +4,9 @@ import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   RouterState,
 } from '@tanstack/router-core'
 
@@ -17,6 +19,17 @@ export type UseRouterStateResult<
   TRouter extends AnyRouter,
   TSelected,
 > = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+
+/**
+ * The signature of `useRouterState`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useRouterState` of this type.
+ */
+export type UseRouterStateFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  TSelected = unknown,
+>(
+  opts?: UseRouterStateOptions<TRouter, TSelected>,
+) => Vue.Ref<UseRouterStateResult<TRouter, TSelected>>
 
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -42,7 +55,7 @@ export function useRouterState<
   // The expression must stay inlined in the `if` so bundlers fold the
   // browser-build constant `isServer = false` and drop this server block.
   if (isServer ?? router.isServer) {
-    const state = router.stores.__store.get() as RouterState<
+    const state = router.stores.__store.get() as unknown as RouterState<
       TRouter['routeTree']
     >
     return Vue.ref(opts?.select ? opts.select(state) : state) as Vue.Ref<
@@ -52,7 +65,7 @@ export function useRouterState<
 
   return useSelector(router.stores.__store, (state) => {
     if (opts?.select) {
-      return opts.select(state)
+      return opts.select(state as unknown as RouterState<TRouter['routeTree']>)
     }
 
     return state

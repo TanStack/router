@@ -7,6 +7,8 @@ import type {
   CreateMiddlewareFn,
 } from './createMiddleware'
 import type { CustomFetch } from './createServerFn'
+import type { AnyStartModule, WithStartModules } from './createStartModule'
+import type { StartOptionList } from './startOptionList'
 import type {
   AnySerializationAdapter,
   Register,
@@ -18,12 +20,18 @@ export interface StartInstanceOptions<
   in out TDefaultSsr,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
+  in out TStartModules = [],
+  in out TOwnRequestMiddlewares = TRequestMiddlewares,
+  in out TOwnFunctionMiddlewares = TFunctionMiddlewares,
 > {
   '~types': StartInstanceTypes<
     TSerializationAdapters,
     TDefaultSsr,
     TRequestMiddlewares,
-    TFunctionMiddlewares
+    TFunctionMiddlewares,
+    TStartModules,
+    TOwnRequestMiddlewares,
+    TOwnFunctionMiddlewares
   >
   serializationAdapters?: TSerializationAdapters
   defaultSsr?: TDefaultSsr
@@ -55,6 +63,9 @@ export interface StartInstance<
   in out TDefaultSsr,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
+  in out TStartModules = [],
+  in out TOwnRequestMiddlewares = TRequestMiddlewares,
+  in out TOwnFunctionMiddlewares = TFunctionMiddlewares,
 > {
   getOptions: () =>
     | Promise<
@@ -62,14 +73,20 @@ export interface StartInstance<
           TSerializationAdapters,
           TDefaultSsr,
           TRequestMiddlewares,
-          TFunctionMiddlewares
+          TFunctionMiddlewares,
+          TStartModules,
+          TOwnRequestMiddlewares,
+          TOwnFunctionMiddlewares
         >
       >
     | StartInstanceOptions<
         TSerializationAdapters,
         TDefaultSsr,
         TRequestMiddlewares,
-        TFunctionMiddlewares
+        TFunctionMiddlewares,
+        TStartModules,
+        TOwnRequestMiddlewares,
+        TOwnFunctionMiddlewares
       >
   createMiddleware: CreateMiddlewareFn<Register>
 }
@@ -79,11 +96,17 @@ export interface StartInstanceTypes<
   in out TDefaultSsr,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
+  in out TStartModules = [],
+  in out TOwnRequestMiddlewares = TRequestMiddlewares,
+  in out TOwnFunctionMiddlewares = TFunctionMiddlewares,
 > {
   serializationAdapters: TSerializationAdapters
   defaultSsr: TDefaultSsr
   requestMiddleware: TRequestMiddlewares
   functionMiddleware: TFunctionMiddlewares
+  startModules: TStartModules
+  ownRequestMiddleware: TOwnRequestMiddlewares
+  ownFunctionMiddleware: TOwnFunctionMiddlewares
 }
 
 function dedupeSerializationAdapters(
@@ -101,9 +124,45 @@ function dedupeSerializationAdapters(
   }
 }
 
+const startModuleOptionKeys = [
+  'serializationAdapters',
+  'requestMiddleware',
+  'functionMiddleware',
+] as const
+
+/**
+ * Returns the options with the contributions of the installed route modules
+ * appended: the application's own entries first, each entry once. Middleware
+ * requirements are type-only. The factory's options object is not changed, so
+ * repeated `getOptions()` calls never accumulate.
+ */
+function installStartModules<T extends Record<string, any>>(
+  options: T,
+  modules: ReadonlyArray<AnyStartModule>,
+): T {
+  const installed: Record<string, any> = { ...options }
+  const fragments = Array.from(new Set(modules), (module) =>
+    module.getOptions(),
+  )
+  for (const key of startModuleOptionKeys) {
+    const merged = new Set<any>(options[key])
+    for (const fragment of fragments) {
+      fragment[key]?.forEach((entry: any) => merged.add(entry))
+    }
+    installed[key] = Array.from(merged)
+  }
+  return installed as T
+}
+
 function dedupeOptions<
-  T extends { serializationAdapters?: ReadonlyArray<AnySerializationAdapter> },
+  T extends {
+    serializationAdapters?: ReadonlyArray<AnySerializationAdapter>
+    extends?: ReadonlyArray<AnyStartModule>
+  },
 >(options: T): T {
+  if (options.extends) {
+    options = installStartModules(options, options.extends)
+  }
   if (options.serializationAdapters) {
     const deduped = new Set<AnySerializationAdapter>()
     dedupeSerializationAdapters(
@@ -115,39 +174,104 @@ function dedupeOptions<
   return options
 }
 
+/**
+ * Options of `createStart`: the Start instance options plus the Start
+ * fragments of installed route modules (`extends`).
+ */
+export type CreateStartOptions<
+  TSerializationAdapters,
+  TDefaultSsr,
+  TRequestMiddlewares,
+  TFunctionMiddlewares,
+  TStartModules,
+> = Omit<
+  StartInstanceOptions<
+    TSerializationAdapters,
+    TDefaultSsr,
+    TRequestMiddlewares,
+    TFunctionMiddlewares
+  >,
+  '~types'
+> & {
+  /**
+   * Start fragments of route modules to install, usually `startModules` from
+   * the generated `startModules.gen.ts`. Their serialization adapters and
+   * middleware run after the application's own.
+   */
+  extends?: TStartModules
+}
+
+type AnyCreateStartOptions = CreateStartOptions<
+  ReadonlyArray<AnySerializationAdapter>,
+  SSROption,
+  ReadonlyArray<AnyRequestMiddleware>,
+  ReadonlyArray<AnyFunctionMiddleware>,
+  ReadonlyArray<AnyStartModule>
+>
+
 export const createStart = <
   const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter> =
     [],
   TDefaultSsr extends SSROption = SSROption,
   const TRequestMiddlewares extends ReadonlyArray<AnyRequestMiddleware> = [],
   const TFunctionMiddlewares extends ReadonlyArray<AnyFunctionMiddleware> = [],
+  const TStartModules extends ReadonlyArray<AnyStartModule> = [],
+  const TOptions extends
+    | AnyCreateStartOptions
+    | Promise<AnyCreateStartOptions> =
+    | AnyCreateStartOptions
+    | Promise<AnyCreateStartOptions>,
 >(
-  getOptions: () =>
+  getOptions: (() =>
     | Promise<
-        Omit<
-          StartInstanceOptions<
-            TSerializationAdapters,
-            TDefaultSsr,
-            TRequestMiddlewares,
-            TFunctionMiddlewares
-          >,
-          '~types'
-        >
-      >
-    | Omit<
-        StartInstanceOptions<
+        CreateStartOptions<
           TSerializationAdapters,
           TDefaultSsr,
           TRequestMiddlewares,
-          TFunctionMiddlewares
-        >,
-        '~types'
-      >,
+          TFunctionMiddlewares,
+          TStartModules
+        >
+      >
+    | CreateStartOptions<
+        TSerializationAdapters,
+        TDefaultSsr,
+        TRequestMiddlewares,
+        TFunctionMiddlewares,
+        TStartModules
+      >) &
+    (() => TOptions),
 ): StartInstance<
-  TSerializationAdapters,
+  WithStartModules<
+    StartOptionList<
+      Awaited<TOptions>,
+      'serializationAdapters',
+      TSerializationAdapters
+    >,
+    StartOptionList<Awaited<TOptions>, 'extends', TStartModules>,
+    'serializationAdapters'
+  >,
   TDefaultSsr,
-  TRequestMiddlewares,
-  TFunctionMiddlewares
+  WithStartModules<
+    StartOptionList<
+      Awaited<TOptions>,
+      'requestMiddleware',
+      TRequestMiddlewares
+    >,
+    StartOptionList<Awaited<TOptions>, 'extends', TStartModules>,
+    'requestMiddleware'
+  >,
+  WithStartModules<
+    StartOptionList<
+      Awaited<TOptions>,
+      'functionMiddleware',
+      TFunctionMiddlewares
+    >,
+    StartOptionList<Awaited<TOptions>, 'extends', TStartModules>,
+    'functionMiddleware'
+  >,
+  StartOptionList<Awaited<TOptions>, 'extends', TStartModules>,
+  StartOptionList<Awaited<TOptions>, 'requestMiddleware', TRequestMiddlewares>,
+  StartOptionList<Awaited<TOptions>, 'functionMiddleware', TFunctionMiddlewares>
 > => {
   return {
     // A synchronous factory returns synchronously so callers can skip a
@@ -160,18 +284,21 @@ export const createStart = <
         : dedupeOptions(options)
     },
     createMiddleware: createMiddleware,
-  } as StartInstance<
-    TSerializationAdapters,
-    TDefaultSsr,
-    TRequestMiddlewares,
-    TFunctionMiddlewares
-  >
+  } as StartInstance<any, any, any, any, any, any, any>
 }
 
-export type AnyStartInstance = StartInstance<any, any, any, any>
-export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
+export type AnyStartInstance = StartInstance<any, any, any, any, any, any, any>
+export type AnyStartInstanceOptions = StartInstanceOptions<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router-core/extensions' {
   interface SerializableExtensions {
     serverFn: { [TSS_SERVER_FUNCTION]: true }
   }

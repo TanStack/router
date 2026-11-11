@@ -2,7 +2,9 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
+  RegisteredRouterOf,
   ResolveUseParams,
   StrictOrFrom,
   ThrowConstraint,
@@ -30,8 +32,8 @@ export type UseParamsOptions<
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
   UseParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
-export type UseParamsRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseParamsRoute<out TFrom, TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
   TSelected = unknown,
   TThrow extends boolean = true,
 >(
@@ -44,6 +46,28 @@ export type UseParamsRoute<out TFrom> = <
   >,
 ) => Vue.Ref<
   ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
+
+/**
+ * The signature of `useParams`, typed against the router of `TDefaultRegister` unless a router
+ * type is passed explicitly. Route modules export a `useParams` of this type.
+ */
+export type UseParamsFn<TDefaultRegister = Register> = <
+  TRouter extends AnyRouter = RegisteredRouterOf<TDefaultRegister>,
+  const TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TThrow extends boolean = true,
+  TSelected = unknown,
+>(
+  opts: UseParamsOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected
+  >,
+) => Vue.Ref<
+  ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 >
 
 export function useParams<
