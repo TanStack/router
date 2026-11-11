@@ -2617,15 +2617,15 @@ describe('extracted-export outputs', () => {
     ["Page[track('k')] = 1", false],
     ['Page.count++', false],
     // a member of a namespace import reads that module's binding (no code
-    // runs, as for an imported identifier); so, under rule L, does a
-    // property of an imported object
+    // runs, as for an imported identifier)
     ['Page.icon = Icons.Home', true],
     ["Page.icon = Icons['Home']", true],
     ['Object.assign(Page, { Item: Icons.Item })', true],
-    // (rule L: a member read is a language operation, a getter outside the
-    // model as for reads, R97; not extracted before)
-    ['Page.icon = Shapes.Home', true],
-    ['Page.icon = Icons.Home.small', true],
+    // a property of an imported object may run a getter: what moves into an
+    // extracted export's module is judged as deletion is (rule L only
+    // times code)
+    ['Page.icon = Shapes.Home', false],
+    ['Page.icon = Icons.Home.small', false],
   ])(
     'extracts an export augmented by `%s` only when the augmentation writes nothing but pure values (%s)',
     async (augmentation, extracted) => {
@@ -6535,12 +6535,32 @@ describe('language operations are no effect (rule L)', () => {
       },
     )
 
-    // an extracted export moves (rule L: nothing is deleted), but its module
-    // is no module a bundler may skip while nothing imports what it exports
-    it('extracts an exported language operation into a module that is not side-effect free', async () => {
-      const host = new MemoryHost({
-        files: {
-          '/app/route.tsx': dedent(`
+    // nor does it move into an extracted export's module: a host may flag
+    // that module side-effect free whatever it holds (the webpack family's
+    // rule on the query), and a bundler then drops it while nothing imports
+    // what it exports. An exported one stays, reported as at head; an
+    // unexported one only the extracted export reads stays in the route
+    // module, which the extracted module imports it from (architect's
+    // ruling on finding 2)
+    describe('in an extracted export', () => {
+      const compile = async (code: string, extracted: string) => {
+        const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+        const planners = [
+          toySplitPlanner({ keys: ['component'], extractExports: true }),
+        ]
+        const env = { env: envInfo({ mode: 'build' }) }
+        const r = await host.compile('/app/route.tsx', planners, env)
+        const e = await host.compile(
+          `/app/route.tsx?tsr-split=export---${extracted}`,
+          planners,
+          env,
+        )
+        return { r, e }
+      }
+
+      it('keeps an exported `new URL(text)` in the route module', async () => {
+        const { r } = await compile(
+          dedent(`
             import { createFileRoute } from 'toy-router'
             const text = '{'
             export const url = new URL(text)
@@ -6548,23 +6568,46 @@ describe('language operations are no effect (rule L)', () => {
               component: () => String(url),
             })
           `),
-        },
+          'url',
+        )
+        expect(r?.code).toContain('export const url = new URL(text)')
+        expect(r?.code).not.toContain('export---url')
+        expect(r?.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
+        // its initialiser is the cause, and the offered annotation works
+        expect(r?.diagnostics[0]?.message).toContain('initialiser')
+        expect(r?.diagnostics[0]?.message).toContain('/* @__PURE__ */')
+        const { e } = await compile(
+          dedent(`
+            import { createFileRoute } from 'toy-router'
+            const text = '{'
+            export const url = /* @__PURE__ */ new URL(text)
+            export const Route = createFileRoute('/')({
+              component: () => String(url),
+            })
+          `),
+          'url',
+        )
+        expect(e?.code).toContain('/* @__PURE__ */ new URL(text)')
       })
-      const planners = [
-        toySplitPlanner({ keys: ['component'], extractExports: true }),
-      ]
-      const env = { env: envInfo({ mode: 'build' }) }
-      const r = await host.compile('/app/route.tsx', planners, env)
-      expect(r?.code).toContain(
-        "export { url } from '/app/route.tsx?tsr-split=export---url'",
-      )
-      const e = await host.compile(
-        '/app/route.tsx?tsr-split=export---url',
-        planners,
-        env,
-      )
-      expect(e?.code).toContain('const url = new URL(text)')
-      expect(e?.sideEffectFree).toBe(false)
+
+      it('keeps an unexported `new URL(text)` only an extracted export reads in the route module', async () => {
+        const { r, e } = await compile(
+          dedent(`
+            import { createFileRoute } from 'toy-router'
+            const text = '{'
+            const url = new URL(text)
+            export function Page() { return String(url) }
+            export const Route = createFileRoute('/')({ component: Page })
+          `),
+          'Page',
+        )
+        expect(r?.code).toContain('const url = new URL(text)')
+        expect(r?.code).toContain(
+          "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
+        )
+        expect(e?.code).toContain("import { url } from '/app/route.tsx'")
+        expect(e?.code).not.toContain('new URL')
+      })
     })
   })
 
@@ -6603,20 +6646,16 @@ describe('language operations are no effect (rule L)', () => {
         'a global the language does not define',
         'const a = new Worker(LABELS.admin)',
       ],
+      // rule L times code; what moves into an extracted export's module is
+      // judged as deletion is
+      [
+        'a language operation',
+        'const a = Object.keys(LABELS).map((k) => k.length)',
+      ],
     ])('%s', async (_, decl) => {
       const r = await build(exported(decl))
       expect(r?.code).toContain(decl)
       expect(r?.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
-    })
-
-    it('extracts the same export when it is a language operation', async () => {
-      const decl = 'const a = Object.keys(LABELS).map((k) => k.length)'
-      const r = await build(exported(decl))
-      expect(r?.code).not.toContain(decl)
-      expect(r?.code).toContain(
-        "export { a } from '/app/route.tsx?tsr-split=export---a'",
-      )
-      expect(r?.diagnostics).toEqual([])
     })
   })
 })

@@ -12,7 +12,9 @@
  * stayed with the state the loader keeps, reported). Options of one split group writing one binding
  * are not reported: the binding goes to their chunk. Template-literal
  * initialisers (openstory) are reported and their fix, their own module,
- * works. Vite, Rspack, webpack and Rsbuild client builds.
+ * works. An exported `new URL(text)` the split component alone reads is
+ * reported too, and its annotated fix is not. Vite, Rspack, webpack and
+ * Rsbuild client builds.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -66,6 +68,25 @@ export const postOptions = /* @__PURE__ */ queryOptions({ queryKey: ['MARK_eager
 export const Route = createFileRoute('/eager-export-pure')({
   loader: () => 'data',
   component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
+})
+`,
+  // a standard global that may throw (`new URL(text)`): rule L only times
+  // code, so it is no candidate for an extracted module a host may flag
+  // side-effect free; it stays, reported (architect's ruling on the order
+  // rule v2 review, finding 2)
+  'routes/url-export.tsx': `${head}const text = 'https://x/?MARK_url-export_END'
+export const url = new URL(text)
+export const Route = createFileRoute('/url-export')({
+  loader: () => 'data',
+  component: () => <p>{String(url)}{Route.useLoaderData()}</p>,
+})
+`,
+  // its fix: the `new` marked pure
+  'routes/url-export-pure.tsx': `${head}const text = 'https://x/?MARK_url-export-pure_END'
+export const url = /* @__PURE__ */ new URL(text)
+export const Route = createFileRoute('/url-export-pure')({
+  loader: () => 'data',
+  component: () => <p>{String(url)}{Route.useLoaderData()}</p>,
 })
 `,
   // its other fix: its own module
@@ -170,12 +191,14 @@ export { routeTree }
 
 const reported: Array<[file: string, needle: string]> = [
   ['routes/eager-export.tsx', 'postOptions = queryOptions'],
+  ['routes/url-export.tsx', 'url = new URL'],
   ['routes/writer.tsx', 'Counter,'],
   ['routes/template.tsx', 'BASE = '],
 ]
 const silent = [
   'routes/course.tsx',
   'routes/eager-export-pure.tsx',
+  'routes/url-export-pure.tsx',
   'routes/eager-export-module.tsx',
   'routes/writer-fixed.tsx',
   'routes/state.tsx',
