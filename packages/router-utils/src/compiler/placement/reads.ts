@@ -96,7 +96,7 @@ interface MemberReads {
   children: Array<RegionId>
   /** In the env module (live): the references of the text the walk renders (what `runs` reads; the children's are theirs). */
   refs: Array<ClassifiedRef> | null
-  /** In the env module (live): the bindings its generated text names, where it stands (`generatedNames`). */
+  /** In the env module (live, `refs` set): the bindings its generated text names, where it stands (`generatedNames`; null: none). */
   gen: Array<GeneratedName> | null
 }
 
@@ -119,6 +119,7 @@ interface RegionIndex {
 }
 
 const NO_REGIONS: ReadonlyArray<RegionId> = []
+const NO_NAMES: ReadonlyArray<GeneratedName> = []
 const NO_NODES: ReadonlyArray<RangeNode> = []
 const NO_INSERTS: ReadonlyArray<PlannerEdit> = []
 
@@ -279,8 +280,8 @@ export function readIndex(
   const named = (body: ReadonlyArray<Frag | GenFrag>, at: number) => {
     const from = into.syms.length
     symRefsOf(body, into.syms)
-    const gen = into.gen
-    if (gen !== null) {
+    if (into.refs !== null && from < into.syms.length) {
+      const gen = (into.gen ??= [])
       for (let i = from; i < into.syms.length; i++) {
         gen.push({ sym: into.syms[i]!, at })
       }
@@ -482,7 +483,7 @@ export function readIndex(
       syms: [],
       children: [],
       refs: env ? [] : null,
-      gen: env ? [] : null,
+      gen: null,
     }
     if (m < regionCount) {
       if (live) {
@@ -710,7 +711,7 @@ export function readIndex(
       return hit
     }
     const own = memberReads(id, 'env', true)
-    let names: ReadonlyArray<GeneratedName> = own.gen!
+    let names: ReadonlyArray<GeneratedName> = own.gen ?? NO_NAMES
     if (own.children.length > 0) {
       names = [...names]
       for (const c of own.children) {

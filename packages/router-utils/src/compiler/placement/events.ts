@@ -87,6 +87,8 @@ export interface Events {
   ) => Unit | undefined
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins. */
   fallbacks: () => Array<Fallback>
+  /** The effects O orders, in source order: surviving effect units, benign framework calls aside. */
+  effects: () => ReadonlyArray<Unit>
 }
 
 export function eventTable(
@@ -328,6 +330,7 @@ export function eventTable(
     readsKept,
     orderConflict,
     fallbacks,
+    effects,
   }
 }
 
@@ -351,8 +354,7 @@ export function checkPlacement(
   included: ReadonlyMap<OutputId, ReadonlySet<ClusterId>>,
   liveEnv: ReadonlySet<ClusterId>,
 ): InvariantViolation | undefined {
-  const { outputs, isBenign } = input
-  const { units } = input.t1
+  const { outputs } = input
   const { clusters, clusterOfRegion, writesOfSym } = graph
   const kindOf = (o: OutputId) => outputs.get(o)?.kind
   /** Where cluster `c` evaluates: 0 before the env module's body (an extracted module), 1 in it, 2 after it (a chunk); null when outside this model (removed, copied, another instance). */
@@ -381,41 +383,33 @@ export function checkPlacement(
           : { start: at, end: at },
     })
 
+  // an effect the env module holds is one it evaluates; whether any effect
+  // left it
+  let moved = false
   for (const cl of clusters) {
-    if (home.get(cl.id) === 'env' && cl.effectful && !liveEnv.has(cl.id)) {
+    if (!cl.effectful) {
+      continue
+    }
+    const t = timeOf(cl.id)
+    if (t === 1 && !liveEnv.has(cl.id)) {
       return fail(
         'code with side effects may read a value that was moved out of the module or removed',
         'has effects, is homed in the env module and is not live there',
         cl.id,
       )
     }
+    // (an effectful generated unit is compiler code, not an effect O orders)
+    moved ||= t !== 1 && t !== null && cl.firstEffect !== Infinity
   }
-
   // the effects in source order: an extracted module's before the body's,
   // the body's before a chunk's, one chunk's at most
-  let moved = false
-  for (const cl of clusters) {
-    if (cl.effectful && timeOf(cl.id) !== 1 && timeOf(cl.id) !== null) {
-      moved = true
-      break
-    }
-  }
   if (moved) {
     let latest = 0
     let lazy: OutputId | null = null
-    for (const u of units) {
-      if (
-        !u.effectful ||
-        u.kind === 'type' ||
-        u.kind === 'import-effect' ||
-        u.kind === 'reexport' ||
-        !graph.unitSurvives(u.id)
-      ) {
-        continue
-      }
+    for (const u of events.effects()) {
       const c = clusterOfRegion.get(u.region)!
       const t = timeOf(c)
-      if (t === null || isBenign(u.id)) {
+      if (t === null) {
         continue
       }
       const h = home.get(c) as OutputId
