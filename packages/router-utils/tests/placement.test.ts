@@ -5540,6 +5540,123 @@ describe('readers and writers of state written at load', () => {
 // the one it reads evaluates in the same chunk (source order there), or
 // stays in the route module as a `const`; each is still ordered against
 // the effects that stay.
+// REVIEW-design2-step4 findings 1 and 2: state reached through another
+// name. A read through an alias, a holder or a spread reads the object
+// the other name names (what its declaration and its writes at load name,
+// as a call would follow), so it is ordered against a write of the
+// original. A method named like a mutator (`push`, `set`, `add`) of an
+// object the module defines is its own code: a call, an effect (R65).
+describe('state reached through another name', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it.each([
+    ['an alias', 'const alias = cfg\nconst y = alias.v'],
+    ['a holder', 'const holder = { cfg }\nconst y = holder.cfg.v'],
+    ['an array holding it', 'const all = [cfg]\nconst y = all[0].v'],
+    [
+      'a holder of a holder',
+      'const h1 = { cfg }\nconst h2 = [h1]\nconst y = h2[0].cfg.v',
+    ],
+    ['a spread of an alias', 'const alias = cfg\nconst y = { ...alias }'],
+    [
+      'a destructuring of an alias',
+      'const alias = cfg\nconst { v: y } = alias',
+    ],
+    [
+      'a holder given it at load',
+      'const holder = {}\nholder.c = cfg\nconst y = holder.c.v',
+    ],
+  ])(
+    'keeps a read through %s before a write of the original',
+    async (_, reader) => {
+      const r = await split(
+        route(
+          `const cfg = { v: 'OLD' }\n${reader}\ncfg.v = 'NEW'`,
+          'loader: () => cfg,\ncomponent: () => y,',
+        ),
+      )
+      expect(r.env).toContain(reader.split('\n').at(-1)!)
+      expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+    },
+  )
+
+  it.each([
+    [
+      'after the write',
+      "const cfg = { v: 'OLD' }\ncfg.v = 'NEW'\nconst alias = cfg\nconst y = alias.v",
+    ],
+    [
+      'holding a function only',
+      "const cfg = { v: 'OLD' }\nconst holder = { get: () => cfg }\nconst y = holder.get\ncfg.v = 'NEW'",
+    ],
+  ])('moves a read through another name %s (control)', async (_, decls) => {
+    const r = await split(
+      route(decls, 'loader: () => cfg,\ncomponent: () => y,'),
+    )
+    expect(r.env).not.toContain('const y')
+    expect(r.chunks.component).toContain('const y')
+  })
+
+  it.each([
+    [
+      'an object literal',
+      "const log = { push(x) { track(x) } }\nlog.push('first')",
+      'log',
+    ],
+    [
+      'a class',
+      "class Reg { static add(x) { track(x) } }\nReg.add('first')",
+      'Reg',
+    ],
+    [
+      'a function given the method',
+      "function Page() {}\nPage.set = (x) => track(x)\nPage.set('first')",
+      'Page',
+    ],
+    [
+      'a pure call result',
+      "const store = /* @__PURE__ */ track()\nstore.set('k', 1)",
+      'store',
+    ],
+  ])(
+    'keeps a mutator-named method call of %s in order with an effect after it',
+    async (_, decls, name) => {
+      const r = await split(
+        route(`${decls}\ntrack('second')`, `component: () => ${name},`),
+      )
+      expect(r.env).toContain(`${decls}\ntrack('second')`)
+      expect(eager(r).map((d) => d.code)).toEqual(['eager-split:order'])
+    },
+  )
+
+  it.each([
+    ['an array literal', "const plugins = []\nplugins.push('a')"],
+    ['a Map', "const byId = /* @__PURE__ */ new Map()\nbyId.set('k', 1)"],
+    ['a Set', "const seen = /* @__PURE__ */ new Set()\nseen.add('k')"],
+  ])(
+    'moves a built-in mutator call of %s with its binding past an effect (control)',
+    async (_, decls) => {
+      const name = /const (\w+)/.exec(decls)![1]!
+      const r = await split(
+        route(`${decls}\ntrack('second')`, `component: () => ${name},`),
+      )
+      expect(r.env).not.toContain(decls)
+      expect(r.chunks.component).toContain(decls)
+      expect(eager(r)).toEqual([])
+    },
+  )
+})
+
 describe('effectful declarations reading each other (R138)', () => {
   const route = (decls: string, options: string) =>
     dedent(`
