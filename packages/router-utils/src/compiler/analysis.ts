@@ -12,7 +12,7 @@ import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, readsThrough, writesMember } from './units'
+import { buildItems, buildUnits, memberUse } from './units'
 import { MutationModel } from './mutation'
 import {
   noteBuilderConsts,
@@ -147,7 +147,7 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`: `readsThrough`), which may be another binding's object; always present. */
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
 }
 
@@ -1227,6 +1227,7 @@ export class ModuleAnalysis {
         continue
       }
       const c = classify(file, ref)
+      const use = c.kind === 'value' ? memberUse(file, node) : null
       refs.push({
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
@@ -1234,8 +1235,8 @@ export class ModuleAnalysis {
         ctx: c.ctx,
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
-        memberWrite: c.kind === 'value' && writesMember(file, node),
-        readsThrough: c.kind === 'value' && readsThrough(file, node),
+        memberWrite: use === 'write',
+        readsThrough: use === 'through',
       })
     }
 

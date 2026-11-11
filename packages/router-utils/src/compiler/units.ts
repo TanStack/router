@@ -329,7 +329,7 @@ function writeTargetOf(file: SourceFile, m: Node): boolean {
  * another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
  * only what it names (R139), while nothing reassigns it. The write side of
- * "the object a binding names"; the read side is `readsThrough` and
+ * "the object a binding names"; the read side is `memberUse` and
  * `visitRuns`: a read through a binding reads what its value holds, its
  * own object or not (`const holder = { cfg }` owns its object and holds
  * `cfg`'s).
@@ -365,25 +365,76 @@ export function ownsItsValue(u: Unit): boolean {
 }
 
 /**
- * Whether `node` (an identifier) is the root object of a member expression
- * some code writes (`writeTargets`), or the first argument of an
- * `Object.assign`-style call: the object it names is mutated.
+ * How a reference (an identifier) uses the object it names, in one climb
+ * of its parents: `'write'` when it is the root object of a member
+ * expression some code writes (`writeTargets`: `x.p = …`, `x.push(…)`), or
+ * the first argument of an `Object.assign`-style call (the object it names
+ * is mutated); `'through'` when it reads that object's contents where it
+ * evaluates (the object of a member read `alias.v`, `all[0]`, a spread's
+ * argument `{ ...alias }`, the source of a destructuring or a for-in/of
+ * loop): what it reads is what that object holds, which may be another
+ * binding's object (`const alias = cfg`, `const holder = { cfg }`), and
+ * `visitRuns` follows its value; else null.
  */
-export function writesMember(file: SourceFile, node: Node): boolean {
+export function memberUse(
+  file: SourceFile,
+  node: Node,
+): 'write' | 'through' | null {
   // climb the member chain (and wrappers) grown on `node`
   let member = false
   let n = node
   let parent = file.parentOf(n)
+  /** The first parent that is no wrapper, and its child. */
+  let first: Node | null = null
+  let firstChild = node
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
+    const wrapper = isExpressionWrapper(parent)
+    if (first === null && !wrapper) {
+      first = parent
+      firstChild = n
+    }
     if (parent.type === 'MemberExpression' && parent.object === n) {
       member = true
-    } else if (!isExpressionWrapper(parent)) {
+    } else if (!wrapper) {
       break
     }
   }
-  if (parent === null) {
-    return false
+  if (parent !== null && writesAt(file, parent, n, member)) {
+    return 'write'
   }
+  if (first === null) {
+    return null
+  }
+  switch (first.type) {
+    case 'MemberExpression':
+      return first.object === firstChild ? 'through' : null
+    case 'SpreadElement':
+      return 'through'
+    case 'VariableDeclarator':
+      return first.init === firstChild && first.id.type !== 'Identifier'
+        ? 'through'
+        : null
+    case 'AssignmentExpression':
+      return first.right === firstChild &&
+        first.left.type !== 'Identifier' &&
+        first.left.type !== 'MemberExpression'
+        ? 'through'
+        : null
+    case 'ForOfStatement':
+    case 'ForInStatement':
+      return first.right === firstChild ? 'through' : null
+    default:
+      return null
+  }
+}
+
+/** Whether `parent`, around the member chain `n` grown on a reference (`member`: it is one), writes that chain's object. */
+function writesAt(
+  file: SourceFile,
+  parent: Node,
+  n: Node,
+  member: boolean,
+): boolean {
   if (parent.type === 'CallExpression') {
     // the receiver of a mutating method, or the first argument of an
     // `Object.assign`-style call (the common argument position is neither)
@@ -399,46 +450,6 @@ export function writesMember(file: SourceFile, node: Node): boolean {
       ? file.parentOf(parent)
       : parent
   return construct !== null && writeTargets(construct).includes(n)
-}
-
-/**
- * Whether `node` (an identifier) reads, where it evaluates, the contents of
- * the object it names, not only its identity: the object of a member read
- * (`alias.v`, `all[0]`), a spread's argument (`{ ...alias }`), the source of
- * a destructuring or a for-in/of loop. What it reads is then what that
- * object holds, which may be another binding's object (`const alias = cfg`,
- * `const holder = { cfg }`): `visitRuns` follows its value. The read side
- * of `writesMember` (a member it writes is not read here).
- */
-export function readsThrough(file: SourceFile, node: Node): boolean {
-  let n = node
-  let parent = file.parentOf(n)
-  while (parent !== null && isExpressionWrapper(parent)) {
-    n = parent
-    parent = file.parentOf(n)
-  }
-  if (parent === null) {
-    return false
-  }
-  switch (parent.type) {
-    case 'MemberExpression':
-      return parent.object === n && !writesMember(file, node)
-    case 'SpreadElement':
-      return true
-    case 'VariableDeclarator':
-      return parent.init === n && parent.id.type !== 'Identifier'
-    case 'AssignmentExpression':
-      return (
-        parent.right === n &&
-        parent.left.type !== 'Identifier' &&
-        parent.left.type !== 'MemberExpression'
-      )
-    case 'ForOfStatement':
-    case 'ForInStatement':
-      return parent.right === n
-    default:
-      return false
-  }
 }
 
 /** The node types `unwrapExpression` looks through. */
