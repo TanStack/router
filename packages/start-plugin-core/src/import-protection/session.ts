@@ -86,13 +86,6 @@ export interface CreateImportProtectionOptions {
   isEntry?: (path: string) => boolean
   /** The app's framework: the package reports name for `<ClientOnly>` (default `react`). */
   framework?: CompileStartFrameworkOptions
-  /**
-   * The compiler's stale sets, from a host that takes them as it builds
-   * (Rsbuild): an importer whose plan is stale in an environment explains
-   * the presence of what it imports there. Default: none (a host that does
-   * not take them would find importers stale for good).
-   */
-  stale?: Pick<StaleSets, 'holds' | 'add'>
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -125,7 +118,6 @@ export function createImportProtection(
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
-        opts.stale,
       )
     : null
 }
@@ -172,11 +164,26 @@ export class ImportProtection {
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
     readonly readSource: SourceReader = readSourceFile,
     readonly framework: CompileStartFrameworkOptions = 'react',
-    /** `CreateImportProtectionOptions.stale`. */
-    readonly stale?: Pick<StaleSets, 'holds' | 'add'>,
   ) {
     this.planner = importEdgesPlanner(this)
     this.report = { config, readSource, framework }
+  }
+
+  /**
+   * The compiler's stale sets, from a host whose compilations build their
+   * stale paths again before they end (Rsbuild's `finishMake` drain): there
+   * an importer whose plan is stale in an environment explains the presence
+   * of what it imports (a module edited to be marked is built before its
+   * unchanged importer). Vite's hooks take their sets before any module is
+   * compiled again: an importer is compiled again first, and the module is
+   * reported once, at the import; a path stale there after the take waits
+   * for the next file event, so it explains nothing.
+   */
+  stale: Pick<StaleSets, 'holds' | 'add'> | null = null
+
+  /** Reads `stale` (Rsbuild). */
+  useStaleImporters(stale: Pick<StaleSets, 'holds' | 'add'>): void {
+    this.stale = stale
   }
 
   /** The marker specifiers to give the session's `RawFactsCache` (every analysis must agree on markers). */

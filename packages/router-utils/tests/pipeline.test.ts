@@ -1137,7 +1137,7 @@ describe('attempts that are overtaken or throw', () => {
     configKey: 'cfg',
   }
 
-  it('(n) answers from the last plan, unpublished and with a warning, when dependencies keep changing', async () => {
+  it('(n) answers from the last plan, unpublished, when dependencies keep changing; its module is stale', async () => {
     let flips = 0
     const host = new MemoryHost({
       files: {
@@ -1173,80 +1173,14 @@ describe('attempts that are overtaken or throw', () => {
     const out = await host.compile('/app/consumer.ts', planners)
     expect(flips).toBe(3)
     expect(out!.code).toContain('export const run')
-    expect(out!.diagnostics).toContainEqual(
-      expect.objectContaining({
-        severity: 'warning',
-        code: 'compile-overtaken',
-      }),
-    )
     const cache = host.caches.plans.get('client')!
-    // (its dependencies stay indexed: (n2))
     expect(cache.get(key)).toBeNull()
+    // its module is built again by the host that takes the stale set
+    expect(host.caches.stale.take('client')).toEqual(['/app/consumer.ts'])
     // the next request compiles and publishes as usual
     const next = await host.compile('/app/consumer.ts', planners)
     expect(next!.diagnostics).toEqual([])
     expect(cache.get(key)).not.toBeNull()
-  })
-
-  // Source: review round 3 (R3-G3-2): the unpublished plan left no rows,
-  // so no later edit of what it read reported the module, whose output the
-  // bundler keeps.
-  it('(n2) reports the module of an exhausted compile at a later event of what its last attempt read', async () => {
-    let flips = 0
-    const host = new MemoryHost({
-      files: {
-        '/app/consumer.ts': CONSUMER,
-        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
-      },
-      recognizer: RECOGNIZER,
-    })
-    const flip = async () => {
-      flips++
-      host.write(
-        '/app/factory-inner.ts',
-        FACTORY(flips % 2 ? 'createClientOnlyFn' : 'createServerOnlyFn'),
-      )
-      await invalidate(
-        host.caches,
-        { path: '/app/factory-inner.ts', kind: 'change' },
-        host,
-      )
-    }
-    const flipping: Planner = {
-      name: 'toy-flip',
-      tier: 1,
-      gate: () => true,
-      async prefetch(_t0, ctx) {
-        const target = await ctx.resolve('./factory-inner')
-        await ctx.resolver.resolve(target!, 'make')
-        if (flips < 3) {
-          await flip()
-        }
-      },
-      plan() {},
-    }
-    const out = await host.compile('/app/consumer.ts', [
-      toySummaryPlanner(),
-      flipping,
-    ])
-    expect(out!.diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'compile-overtaken' }),
-    )
-    // its module is built again once the files it read settle (the
-    // consumer's stale set)
-    expect(host.caches.stale.take('client')).toEqual(['/app/consumer.ts'])
-    // the last attempt read the factory before the third flip: the next
-    // change of what it read reports it
-    host.write(
-      '/app/factory-inner.ts',
-      `${FACTORY('createClientOnlyFn')}// formatted\n`,
-    )
-    const res = await invalidate(
-      host.caches,
-      { path: '/app/factory-inner.ts', kind: 'change' },
-      host,
-    )
-    expect(res.dependents).toContainEqual(key)
   })
 
   it('(o) discards the attempt ledger when a planner throws', async () => {

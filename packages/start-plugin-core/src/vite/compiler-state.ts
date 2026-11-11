@@ -8,7 +8,6 @@ import { promises as fs, readFileSync } from 'node:fs'
 import {
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
-  collectionSizes,
   displayPath,
   identify,
   isVirtualId,
@@ -47,7 +46,6 @@ import type {
   DiagnosticPosition,
   HostServices,
   InputSourceMap,
-  invalidate,
 } from '@tanstack/router-utils/compiler'
 import type {
   DevEnvironment,
@@ -104,9 +102,6 @@ export function cacheDirRe(cacheDir: string, script = false): RegExp {
     script ? `^${dir}/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)` : `^${dir}/`,
   )
 }
-
-const readAwaitingAdd = (awaitingAdd: Map<string, Set<string>>) =>
-  collectionSizes({ awaitingAdd })
 
 const readEntries = (entries: Set<string>) => ({ size: entries.size })
 
@@ -218,15 +213,6 @@ export interface Session {
   /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
   readonly virtualWaits: ReturnType<typeof createVirtualWaits>
   /**
-   * One compiler invalidation per file event, applied by every env's
-   * `hotUpdate`: Vite hands each environment's hook its own context over the
-   * event's one `read` function, so the memo lives as long as the event.
-   */
-  readonly invalidations: WeakMap<
-    () => unknown,
-    Promise<Awaited<ReturnType<typeof invalidate>>>
-  >
-  /**
    * The client environment's build in this run: null until one ended.
    * The server's resolver of a build lists (or gates on) the functions the
    * client build references, which it reads from the client's compiles.
@@ -236,13 +222,6 @@ export interface Session {
    * event started (`opts.clientRebuild`): the environments rebuild at once.
    */
   clientFiles: Array<string> | null
-  /**
-   * Per env: files whose plans an `unlink` evicted or made stale, to
-   * re-transform when a file appears (see `applyInvalidation`).
-   */
-  readonly awaitingAdd: Map<string, Set<string>>
-  /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
-  readonly outputDigests: Map<string, Map<string, string>>
   /** Dev: the server functions the dev lookup warned about (once each). */
   readonly devWarned: Set<string>
   /** Dev: stops what the session listens to (`closeServer`). */
@@ -390,19 +369,11 @@ export class ViteCompilerState {
       server,
       virtualLoaders,
       virtualWaits: createVirtualWaits(),
-      invalidations: new WeakMap(),
       clientFiles: null,
-      awaitingAdd: new Map(),
-      outputDigests: new Map(),
       devWarned: new Set(),
       disposers: [],
     }
     registerCompilerStats('start:vite:entries', s.entries, readEntries)
-    registerCompilerStats(
-      'start:vite:awaitingAdd',
-      s.awaitingAdd,
-      readAwaitingAdd,
-    )
     if (server) {
       // a registry change (the generator published new route ids) re-plans
       // the route modules concerned: the server's own listener

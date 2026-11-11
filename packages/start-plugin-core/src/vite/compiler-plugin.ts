@@ -32,8 +32,8 @@ import {
   loadDerivedSource,
   normalizePath,
   resolveSameFileSpecifier,
-  revision,
   rollupEntryModuleIds,
+  takeStaleModules,
   warnEagerExports,
   watchDependencies,
   withOwnSourcesNamedByFile,
@@ -53,13 +53,7 @@ import {
   optimizedDependency,
 } from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
-import {
-  applyInvalidation,
-  changeKindOf,
-  changedDependents,
-  forgetFile,
-  invalidationHosts,
-} from './invalidation'
+import { changeKindOf, invalidateFor } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
 import {
   devLookupPlugin,
@@ -172,17 +166,6 @@ function envCompilerPlugins(
     let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
     if (mock instanceof Promise) {
       mock = await mock
-    }
-    if (s.start.opts.mode === 'dev') {
-      let digests = s.outputDigests.get(identity.path)
-      if (!digests) {
-        digests = new Map()
-        s.outputDigests.set(identity.path, digests)
-      }
-      digests.set(
-        `${environment.name}\0${id}`,
-        revision(mock?.code ?? out.code),
-      )
     }
     if (mock) {
       return { code: mock.code, map: null }
@@ -393,57 +376,53 @@ function envCompilerPlugins(
       },
       handler: compileTransform,
     },
+    /**
+     * Design 3's hook: the event's invalidation, then the environment's
+     * stale set (the dependents found stale, and what entered it since its
+     * last take: a failed hit's file, a compile overtaken by saves, a
+     * registry change) handed to Vite with the event's own modules. A
+     * creation takes the paths held since a removal (their modules would
+     * not compile while the file was missing). A path that enters the set
+     * after the take waits for the next event's hook.
+     */
     async hotUpdate(ctx) {
       const s = state.sessionOf(this.environment)
+      const environment = this.environment as DevEnvironment
       // the file's path once, as every module id and compiler key holds it
       const change: InvalidateChange = {
         path: normalizePath(ctx.file),
         kind: changeKindOf(ctx.type),
       }
-      let pending = s.invalidations.get(ctx.read)
-      if (!pending) {
-        pending = invalidate(
-          s.start.caches,
-          change,
-          invalidationHosts(state, s, this.environment),
-        )
-        s.invalidations.set(ctx.read, pending)
-      }
-      const res = await pending
+      await invalidateFor(state, s, environment, change)
       if (change.kind === 'unlink') {
-        forgetFile(s, change.path)
+        s.start.forget(change.path)
       }
-      const extra = applyInvalidation(
-        s,
-        this.environment,
-        change,
-        res,
-        ctx.timestamp,
-      )
-      const changed = await changedDependents(
-        s,
-        this.environment as DevEnvironment,
-        extra,
-      )
-      // see router-plugin's Vite host: the file's modules its current plan produces
+      // see router-plugin's Vite host: the file's modules its current plan
+      // produces (the event's own modules only: a taken path is stale for a
+      // reason of its own)
       const live =
         (await liveModules(
-          this.environment as DevEnvironment,
+          environment,
           s.start.caches,
           change.path,
           ctx.modules,
         )) ?? ctx.modules
-      return changed.length > 0 || live !== ctx.modules
-        ? [...live, ...changed]
+      const stale = takeStaleModules(
+        s.start.caches,
+        environment,
+        change.kind === 'add',
+      ).filter((node) => !live.includes(node))
+      return stale.length > 0 || live !== ctx.modules
+        ? [...live, ...stale]
         : undefined
     },
     // The one invalidation of a file event. Bundled dev, and a dev server
-    // without HMR (`server.hmr: false`, as Vitest's): applied to every
-    // environment's module graph (Vite's `hotUpdate` is not called there;
-    // the watching environment's hook applies it). `build --watch`: each
+    // without HMR (`server.hmr: false`, as Vitest's): every environment's
+    // stale set is taken (Vite's `hotUpdate` is not called there; the
+    // watching environment's hook does it). `build --watch`: each
     // environment's watcher reports the files it bundles, and the rebuild
-    // compiles their dependents again, against the caches the
-    // invalidation left
+    // compiles their dependents again, against the caches the invalidation
+    // left
     async watchChange(id, event) {
       const environment = this.environment
       const s = state.sessionOf(environment)
@@ -463,7 +442,7 @@ function envCompilerPlugins(
         kind: changeKindOf(event.event),
       }
       if (change.kind === 'unlink') {
-        forgetFile(s, change.path)
+        s.start.forget(change.path)
       }
       if (environment.mode !== 'dev') {
         await invalidate(
@@ -475,19 +454,14 @@ function envCompilerPlugins(
         )
         return
       }
-      const res = await invalidate(
-        s.start.caches,
-        change,
-        invalidationHosts(state, s, environment),
-      )
-      const now = Date.now()
+      await invalidateFor(state, s, environment, change)
       const environments = s.server
         ? Object.values(s.server.environments).filter((e) =>
             state.envNames.has(e.name),
           )
         : [environment]
-      for (const environment of environments) {
-        applyInvalidation(s, environment, change, res, now)
+      for (const each of environments) {
+        takeStaleModules(s.start.caches, each, change.kind === 'add')
       }
     },
     // a derived output's map names its file, not `route.tsx?tsr-split=…`,

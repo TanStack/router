@@ -50,7 +50,6 @@ function holdSsr(): RsbuildPlugin & { clientDone: () => Promise<void> } {
     setup(api) {
       api.modifyRspackConfig((config, { environment }) => {
         if (environment.name === 'ssr') {
-          config.module ??= {}
           config.module.rules ??= []
           config.module.rules.push({
             test: /[\\/]src[\\/]page\.ts$/,

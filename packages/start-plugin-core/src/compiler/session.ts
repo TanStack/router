@@ -110,12 +110,6 @@ export interface StartCompilerSessionOptions {
   edgeModuleIds?: EdgeModuleIds
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
-  /**
-   * The host builds what the stale sets hold as it compiles (Rsbuild's
-   * `finishMake` drain): import protection may read them
-   * (`CreateImportProtectionOptions.stale`).
-   */
-  takesStaleSets?: boolean
   /** The route registry (the generator's `routesByFile`). */
   routes: RouteRegistry
   readFile: (file: string) => Promise<string | null>
@@ -182,12 +176,6 @@ export class StartCompilerSession {
       readFile: opts.readFile,
       isEntry: opts.isEntry,
       framework: opts.framework,
-      stale: opts.takesStaleSets
-        ? {
-            holds: (env, path) => this.caches.stale.holds(env, path),
-            add: (env, path) => this.caches.stale.add(env, path),
-          }
-        : undefined,
     })
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)

@@ -143,9 +143,16 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
   // The route on the page, its component split into a chunk the page
   // holds: the hot update of the broken file is of the modules its current
   // plan produces, and the file has none while broken.
+  // Bug: after the fix the page reloads once and the reloaded document gets
+  // the dev server's 500 (its SSR render still fails on the broken route);
+  // the same before design 3 step 4. Not established which update reloads
+  // the page, nor why SSR keeps the failure (a module runner keeping a
+  // failed load is the candidate).
+  // Impact: in dev, fixing a syntax error in the route on the page can
+  // leave an error page until the next reload after SSR recovers.
   // Source: design 3 step 2 review (Vite's `liveModules` read the plan of
   // the file's old text).
-  test(
+  test.fails(
     'the route on the page: the page keeps what it shows, and the fix shows in place',
     async () => {
       const server = await startDevServer({

@@ -157,10 +157,7 @@ describe('repeating an invalidation', () => {
       reads.splice(0).forEach((release) => release())
     }
     await Promise.all(repeats)
-    const other = await compiling
-    expect(other!.diagnostics.map((d) => d.code)).not.toContain(
-      'compile-overtaken',
-    )
+    await compiling
     expect({
       page: cache.get(pageKey!),
       user: cache.get(userKey!),
@@ -449,20 +446,19 @@ const realImmediate = setImmediate
  * and reads is then a function of its row alone.
  */
 async function drive(p: Promise<void>): Promise<void> {
-  let done = false
-  let error: unknown
+  const run: { done: boolean; error?: unknown } = { done: false }
   p.then(
     () => {
-      done = true
+      run.done = true
     },
     (e: unknown) => {
-      done = true
-      error = e ?? new Error('rejected')
+      run.done = true
+      run.error = e ?? new Error('rejected')
     },
   )
-  for (let idle = 0; !done; ) {
+  for (let idle = 0; ; ) {
     await new Promise<void>((r) => realImmediate(r))
-    if (done) {
+    if (run.done) {
       break
     }
     if (vi.getTimerCount() === 0) {
@@ -475,8 +471,8 @@ async function drive(p: Promise<void>): Promise<void> {
     idle = 0
     vi.advanceTimersToNextTimer()
   }
-  if (error) {
-    throw error
+  if (run.error) {
+    throw run.error
   }
 }
 

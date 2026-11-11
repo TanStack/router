@@ -938,7 +938,7 @@ export const fn = base.handler(async () => db.x())
   // importer: the dev engine re-bundles the edited module only, so the
   // importer keeps the output compiled against the old `base`, handler and
   // server-only imports included (the unbundled path invalidates the
-  // importers: `applyInvalidation`, src/vite/compiler-plugin.ts).
+  // importers: `hotUpdate`'s stale-set take, src/vite/compiler-plugin.ts).
   // Impact: with `experimental.bundledDev`, the page keeps loading the
   // handler and the modules only it reads (server-only code) in the client
   // until the dev server restarts. Found with the real watchers

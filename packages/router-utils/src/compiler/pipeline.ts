@@ -288,7 +288,6 @@ async function settle(
   const cache = planCacheFor(caches, key.env)
   // the key's generation and latest revision stay meaningful until the compile ends
   cache.begin(key)
-  let unpublished: CacheEntry | null = null
   try {
     let overtaken!: CacheEntry
     // every attempt compiles the text this compile was given
@@ -345,29 +344,23 @@ async function settle(
         if (cache.set(entry)) {
           ledger.publish()
         }
-        return { kind: 'plan', entry, overtaken: false }
+        return { kind: 'plan', entry }
       }
       if (cache.latestRevision(key) !== rev) {
         // superseded by a newer save: this text is stale; never publish, but answer its requests
-        return { kind: 'plan', entry, overtaken: false }
+        return { kind: 'plan', entry }
       }
       overtaken = entry
     }
     // Every attempt was overtaken (a save storm, a checkout touching several
     // dependencies): the last plan answers without being published, so the
-    // next request compiles afresh; the host sees a warning instead of a
-    // transform error for a transient condition. The bundler keeps that
-    // output, so the plan's dependencies stay indexed (never a hit): a
-    // later event of what it read reports the module.
-    unpublished = overtaken
-    // its modules are built again once the files it read settle
+    // next request compiles afresh, and the file enters its stale set: the
+    // host has its modules built again (Rsbuild and webpack at once, Vite
+    // with the next file event's hot update)
     caches.stale.add(key.env, identity.path)
-    return { kind: 'plan', entry: overtaken, overtaken: true }
+    return { kind: 'plan', entry: overtaken }
   } finally {
     cache.end(key)
-    if (unpublished) {
-      cache.restore({ key, dependencies: unpublished.plan.dependencies })
-    }
   }
 }
 
@@ -396,22 +389,7 @@ function emitSettled(
       output: requested,
     }
   }
-  const out = emitFrom(settled.entry, requested, input, caches)
-  if (!settled.overtaken) {
-    return out
-  }
-  return {
-    ...out,
-    diagnostics: [
-      ...out.diagnostics,
-      {
-        severity: 'warning',
-        code: 'compile-overtaken',
-        by: 'core',
-        message: `${tagOf(host)}The files ${displayPath(identity.path, host.root)} depends on kept changing while it was compiled (${MAX_ATTEMPTS} times), so the result may be stale. Save the file again if the page looks wrong.`,
-      },
-    ],
-  }
+  return emitFrom(settled.entry, requested, input, caches)
 }
 
 /** Emits the requested output from a frozen plan (never memoised: emission costs microseconds). */

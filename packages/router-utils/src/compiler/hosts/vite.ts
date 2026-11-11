@@ -2,10 +2,8 @@
 import { readFile } from 'node:fs/promises'
 import { deriveId, identify } from '../identity'
 import { positionSuffix } from '../diagnostics'
-import { pathsOf } from './rebuild'
 import type { DiagnosticPosition } from '../diagnostics'
-import type { CompilerCaches, InvalidateChange } from '../host'
-import type { PlanKey } from '../identity'
+import type { CompilerCaches } from '../host'
 
 /** A message as a Vite plugin log (`this.warn`, `this.error`). */
 export interface ViteLog {
@@ -108,16 +106,36 @@ export function isFinalBuild(
   return build !== undefined && build.write !== false && !build.watch
 }
 
-/** What the invalidation reads of a Vite environment's module graph. */
+/** What the stale-set take reads of a Vite dev environment's module graph. */
 export interface ModuleGraphLike<TNode> {
   getModulesByFile: (file: string) => Set<TNode> | undefined
-  invalidateModule: (
-    mod: TNode,
-    seen: Set<TNode>,
-    timestamp: number,
-    isHmr: boolean,
-    softInvalidate: boolean,
-  ) => void
+  invalidateModule: (mod: TNode) => void
+}
+
+/**
+ * Takes a Vite dev environment's stale set (`CompilerCaches.stale`; `held`:
+ * also the paths stale only because a file they read was removed, on a
+ * creation) and invalidates the modules of its files, with the documented
+ * one-argument form: a non-HMR invalidation, after which Vite drops a
+ * transform of the module still in flight (a request started before the
+ * event) instead of keeping its result. Returns the modules, for the hook to
+ * hand to Vite with its hot update. Nothing between the take and the
+ * invalidation can fail: a path taken is never lost.
+ */
+export function takeStaleModules<TNode>(
+  caches: CompilerCaches,
+  environment: { name: string; moduleGraph: ModuleGraphLike<TNode> },
+  held: boolean,
+): Array<TNode> {
+  const graph = environment.moduleGraph
+  const nodes: Array<TNode> = []
+  for (const file of caches.stale.take(environment.name, { held })) {
+    for (const node of graph.getModulesByFile(file) ?? []) {
+      graph.invalidateModule(node)
+      nodes.push(node)
+    }
+  }
+  return nodes
 }
 
 /**
@@ -253,67 +271,6 @@ export async function loadDerivedSource(
   }
   ctx.addWatchFile(identity.path)
   return code
-}
-
-/**
- * Applies an `invalidate()` result to a Vite environment's module graph,
- * the host side of the one operation: the modules of the files of its
- * evicted and dependent plans in the environment are hard-invalidated (Vite
- * transforms them again on their next request) and returned. A registry
- * change invalidates the changed file's own modules too (a file that was no
- * route before has no plan to evict, and is one now). Start's hosts, whose
- * plans depend on other modules, opt in to two refinements:
- * - `ownUpdate`: the changed file's own modules are Vite's own hot update,
- *   left out of the returned dependents;
- * - `awaitingAdd`: on `unlink`, the dependents wait for a file to appear
- *   (`add`) before they are invalidated. Vite propagates the deleted
- *   module's own update to its importers at once, and a dependent
- *   transformed while the file is missing fails at `vite:import-analysis`,
- *   which marks it not self-accepting, so its later updates go through its
- *   importers (a route module, whose split component is never re-imported:
- *   the page keeps the old module). Such dependents keep their
- *   soft-invalidated output until then; a plan of theirs the core evicted at
- *   `unlink` is compiled then.
- */
-export function applyViteInvalidation<TNode>(
-  environment: { name: string; moduleGraph: ModuleGraphLike<TNode> },
-  change: InvalidateChange,
-  res: { evicted: Array<PlanKey>; dependents: Array<PlanKey> },
-  timestamp: number,
-  opts: { ownUpdate?: boolean; awaitingAdd?: Set<string> } = {},
-): Array<TNode> {
-  const files = new Set(
-    pathsOf([...res.evicted, ...res.dependents], environment.name),
-  )
-  if (opts.ownUpdate) {
-    files.delete(change.path)
-  }
-  const waiting = opts.awaitingAdd
-  if (waiting && change.kind === 'unlink') {
-    for (const file of files) {
-      waiting.add(file)
-    }
-    return []
-  }
-  if (waiting && change.kind === 'add') {
-    for (const file of waiting) {
-      files.add(file)
-    }
-    waiting.clear()
-  }
-  if (change.kind === 'registry') {
-    files.add(change.path)
-  }
-  const graph = environment.moduleGraph
-  const seen = new Set<TNode>()
-  const nodes: Array<TNode> = []
-  for (const file of files) {
-    for (const node of graph.getModulesByFile(file) ?? []) {
-      graph.invalidateModule(node, seen, timestamp, true, false)
-      nodes.push(node)
-    }
-  }
-  return nodes
 }
 
 /**

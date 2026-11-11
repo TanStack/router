@@ -479,8 +479,8 @@ export interface CacheEntry {
 export type Settled =
   | { kind: 'untouched' }
   | { kind: 'parse-error'; diagnostics: Array<Diagnostic> }
-  /** `overtaken`: every attempt was overtaken; the last plan answers, unpublished. */
-  | { kind: 'plan'; entry: CacheEntry; overtaken: boolean }
+  /** (unpublished when every attempt was overtaken: the last plan answers) */
+  | { kind: 'plan'; entry: CacheEntry }
 
 /** The compile of a key at one revision, from its first attempt until it settled. */
 interface InFlight {
@@ -540,8 +540,7 @@ export class PlanCache {
   /**
    * Plans known by their dependencies only, whose outputs a bundler holds:
    * one an earlier process published (the bundler's persistent cache
-   * restored its module without a compile), the last attempt of a
-   * compile every attempt of which was overtaken, or every plan when plan
+   * restored its module without a compile), or every plan when plan
    * caching is off (`TSR_COMPILER_NO_CACHE=plans`). Never a hit, found stale
    * by `invalidate` like a published plan, replaced by the key's next
    * publication.
