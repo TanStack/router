@@ -35,6 +35,7 @@ import {
   takeStaleModules,
   warnEagerExports,
   watchDependencies,
+  watchLoadedFile,
   withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
@@ -367,7 +368,7 @@ function envCompilerPlugins(
           if (!mock) {
             return null
           }
-          this.addWatchFile(identify(id).path)
+          watchLoadedFile(this, identify(id).path)
           // (Vite's JSON plugin parses what a `.json` loads as)
           return { code: id.endsWith('.json') ? '{}' : mock.code }
         }
