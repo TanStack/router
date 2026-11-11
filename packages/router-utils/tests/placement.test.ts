@@ -7379,6 +7379,24 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(f.chunks.errorComponent).toContain('if (on) { e.init() }')
   })
 
+  // (the spelling variants: a hoisted component the route's value holds
+  // moves, so a staying statement handing the route to an import reports
+  // nothing)
+  it('reports nothing that moves, for a statement that stays', async () => {
+    const r = await report(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { registerRoute } from './registry'
+        const Page = () => 1
+        export const Route = createFileRoute('/')({ component: Page })
+        registerRoute(Route)
+      `),
+    )
+    expect(r.env).toContain('registerRoute(Route)')
+    expect(r.chunks.component).toContain('const Page = () => 1')
+    expect(r.diagnostics).toEqual([])
+  })
+
   it('several split options using what it changes', async () => {
     const statement = 'd.add(1)'
     const options = 'component: () => d, errorComponent: () => d'
