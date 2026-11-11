@@ -73,6 +73,7 @@ export interface Unit {
   declares: Array<SymbolId>
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
+  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L). */
   effectful: boolean
   /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
   augments: Array<SymbolId>
@@ -325,9 +326,9 @@ function writeTargetOf(file: SourceFile, m: Node): boolean {
 }
 
 /**
- * Whether a declaration gives its binding a value of its own: a function or
- * class, a literal, a function or class expression, a call's result. Not
- * another binding's (`const alias = E`, `import F = E`), whose members a
+ * Whether a declaration gives its binding a value of its own: a function,
+ * class, enum or namespace, a literal, a function or class expression, a
+ * call's result. Not another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
  * only what it names (R139), while nothing reassigns it
  * (`MutationModel.ownsObject`); a write through another one may write
@@ -340,6 +341,8 @@ export function ownsItsValue(u: Unit): boolean {
   switch (n.type) {
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
+    case 'TSEnumDeclaration':
+    case 'TSModuleDeclaration':
       return true
     case 'VariableDeclarator': {
       if (n.id.type !== 'Identifier' || n.init === null) {
@@ -375,7 +378,7 @@ export function ownsItsValue(u: Unit): boolean {
  * it reads `x.c` first); `'through'` when it reads that object's contents
  * where it evaluates (the object of a member read `alias.v`, `all[0]`, a
  * spread's argument `{ ...alias }`, the source of a destructuring or a
- * for-in/of loop): what it reads is what that object holds, which may be
+ * for-in/of loop, the object `in` asks): what it reads is what that object holds, which may be
  * another binding's object (`const alias = cfg`, `const holder = { cfg }`),
  * and the mutation model follows its value (`MutationModel.visitValues`);
  * else null.
@@ -433,6 +436,10 @@ export function memberUse(
     case 'ForOfStatement':
     case 'ForInStatement':
       return first.right === firstChild ? 'through' : null
+    case 'BinaryExpression':
+      return first.operator === 'in' && first.right === firstChild
+        ? 'through'
+        : null
     default:
       return null
   }
@@ -560,6 +567,7 @@ interface UnitBuildResult {
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
 
+/** The unit model; `purity` judges effects (`ModuleAnalysis.effectPurity`). */
 export function buildUnits(
   file: SourceFile,
   items: Array<TopLevelItem>,

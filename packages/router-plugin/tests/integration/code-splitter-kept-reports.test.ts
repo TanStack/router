@@ -96,9 +96,11 @@ export const Route = createFileRoute('/writer-fixed')({
 `,
   'counter.ts': 'export const counter = { n: 0 }\n',
   // openstory's connect links: template-literal initialisers, which no
-  // annotation frees (R101: only the move is offered)
+  // annotation frees (R101: only the move is offered; openstory reads
+  // `CONFIG.url`, a member read, which rule L takes as no effect: a call
+  // keeps the shape)
   'routes/template.tsx': `${head}import { CONFIG } from '../config'
-const BASE = \`\${CONFIG.url}/mcp\`
+const BASE = \`\${CONFIG.url()}/mcp\`
 const LINK = \`https://y/?u=\${BASE}&MARK_template_END\`
 export const Route = createFileRoute('/template')({
   loader: () => 'data',
@@ -115,10 +117,10 @@ export const Route = createFileRoute('/template-module')({
 })
 `,
   'template-links.ts': `import { CONFIG } from './config'
-export const BASE = \`\${CONFIG.url}/mcp\`
+export const BASE = \`\${CONFIG.url()}/mcp\`
 export const LINK = \`https://y/?u=\${BASE}&MARK_template-module_END\`
 `,
-  'config.ts': "export const CONFIG = { url: 'https://x' }\n",
+  'config.ts': "export const CONFIG = { url: () => 'https://x' }\n",
   // two options of one split group writing one binding: it goes with them
   'routes/group-writers.tsx': `${head}let renders = 0
 export const Route = createFileRoute('/group-writers')({

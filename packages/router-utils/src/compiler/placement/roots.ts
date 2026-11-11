@@ -1,7 +1,9 @@
 /**
  * Placement, stage 3: the roots before any decision. The env module's own
- * roots (effect statements, exports, effectful generated units, the roots
- * planners named), each derived output's roots, the clusters pinned to an
+ * roots (effect statements touching an import or nothing of the module,
+ * exports, effectful generated units, the roots planners named), the
+ * followers (the other statements: `settle.ts` roots each in a chunk or
+ * the env module), each derived output's roots, the clusters pinned to an
  * output by a fixed-home generated unit, the extracted-export candidates
  * (decided later, with the env roots), and provenance: what erased text
  * read, from which "orphaned by us" is decided once env liveness is final.
@@ -9,6 +11,7 @@
 import { NEED_KINDS, describeCluster } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
+import type { Events } from './events'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -32,6 +35,15 @@ export interface Seeds {
   /** Clusters a fixed-home generated unit pins to its output. */
   pinned: Map<ClusterId, OutputId>
   envRoots: Set<ClusterId>
+  /**
+   * The unexported clusters holding a bare statement (a call, an
+   * assignment, an `if`/`try`/loop block) whose touches are all module
+   * bindings of this module (`Events.statementTouches`, no import): not
+   * env roots yet; each follows what it touches into its one chunk or
+   * becomes one (`settle.ts`). One touching an import, or no binding
+   * (none it declares either), is an env root here.
+   */
+  followers: Set<ClusterId>
   /** Unexported declaration clusters an augmentation keeps as effect roots (their initialiser has effects), with its position (`kept`, `written`). */
   augmentedRoots: Map<ClusterId, number>
   derivedRoots: Map<OutputId, Set<ClusterId>>
@@ -43,6 +55,7 @@ export function seedRoots(
   input: PlacementInput,
   graph: ClusterGraph,
   reads: ReadIndex,
+  events: Events,
 ): Seeds {
   const { t1, rewrites, outputs } = input
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
@@ -189,6 +202,7 @@ export function seedRoots(
     }
   }
   const envRoots = new Set<ClusterId>()
+  const followers = new Set<ClusterId>()
   const augmentedRoots = new Map<ClusterId, number>()
   for (const u of units) {
     if (!graph.unitSurvives(u.id)) {
@@ -197,9 +211,18 @@ export function seedRoots(
     const c = clusterOfRegion.get(u.region)!
     if (u.kind === 'effect' || u.kind === 'import-effect') {
       // an augmentation of its own declaration cluster is decided with the
-      // cluster (movable, else an effect root when roots settle)
+      // cluster (movable, else an effect root when roots settle); a bare
+      // statement of an unexported cluster may follow what it touches
       if (!graph.ownAugmentations.has(u.id)) {
-        envRoots.add(c)
+        if (
+          u.kind === 'effect' &&
+          u.node.type !== 'TSExportAssignment' &&
+          !clusters[c]!.exported
+        ) {
+          followers.add(c)
+        } else {
+          envRoots.add(c)
+        }
         if (
           u.augments.length > 0 &&
           !clusters[c]!.exported &&
@@ -229,6 +252,17 @@ export function seedRoots(
   for (const r of outputs.get('env')?.roots ?? []) {
     const c = rootCluster(r)
     if (c !== undefined) {
+      envRoots.add(c)
+    }
+  }
+  for (const c of followers) {
+    const touched = envRoots.has(c) ? null : events.statementTouches(c)
+    if (
+      touched === null ||
+      touched.import !== null ||
+      (touched.clusters.length === 0 && clusters[c]!.declares.size === 0)
+    ) {
+      followers.delete(c)
       envRoots.add(c)
     }
   }
@@ -294,6 +328,7 @@ export function seedRoots(
     deadClusters,
     pinned,
     envRoots,
+    followers,
     augmentedRoots,
     derivedRoots,
     fromErased,

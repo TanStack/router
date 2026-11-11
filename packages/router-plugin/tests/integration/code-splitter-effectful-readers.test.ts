@@ -4,7 +4,7 @@
  * `columns = [columnHelper.accessor(…)]`, a zod schema extending another):
  * both load with the component's chunk, in source order, and nothing is
  * reported (R138). An effect after them that the route module keeps (the
- * loader's schema) keeps both in place, in order. Vite and Rspack SSR
+ * loader's schema) changes nothing (no order rule). Vite and Rspack SSR
  * builds and an Rsbuild client build, run in Node.
  */
 import { describe, expect, it } from 'vitest'
@@ -27,7 +27,8 @@ export const Route = createFileRoute('/')({
   component: () => <p>{columns.join(',')}</p>,
 })
 `,
-  // the loader's schema, an effect after them, stays
+  // the loader's schema, an effect after them, stays; no order rule: the
+  // two move all the same
   stays: `const columnHelper = createColumnHelper('stays')
 const columns = [columnHelper.accessor('name')]
 const Search = createColumnHelper('search')
@@ -93,29 +94,22 @@ describe.each(Object.entries(builds))('a %s build', (_name, create) => {
           }
         }
         expect(result.html).toEqual({ moves: 'name,email', stays: 'name' })
-        // the kept ones ran when their module loaded, in order; the moved
-        // ones with the chunk, in order, once
-        expect(result.atLoad).toEqual(['stays', 'stays:name', 'search'])
+        // the loader's schema ran when the module loaded; the moved ones
+        // with their chunk, in order, once
+        expect(result.atLoad).toEqual(['search'])
         expect(result.after).toEqual([
-          'stays',
-          'stays:name',
           'search',
           'moves',
           'moves:name',
           'moves:email',
+          'stays',
+          'stays:name',
         ])
         const diagnostics = [...app.warnings, ...app.consoleMessages]
         const reports = (name: string) =>
           findDiagnostics(diagnostics, { file: file(name), root: app.root })
         expect(reports('moves')).toEqual([])
-        // one report, at the cause (`columns`), naming the effect after it
-        expect(reports('stays')).toHaveLength(1)
-        expect(reports('stays')[0]!.text).toContain(
-          '`columns` in routes/stays.tsx stays in the route module',
-        )
-        expect(reports('stays')[0]!.text).toContain(
-          'the call `createColumnHelper(…)` (line',
-        )
+        expect(reports('stays')).toEqual([])
       } finally {
         await app.dispose()
       }

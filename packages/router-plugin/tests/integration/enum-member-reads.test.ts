@@ -29,6 +29,33 @@ async function buildRoute(route: string, files: Record<string, string> = {}) {
   return { app, warnings: warnings.map(({ text }) => text) }
 }
 
+/** Builds the route and renders its component after loading its chunk. */
+async function render(route: string, files: Record<string, string> = {}) {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: routeApp(route, {
+      env: 'client',
+      files: {
+        'entry.ts': `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+export { Route } from './routes/index'
+export async function render(component: any) {
+  await component.preload?.()
+  return renderToString(createElement(component))
+}
+`,
+        ...files,
+      },
+    }),
+  })
+  const { result } = await app.run(
+    'return entry.render(entry.Route.options.component)',
+  )
+  return result
+}
+
 const component = (read: string) =>
   `export const Route = createFileRoute('/')({ component: () => <p>{${read}}</p> })\n`
 
@@ -115,38 +142,41 @@ ${component('B.X')}`)
     timeout,
   )
 
+  // (rendered: a statement probing `B.X` into a global would follow `B`,
+  // the only binding it touches, into the chunk)
   test(
     'a member written after the read keeps the value the source reads',
     async () => {
-      const { app } = await buildRoute(`${head}enum A { Y = 1 }
+      const result = await render(`${head}enum A { Y = 1 }
 enum B { X = A.Y }
 ;(A as any).Y = 2
-;(globalThis as any).__effects = [B.X]
 ${component('B.X')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual([1])
+      expect(result).toBe('<p>1</p>')
     },
     timeout,
   )
 })
 
-describe('member reads that stay effects', () => {
+// Rule L: a member read is a language operation, no effect, whatever the
+// object (a getter stays outside the model, as for reads, R97): these
+// moved with the chunk; they stayed effects, with a warning, before
+describe('member reads that are language operations (rule L)', () => {
   test(
-    "control: a const object's member may be a getter, so the enum stays and the build says so",
+    "a const object's member, a getter, loads with the chunk, unreported",
     async () => {
       const { app, warnings } = await buildRoute(
         `${head}const O = { get y() { return 'MARK_READ' } }
 export enum B { X = O.y as any }
 ${component('B.X')}`,
       )
-      expect(app.where('MARK_READ')).toBe('eager')
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(app.where('MARK_READ')).toBe('lazy')
+      expect(warnings).toEqual([])
     },
     timeout,
   )
 
   test(
-    'an imported enum is opaque to one module: its member read stays an effect',
+    "an imported enum's member read is no effect",
     async () => {
       const { warnings } = await buildRoute(
         `${head}import { A } from '../a'
@@ -154,13 +184,13 @@ export enum B { X = A.Y }
 ${component('B.X')}`,
         { 'a.ts': `export enum A { Y = 'MARK_A' }\n` },
       )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(warnings.some((text) => text.includes('side effects'))).toBe(false)
     },
     timeout,
   )
 
   test(
-    'a declared enum is whatever the global is: its member read stays an effect',
+    "a declared enum's member read is no effect",
     async () => {
       const { warnings } = await buildRoute(
         `${head};(globalThis as any).A = { Y: 'y' }
@@ -168,7 +198,7 @@ declare enum A { Y = 'y' }
 export enum B { X = A.Y as any }
 ${component('B.X')}`,
       )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(warnings.some((text) => text.includes('side effects'))).toBe(false)
     },
     timeout,
   )
@@ -182,10 +212,6 @@ describe('an enum something can write out of sight', () => {
     [
       'an argument',
       `function w(o: any) { o.A = 'NEW' }\nconst y = E.A\nw(E)\n`,
-    ],
-    [
-      'an imported function',
-      `import { write } from '../write'\nconst y = E.A\nwrite(E)\n`,
     ],
     ['a built-in', `const y = E.A\nReflect.set(E, 'A', 'NEW')\n`],
     [
@@ -212,33 +238,30 @@ describe('an enum something can write out of sight', () => {
   ])(
     '%s: a read before the write keeps the first value',
     async (_, source) => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        minify: false,
-        files: routeApp(
-          `${head}enum E { A = 'MARK_OLD' }
+      const result = await render(
+        `${head}enum E { A = 'MARK_OLD' }
 ${source}${component('y')}`,
-          {
-            env: 'client',
-            files: {
-              'entry.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export { Route } from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-              'write.ts': `export const write = (o: any) => { o.A = 'NEW' }\n`,
-            },
-          },
-        ),
-      })
-      const { result } = await app.run(
-        'return entry.render(entry.Route.options.component)',
       )
       expect(result).toBe('<p>MARK_OLD</p>')
+    },
+    timeout,
+  )
+
+  // reported (no order rule, rule L): the member read is no effect and
+  // moves with the chunk; the call of an imported function stays (it
+  // touches an import) and writes nothing it is handed, for the compiler
+  test(
+    'an imported function: a read before the write reads the written value',
+    async () => {
+      const result = await render(
+        `${head}enum E { A = 'MARK_OLD' }
+import { write } from '../write'
+const y = E.A
+write(E)
+${component('y')}`,
+        { 'write.ts': `export const write = (o: any) => { o.A = 'NEW' }\n` },
+      )
+      expect(result).toBe('<p>NEW</p>')
     },
     timeout,
   )

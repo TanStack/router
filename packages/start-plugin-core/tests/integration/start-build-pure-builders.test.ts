@@ -123,14 +123,19 @@ const linked = base.client(({ next }) => next({ sendContext: { tag: 'MARK_const-
 const run = createServerFn().middleware([linked]).handler(async () => 1)`,
     '<button onClick={() => run()}>go</button>',
   ),
-  'src/routes/impure.tsx': route(
-    'impure',
-    `const run = createServerFn()
+  // an impure argument keeps the chain an effect: two split options read it
+  // (no order rule: the `validateSearch` call after it would pin nothing)
+  'src/routes/impure.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { makeMiddleware } from '../middleware'
+const run = createServerFn()
   .middleware([makeMiddleware('MARK_impure')])
-  .handler(async () => 1)`,
-    '<button onClick={() => run()}>go</button>',
-    "import { makeMiddleware } from '../middleware'",
-  ),
+  .handler(async () => 1)
+export const Route = createFileRoute('/impure')({
+  component: () => <button onClick={() => run()}>go</button>,
+  errorComponent: () => <button onClick={() => run()}>retry</button>,
+})
+`,
 }
 
 const pure = [

@@ -1533,7 +1533,6 @@ describe('planning rounds', () => {
           return
         }
         ctx.setRouteModule()
-        ctx.markBenignEffect(found.unit.id)
         const component = propertyOf(found.options, 'component')!.value
         const body = (
           component as { body: { body: Array<{ start: number; end: number }> } }

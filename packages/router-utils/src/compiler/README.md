@@ -130,10 +130,9 @@ extends Z`, directly or through what they carry) share the module of the first i
   extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
   is imported from the route module in dev. Every decision but these homes is the same, so state and identity
   agree between dev and a build. An exported declaration a chunk needs that stays in the route module
-  (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
+  (effects, reassigned, read by the route module, reading what it keeps) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
-  needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
-  with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
+  needs that the movable rule below keeps (`eager-split:<reason>`: `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
   binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
   split code both read, one instance), once at the cause (a cluster kept only because another kept one reads it is not
@@ -161,8 +160,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
   Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
   `import type * as React` is never the factory;
-- **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
-  of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
+- **effects and mutable state**: statements and impure, still-referenced declarations evaluate once, in the env
+  module unless the rules below move them, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
   (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
   cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding
@@ -189,7 +188,7 @@ extends Z`, directly or through what they carry) share the module of the first i
   and the text of the module's declarations its running references name and of the statements writing those names
   when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
-  reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`) reads what that name's
+  reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`, `'v' in alias`) reads what that name's
   value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
   it reads `cfg`), so it is ordered against a write of the original. A member write through a name whose
   declaration does not create its value (`const alias = cfg; alias.v = 1`, `let cur = cfg`) or through a nested
@@ -216,7 +215,17 @@ extends Z`, directly or through what they carry) share the module of the first i
   another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
 createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
   R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
-  (the chunk loads after the route module), and no surviving effect after its first one stays behind. Both sides
+  (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
+  its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
+  and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`). A
+  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block) follows what it touches: the
+  module bindings its text names and the objects their values hold (`MutationModel.heldBy`, the owner of "the
+  object a binding names"); it moves into a chunk when every one of them goes to that chunk, a binding only it
+  reads following it, in source order there (`const table = createTable(); const columns = snapshot(table);
+  table.addColumn('x')`, only the component reading `columns`, all move), and stays in the route module when it
+  touches an import (another module's object, which other code uses: `Sentry.init({ dsn })`, `i18n.use(backend)`)
+  or a binding that stays or goes elsewhere (`placement/settle.ts`, followers). An effect it has outside what it
+  touches (`registry.install()` patching `fetch`) then runs when the chunk loads. Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
@@ -226,8 +235,7 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
   reader before the write may evaluate there too); several needers give it a shared module, which its readers
   import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
-  A recognised framework call a planner names (the route factory chain) is no such effect only when its option
-  values are pure, claimed (relocated) or erased: the core checks, the planner only names it. Every one of these
+  Every one of these
   rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through
   what it runs, its effect, the module's writes), and answers with the violated pair (the kind, the other event,
   the binding), from which the warnings are worded. The env roots, the slots and the extracted exports are one
@@ -292,6 +300,13 @@ directives, never license comments.
   the mutation model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
   `E.__defineGetter__(…)`),
   an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
+  Placement's own judgement of a top-level evaluation (the unit model, `ModuleAnalysis.effectPurity`) adds rule L
+  (`languagePurity`): a member read, a spread, `in`/`instanceof`, a call or `new` of a standard global
+  (`Object.keys`, `new Set`, `Math.max`, `JSON.stringify`, `new Intl.NumberFormat`) and a method of what one returns
+  or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
+  runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
+  is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). What may be
+  deleted (`effects()` of raw facts, function-scope orphans) still counts every operation that may run code.
 - **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's

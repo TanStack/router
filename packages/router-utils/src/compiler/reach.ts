@@ -92,8 +92,6 @@ export interface PlacementInput {
   /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
   routeModule: boolean
-  /** Whether an effect unit is a recognised framework call known not to touch user state (asked only when a cluster could move past it). */
-  isBenign: (unit: UnitId) => boolean
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
   /**
@@ -109,8 +107,9 @@ export interface PlacementInput {
  * (`Placement.kept`). An exported one (an extraction candidate a chunk
  * reaches): `effects` (an observable initialiser effect), `reassigned`,
  * `live` (the env module reads it), `reads` (it reads, at its evaluation,
- * a binding the env module keeps), `order` (an effect keeps its order). An
- * unexported effectful one, or an eager reader of state: `order` (a surviving effect after its first one, `effect`),
+ * a binding the env module keeps), `unneeded` (no derived output needs it
+ * once extraction is decided). An
+ * unexported effectful one, or an eager reader of state:
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
  * (it reads, at its evaluation, `read`, which something writes), `reads`
@@ -124,7 +123,7 @@ export type KeptReason =
   | 'reassigned'
   | 'live'
   | 'reads'
-  | 'order'
+  | 'unneeded'
   | 'needers'
   | 'written'
   | 'state'
@@ -139,16 +138,10 @@ export interface KeptDeclaration {
   range: { start: number; end: number }
   /** The lazy outputs that need it. */
   needers: Array<OutputId>
-  /** `order`: the surviving effect that keeps it in place. */
-  effect?: UnitId
-  /** Whether that effect still evaluates in the env module (else it moves to another output). */
-  effectStays?: boolean
   /** `written`, `reassigned`: where it is written. */
   at?: number
   /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
   read?: SymbolId
-  /** `order`: the declarations it reads that the same effect keeps too (not reported on their own), in source order. */
-  with?: Array<SymbolId>
 }
 
 export interface ExtractedExport {
@@ -208,7 +201,7 @@ export function computePlacement(input: PlacementInput): Placement {
   const reads = readIndex(input, graph)
   const events = eventTable(input, graph, reads)
   // 3. the roots planners and the module declare, extraction candidates, provenance
-  const seeds = seedRoots(input, graph, reads)
+  const seeds = seedRoots(input, graph, reads, events)
   // 4. the solver: env roots, slots and extracted exports, one fixed point
   const roots = settleRoots(input, graph, reads, events, seeds)
   // 5. what only split code needs that stays, and why

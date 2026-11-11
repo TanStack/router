@@ -1,4 +1,6 @@
 /**
+ * (No order rule: the effect before the API and the API load with the
+ * chunk, whatever follows them, unreported.)
  * The router's own APIs that are pure at module level, first
  * `getRouteApi`, are no effect: a module-level `const { useParams } =
  * getRouteApi(…)` only the split component reads loads with its chunk, and
@@ -13,11 +15,7 @@
  * webpack and Rsbuild builds.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -102,7 +100,7 @@ const builds: Array<[string, () => Promise<BuildResult>]> = [
 
 describe.each(builds)('a %s client build', (name, create) => {
   test(
-    'loads a pure router API call with the chunk that reads it and warns only of the effect before it',
+    'loads a router API call and the effect before it with the chunk that reads them, unreported',
     async () => {
       const app = await create()
       const reported = [...app.warnings, ...app.consoleMessages]
@@ -111,36 +109,14 @@ describe.each(builds)('a %s client build', (name, create) => {
           file: `routes/${file}.tsx`,
           root: app.root,
         })
-      /**
-       * A warning of a route at `needle`, once (where the channel prints
-       * positions; Vite's build log prints the message only: the route's
-       * `total` findings are counted there).
-       */
-      const expectWarningAt = (path: string, needle: string, total = 1) => {
-        expectDiagnostic(reported, {
-          severity: 'warning',
-          file: `routes/${path}.tsx`,
-          root: app.root,
-          ...(name !== 'vite' && {
-            position: diagnosticPosition(
-              files[`routes/${path}.tsx` as keyof typeof files],
-              needle,
-            ),
-          }),
-          times: name !== 'vite' ? 1 : total,
-        })
-      }
-      for (const path of ['direct', 'renamed']) {
+      // no order rule: the effect before the API, the API (pure or not) and
+      // the `validateSearch` call after them have no order; each loads where
+      // what reads it does, unreported
+      for (const path of ['direct', 'renamed', 'impure']) {
         expect(app.where(`MARK_api_${path}`), path).toBe('lazy')
-        expect(app.where(`MARK_${path}_END`), path).toBe('eager')
-        // the effect before the API is the only finding
-        expectWarningAt(path, 'marker = new')
-        expect(warnings(path), path).toHaveLength(1)
+        expect(app.where(`MARK_${path}_END`), path).toBe('lazy')
+        expect(warnings(path), path).toEqual([])
       }
-      // an impure argument: the call stays an effect, kept and reported too
-      expect(app.where('MARK_api_impure')).toBe('eager')
-      expectWarningAt('impure', 'marker = new', 2)
-      expectWarningAt('impure', '{ useParams }', 2)
       expect(app.where('MARK_api_kept')).toBe('eager')
       expect(app.where('MARK_kept_END')).toBe('lazy')
       expect(warnings('kept')).toEqual([])

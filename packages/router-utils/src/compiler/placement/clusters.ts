@@ -34,7 +34,7 @@ export interface Cluster {
   units: Array<UnitId>
   declares: Set<SymbolId>
   /**
-   * It has an effect (`effectUnits`) or an effectful generated unit. A write
+   * It has an effect (a surviving effectful unit) or an effectful generated unit. A write
    * of pure values to a binding it declares (`Page.displayName = …`) is no
    * effect (R139): such a cluster may be an extracted export, and its
    * output stays side-effect free.
@@ -45,8 +45,6 @@ export interface Cluster {
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Source position of the cluster's first effect unit (its effects keep their order with the surviving effects after it); Infinity when none (generated units are compiler code). */
-  firstEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -119,8 +117,6 @@ export interface ClusterGraph {
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** The effect units that only augment bindings their cluster's pure declarations declare: decided with that cluster. */
   ownAugmentations: ReadonlySet<UnitId>
-  /** The units with an effect O orders: effectful, surviving, not a write of pure values to their own cluster's binding (R139). */
-  effectUnits: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
@@ -579,7 +575,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         writer: false,
         exported: false,
         start: Infinity,
-        firstEffect: Infinity,
         kind: 'region',
         copyable: false,
         identityFree: false,
@@ -590,7 +585,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
-  const effectUnits = new Set<UnitId>()
   const ownAugmentations = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
@@ -706,8 +700,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         !pureWrite(unit, own(unit))
       ) {
         cl.effectful = true
-        cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
-        effectUnits.add(u)
       }
     }
   }
@@ -768,7 +760,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     regionWrittenSyms,
     viewOf,
     isLive,
-    effectUnits,
     ownAugmentations,
     unitSurvives,
     callsOf,

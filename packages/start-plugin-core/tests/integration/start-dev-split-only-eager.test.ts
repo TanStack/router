@@ -1,7 +1,7 @@
 /**
- * Start's Vite dev server reports a declaration only the split component
- * reads that a later effect pins in the route module (an
- * inline `validateSearch: makeSchema({…})` call stays and runs after it)
+ * Start's Vite dev server reports a declaration the split component
+ * and the error component read, an effect two split options need, which
+ * stays in the route module
  * once for the client and server environments together, positioned at the
  * declaration, and not again after an edit that keeps the finding (the
  * builds: start-build-eager-export.test.ts).
@@ -17,13 +17,14 @@ import { reactApp } from './hydrate-dev-edits'
 
 const timeout = 90_000
 
+// (no order rule: a `validateSearch` call after the declaration pins
+// nothing; two split options reading its effect do, `needers`)
 const pinned = `import { createFileRoute } from '@tanstack/react-router'
 import { Marker } from '../marker'
-import { makeSchema } from '../schema'
 const confetti = new Marker('MARK_CONFETTI')
 export const Route = createFileRoute('/')({
-  validateSearch: makeSchema({ tab: 'string' }),
   component: () => <p>{confetti.name}</p>,
+  errorComponent: () => <p>{confetti.name}</p>,
 })
 `
 

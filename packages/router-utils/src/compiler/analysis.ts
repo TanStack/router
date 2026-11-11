@@ -19,6 +19,7 @@ import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, memberUse } from './units'
 import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
+  languagePurity,
   linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
@@ -375,6 +376,8 @@ export class ModuleAnalysis {
   readonly hasImportOrExport: boolean
   /** The planners' purity (with a compile's builder chains: `env`). */
   readonly purity: PurityContext
+  /** The purity the unit model judges top-level effects with, for placement: the planners', where language operations are no effect (rule L, `languagePurity`). */
+  readonly effectPurity: PurityContext
   /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
   private readonly ownPurity: PurityContext
   /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
@@ -515,6 +518,7 @@ export class ModuleAnalysis {
       opts.env && builderImports
         ? builderPurityOf(ownPurity, builderImports, opts.env).ctx
         : ownPurity
+    this.effectPurity = languagePurity(this.purity)
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -1140,7 +1144,7 @@ export class ModuleAnalysis {
       file,
       items,
       symbols,
-      this.purity,
+      this.effectPurity,
       (s) => this.importIndexOfStatement(s),
     )
 

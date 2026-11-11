@@ -1,4 +1,6 @@
 /**
+ * (No order rule: nothing below is pinned any more; every route loads its
+ * declaration with the chunk, unreported, on every host and in dev.)
  * A declaration only split code needs that the evaluation-order rules keep
  * in the route module (an effect after it stays there) loads with the route
  * instead of with its chunk, and the build or dev server says so once,
@@ -17,11 +19,7 @@
  * finding does not repeat it.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head } from '../build-harness'
 import { routerDevServer } from '../dev-server'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
@@ -145,24 +143,6 @@ const lazyRoutes = [
   'arrow-before-parentheses',
 ]
 
-/**
- * The warning of the pinned route, once, positioned at the declaration on
- * every host (a Vite build's log prints a warning's message only: the
- * message carries the position there).
- */
-function expectPinnedWarning(
-  diagnostics: BuildResult['warnings'],
-  root: string,
-) {
-  expectDiagnostic(diagnostics, {
-    severity: 'warning',
-    file: 'routes/pinned.tsx',
-    root,
-    position: diagnosticPosition(pinned, 'marker = new'),
-    times: 1,
-  })
-}
-
 const builds: Array<[string, () => Promise<BuildResult>]> = [
   ['vite', () => build({ bundler: 'vite', env: 'client', files })],
   ['rspack', () => build({ bundler: 'rspack', env: 'client', files })],
@@ -170,15 +150,16 @@ const builds: Array<[string, () => Promise<BuildResult>]> = [
   ['rsbuild', () => buildWithRsbuild({ files, registerCleanup: () => {} })],
 ]
 
+// no order rule: tamery's declaration has no order with the
+// `validateSearch` call after it either; every route loads its declaration
+// with the chunk, unreported
 describe.each(builds)('a %s client build', (_name, create) => {
   test(
-    'keeps a declaration an effect after it pins in the route module and warns once; loads the others with their chunk, unreported',
+    'loads the declaration with its chunk in every route, unreported',
     async () => {
       const app = await create()
       const reported = [...app.warnings, ...app.consoleMessages]
-      expect(app.where('MARK_pinned_END')).toBe('eager')
-      expectPinnedWarning(reported, app.root)
-      for (const lazy of lazyRoutes) {
+      for (const lazy of ['pinned', ...lazyRoutes]) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
         expect(
           findDiagnostics(reported, {
@@ -195,15 +176,14 @@ describe.each(builds)('a %s client build', (_name, create) => {
 
 describe('the Vite dev server', () => {
   test(
-    'warns once when the route module is served, and not again after an edit that keeps the finding',
+    'warns of no route when the route modules are served, nor after an edit',
     async () => {
       const server = await routerDevServer({ files })
       await server.transform('/routes/pinned.tsx')
       for (const name of lazyRoutes) {
         await server.transform(`/routes/${name}.tsx`)
       }
-      expectPinnedWarning(server.diagnostics, server.root)
-      for (const name of lazyRoutes) {
+      for (const name of ['pinned', ...lazyRoutes]) {
         expect(
           findDiagnostics(server.diagnostics, {
             file: `routes/${name}.tsx`,

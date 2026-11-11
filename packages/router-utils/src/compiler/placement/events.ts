@@ -12,8 +12,10 @@
  *   outside its cluster writes at an unknown time (inside a function, or in
  *   code that runs later) stays in the env module (`volatile`), whatever its
  *   slot: that write may run before or after it anywhere.
- * - **O** (order): two effects keep their order (`orderConflict`), and so do
- *   a read and a write of a binding when the module loads (`writeConflict`),
+ * - **O** (order): a read and a write of a binding when the module loads
+ *   keep their order (`writeConflict`); effects have no order of their own
+ *   beyond the bindings they read and write (no order rule): what moves keeps
+ *   its source order in its output, what stays in the route module,
  *   judged on the slots of both sides: a binding's writers at load are its
  *   cluster, so the write evaluates where the binding does, and a reader is
  *   a cluster of its own (`ordered`: one that a write after it orders has
@@ -56,7 +58,7 @@ import { NEED_KINDS } from './clusters'
 import type { ClusterGraph, ClusterId, Write } from './clusters'
 import type { ReadIndex } from './reads'
 import type { SymbolId } from '../symbols'
-import type { RegionId, Unit, UnitId } from '../units'
+import type { RegionId } from '../units'
 import type { OutputId } from '../rewrite'
 import type { Fallback, Home, KeptReason, PlacementInput } from '../reach'
 
@@ -67,20 +69,25 @@ export interface Touch {
   cluster: ClusterId
 }
 
+/** What a cluster's statements touch (`Events.statementTouches`). */
+export interface StatementTouches {
+  clusters: ReadonlyArray<ClusterId>
+  import: SymbolId | null
+}
+
 /** Per written binding an evaluation touches, its first and last touch: they decide every comparison with a write. */
 type Spans = ReadonlyMap<SymbolId, { first: number; last: number }>
 
 /**
  * Why a cluster stays in the env module: the violated pair. `reason` is the
- * kind as `Placement.kept` words it; `other` the second event, an effect
- * (`order`) or a write (`written`, `state`: the write the read observes;
- * the first effect or write of the pair); `binding` what the pair shares
+ * kind as `Placement.kept` words it; `other` the second event, a write
+ * (`written`, `state`: the write the read observes); `binding` what the pair shares
  * (`state`, `reads`). A one-event cause (`needers`, `effects`, `live`,
  * `shared`) has neither.
  */
 export interface Pin {
   reason: KeptReason
-  other?: { unit: UnitId } | { at: number }
+  other?: { at: number }
   binding?: SymbolId
 }
 
@@ -96,12 +103,6 @@ export interface Events {
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ) => SymbolId | undefined
-  /** O: the effect that changes order with `c`'s when `c` evaluates in `to`, the clusters of `target` in theirs. */
-  orderConflict: (
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-  ) => Unit | undefined
   /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (in `target`) nor is a `const` `kept` says the env module keeps. */
   readConflict: (
     c: ClusterId,
@@ -115,6 +116,17 @@ export interface Events {
     to: OutputId,
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
+  /**
+   * What the statements of cluster `c` (its effect units) touch: the
+   * clusters of every module binding their text names in the env module
+   * and of the objects each one's value may hold (`MutationModel.heldBy`,
+   * the one owner of "the object a binding names": `alias.add()` touches
+   * `table` through `const alias = table`), `c` aside, in source order;
+   * `import`: the first import among them (another module's object, which
+   * other code uses). Asked of the clusters that may follow what they
+   * touch (`settle.ts`), once each.
+   */
+  statementTouches: (c: ClusterId) => StatementTouches
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
   fallbacks: (
     home: ReadonlyMap<ClusterId, Home>,
@@ -127,8 +139,8 @@ export function eventTable(
   graph: ClusterGraph,
   reads: ReadIndex,
 ): Events {
-  const { t1, outputs, isBenign } = input
-  const { units, symbols } = t1
+  const { t1, outputs } = input
+  const { symbols } = t1
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion, clusterOfSym, writesOfSym } = graph
   /** The regions a claim relocates (an option value a chunk owns). */
@@ -370,58 +382,8 @@ export function eventTable(
     return found
   }
 
-  // the effects of the env module's evaluation an event is ordered against
-  // (asked only when one could move: most modules never need the benign
-  // check). Module loading is hoisted: a bare import or a re-export
-  // evaluates before the module body wherever it is written, so it is never
-  // an effect before or after one.
-  let effectList: Array<Unit> | null = null
-  const effects = (): Array<Unit> =>
-    (effectList ??= units.filter(
-      (u) =>
-        graph.effectUnits.has(u.id) &&
-        u.kind !== 'type' &&
-        u.kind !== 'import-effect' &&
-        u.kind !== 'reexport' &&
-        graph.unitSurvives(u.id) &&
-        !isBenign(u.id),
-    ))
   const isStatic = (o: OutputId | undefined) =>
     o !== undefined && outputs.get(o)?.kind === 'export'
-
-  /*
-   * O. A lazily imported output (a chunk) evaluates after the env module's
-   * body: an effect after `c`'s first in the source would then run before
-   * it. An effect never moves to an extracted export's module (`slotFor`:
-   * that module may never evaluate).
-   *
-   * Kept on purpose (a maintainers' decision): without this guarantee a
-   * declaration only split code reads whose initialiser calls a function
-   * the compiler does not know would move to the chunk as the previous
-   * splitter moved it, which saves the initial load such calls keep (four
-   * real apps load about 175 KB more than before, mostly generated data
-   * and zod schemas), but two effects sharing state the compiler cannot see
-   * (a library's store, registry or configuration) would silently run in
-   * another order. Calls known to be pure are no effect (`pureCalls`).
-   */
-  function orderConflict(
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-  ): Unit | undefined {
-    const cl = clusters[c]!
-    for (const u of effects()) {
-      if (u.range.start <= cl.firstEffect) {
-        continue
-      }
-      const uc = clusterOfRegion.get(u.region)
-      if (uc === c || (uc !== undefined && target.get(uc) === to)) {
-        continue
-      }
-      return u
-    }
-    return undefined
-  }
 
   function writeConflict(
     c: ClusterId,
@@ -618,13 +580,55 @@ export function eventTable(
     return out
   }
 
+  const statementTouchesOf = new Map<ClusterId, StatementTouches>()
+  function statementTouches(c: ClusterId): StatementTouches {
+    let hit = statementTouchesOf.get(c)
+    if (hit !== undefined) {
+      return hit
+    }
+    const found = new Set<ClusterId>()
+    let imported: SymbolId | null = null
+    const add = (s: SymbolId) => {
+      const d = clusterOfSym.get(s)
+      if (d === undefined || d === c) {
+        return
+      }
+      found.add(d)
+      if (imported === null && clusters[d]!.kind === 'import') {
+        imported = s
+      }
+    }
+    for (const u of clusters[c]!.units) {
+      const unit = t1.units[u]!
+      if (unit.kind !== 'effect') {
+        continue
+      }
+      for (const ref of t1.refs.refsIn(unit.range)) {
+        if (
+          !NEED_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym) ||
+          !graph.isLive(ref, 'env')
+        ) {
+          continue
+        }
+        add(ref.sym)
+        for (const s of t1.mutation.heldBy(ref)) {
+          add(s)
+        }
+      }
+    }
+    hit = { clusters: [...found], import: imported }
+    statementTouchesOf.set(c, hit)
+    return hit
+  }
+
   return {
     volatile,
     ordered,
+    statementTouches,
     lazyConflict,
     readsKept,
     readConflict,
-    orderConflict,
     writeConflict,
     fallbacks,
   }

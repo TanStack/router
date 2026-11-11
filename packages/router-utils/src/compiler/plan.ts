@@ -10,7 +10,7 @@
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './reach'
-import { annotatable, firstImpure, keptDiagnostic } from './kept-diagnostics'
+import { annotatable, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
@@ -27,7 +27,7 @@ import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
 import type { DerivedQuery, SourceIdentity } from './identity'
 import type { SymbolId, SymbolTable } from './symbols'
-import type { RegionId, UnitId } from './units'
+import type { RegionId } from './units'
 import type {
   EdgeProvenance,
   GlueImport,
@@ -162,14 +162,6 @@ export interface PlanContext<TName extends string = string> {
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
-   * Names a recognised framework call known not to touch user state (the
-   * route factory chain): the core treats the unit as no effect for the
-   * evaluation-order rules when its option values are pure expressions,
-   * claimed regions (relocated: a lazy wrapper replaces them) or values the
-   * env output erases; an impure option value keeps it an effect.
-   */
-  markBenignEffect: (unit: UnitId) => void
-  /**
    * Allows an exported, pure, unwritten declaration into its extracted-export
    * output: the core moves it there when only derived outputs need it, and the
    * env module re-exports it. The output takes the first name the module
@@ -251,7 +243,6 @@ export class AnalysisPlan implements PlanContext {
     unlessLive: ReadonlyArray<Range>
   }> = []
   readonly facts: PlannerFactsByName = {}
-  readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
   private readonly keptSyms = new Set<SymbolId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
@@ -350,10 +341,6 @@ export class AnalysisPlan implements PlanContext {
       throw new Error(`addRoot: unknown output ${output}`)
     }
     decl.roots.push(root)
-  }
-
-  markBenignEffect(unit: UnitId): void {
-    this.benignEffects.add(unit)
   }
 
   extractExport(sym: SymbolId, exportName: string): void {
@@ -533,7 +520,6 @@ export class AnalysisPlan implements PlanContext {
     if (this.rewrites.view('env').erasedParts().length > 0) {
       cleanOrphanedDeclarations(this, this.outputs)
     }
-    const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({
       t1: this.t1,
       rewrites: this.rewrites,
@@ -541,17 +527,6 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
       routeModule: this.routeModule,
-      isBenign: (u) => {
-        if (!this.benignEffects.has(u)) {
-          return false
-        }
-        let hit = benign.get(u)
-        if (hit === undefined) {
-          hit = firstImpure(this, this.t1.units[u]!) === null
-          benign.set(u, hit)
-        }
-        return hit
-      },
       extractions: this.extractions,
       extractedOutputs: this.env.mode === 'build',
     })

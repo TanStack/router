@@ -1161,7 +1161,9 @@ function Page() {
     },
   )
 
-  it('keeps the ones before an effect that stays in the route module', async () => {
+  // (no order rule: the bare call after them stays, they move; the row
+  // kept the ones before it)
+  it('moves the ones before an effect that stays in the route module', async () => {
     expect(
       await observe(
         `export const Route = createFileRoute('/')({ component: Page })
@@ -1174,17 +1176,18 @@ function Page() {
 }
 `,
         ['component'],
-        ['second', 'third'],
+        ['first', 'second', 'third'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_middle'],
-      rendered: ['MARK_first', 'MARK_middle', 'MARK_second', 'MARK_third'],
+      loaded: ['MARK_middle'],
+      rendered: ['MARK_middle', 'MARK_first', 'MARK_second', 'MARK_third'],
       html: ['<p>MARK_firstMARK_secondMARK_third</p>'],
       eagerHolds: [],
     })
   })
 
-  it('keeps one the route module also reads, once, and the ones before it', async () => {
+  // (no order rule; the row kept the ones before it)
+  it('keeps one the route module also reads, once, and loads the ones before it with the chunk', async () => {
     expect(
       await observe(
         `${record('first')}
@@ -1199,18 +1202,19 @@ function Page() {
 }
 `,
         ['component'],
-        ['third'],
+        ['first', 'third'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_shared'],
-      rendered: ['MARK_first', 'MARK_shared', 'MARK_third'],
+      loaded: ['MARK_shared'],
+      rendered: ['MARK_shared', 'MARK_first', 'MARK_third'],
       html: ['<p>MARK_firstMARK_sharedMARK_third</p>'],
       eagerHolds: [],
     })
   })
 
-  it('keeps a component whose augmentations an effect separates, and the effect, in source order', async () => {
-    // moving `Page` with its augmentations would run `middle` before `first`
+  // (no order rule, R65's case: `Page` moves with its augmentations, in
+  // their order, and `middle` runs before `first`; the row kept all three)
+  it('moves a component with its augmentations past an effect between them', async () => {
     expect(
       await observe(
         `export const Route = createFileRoute('/')({ component: Page })
@@ -1225,14 +1229,15 @@ Page.second = recordSecond('MARK_second')
         [],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_middle', 'MARK_second'],
-      rendered: ['MARK_first', 'MARK_middle', 'MARK_second'],
+      loaded: ['MARK_middle'],
+      rendered: ['MARK_middle', 'MARK_first', 'MARK_second'],
       html: ['<p>MARK_firstMARK_second</p>'],
       eagerHolds: [],
     })
   })
 
-  it('keeps one before a later declarator of its statement that stays', async () => {
+  // (no order rule; the row kept the first)
+  it('moves one before a later declarator of its statement that stays', async () => {
     expect(
       await observe(
         `export const Route = createFileRoute('/')({ component: Page })
@@ -1242,11 +1247,11 @@ function Page() {
 }
 `,
         ['component'],
-        [],
+        ['first'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_middle'],
-      rendered: ['MARK_first', 'MARK_middle'],
+      loaded: ['MARK_middle'],
+      rendered: ['MARK_middle', 'MARK_first'],
       html: ['<p>MARK_first</p>'],
       eagerHolds: [],
     })
@@ -1332,7 +1337,8 @@ function Page() {
     },
   )
 
-  it('keeps one reading a const the route module keeps before a later one it keeps, in source order', async () => {
+  // (no order rule; the row kept `second` before `third`)
+  it('moves one reading a const the route module keeps past a later one it keeps', async () => {
     expect(
       await observe(
         `export const Route = createFileRoute('/')({
@@ -1347,11 +1353,11 @@ function Page() {
 }
 `,
         ['component'],
-        [],
+        ['second'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_second', 'MARK_third'],
-      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
+      loaded: ['MARK_first', 'MARK_third'],
+      rendered: ['MARK_first', 'MARK_third', 'MARK_second'],
       html: ['<p>MARK_second MARK_first</p>'],
       eagerHolds: [],
     })
@@ -1379,10 +1385,9 @@ ${record('third')}
     })
   })
 
-  it('keeps the ones before one that moves to another chunk, and moves the last', async () => {
-    // the error component's chunk loads first: `second` still runs after
-    // `first` (core: "keeps an initialiser eager when a later one moves to
-    // another chunk")
+  it('moves each one to its chunk when one moves to another chunk', async () => {
+    // the error component's chunk loads first: `second` runs before `first`
+    // (no order rule)
     expect(
       await observe(
         `export const Route = createFileRoute('/')({
@@ -1394,11 +1399,11 @@ ${record('second')}
 ${record('third')}
 `,
         ['errorComponent', 'component'],
-        ['third'],
+        ['first', 'second', 'third'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_second'],
-      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
+      loaded: [],
+      rendered: ['MARK_second', 'MARK_first', 'MARK_third'],
       html: ['<p>MARK_second</p>', '<p>MARK_firstMARK_third</p>'],
       eagerHolds: [],
     })
