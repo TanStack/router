@@ -162,10 +162,16 @@ export { old } from './old'
           'ssr-entry.ts': ssrEntry,
         },
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-        watchEdits: {
-          'client-entry.ts': `export { greet } from './fns'
+        // (the server is rebuilt by the client's build: Vite settles on it)
+        watchEdits: [
+          {
+            edits: {
+              'client-entry.ts': `export { greet } from './fns'
 `,
-        },
+            },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       const { result } =
         await ssr.run(`${callByIdPrelude}const settle = async (run) => {
@@ -974,7 +980,12 @@ export { label } from './client-only'
 `,
         },
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-        watchEdits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+        watchEdits: [
+          {
+            edits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       expect(
         firstBuild.some(({ text }) => text.includes('built before the client')),

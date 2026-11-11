@@ -379,7 +379,8 @@ export interface WatchStep {
    */
   when?: () => Promise<void>
   /**
-   * Vite builds: the environments the step rebuilds by cause, after the
+   * Vite builds (Rsbuild's settle follows its compilations already): the
+   * environments the step rebuilds by cause, after the
    * others' builds of it (e.g. the server's, after a save only the client
    * bundles): the step settles once each of them began a build after every
    * other environment's last build began, and all of them ended. Its
