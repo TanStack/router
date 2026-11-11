@@ -7,7 +7,8 @@ import { useTransitionerSetup } from './Transitioner'
 import { routeIdContext } from './matchContext'
 import { Match } from './Match'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
-import type { AnyRouter,
+import type {
+  AnyRouter,
   DeepPartial,
   ErrorComponentProps,
   MakeOptionalPathParams,
@@ -20,7 +21,8 @@ import type { AnyRouter,
   RegisteredRouterOf,
   ResolveRoute,
   RouteModuleScope,
-  ToSubOptionsProps } from '@tanstack/router-core'
+  ToSubOptionsProps,
+} from '@tanstack/router-core'
 
 // Define a type for the error component function
 type ErrorRouteComponentType = (props: ErrorComponentProps) => Vue.VNode
