@@ -160,8 +160,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
   Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
   `import type * as React` is never the factory;
-- **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
-  of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
+- **effects and mutable state**: statements and impure, still-referenced declarations evaluate once, in the env
+  module unless the rules below move them, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
   (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
   cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding

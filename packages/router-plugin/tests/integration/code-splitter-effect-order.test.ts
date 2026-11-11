@@ -2,8 +2,9 @@
  * The order of effects between top-level declarations, real builds (Vite
  * and Rspack client builds, mounted in a DOM): what a split component
  * shows, and where each declaration loads. The maintainer's shapes: a
- * snapshot of state an unknown call changes after it, and of state written
- * after it through another name, each show the value the source gives; a
+ * snapshot of state an unknown call changes after it (the call follows the
+ * table into the chunk), and of state written after it through another
+ * name, each show the value the source gives; a
  * column helper and its columns only the component reads load with the
  * component although a schema the route module keeps (`validateSearch`)
  * calls something the compiler does not know after them.
@@ -26,6 +27,14 @@ export function createColumnHelper(mark: string) {
 `,
   'schema.ts': `export function createSchema(shape: Record<string, string>) {
   return (search: Record<string, unknown>) => ({ ...search, shape })
+}
+`,
+  'registry.ts': `export function createRegistry() {
+  return {
+    install() {
+      ;(globalThis as any).__patched = 'patched'
+    },
+  }
 }
 `,
   'snap.ts': `export function snap(o: { v: number }) {
@@ -90,13 +99,15 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
         `${head}import { createTable, snapshot } from '../table'
 const table = createTable()
 const columns = snapshot(table)
-table.addColumn('x')
+table.addColumn('MARK_ADD')
 export const Route = createFileRoute('/')({
   component: () => <p>{columns}</p>,
 })
 `,
       )
       expect(r.text).toBe('none')
+      // the statement follows the table into the chunk, in source order
+      expect(r.where('MARK_ADD')).toBe('lazy')
     },
     timeout,
   )
@@ -206,6 +217,37 @@ export const Route = createFileRoute('/')({
         )
         // (the source shows hydrated)
         expect(r.text).toBe('empty')
+      },
+      timeout,
+    )
+
+    test(
+      'a statement patching a global with a registry only the component reads runs when the chunk loads',
+      async () => {
+        const app = await build({
+          bundler,
+          env: 'client',
+          minify: false,
+          files: routeApp(
+            `${head}import { createRegistry } from '../registry'
+const registry = createRegistry()
+registry.install()
+export const Route = createFileRoute('/')({
+  component: () => <p>{registry ? 'ok' : ''}</p>,
+})
+`,
+            { env: 'client', files: libs },
+          ),
+        })
+        try {
+          const { result } = await app.run(
+            'const before = globalThis.__patched ?? "unpatched"\nawait entry.mount(entry.Route.options.component)\nreturn [before, globalThis.__patched]',
+          )
+          // (the source patches it when the route module loads)
+          expect(result).toEqual(['unpatched', 'patched'])
+        } finally {
+          await app.dispose()
+        }
       },
       timeout,
     )
