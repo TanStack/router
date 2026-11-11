@@ -104,18 +104,16 @@ export class MutationModel {
   }
 
   /**
-   * The binding is assigned, or a member of what it names written,
-   * somewhere (`live`: in code an output keeps), through this name or
-   * another one holding its object (`writesThrough`): a read of it depends
-   * on when it runs.
+   * The binding is assigned, or a member of what it names written through
+   * this name, somewhere (`live`: in code an output keeps): a read of it
+   * depends on when it runs. Writes through another name holding its object
+   * (`writesThrough`, an over-approximation) are placement's: its write
+   * table orders and pins readers by them, where a false answer costs a
+   * pin; a planner refusing on this answer would refuse correct code.
    */
   isMutated(sym: SymbolId, live?: (ref: ClassifiedRef) => boolean): boolean {
     const sites = this.sitesOf(sym)
-    if (live === undefined ? sites.length > 0 : sites.some(live)) {
-      return true
-    }
-    const through = this.writesThrough(sym)
-    return live === undefined ? through.length > 0 : through.some(live)
+    return live === undefined ? sites.length > 0 : sites.some(live)
   }
 
   /**

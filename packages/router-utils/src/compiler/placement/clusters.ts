@@ -241,7 +241,11 @@ export function isDuplicable(
     return false
   }
   for (const s of cl.declares) {
-    if (t1.mutation.isMutated(s, live)) {
+    // (written through another name too: a copy would not see it)
+    if (
+      t1.mutation.isMutated(s, live) ||
+      t1.mutation.writesThrough(s).some((r) => live === undefined || live(r))
+    ) {
       return false
     }
     for (const r of t1.refs.refsOf(s)) {
