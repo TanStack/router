@@ -681,7 +681,8 @@ export const Route = createFileRoute('/')({
 }
 
 /**
- * An app whose virtual route config (`routes.ts`) mounts `routes/contact.tsx`
+ * Returns the app, for a test that goes on editing it. An app whose
+ * virtual route config (`routes.ts`) mounts `routes/contact.tsx`
  * at `/contact`, with groupings by route id
  * (`codeSplittingOptions.splitBehavior`) that keep the route `/contact`
  * unsplit. The file names its id through a binding, which the generator
@@ -747,6 +748,7 @@ function Page() {
   expect(await holdingContact()).toEqual([])
   await app.navigate('/about', 'MARK_CONTACT')
   expect(app.errors()).toEqual([])
+  return app
 }
 
 /** A `__virtual.ts` subtree config of `children`. */

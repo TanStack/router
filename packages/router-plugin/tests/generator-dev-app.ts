@@ -55,6 +55,7 @@ import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { AddressInfo } from 'node:net'
 import type { RsbuildPlugin } from '@rsbuild/core'
+import type { WebpackPluginInstance } from 'webpack'
 import type { Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -203,7 +204,7 @@ export interface GeneratorDevAppOptions {
   links?: Array<string>
   /** Symbolic links in the app (link → target, both relative to its root). */
   symlinks?: Record<string, string>
-  /** webpack: the app's own configuration over the harness's (e.g. `snapshot`). */
+  /** webpack: the app's own configuration over the harness's (e.g. `snapshot`; its `plugins` come after the router's). */
   webpack?: Record<string, unknown>
 }
 
@@ -634,6 +635,9 @@ async function webpackApp(
   for (const file of Object.keys(files)) {
     await utimes(path.join(root, file), past, past)
   }
+  const { plugins: ownPlugins = [], ...own } = config as {
+    plugins?: Array<WebpackPluginInstance>
+  }
   const compiler = webpack({
     mode: 'development',
     context: root,
@@ -660,10 +664,11 @@ async function webpackApp(
           ? pluginOptions(root)
           : pluginOptions),
       }),
+      ...ownPlugins,
     ],
     infrastructureLogging: { level: 'none' },
     stats: 'none',
-    ...config,
+    ...own,
   })
   /** Compiles started, whether one runs or is pending, and the last one's errors. */
   let started = 0
