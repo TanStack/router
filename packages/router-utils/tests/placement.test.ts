@@ -5493,6 +5493,60 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
+  // REVIEW-design2-step4 finding 3: that write pins the value only when
+  // the binding is not confined to its chunk, as a write at load by the
+  // value (rulings 2 and 3): nothing else touching it, it splits, with the
+  // binding, inline or named.
+  it.each([
+    [
+      'an assignment, inline',
+      'let didInit = false',
+      'component: f(function Page() { if (!didInit) { didInit = true } return null }),',
+    ],
+    [
+      'a member write, inline',
+      'const seen = { n: 0 }',
+      'component: f(function Page() { seen.n++; return null }),',
+    ],
+    [
+      'a member write in an event handler, inline',
+      'const seen = { n: 0 }',
+      'component: f(function Page() { return () => { seen.n++ } }),',
+    ],
+    [
+      'a member write of an import, inline',
+      '',
+      'component: f(function Page() { open.count = 1; return null }),',
+    ],
+    [
+      'a member write, named',
+      'const seen = { n: 0 }\nfunction Page() { seen.n++; return null }',
+      'component: f(Page),',
+    ],
+  ])(
+    'splits an option value whose call runs a function writing a binding nothing else touches (%s)',
+    async (_, decls, options) => {
+      const r = await split(route(decls, options), { files: lib })
+      expect(r.main?.facts.planners['toy-split']?.notSplittable).toBeUndefined()
+      expect(r.chunks.component).toContain('function Page()')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  it('keeps an option value whose call runs a function writing a binding another function writes later in place', async () => {
+    const r = await split(
+      route(
+        'const seen = { n: 0 }\nexport function reset() { seen.n = 0 }',
+        'component: f(function Page() { seen.n++; return null }),',
+      ),
+      { files: lib },
+    )
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      notSplittable: 'component',
+      reasons: { component: 'ordered-effect' },
+    })
+  })
+
   // A member write inside a planner's unclaimed region is its declaration's
   // write (finding 1): the declaration stays with the binding it writes.
   it('keeps a declaration writing a member inside an unclaimed region with the binding', async () => {
