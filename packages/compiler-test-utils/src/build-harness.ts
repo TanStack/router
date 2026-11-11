@@ -91,8 +91,8 @@ export interface AppOptions {
    * directory (`./app-directory`).
    */
   dir: string
-  /** App files by path relative to the app root. */
-  files: Record<string, string>
+  /** App files by path relative to the app root (bytes for a binary file). */
+  files: Record<string, string | Uint8Array>
   /**
    * The app's `package.json`. The default declares no `sideEffects`, so the
    * app's own modules count as side-effectful. `null` writes none: the app

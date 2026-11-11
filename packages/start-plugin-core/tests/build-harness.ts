@@ -262,7 +262,7 @@ export interface StartBuildOptions {
    */
   framework?: StartFramework
   /** App files by path relative to the app root. */
-  files: Record<string, string>
+  files: Record<string, string | Uint8Array>
   /**
    * The test's entry module of both environments, or of each, relative to
    * the app root (default `entry.ts`).
@@ -491,7 +491,7 @@ export async function renderPath(
  */
 const harnessFiles = (
   entries: { client: string; ssr: string },
-  files: Record<string, string>,
+  files: Record<string, string | Uint8Array>,
   framework: StartFramework,
 ) => {
   const ownStart = 'src/start.ts' in files
@@ -529,7 +529,7 @@ export async function buildStart(
     typeof entry === 'object' ? entry : { client: entry, ssr: entry }
   const { workspace } = options
   /** Paths of the app as paths of the temporary directory. */
-  const inApp = (paths: Record<string, string> = {}) =>
+  const inApp = (paths: Record<string, string | Uint8Array> = {}) =>
     workspace
       ? Object.fromEntries(
           Object.entries(paths).map(([file, value]) => [
