@@ -10,11 +10,11 @@ import type { LoaderOptions } from './compiler-session'
 
 export function pitch(
   this: Rspack.LoaderContext<LoaderOptions>,
-): Promise<string | undefined> | undefined {
+): Promise<string | Buffer | undefined> | undefined {
   return loaderImplOf(this._compiler)?.(
     this,
-    '',
+    Buffer.alloc(0),
     undefined,
     this.getOptions(),
-  ).then((result) => result.code || undefined)
+  ).then((result) => (result.code.length > 0 ? result.code : undefined))
 }

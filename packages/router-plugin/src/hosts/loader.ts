@@ -1,7 +1,8 @@
 /**
  * The webpack-family loader of the router compiler: runs
- * for every id of a route module (env and derived `NormalModule`s hit the
- * same plan), composes its map with the input map (an earlier
+ * for every JavaScript module (raw: what is no route goes on as its bytes)
+ * and compiles every id of a route module (env and derived `NormalModule`s
+ * hit the same plan), composes its map with the input map (an earlier
  * loader's map is not lost) and names the
  * absolute path as the map source, whose text is in the map or, with a
  * recorder, in the emitted maps (`emittedMapTexts`). The static loader file
@@ -10,6 +11,7 @@
 import {
   composeLoaderMap,
   identify,
+  loaderText,
   locatedDiagnostic,
   normalizePath,
   webpackResourceId,
@@ -33,13 +35,14 @@ export interface LoaderContextLike {
 }
 
 export interface LoaderResult {
-  code: string
+  code: string | Uint8Array
   map: unknown
 }
 
+/** `source`: the module's bytes (the loader is raw). */
 export type LoaderImpl = (
   ctx: LoaderContextLike,
-  source: string,
+  source: Uint8Array,
   inputMap: unknown,
 ) => Promise<LoaderResult>
 
@@ -71,18 +74,19 @@ export function createLoaderImpl(
   env: { name: string; type: 'client' | 'server' },
   recordMapText: RecordMapText | null,
 ): LoaderImpl {
-  return async (ctx, source, inputMap) => {
+  return async (ctx, bytes, inputMap) => {
     const id = webpackResourceId(ctx.resource)
     const identity = identify(id)
     if (identity.lang === null || !compiler.wants(id)) {
-      return { code: source, map: inputMap }
+      return { code: bytes, map: inputMap }
     }
     const file = normalizePath(identity.path)
     if (!compiler.routeEntry(file)) {
       return identity.derived
         ? { code: 'export {}\n', map: undefined }
-        : { code: source, map: inputMap }
+        : { code: bytes, map: inputMap }
     }
+    const source = loaderText(bytes)
     const out = await compiler.compile({
       id,
       code: source,
@@ -92,7 +96,7 @@ export function createLoaderImpl(
       lines: 'lf',
     })
     if (!out) {
-      return { code: source, map: inputMap }
+      return { code: bytes, map: inputMap }
     }
     for (const dep of out.dependencies) {
       if (dep !== file) {
@@ -115,7 +119,7 @@ export function createLoaderImpl(
       buildInfo[LOCATED_DIAGNOSTICS.field] = located
     }
     if (identity.derived === null && out.code === source) {
-      return { code: source, map: inputMap }
+      return { code: bytes, map: inputMap }
     }
     return {
       code: out.code,

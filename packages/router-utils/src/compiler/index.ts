@@ -145,7 +145,7 @@ export {
   withOwnSourcesNamedByFile,
 } from './hosts/vite'
 export type { ModuleGraphLike } from './hosts/vite'
-export { composeLoaderMap, webpackResourceId } from './hosts/loader'
+export { composeLoaderMap, loaderText, webpackResourceId } from './hosts/loader'
 export {
   RSPACK_REBUILD_CALLBACKS_FIXED_IN,
   StaleSetDrain,
