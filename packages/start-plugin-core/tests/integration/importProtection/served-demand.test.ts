@@ -165,12 +165,12 @@ describe('an exempt importer the app no longer imports', () => {
         start: { importProtection: options('mock') },
         watchEdits: orphaned,
       })
+      // (its first build may report the file served as its mock: the two
+      // importers are exempt, and Vite compiles it once, R142 (2))
       expect({
-        first: problems(build.firstBuild).map(named),
         uses: await uses(build),
         problems: problems(build.diagnostics).map(named),
       }).toEqual({
-        first: [],
         uses: { plain: 'none', glob: ['MARK_SECRET'] },
         problems: [`warning ${denied}`],
       })
@@ -422,12 +422,14 @@ export const getRouter = () => undefined
       },
       plugins: [{ ...plugin, enforce: 'pre' }],
     })
-    await runViteClient(server, '/src/router.ts', readScript)
+    // (before: the first page got the mock, then the file's own check
+    // reloaded it)
+    const first = await runViteClient(server, '/src/router.ts', readScript)
     await server.idle()
     const after = await runViteClient(server, '/src/router.ts', readScript)
-    expect(after.result).toEqual({
-      plain: 'MARK_SECRET',
-      glob: ['MARK_SECRET'],
+    expect({ first: first.result, after: after.result }).toEqual({
+      first: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
+      after: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
     })
   },
   timeout,
