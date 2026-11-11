@@ -809,6 +809,11 @@ export class StaleSets {
     return this.byEnv.has(env)
   }
 
+  /** Whether the environment's set holds `path`. */
+  holds(env: string, path: string): boolean {
+    return this.byEnv.get(env)?.has(path) ?? false
+  }
+
   /**
    * Paths an environment's bundler is building again now on its own (their
    * files' events): its stale set lets them go.

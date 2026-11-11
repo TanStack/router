@@ -107,6 +107,7 @@ type StartRsbuildSessionOptions = Omit<
   | 'readFile'
   | 'loadVirtual'
   | 'label'
+  | 'takesStaleSets'
 >
 
 /** What the loader implementation uses of Rspack's loader context. */
@@ -207,6 +208,8 @@ export class StartRsbuildCompilerSession {
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       readFile: (file) => this.readFile(file),
+      // the environment compilers take the stale sets at `finishMake`
+      takesStaleSets: true,
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',

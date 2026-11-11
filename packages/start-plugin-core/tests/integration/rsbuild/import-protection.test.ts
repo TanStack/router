@@ -787,6 +787,42 @@ export const read = () => secret()
     timeout,
   )
 
+  // The same edit with `src/b.ts` also brought by a context module of the
+  // entry (`import.meta.webpackContext`: no import the compiler reads). The
+  // importer's rebuild takes the mock; `b.ts` stays in the client through
+  // the context and is reported as its own violation too: the importer's
+  // stale plan explained it only until that rebuild.
+  // Source: design 3 step 2 (a stale importer explains a marked module's
+  // presence; architect's ruling).
+  test(
+    'an edit that marks a module also brought by a context module reports the module once its importer is built again',
+    async () => {
+      const recorder = violationRecorder()
+      const app = markedApp('')
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: recorder.importProtection,
+        files: {
+          ...app,
+          'src/entry.ts': `${app['src/entry.ts']}const ctx = import.meta.webpackContext('./', { recursive: false, regExp: /^\\.\\/b\\.ts$/ })
+console.log(ctx.keys().map((key) => ctx(key)))
+`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      expect(recorder.violations).toEqual([])
+      await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
+      expect(
+        relevantViolations({ root: server.root, ...recorder }, [
+          markerViolation,
+          { environment: 'client', use: 'src/b.ts' },
+        ]).sort(),
+      ).toEqual(['client src/a.ts:2:27', 'client src/b.ts'])
+      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+    },
+    timeout,
+  )
+
   test(
     'an edit that removes the marker, the importer unchanged, gives the importer the module',
     async () => {
