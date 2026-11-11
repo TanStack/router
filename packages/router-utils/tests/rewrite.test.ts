@@ -1503,6 +1503,38 @@ describe('replacements at a statement start', () => {
     expect(out).toContain('if (y) {  }\n  (mk)()\n')
     expect(out).toContain('let u = foo\n      \n      ;(mk)()\n')
   })
+
+  // a text that is only a comment has no first token: it continues nothing,
+  // and what renders after it is guarded after it (design 1 step 4's notes:
+  // it read as starting with `/`)
+  it('reads no first token in a text that is only a comment', () => {
+    const code = dedent(`
+      export function f() {
+        let y = foo
+        const gone = 1;
+        /* c */
+        wrap(1)
+        let z = bar
+        g()
+      }
+    `)
+    const e = engine(code)
+    const gone = rangeOf(code, 'const gone = 1;')
+    e.ctx.rewrites.edit({ range: gone, body: [], by: 'toy' })
+    e.ctx.rewrites.edit({
+      range: rangeOf(code, 'wrap(1)'),
+      body: [{ k: 'text', parts: ['(1)'] }],
+      by: 'toy',
+    })
+    e.ctx.rewrites.insert({
+      at: rangeOf(code, 'g()').start,
+      body: [{ k: 'text', parts: ['/*i*/'] }],
+      by: 'toy',
+    })
+    const out = e.render().code
+    expect(out).toContain('let y = foo\n  \n  /* c */\n  ;(1)\n')
+    expect(out).toContain('let z = bar\n  /*i*/g()\n')
+  })
 })
 
 // R127 (Fable review of the cast-split class, 2026-11-10): an owner renders
