@@ -1,24 +1,19 @@
 /**
  * The compiler's invalidations in a Vite dev server or `build --watch` (the
  * one invalidation operation of the core, `invalidate`): the hosts that
- * re-validate fingerprints, its application to an environment's module graph,
- * and the dependents whose output it changed.
+ * re-validate fingerprints, and the stale sets handed to Vite.
  */
 import {
-  applyViteInvalidation,
-  identify,
   invalidate,
   normalizePath,
+  takeStaleModules,
 } from '@tanstack/router-utils/compiler'
 import type {
   HostServices,
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
-import type { DevEnvironment, Environment, EnvironmentModuleNode } from 'vite'
+import type { DevEnvironment } from 'vite'
 import type { Session, ViteCompilerState } from './compiler-state'
-
-/** How many dependents of one file change `changedDependents` transforms at once. */
-const DEPENDENT_TRANSFORMS = 128
 
 /** The host of the invalidation operation (a dev environment's own resolver). */
 function invalidationHost(
@@ -67,112 +62,42 @@ export function invalidationHosts(
 }
 
 /**
- * Applies one invalidation to an env's module graph and returns the
- * dependents (`applyViteInvalidation`; Vite transforms them again and
- * propagates their updates): the changed file's own modules are Vite's own
- * update, and an `unlink`'s dependents wait for the next `add`.
+ * The invalidation of a file event or a registry change, by one hook
+ * (each environment's hook forwards the event: the core compares, so a
+ * repeat changes nothing). A failure is the dev server's to print: the hook
+ * goes on to take its environment's stale set (what the invalidation found
+ * stale stays there until a hook takes it).
  */
-export function applyInvalidation(
+export async function invalidateFor(
+  state: ViteCompilerState,
   s: Session,
-  environment: Environment,
+  environment: DevEnvironment,
   change: InvalidateChange,
-  res: Awaited<ReturnType<typeof invalidate>>,
-  timestamp: number,
-): Array<EnvironmentModuleNode> {
-  let waiting = s.awaitingAdd.get(environment.name)
-  if (!waiting) {
-    waiting = new Set()
-    s.awaitingAdd.set(environment.name, waiting)
-  }
-  return applyViteInvalidation(
-    environment as DevEnvironment,
+): Promise<void> {
+  await invalidate(
+    s.start.caches,
     change,
-    res,
-    timestamp,
-    { ownUpdate: true, awaitingAdd: waiting },
-  )
-}
-
-/** Digest of the compiler's last output of a module id in an environment (`Session.outputDigests`). */
-function digestOf(s: Session, id: string, key: string): string | undefined {
-  return s.outputDigests.get(identify(id).path)?.get(key)
-}
-
-/** Forgets what the session and the host hold of a deleted file (`file`: its normalized path). */
-export function forgetFile(s: Session, file: string): void {
-  s.start.forget(file)
-  s.outputDigests.delete(file)
+    invalidationHosts(state, s, environment),
+  ).catch((error: unknown) => {
+    environment.logger.error(
+      `[tanstack-start] invalidating ${change.path} after a file change failed: ${String(error)}`,
+    )
+  })
 }
 
 /**
- * The dependents whose output the change altered: a dependent re-plans
- * (its plan was evicted), and the one the compiler emits again as the
- * page holds it is no update (D8: hard-invalidate where decisions
- * changed). Propagating it would only send the page a module it cannot
- * hot-apply (a route tree, accepted by nothing) and so a full reload,
- * e.g. after a route file gained an export. The comparison is of the
- * compiler's output, not Vite's (import analysis stamps `?t=` on the
- * imports of changed modules). The dependents are transformed
- * `DEPENDENT_TRANSFORMS` at a time (an export added to a shared module
- * re-plans each of its importers: their waits overlap, and the modules
- * in flight at once stay few); the result keeps their order.
- *
- * An unchanged dependent stays invalidated (soft: its next request reuses
- * this transform): Vite's graph, not the comparison, says whether what a
- * module runner holds is current. Another file's hot update may have
- * invalidated the dependent meanwhile (Vite keeps a transform that an HMR
- * invalidation overtook), and a runner whose copy failed to load (an
- * import was missing) is not told when the file is back.
+ * The modules of an environment's stale set, invalidated, as a hot update
+ * outside a hook (a registry change): Vite sends their update
+ * (`reloadModule`), as a hook's returned modules (a dev server without HMR
+ * transforms them again on their next request).
  */
-export async function changedDependents(
+export function reloadStaleModules(
   s: Session,
   environment: DevEnvironment,
-  dependents: Array<EnvironmentModuleNode>,
-): Promise<Array<EnvironmentModuleNode>> {
-  const unchanged: Array<boolean> = []
-  let next = 0
-  const transformNext = async (): Promise<void> => {
-    while (next < dependents.length) {
-      const i = next++
-      const node = dependents[i]!
-      if (node.id === null) {
-        continue
-      }
-      // Vite's own propagation of the file change may have cleared the
-      // node's transform result already; the compiler's last output is
-      // what the page holds
-      const key = `${environment.name}\0${node.id}`
-      const previous = digestOf(s, node.id, key)
-      if (previous === undefined) {
-        continue
-      }
-      await environment.transformRequest(node.url).catch(() => null)
-      unchanged[i] = digestOf(s, node.id, key) === previous
-    }
+): void {
+  for (const node of takeStaleModules(s.start.caches, environment, false)) {
+    void environment.reloadModule(node)
   }
-  await Promise.all(
-    Array.from(
-      { length: Math.min(DEPENDENT_TRANSFORMS, dependents.length) },
-      transformNext,
-    ),
-  )
-  // once every transform ended: an invalidation reaches the importers,
-  // and Vite drops a transform it overtook (compiled again on request)
-  const changed: Array<EnvironmentModuleNode> = []
-  dependents.forEach((node, i) => {
-    if (unchanged[i]) {
-      environment.moduleGraph.invalidateModule(
-        node,
-        undefined,
-        undefined,
-        false,
-        true,
-      )
-    } else {
-      changed.push(node)
-    }
-  })
-  return changed
 }
 
 /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
@@ -189,19 +114,15 @@ export async function invalidateRegistry(
   if (!first) {
     return
   }
-  const change: InvalidateChange = {
-    path: normalizePath(file),
-    kind: 'registry',
-  }
-  const res = await invalidate(
-    s.start.caches,
-    change,
-    invalidationHosts(state, s, first),
-  )
-  const now = Date.now()
+  const path = normalizePath(file)
+  await invalidateFor(state, s, first, { path, kind: 'registry' })
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
-      applyInvalidation(s, environment, change, res, now)
+      // the core stales the file in the environments that compiled; one
+      // that has not (a module served before it was a route, after a
+      // restart) has its module built again too
+      s.start.caches.stale.add(environment.name, path)
+      reloadStaleModules(s, environment)
     }
   }
 }

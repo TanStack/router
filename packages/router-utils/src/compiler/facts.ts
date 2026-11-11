@@ -75,6 +75,11 @@ interface RawFactsOptions {
    * parsed only when asked (`getTarget`).
    */
   opaque?: (path: string, text: string) => boolean
+  /**
+   * A file's modification time (null: unknown). Without it, every file
+   * event that reads a file empty waits for its text (`readChange`).
+   */
+  modifiedAt?: (path: string) => Promise<number | null>
 }
 
 /** Effects in every environment: what is unknown of a module. */
@@ -157,6 +162,12 @@ export class RawFactsCache {
   private readonly seen = new Map<string, string>()
   /** Path → reads of it in flight: their texts are not in `seen` yet. */
   private readonly reads = new Map<string, number>()
+  /**
+   * Path → the modification time of the file when a file event's read found
+   * it empty and waited for its text in vain (`readChange`): an event that
+   * finds it so again is a repeat of that one.
+   */
+  private readonly emptyAt = new Map<string, number>()
   /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
   private readonly counters = { factsHits: 0, factsReads: 0, eventReads: 0 }
   private changes = 0
@@ -200,6 +211,7 @@ export class RawFactsCache {
     if (text !== undefined && !this.noFacts) {
       if (text === null) {
         this.seen.delete(path)
+        this.emptyAt.delete(path)
       } else {
         this.seen.set(path, revision(text))
       }
@@ -230,10 +242,11 @@ export class RawFactsCache {
    * asset), which is never read (its text is `''`, as for its facts). The
    * caller applies a differing text with `markStale`. An empty read is read
    * again for a moment (`readSaved`: an in-place save reported between
-   * truncation and write), unless an event already read it empty (and
-   * waited). The same text proves that no fact of the file moved, not that
-   * the file was there all along: the caller still moves the file set for
-   * an `add` or a removal.
+   * truncation and write), unless an event's read found it empty and waited
+   * in vain, and the file was not modified since (`modifiedAt`: a repeat of
+   * that event, through another hook). The same text proves that no fact of
+   * the file moved, not that the file was there all along: the caller still
+   * moves the file set for an `add` or a removal.
    */
   async readChange(
     path: string,
@@ -243,11 +256,24 @@ export class RawFactsCache {
     let text: string | null = ''
     if (readable) {
       text = await this.readEvent(path)
-      if (text === '' && seen() !== EMPTY_REVISION) {
-        for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
-          await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
-          text = await this.readEvent(path)
+      if (text === '') {
+        const at = (await this.opts.modifiedAt?.(path)) ?? null
+        if (
+          at === null ||
+          this.emptyAt.get(path) !== at ||
+          seen() !== EMPTY_REVISION
+        ) {
+          for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
+            await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
+            text = await this.readEvent(path)
+          }
+          if (text === '' && at !== null) {
+            this.emptyAt.set(path, at)
+          }
         }
+      }
+      if (text !== '') {
+        this.emptyAt.delete(path)
       }
     }
     const same =
@@ -271,6 +297,7 @@ export class RawFactsCache {
   forget(path: string): void {
     this.changes++
     this.seen.delete(path)
+    this.emptyAt.delete(path)
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
       const e = this.entries.get(id)!
@@ -322,6 +349,7 @@ export class RawFactsCache {
         const path = identify(id).path
         if (!this.byPath.has(path)) {
           this.seen.delete(path)
+          this.emptyAt.delete(path)
         }
       }
     }
@@ -607,6 +635,7 @@ export class RawFactsCache {
       const seen = this.seen.get(path)
       if (text === null) {
         this.seen.delete(path)
+        this.emptyAt.delete(path)
       } else if (
         seen === undefined ||
         (seen !== UNKNOWN && seen !== revision(text))

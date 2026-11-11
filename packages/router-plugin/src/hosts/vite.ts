@@ -15,7 +15,6 @@ import {
   SAME_FILE_SPECIFIER_RE,
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
-  applyViteInvalidation,
   displayPath,
   identify,
   isFinalBuild,
@@ -25,6 +24,7 @@ import {
   releaseEnvironment,
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
+  takeStaleModules,
   viteLog,
   warnEagerExports,
   watchDependencies,
@@ -38,7 +38,6 @@ import {
 import { JS_ID_RE, RouterCompiler } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type { ModuleGraphLike } from '@tanstack/router-utils/compiler'
 import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 
 const CODE_SPLITTER_PLUGIN_NAME =
@@ -113,28 +112,35 @@ export function createRouterCompilerVitePlugin(
   const resolveUserConfig = () =>
     typeof options === 'function' ? options() : getConfig(options, ROOT)
 
-  const invalidatePath = async (
+  /** A file event's or a registry change's invalidation; a failure is the dev server's to print. */
+  const invalidatePath = (
     s: Session,
     file: string,
     kind: 'change' | 'add' | 'unlink' | 'registry',
-  ) => {
-    const change = { path: normalizePath(file), kind }
-    const res = await s.compiler.invalidate(change.path, kind)
-    if (!s.server) {
-      return
-    }
-    const now = Date.now()
-    for (const environment of Object.values(
-      (
-        s.server as unknown as {
-          environments: Record<
-            string,
-            { name: string; moduleGraph: ModuleGraphLike<unknown> }
-          >
-        }
-      ).environments,
-    )) {
-      applyViteInvalidation(environment, change, res, now)
+  ) =>
+    s.compiler.invalidate(normalizePath(file), kind).then(
+      () => undefined,
+      (error: unknown) => {
+        s.server?.config.logger.error(
+          `[tanstack-router] invalidating ${file} after a file change failed: ${String(error)}`,
+        )
+      },
+    )
+
+  /**
+   * Outside a hot update (a registry change, a dev server without HMR):
+   * every environment's stale set, invalidated and sent as an update
+   * (`reloadModule`; nothing is sent without HMR).
+   */
+  const reloadStale = (s: Session, held: boolean) => {
+    for (const environment of Object.values(s.server?.environments ?? {})) {
+      for (const node of takeStaleModules(
+        s.compiler.caches,
+        environment,
+        held,
+      )) {
+        void environment.reloadModule(node)
+      }
     }
   }
 
@@ -154,13 +160,20 @@ export function createRouterCompilerVitePlugin(
       // a registry change (the generator published new route ids) re-plans
       // the route modules concerned
       s.unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {
-        for (const file of changedRoutePaths(next, previous)) {
-          void invalidatePath(s, file, 'registry').catch((error: unknown) => {
-            server?.config.logger.error(
-              `[tanstack-router] invalidating ${file} after a route change failed: ${String(error)}`,
-            )
-          })
-        }
+        const files = changedRoutePaths(next, previous).map(normalizePath)
+        void Promise.all(
+          files.map((file) => invalidatePath(s, file, 'registry')),
+        ).then(() => {
+          // the core stales a file in the environments that compiled; one
+          // that has not (a module served before it was a route, after a
+          // restart) has its module built again too
+          for (const environment of Object.keys(s.server?.environments ?? {})) {
+            for (const file of files) {
+              s.compiler.caches.stale.add(environment, file)
+            }
+          }
+          reloadStale(s, false)
+        })
       })
       return s
     },
@@ -379,20 +392,50 @@ export function createRouterCompilerVitePlugin(
       },
     },
 
-    hotUpdate({ file, modules }) {
-      // the update is of the modules the file's current plan produces
-      return liveModules(
+    /**
+     * Design 3's hook: the event's invalidation, then the environment's
+     * stale set handed to Vite with the event's own modules (those the
+     * file's current plan produces). A creation takes the paths held since
+     * a removal. A path that enters the set after the take waits for the
+     * next event's hook.
+     */
+    async hotUpdate({ file, modules, type }) {
+      const s = sessions.of(this.environment)
+      const kind =
+        type === 'update' ? 'change' : type === 'create' ? 'add' : 'unlink'
+      await invalidatePath(s, file, kind)
+      const live =
+        (await liveModules(
+          this.environment,
+          s.compiler.caches,
+          normalizePath(file),
+          modules,
+        )) ?? modules
+      const stale = takeStaleModules(
+        s.compiler.caches,
         this.environment,
-        sessions.of(this.environment).compiler.caches,
-        file,
-        modules,
-      )
+        kind === 'add',
+      ).filter((node) => !live.includes(node))
+      return stale.length > 0 || live !== modules
+        ? [...live, ...stale]
+        : undefined
     },
 
+    // where Vite calls no `hotUpdate`: a build's watcher (`vite build
+    // --watch`), bundled dev and a dev server without HMR
     async watchChange(id, { event }) {
+      const s = sessions.of(this.environment)
+      if (
+        this.environment.mode === 'dev' &&
+        !bundledDev &&
+        s.server?.config.server.hmr !== false
+      ) {
+        return
+      }
       const kind =
         event === 'update' ? 'change' : event === 'create' ? 'add' : 'unlink'
-      await invalidatePath(sessions.of(this.environment), id, kind)
+      await invalidatePath(s, id, kind)
+      reloadStale(s, kind === 'add')
     },
   }
   return plugin
