@@ -6458,6 +6458,55 @@ describe('language operations are no effect (rule L)', () => {
     },
   )
 
+  // the executing property (seed 309): `'p' in l8` reads what `l8` holds
+  // (`o0`, through a conditional alias), but `in` is no read through a
+  // name for the alias model, so the write through the holder after it
+  // orders nothing
+  it.fails(
+    'keeps an `in` through an alias before a write through a holder of the object',
+    async () => {
+      const r = await split(
+        dedent(`
+        import { createFileRoute } from 'toy-router'
+        const on = true
+        const o0 = { v: 1 }
+        const h2 = { c: o0 }
+        const l8 = on ? o0 : null
+        const r9 = 'p' in l8
+        h2.c.p = 4
+        export const Route = createFileRoute('/x')({
+          component: () => ({ r9 }),
+        })
+      `),
+      )
+      expect(r.env).toContain("const r9 = 'p' in l8")
+    },
+  )
+
+  // the executing property (seeds 555, 1880): a spread of a builder's
+  // options is no effect under rule L, and a call of its method inside a
+  // route option's function is no recorded write (at an unknown time), so
+  // nothing keeps the copy before the call that changes them
+  it.fails(
+    'keeps a copy of an object before a method call on it in a route option function',
+    async () => {
+      const r = await split(
+        dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { mw, hoc } from './lib'
+        const b5 = mw()
+        const r6 = { ...b5.o }
+        export const Route = createFileRoute('/x')({
+          beforeLoad: hoc(function PbeforeLoad() { b5.server(() => 11); return {} }),
+          component: () => ({ r6 }),
+        })
+      `),
+        { keys: ['component'] },
+      )
+      expect(r.env).toContain('const r6 = { ...b5.o }')
+    },
+  )
+
   // what is no language operation stays an effect: an exported declaration
   // a chunk needs is then kept for its effects, not extracted
   describe('what still is an effect', () => {
