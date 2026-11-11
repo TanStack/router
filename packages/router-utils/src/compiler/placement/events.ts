@@ -193,9 +193,10 @@ export function eventTable(
   })
 
   /*
-   * What no round changes of `c`'s evaluation, walked once per cluster:
-   * the first touch of a binding written outside it at an unknown time
-   * (V), else the first one a write at load after it orders (O's reader);
+   * What no round changes of `c`'s evaluation, walked once per cluster,
+   * up to the first touch of a binding written outside it at an unknown
+   * time (V, which ends the walk): the first one a write at load after it
+   * orders (O's reader);
    * per written binding, its first and last touch; and, for an effectful
    * cluster, the first touch of each binding of another effectful cluster
    * (imports aside: read lazily, the chunk loads after the route module,
@@ -244,15 +245,17 @@ export function eventTable(
       } else {
         found.spans.set(t.sym, { first: t.at, last: t.at })
       }
-      if (found.late === null) {
-        const w = graph.lateWrite(t.sym, c)
-        if (w !== undefined) {
-          found.late = statePin(t, w)
-        } else if (found.later === null) {
-          const l = graph.laterWrite(t.sym, t.at, c)
-          if (l !== undefined) {
-            found.later = statePin(t, l)
-          }
+      const w = graph.lateWrite(t.sym, c)
+      if (w !== undefined) {
+        // V ends the walk: such a cluster takes no slot, so nothing asks
+        // its reads or the rest of its spans (the checker meets this touch)
+        found.late = statePin(t, w)
+        return true
+      }
+      if (found.later === null) {
+        const l = graph.laterWrite(t.sym, t.at, c)
+        if (l !== undefined) {
+          found.later = statePin(t, l)
         }
       }
       return false
