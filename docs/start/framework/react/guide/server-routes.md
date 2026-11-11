@@ -115,6 +115,17 @@ The start handler is responsible for matching an incoming request to a server ro
 
 If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](./server-entry-point).
 
+### Server-only routes skip the Router
+
+When a route file defines only `server` options (no component, loader, or other UI options), Start serves exact matches for it from a prebuilt server-only route tree without constructing a Router. This happens automatically on the Vite plugin and needs no configuration. Requests that miss, including page requests and methods the route has no handler for, go through the Router as usual.
+
+Two router options are not visible on this path:
+
+- Router-level `caseSensitive` is not applied. A router configured with `caseSensitive: true` still serves `/API/health` from a server-only route at `/api/health`. Set `caseSensitive` on the route itself if you need it there.
+- Location `rewrite` options are not applied before matching server-only routes. Put server-only routes at the path the request actually uses.
+
+Start falls back to the Router for the whole app, with a build warning, when the root route defines `server` options or when a server-only route with a path parameter would shadow a page route. Rsbuild builds always use the Router.
+
 ## Defining a Server Route
 
 Server routes are created by adding a `server` property to your `createFileRoute` call. The `server` property contains:
