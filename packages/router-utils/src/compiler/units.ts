@@ -86,8 +86,6 @@ export interface Unit {
    * destructuring and every other unit kind: false.
    */
   identityFree: boolean
-  /** Its evaluation calls something, however pure (a call or a `new` in what the unit evaluates at load). */
-  callsAtLoad: boolean
   /** Import entries (Tier 0 index) for import units. */
   importIndex: number | null
   /** The ranges of the names as written, without an annotation (what a rename replaces). */
@@ -367,10 +365,9 @@ export function buildUnits(
     const b = file.referenceOf(local)?.binding ?? null
     return b !== null && !hasRuntimeValue(b)
   }
-  let callsSeen = purity.calls
   const add = (
     item: TopLevelItem,
-    u: Omit<Unit, 'id' | 'item' | 'region' | 'callsAtLoad'>,
+    u: Omit<Unit, 'id' | 'item' | 'region'>,
   ): Unit => {
     const id = units.length
     const unit: Unit = {
@@ -379,11 +376,7 @@ export function buildUnits(
       item: item.index,
       // (each unit is the region of its id: `RegionTable`)
       region: id,
-      // what the purity check of this unit, just done, visited (it stops at
-      // the first impure part: `callsWhenEvaluated` looks into the rest)
-      callsAtLoad: purity.calls > callsSeen,
     }
-    callsSeen = purity.calls
     units.push(unit)
     item.units.push(id)
     for (const s of unit.declares) {
@@ -400,7 +393,7 @@ export function buildUnits(
     node: Node,
     kind: UnitKind,
     range: Range,
-  ): Omit<Unit, 'id' | 'item' | 'region' | 'callsAtLoad'> => ({
+  ): Omit<Unit, 'id' | 'item' | 'region'> => ({
     kind,
     range,
     declares: [],
@@ -947,48 +940,56 @@ export function statementRecipe(
   }
 }
 
+/** Where what a unit evaluates calls something, and the functions those calls receive (`callsWhenEvaluated`). */
+export interface EvaluatedCalls {
+  /** The calls, `new`s and tagged templates, in source order. */
+  calls: Array<Range>
+  /** The functions passed to them directly, as an argument or as the callee, in source order, with the call passing each. */
+  callbacks: Array<Range & { call: Range }>
+}
+
 /**
- * Whether evaluating `node` calls something (a call, a `new`, a tagged
- * template), and the functions those calls receive directly as arguments or
- * as callee (they may run then too, with what they call in turn). Other
- * function bodies run only when called. A walk of the unit's node (phase B):
- * asked only by `runsAtLoad`, which few modules need.
+ * What evaluating `node` calls (a call, a `new`, a tagged template), and
+ * the functions those calls receive directly as arguments or as callee
+ * (they may run then too, with what they call in turn). Other function
+ * bodies run only when called: a function declaration evaluates nothing.
+ * A walk of the unit's node (phase B), asked for the evaluations placement
+ * asks what they run (`ReadIndex.runs`).
  */
-export function callsWhenEvaluated(node: Node): {
-  calls: boolean
-  callbacks: Array<Range>
-} {
-  let calls = false
-  const callbacks: Array<Range> = []
+export function callsWhenEvaluated(node: Node): EvaluatedCalls {
+  const calls: Array<Range> = []
+  const callbacks: EvaluatedCalls['callbacks'] = []
   const runs = new Set<Node>()
-  const passed = (n: Node) => {
+  const passed = (n: Node, call: Range) => {
     const f = unwrapExpression(n)
     if (
       f.type === 'FunctionExpression' ||
       f.type === 'ArrowFunctionExpression'
     ) {
       runs.add(f)
-      callbacks.push({ start: f.start, end: f.end })
+      callbacks.push({ start: f.start, end: f.end, call })
     }
   }
   walk(node, {
     enter: (n, wctx) => {
       switch (n.type) {
         case 'CallExpression':
-        case 'NewExpression':
-          calls = true
-          passed(n.callee)
+        case 'NewExpression': {
+          const call = { start: n.start, end: n.end }
+          calls.push(call)
+          passed(n.callee, call)
           for (const a of n.arguments) {
-            passed(a.type === 'SpreadElement' ? a.argument : a)
+            passed(a.type === 'SpreadElement' ? a.argument : a, call)
           }
           return
+        }
         case 'TaggedTemplateExpression':
-          calls = true
+          calls.push({ start: n.start, end: n.end })
           return
         case 'FunctionExpression':
         case 'ArrowFunctionExpression':
         case 'FunctionDeclaration':
-          if (n !== node && !runs.has(n)) {
+          if (!runs.has(n)) {
             wctx.skip()
           }
       }

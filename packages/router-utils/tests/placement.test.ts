@@ -4881,6 +4881,42 @@ describe('what an evaluation runs: one walk for every rule', () => {
     ])
   })
 
+  // a function passed to a call evaluates nothing itself: what reads state
+  // in it runs when the call around it calls it (a server fn's handler)
+  it.each([
+    ['a function passed to a call', '() => String(n)', null],
+    ['a call (control)', '(() => String(n))()', 'ordered-effect'],
+  ])(
+    'reports a region that is %s as observing lazily written state accordingly',
+    async (_, argument, reason) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { f } from './lib'
+        let n = 0
+        export function inc() { n++ }
+        export const job = f(${argument})
+        export const Route = createFileRoute('/')({ component: () => null })
+      `)
+      const region: Planner = {
+        name: 'toy-region',
+        tier: 1,
+        gate: () => true,
+        plan(ctx) {
+          const start = ctx.analysis.source.code.indexOf(argument)
+          const range = { start, end: start + argument.length }
+          ctx.region(range, 'custom')
+          ctx.setFacts('toy-region', {
+            fallback: ctx.fallbackAt(range)?.reason ?? null,
+          })
+        },
+      }
+      const r = await compile(code, [toySplitPlanner(), region])
+      expect(r.main?.facts.planners['toy-region']).toEqual({
+        fallback: reason,
+      })
+    },
+  )
+
   // F1-2: an extracted export's module evaluates when something first
   // imports it (with the chunk, once nothing imports the binding through
   // the route file): a snapshot of state the route module's functions write

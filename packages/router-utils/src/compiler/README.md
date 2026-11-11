@@ -161,15 +161,16 @@ extends Z`, directly or through what they carry) share the module of the first i
   cluster writes the binding after it, or at an unknown time (inside a function; and code that evaluates with
   the module but runs later: an async or generator function invoked where it is written, an instance field's
   initialiser, `t1.runsLaterAt`). "After it" compares positions where the code runs: a read inside a function
-  the load calls runs where the first such call is (`runsAtLoad`), and for a cluster that may move, where it
-  evaluates. What a cluster reads at load
-  has one definition (`ClusterGraph.loadReads`): its eager reads, the reads inside any function a unit that
-  calls something may run (a function it passes directly, `['x'].map((k) => n + k)`, or calls; not a method
-  nested in an object argument, `defineComponent({ setup() {} })`), and those
-  of the declarations such reads reach, transitively (`n++`, `n += 1` and `n = v` count as reads: a cluster
-  whose load assigns state, `init()` writing `mode`, is ordered like one reading it); a claimed region's text
-  evaluates where its owner lands, and an option value that calls something (`withPrefix(Page)`) reads what that
-  call may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
+  an evaluation calls runs where that evaluation reaches it. What an evaluation runs has one definition, asked
+  of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
+  module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
+  owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
+  and the text of the module's declarations its running references name, transitively (`n++`, `n += 1` and
+  `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
+  reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
+  holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
+  option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
+  may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
   Such a reader never moves to a lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }`

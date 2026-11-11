@@ -12,12 +12,7 @@ import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { namespaceName, patternIdentifiers, unwrapExpression } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import {
-  buildItems,
-  buildUnits,
-  callsWhenEvaluated,
-  writesMember,
-} from './units'
+import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
 import {
   builderCall,
@@ -28,7 +23,7 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type { TopLevelItem, Unit, UnitId } from './units'
+import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -491,7 +486,6 @@ export class ModuleAnalysis {
       noSideEffectCallees,
       pureNamespaces,
       namespaceImports: namespaceImports ?? NO_NAMESPACES,
-      calls: 0,
       // (every context has the same shape: the per-environment ones below
       // set it, and the purity checks run on both)
       builders: undefined,
@@ -1636,137 +1630,84 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   return true
 }
 
+const NO_UNITS: ReadonlyArray<UnitId> = []
+
 /**
- * Which references run when the module loads, and from where: the eager
- * ones, and every reference inside a module-level function or class that
- * the load may run.
- * The load runs what an eager reference calls, and a unit whose evaluation
- * calls anything (effectful or not) may run whatever it reads: its callee
- * can be an alias, a method of an object it reads (`o.m()`, `read.call()`),
- * a function it returns, or take the function as an argument (`apply(read)`,
- * `['x'].map((k) => n + k)`: `callsWhenEvaluated`). A function nested in an
- * object or array argument (`defineComponent({ setup() {} })`) runs only
- * when called. What such a body reads may run too, transitively. A static
- * module that evaluates
- * `const config = build()` runs `build`'s body before the route module's own
- * body, whatever `build` reads; the position of a read says nothing about
- * when it happens once a call is involved. Holding a function runs nothing
- * (`const config = { read }`), nor does writing one of its properties.
- * `live`: a reference in code the output evaluates where it is written
- * (kept, and not relocated by a claim).
+ * What an evaluation runs: the one definition of "runs at load" (README,
+ * "effects and mutable state"), asked of one evaluation at a time. `text`
+ * holds the references of the text the evaluation evaluates; `calls`, what
+ * that text calls (`callsWhenEvaluated`; null when it calls nothing). The
+ * evaluation runs the eager references of its text and, when it calls
+ * anything, those of the functions it passes to a call
+ * (`['x'].map((k) => n + k)`) and the text of every module-level
+ * declaration a running reference names (`bodyOf`): the callee can be an
+ * alias, a method of an object it reads (`o.m()`, `read.call()`), a
+ * function it returns, or take the function as an argument
+ * (`apply(read)`); what such a body names may run too, transitively.
+ * Holding a function runs nothing (`const config = { read }`), nor does
+ * writing one of its properties (`Page.displayName = …`, the root of a
+ * member write), nor a method nested in an object argument
+ * (`defineComponent({ setup() {} })`).
  *
- * The answer is the earliest position in the module at which the reference
- * may run while the module loads: its own for an eager reference (and for
- * one in a callback a calling unit runs, which runs within that unit), the
- * position of the first load evaluation that may call it for one in a
- * function body (`const snap = read()` above `function read() { … }` runs
- * the body at `snap`); null when it does not run at load.
+ * `visit(ref, at)` sees each reference that runs with where it runs: its
+ * own position in the evaluation's text, in a body the position of the
+ * reference that reached the body first in source order (`const snap =
+ * read()` above `function read() { … }` runs the body at `snap`). True
+ * from `visit` ends the walk; the result says whether it did.
  */
-export function runsAtLoad(
-  t1: Pick<Tier1, 'refs' | 'units' | 'declaringUnits' | 'unitAt'>,
-  live: (ref: ClassifiedRef) => boolean = () => true,
-): (ref: ClassifiedRef) => number | null {
-  const seeds: Array<ClassifiedRef> = []
-  /** References inside a function a calling unit passes on: they run at load. */
-  const loadCallbackRefs = new Set<ClassifiedRef>()
-  for (const r of t1.refs.all) {
-    if (r.eager && callsValue(r) && live(r)) {
-      seeds.push(r)
-    }
-  }
-  // a unit whose evaluation calls something, effectful or not: what it
-  // reads may be called, and a function it passes to a call may run
-  for (const unit of t1.units) {
-    // an effectful unit's purity check stopped before the calls after its
-    // first impure part
+export function visitRuns(
+  t1: Pick<Tier1, 'units' | 'declaringUnits'>,
+  text: ReadonlyArray<ClassifiedRef>,
+  calls: EvaluatedCalls | null,
+  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
+  visit: (ref: ClassifiedRef, at: number) => boolean,
+): boolean {
+  const roots: Array<ClassifiedRef> = []
+  for (const ref of text) {
     if (
-      !unit.callsAtLoad &&
-      !(unit.effectful && EVALUATED_KINDS.has(unit.kind))
+      !ref.eager &&
+      (calls === null ||
+        !calls.callbacks.some(
+          (f) => f.start <= ref.range.start && ref.range.end <= f.end,
+        ))
     ) {
       continue
     }
-    const { calls, callbacks } = callsWhenEvaluated(unit.node)
-    if (!calls) {
-      continue
+    if (visit(ref, ref.range.start)) {
+      return true
     }
-    for (const inner of t1.refs.refsIn(unit.range)) {
-      if (inner.eager && mayRun(inner, live)) {
-        seeds.push(inner)
-      }
+    if (calls !== null && !ref.memberWrite) {
+      roots.push(ref)
     }
-    for (const range of callbacks) {
-      for (const inner of t1.refs.refsIn(range)) {
-        if (!inner.eager && mayRun(inner, live)) {
-          seeds.push(inner)
-          loadCallbackRefs.add(inner)
+  }
+  if (roots.length === 0) {
+    return false
+  }
+  roots.sort((a, b) => a.range.start - b.range.start)
+  const seen = new Set<UnitId>()
+  const work: Array<ClassifiedRef> = []
+  for (const root of roots) {
+    const at = root.range.start
+    work.push(root)
+    while (work.length > 0) {
+      const r = work.pop()!
+      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
+        if (t1.units[u]!.kind !== 'declaration' || seen.has(u)) {
+          continue
+        }
+        seen.add(u)
+        for (const inner of bodyOf(u)) {
+          if (visit(inner, at)) {
+            return true
+          }
+          if (!inner.memberWrite) {
+            work.push(inner)
+          }
         }
       }
     }
   }
-  // (a calling unit's own references count through `loadCallbackRefs`: a
-  // function it holds, or nests in an argument, runs only when called);
-  // walked in source order, a body is first reached from the earliest
-  // evaluation that may run it
-  const marked = new Map<UnitId, number>()
-  seeds.sort((a, b) => a.range.start - b.range.start)
-  for (const seed of seeds) {
-    unitsRunBy(t1, [seed], live, marked, seed.range.start)
-  }
-  if (marked.size === 0 && loadCallbackRefs.size === 0) {
-    return (ref) => (ref.eager ? ref.range.start : null)
-  }
-  return (ref) => {
-    if (ref.eager || loadCallbackRefs.has(ref)) {
-      return ref.range.start
-    }
-    const u = t1.unitAt(ref.range)
-    return u === null ? null : (marked.get(u) ?? null)
-  }
-}
-
-/** Units whose text the module evaluates (imports, re-exports and types aside). */
-const EVALUATED_KINDS = new Set(['declaration', 'effect', 'export-default'])
-
-/**
- * Whether what a live reference reads may run where it is evaluated: not
- * the root of a member write (`Page.displayName = f()` writes `Page`, it does
- * not call it).
- */
-const mayRun = (
-  ref: ClassifiedRef,
-  live: (ref: ClassifiedRef) => boolean,
-): boolean => !ref.memberWrite && live(ref)
-
-/**
- * The module-level declarations whose bodies may run where `refs` run (what
- * they read, transitively), added to `marked` with `at` (where the run
- * starts) unless already there: a reference may call what it reads, or hand
- * it to something that does.
- */
-export function unitsRunBy(
-  t1: Pick<Tier1, 'refs' | 'units' | 'declaringUnits'>,
-  refs: Iterable<ClassifiedRef>,
-  live: (ref: ClassifiedRef) => boolean,
-  marked: Map<UnitId, number> = new Map(),
-  at = 0,
-): Map<UnitId, number> {
-  const work = [...refs]
-  while (work.length > 0) {
-    const r = work.pop()!
-    for (const u of t1.declaringUnits.get(r.sym) ?? []) {
-      const unit = t1.units[u]!
-      if (unit.kind !== 'declaration' || marked.has(u)) {
-        continue
-      }
-      marked.set(u, at)
-      for (const inner of t1.refs.refsIn(unit.range)) {
-        if (mayRun(inner, live)) {
-          work.push(inner)
-        }
-      }
-    }
-  }
-  return marked
+  return false
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
