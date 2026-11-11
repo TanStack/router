@@ -95,7 +95,7 @@ emits its own output. Nothing depends on transform order.
 Per output: roots → closure over _live_ value references (not inside removed ranges; type positions never keep
 anything alive) at cluster granularity (a binding with all its writers and augmentations travels together) → the
 units that output contains. `computePlacement` composes seven stages, each a function of what the previous ones
-produced: `clusters` (clusters, the write table, ordered evaluation), `reads` (what each cluster reads per output,
+produced: `clusters` (clusters, the write table), `reads` (what each cluster reads per output,
 `reach`), `roots` (the roots planners and the module declare, extraction candidates, provenance), `settle` (the env
 roots, the slots and the extracted exports: one solver over the event table, `events`), `kept`, `homes` (homes, the single-writer
 rule) and `inclusion` (what each output contains, imports and exports). The same computation decides:
@@ -161,12 +161,19 @@ extends Z`, directly or through what they carry) share the module of the first i
   `import type * as React` is never the factory;
 - **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
-  binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that
-  asks about it: a read evaluated at module load _observes mutable state_ when something outside the reading
-  cluster writes the binding after it, or at an unknown time (inside a function; and code that evaluates with
-  the module but runs later: an async or generator function invoked where it is written, an instance field's
-  initialiser, `t1.runsLaterAt`). "After it" compares positions where the code runs: a read inside a function
-  an evaluation calls runs where that evaluation reaches it. What an evaluation runs has one definition, asked
+  binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
+  (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
+  cluster, so they evaluate wherever it does; a reader is a cluster of its own. The writes have two halves, each
+  asked by one rule: a read evaluated at module load _observes mutable state_ when something outside the reading
+  cluster writes the binding at an unknown time (inside a function; and code that evaluates with the module but
+  runs later: an async or generator function invoked where it is written, an instance field's initialiser,
+  `t1.runsLaterAt`), wherever both evaluate (V); and it is _ordered_ against a write when the module loads after
+  it, judged on where both evaluate (O): the reader leaves the route module only for the slot the write evaluates
+  in, in source order there (`const a = {}; const x = [a]; a.v = 1`, all three needed by one chunk, move
+  together). An extracted export's module is unordered with the route module and the chunks, so for it a write
+  there before the read conflicts too; only an extracted module it imports evaluates first. A read after the
+  last write at load observes nothing and moves freely. "After it" compares positions where the code runs: a
+  read inside a function an evaluation calls runs where that evaluation reaches it. What an evaluation runs has one definition, asked
   of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
   module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
   owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
@@ -179,7 +186,7 @@ extends Z`, directly or through what they carry) share the module of the first i
   may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
-  Such a reader never leaves the route module, pure or not, for a lazy output or an extracted export's module
+  A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
   (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
   one is kept in place (`ordered-effect`). An effectful,

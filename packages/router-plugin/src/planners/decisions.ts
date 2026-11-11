@@ -552,7 +552,7 @@ function describeReason(
     case 'multi-writer':
       return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
     case 'ordered-effect':
-      return 'it reads a module binding that top-level code changes after it. Read that binding inside the option, or move both to their own module.'
+      return `it uses ${written} when the module loads, and other code of the module changes it later or reads it after the option, so a split would change what one of them sees. Use ${written} only inside the option's functions, or move what writes it out of the option, before the route.`
     case 'hydrate-writer':
       return 'it writes a binding a hydration boundary also uses. Keep that state in an object or in its own module.'
     case 'env-declared':

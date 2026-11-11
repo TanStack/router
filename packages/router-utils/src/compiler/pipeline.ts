@@ -685,11 +685,12 @@ async function runAttempt(
       }
       fallbacks = [...fallbacks, ...fresh]
     }
-    // a violated invariant of the final plan (only when the run reports it:
-    // our test runs throw at the check): one diagnostic for the module
+    // a violated invariant of the plan the module is compiled with, whatever
+    // fallbacks it keeps (only when the run reports it: our test runs throw
+    // at the check): one diagnostic for the module
     const report = (v: InvariantViolation) =>
       invariantDiagnostic(tagOf(host), displayFile, v)
-    const violation = plan.placement?.violation
+    const violation = plan.placement?.check()
     if (violation !== undefined) {
       plan.diagnostic(report(violation))
     }

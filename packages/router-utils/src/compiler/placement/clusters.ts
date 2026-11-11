@@ -2,10 +2,11 @@
  * Placement, stage 1: the clusters. Units, the regions planners registered
  * and generated units are joined into the clusters placement moves as one:
  * the declarations of a symbol, a claimed region and the generated unit
- * owning it, a live top-level writer and what it writes, an eager reader of
- * an eagerly written binding and that binding (ordered evaluation). Also
- * the module's write table and the one mutation predicate every later rule
- * asks (`observedWrite`).
+ * owning it, a binding and its writers at load (a unit assigning it or
+ * writing a member of it, an augmentation). A reader of a written binding
+ * is a cluster of its own, which the event table orders against the writes
+ * (`events.ts`). Also the module's write table and the two halves of the
+ * mutation model every later rule asks (`lateWrite`, `laterWrite`).
  */
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
@@ -75,12 +76,11 @@ export interface Cluster {
  * `live` (not inside a range the env module erases), `augment` (a
  * top-level augmentation unit, `X.p = …`, `X.push(…)`, `X = …` as a
  * statement: its `owner` is the unit's region). Every rule that asks what
- * writes a binding reads this table: clustering (a live top-level writer
- * joins what it writes), ordered evaluation (an eager reader of a binding
- * written after it, or by lazy code, cannot move), the lazy slot's
- * "nothing outside writes it" and the one predicate `observedWrite`
- * ("something outside the reader writes what it reads eagerly") behind the
- * event table's rules (`events.ts`).
+ * writes a binding reads this table: clustering (a binding's writers at load
+ * join it), the lazy slot's "nothing outside writes it", the single-writer
+ * rule, and the two halves of the mutation model behind the event table's
+ * rules (`events.ts`): a write at an unknown time (`lateWrite`, V) and one
+ * after a read when the module loads (`laterWrite`, O).
  */
 export interface Write {
   sym: SymbolId
@@ -114,16 +114,19 @@ export interface ClusterGraph {
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
-   * The one mutation predicate: the write a read of `sym` evaluated at
-   * `readAt` by cluster `by` observes, if something else writes it. A
-   * surviving write by another cluster counts when it runs after the read
-   * (an eager write further down the module: a relocated read would move
-   * past it) or at an unknown time (a write inside a function: it may run
-   * before a lazy output evaluates the read). A write by the reading
-   * cluster itself does not (it travels with the read). The other side of
-   * the pair is judged where it stays (design 2 step 2).
+   * The late half of the mutation model (V): a live write of `sym` by
+   * another cluster than `by` at an unknown time (inside a function, or in
+   * code evaluated with the module that runs later): it may run before or
+   * after any evaluation, wherever that evaluation is.
    */
-  observedWrite: (
+  lateWrite: (sym: SymbolId, by: ClusterId) => Write | undefined
+  /**
+   * The eager half (O): a live write of `sym` by another cluster than `by`
+   * when the module loads, after a read evaluated at `readAt`. Whether it
+   * changes order with the read depends on where both evaluate (the event
+   * table's `writeConflict`); a write by the reading cluster travels with it.
+   */
+  laterWrite: (
     sym: SymbolId,
     readAt: number,
     by: ClusterId,
@@ -408,15 +411,43 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
   }
 
-  // ---- live writes and augmentations join the cluster they write -----------
+  // per written binding, what lets the mutation predicate answer "none"
+  // without a scan: whether a live write runs at an unknown time, and where
+  // its last live eager write is (a registry filled by n statements and read
+  // by n declarations asks it n² times)
+  const lateWritten = new Set<SymbolId>()
+  const lastEagerWrite = new Map<SymbolId, number>()
+  for (const w of writes) {
+    if (!w.live) {
+      continue
+    }
+    if (!w.eager) {
+      lateWritten.add(w.sym)
+    } else if (w.at > (lastEagerWrite.get(w.sym) ?? -1)) {
+      lastEagerWrite.set(w.sym, w.at)
+    }
+  }
+
+  // ---- a binding's writers at load join its cluster -----------------------
+  // A live top-level writer (a unit assigning it, or writing a member of it
+  // when the module loads: `const y = f(cfg.x = 1)`) and an augmentation
+  // travel with the binding, so whoever evaluates the binding evaluates its
+  // writes in source order. A unit that writes a member only inside a
+  // function (`function set() { cfg.v = 1 }`) is a late writer, not joined
+  // (V orders it); a sub-region assigning it is the single-writer rule's.
   const writersOfMember = new Map<number, Set<RegionId>>() // declaring member → writer sub-regions
   const regionWrittenSyms = new Set<SymbolId>()
   for (const w of writes) {
     const d = declMember.get(w.sym)
-    if (!w.live || w.member || d === undefined || w.owner === null) {
+    if (!w.live || d === undefined || w.owner === null) {
       continue
     }
-    if (w.augment || regions.get(w.owner).kind === 'unit') {
+    const unitOwner = regions.get(w.owner).kind === 'unit'
+    if (w.member) {
+      if (w.eager && unitOwner) {
+        uf.union(w.owner, d)
+      }
+    } else if (w.augment || unitOwner) {
       uf.union(w.owner, d)
     } else {
       regionWrittenSyms.add(w.sym)
@@ -426,59 +457,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         writersOfMember.set(d, set)
       }
       set.add(w.owner)
-    }
-  }
-
-  // ---- ordered evaluation: eager readers of eagerly mutated clusters join them (a reader cannot move after the writes that follow it) ----
-  // Every round that changes something merges two clusters, so the rounds
-  // end (the union-find only grows) once no eager reader is left outside the
-  // cluster it reads.
-  // the eager live reads of written module bindings (a module without
-  // writes has nothing to order: most route modules)
-  const eagerReads: Array<ClassifiedRef> = []
-  if (writes.length > 0) {
-    for (const ref of refs.all) {
-      if (
-        ref.eager &&
-        writesOfSym.has(ref.sym) &&
-        READ_KINDS.has(ref.kind) &&
-        declMember.has(ref.sym) &&
-        isLive(ref, 'env')
-      ) {
-        eagerReads.push(ref)
-      }
-    }
-  }
-  for (;;) {
-    let changed = false
-    // mutated roots: clusters with an eager live top-level write
-    const mutated = new Set<number>()
-    for (const w of writes) {
-      const d = declMember.get(w.sym)
-      if (w.live && w.eager && d !== undefined) {
-        mutated.add(uf.find(d))
-      }
-    }
-    if (mutated.size === 0) {
-      break
-    }
-    for (const ref of eagerReads) {
-      const d = declMember.get(ref.sym)!
-      if (!mutated.has(uf.find(d))) {
-        continue
-      }
-      const owner = regions.innermostAt(ref.range.start, ref.range.end)
-      if (
-        owner !== null &&
-        regions.get(owner).kind === 'unit' &&
-        uf.find(owner) !== uf.find(d)
-      ) {
-        uf.union(owner, d)
-        changed = true
-      }
-    }
-    if (!changed) {
-      break
     }
   }
 
@@ -612,22 +590,31 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     subRegionWriters.push({ cluster: clusterOfMember(d), writers })
   }
 
-  // ---- the mutation predicate ---------------------------------------------------
+  // ---- the mutation predicates -------------------------------------------
   // (a claimed region is in its owner's cluster: a write there is the owner's)
-  const observedWrite = (
+  const byOther = (w: Write, by: ClusterId) =>
+    w.owner === null || clusterOfRegion.get(w.owner) !== by
+  const lateWrite = (sym: SymbolId, by: ClusterId): Write | undefined => {
+    if (!lateWritten.has(sym)) {
+      return undefined
+    }
+    for (const w of writesOfSym.get(sym)!) {
+      if (w.live && !w.eager && byOther(w, by)) {
+        return w
+      }
+    }
+    return undefined
+  }
+  const laterWrite = (
     sym: SymbolId,
     readAt: number,
     by: ClusterId,
   ): Write | undefined => {
-    const list = writesOfSym.get(sym)
-    if (list === undefined) {
+    if ((lastEagerWrite.get(sym) ?? -1) <= readAt) {
       return undefined
     }
-    for (const w of list) {
-      if (!w.live || (w.eager && w.at <= readAt)) {
-        continue
-      }
-      if (w.owner === null || clusterOfRegion.get(w.owner) !== by) {
+    for (const w of writesOfSym.get(sym)!) {
+      if (w.live && w.eager && w.at > readAt && byOther(w, by)) {
         return w
       }
     }
@@ -646,6 +633,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     viewOf,
     isLive,
     unitSurvives,
-    observedWrite,
+    lateWrite,
+    laterWrite,
   }
 }

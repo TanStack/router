@@ -1,6 +1,6 @@
 /**
- * Placement: clusters, reachability, provenance-based orphans, the
- * movable-effect test, ordered evaluation and needers/homes (see README.md,
+ * Placement: clusters, reachability, provenance-based orphans, the event
+ * table's order rules and needers/homes (see README.md,
  * "Reachability = splitting = dead-code removal"). A generic service:
  * planners supply roots and derived outputs; the core decides what each
  * output contains and what it imports. `computePlacement` composes the
@@ -173,8 +173,13 @@ export interface Placement {
   kept: Array<KeptDeclaration>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
-  /** The first violated invariant, when the run warns instead of throwing (`self-checks.ts`). */
-  violation: InvariantViolation | undefined
+  /**
+   * The placement's invariants (`self-checks.ts`): the first violated one,
+   * when the run warns instead of throwing. Asked by the pipeline of the
+   * plan it compiles the module with only: an earlier round's placement is
+   * planned again, and the last one may keep a fallback nobody acted on.
+   */
+  check: () => InvariantViolation | undefined
 }
 
 /**
@@ -190,10 +195,10 @@ export interface Placement {
  *   rooted, inside its fixed point, so that a candidate reading it at load
  *   was cancelled;
  * - `includeAndImport` reads the final `roots` and homes, and
- *   `checkPlacement` what it includes.
+ *   `checkPlacement` (`Placement.check`) what it includes.
  */
 export function computePlacement(input: PlacementInput): Placement {
-  // 1. clusters, the write table, ordered evaluation
+  // 1. clusters (a binding with its writers at load), the write table
   const graph = buildClusters(input)
   // 2. what each cluster reads, per output, and what each evaluation runs;
   // the event table and its rules, asked lazily
@@ -220,21 +225,7 @@ export function computePlacement(input: PlacementInput): Placement {
     homes,
     extracted,
   )
-  const fallbacks = [...events.fallbacks(), ...homes.fallbacks]
-  // 8. P2 and P3 over the final homes (a plan with fallbacks is planned
-  // again: its placement is not the final one)
-  const violation =
-    inclusion.violation ??
-    (fallbacks.length === 0
-      ? checkPlacement(
-          input,
-          graph,
-          events,
-          homes.home,
-          inclusion.included,
-          roots.liveEnv,
-        )
-      : undefined)
+  const fallbacks = [...events.fallbacks(homes.home), ...homes.fallbacks]
   return {
     clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,
@@ -248,6 +239,16 @@ export function computePlacement(input: PlacementInput): Placement {
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
-    violation,
+    // 8. P2 and P3 over the final homes
+    check: () =>
+      inclusion.violation ??
+      checkPlacement(
+        input,
+        graph,
+        events,
+        homes.home,
+        inclusion.included,
+        roots.liveEnv,
+      ),
   }
 }
