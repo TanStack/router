@@ -97,62 +97,62 @@ const hoists: Planner = {
 
 describe('module-size scaling', () => {
   // (users' runs: the test runs' output checks are not what is measured)
-  it('compiles a module of 1,600 server functions in less than 6 times one of 400', async () => {
+  /**
+   * Median compile time of a module of 6,400 against one of 400 (client
+   * compile, fresh caches each time). The two sizes are sampled alternately,
+   * so load from other processes weighs on both alike. At 16 times the size,
+   * linear time reads about 15 to 21 (up to 34 under heavy load) and quadratic
+   * about 256, so the bound of 48 tells them apart with room for load.
+   */
+  async function ratio(
+    planner: Planner,
+    check: (code: string, n: number) => void,
+  ): Promise<number> {
     vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
     vi.resetModules()
     try {
       const { MemoryHost } = await import('./helpers')
-      /** The median time of a client compile, fresh caches each time. */
-      const time = async (n: number): Promise<number> => {
-        const code = serverModule(n)
-        const samples: Array<number> = []
-        for (let i = 0; i < 7; i++) {
-          const host = new MemoryHost({ files: { '/app/fns.ts': code } })
-          const t = performance.now()
-          const out = await host.compile('/app/fns.ts', [stubs])
-          samples.push(performance.now() - t)
-          expect(out!.code).toContain(`export const fn${n - 1}_ = tsrStub()`)
-          expect(out!.code).not.toContain('helper')
-        }
-        return samples.sort((a, b) => a - b)[3]!
+      const sample = async (n: number, code: string): Promise<number> => {
+        const host = new MemoryHost({ files: { '/app/fns.ts': code } })
+        const t = performance.now()
+        const out = await host.compile('/app/fns.ts', [planner])
+        const elapsed = performance.now() - t
+        check(out!.code, n)
+        return elapsed
       }
+      const small = serverModule(400)
+      const large = serverModule(6400)
       // warm the compiler's code paths first
-      await time(400)
-      const small = await time(400)
-      const large = await time(1600)
-      expect(large / small).toBeLessThan(6)
+      await sample(400, small)
+      await sample(6400, large)
+      const smalls: Array<number> = []
+      const larges: Array<number> = []
+      for (let i = 0; i < 9; i++) {
+        smalls.push(await sample(400, small))
+        larges.push(await sample(6400, large))
+      }
+      const median = (xs: Array<number>) => xs.sort((a, b) => a - b)[4]!
+      return median(larges) / median(smalls)
     } finally {
       vi.unstubAllEnvs()
       vi.resetModules()
     }
+  }
+
+  it('compiles a module of 6,400 server functions in less than 48 times one of 400', async () => {
+    const r = await ratio(stubs, (code, n) => {
+      expect(code).toContain(`export const fn${n - 1}_ = tsrStub()`)
+      expect(code).not.toContain('helper')
+    })
+    expect(r).toBeLessThan(48)
   }, 60_000)
 
-  it('compiles a module of 1,600 hoisted server functions in less than 6 times one of 400', async () => {
-    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
-    vi.resetModules()
-    try {
-      const { MemoryHost } = await import('./helpers')
-      const time = async (n: number): Promise<number> => {
-        const code = serverModule(n)
-        const samples: Array<number> = []
-        for (let i = 0; i < 7; i++) {
-          const host = new MemoryHost({ files: { '/app/fns.ts': code } })
-          const t = performance.now()
-          const out = await host.compile('/app/fns.ts', [hoists])
-          samples.push(performance.now() - t)
-          expect(out!.code).toContain(
-            `const tsrH${n - 1} = () => helper${n - 1}_(${n - 1})`,
-          )
-        }
-        return samples.sort((a, b) => a - b)[3]!
-      }
-      await time(400)
-      const small = await time(400)
-      const large = await time(1600)
-      expect(large / small).toBeLessThan(6)
-    } finally {
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
+  it('compiles a module of 6,400 hoisted server functions in less than 48 times one of 400', async () => {
+    const r = await ratio(hoists, (code, n) => {
+      expect(code).toContain(
+        `const tsrH${n - 1} = () => helper${n - 1}_(${n - 1})`,
+      )
+    })
+    expect(r).toBeLessThan(48)
   }, 60_000)
 })
