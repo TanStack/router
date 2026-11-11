@@ -64,10 +64,14 @@ const MAX_ASKED = 3
  * overtaken) is built by another compilation (`compiled`).
  */
 export class StaleSetDrain {
-  /** Each environment's compiler; `asked`: the compilations `wake` asked it for since its last cause, or since one ended with its set empty. */
+  /**
+   * Each environment's compiler; `asked`: the compilations `wake` asked for
+   * since its last cause, or since one ended with its set empty;
+   * `startedBy`: the environment whose compilations start this one's.
+   */
   private readonly compilers = new Map<
     string,
-    { compiler: IdleCompilerLike; asked: number }
+    { compiler: IdleCompilerLike; asked: number; startedBy?: string }
   >()
   /** By environment, the paths `building` took out of its set: built by its compilation, or by `rebuild`. */
   private readonly takenAtMake = new Map<string, Set<string>>()
@@ -78,9 +82,15 @@ export class StaleSetDrain {
     private readonly host: { tag: string; root: string },
   ) {}
 
-  /** The compiler of an environment. */
-  register(env: string, compiler: IdleCompilerLike): void {
-    this.compilers.set(env, { compiler, asked: 0 })
+  /**
+   * The compiler of an environment. `startedBy`: the environment whose
+   * compilations start this one's (Rspack's RSC coordinator starts the
+   * client's from the server's, and a client compilation started on its
+   * own waits for the next server compilation): its set gets that
+   * compiler a compilation.
+   */
+  register(env: string, compiler: IdleCompilerLike, startedBy?: string): void {
+    this.compilers.set(env, { compiler, asked: 0, startedBy })
   }
 
   /** A file event of the environment's own compilation: `wake` may ask for compilations again. */
@@ -175,20 +185,26 @@ export class StaleSetDrain {
   }
 
   /**
-   * Asks each idle compiler whose stale set is not empty for a compilation.
-   * At most `MAX_ASKED` in a row that each end with the set still not empty
-   * and no cause between: a module whose rebuild finds itself stale again
+   * Asks for a compilation of each environment whose stale set is not empty
+   * (of the compiler that starts its compilations, `startedBy`), when that
+   * compiler is idle. At most `MAX_ASKED` in a row that each end with the
+   * set still not empty and no cause between: a module whose rebuild finds
+   * itself stale again
    * (its plan's validation and its compile disagreeing) then waits for the
    * next event instead of compiling forever, and a warning names its files.
    */
   private wake(): void {
     for (const [env, entry] of this.compilers) {
-      if (!entry.compiler.idle || !this.caches.stale.has(env)) {
+      const starter =
+        entry.startedBy === undefined
+          ? entry
+          : this.compilers.get(entry.startedBy)
+      if (!starter?.compiler.idle || !this.caches.stale.has(env)) {
         continue
       }
       if (entry.asked < MAX_ASKED) {
         entry.asked++
-        entry.compiler.watching?.invalidate()
+        starter.compiler.watching?.invalidate()
       } else if (entry.asked === MAX_ASKED) {
         entry.asked++
         const files = this.caches.stale

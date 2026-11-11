@@ -134,6 +134,19 @@ describe('StaleSetDrain', () => {
     expect(warnings).toEqual([])
   })
 
+  it("asks the compiler that starts an environment's compilations for its set", () => {
+    const { caches, drain, compiler: server } = drainOf()
+    const client = {
+      idle: true,
+      asked: 0,
+      watching: { invalidate: () => client.asked++ },
+    }
+    drain.register('rsc-client', client, 'client')
+    caches.stale.add('rsc-client', '/app/a.ts')
+    drain.compiled('rsc-client')
+    expect([client.asked, server.asked]).toEqual([0, 1])
+  })
+
   it('asks nothing of a compiling compiler, or of one with nothing stale', () => {
     const { caches, drain, compiler } = drainOf()
     drain.compiled('client')

@@ -272,7 +272,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }),
       )
-      session.drain.register(environment.name, compiler)
+      session.registerCompiler(environment.name, compiler)
 
       // import-protection edge modules are virtual files of this environment, written when
       // they are defined (the importer's compile); an importer

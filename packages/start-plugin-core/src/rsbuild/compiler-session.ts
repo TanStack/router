@@ -53,6 +53,7 @@ import type {
   CompileOutput,
   DiagnosticPosition,
   HostServices,
+  IdleCompilerLike,
   InputSourceMap,
   InvalidateChange,
   LocatedDiagnostic,
@@ -436,6 +437,23 @@ export class StartRsbuildCompilerSession {
           this.start.forget(normalizePath(file))
         }
       }),
+    )
+  }
+
+  /**
+   * The compiler of an environment, for the stale-set drain. Under RSC,
+   * Rspack's coordinator starts each client compilation from a server
+   * compilation: the client's stale set gets the server compiler a
+   * compilation.
+   */
+  registerCompiler(envName: string, compiler: IdleCompilerLike): void {
+    this.drain.register(
+      envName,
+      compiler,
+      this.rscLayer !== undefined &&
+        envName === RSBUILD_ENVIRONMENT_NAMES.client
+        ? RSBUILD_ENVIRONMENT_NAMES.server
+        : undefined,
     )
   }
 
