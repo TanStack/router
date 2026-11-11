@@ -2,12 +2,15 @@
  * A file Start's Rsbuild loader rule matches by its extension but that it
  * does not compile (a dependency's file naming nothing of Start) reaches
  * Rspack as the bytes it came as: an MPEG transport stream segment named
- * `.ts`, imported as an asset, is emitted unchanged.
+ * `.ts`, imported as an asset, is emitted unchanged. The same file among
+ * the app's own, which Start compiles, fails the build naming the file
+ * (R97), and the fix its message gives (another extension) builds it.
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { StartBuildError, buildStart } from '../build-harness'
 
 const timeout = 60_000
 
@@ -52,6 +55,66 @@ test(
     })
     const emitted = await readFile(path.join(result.ssr.outDir, 'clip.out'))
     expect(emitted.length).toBe(clip.length)
+    expect(emitted.equals(clip)).toBe(true)
+  },
+  timeout,
+)
+
+/**
+ * An app whose client imports `media/clip.<extension>` as an asset (the
+ * app's rules leave `media/` to the asset rule) next to a module of its own.
+ * A development build: the harness's dangling-name check of production
+ * client builds refuses Rspack's runtime of such a bundle (an uncalled
+ * `__webpack_require__` reads `__webpack_modules__`, which it never
+ * declares).
+ */
+const appWithClip = (extension: string) =>
+  ({
+    bundler: 'rsbuild',
+    mode: 'development',
+    files: {
+      [`media/clip.${extension}`]: clip,
+      'src/greeting.ts': `export const greeting = 'MARK_GREETING'\n`,
+      'entry.ts': `export { greeting } from './src/greeting'\nexport { default as clip } from './media/clip.${extension}'\n`,
+    },
+    rsbuildConfig: {
+      source: { exclude: [/[\\/]media[\\/]/] },
+      tools: {
+        rspack: {
+          module: {
+            rules: [
+              {
+                test: /[\\/]media[\\/]clip\./,
+                type: 'asset/resource',
+                generator: { filename: 'clip.out' },
+              },
+            ],
+          },
+        },
+      },
+    },
+  }) as const
+
+test(
+  'Rsbuild: a binary .ts file of the app fails the build naming it, and builds under another extension',
+  async () => {
+    const error = await buildStart(appWithClip('ts')).then(
+      () => expect.fail('the build succeeded'),
+      (failure: unknown) => {
+        if (!(failure instanceof StartBuildError)) {
+          throw failure
+        }
+        return failure
+      },
+    )
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'media/clip.ts',
+      root: error.root,
+    })
+    // the fix the message gives
+    const result = await buildStart(appWithClip('seg'))
+    const emitted = await readFile(path.join(result.client.outDir, 'clip.out'))
     expect(emitted.equals(clip)).toBe(true)
   },
   timeout,

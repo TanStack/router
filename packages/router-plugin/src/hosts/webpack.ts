@@ -45,9 +45,9 @@ import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type {
   EmittedMapsCompilerLike,
-  PersistedPlan,
   IdleCompilerLike,
   InitialChunksLike,
+  PersistedPlan,
   RebuildCompilationLike,
 } from '@tanstack/router-utils/compiler'
 
