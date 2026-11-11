@@ -162,6 +162,7 @@ export async function staleHotUpdate<
     id: string | null
     url: string
     importers: ReadonlySet<unknown>
+    isSelfAccepting?: boolean | undefined
   },
 >(
   environment: StaleEnvironment<T> & {
@@ -373,13 +374,18 @@ export async function loadDerivedSource(
  * is transformed first, so its plan is current (Vite invalidated it before
  * the hooks ran); without a plan (the file does not parse, or is not the
  * compiler's), a derived module without importers is stale.
- * `undefined` when every module is live.
+ * `undefined` when every module is live, or when no derived module was
+ * analysed: one that nothing requested (the route's import analysis created
+ * it, `isSelfAccepting` unset) stops Vite's propagation whether kept or
+ * dropped, so the file is not transformed for it (a route not on the page,
+ * a checkout rewriting many).
  */
 export async function liveModules<
   T extends {
     id: string | null
     url: string
     importers: ReadonlySet<unknown>
+    isSelfAccepting?: boolean | undefined
   },
 >(
   environment: {
@@ -391,7 +397,14 @@ export async function liveModules<
   modules: Array<T>,
 ): Promise<Array<T> | undefined> {
   const identities = modules.map((m) => (m.id === null ? null : identify(m.id)))
-  if (!identities.some((i) => i !== null && i.derived !== null)) {
+  if (
+    !identities.some(
+      (identity, i) =>
+        identity !== null &&
+        identity.derived !== null &&
+        modules[i]!.isSelfAccepting !== undefined,
+    )
+  ) {
     return undefined
   }
   for (const [i, identity] of identities.entries()) {
