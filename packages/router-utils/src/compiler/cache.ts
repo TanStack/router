@@ -226,7 +226,7 @@ class DependentsIndex {
    * `/app/x.web.ts`), and the directory tree (each directory to the paths
    * and directories directly in it).
    */
-  private readonly byStem = new Map<string, Set<string>>()
+  private readonly byStem = new Map<string, string | Set<string>>()
   private readonly byDir = new Map<string, Set<string>>()
 
   /** The row of (path, key); a new row is in flight. */
@@ -286,7 +286,13 @@ class DependentsIndex {
     }
     const dot = base.indexOf('.')
     const stem = `${dir}/${dot < 0 ? base : base.slice(0, dot)}`
-    return [...(this.byStem.get(stem) ?? []), ...this.under(stem)]
+    const named = this.byStem.get(stem)
+    const under = this.under(stem)
+    return named === undefined
+      ? under
+      : typeof named === 'string'
+        ? [named, ...under]
+        : [...named, ...under]
   }
 
   /** Every dependency path under directory `dir`, at any depth. */
@@ -316,13 +322,16 @@ class DependentsIndex {
     const base = path.slice(slash + 1)
     const dot = base.indexOf('.')
     if (dot >= 0) {
+      // (one path per stem is the rule: a string until a second one comes)
       const stem = path.slice(0, slash + 1 + dot)
-      let paths = this.byStem.get(stem)
-      if (!paths) {
-        paths = new Set()
-        this.byStem.set(stem, paths)
+      const named = this.byStem.get(stem)
+      if (named === undefined) {
+        this.byStem.set(stem, path)
+      } else if (typeof named === 'string') {
+        this.byStem.set(stem, new Set([named, path]))
+      } else {
+        named.add(path)
       }
-      paths.add(path)
     }
     let child = path
     for (let d = parentOf(child); d !== null; d = parentOf(child)) {
@@ -345,10 +354,14 @@ class DependentsIndex {
     const dot = path.indexOf('.', slash + 1)
     if (dot >= 0) {
       const stem = path.slice(0, dot)
-      const paths = this.byStem.get(stem)
-      paths?.delete(path)
-      if (paths?.size === 0) {
+      const named = this.byStem.get(stem)
+      if (named === path) {
         this.byStem.delete(stem)
+      } else if (typeof named === 'object') {
+        named.delete(path)
+        if (named.size === 1) {
+          this.byStem.set(stem, [...named][0]!)
+        }
       }
     }
     // a name stays in its directory while it is a path or a directory
@@ -381,7 +394,10 @@ class DependentsIndex {
     for (const path of paths) {
       const e = this.add(path, key)
       e.inFlight = false
-      e.failed = undefined
+      if (e.failed) {
+        // (only rows that met one carry the field)
+        delete e.failed
+      }
     }
   }
 
