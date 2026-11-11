@@ -775,13 +775,15 @@ export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
 
 /**
  * Whether React Refresh registers a `const` the compiler declares with
- * `init` (casts and parentheses dropped) as a component family, as its
- * transform decides (`findInnerComponents` of react-refresh/babel; oxc and
- * SWC follow it): a function (not one returning a function), or a call of
- * a higher-order component (`memo(() => …)`, `withAuth(Page)`). Route HMR
- * hoists an inline component option into such a `const` when it registers
- * (a family keeps its state across edits); a conditional, a member or
- * another call is no family and stays inline (an edit remounts it).
+ * `init` as a component family, as its transform decides
+ * (`findInnerComponents` of react-refresh/babel; oxc and SWC follow it, on
+ * code without casts or parentheses, around a call's argument too): a
+ * function (not one returning a function), or a call of a higher-order
+ * component (`memo(() => …)`, `withAuth(Page)`, `memo(Page as any)`).
+ * Route HMR hoists an inline component option into such a `const` when it
+ * registers (a family keeps its state across edits); a conditional, a
+ * member or another call is no family and stays inline (an edit remounts
+ * it).
  */
 export function refreshRegisters(init: Node): boolean {
   const v = unwrapExpression(init)
@@ -792,9 +794,9 @@ export function refreshRegisters(init: Node): boolean {
       return true
     case 'CallExpression': {
       const callee = v.callee
-      const [first] = v.arguments
+      const [arg] = v.arguments
       if (
-        first === undefined ||
+        arg === undefined ||
         !(
           callee.type === 'MemberExpression' ||
           (callee.type === 'Identifier' &&
@@ -804,6 +806,7 @@ export function refreshRegisters(init: Node): boolean {
       ) {
         return false
       }
+      const first = unwrapExpression(arg)
       return first.type === 'Identifier'
         ? /^[A-Z]/.test(first.name)
         : refreshRegisters(first)

@@ -41,8 +41,12 @@ const body = (text: string, hooks = '') => `{
 const route = (decls: string, options: string) =>
   `${head}${decls}\nexport const Route = createFileRoute('/')({ ${options} })\n`
 
+type Bundler = 'vite' | 'rsbuild'
+
 interface Row {
   name: string
+  /** A known bug in the cells it names (a `.fails` pin, oracle/KNOWN-BUGS.md). */
+  pinned?: (bundler: Bundler, autoCodeSplitting: boolean) => boolean
   /** The files before the first edit. */
   files: Record<string, string>
   ready: string
@@ -175,16 +179,23 @@ export const Route = createFileRoute('/')({ component: Shell })
   // from the hoist that gives an inline value a family (unsplit).
   // Impact: the component remounted on every save, where `memo(Page)` keeps
   // its state.
-  versions(
-    'memo(Page as any)',
-    (v) =>
-      route(
-        `function Page() ${body(bodyText(v))}`,
-        'component: memo(Page as any)',
-      ),
-    bodyText,
-    1,
-  ),
+  // Pinned on Vite unsplit: plugin-react's React Refresh transform (oxc, as
+  // react-refresh/babel) registers no family for `memo(Page as any)`, where
+  // SWC (Rsbuild) does; the split chunk's export registers it.
+  {
+    ...versions(
+      'memo(Page as any)',
+      (v) =>
+        route(
+          `function Page() ${body(bodyText(v))}`,
+          'component: memo(Page as any)',
+        ),
+      bodyText,
+      1,
+    ),
+    pinned: (bundler, autoCodeSplitting) =>
+      bundler === 'vite' && !autoCodeSplitting,
+  },
   versions(
     'const Page = memo(function …)',
     (v) =>
@@ -278,40 +289,41 @@ async function countOf(page: { text: (selector: string) => Promise<string> }) {
   return m ? Number(m[1]) : null
 }
 
-export function identitySuite(bundler: 'vite' | 'rsbuild') {
+export function identitySuite(bundler: Bundler) {
   describe.concurrent.each([false, true])(
     `${bundler}, react, autoCodeSplitting: %s`,
     { timeout: 60_000 },
     (autoCodeSplitting) => {
-      test.for(rows)(
-        '$name',
-        async (row, { expect, onTestFinished }: TestContext) => {
-          const counter = row.edits.some((e) => e.count !== undefined)
-          const app = await openRouteHmrPage({
-            bundler,
-            onTestFinished,
-            pluginOptions: { autoCodeSplitting },
-            files: row.files,
-            ready: row.ready,
-          })
-          if (counter) {
+      const run = async (row: Row, { expect, onTestFinished }: TestContext) => {
+        const counter = row.edits.some((e) => e.count !== undefined)
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting },
+          files: row.files,
+          ready: row.ready,
+        })
+        if (counter) {
+          await app.click('button')
+          await app.page.waitForText('count 1', { selector: '#app' })
+        }
+        for (const edit of row.edits) {
+          expect(await app.edit(edit.files, edit.shows)).toEqual(inPlace)
+          if (edit.count === undefined) {
+            continue
+          }
+          expect(await countOf(app.page)).toBe(edit.count)
+          if (edit.count === 0) {
+            // remounted: the next edit starts from `count 1` again
             await app.click('button')
             await app.page.waitForText('count 1', { selector: '#app' })
           }
-          for (const edit of row.edits) {
-            expect(await app.edit(edit.files, edit.shows)).toEqual(inPlace)
-            if (edit.count === undefined) {
-              continue
-            }
-            expect(await countOf(app.page)).toBe(edit.count)
-            if (edit.count === 0) {
-              // remounted: the next edit starts from `count 1` again
-              await app.click('button')
-              await app.page.waitForText('count 1', { selector: '#app' })
-            }
-          }
-        },
-      )
+        }
+      }
+      const pinned = (row: Row) =>
+        row.pinned?.(bundler, autoCodeSplitting) === true
+      test.for(rows.filter((row) => !pinned(row)))('$name', run)
+      test.for(rows.filter(pinned))('$name', { fails: true }, run)
     },
   )
 }
