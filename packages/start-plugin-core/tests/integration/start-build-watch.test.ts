@@ -452,4 +452,40 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
     },
     timeout,
   )
+
+  // The client's first build fails (a module only the client bundles does
+  // not parse); the server builds meanwhile, with no client build to embed.
+  // The fix reaches only the client's watcher; the client's first build
+  // rebuilds the server, which then answers the client's calls.
+  // Source: design 3 step 4 review, step 5 item 6 (the server built after
+  // a failed client build raised the build-order error, J4.2, and was not
+  // built again).
+  test(
+    'a client whose first build fails: its first build rebuilds the server, which answers its calls',
+    async () => {
+      const clientOnly = (text: string) => `export const label = ${text}\n`
+      const { client, ssr, firstBuild } = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...files,
+          'client-only.ts': clientOnly(''),
+          'client-entry.ts': `export { greet } from './fns'
+export { label } from './client-only'
+`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+      })
+      expect(
+        firstBuild.some(({ text }) => text.includes('built before the client')),
+      ).toBe(false)
+      expect((await client.run(`return entry.label`)).result).toBe('MARK_LABEL')
+      const url = (await client.run(`return entry.greet.url`)).result
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_BEFORE')
+    },
+    timeout,
+  )
 })
