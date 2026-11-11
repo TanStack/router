@@ -10,7 +10,7 @@ const config = defineConfig({
     typecheck: { enabled: true },
     // The retained-heap gate forces GC; the workers get the flag.
     pool: 'forks',
-    execArgv: ['--expose-gc', '--experimental-vm-modules'],
+    execArgv: ['--expose-gc'],
     // the compiler's self-checks (`src/compiler/self-checks.ts`) are on for
     // every compile of the tests: outputs verified, invariants throw
     env: { TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1' },

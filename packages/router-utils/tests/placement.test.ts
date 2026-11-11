@@ -5795,6 +5795,22 @@ describe('state written through another name', () => {
     },
   )
 
+  // Source: the executing placement property, toy planner, seed 305 (the
+  // design 2 closing lane: red at its base, where the extracted `l4` saw
+  // `{ v: 1 }` and the source gives `{ v: 7 }`)
+  it('keeps an extracted export of an object written through a chain of aliases with the write', async () => {
+    const r = await split(
+      route(
+        'const o1 = { v: 1 }\nlet l3 = o1\nexport const l4 = l3\nconst l6 = l4\nObject.assign(l6, { v: 7 })',
+        'component: () => ({ l6 }),',
+      ),
+      { keys: ['component', 'loader'], extractExports: true },
+    )
+    expect(r.env).toContain(
+      'export const l4 = l3\nconst l6 = l4\nObject.assign(l6, { v: 7 })',
+    )
+  })
+
   it('keeps a mutating method called through an alias with the object it writes', async () => {
     const r = await split(
       route(
@@ -5831,13 +5847,38 @@ describe('state written through another name', () => {
       'alias[0] = 26',
       ['loader', 'component'],
     ],
-  ])(
+    // Source: the executing placement property, toy planner, seed 85 (the
+    // design 2 closing lane: red at its base)
+    [
+      "through an array holding it, read by another option's function",
+      'const o0 = { v: 1 }\nconst h6 = [o0]',
+      'loader: () => ({ o0 }),\ncomponent: (h6[0].v = 4, () => null),',
+      '',
+      'h6[0].v = 4',
+      ['component'],
+    ],
+    // Source: REVIEW-design2-final, case A9 (the executing property's
+    // minimal input)
+    [
+      'through a conditional alias of an extracted function',
+      'export function F6() { return 14 }\nconst l8 = on ? F6 : null',
+      "component: (l8['v'] = 23, () => null),",
+      '',
+      "l8['v'] = 23",
+      ['component', 'loader'],
+      // (the function the value writes stays where the write runs)
+      'export function F6() { return 14 }',
+    ],
+  ] as Array<[string, string, string, string, string, Array<string>, string?]>)(
     'keeps an option value writing state %s in place',
-    async (_, before, options, after, write, keys) => {
+    async (_, before, options, after, write, keys, extracted) => {
       const r = await split(
         route(before, options) + (after === '' ? '' : `${after}\n`),
-        { keys },
+        { keys, extractExports: extracted !== undefined },
       )
+      if (extracted !== undefined) {
+        expect(r.env).toContain(extracted)
+      }
       expect(r.env).toContain(write)
       for (const key of keys) {
         expect(r.chunks[key] ?? '').not.toContain(write)
@@ -7144,13 +7185,21 @@ describe('builder chains in a compile', () => {
           ${options.split('\n').join('\n          ')}
         })
       `)
-    async function compileKeys(code: string, keys: Array<string>) {
+    async function compileKeys(
+      code: string,
+      keys: Array<string>,
+      type: 'client' | 'server' = 'client',
+    ) {
       const host = new MemoryHost({
         files: { '/app/route.tsx': code },
         recognizer,
       })
       const planners = [toySplitPlanner({ keys })]
-      const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+      const env = envInfo({
+        mode: 'build',
+        type,
+        name: type === 'client' ? 'client' : 'ssr',
+      })
       return host.compile('/app/route.tsx', planners, { env })
     }
 
@@ -7180,6 +7229,24 @@ describe('builder chains in a compile', () => {
       expect(main?.facts.planners['toy-split']).toMatchObject({
         notSplittable: 'component',
         reasons: { component: 'ordered-effect' },
+      })
+    })
+
+    // Source: REVIEW-design2-final, case B1 (the executing property's
+    // minimal input)
+    it('keeps two option values linking on a builder the route module reads in place', async () => {
+      const main = await compileKeys(
+        linked(
+          '',
+          'loader: (mw.server(() => 9), () => null),\ncomponent: (mw.server(() => 10), () => null),\nerrorComponent: () => mw,',
+        ),
+        ['loader', 'component'],
+        'server',
+      )
+      expect(main?.code).toContain('loader: (mw.server(() => 9)')
+      expect(main?.code).toContain('component: (mw.server(() => 10)')
+      expect(main?.facts.planners['toy-split']).toMatchObject({
+        reasons: { loader: 'ordered-effect', component: 'ordered-effect' },
       })
     })
   })

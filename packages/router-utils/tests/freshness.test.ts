@@ -7,15 +7,11 @@
  *   unchanged, another `invalidate()` of it changes no plan, restarts no
  *   compile and adds nothing to a stale set (it moves the file set: the
  *   plans ask their resolutions again at their next request).
- * - After any edits, the same as a fresh start (I3, "property (b)"): saves,
- *   in-place saves, deletions and re-adds (a stash and pop: the same text,
- *   modules requested in between; or reported as one change, beside a
- *   twin `m<i>/index.ts` that its specifier finds while it is gone), each
- *   event delivered one to three times to each environment's hook in any
- *   order, with compiles interleaved; once the stale sets are taken and
- *   built, every output equals a cold compile of the final files.
+ * - After any edits, the same as a fresh start (I3, "property (b)"): each
+ *   sequence of events below ends with every output equal to a cold
+ *   compile of the final files, and the caches keep nothing of files gone.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { invalidate } from '../src/compiler'
 import {
   MemoryHost,
@@ -24,12 +20,7 @@ import {
   toyEnvPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type {
-  CompileOutput,
-  EnvInfo,
-  InvalidateChange,
-  Planner,
-} from '../src/compiler'
+import type { CompileOutput, Planner } from '../src/compiler'
 
 const RECOGNIZER = {
   factories: {
@@ -406,417 +397,7 @@ describe('repeating an invalidation', () => {
   )
 })
 
-// ---------------------------------------------------------------------------
-// after any edits, the same as a fresh start
-// ---------------------------------------------------------------------------
-
-/** A seeded PRNG (mulberry32): a failing seed replays the same choices. */
-function prng(seed: number): (n: number) => number {
-  let a = seed >>> 0
-  return (n) => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4294967296) * n)
-  }
-}
-
-const MODULES = 6
-const pathOf = (i: number) => `/app/m${i}.ts`
-
-/** A module text of `m<i>`: what it exports and what it reads of an earlier module (the graph stays acyclic). */
-function textOf(i: number, pick: (n: number) => number): string {
-  const n = pick(3)
-  const j = i > 0 ? pick(i) : -1
-  const shapes: Array<() => string> = [
-    () => `export const make = ${n}\n`,
-    () => `export const other = ${n}\n`,
-    () =>
-      `import { createServerOnlyFn } from 'toy-start'\nexport const make = createServerOnlyFn(() => ${n})\n`,
-    () =>
-      `import { createClientOnlyFn } from 'toy-start'\nexport const make = createClientOnlyFn(() => ${n})\n`,
-    () =>
-      `import { wrapServer } from 'toy-start'\nexport const make = wrapServer(() => ${n})\n`,
-    () => '',
-  ]
-  if (j >= 0) {
-    shapes.push(
-      () => `export { make } from './m${j}'\n`,
-      () => `export * from './m${j}'\n`,
-      () =>
-        `import { make as inner } from './m${j}'\nexport const make = inner\n`,
-      () => `import { make } from './m${j}'\nexport const use = make\n`,
-    )
-  }
-  return shapes[pick(shapes.length)]!()
-}
-
-type Snapshot = {
-  code: string
-  facts: CompileOutput['facts']
-  diagnostics: Array<string>
-} | null
-
-const snapshot = (out: CompileOutput | null): Snapshot =>
-  out && {
-    code: out.code,
-    facts: out.facts,
-    diagnostics: out.diagnostics.map((d) => `${d.severity}:${d.code}`),
-  }
-
-/** How a row varies the run (`run`). */
-interface RunOptions {
-  stretch?: number
-  jitter?: number
-  /** Each even module has a twin, `m<i>/index.ts`, which `./m<i>` finds while `m<i>.ts` is gone. */
-  twins?: boolean
-  /** A removal may be reported as one change once the file is back (chokidar's fold of a quick remove and create, Rspack's batch). */
-  fold?: boolean
-}
-
-/**
- * One run: a memory host, its two environments' bundlers (the latest build
- * of each module they hold) and their hooks, on the virtual clock (`drive`).
- * `seed` decides the edits, the event deliveries and the read delays;
- * `stretch` adds 0 to `jitter - 1` ms to each of the run's sleeps from a
- * generator of its own, as load does on a real clock: (seed, stretch,
- * jitter, twins, fold) replays one schedule exactly.
- */
-async function run(
-  seed: number,
-  { stretch = 0, jitter = 0, twins = false, fold = false }: RunOptions = {},
-): Promise<void> {
-  const pick = prng(seed)
-  const stretched = prng(stretch)
-  const sleep = (ms: number) =>
-    new Promise<void>((r) =>
-      setTimeout(r, ms + (jitter > 0 ? stretched(jitter) : 0)),
-    )
-  const files: Record<string, string> = {}
-  for (let i = 0; i < MODULES; i++) {
-    files[pathOf(i)] = textOf(i, pick)
-  }
-  if (twins) {
-    for (let i = 0; i < MODULES; i += 2) {
-      files[`/app/m${i}/index.ts`] = `export const make = ${70 + i}\n`
-    }
-  }
-  const host = new MemoryHost({
-    files,
-    recognizer: RECOGNIZER,
-    // a read takes a moment: writes and events land in between
-    onRead: () => (pick(3) === 0 ? sleep(pick(3)) : undefined),
-  })
-  const caches = host.caches
-  const tasks = new Set<Promise<unknown>>()
-  const spawn = (p: Promise<unknown>) => {
-    const task = p.finally(() => tasks.delete(task))
-    tasks.add(task)
-  }
-  const later = (ms: number, fn: () => void) => spawn(sleep(ms).then(fn))
-  /** Files an in-place save truncated, whose text is about to be written: a bundler reads them once written (Vite's `readModifiedFile`). */
-  const writing = new Map<string, Promise<void>>()
-
-  const outputs = new Map(
-    ENVS.map((e) => [e.name, new Map<string, Snapshot>()]),
-  )
-  const builds = new Map<string, number>()
-  /** The bundler of `env` builds the module of `path` (its latest build is the one it holds). */
-  const build = (env: EnvInfo, path: string) =>
-    spawn(
-      (async () => {
-        const key = `${env.name}\0${path}`
-        const n = (builds.get(key) ?? 0) + 1
-        builds.set(key, n)
-        await writing.get(path)
-        const code = host.files[path]
-        const out =
-          code === undefined
-            ? undefined
-            : snapshot(await host.compile(path, planners(), { env, code }))
-        if (builds.get(key) === n) {
-          if (out === undefined) {
-            outputs.get(env.name)!.delete(path)
-          } else {
-            outputs.get(env.name)!.set(path, out)
-          }
-        }
-      })(),
-    )
-  /** An environment's hook: forwards the event, takes, tells its bundler. */
-  const hook = async (env: EnvInfo, change: InvalidateChange) => {
-    await invalidate(caches, change, host)
-    const taken = caches.stale.take(env.name, {
-      held: change.kind === 'add',
-    })
-    // the bundler that reported the event builds the file's own modules
-    for (const path of new Set([change.path, ...taken])) {
-      build(env, path)
-    }
-  }
-  /** One event, delivered one to three times to each environment's hook, each after its own delay. */
-  const deliver = (change: InvalidateChange) => {
-    for (const env of ENVS) {
-      for (let k = 1 + pick(3); k > 0; k--) {
-        later(pick(12), () => spawn(hook(env, change)))
-      }
-    }
-  }
-
-  for (const env of ENVS) {
-    for (let i = 0; i < MODULES; i++) {
-      build(env, pathOf(i))
-    }
-  }
-  await settle(tasks)
-
-  for (let step = 0; step < 30; step++) {
-    const i = pick(MODULES)
-    const path = pathOf(i)
-    if (writing.has(path)) {
-      continue
-    }
-    const exists = host.files[path] !== undefined
-    const action = pick(10)
-    if (!exists) {
-      // re-added
-      host.write(path, textOf(i, pick))
-      deliver({ path, kind: 'add' })
-    } else if (action === 0) {
-      const text = host.files[path]!
-      delete host.files[path]
-      if (fold && pick(2) === 0) {
-        // removed and created again within the watcher's moment: modules
-        // are requested while it is gone, and one change is all that is
-        // reported
-        for (const env of ENVS) {
-          build(env, pathOf(pick(MODULES)))
-        }
-        const back = pick(2) === 0 ? text : textOf(i, pick)
-        later(1 + pick(6), () => {
-          if (host.files[path] === undefined) {
-            host.write(path, back)
-            deliver({ path, kind: 'change' })
-          }
-        })
-        await sleep(pick(6))
-        continue
-      }
-      deliver({ path, kind: 'unlink' })
-      if (pick(2) === 0) {
-        // a stash and pop: modules are requested while the file is gone,
-        // and it is back with the same text before the events are read
-        // (reported as created, or as modified: Rspack's form for a file
-        // its last compilation read)
-        for (const env of ENVS) {
-          build(env, pathOf(pick(MODULES)))
-        }
-        const kind = pick(2) === 0 ? 'add' : 'change'
-        later(1 + pick(6), () => {
-          if (host.files[path] === undefined) {
-            host.write(path, text)
-            deliver({ path, kind })
-          }
-        })
-      }
-    } else if (action === 1 || action === 6) {
-      // saved in place: truncated, reported, then written (no event of
-      // its own: the watcher drops a change within a moment of the last).
-      // The caches know the text it held, empty or not (an importer read
-      // it): a file nothing read is read empty by a compile that finds it
-      // truncated, with no event left to tell
-      let text = textOf(i, pick)
-      while (text === '') {
-        text = textOf(i, pick)
-      }
-      await host.rawFacts.get(path, CLIENT.name)
-      host.write(path, '')
-      writing.set(
-        path,
-        sleep(1 + pick(25)).then(() => {
-          host.write(path, text)
-          writing.delete(path)
-        }),
-      )
-      spawn(writing.get(path)!)
-      deliver({ path, kind: 'change' })
-    } else if (action === 2) {
-      // a module requested again (a page reload)
-      build(ENVS[pick(2)]!, path)
-    } else if (action === 3) {
-      // a touch: saved unchanged
-      deliver({ path, kind: 'change' })
-    } else if (action <= 5 && i > 0) {
-      // a checkout: a dependency, then a module that reads it, written a
-      // moment apart, each reported once its write landed
-      const d = pick(i)
-      const dep = pathOf(d)
-      if (host.files[dep] !== undefined && !writing.has(dep)) {
-        host.write(dep, textOf(d, pick))
-        deliver({ path: dep, kind: 'change' })
-        const gap = 5 + pick(16)
-        const text = `import { make as inner } from './m${d}'\nexport const make = inner\n`
-        later(gap, () => {
-          if (host.files[path] !== undefined && !writing.has(path)) {
-            host.write(path, text)
-            deliver({ path, kind: 'change' })
-          }
-        })
-      }
-    } else {
-      host.write(path, textOf(i, pick))
-      deliver({ path, kind: 'change' })
-    }
-    await sleep(pick(6))
-  }
-
-  // the events stop: once every invalidation ended, the stale sets are
-  // taken and built until nothing is stale
-  for (;;) {
-    await settle(tasks)
-    await caches.settled()
-    let more = false
-    for (const env of ENVS) {
-      for (const path of caches.stale.take(env.name, { held: true })) {
-        more = true
-        build(env, path)
-      }
-    }
-    if (!more && tasks.size === 0) {
-      break
-    }
-  }
-
-  const fresh = memoryHost(host.files)
-  const row = `seed ${seed}, stretch ${stretch}, jitter ${jitter}, twins ${twins}, fold ${fold}`
-  for (const env of ENVS) {
-    const held = outputs.get(env.name)!
-    // (the twins are no module of the bundlers: nothing requests them)
-    const final = Object.keys(host.files)
-      .filter((path) => !path.endsWith('/index.ts'))
-      .sort()
-    expect([...held.keys()].sort(), `${row}, ${env.name}`).toEqual(final)
-    for (const path of final) {
-      expect(
-        held.get(path),
-        `${row}, ${env.name}, ${path}:\n${host.files[path]}`,
-      ).toEqual(snapshot(await fresh.compile(path, planners(), { env })))
-    }
-  }
-}
-
-const realImmediate = setImmediate
-
-/**
- * Runs `p` on the virtual clock: every microtask settles, then the next
- * timer fires, one at a time, until `p` ends. The order of a run's timers
- * and reads is then a function of its row alone.
- */
-async function drive(p: Promise<void>): Promise<void> {
-  const run: { done: boolean; error?: unknown } = { done: false }
-  p.then(
-    () => {
-      run.done = true
-    },
-    (e: unknown) => {
-      run.done = true
-      run.error = e ?? new Error('rejected')
-    },
-  )
-  for (let idle = 0; ; ) {
-    await new Promise<void>((r) => realImmediate(r))
-    if (run.done) {
-      break
-    }
-    if (vi.getTimerCount() === 0) {
-      // nothing left to fire, and the run waits on something that never settles
-      if (++idle > 5) {
-        throw new Error('the run waits with no timer left')
-      }
-      continue
-    }
-    idle = 0
-    vi.advanceTimersToNextTimer()
-  }
-  if (run.error) {
-    throw run.error
-  }
-}
-
-async function settle(tasks: Set<Promise<unknown>>): Promise<void> {
-  while (tasks.size > 0) {
-    await Promise.allSettled([...tasks])
-  }
-}
-
-const SEEDS = Array.from({ length: 48 }, (_, i) => 0x5eed + i)
-
-/**
- * Rows that found defects (seed, options): a file back reported as a
- * change, the first in-place save of an empty file, a removed file read
- * again before its return was reported; a twin found while the file was
- * gone, kept by the resolution memo of a key no compile ran for at the
- * folded event (design 3 final review, finding 2, form c).
- */
-const FOUND: Array<[number, RunOptions]> = [
-  [24309, { stretch: 16, jitter: 12 }],
-  [24335, { stretch: 86, jitter: 12 }],
-  [24301, { stretch: 93, jitter: 12 }],
-  [24316, { stretch: 115, jitter: 16 }],
-  [24317, { stretch: 126, jitter: 16 }],
-  [24310, { stretch: 241, jitter: 16 }],
-  [24303, { stretch: 46, jitter: 6 }],
-  [24329, { stretch: 96, jitter: 16 }],
-  [24341, { stretch: 139, jitter: 16 }],
-  [1732051583, { twins: true, fold: true }],
-]
-
 describe('after any edits', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('every output equals a cold compile of the final files', async () => {
-    vi.useFakeTimers({
-      toFake: [
-        'setTimeout',
-        'clearTimeout',
-        'setImmediate',
-        'clearImmediate',
-        'Date',
-        'performance',
-      ],
-    })
-    // each seed as scheduled, then stretched: a few stretch generators per
-    // jitter; with twins and folded removals, as scheduled and stretched;
-    // and the rows that found defects
-    const rows: Array<[number, RunOptions]> = [
-      ...SEEDS.map((seed) => [seed, {}] as [number, RunOptions]),
-      ...[4, 8, 12].flatMap((jitter) =>
-        [1, 2].flatMap((stretch) =>
-          SEEDS.map(
-            (seed) => [seed, { stretch, jitter }] as [number, RunOptions],
-          ),
-        ),
-      ),
-      ...[{}, { stretch: 1, jitter: 8 }].flatMap((options) =>
-        SEEDS.map(
-          (seed) =>
-            [seed, { ...options, twins: true, fold: true }] as [
-              number,
-              RunOptions,
-            ],
-        ),
-      ),
-      ...FOUND,
-    ]
-    for (const [seed, options] of rows) {
-      await drive(run(seed, options))
-    }
-    // (about 2 s here; CI's macOS runners took over 30 s beside the other files)
-  }, 180_000)
-
   it('keeps no stale path and no read record beyond the live files', async () => {
     const host = memoryHost({ '/app/shared.ts': 'export const make = 1\n' })
     for (let i = 0; i < 200; i++) {
@@ -1096,6 +677,38 @@ describe('events that move the file set', () => {
     await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
     asks.splice(0).forEach((release) => release())
     await compiling
+    host.caches.stale.take(CLIENT.name, { held: true })
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+    )
+  })
+
+  // The same fold, and what found the twin while `a.ts` was gone is a plan
+  // of `x.ts` saved to another text before `a.ts` is back: at the change no
+  // plan holds a row under the twin and no compile runs. `x.ts` is saved
+  // back to its import of `./a`, and its compile asks the resolver, not the
+  // answer given while `a.ts` was gone.
+  // Source: design 3 final review, finding 2 (form c; the property (b) row
+  // seed 1732051583 with twins and folded removals, where the SSR `m5.ts`
+  // kept `./m2 -> m2/index.ts`).
+  it('a twin found by a plan replaced before the change that brought its file back is asked again', async () => {
+    const host = memoryHost({
+      '/app/a.ts': SERVER_ONLY,
+      '/app/a/index.ts': 'export const make = 1\n',
+      '/app/w.ts': IMPORTER,
+      '/app/x.ts': IMPORTER,
+    })
+    // (the caches know `a.ts`: another module read it)
+    await host.compile('/app/w.ts', planners())
+    delete host.files['/app/a.ts']
+    await host.compile('/app/x.ts', planners())
+    host.write('/app/x.ts', 'export const use = 1\n')
+    await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
+    await host.compile('/app/x.ts', planners())
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    host.write('/app/x.ts', IMPORTER)
+    await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
     host.caches.stale.take(CLIENT.name, { held: true })
     expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
       factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),

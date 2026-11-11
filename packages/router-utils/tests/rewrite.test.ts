@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryHost, dedent } from './helpers'
 import { engine, rangeOf } from './engine'
-import type { OutputId, Planner } from '../src/compiler'
+import type { OutputId, PlanContext, Planner } from '../src/compiler'
 import type { Anchor, EditScope } from '../src/compiler/rewrite'
 
 describe('rewrite tree', () => {
@@ -2236,4 +2236,178 @@ describe("the env module's pieces", () => {
     })
     expect(() => e.render()).toThrow(/conflict: the text .* cuts toy/)
   })
+})
+
+// Liveness against what the outputs hold (I2), for the two shapes the seeded
+// random rewrite trees found (design 1, steps 1-3): what a planner's
+// `liveness` reports of a name in a claimed region is what the output holds
+// (in the env module exactly; in the derived output, a name it holds is
+// live), and verify accepts the outputs.
+describe('liveness of a claimed region, as the outputs hold it', () => {
+  const code = `import { c0_, c1_, a2_, c3_, a4_ } from 'toy-names'\nc0_(c1_(a2_, c3_(a4_)))\n`
+  const names = ['c0_', 'c1_', 'a2_', 'c3_', 'a4_']
+  const claimed = 'c3_(a4_)'
+
+  /** Claims `claimed` (read in the env module or not; for every output but `except`), after `before` registered its edit; records what `liveness` reports. */
+  const claiming = (
+    read: boolean,
+    except: 'env' | 'other' | null,
+    before: (ctx: PlanContext, other: OutputId) => void,
+    reported: Map<'env' | 'other', Map<string, boolean>>,
+  ): Planner => ({
+    name: 'toy-claim',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const other: OutputId = ctx.declareOutput({
+        kind: 'split',
+        key: 'other',
+        derived: { kind: 'split', value: 'other' },
+      })
+      before(ctx, other)
+      const region = ctx.region(rangeOf(code, claimed), 'nested-chain')
+      const hoisted = ctx.names.alloc('g0')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+          { k: 'region', id: region },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [hoisted.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'toy-claim',
+      })
+      if (read) {
+        const reader = ctx.names.alloc('r0')
+        const gen = ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                'export const ',
+                { sym: reader.sym },
+                ' = () => ',
+                { sym: hoisted.sym },
+                '\n',
+              ],
+            },
+          ],
+          declares: [reader.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: 'auto',
+          by: 'toy-claim',
+        })
+        ctx.addRoot('env', { t: 'gen', id: gen })
+      }
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+        scope:
+          except === null
+            ? 'all-outputs'
+            : { except: [except === 'env' ? 'env' : other] },
+        by: 'toy-claim',
+      })
+      for (const o of ['env', 'other'] as const) {
+        const view = ctx.liveness(o === 'env' ? 'env' : other)
+        const live = new Map<string, boolean>()
+        for (const ref of ctx.t1.refs.all) {
+          live.set(ctx.symbols.name(ref.sym), view.live(ref))
+        }
+        reported.set(o, live)
+      }
+    },
+  })
+
+  async function check(
+    read: boolean,
+    except: 'env' | 'other' | null,
+    before: (ctx: PlanContext, other: OutputId) => void,
+  ) {
+    const reported = new Map<'env' | 'other', Map<string, boolean>>()
+    const planners = [claiming(read, except, before, reported)]
+    const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+    const held = {
+      env: (await host.compile('/app/mod.ts', planners))!.code,
+      other: (await host.compile('/app/mod.ts?tsr-split=other', planners))!
+        .code,
+    }
+    /** Whether an output's text, past its imports, names `name`. */
+    const holds = (o: 'env' | 'other', name: string) =>
+      new RegExp(`\\b${name}(?!\\w)`).test(
+        held[o]
+          .split('\n')
+          .filter((l) => !l.startsWith('import '))
+          .join('\n'),
+      )
+    for (const name of names) {
+      expect(reported.get('env')!.get(name), `env ${name}`).toBe(
+        holds('env', name),
+      )
+      if (holds('other', name)) {
+        expect(reported.get('other')!.get(name), `other ${name}`).toBe(true)
+      }
+    }
+    return held
+  }
+
+  // One output's placeholder on exactly the region, claimed for the other
+  // outputs (an override): that output shows the placeholder's text at the
+  // place; the claimed text renders in its owner where something reads it.
+  // Source: rewrite-random (design 1 step 1: 183 of 3,000 seeds, e.g. seed
+  // 30, reported text live that did not render; steps 2-3: the override
+  // shape, 307 entries in 1,000 seeds at the step 3 base).
+  it.each([
+    ['the env module', 'read', 'env', true],
+    ['the env module', 'not read', 'env', false],
+    ['the derived output', 'read', 'other', true],
+    ['the derived output', 'not read', 'other', false],
+  ] as const)(
+    'reports the names of a claimed region %s replaces as it renders them (%s)',
+    async (_, _read, output, read) => {
+      const held = await check(read, output, (ctx, other) => {
+        const placed: OutputId = output === 'env' ? 'env' : other
+        ctx.rewrites.placeholder({
+          range: rangeOf(code, claimed),
+          body: [{ k: 'text', parts: ['0'] }],
+          scope: [placed],
+          by: 'toy-env',
+        })
+      })
+      if (output === 'env') {
+        expect(held.env).toContain('c0_(c1_(a2_, 0))')
+      }
+    },
+  )
+
+  // An edit of the call around the region that keeps exactly its text (a
+  // slice): the claim takes the kept text, and the edit renders the
+  // placeholder where the slice stands.
+  // Source: rewrite-random (design 1 step 1: 7 of 3,000 seeds failed
+  // verify (g), "reads g5, which it neither declares nor imports").
+  it.each([
+    ['read', true],
+    ['not read', false],
+  ])(
+    'reports the names of a claimed region another edit keeps as a slice as it renders them (%s)',
+    async (_, read) => {
+      const held = await check(read, null, (ctx) =>
+        ctx.rewrites.edit({
+          range: rangeOf(code, `c1_(a2_, ${claimed})`),
+          body: [
+            { k: 'text', parts: ['k('] },
+            { k: 'slice', range: rangeOf(code, claimed) },
+            { k: 'text', parts: [')'] },
+          ],
+          by: 'toy-keep',
+        }),
+      )
+      expect(held.env).toContain('c0_(k(g0))')
+      expect(held.env).toContain('const g0 = c3_(a4_)')
+    },
+  )
 })
