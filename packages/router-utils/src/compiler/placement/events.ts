@@ -29,9 +29,12 @@
  * stand in route options (which stay), and only the core's orphan cleanup
  * erases in the env module what other outputs keep, so a slot's own view
  * would read the same (an invariant of the planners, not checked here).
- * The table is lazy: a cluster's touches are walked once, when a rule
- * first asks (a module that writes no module binding asks only of
- * effectful clusters and candidates).
+ * The table is lazy and holds verdicts, not touches: a rule walks what an
+ * evaluation touches when it asks, stopping at the first violation (the
+ * touches of every declaration of a call chain would be most of the module
+ * each: quadratic memory), and V, which no round changes, is walked once
+ * per cluster. A module that writes no module binding asks only of
+ * effectful clusters and candidates.
  */
 import { invariantViolated } from '../self-checks'
 import { NEED_KINDS, clusterRange, describeCluster, namesOf } from './clusters'
@@ -65,8 +68,8 @@ export interface Pin {
 }
 
 export interface Events {
-  /** What cluster `c`'s evaluation touches, in the order the walk meets it. */
-  touches: (c: ClusterId) => ReadonlyArray<Touch>
+  /** Walks what cluster `c`'s evaluation touches, in the order the walk meets it; true from `visit` ends the walk (the result). */
+  touches: (c: ClusterId, visit: (t: Touch) => boolean) => boolean
   /** V: the pair of `c`'s first touch of a binding something outside it writes then. */
   volatile: (c: ClusterId) => Pin | undefined
   /** The pair rules of a lazy slot after N: `written`, then V and rule (c) as the walk meets them (`liveEnv`: what the env module keeps). */
@@ -96,38 +99,48 @@ export function eventTable(
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion, clusterOfSym, writesOfSym } = graph
 
-  const touchesOf: Array<ReadonlyArray<Touch> | undefined> = []
-  const touchesOfRegion = (r: RegionId, c: ClusterId, out: Array<Touch>) => {
-    reads.runs(r, (ref, at) => {
+  // (walked, not stored: what one evaluation reaches through calls can be
+  // most of the module, for every declaration of a call chain)
+  const touchesOfRegion = (
+    r: RegionId,
+    c: ClusterId,
+    visit: (t: Touch) => boolean,
+  ): boolean => {
+    const stop = reads.runs(r, (ref, at) => {
       if (NEED_KINDS.has(ref.kind) && symbols.isModuleLevel(ref.sym)) {
         const d = clusterOfSym.get(ref.sym)
         if (d !== undefined && d !== c) {
-          out.push({ sym: ref.sym, at, cluster: d })
+          return visit({ sym: ref.sym, at, cluster: d })
         }
       }
       return false
     })
+    if (stop) {
+      return true
+    }
     // what its generated text names, where that text evaluates at load
     for (const g of reads.generatedNames(r)) {
       if (!symbols.isModuleLevel(g.sym) || t1.isLazyAt(g.at)) {
         continue
       }
       const d = clusterOfSym.get(g.sym)
-      if (d !== undefined && d !== c) {
-        out.push({ sym: g.sym, at: g.at, cluster: d })
+      if (
+        d !== undefined &&
+        d !== c &&
+        visit({ sym: g.sym, at: g.at, cluster: d })
+      ) {
+        return true
       }
     }
+    return false
   }
-  function touches(c: ClusterId): ReadonlyArray<Touch> {
-    let hit = touchesOf[c]
-    if (hit === undefined) {
-      const out: Array<Touch> = []
-      for (const r of clusters[c]!.regions) {
-        touchesOfRegion(r, c, out)
+  function touches(c: ClusterId, visit: (t: Touch) => boolean): boolean {
+    for (const r of clusters[c]!.regions) {
+      if (touchesOfRegion(r, c, visit)) {
+        return true
       }
-      touchesOf[c] = hit = out
     }
-    return hit
+    return false
   }
 
   /** The write `t`, run by cluster `by`, observes (V's pair), if any. */
@@ -143,17 +156,17 @@ export function eventTable(
   function volatile(c: ClusterId): Pin | undefined {
     let hit = volatileOf[c]
     if (hit === undefined) {
-      hit = null
+      let pin: Pin | null = null
       if (graph.writes.length > 0) {
-        for (const t of touches(c)) {
+        touches(c, (t) => {
           const w = observed(t, c)
           if (w !== undefined) {
-            hit = statePin(t, w)
-            break
+            pin = statePin(t, w)
           }
-        }
+          return pin !== null
+        })
       }
-      volatileOf[c] = hit
+      volatileOf[c] = hit = pin
     }
     return hit ?? undefined
   }
@@ -197,10 +210,12 @@ export function eventTable(
     // them), pure module clusters, or a `const` the env module keeps
     // (evaluated before the chunk loads, which imports that one instance; a
     // `let` still pins, however unwritten)
-    for (const t of touches(c)) {
+    let pin: Pin | undefined
+    touches(c, (t) => {
       const w = observed(t, c)
       if (w !== undefined) {
-        return statePin(t, w)
+        pin = statePin(t, w)
+        return true
       }
       const d = clusters[t.cluster]!
       if (
@@ -208,19 +223,16 @@ export function eventTable(
         d.effectful &&
         !(liveEnv.has(d.id) && symbols.isConst(t.sym))
       ) {
-        return { reason: 'reads', binding: t.sym }
+        pin = { reason: 'reads', binding: t.sym }
+        return true
       }
-    }
-    return undefined
+      return false
+    })
+    return pin
   }
 
   function readsKept(c: ClusterId, kept: (d: ClusterId) => boolean): boolean {
-    for (const t of touches(c)) {
-      if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
-        return true
-      }
-    }
-    return false
+    return touches(c, (t) => !clusters[t.cluster]!.copyable && kept(t.cluster))
   }
 
   // the effects of the env module's evaluation an event is ordered against
@@ -298,14 +310,13 @@ export function eventTable(
         continue
       }
       const c = clusterOfRegion.get(r.id)!
-      const own: Array<Touch> = []
-      touchesOfRegion(r.id, c, own)
-      for (const t of own) {
-        if (observed(t, c) !== undefined) {
-          out.push({ region: r.id, reason: 'ordered-effect', binding: t.sym })
-          break
+      touchesOfRegion(r.id, c, (t) => {
+        if (observed(t, c) === undefined) {
+          return false
         }
-      }
+        out.push({ region: r.id, reason: 'ordered-effect', binding: t.sym })
+        return true
+      })
     }
     return out
   }
@@ -424,36 +435,45 @@ export function checkPlacement(
   }
 
   // what an evaluation outside the env module touches
-  for (const cl of clusters) {
+  let found: InvariantViolation | undefined
+  for (const cl of graph.writes.length > 0 ? clusters : []) {
     const t = timeOf(cl.id)
     if (t === null || t === 1 || cl.kind === 'import') {
       continue
     }
-    for (const touch of graph.writes.length > 0 ? events.touches(cl.id) : []) {
+    const own = home.get(cl.id)
+    events.touches(cl.id, (touch) => {
       for (const w of writesOfSym.get(touch.sym) ?? []) {
         const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
         if (!w.live || wc === cl.id) {
           continue
         }
         const wt = wc === undefined ? 1 : timeOf(wc)
+        // two chunks are unordered; an extracted module and a chunk see the
+        // route module's body on either side of them
+        const apart =
+          wt === t && t === 2 && wc !== undefined && home.get(wc) !== own
         const misordered = !w.eager
           ? true
           : wt === null
             ? false
             : w.at > touch.at
-              ? wt < t ||
-                (wt === t && t === 2 && home.get(wc!) !== home.get(cl.id))
-              : wt > t ||
-                (wt === t && t === 2 && home.get(wc!) !== home.get(cl.id))
+              ? wt < t || apart
+              : wt > t || apart
         if (misordered) {
-          return fail(
+          found = fail(
             `${namesOf(input, cl) ?? 'a value'} may read a binding at another time than written`,
             `evaluates outside the env module and touches ${input.t1.symbols.name(touch.sym)} (at ${touch.at}), written at ${w.at}${w.eager ? '' : ' at an unknown time'}`,
             cl.id,
             touch.at,
           )
+          return true
         }
       }
+      return false
+    })
+    if (found !== undefined) {
+      return found
     }
   }
   // T: an extracted module reads nothing of the env module at its evaluation
@@ -462,16 +482,21 @@ export function checkPlacement(
       continue
     }
     for (const c of set) {
-      for (const touch of events.touches(c)) {
+      events.touches(c, (touch) => {
         const d = clusters[touch.cluster]!
-        if (!d.copyable && d.kind !== 'import' && home.get(d.id) === 'env') {
-          return fail(
-            `a split module may read ${namesOf(input, d) ?? 'a value'} before it exists`,
-            `in static output ${o} reads ${describeCluster(input, d)} of the env module at its evaluation`,
-            c,
-            touch.at,
-          )
+        if (d.copyable || d.kind === 'import' || home.get(d.id) !== 'env') {
+          return false
         }
+        found = fail(
+          `a split module may read ${namesOf(input, d) ?? 'a value'} before it exists`,
+          `in static output ${o} reads ${describeCluster(input, d)} of the env module at its evaluation`,
+          c,
+          touch.at,
+        )
+        return true
+      })
+      if (found !== undefined) {
+        return found
       }
     }
   }
