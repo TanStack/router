@@ -10,11 +10,22 @@ const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
  * @param {import('./run.mjs').Execute} [execute]
  */
 export function build(args, execute = spawnSync) {
+  const pnpmPath = process.env.npm_execpath
   /** @type {import('./run.mjs').CommandOptions} */
   const options = { cwd: repoRoot, env: process.env, stdio: 'inherit' }
   const result = execute(
-    process.env.npm_execpath || 'pnpm',
-    ['exec', 'nx', 'run', '@benchmarks/bundle-size:measure', ...args],
+    pnpmPath
+      ? process.execPath
+      : process.platform === 'win32'
+        ? 'pnpm.cmd'
+        : 'pnpm',
+    [
+      ...(pnpmPath ? [pnpmPath] : []),
+      'nx',
+      'run',
+      '@benchmarks/bundle-size:measure',
+      ...args,
+    ],
     options,
   )
   if (result.status !== 0) {

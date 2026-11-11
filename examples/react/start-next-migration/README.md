@@ -6,7 +6,7 @@ The private page saves one article in an encrypted session cookie. This keeps th
 
 ## Run
 
-Use Node 24 or newer and pnpm 12. From the repository root:
+Use Node 24 or newer and pnpm 11. From the repository root:
 
 ```sh
 pnpm install
