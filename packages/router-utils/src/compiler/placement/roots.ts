@@ -40,8 +40,8 @@ export interface Seeds {
    * assignment, an `if`/`try`/loop block) whose touches are all module
    * bindings of this module (`Events.statementTouches`, no import): not
    * env roots yet; each follows what it touches into its one chunk or
-   * becomes one (`settle.ts`). One touching an import, or no binding,
-   * is an env root here.
+   * becomes one (`settle.ts`). One touching an import, or no binding
+   * (none it declares either), is an env root here.
    */
   followers: Set<ClusterId>
   /** Unexported declaration clusters an augmentation keeps as effect roots (their initialiser has effects), with its position (`kept`, `written`). */
@@ -260,7 +260,7 @@ export function seedRoots(
     if (
       touched === null ||
       touched.import !== null ||
-      touched.clusters.length === 0
+      (touched.clusters.length === 0 && clusters[c]!.declares.size === 0)
     ) {
       followers.delete(c)
       envRoots.add(c)

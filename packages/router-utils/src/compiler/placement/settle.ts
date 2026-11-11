@@ -178,7 +178,8 @@ export function settleRoots(
   /**
    * Where follower `c` goes, judged once before it is rooted anywhere: the
    * one chunk the clusters its statements touch (`Events.statementTouches`)
-   * and its own declarations go to, none staying in the env module; a
+   * and its own declarations go to, none (itself included) evaluated by the
+   * env module; a
    * touched cluster nothing else needs follows it. Never an extracted
    * export's module or a provider: one instance of the effect, in a module
    * that surely evaluates. Then the lazy-slot rules (`written` for what it
@@ -187,7 +188,7 @@ export function settleRoots(
   function followSlot(c: ClusterId): OutputId | Pin {
     let to: OutputId | null = null
     for (const d of [c, ...events.statementTouches(c).clusters]) {
-      if (d !== c && (liveEnv.has(d) || envRoots.has(d))) {
+      if (liveEnv.has(d) || envRoots.has(d)) {
         return { reason: 'needers' }
       }
       for (const n of needersOf(d)) {
@@ -205,8 +206,9 @@ export function settleRoots(
   }
   /**
    * A follower rooted in `to` whose touches do not all go there this
-   * round: one stays in the env module, another output needs it, or its
-   * slot matters and is elsewhere.
+   * round: the env module evaluates it (reads what it declares), or a
+   * touched cluster stays there, another output needs it, or its slot
+   * matters and is elsewhere.
    */
   const followConflict = (
     c: ClusterId,
@@ -214,6 +216,9 @@ export function settleRoots(
     target: ReadonlyMap<ClusterId, OutputId>,
     stays: (d: ClusterId) => boolean,
   ): Pin | undefined => {
+    if (liveEnv.has(c)) {
+      return { reason: 'needers' }
+    }
     for (const d of events.statementTouches(c).clusters) {
       const needers = needersOf(d)
       if (

@@ -6007,7 +6007,7 @@ describe('declarations only split code needs that stay in the route module', () 
       function inc() { n++ }
       const shared = make()
       const registry = make()
-      registry.add(1)
+      registry.add(log)
       const client = make()
       const api = wrap(client)
       export const Route = createFileRoute('/')({
@@ -6053,10 +6053,10 @@ describe('declarations only split code needs that stay in the route module', () 
   it('names the initialisers of several declarations in the plural', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      import { Link } from './lib'
+      import { Link, REF } from './lib'
       const homeUrl = new Link('https://example.com/')
       const docsUrl = new Link('https://example.com/docs')
-      homeUrl.search = docsUrl.search = '?ref=x'
+      homeUrl.search = docsUrl.search = REF
       export const Route = createFileRoute('/')({
         component: () => [homeUrl, docsUrl],
       })
@@ -6079,7 +6079,7 @@ describe('declarations only split code needs that stay in the route module', () 
       import { createFileRoute } from 'toy-router'
       import { make } from './lib'
       const [registry, index] = make()
-      registry.add(1)
+      registry.add(make())
       const [one, two] = make()
       export const Route = createFileRoute('/')({
         component: () => [registry, index, one, two],
@@ -6136,7 +6136,11 @@ describe('declarations only split code needs that stay in the route module', () 
       {
         code: 'eager-split:written',
         name: 'links',
-        body: (init: string) => [`const links = ${init}`, "links.extra = 'x'"],
+        // (the write touches an import, so it stays and keeps `links`)
+        body: (init: string) => [
+          `const links = ${init}`,
+          'links.extra = make()',
+        ],
         options: ['component: () => links,'],
       },
       {
