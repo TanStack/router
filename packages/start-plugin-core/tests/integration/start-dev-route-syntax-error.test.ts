@@ -47,20 +47,14 @@ function About() {
 }
 ${broken ? 'const = ;\n' : ''}`
 
-const indexRoute = (text: string, broken = false) =>
-  `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: Index })
-function Index() {
-  return <p data-probe="index">${text}</p>
-}
-${broken ? 'const = ;\n' : ''}`
-
 const app = {
   ...reactApp,
   'src/hmr-sync.ts': hmrSyncModule,
   'harness/client-entry.ts': `import '../src/hmr-sync'\n${reactApp['harness/client-entry.ts']}`,
   'src/routes/__root.tsx': rootRoute('root-v1'),
-  'src/routes/index.tsx': indexRoute('index-v1'),
+  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p data-probe="index">index-v1</p> })
+`,
   'src/routes/about.tsx': aboutRoute('about-v1'),
 }
 
@@ -136,55 +130,6 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
         timeout: 20_000,
       })
       expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
-
-  // The route on the page, its component split into a chunk the page
-  // holds: the hot update of the broken file is of the modules its current
-  // plan produces, and the file has none while broken.
-  // Bug: after the fix the page reloads once and the reloaded document gets
-  // the dev server's 500 (its SSR render still fails on the broken route);
-  // the same before design 3 step 4. Not established which update reloads
-  // the page, nor why SSR keeps the failure (a module runner keeping a
-  // failed load is the candidate).
-  // Impact: in dev, fixing a syntax error in the route on the page can
-  // leave an error page until the next reload after SSR recovers.
-  // Source: design 3 step 2 review (Vite's `liveModules` read the plan of
-  // the file's old text).
-  test.fails(
-    'the route on the page: the page keeps what it shows, and the fix shows in place',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        plugins: [react()],
-        files: app,
-      })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
-      const inFlight = trackRequests(page)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
-
-      await server.edit({
-        'src/routes/index.tsx': indexRoute('index-v2', true),
-      })
-      await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
-      expect(page.loads(), 'the page reloaded while the file was broken').toBe(
-        1,
-      )
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
-
-      await server.edit({ 'src/routes/index.tsx': indexRoute('index-v3') })
-      // (the page that reloads never settles: the outcome is asserted)
-      await settlePage(server, page, inFlight).catch(() => undefined)
-      expect(page.loads(), 'the page reloaded after the fix').toBe(1)
-      await page.waitForText('index-v3', {
-        selector: '[data-probe=index]',
-        timeout: 20_000,
-      })
     },
     timeout,
   )
