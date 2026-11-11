@@ -423,10 +423,9 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     return r
   }
   for (const ref of refs.all) {
-    // (a link on a `const` holding a builder writes the builder: R139)
-    const kind =
-      writeKind(ref) ??
-      (t1.builderLinks.has(ref.range.start) ? ('member' as const) : null)
+    // (a link on a `const` holding a writing builder is a member write of
+    // it: R139, `linkedBuilder`)
+    const kind = writeKind(ref)
     if (kind === null || !declMember.has(ref.sym)) {
       continue
     }

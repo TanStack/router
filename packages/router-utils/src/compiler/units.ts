@@ -23,6 +23,7 @@ import {
   isPureClass,
   isPureDeclarator,
   isPureExpression,
+  linkedBuilder,
   noteBuilderConsts,
   statementHasEffects,
 } from './purity'
@@ -759,12 +760,20 @@ export function buildUnits(
         break
       case 'ExpressionStatement': {
         const u = base(node, 'effect', itemRange)
-        const linked = purity.builders?.linked.length ?? 0
         u.effectful = !isPureExpression(purity, node.expression)
         u.augments = augmentationsOf(node.expression)
-        // a link on a `const` holding a builder writes it (R139)
-        for (const n of purity.builders?.linked.slice(linked) ?? []) {
-          const s = moduleSymOf(n)
+        // a link on a `const` holding a writing builder writes it (R139),
+        // also under the links chained on it (`b.middleware([a]).server(f)`)
+        for (
+          let call = unwrapExpression(node.expression);
+          purity.builders !== undefined && call.type === 'CallExpression';
+          call = unwrapExpression(
+            (unwrapExpression(call.callee) as { object?: Node }).object ??
+              call.callee,
+          )
+        ) {
+          const receiver = linkedBuilder(purity.file, purity.builders, call)
+          const s = receiver === null ? null : moduleSymOf(receiver)
           if (s !== null && !u.augments.includes(s)) {
             u.augments.push(s)
           }

@@ -10,17 +10,22 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { namespaceName, patternIdentifiers } from './source'
+import {
+  isExpressionWrapper,
+  namespaceName,
+  patternIdentifiers,
+} from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, memberUse } from './units'
 import { MutationModel } from './mutation'
 import {
+  linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
   statementHasEffects,
 } from './purity'
 import { ownEntry } from './strings'
-import type { PurityContext } from './purity'
+import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
@@ -284,14 +289,6 @@ export interface Tier1 {
    * happened where they are written (the write table, placement).
    */
   runsLaterAt: (offset: number) => boolean
-  /**
-   * The starts of the receivers of links on a `const` holding a builder
-   * whose links write it (`RecognizerTable.builderLinksWrite`: a
-   * middleware's) that the module's purity took as no effect
-   * (`b.server(f)`): each one writes that builder (R139), a member write in
-   * placement's write table.
-   */
-  builderLinks: ReadonlySet<number>
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -323,8 +320,9 @@ interface ModuleAnalysisOptions {
    * `const` holding a builder is no effect either; for a kind whose links
    * write the builder they are called on (a middleware's assign its
    * options, which another link of it then reads; `builderLinksWrite`) it
-   * is a write of that builder (R139): `builderLinks`. Another kind's link
-   * (a server fn's copies the options) only reads it.
+   * is a write of that builder (R139) wherever it stands: its receiver is
+   * a member write (`linkedBuilder`). Another kind's link (a server fn's
+   * copies the options) only reads it.
    * Raw reads give none (`effects()` derives each one's).
    */
   env?: 'client' | 'server'
@@ -1209,6 +1207,7 @@ export class ModuleAnalysis {
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
+    const builders = this.purity.builders
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1227,7 +1226,12 @@ export class ModuleAnalysis {
         continue
       }
       const c = classify(file, ref)
-      const use = c.kind === 'value' ? memberUse(file, node) : null
+      const use =
+        c.kind !== 'value'
+          ? null
+          : builders !== undefined && linksOn(file, builders, node)
+            ? 'write'
+            : memberUse(file, node)
       refs.push({
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
@@ -1377,11 +1381,6 @@ export class ModuleAnalysis {
       },
       isLazyAt,
       runsLaterAt,
-      builderLinks:
-        this.purity.builders === undefined ||
-        this.purity.builders.linked.length === 0
-          ? NO_LINKS
-          : new Set(this.purity.builders.linked.map((n) => n.start)),
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1720,6 +1719,30 @@ export function visitRuns(
   return (
     roots.length > 0 &&
     t1.mutation.visitValues(roots, calls === null, bodyOf, visit)
+  )
+}
+
+/** Whether identifier `node` is the receiver of a link on a writing builder (`linkedBuilder`: `b.server(f)`), parentheses and casts aside. */
+function linksOn(file: SourceFile, b: BuilderPurity, node: Node): boolean {
+  const outer = (n: Node): Node => {
+    let parent = file.parentOf(n)
+    while (parent !== null && isExpressionWrapper(parent)) {
+      n = parent
+      parent = file.parentOf(n)
+    }
+    return n
+  }
+  const object = outer(node)
+  const member = file.parentOf(object)
+  if (member?.type !== 'MemberExpression' || member.object !== object) {
+    return false
+  }
+  const callee = outer(member)
+  const call = file.parentOf(callee)
+  return (
+    call?.type === 'CallExpression' &&
+    call.callee === callee &&
+    linkedBuilder(file, b, call) === node
   )
 }
 
@@ -2111,7 +2134,6 @@ interface BuilderImports {
 }
 
 const ENV_TYPES = ['client', 'server'] as const
-const NO_LINKS: ReadonlySet<number> = new Set()
 const NO_KINDS: ReadonlySet<string> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
@@ -2135,7 +2157,6 @@ function builderPurityOf(
         terminal: table.terminal,
         locals: new Map<string, string>(),
         erased: [],
-        linked: [],
       },
     } satisfies PurityContext,
     /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */
