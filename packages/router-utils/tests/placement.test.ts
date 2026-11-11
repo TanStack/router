@@ -7049,6 +7049,101 @@ describe('rule L: an object written through another name', () => {
   })
 })
 
+// A name inside an expression that hands its value on (a conditional's
+// branch, `??`/`||`/`&&`, a sequence's last, `await`, an assignment's
+// value, a literal read back) reads the object it holds where that value is
+// read, as `alias.b` does. The loader keeps `cfg` and its write in the route
+// module, so the read stays there, before the write (Fable's review of
+// order rule v2, finding 1: `cases/wrap.json`).
+describe('rule L: a read through an alias inside a forwarding expression', () => {
+  const run = (decls: string) =>
+    split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { makeCfg } from './lib'
+        const on = true
+        const cfg = makeCfg()
+        ${decls.split('\n').join('\n        ')}
+        cfg.b = 2
+        export const Route = createFileRoute('/x')({
+          loader: () => cfg,
+          component: () => got,
+        })
+      `),
+    )
+  const beforeWrite = (r: Awaited<ReturnType<typeof split>>, read: string) => {
+    expect(r.chunks.component).not.toContain(read)
+    expect(r.env).toContain(read)
+    expect(r.env.indexOf('cfg.b = 2')).toBeGreaterThan(r.env.indexOf(read))
+  }
+
+  it.each([
+    ['a conditional', 'const got = (on ? alias : {}).b'],
+    [
+      'a conditional in an optional chain',
+      'const got = (on ? alias : null)?.b',
+    ],
+    [
+      'a nested conditional',
+      'const got = (on ? (on ? alias : null) : null)?.b',
+    ],
+    ['`??`', 'const got = (alias ?? {}).b'],
+    ['`||`', 'const got = (alias || {}).b'],
+    ['`&&`', 'const got = (on && alias).b'],
+    ['a sequence', 'const got = (0, alias).b'],
+    ['`await`', 'const got = (await alias).b'],
+    ['an assignment', 'let tmp\nconst got = (tmp = alias).b'],
+    ['an array literal read back', 'const got = [alias][0].b'],
+    ['an object literal read back', 'const got = ({ a: alias }).a.b'],
+    [
+      'an object literal in a conditional read back',
+      'const got = (on ? { x: alias } : null)?.x.b',
+    ],
+    ['a template around one', 'const got = `${(on ? alias : {}).b}`'],
+    ['a spread of a conditional', 'const got = { ...(on ? alias : {}) }'],
+    ['`in` on a conditional', "const got = 'b' in (on ? alias : {})"],
+    ['a destructuring of a conditional', 'const { b: got } = on ? alias : {}'],
+  ])('through %s', async (_, read) => {
+    const r = await run(`const alias = cfg\n${read}`)
+    beforeWrite(r, read.split('\n').at(-1)!)
+  })
+
+  it.each([
+    ['a `let` alias', 'let alias = cfg'],
+    [
+      'a destructured alias',
+      'const holder = { cfg }\nconst { cfg: alias } = holder',
+    ],
+  ])('through %s in a conditional', async (_, alias) => {
+    const read = 'const got = (alias ?? {}).b'
+    const r = await run(`${alias}\n${read}`)
+    beforeWrite(r, read)
+  })
+
+  // the same climb finds the object a member write writes
+  it('orders a read before a write through an alias in a conditional', async () => {
+    const r = await split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { makeCfg } from './lib'
+        const on = true
+        const cfg = makeCfg()
+        const alias = cfg
+        const got = cfg.b
+        ;(on ? alias : {}).b = 2
+        export const Route = createFileRoute('/x')({
+          loader: () => cfg,
+          component: () => got,
+        })
+      `),
+    )
+    expect(r.env).toContain('const got = cfg.b')
+    expect(r.env.indexOf('(on ? alias : {}).b = 2')).toBeGreaterThan(
+      r.env.indexOf('const got = cfg.b'),
+    )
+  })
+})
+
 describe('generated imports', () => {
   // A planner's runtime helper (Start's server-fn stubs `createClientRpc`,
   // `createSsrRpc`) is an import like one the source wrote: every output
