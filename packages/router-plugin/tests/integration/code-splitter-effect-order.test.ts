@@ -9,7 +9,7 @@
  * calls something the compiler does not know after them.
  */
 import { describe, expect, test } from 'vitest'
-import { build, clientMountEntry, head, routeApp } from '../build-harness'
+import { build, head, routeApp } from '../build-harness'
 
 const timeout = 120_000
 
