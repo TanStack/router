@@ -6840,6 +6840,17 @@ describe('statements follow what they touch', () => {
     expect(r.chunks.component).toContain(decls)
   })
 
+  // a mutator-named call writes its object (R65): the statement is in the
+  // binding's cluster and touches nothing else; the cluster follows its
+  // declaration's only needer
+  it('moves a declaration with an effectful initialiser and a write of it by a statement', async () => {
+    const decls = 'const d = createTable()\nd.add(1)'
+    const r = await split(route(decls, 'loader: () => 0,\ncomponent: () => d,'))
+    expect(r.env).not.toContain('d.add(1)')
+    expect(r.chunks.component).toContain(decls)
+    expect(eager(r)).toEqual([])
+  })
+
   it('keeps a statement touching bindings two chunks need, and them', async () => {
     const r = await split(
       route(
