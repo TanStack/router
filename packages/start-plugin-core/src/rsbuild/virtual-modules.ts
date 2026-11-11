@@ -599,7 +599,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         devManifestWriteCount++
         tryWriteModule(
           RSBUILD_ENVIRONMENT_NAMES.server,
-          pathsOf().manifest,
+          paths.manifest,
           content,
         )
       }

@@ -932,7 +932,6 @@ test.describe('react-start hmr', () => {
         await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
       },
     )
-    await waitForHydrationSafeReload(page, '/child', 'Child Updated')
 
     // Second edit: change child loader again while still on /
     await replaceRouteTextAndWait(

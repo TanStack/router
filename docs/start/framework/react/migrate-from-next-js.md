@@ -10,7 +10,7 @@ Start does not interpret Next.js route conventions or configuration. Keep your a
 
 ## Run the reference application
 
-Use Node 24 or newer and pnpm 12:
+Use Node 24 or newer and pnpm 11:
 
 ```sh
 git clone --depth 1 https://github.com/TanStack/router.git

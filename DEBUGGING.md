@@ -77,9 +77,7 @@ console.log('[DEBUG buildLocation] output:', result)
 ```javascript
 test('should reproduce the exact issue from bug report', async () => {
   // Set up the exact scenario described
-  const router = createRouter({
-    /* exact config from bug report */
-  })
+  const router = createRouter({/* exact config from bug report */})
 
   // Perform the exact user actions
   await navigate({ to: '/initial-route' })
