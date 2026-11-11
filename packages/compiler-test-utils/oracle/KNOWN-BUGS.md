@@ -54,16 +54,6 @@ code.test.ts`: "a root route's %s loads lazily".
   full reload. Open: R70 keeps the mark on purpose (review round 3, G9-2). SPEC J3.1, G10.
   `router-plugin/tests/integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a route edit after a
   render error the page navigated away from updates in place". Fix: the edit updates in place.
-- **An exported snapshot of module state an exported function writes is extracted in a build** (`let n = 0;
-export function inc() { n++ }; export const initial = [n]`): its module evaluates with the chunk once nothing
-  imports it through the route file, so a write between the route module's load and the chunk's (another module
-  calling `inc()`) shows in a build and not unsplit or in dev, which keeps it in the route module. Design 2 step 2
-  (placement) gives an extracted module an unknown evaluation time. SPEC J2.4, G3.
-  `router-plugin/tests/integration/code-splitter-state-read-at-load.test.ts`: "%s > exported snapshot of the state >
-  gives the value the same code gives unsplit" (Vite, Rspack, Rsbuild); core: `router-utils/tests/placement.test.ts`
-  "keeps an exported snapshot of state an exported function writes in the route module in a build", "places an
-  exported snapshot of written state as dev does, in a build". Fix: the snapshot stays in the route module
-  (`eager-export:state`).
 - **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn

@@ -18,6 +18,7 @@ import type { SymbolId } from '../symbols'
 import type { EvaluatedCalls, RegionId, UnitId } from '../units'
 import type {
   Frag,
+  GenFrag,
   OutputId,
   OutputView,
   PlannerEdit,
@@ -57,7 +58,7 @@ export interface ReadIndex {
   reach: (
     o: OutputId,
     roots: Iterable<ClusterId>,
-    stopAt?: ReadonlySet<ClusterId> | null,
+    stopAt?: { has: (c: ClusterId) => boolean } | null,
     readsOutput?: ((c: ClusterId) => OutputId) | null,
   ) => Set<ClusterId>
   /**
@@ -72,6 +73,19 @@ export interface ReadIndex {
   runs: (r: RegionId, visit: RunVisitor) => boolean
   /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
   clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
+  /**
+   * The bindings the generated text of region `r`'s rendering in the env
+   * module names (edits, placeholders, inserts; those of the regions nested
+   * in it that the env module does not claim with them), each with where it
+   * stands: what its evaluation may read besides its references.
+   */
+  generatedNames: (r: RegionId) => ReadonlyArray<GeneratedName>
+}
+
+/** A binding generated text names, and where that text stands. */
+export interface GeneratedName {
+  sym: SymbolId
+  at: number
 }
 
 /** Sees a reference an evaluation runs, with where it runs; true ends the walk. */
@@ -82,6 +96,8 @@ interface MemberReads {
   children: Array<RegionId>
   /** In the env module (live): the references of the text the walk renders (what `runs` reads; the children's are theirs). */
   refs: Array<ClassifiedRef> | null
+  /** In the env module (live, `refs` set): the bindings its generated text names, where it stands (`generatedNames`; null: none). */
+  gen: Array<GeneratedName> | null
 }
 
 /**
@@ -103,6 +119,7 @@ interface RegionIndex {
 }
 
 const NO_REGIONS: ReadonlyArray<RegionId> = []
+const NO_NAMES: ReadonlyArray<GeneratedName> = []
 const NO_NODES: ReadonlyArray<RangeNode> = []
 const NO_INSERTS: ReadonlyArray<PlannerEdit> = []
 
@@ -259,9 +276,20 @@ export function readIndex(
   let owned: ReadonlyArray<ClassifiedRef> = NO_REFS
   /** Only part of its text renders: each read asks its position. */
   let partial = false
+  /** Pushes what generated text standing at `at` names. */
+  const named = (body: ReadonlyArray<Frag | GenFrag>, at: number) => {
+    const from = into.syms.length
+    symRefsOf(body, into.syms)
+    if (into.refs !== null && from < into.syms.length) {
+      const gen = (into.gen ??= [])
+      for (let i = from; i < into.syms.length; i++) {
+        gen.push({ sym: into.syms[i]!, at })
+      }
+    }
+  }
   /** What a body standing for node `n` reads (its slices walked, its references among `owned`). */
   const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
-    symRefsOf(body, into.syms)
+    named(body, n.start)
     for (const f of body) {
       if (f.k === 'slice') {
         view.walk(n, f.range.start, f.range.end, reader)
@@ -300,7 +328,7 @@ export function readIndex(
     },
     insert: (e) => {
       if (!partial || !view.isErasedAt(e.range.start)) {
-        symRefsOf(e.body, into.syms)
+        named(e.body, e.range.start)
       }
     },
     member: (n) => {
@@ -315,7 +343,7 @@ export function readIndex(
         // its text is its owner's: what stands at its place is read here
         const place = view.placeOf(n)
         if (place !== null && !(partial && view.isErasedAt(n.start))) {
-          symRefsOf(place, into.syms)
+          named(place, n.start)
         }
         return true
       }
@@ -450,10 +478,12 @@ export function readIndex(
     if (hit) {
       return hit
     }
+    const env = live && o === 'env' && m < regionCount
     const into: MemberReads = {
       syms: [],
       children: [],
-      refs: live && o === 'env' && m < regionCount ? [] : null,
+      refs: env ? [] : null,
+      gen: null,
     }
     if (m < regionCount) {
       if (live) {
@@ -571,7 +601,7 @@ export function readIndex(
   function reach(
     o: OutputId,
     roots: Iterable<ClusterId>,
-    stopAt: ReadonlySet<ClusterId> | null = null,
+    stopAt: { has: (c: ClusterId) => boolean } | null = null,
     readsOutput: ((c: ClusterId) => OutputId) | null = null,
   ): Set<ClusterId> {
     const included = new Set<ClusterId>()
@@ -674,6 +704,30 @@ export function readIndex(
     }
     return false
   }
+  const generatedOfRegion: Array<ReadonlyArray<GeneratedName> | undefined> = []
+  function generatedNames(id: RegionId): ReadonlyArray<GeneratedName> {
+    const hit = generatedOfRegion[id]
+    if (hit !== undefined) {
+      return hit
+    }
+    const own = memberReads(id, 'env', true)
+    let names: ReadonlyArray<GeneratedName> = own.gen ?? NO_NAMES
+    if (own.children.length > 0) {
+      names = [...names]
+      for (const c of own.children) {
+        ;(names as Array<GeneratedName>).push(...generatedNames(c))
+      }
+    }
+    generatedOfRegion[id] = names
+    return names
+  }
 
-  return { clusterReads, successors, reach, runs, clusterRuns }
+  return {
+    clusterReads,
+    successors,
+    reach,
+    runs,
+    clusterRuns,
+    generatedNames,
+  }
 }

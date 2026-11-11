@@ -299,6 +299,20 @@ export class RegionTable {
       return existing
     }
     const node = this.node(range, `a ${kind} region`)!
+    // a region nests in one unit (on exactly its range at most): one holding
+    // statements would own their references, which no unit would then read
+    const k = this.lastUnitStartingBy(range.end - 1)
+    const last = k < 0 ? null : this.unitRegions[k]!
+    if (
+      last !== null &&
+      last.range.start >= range.start &&
+      last.range.end <= range.end &&
+      (last.range.start !== range.start || last.range.end !== range.end)
+    ) {
+      throw new Error(
+        `conflict: a ${kind} region [${range.start}, ${range.end}) holds unit ${last.unit} [${last.range.start}, ${last.range.end}): a region stands inside one statement`,
+      )
+    }
     const id = this.regions.length
     this.regions.push({ id, range, kind, unit: null })
     this.subRegionByKey.set(key, id)
@@ -724,7 +738,15 @@ export class RewriteSet {
     this.add(edit)
   }
 
-  /** Text inserted at `at` in `scope` (default: every output where the position renders). */
+  /**
+   * Text inserted at `at` in `scope` (default: every output where the
+   * position renders). The text holding the byte at `at` owns it
+   * (`RegionTable.insertOwnerAt`): a position no statement's text holds is
+   * refused, and so is the end of a declarator (`const a = f(1)` ends
+   * before its line's end: the byte there is not its text), where an
+   * expression statement's end is its own; only an edit of its last
+   * expression appends to a declaration.
+   */
   insert(insert: {
     at: number
     body: ReadonlyArray<Frag>

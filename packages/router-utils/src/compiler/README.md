@@ -30,7 +30,8 @@ emits its own output. Nothing depends on transform order.
 - **Units** (`units.ts`): the top level split into the smallest things placement reasons about: one import specifier,
   one declarator, one function/class/enum/namespace (merged declarations together), one export specifier, every other
   statement. **Regions** are ranges planned as one thing; every unit is one, and planners register sub-regions
-  (route option values, Hydrate children, nested server-fn chains).
+  (route option values, Hydrate children, nested server-fn chains). A sub-region nests in one unit (on exactly its
+  range at most): one holding statements is a conflict as it is registered.
 - **Rewrite tree** (`rewrite.ts`): every range a planner addresses has two answers per output: its **text** (what it
   reads as wherever it renders) and its **place** (what stands where it is written). `edit` sets the text, in every
   output: an edit's body names source text only as slices of the range it rewrites (rendered with what the output
@@ -96,7 +97,7 @@ anything alive) at cluster granularity (a binding with all its writers and augme
 units that output contains. `computePlacement` composes seven stages, each a function of what the previous ones
 produced: `clusters` (clusters, the write table, ordered evaluation), `reads` (what each cluster reads per output,
 `reach`), `roots` (the roots planners and the module declare, extraction candidates, provenance), `settle` (the env
-roots, the movable test and the extracted exports: one fixed point), `kept`, `homes` (homes, the single-writer
+roots, the slots and the extracted exports: one solver over the event table, `events`), `kept`, `homes` (homes, the single-writer
 rule) and `inclusion` (what each output contains, imports and exports). The same computation decides:
 
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
@@ -169,7 +170,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
   module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
   owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
-  and the text of the module's declarations its running references name, transitively (`n++`, `n += 1` and
+  and the text of the module's declarations its running references name and of the statements writing those names
+  when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
   reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
   holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
@@ -177,8 +179,10 @@ extends Z`, directly or through what they carry) share the module of the first i
   may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
-  Such a reader never moves to a lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }`
-  keeps the source's `[0]`); an option value that reads one is kept in place (`ordered-effect`). An effectful,
+  Such a reader never leaves the route module, pure or not, for a lazy output or an extracted export's module
+  (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
+  with the first chunk importing it once nothing imports it through the route file); an option value that reads
+  one is kept in place (`ordered-effect`). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
   preserved) when nothing outside it writes it eagerly, it observes no mutable state, its reads at load are
   imports (read lazily: the chunk loads after the route module),
@@ -194,13 +198,19 @@ extends Z`, directly or through what they carry) share the module of the first i
   earlier surviving effect pins it and a later one keeps its order (chunks import an augmented export: its
   augmentation runs once).
   A recognised framework call a planner names (the route factory chain) is no such effect only when its option
-  values are pure, claimed (relocated) or erased: the core checks, the planner only names it. The env roots, the
-  moving set and the extracted exports are one monotone fixed point: every round recomputes derived reach, env
-  liveness and the moving set (the evaluation-order condition is a greatest fixed point over it), roots the
-  effectful clusters and the readers of mutable state that stay and that some output needs, then cancels extraction
-  candidates the env module keeps or that read, at their evaluation, a binding it keeps (a TDZ through the
-  re-export cycle). Nothing is rooted after homes are assigned (a dev-only check enforces it, and another that no
-  extracted module reads the route module eagerly). When a split would break single-writer or evaluation-order
+  values are pure, claimed (relocated) or erased: the core checks, the planner only names it. Every one of these
+  rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through
+  what it runs, its effect, the module's writes), and answers with the violated pair (the kind, the other event,
+  the binding), from which the warnings are worded. The env roots, the slots and the extracted exports are one
+  monotone fixed point (`settleRoots`): every round recomputes derived reach, env liveness and the slots (the
+  evaluation-order condition is a greatest fixed point over them), demotes the effectful clusters and the readers
+  of mutable state that stay and that some output needs to env roots, then cancels extraction candidates the env
+  module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
+  observe mutable state. Each round that goes on demotes a cluster, so the rounds end within the cluster count;
+  past it the compile fails naming the file. Nothing is rooted after homes are assigned: `checkPlacement` checks
+  the final homes against the same time model (effects in source order, no read outside the route module seeing
+  a write at another time than in the source, no extracted module reading the route module at load), with the
+  other invariants (`self-checks.ts`). When a split would break single-writer or evaluation-order
   rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
   planners with that region kept in place, until no new region is reported (a kept region can free the next one;
   every round keeps one more, so the rounds end within the module's region count). Past that bound every

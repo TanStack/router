@@ -93,9 +93,21 @@ function randomModule(rand: () => number): RandomModule {
       lines.push(`const ${w} = () => ++${s}`)
       functions.set(w, (m) => (m.state.set(s, m.read(s) + 1), m.read(s)))
       writers.push(w)
-    } else if (kind < 0.3) {
+    } else if (kind < 0.27) {
       const r = `r${i}`
       lines.push(`function ${r}() { return ${s} }`)
+      functions.set(r, (m) => m.read(s))
+      readers.push(r)
+    } else if (kind < 0.3) {
+      // a function a later statement attaches to an object, called through
+      // another function (review of design 2 steps 0-1, finding 1)
+      const h = `h${i}`
+      const r = `g${i}`
+      lines.push(
+        `const ${h} = {}`,
+        `${h}.get = () => ${s}`,
+        `function ${r}() { return ${h}.get() }`,
+      )
       functions.set(r, (m) => m.read(s))
       readers.push(r)
     } else if (kind < 0.65) {
@@ -330,13 +342,7 @@ describe('random route modules', () => {
           [bound, placed(main), 'later', free, placed(chunk)],
         ],
       ] as const) {
-        // (an extracted module evaluated with the chunk sees state written
-        // after the route module's body: F1-2, which design 2 step 2 fixes;
-        // until then this time runs with `PR_EXTRACTED_LATE=1`)
-        if (
-          when === 'extracted modules with the chunk' &&
-          (free.length === 0 || process.env.PR_EXTRACTED_LATE !== '1')
-        ) {
+        if (when === 'extracted modules with the chunk' && free.length === 0) {
           continue
         }
         const split = replay(mod, [...phases])

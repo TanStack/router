@@ -7,7 +7,8 @@
  * stages in `placement/` in an order that carries meaning: two of them change
  * what earlier stages produced, in place (see there).
  */
-import { buildClusters, stateReaders } from './placement/clusters'
+import { buildClusters } from './placement/clusters'
+import { checkPlacement, eventTable } from './placement/events'
 import { readIndex } from './placement/reads'
 import { seedRoots } from './placement/roots'
 import {
@@ -188,19 +189,20 @@ export interface Placement {
  *   an identity an extracted module and another output share) `settleRoots`
  *   rooted, inside its fixed point, so that a candidate reading it at load
  *   was cancelled;
- * - `includeAndImport` reads the final `roots` and homes.
+ * - `includeAndImport` reads the final `roots` and homes, and
+ *   `checkPlacement` what it includes.
  */
 export function computePlacement(input: PlacementInput): Placement {
   // 1. clusters, the write table, ordered evaluation
   const graph = buildClusters(input)
   // 2. what each cluster reads, per output, and what each evaluation runs;
-  // the evaluations observing written state
+  // the event table and its rules, asked lazily
   const reads = readIndex(input, graph)
-  const state = stateReaders(input, graph, reads)
+  const events = eventTable(input, graph, reads)
   // 3. the roots planners and the module declare, extraction candidates, provenance
   const seeds = seedRoots(input, graph, reads)
-  // 4. env roots, moving clusters and extracted exports: one fixed point
-  const roots = settleRoots(input, graph, reads, seeds, state.readers)
+  // 4. the solver: env roots, slots and extracted exports, one fixed point
+  const roots = settleRoots(input, graph, reads, events, seeds)
   // 5. what only split code needs that stays, and why
   const kept = keptDeclarations(input, graph, reads, seeds, roots)
   if (!input.extractedOutputs) {
@@ -218,6 +220,21 @@ export function computePlacement(input: PlacementInput): Placement {
     homes,
     extracted,
   )
+  const fallbacks = [...events.fallbacks(), ...homes.fallbacks]
+  // 8. P2 and P3 over the final homes (a plan with fallbacks is planned
+  // again: its placement is not the final one)
+  const violation =
+    inclusion.violation ??
+    (fallbacks.length === 0
+      ? checkPlacement(
+          input,
+          graph,
+          events,
+          homes.home,
+          inclusion.included,
+          roots.liveEnv,
+        )
+      : undefined)
   return {
     clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,
@@ -226,11 +243,11 @@ export function computePlacement(input: PlacementInput): Placement {
     included: inclusion.included,
     imports: inclusion.imports,
     exportsNeeded: inclusion.exportsNeeded,
-    fallbacks: [...state.fallbacks, ...homes.fallbacks],
+    fallbacks,
     created: homes.created,
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
-    violation: homes.violation ?? inclusion.violation,
+    violation,
   }
 }

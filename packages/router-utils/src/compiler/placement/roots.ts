@@ -55,7 +55,7 @@ export function seedRoots(
   // Planners allow every local value export out; a candidate is one whose
   // cluster is an unassigned declaration without observable effects (its
   // augmentations, `Page.p = …`, travel with it under the effect-order rule
-  // of every move, `effectStays`). Its companions are the export-specifier /
+  // of every move, O in `events.ts`). Its companions are the export-specifier /
   // `export default x` clusters that only read it. Neither is an env root
   // for now: the decision (extract, or keep in the env module) is taken once
   // env liveness is known.

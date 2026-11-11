@@ -7,7 +7,6 @@
  */
 import { invariantViolated } from '../self-checks'
 import {
-  READ_KINDS,
   clusterRange,
   describeCluster,
   isDuplicable,
@@ -231,51 +230,6 @@ export function includeAndImport(
       }
     }
   }
-  // A static output (an extracted export's module) never reads, at its
-  // evaluation (its own text, or a function it calls then), a non-copyable
-  // binding the env module keeps: the roots settled with such readers rooted
-  // in the env module (`readsKeptEagerly`).
-  const staticOutputRead = (): InvariantViolation | undefined => {
-    for (const [o, decl] of outputs) {
-      if (decl.kind !== 'export') {
-        continue
-      }
-      for (const c of included.get(o)!) {
-        let found: InvariantViolation | undefined
-        reads.clusterRuns(c, (ref) => {
-          if (
-            !READ_KINDS.has(ref.kind) ||
-            !symbols.isModuleLevel(ref.sym) ||
-            !graph.isLive(ref, o)
-          ) {
-            return false
-          }
-          const d = clusterOfSym.get(ref.sym)
-          if (
-            d !== undefined &&
-            d !== c &&
-            !clusters[d]!.copyable &&
-            clusters[d]!.kind !== 'import' &&
-            home.get(d) === 'env'
-          ) {
-            found = invariantViolated({
-              effect: `a split module may read ${namesOf(input, clusters[d]!) ?? 'a value'} before it exists`,
-              detail: `placement: ${describeCluster(input, clusters[c]!)} in static output ${o} reads ${describeCluster(input, clusters[d]!)} of the env module at its evaluation`,
-              range: ref.range,
-            })
-            return true
-          }
-          return false
-        })
-        if (found !== undefined) {
-          return found
-        }
-      }
-    }
-    return undefined
-  }
-  violation ??= staticOutputRead()
-
   // ---- imports and the exports they need -----------------------------------
   const imports = new Map<OutputId, Map<OutputId, Set<SymbolId>>>()
   const exportsNeeded = new Map<OutputId, Set<SymbolId>>()

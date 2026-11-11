@@ -1365,22 +1365,22 @@ describe('extracted-export outputs', () => {
     )
   })
 
-  it('imports a cluster declaring state or observing it from the extracted module instead of copying it', async () => {
+  // (an export observing the state at load stays in the route module: the
+  // F1-2 tests of "what an evaluation runs")
+  it('imports a cluster declaring state from the extracted module instead of copying it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       let n = 0
       export function inc() { n++ }
-      export const initial = [n]
-      function Page() { inc(); return initial }
+      export const read = () => n
+      function Page() { inc(); return read() }
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
     expect(r.chunk).toContain(
-      "import { inc } from '/app/route.tsx?tsr-split=export---inc'",
+      "import { n, inc } from '/app/route.tsx?tsr-split=export---inc'",
     )
-    expect(r.chunk).toContain(
-      "import { initial } from '/app/route.tsx?tsr-split=export---initial'",
-    )
+    expect(r.chunk).toContain('const read = () => n')
     expect(r.chunk).not.toContain('n++')
     expect(r.diagnostics).toEqual([])
   })
@@ -4800,6 +4800,83 @@ describe('what an evaluation runs: one walk for every rule', () => {
     expect(r.kept).toEqual([])
   })
 
+  // A name's value is its declaration and the top-level statements writing
+  // it: a function a later statement attaches (or assigns) runs when a call
+  // at load reaches the name. Source: review of design 2 steps 0-1
+  // (2026-11-11), finding 1 (wrong output at the base: `x` moved and read
+  // `n` after `inc()` ran).
+  it.each([
+    [
+      'attached to an object, called through a function',
+      "const handlers = {}\nhandlers.count = () => n\nfunction run(k) { return handlers[k]() }\nconst x = run('count')",
+      'handlers',
+      'state',
+      'n',
+    ],
+    [
+      'attached to an object, the call pure',
+      'const api = {}\napi.get = () => n\nconst call = () => api.get()\nconst x = /* @__PURE__ */ call()',
+      'api',
+      'state',
+      'n',
+    ],
+    [
+      'assigned to a `let`, the call pure',
+      'let g\ng = () => n\nconst call = () => g()\nconst x = /* @__PURE__ */ call()',
+      'g',
+      'reads',
+      'g',
+    ],
+  ])(
+    'keeps a declaration whose load calls a function %s in the route module',
+    async (_, declarations, object, reason, read) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let n = 0
+        export function inc() { n++ }
+        ${declarations.replaceAll('\n', '\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => { inc(); return ${object} },
+          component: () => x,
+        })
+      `)
+      const r = await compile(code)
+      expect(r.env).toMatch(/const x = /)
+      expect(r.chunk).not.toMatch(/const x = /)
+      expect(r.chunk).toContain("import { x } from '/app/route.tsx'")
+      expect(r.kept).toMatchObject([
+        {
+          code: `eager-split:${reason}`,
+          range: { start: code.indexOf('x = ') },
+        },
+      ])
+      expect(r.kept[0]!.message).toContain(`\`${read}\``)
+    },
+  )
+
+  // the direct spelling: `x` joins the cluster of what it reads, which an
+  // augmentation writes (step 4 makes that a plain write: the walk decides)
+  it('keeps a declaration whose load calls a method a later statement attaches in the route module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 0
+      export function inc() { n++ }
+      const handlers = {}
+      handlers.count = () => n
+      const x = handlers.count()
+      export const Route = createFileRoute('/')({
+        loader: () => { inc(); return handlers },
+        component: () => x,
+      })
+    `)
+    const r = await compile(code)
+    expect(r.env).toContain('const x = handlers.count()')
+    expect(r.chunk).not.toContain('const x = ')
+    expect(r.chunk).toContain("import { x } from '/app/route.tsx'")
+    expect(r.kept).toHaveLength(1)
+    expect(r.kept[0]!.code).toMatch(/^eager-split:/)
+  })
+
   // F1-3a: a method nested in an object argument runs only when called,
   // in an option value as in a declaration
   it.each([
@@ -4920,7 +4997,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
   // F1-2: an extracted export's module evaluates when something first
   // imports it (with the chunk, once nothing imports the binding through
   // the route file): a snapshot of state the route module's functions write
-  // would then see a later value. Design 2 step 2 fixes it.
+  // would then see a later value, so it stays (V on candidates).
   const snapshot = dedent(`
     import { createFileRoute } from 'toy-router'
     let n = 0
@@ -4930,38 +5007,31 @@ describe('what an evaluation runs: one walk for every rule', () => {
       component: () => { inc(); return initial },
     })
   `)
-  it.fails(
-    'keeps an exported snapshot of state an exported function writes in the route module in a build',
-    async () => {
-      const r = await compile(snapshot, [
-        toySplitPlanner({ extractExports: true }),
-      ])
-      expect(r.env).toContain('export const initial = [n]')
-      expect(r.env).not.toContain('export---initial')
-      expect(r.kept).toMatchObject([
-        {
-          code: 'eager-export:state',
-          range: { start: snapshot.indexOf('initial = ') },
-        },
-      ])
-    },
-  )
+  it('keeps an exported snapshot of state an exported function writes in the route module in a build', async () => {
+    const r = await compile(snapshot, [
+      toySplitPlanner({ extractExports: true }),
+    ])
+    expect(r.env).toContain('export const initial = [n]')
+    expect(r.env).not.toContain('export---initial')
+    expect(r.kept).toMatchObject([
+      {
+        code: 'eager-export:state',
+        range: { start: snapshot.indexOf('initial = ') },
+      },
+    ])
+    expect(r.kept[0]!.message).toBe(
+      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move both to their own module and import them from there.',
+    )
+  })
 
-  it.fails(
-    'places an exported snapshot of written state as dev does, in a build',
-    async () => {
-      const planners = [toySplitPlanner({ extractExports: true })]
-      const build = await compile(
-        snapshot,
-        planners,
-        envInfo({ mode: 'build' }),
-      )
-      const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
-      expect(build.env).toBe(dev.env)
-      expect(build.chunk).toBe(dev.chunk)
-      expect(build.kept).toEqual(dev.kept)
-    },
-  )
+  it('places an exported snapshot of written state as dev does, in a build', async () => {
+    const planners = [toySplitPlanner({ extractExports: true })]
+    const build = await compile(snapshot, planners, envInfo({ mode: 'build' }))
+    const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
+    expect(build.env).toBe(dev.env)
+    expect(build.chunk).toBe(dev.chunk)
+    expect(build.kept).toEqual(dev.kept)
+  })
 })
 
 // A declaration only split code needs that the movable test keeps in the
@@ -6124,10 +6194,10 @@ describe('generated units for the env module readers', () => {
 /**
  * What the evaluation of some module-level bindings may read, by name: a
  * reference written apart from the compiler. The names their declarations
- * and the top-level statements assigning them evaluate (a function nested
+ * and the top-level statements writing them evaluate (a function nested
  * in them only when it is passed to a call or called in place) and, once
  * that text calls anything, every name in the module's declarations of
- * those names, transitively.
+ * those names and in the top-level statements writing them, transitively.
  */
 function evaluatedNames(
   code: string,
@@ -6138,6 +6208,7 @@ function evaluatedNames(
     return null
   }
   const declarations = new Map<string, Node>()
+  const writers = new Map<string, Array<Node>>()
   const evaluated: Array<Node> = []
   for (const statement of parsed.file.program.body) {
     const d =
@@ -6156,22 +6227,28 @@ function evaluatedNames(
         }
       }
     } else {
-      // a statement assigning a subject evaluates with it
-      let assigns = false as boolean
+      // a statement writing a binding (`x = …`, `x.p = …`) is part of its
+      // value: it evaluates with a subject, and with a name a call reaches
       walk(d, {
         enter: (n) => {
-          const target =
+          let target =
             n.type === 'AssignmentExpression'
               ? n.left
               : n.type === 'UpdateExpression'
                 ? n.argument
                 : null
-          assigns ||= target?.type === 'Identifier' && subjects.has(target.name)
+          while (target?.type === 'MemberExpression') {
+            target = target.object
+          }
+          if (target?.type === 'Identifier') {
+            const list = writers.get(target.name) ?? []
+            if (!list.includes(d)) {
+              list.push(d)
+            }
+            writers.set(target.name, list)
+          }
         },
       })
-      if (assigns) {
-        evaluated.push(d)
-      }
     }
   }
   for (const name of subjects) {
@@ -6179,7 +6256,7 @@ function evaluatedNames(
     if (d === undefined) {
       return null
     }
-    evaluated.push(d)
+    evaluated.push(d, ...(writers.get(name) ?? []))
   }
   const names = new Set<string>()
   let calls = false as boolean
@@ -6224,11 +6301,15 @@ function evaluatedNames(
     for (let grew = true; grew; ) {
       grew = false
       for (const name of [...names]) {
-        const d = declarations.get(name)
-        if (d !== undefined && !seen.has(d)) {
-          seen.add(d)
-          collect(d, true)
-          grew = true
+        for (const d of [
+          declarations.get(name),
+          ...(writers.get(name) ?? []),
+        ]) {
+          if (d !== undefined && !seen.has(d)) {
+            seen.add(d)
+            collect(d, true)
+            grew = true
+          }
         }
       }
     }

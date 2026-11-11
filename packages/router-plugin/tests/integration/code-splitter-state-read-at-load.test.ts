@@ -126,14 +126,11 @@ const shapes: Record<
     state: `let prefix = 'a'\ntry { prefix = String(prefix) } catch { prefix = 'z' }\nexport function setPrefix(p: string) { prefix = p }\n`,
     code: `const next = () => (prefix += '!')\nconst labels = [next()]`,
   },
-  // Bug (review of 2026-11-10, F1-2, its Q1): an exported snapshot of the
-  // state is extracted to its own module, which evaluates with the chunk
-  // once nothing imports it through the route file, after the setter ran.
-  // Impact: the page shows a later value than the same code unsplit (and
-  // than dev, which keeps it in the route module).
+  // review of 2026-11-10, F1-2 (its Q1): an extracted module evaluates with
+  // the chunk once nothing imports it through the route file, after the
+  // setter ran; the snapshot stays in the route module
   'exported snapshot of the state': {
     code: `export const labels = [prefix + 'x']`,
-    pin: ['vite', 'rspack', 'rsbuild'],
   },
   'read at render (control, the current value is right)': {
     code: `const labels = () => [prefix + 'x']`,

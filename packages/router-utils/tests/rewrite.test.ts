@@ -2072,32 +2072,6 @@ describe("the env module's pieces", () => {
   // one owner, the text holding its position (the innermost node strictly
   // holding it, else the unit holding the byte there), and renders and is
   // read with that text only.
-  it('renders an insert once where a unit is anchored inside a node that renders as its source', () => {
-    const code = `const a = 1\nfunction b() { return 2 }\nexport const c = a + b\n`
-    const e = engine(code)
-    e.ctx.region(
-      rangeOf(code, 'const a = 1\nfunction b() { return 2 }\n'),
-      'custom',
-    )
-    e.ctx.rewrites.edit({
-      range: rangeOf(code, '1'),
-      body: [text('3')],
-      by: 'toy',
-    })
-    e.ctx.rewrites.insert({
-      at: rangeOf(code, 'function b').start,
-      body: [text('/*i*/')],
-      by: 'toy',
-    })
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'before-unit', unit: 1 }),
-    })
-    expect(e.render().code).toBe(
-      `const a = 3\n;/*i*/const gen = 1\nfunction b() { return 2 }\nexport const c = a + b\n`,
-    )
-  })
-
   it.each([
     [
       'the start of a statement placement drops: it goes with it',
@@ -2136,6 +2110,28 @@ describe("the env module's pieces", () => {
     expect(() =>
       e.ctx.rewrites.insert({ at: at(code), body: [text('b0;')], by: 'toy' }),
     ).toThrow(/stands in no statement/)
+  })
+
+  // A region nests in one unit: one over whole statements would own their
+  // references, which placement then reads for no unit (it dropped a
+  // declaration kept code reads). Source: design 2 steps 0-1 lane, finding 3.
+  it.each([
+    ['two statements', 'const a = 1\nfunction b() { return 2 }\n'],
+    ['a whole declaration', 'const a = 1\n'],
+  ])('refuses a region over %s', (_, over) => {
+    const code = `const a = 1\nfunction b() { return 2 }\nexport const c = a + b\n`
+    const e = engine(code)
+    expect(() => e.ctx.region(rangeOf(code, over), 'custom')).toThrow(
+      /^conflict: a custom region \[\d+, \d+\) holds unit \d+/,
+    )
+  })
+
+  it('accepts a region on exactly a statement', () => {
+    const code = `createServerFn().handler(h)\nexport const c = 1\n`
+    const e = engine(code)
+    expect(() =>
+      e.ctx.region(rangeOf(code, 'createServerFn().handler(h)'), 'custom'),
+    ).not.toThrow()
   })
 
   it('fails the compile when a planner edit across two statements holds an anchored unit', () => {
