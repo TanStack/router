@@ -1,0 +1,38 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #18181b;
+  background: #fafafa;
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e4e4e7;
+  background: white;
+}
+
+.shell-header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.shell-header a {
+  color: inherit;
+}
+
+.shell-header a.active {
+  font-weight: 600;
+}
+
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.remote-fallback {
+  color: #71717a;
+}
