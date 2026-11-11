@@ -132,7 +132,7 @@ function onlyValueUnit(ctx: PlanContext, sym: SymbolId): Unit | undefined {
   return values?.length === 1 ? values[0] : undefined
 }
 
-export function declaratorOf(
+function declaratorOf(
   ctx: PlanContext,
   sym: SymbolId,
 ): { unit: Unit; init: Node } | null {
@@ -161,20 +161,24 @@ export function declaratorOf(
  * initialiser of the `const` it names (`declaratorOf`), followed through
  * each `const` naming another (`const b = a as any`), or the function
  * declaration it names; the value itself (an identifier when it names
- * anything else) otherwise.
+ * anything else) otherwise. `syms`: the consts walked, in order (the last
+ * one's initialiser is `node`, when it is one).
  */
-export function boundValueOf(ctx: PlanContext, value: Node): Node {
+export function boundValueOf(
+  ctx: PlanContext,
+  value: Node,
+): { node: Node; syms: Array<SymbolId> } {
   let node = unwrapExpression(value)
-  const seen = new Set<SymbolId>()
+  const syms: Array<SymbolId> = []
   while (node.type === 'Identifier') {
     const b = ctx.analysis.file.referenceOf(node)?.binding ?? null
     const sym = b ? ctx.symbols.ofBinding(b) : null
-    if (sym === null || seen.has(sym)) {
+    if (sym === null || syms.includes(sym)) {
       break
     }
-    seen.add(sym)
     const decl = declaratorOf(ctx, sym)
     if (decl) {
+      syms.push(sym)
       node = unwrapExpression(decl.init)
       continue
     }
@@ -185,11 +189,31 @@ export function boundValueOf(ctx: PlanContext, value: Node): Node {
       unit?.node.type === 'FunctionDeclaration' &&
       !ctx.t1.mutation.isReassigned(sym, liveInEnv(ctx))
     ) {
-      return unit.node
+      return { node: unit.node, syms }
     }
     break
   }
-  return node
+  return { node, syms }
+}
+
+/** Whether a const a value was named through is written to in the env output (`boundValueOf`'s `syms`). */
+export function chainWritten(
+  ctx: PlanContext,
+  syms: ReadonlyArray<SymbolId>,
+): boolean {
+  const live = liveInEnv(ctx)
+  return syms.some((sym) => ctx.t1.mutation.isMutated(sym, live))
+}
+
+/** Whether each const a value was named through has that one use, unexported (`boundValueOf`'s `syms`). */
+export function chainSoleUse(
+  ctx: PlanContext,
+  syms: ReadonlyArray<SymbolId>,
+): boolean {
+  return syms.every(
+    (sym) =>
+      ctx.t1.refs.refsOf(sym).length === 1 && !isExportedSymbol(ctx, sym),
+  )
 }
 
 /** The mutation model as the env output sees it (a write inside code the environment erases imposes nothing). */
@@ -207,7 +231,7 @@ function readGroupings(
   value: Node,
 ): CodeSplitGroupings | { problem: string } {
   const shape = `must be ${GROUPINGS_SHAPE}`
-  const node = boundValueOf(ctx, value)
+  const { node } = boundValueOf(ctx, value)
   if (node.type === 'Identifier') {
     return {
       problem:
@@ -308,27 +332,26 @@ export function recognizeRoute(
   if (!argument) {
     options = { kind: 'none' }
   } else {
-    const arg = unwrapExpression(argument)
-    if (arg.type === 'ObjectExpression') {
-      options = { kind: 'object', node: arg }
-    } else if (arg.type === 'Identifier') {
-      const b = file.referenceOf(arg)?.binding ?? null
-      const sym = b ? symbols.ofBinding(b) : null
-      const decl = sym !== null ? declaratorOf(ctx, sym) : null
-      const init = decl ? unwrapExpression(decl.init) : null
-      if (decl && init && init.type === 'ObjectExpression') {
-        if (t1.mutation.isMutated(sym!, liveInEnv(ctx))) {
-          options = { kind: 'opaque', reason: 'written' }
-        } else {
-          options = { kind: 'object', node: init }
-          optionsUnit = decl.unit
-        }
-      } else if (sym !== null && symbols.isImport(sym)) {
-        options = { kind: 'opaque', reason: 'imported' }
+    // the object literal, or the one a chain of consts names (I4)
+    const { node, syms } = boundValueOf(ctx, argument)
+    const last = syms.at(-1)
+    if (node.type === 'ObjectExpression') {
+      if (last === undefined) {
+        options = { kind: 'object', node }
+      } else if (chainWritten(ctx, syms)) {
+        options = { kind: 'opaque', reason: 'written' }
       } else {
-        options = { kind: 'opaque', reason: 'other' }
+        options = { kind: 'object', node }
+        optionsUnit = onlyValueUnit(ctx, last)!
       }
-    } else if (arg.type === 'CallExpression') {
+    } else if (node.type === 'Identifier') {
+      const b = file.referenceOf(node)?.binding ?? null
+      options = {
+        kind: 'opaque',
+        reason:
+          b && symbols.isImport(symbols.ofBinding(b)) ? 'imported' : 'other',
+      }
+    } else if (node.type === 'CallExpression') {
       options = { kind: 'opaque', reason: 'call' }
     } else {
       options = { kind: 'opaque', reason: 'other' }

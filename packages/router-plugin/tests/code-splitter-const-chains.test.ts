@@ -23,8 +23,6 @@ const page = `component: () => <p>MARK_PAGE</p>,
   server: { handlers: { GET: () => readSecret() } },`
 
 describe('route options named through a chain of consts', () => {
-  // Bug: only one `const` is followed; through two, the options are not
-  // read (`options-opaque`), so nothing is split or removed (design 5 D8)
   it.for([
     {
       name: 'two consts',
@@ -36,7 +34,6 @@ describe('route options named through a chain of consts', () => {
     },
   ])(
     'are split and lose the options of deleteNodes, through $name, nothing reported',
-    { fails: true },
     async ({ declarations }) => {
       const route = await loadRoute(
         `${head}import { readSecret } from './admin-helper'
@@ -80,13 +77,9 @@ export const Route = createFileRoute('/x')(options)
 })
 
 describe('a spread in route options naming a chain of consts', () => {
-  // Bug: only one `const` is followed; through two, the spread may hold
-  // `server` for all the compiler knows (`options-unread`) (design 5 D8)
-  it.fails(
-    'holding none of deleteNodes, removes them, nothing reported',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { readSecret } from './admin-helper'
+  it('holding none of deleteNodes, removes them, nothing reported', async () => {
+    const route = await loadRoute(
+      `${head}import { readSecret } from './admin-helper'
 const a = { staleTime: 1 }
 const base = a
 export const Route = createFileRoute('/x')({
@@ -94,17 +87,16 @@ export const Route = createFileRoute('/x')({
   ${page}
 })
 `,
-        { routeId: '/x', files, deleteNodes, fresh: true },
-      )
-      await expectValidModules(route)
-      expect(await route.requested()).not.toContain('/admin-helper.ts')
-      const [server, staleTime] = await route.run<[boolean, number]>(
-        `return ['server' in options, options.staleTime]`,
-      )
-      expect([server, staleTime]).toEqual([false, 1])
-      expectNoProblems(await route.diagnostics())
-    },
-  )
+      { routeId: '/x', files, deleteNodes, fresh: true },
+    )
+    await expectValidModules(route)
+    expect(await route.requested()).not.toContain('/admin-helper.ts')
+    const [server, staleTime] = await route.run<[boolean, number]>(
+      `return ['server' in options, options.staleTime]`,
+    )
+    expect([server, staleTime]).toEqual([false, 1])
+    expectNoProblems(await route.diagnostics())
+  })
 
   it('is reported when other code shares the object', async () => {
     const route = await loadRoute(
@@ -130,9 +122,7 @@ export const Route = createFileRoute('/x')({
 })
 
 describe('an object-form loader named through a chain of consts', () => {
-  // Bug: the chunk exports the object the chain names, and the router's
-  // lazy loader calls it (design 5, the Lane C leftover)
-  it.fails('is split and returns its data', async () => {
+  it('is split and returns its data', async () => {
     const route = await loadRoute(
       `${head}const a = { handler: () => 'MARK_DATA' }
 const l = a
