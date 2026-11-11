@@ -74,6 +74,7 @@ export function createCompilerCaches(
     plans: new Map(),
     rawFacts,
     fileSetVersion: 0,
+    events: 0,
     stale: new StaleSets(),
     invalidations,
     settled: async () => {
@@ -153,8 +154,10 @@ export async function compileModule(
       // what was validated at the current versions stands (not asked again)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
+      // (every file event asks a published plan's failed resolutions)
       const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
         resolutions: hit.resolvedAt === fileSetVersion,
+        failed: true,
         facts: hit.factsAt === factsVersion,
       })
       if (cache.lookup(key, rev) === hit) {
@@ -177,7 +180,7 @@ export async function compileModule(
               (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
             ),
             src,
-            { resolutions: true, facts: false },
+            { resolutions: true, failed: true, facts: false },
           )
           cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
         }
@@ -296,6 +299,7 @@ async function settle(
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
+      let events = caches.events
       const ledger = new DependencyLedger(key, cache.dependents)
       const result = await runAttempt(
         input,
@@ -331,15 +335,22 @@ async function settle(
       const src = fingerprintSourceFor(caches, host, key.env)
       // the snapshot: whether every fact the attempt recorded is still
       // current. Standing answers (no file appeared or disappeared, no raw
-      // fact went stale since the attempt started) are not asked again
-      const snapshotOk = await fingerprintsCurrent(
-        entry.plan.dependencies,
-        src,
-        {
+      // fact went stale since the attempt started) are not asked again; a
+      // failed resolution is asked again once a file event ran since (no
+      // event restarts the attempt for it), until a check overlaps none
+      let snapshotOk: boolean
+      for (;;) {
+        const checkedAt = caches.events
+        snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
           resolutions: caches.fileSetVersion === fileSetVersion,
+          failed: checkedAt === events,
           facts: caches.rawFacts.version === factsVersion,
-        },
-      )
+        })
+        if (!snapshotOk || caches.events === checkedAt) {
+          break
+        }
+        events = checkedAt
+      }
       if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {
           ledger.publish()

@@ -341,6 +341,13 @@ export interface CompilerCaches {
    * bundler's own aliases need a restart of its resolver.
    */
   fileSetVersion: number
+  /**
+   * The file events `invalidate` applied, repeats included: a failed
+   * resolution asked before one may be answered from before it (the file
+   * the event made appear), so it is asked again (`resolveForAnalysis`, a
+   * compile's snapshot).
+   */
+  events: number
   /** Per environment, the files whose modules its bundler must build again (`invalidate` and the compiles fill them, hosts take them). */
   stale: StaleSets
   /** Resolves once no `invalidate()` is running. */
@@ -441,6 +448,9 @@ async function applyChange(
 ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
   const none = { evicted: [], dependents: [] }
   const path = event.path
+  if (event.kind !== 'registry') {
+    caches.events++
+  }
   // `imports` and `exports` decide what specifiers resolve to, as files
   // appearing do. (A resolution from a package to a target outside its
   // directory stays until its importer compiles again.) So do a tsconfig's
@@ -549,20 +559,17 @@ async function applyChange(
         continue
       }
       seen.add(ks)
-      const host = hostOf(entry.key)
-      const src = fingerprintSourceFor(caches, host, cache.env)
-      if (entry.inFlight) {
-        // a compile that met a failed resolution goes on unless one resolves
-        // now (every file event asks them: most leave them failing)
-        if (
-          indexKey !== UNRESOLVED_DEPENDENCY ||
-          entry.failed === undefined ||
-          !(await allCurrent(entry.failed, src, host))
-        ) {
-          cache.bump(entry.key)
-        }
+      if (entry.asked && indexKey !== UNRESOLVED_DEPENDENCY) {
+        // a compile running now asked for what changed: it starts again. A
+        // failed resolution it met is its own to ask again (an event ran
+        // since: its snapshot asks it), so the event leaves it running
+        cache.bump(entry.key)
+      }
+      if (!entry.published) {
         continue
       }
+      const host = hostOf(entry.key)
+      const src = fingerprintSourceFor(caches, host, cache.env)
       const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
       if (!fps) {
         continue
@@ -675,19 +682,6 @@ function checked(
     host.onInvalidationError?.(error)
     return false
   })
-}
-
-async function allCurrent(
-  fps: ReadonlyArray<DependencyFingerprint>,
-  src: FingerprintSource,
-  host: HostServices,
-): Promise<boolean> {
-  for (const fp of fps) {
-    if (!(await checked(fp, src, host))) {
-      return false
-    }
-  }
-  return true
 }
 
 /** A TypeScript or JavaScript project file (`tsconfig.json`, `tsconfig.app.json`, `jsconfig.json`): its `paths` decide resolutions. */
@@ -889,26 +883,33 @@ export function resolveForAnalysis(
   if (hit !== undefined) {
     return typeof hit === 'string' ? Promise.resolve(hit) : hit
   }
-  const asked: Promise<string | null> = host
-    .resolve(specifier, importerCanonicalId)
-    .then((r) => {
-      const resolved = !r
-        ? null
-        : r.external
-          ? EXTERNAL_RESOLUTION
-          : identify(r.id).canonicalId
-      if (memo.get(specifier) === asked) {
-        // the settled id replaces the promise; an unresolved specifier is
-        // asked again next time: the file may be about to appear (a file's
-        // `add` event re-resolves failed resolutions)
-        if (resolved === null) {
-          memo.delete(specifier)
-        } else {
-          memo.set(specifier, resolved)
-        }
+  const ask = async (): Promise<string | null> => {
+    for (;;) {
+      const askedAt = caches.events
+      const r = await host.resolve(specifier, importerCanonicalId)
+      if (r) {
+        return r.external ? EXTERNAL_RESOLUTION : identify(r.id).canonicalId
       }
-      return resolved
-    })
+      if (caches.events === askedAt) {
+        return null
+      }
+      // a failed answer a file event overlapped may be from before it (the
+      // file it made appear): asked again before anyone records it
+    }
+  }
+  const asked: Promise<string | null> = ask().then((resolved) => {
+    if (memo.get(specifier) === asked) {
+      // the settled id replaces the promise; an unresolved specifier is
+      // asked again next time: the file may be about to appear (a file's
+      // `add` event re-resolves failed resolutions)
+      if (resolved === null) {
+        memo.delete(specifier)
+      } else {
+        memo.set(specifier, resolved)
+      }
+    }
+    return resolved
+  })
   memo.set(specifier, asked)
   // a rejected host call (the host's own error) is the caller's to report, and asked again next time
   asked.catch(() => {

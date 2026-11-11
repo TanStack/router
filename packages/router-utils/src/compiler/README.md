@@ -306,8 +306,10 @@ text compiles waits for it and emits its own output from the result.
   attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read and a
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
-  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans: a published plan's
-  rows until it is evicted or replaced, rows in flight until the key's last compile ends (two quick saves overlap).
+  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans. A row holds two facts: the
+  key's published plan depends on the path (until it is evicted or replaced), and a compile of the key running now
+  asked for it (until the key's last compile ends: two quick saves overlap). An event restarts the compiles that asked,
+  and checks the published plan.
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it for every file event they see
   (every hook, every environment) and for registry changes. Repeating it is harmless: the raw-facts cache keeps the
   revision of the text it read of each path (`seen`), the event reads the file once, and a change returns when the
@@ -316,8 +318,9 @@ text compiles waits for it and emits its own output from the result.
   with that text still moves the file set (what looked for the file meanwhile, and another environment's resolver
   that answered before it existed, ask again) without marking its facts. Any file event may hide a creation
   (chokidar folds a removal and a re-creation within its window into one change; Rspack lists a file back in its
-  batch as modified): every one, a repeated change included, asks the failed resolutions again (a compile in flight
-  that met one is restarted only when one resolves now: its row carries the failed resolutions it recorded), and a
+  batch as modified): every one, a repeated change included, asks the failed resolutions of the published plans again (a compile running now asks its own: a failed answer
+  whose ask a file event overlapped is asked again before it is recorded, and a compile's snapshot asks its failed
+  resolutions again once a file event ran since it began), and a
   change of a path the caches hold nothing of that reads as a file is judged an add. A repeat moves no file set (a
   `package.json` or tsconfig saved once moved it). An event that reads the file empty reads it again for a moment
   (an in-place save reported between truncation and write), unless an event read it empty and waited in vain and

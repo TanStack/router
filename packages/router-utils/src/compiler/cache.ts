@@ -164,10 +164,13 @@ export async function fingerprintCurrent(
 
 /**
  * The answers a validation takes as current: resolutions at an unchanged
- * `fileSetVersion`, raw facts at an unchanged `RawFactsCache.version`.
+ * `fileSetVersion` (failed ones also while no file event was applied:
+ * `CompilerCaches.events`), raw facts at an unchanged
+ * `RawFactsCache.version`.
  */
 export interface StandingAnswers {
   resolutions: boolean
+  failed: boolean
   facts: boolean
 }
 
@@ -187,7 +190,7 @@ export async function fingerprintsCurrent(
   for (const fp of fps) {
     const skip =
       fp.kind === 'resolution'
-        ? standing.resolutions
+        ? standing.resolutions && (fp.resolved !== null || standing.failed)
         : fp.kind !== 'route-registry' && standing.facts
     if (!skip) {
       checks.push(fingerprintCurrent(fp, src))
@@ -198,24 +201,21 @@ export async function fingerprintsCurrent(
 
 interface DependentEntry {
   key: PlanKey
-  inFlight: boolean
-  /**
-   * A row in flight in the unresolved bucket: the failed resolutions its
-   * compiles recorded so far. A file event asks them again, and restarts
-   * the compile only when one resolves now.
-   */
-  failed?: Array<DependencyFingerprint>
+  /** The key's published (or restored) plan depends on the path. */
+  published: boolean
+  /** A compile of the key running now asked for it (`PlanCache.end` drops the asks). */
+  asked: boolean
 }
 
 /**
- * Reverse index: dependency path (or the unresolved bucket) → plan keys
- * (published or in flight), with each key's own buckets (`planKey → paths`)
- * so publishing and evicting a plan touch its rows only. A row is in flight
- * while an attempt of its key recorded it and no published plan of the key
- * depends on it; compiles of one key overlap (two quick saves) and share
- * their rows, so the rows in flight live until the key's last compile ends
- * (`PlanCache.end`). Empty buckets are removed: the index holds rows of live
- * plans and compiles only.
+ * Reverse index: dependency path (or a bucket of resolutions without one) →
+ * plan keys, with each key's own buckets (`planKey → paths`) so publishing
+ * and evicting a plan touch its rows only. A row holds two facts: the key's
+ * published plan depends on the path, and a compile of the key running now
+ * asked for it. Compiles of one key overlap (two quick saves) and share
+ * their asks, which live until the key's last compile ends (`PlanCache.end`).
+ * A row with neither fact is removed, and so is an empty bucket: the index
+ * holds rows of live plans and compiles only.
  */
 class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
@@ -229,8 +229,8 @@ class DependentsIndex {
   private readonly byStem = new Map<string, string | Set<string>>()
   private readonly byDir = new Map<string, Set<string>>()
 
-  /** The row of (path, key); a new row is in flight. */
-  add(path: string, key: PlanKey): DependentEntry {
+  /** The row of (path, key), created with neither fact. */
+  private row(path: string, key: PlanKey): DependentEntry {
     let m = this.byPath.get(path)
     if (!m) {
       m = new Map()
@@ -240,24 +240,21 @@ class DependentsIndex {
     const ks = planKeyString(key)
     let e = m.get(ks)
     if (!e) {
-      e = { key, inFlight: true }
+      e = { key, published: false, asked: false }
       m.set(ks, e)
+      let paths = this.byKey.get(ks)
+      if (!paths) {
+        paths = new Set()
+        this.byKey.set(ks, paths)
+      }
+      paths.add(path)
     }
-    let paths = this.byKey.get(ks)
-    if (!paths) {
-      paths = new Set()
-      this.byKey.set(ks, paths)
-    }
-    paths.add(path)
     return e
   }
 
-  /** A compile in flight of `key` met a failed resolution (`DependentEntry.failed`). */
-  failedInFlight(key: PlanKey, fp: DependencyFingerprint): void {
-    const e = this.byPath.get(UNRESOLVED_DEPENDENCY)?.get(planKeyString(key))
-    if (e?.inFlight) {
-      ;(e.failed ??= []).push(fp)
-    }
+  /** A compile of `key` asked for a fact under `path`. */
+  ask(path: string, key: PlanKey): void {
+    this.row(path, key).asked = true
   }
 
   get(path: string): Array<DependentEntry> {
@@ -382,30 +379,34 @@ class DependentsIndex {
 
   /**
    * Publication of a key's plan whose dependencies index under `paths`: the
-   * key's published rows become exactly those (rows in flight stay).
+   * key's published rows become exactly those (asks stay).
    */
   publish(key: PlanKey, paths: ReadonlySet<string>): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      if (!paths.has(path) && !this.byPath.get(path)!.get(ks)!.inFlight) {
-        this.remove(path, ks)
+      if (!paths.has(path)) {
+        this.unset(path, ks, 'published')
       }
     }
     for (const path of paths) {
-      const e = this.add(path, key)
-      e.inFlight = false
-      if (e.failed) {
-        // (only rows that met one carry the field)
-        delete e.failed
-      }
+      this.row(path, key).published = true
     }
   }
 
-  /** Drops a key's published rows (eviction) or its rows in flight (its last compile ended). */
-  drop(key: PlanKey, inFlight: boolean): void {
+  /** Drops a key's published rows (eviction) or its asks (its last compile ended). */
+  drop(key: PlanKey, fact: 'published' | 'asked'): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      if (this.byPath.get(path)!.get(ks)!.inFlight === inFlight) {
+      this.unset(path, ks, fact)
+    }
+  }
+
+  /** Clears one fact of a row; a row with neither goes. */
+  private unset(path: string, ks: string, fact: 'published' | 'asked'): void {
+    const e = this.byPath.get(path)?.get(ks)
+    if (e) {
+      e[fact] = false
+      if (!e.published && !e.asked) {
         this.remove(path, ks)
       }
     }
@@ -485,11 +486,7 @@ export class DependencyLedger {
     }
     this.byId.set(id, fp)
     this.entries.push(fp)
-    const indexKey = fingerprintIndexKey(fp)
-    this.indexPath(indexKey)
-    if (indexKey === UNRESOLVED_DEPENDENCY) {
-      this.index.failedInFlight(this.key, fp)
-    }
+    this.indexPath(fingerprintIndexKey(fp))
   }
 
   /** A lookup read export `name` of a module (`key`: its `exportKeyOf` answer, null when it has none). */
@@ -521,7 +518,7 @@ export class DependencyLedger {
   private indexPath(indexKey: string | null): void {
     if (indexKey !== null && !this.indexKeys.has(indexKey)) {
       this.indexKeys.add(indexKey)
-      this.index.add(indexKey, this.key)
+      this.index.ask(indexKey, this.key)
     }
   }
 
@@ -778,7 +775,7 @@ export class PlanCache {
       this.active.set(ks, n)
     } else {
       this.active.delete(ks)
-      this.dependents.drop(key, true)
+      this.dependents.drop(key, 'asked')
     }
     this.retire(ks)
   }
@@ -834,7 +831,7 @@ export class PlanCache {
   delete(key: PlanKey): boolean {
     const ks = planKeyString(key)
     const had = this.entries.delete(ks) || this.restored.delete(ks)
-    this.dependents.drop(key, false)
+    this.dependents.drop(key, 'published')
     this.retire(ks)
     return had
   }
