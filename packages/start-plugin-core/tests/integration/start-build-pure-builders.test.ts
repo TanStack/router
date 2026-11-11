@@ -10,8 +10,9 @@
  * (47 apps) were such chains. A builder exists once: one read by two split
  * options lives in one module both import, and a middleware a server fn and
  * split code read runs once per call. A link called on a `const` holding a
- * builder stays an effect (a middleware's links write the options of the
- * builder they are called on), as does a chain with an impure argument.
+ * builder is a write of that builder (a middleware's links write the
+ * options of the builder they are called on), which moves with it (R139). A
+ * chain with an impure argument stays an effect.
  * Both environments agree, so a server fn nested in a function may take a
  * builder chain in its options (the server compile hoists it).
  *
@@ -112,7 +113,9 @@ export const Route = createFileRoute('/shared')({
   errorComponent: () => <button onClick={() => second()}>retry</button>,
 })
 `,
-  // a link on a `const` builder writes that builder's options: an effect
+  // a link on a `const` builder writes that builder's options: a write of
+  // pure values, so the builder, its link and the server fn using it load
+  // with the chunk (R139; the row asserted that they stayed, an effect)
   'src/routes/const-receiver.tsx': route(
     'const-receiver',
     `const base = createMiddleware({ type: 'function' })
@@ -130,7 +133,14 @@ const run = createServerFn().middleware([linked]).handler(async () => 1)`,
   ),
 }
 
-const pure = ['server-fn', 'exported', 'middleware', 'isomorphic', 'shared']
+const pure = [
+  'server-fn',
+  'exported',
+  'middleware',
+  'isomorphic',
+  'shared',
+  'const-receiver',
+]
 
 describe.each(startBundlers)('a %s client build', (bundler) => {
   test(
@@ -183,10 +193,8 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
           ]),
         ),
       )
-      for (const path of ['const-receiver', 'impure']) {
-        expect(build.client.where(`MARK_${path}`), path).toBe('eager')
-        expect(warnings(path).length, path).toBeGreaterThan(0)
-      }
+      expect(build.client.where('MARK_impure')).toBe('eager')
+      expect(warnings('impure').length).toBeGreaterThan(0)
       expectDiagnostic(reported, {
         severity: 'warning',
         file: 'src/routes/impure.tsx',

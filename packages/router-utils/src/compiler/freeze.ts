@@ -148,12 +148,11 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     }
     edges[id] = dedupeEdges(recipeEdges)
     // the flag is a property of the content: placement moves no cluster
-    // with observable effects into an extracted export's module (the only
-    // opted-in outputs); augmentations of what the output exports do not
-    // count
+    // with effects into an extracted export's module (the only opted-in
+    // outputs); a pure write of what the output exports is no effect
     sideEffects[id] =
       decl.sideEffectFree === true &&
-      ![...included].some((c) => placement.clusters[c]!.sideEffects)
+      ![...included].some((c) => placement.clusters[c]!.effectful)
   }
 
   return {

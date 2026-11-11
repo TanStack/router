@@ -141,9 +141,9 @@ export interface KeptDeclaration {
   effect?: UnitId
   /** Whether that effect still evaluates in the env module (else it moves to another output). */
   effectStays?: boolean
-  /** `written`: where it is written. */
+  /** `written`, `reassigned`: where it is written. */
   at?: number
-  /** `state`, `reads`: the binding it reads. */
+  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
   read?: SymbolId
 }
 
@@ -225,7 +225,10 @@ export function computePlacement(input: PlacementInput): Placement {
     homes,
     extracted,
   )
-  const fallbacks = [...events.fallbacks(homes.home), ...homes.fallbacks]
+  const fallbacks = [
+    ...events.fallbacks(homes.home, inclusion.included),
+    ...homes.fallbacks,
+  ]
   return {
     clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,

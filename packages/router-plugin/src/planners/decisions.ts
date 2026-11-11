@@ -4,7 +4,11 @@
  * `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
+import {
+  isExpressionWrapper,
+  unwrapExpression,
+  walk,
+} from '@tanstack/router-utils/compiler'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
@@ -173,6 +177,19 @@ function handlerOption(ctx: PlanContext, handler: Property): RouteOption {
   }
 }
 
+/** The bare value inside the wrappers around `value`, or, for a sequence, its innermost parentheses. */
+function claimedValueOf(value: Node): Node {
+  let parens: Node | null = null
+  let n = value
+  while (isExpressionWrapper(n)) {
+    if (n.type === 'ParenthesizedExpression') {
+      parens = n
+    }
+    n = n.expression
+  }
+  return n.type === 'SequenceExpression' && parens !== null ? parens : n
+}
+
 /** The option of a splittable key, or the `handler` of an object-form loader. */
 function splitTarget(
   ctx: PlanContext,
@@ -237,8 +254,10 @@ function splitTarget(
       // the chunk claims and declares the bare value (so React Refresh
       // registers a function); a cast around it stays in the route module,
       // around the placeholder (`lazyFn(…) as any`): a claim's owner copies
-      // the whole claimed text, so every edit inside it reaches the chunk
-      const inner = unwrapExpression(value)
+      // the whole claimed text, so every edit inside it reaches the chunk. A
+      // sequence keeps its innermost parentheses: without them the chunk's
+      // `const X = a, b` would declare, not evaluate it
+      const inner = claimedValueOf(value)
       const range = { start: inner.start, end: inner.end }
       return {
         shape: 'init',

@@ -23,6 +23,7 @@ import {
   isPureClass,
   isPureDeclarator,
   isPureExpression,
+  noteBuilderConsts,
   statementHasEffects,
 } from './purity'
 import type { PurityContext } from './purity'
@@ -183,13 +184,16 @@ const NO_TARGETS: ReadonlyArray<Node> = []
  * (`Page.displayName = 'Page'`, `Object.assign(Page, { a: 1 })`).
  */
 function writesOnly(purity: PurityContext, expr: Node): boolean {
-  const pureTarget = (target: Node): boolean => {
+  // the binding, or a member of what it names (`Page.meta.title = …` writes
+  // whatever `Page.meta` holds, which may be another binding's object)
+  const pureTarget = (target: Node, depth = 0): boolean => {
     const t = unwrapExpression(target)
     return (
       t.type === 'Identifier' ||
-      (t.type === 'MemberExpression' &&
+      (depth === 0 &&
+        t.type === 'MemberExpression' &&
         (!t.computed || isPureExpression(purity, t.property as Node)) &&
-        pureTarget(t.object))
+        pureTarget(t.object, 1))
     )
   }
   const e = unwrapExpression(expr)
@@ -197,12 +201,50 @@ function writesOnly(purity: PurityContext, expr: Node): boolean {
     case 'AssignmentExpression':
       return pureTarget(e.left) && isPureExpression(purity, e.right)
     case 'CallExpression':
+      // a mutating method of the binding (`X.push(…)`), `Object.assign(X, …)`
       return (
-        pureTarget(e.callee) &&
+        (isObjectMutator(unwrapExpression(e.callee)) || pureTarget(e.callee)) &&
         e.arguments.every(
           (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
         )
       )
+    default:
+      return false
+  }
+}
+
+/**
+ * Whether a declaration gives its binding a value of its own: a function or
+ * class, a literal, a function or class expression, a call's result. Not
+ * another binding's (`const alias = E`, `import F = E`), whose members a
+ * write of it would write too. A write of a member of such a binding writes
+ * only what it names (R139), while nothing reassigns it.
+ */
+export function ownsItsValue(u: Unit): boolean {
+  const n = u.node
+  switch (n.type) {
+    case 'FunctionDeclaration':
+    case 'ClassDeclaration':
+      return true
+    case 'VariableDeclarator': {
+      if (n.id.type !== 'Identifier' || n.init === null) {
+        return false
+      }
+      switch (unwrapExpression(n.init).type) {
+        case 'ObjectExpression':
+        case 'ArrayExpression':
+        case 'FunctionExpression':
+        case 'ArrowFunctionExpression':
+        case 'ClassExpression':
+        case 'Literal':
+        case 'TemplateLiteral':
+        case 'CallExpression':
+        case 'NewExpression':
+          return true
+        default:
+          return false
+      }
+    }
     default:
       return false
   }
@@ -543,8 +585,16 @@ export function buildUnits(
         break
       case 'ExpressionStatement': {
         const u = base(node, 'effect', itemRange)
+        const linked = purity.builders?.linked.length ?? 0
         u.effectful = !isPureExpression(purity, node.expression)
         u.augments = augmentationsOf(node.expression)
+        // a link on a `const` holding a builder writes it (R139)
+        for (const n of purity.builders?.linked.slice(linked) ?? []) {
+          const s = moduleSymOf(n)
+          if (s !== null && !u.augments.includes(s)) {
+            u.augments.push(s)
+          }
+        }
         u.augmentEffects =
           u.augments.length > 0 && !writesOnly(purity, node.expression)
         add(item, u)
@@ -618,6 +668,9 @@ export function buildUnits(
             u.copyable = b !== null && !b.references.some((r) => r.isWrite)
           }
           out.push(add(item, u))
+        }
+        if (purity.builders !== undefined) {
+          noteBuilderConsts(purity, purity.builders, decl)
         }
         break
       }

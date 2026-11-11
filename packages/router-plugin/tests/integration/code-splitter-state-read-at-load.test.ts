@@ -146,6 +146,25 @@ const shapes: Record<
     component: `wrap(seen.push('x') && (() => <p>{String(count)}</p>))`,
     after: `const count = seen.length`,
   },
+  // architect rulings on the design 2 step 3 review: an assignment, a
+  // member write of an import, and a write in a function the value's call
+  // runs are writes of the value's evaluation too
+  'an assignment in the component option, read after the route': {
+    code: `let n = 0\nfunction wrap<T>(value: T) { return value }`,
+    component: `wrap((n = 1, () => <p>{String(count)}</p>))`,
+    after: `const count = n`,
+  },
+  'a member write of an import in the component option, read after the route': {
+    code: `import { registry } from '../registry'\nfunction wrap<T>(value: T) { return value }`,
+    component: `wrap((registry.page = 1, () => <p>{String(count)}</p>))`,
+    after: `const count = registry.page`,
+  },
+  'a write in a function the component option passes to a call, read after the route':
+    {
+      code: `const seen = { n: 0 }\nfunction wrap(f: () => void) { f(); return () => <p>{String(count)}</p> }`,
+      component: `wrap(function () { seen.n = 1 })`,
+      after: `const count = seen.n`,
+    },
 }
 
 const rows = Object.entries(shapes)
@@ -155,6 +174,7 @@ async function run(bundler: Bundler, split: boolean) {
     pluginOptions: { autoCodeSplitting: split },
     files: {
       'routes/__root.tsx': rootRoute,
+      'registry.ts': `export const registry: { page?: number } = {}\n`,
       ...Object.fromEntries(
         rows.map(([, { code, read, component, state: own, after }], i) => [
           `routes/r${i}.tsx`,

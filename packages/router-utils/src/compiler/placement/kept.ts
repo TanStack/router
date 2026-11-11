@@ -65,8 +65,19 @@ export function keptDeclarations(
         }),
       ...(other !== undefined &&
         'at' in other &&
-        pin.reason === 'written' && { at: other.at }),
+        (pin.reason === 'written' || pin.reason === 'reassigned') && {
+          at: other.at,
+        }),
       ...(pin.binding !== undefined && { read: pin.binding }),
+    }
+  }
+  /** `reassigned`: the binding and its first live assignment (the declaration aside). */
+  const reassignment = (sym: SymbolId): Pin => {
+    const w = graph.writesOfSym.get(sym)?.find((x) => x.live && !x.member)
+    return {
+      reason: 'reassigned',
+      binding: sym,
+      ...(w !== undefined && { other: { at: w.at } }),
     }
   }
   /**
@@ -122,11 +133,11 @@ export function keptDeclarations(
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    const cause: Pin = cl.sideEffects
+    const cause: Pin = cl.effectful
       ? { reason: 'effects' }
       : t1.mutation.isReassigned(sym, liveInEnv) ||
           graph.regionWrittenSyms.has(sym)
-        ? { reason: 'reassigned' }
+        ? reassignment(sym)
         : (cancelled.get(c) ?? { reason: 'live' })
     if (cause.reason === 'live' || lazyNeeders(c).length === 0) {
       continue

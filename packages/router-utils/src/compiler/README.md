@@ -163,7 +163,12 @@ extends Z`, directly or through what they carry) share the module of the first i
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
   (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
-  cluster, so they evaluate wherever it does; a reader is a cluster of its own. The writes have two halves, each
+  cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding
+  its cluster declares (`Page.displayName = …`, `plugins.push(a)`, a link on a `const` holding a builder, which
+  writes the builder: R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
+  write's owner is the evaluation holding it (its unit, or a claimed option value); one in a function that
+  evaluation passes to a call (`track(() => { cfg.x = 1 })`) is also that evaluation's write at an unknown time,
+  as when the function is named. The writes have two halves, each
   asked by one rule: a read evaluated at module load _observes mutable state_ when something outside the reading
   cluster writes the binding at an unknown time (inside a function; and code that evaluates with the module but
   runs later: an async or generator function invoked where it is written, an instance field's initialiser,
@@ -195,15 +200,13 @@ extends Z`, directly or through what they carry) share the module of the first i
   imports (read lazily: the chunk loads after the route module),
   pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind. It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
-  nothing imports what it exports; the webpack-family hosts mark each one so), so an effect observable on its own
-  stays in the route module, which the extracted module imports it from. What does move there (an export's
-  augmentations) evaluates _before_ the route module's body, so no surviving effect may precede its last one (the
-  extracted modules evaluate in source order among themselves). An exported binding whose only effects write
-  what it declares with pure values (`Page.displayName = …`, static props: unobservable while nothing imports it, so
-  its module stays droppable; `Page.x = track()` is an effect of its own and keeps it in the route module) leaves for
-  its extracted module under the same rule: the augmentations travel with it, an
-  earlier surviving effect pins it and a later one keeps its order (chunks import an augmented export: its
-  augmentation runs once).
+  nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
+  module, which the extracted module imports it from. An exported binding whose writes at load are pure
+  (`Page.displayName = …`, static props; `Page.x = track()` is an effect and keeps it in the route module) leaves
+  for its extracted module with them, whatever effects surround it (chunks import an augmented export: its
+  augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
+  reader before the write may evaluate there too); several needers give it a shared module, which its readers
+  import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
   A recognised framework call a planner names (the route factory chain) is no such effect only when its option
   values are pure, claimed (relocated) or erased: the core checks, the planner only names it. Every one of these
   rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through

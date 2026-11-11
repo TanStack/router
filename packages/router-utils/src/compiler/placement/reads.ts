@@ -10,12 +10,11 @@
  */
 import { visitRuns } from '../analysis'
 import { RewriteSet } from '../rewrite'
-import { callsWhenEvaluated } from '../units'
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
-import type { EvaluatedCalls, RegionId, UnitId } from '../units'
+import type { RegionId, UnitId } from '../units'
 import type {
   Frag,
   GenFrag,
@@ -27,7 +26,6 @@ import type {
   WalkVisitor,
 } from '../rewrite'
 import type { PlacementInput } from '../reach'
-import type { Range } from '../header'
 
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
@@ -650,51 +648,9 @@ export function readIndex(
     textOfRegion[id] = text
     return text
   }
-  /** Per unit: what its evaluation calls (`callsWhenEvaluated`). */
-  const callsOfUnit: Array<EvaluatedCalls | undefined> = []
-  const unitCalls = (u: UnitId): EvaluatedCalls =>
-    (callsOfUnit[u] ??= callsWhenEvaluated(t1.units[u]!.node))
-  /**
-   * What a region nested in a unit calls when it evaluates: the unit's
-   * calls inside it, but for those inside a function it holds that only a
-   * call around it receives (`createServerFn().handler(() => …)`: the
-   * handler's region evaluates a function, the call around it may run it).
-   */
-  const callsOfRegion: Array<EvaluatedCalls | null | undefined> = []
-  const regionCalls = (r: Region, unit: UnitId): EvaluatedCalls | null => {
-    const hit = callsOfRegion[r.id]
-    if (hit !== undefined) {
-      return hit
-    }
-    const all = unitCalls(unit)
-    const { start, end } = r.range
-    const inside = (x: Range) => x.start >= start && x.end <= end
-    const held = all.callbacks.filter((f) => inside(f) && !inside(f.call))
-    const own = (x: Range) =>
-      inside(x) && !held.some((f) => x.start >= f.start && x.end <= f.end)
-    const calls = all.calls.filter(own)
-    const result: EvaluatedCalls | null =
-      calls.length === 0
-        ? null
-        : {
-            calls,
-            callbacks: all.callbacks.filter((f) => own(f) && inside(f.call)),
-          }
-    callsOfRegion[r.id] = result
-    return result
-  }
   const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
   function runs(id: RegionId, visit: RunVisitor): boolean {
-    const r = regions.get(id)
-    let calls: EvaluatedCalls | null = null
-    if (r.unit !== null) {
-      const all = unitCalls(r.unit)
-      calls = all.calls.length > 0 ? all : null
-    } else {
-      const unit = regions.unitAt(r.range.start, r.range.end)?.unit
-      calls = unit === undefined || unit === null ? null : regionCalls(r, unit)
-    }
-    return visitRuns(t1, regionText(id), calls, bodyOf, visit)
+    return visitRuns(t1, regionText(id), graph.callsOf(id), bodyOf, visit)
   }
   function clusterRuns(c: ClusterId, visit: RunVisitor): boolean {
     for (const r of clusters[c]!.regions) {
