@@ -1,7 +1,8 @@
 // Module-size scaling of one compile (review of 2026-11-10, F9-3: a query of
 // the rewrite tree scanned every edit, so a module of many server functions
 // compiled in time quadratic in their number; design 2 step 2 review,
-// finding 2: a registry filled by statements compiled in cubic time).
+// finding 2: a registry filled by statements compiled in cubic time; the
+// statement-start guard lane: a guard asked per JSX child of one statement).
 import { describe, expect, it, vi } from 'vitest'
 import { envInfo, toySplitPlanner } from './helpers'
 import type { EnvInfo, Planner } from '../src/compiler'
@@ -40,6 +41,36 @@ function registryModule(n: number): string {
     `export const Route = createFileRoute('/')({ loader: () => [${all.filter((_, i) => i % 4 === 0).join(', ')}], component: () => [${all.join(', ')}] })`,
   )
   return `${lines.join('\n')}\n`
+}
+
+/** One statement rendering `n` JSX children, each a `<Lazy>` boundary. */
+function boundaryModule(n: number): string {
+  const lines = ['export function Page() {', '  return (', '    <div>']
+  for (let i = 0; i < n; i++) {
+    lines.push(`      <Lazy>{${i}}</Lazy>`)
+  }
+  lines.push('    </div>', '  )', '}')
+  return `${lines.join('\n')}\n`
+}
+
+/**
+ * Each `<Lazy>` boundary replaced by JSX text, as Hydrate and `<ClientOnly>`
+ * do: the statement-start guard asks about every one.
+ */
+const boundaries: Planner = {
+  name: 'toy-boundaries',
+  tier: 1,
+  gate: () => true,
+  plan(ctx) {
+    const code = ctx.analysis.source.code
+    for (const m of code.matchAll(/<Lazy>\{(\d+)\}<\/Lazy>/g)) {
+      ctx.rewrites.edit({
+        range: { start: m.index, end: m.index + m[0].length },
+        body: [{ k: 'text', parts: [`<Shell n={${m[1]}} />`] }],
+        by: 'toy-boundaries',
+      })
+    }
+  },
 }
 
 /**
@@ -201,6 +232,26 @@ describe('module-size scaling', () => {
     })
     expect(r).toBeLessThan(48)
   }, 60_000)
+
+  // At 64 times the size (25,600 against 400), linear time reads about 50 to
+  // 70 and a guard scanning the statement's children per child (quadratic in
+  // them) about 800, so the bound of 160 tells them apart with room for load.
+  it('compiles a statement of 25,600 replaced JSX children in less than 160 times one of 400', async () => {
+    const r = await ratio(
+      boundaries,
+      (code, n) => {
+        expect(code).toContain(`<Shell n={${n - 1}} />`)
+        expect(code).not.toContain('Lazy')
+      },
+      {
+        module: boundaryModule,
+        file: '/app/page.tsx',
+        large: 25600,
+        samples: 5,
+      },
+    )
+    expect(r).toBeLessThan(160)
+  }, 120_000)
 
   // At 4 times the size (1,600 against 400), quadratic time reads about 10 to
   // 16 and cubic about 50 to 64, so the bound of 32 tells them apart with

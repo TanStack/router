@@ -1417,14 +1417,33 @@ function nestedStatementAt(statement: Node, offset: number): boolean {
   return false
 }
 
-/** The node of a list (in source order) holding `offset`. */
+/**
+ * The node of a list holding `offset`: a binary search, the list being in
+ * source order (a hole, `[, a]`, reads as the node before it).
+ */
 function childAt(
   list: ReadonlyArray<Node | null>,
   offset: number,
 ): Node | undefined {
-  for (const child of list) {
-    if (child !== null && child.end > offset) {
-      return child.start <= offset ? child : undefined
+  let lo = 0
+  let hi = list.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    let at = mid
+    while (at >= lo && list[at] === null) {
+      at--
+    }
+    if (at < lo) {
+      lo = mid + 1
+      continue
+    }
+    const child = list[at]!
+    if (offset < child.start) {
+      hi = at - 1
+    } else if (offset >= child.end) {
+      lo = mid + 1
+    } else {
+      return child
     }
   }
   return undefined
