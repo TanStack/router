@@ -1504,6 +1504,41 @@ describe('replacements at a statement start', () => {
     expect(out).toContain('let u = foo\n      \n      ;(mk)()\n')
   })
 
+  // the list is found through every node holding the replacement: an
+  // arrow's body in a call's argument in JSX, a class's static block, a case
+  it('finds the statement list deep in the statement', () => {
+    const code = dedent(`
+      export const C = () => (
+        <div onClick={[() => {
+          const a = foo
+          wrap(1)
+        }]}>{list.map((x) => { let b = x
+          wrap(2) })}</div>
+      )
+      class K {
+        static {
+          const c = foo
+          wrap(3)
+        }
+        m() { switch (1) { case 1: { let d = 1 } let e = foo
+          wrap(4) } }
+      }
+    `)
+    const e = engine(code)
+    for (let n = 1; n <= 4; n++) {
+      e.ctx.rewrites.edit({
+        range: rangeOf(code, `wrap(${n})`),
+        body: [{ k: 'text', parts: [`(${n})`] }],
+        by: 'toy',
+      })
+    }
+    const out = e.render().code
+    expect(out).toContain('const a = foo\n    ;(1)\n')
+    expect(out).toContain('let b = x\n    ;(2) }')
+    expect(out).toContain('const c = foo\n    ;(3)\n')
+    expect(out).toContain('let e = foo\n    ;(4) }')
+  })
+
   // a text that is only a comment has no first token: it continues nothing,
   // and what renders after it is guarded after it (design 1 step 4's notes:
   // it read as starting with `/`)

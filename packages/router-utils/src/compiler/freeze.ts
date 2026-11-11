@@ -9,7 +9,7 @@
  * substitution environments and context-aware reference rewrites; no Yuku
  * object is reachable from the result.
  */
-import { walk } from 'yuku'
+import { CHILD_KEYS } from 'yuku'
 import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
@@ -919,12 +919,6 @@ class Renderer {
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
-  /** Per statement of the module: the statements of the lists inside it by start, found on first need (`statementStartsIn`). */
-  private readonly statementStarts = new Map<
-    number,
-    Map<number, 'program' | 'nested'>
-  >()
-
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
@@ -1273,12 +1267,12 @@ class Renderer {
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
     }
+    // (the text before it first: the statement list is a descent of the AST)
+    if (!this.continuable(out, from)) {
+      return
+    }
     const list = this.statementListAt(offset)
-    if (
-      list !== undefined &&
-      (list === 'nested' || !nestedOnly) &&
-      this.continuable(out, from)
-    ) {
+    if (list !== undefined && (list === 'nested' || !nestedOnly)) {
       out.splice(from, 0, { k: 'text', text: ';' })
     }
   }
@@ -1308,12 +1302,7 @@ class Renderer {
       // (the module's first statement: nothing renders before it)
       return offset === program.start ? undefined : 'program'
     }
-    let starts = this.statementStarts.get(at)
-    if (starts === undefined) {
-      starts = statementStartsIn(st)
-      this.statementStarts.set(at, starts)
-    }
-    return starts.get(offset)
+    return nestedStatementAt(st, offset) ? 'nested' : undefined
   }
 
   /**
@@ -1400,33 +1389,62 @@ class Renderer {
 const LEADING_TRIVIA = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/
 
 /**
- * The statements of the statement lists inside one statement of the module,
- * by start (`nested`: a block's, a static block's, a case's). One walk of
- * that statement.
+ * Whether a statement of a statement list inside `statement` (a block's, a
+ * static block's, a case's) starts at `offset`: a descent from `statement`
+ * through the nodes holding `offset`.
  */
-function statementStartsIn(statement: Node): Map<number, 'nested'> {
-  const out = new Map<number, 'nested'>()
-  const add = (holder: Node, list: ReadonlyArray<Node>) => {
-    for (const st of list) {
-      if (st.start !== holder.start) {
-        out.set(st.start, 'nested')
+function nestedStatementAt(statement: Node, offset: number): boolean {
+  let holder: Node | undefined = statement
+  while (holder !== undefined) {
+    const fields = holder as unknown as Record<string, unknown>
+    let inner: Node | undefined
+    for (const key of CHILD_KEYS[holder.type] ?? []) {
+      const value = fields[key] as Node | ReadonlyArray<Node | null> | null
+      inner = Array.isArray(value)
+        ? childAt(value, offset)
+        : value != null && holds(value as Node, offset)
+          ? (value as Node)
+          : undefined
+      if (inner !== undefined) {
+        if (inner.start === offset && isStatementList(holder, key)) {
+          return true
+        }
+        break
       }
     }
+    holder = inner
   }
-  walk(statement, {
-    enter: (n) => {
-      switch (n.type) {
-        case 'BlockStatement':
-        case 'StaticBlock':
-          add(n, n.body)
-          break
-        case 'SwitchCase':
-          add(n, n.consequent)
-          break
-      }
-    },
-  })
-  return out
+  return false
+}
+
+/** The node of a list (in source order) holding `offset`. */
+function childAt(
+  list: ReadonlyArray<Node | null>,
+  offset: number,
+): Node | undefined {
+  for (const child of list) {
+    if (child !== null && child.end > offset) {
+      return child.start <= offset ? child : undefined
+    }
+  }
+  return undefined
+}
+
+function holds(node: Node, offset: number): boolean {
+  return node.start <= offset && offset < node.end
+}
+
+/** Whether `holder[key]` is a statement list (`nestedStatementAt`). */
+function isStatementList(holder: Node, key: string): boolean {
+  switch (holder.type) {
+    case 'BlockStatement':
+    case 'StaticBlock':
+      return key === 'body'
+    case 'SwitchCase':
+      return key === 'consequent'
+    default:
+      return false
+  }
 }
 
 function mergeEnv(
