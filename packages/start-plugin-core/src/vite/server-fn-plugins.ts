@@ -21,6 +21,7 @@ import {
 import { createVirtualModule } from './createVirtualModule'
 import type { Plugin, ResolvedConfig } from 'vite'
 import type { ViteCompilerState } from './compiler-state'
+import type { ServerFnEntry } from '../server-fns/registry'
 
 /** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
 const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
@@ -135,24 +136,32 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
     applyToEnvironment: (e) => state.resolverEnvironments.has(e.name),
     async load() {
       const s = state.sessionOf(this.environment)
+      // the functions the client build references (J4.2), as the client's
+      // last build of the run left them
+      const clientBuild =
+        this.environment.mode === 'build'
+          ? await state.embedClientBuild(this)
+          : null
       if (
         this.environment.mode === 'build' &&
         this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
         // (not a scan: plugin-rsc analyses the ssr environment first)
         this.environment.config.build.write !== false &&
-        s.clientFiles === null
+        clientBuild === null &&
+        // (`build --watch`: the client's first build failed; its first
+        // build rebuilds the server, which answers no client call meanwhile)
+        !this.meta.watchMode
       ) {
         // the server would answer no client call (J4.2)
         this.error(
           `[tanstack-start] The server environment is built before the client environment. The server answers the server functions the client build calls, so the client must build first, in the same process: run \`vite build\`, or build \`builder.environments.client\` before \`builder.environments.ssr\`.`,
         )
       }
-      if (this.environment.mode === 'build' && this.meta.watchMode) {
-        await state.opts.clientRebuild.ended()
-        for (const file of s.clientFiles ?? []) {
-          this.addWatchFile(file)
-        }
-      }
+      const referenced = (entries: Array<ServerFnEntry>) =>
+        entries.map((e) => ({
+          ...e,
+          clientReferenced: clientBuild?.functionIds.has(e.id) ?? false,
+        }))
       if (this.environment.name !== state.opts.providerEnvName) {
         const mod = state.envOf(this.environment.name)?.getServerFnById
         if (mod) {
@@ -163,8 +172,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // gates client-origin calls on the client build's references
             return callerGateModule(
               SERVER_FN_FORWARD_VIRTUAL_ID,
-              s.start.registry
-                .entries()
+              referenced(s.start.registry.entries())
                 .filter((e) => e.clientReferenced)
                 .map((e) => e.id),
             )
@@ -179,7 +187,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         return devResolverModule()
       }
       return productionResolverModule({
-        entries: s.start.registry.entries(),
+        entries: referenced(s.start.registry.entries()),
         providerModuleId,
         clientReferencedOnly: state.ssrIsProvider,
       })

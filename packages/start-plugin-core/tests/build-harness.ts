@@ -329,9 +329,11 @@ export interface StartBuildOptions {
    * applies these app file edits (`null` deletes a file) once the first
    * build is done, and describes the rebuild they cause (its errors
    * reject; what the first build reported is `StartBuild.firstBuild`).
-   * Vite: the edits are files the builds' watchers report.
+   * Vite: the edits are files the builds' watchers report. A list of steps
+   * applies each in turn and describes the rebuilds of the last one: an
+   * earlier step's builds may fail.
    */
-  watchEdits?: Record<string, string | null>
+  watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   /**
    * Vite builds: the working directory of the build (default: the app's, as
    * `vite build` run in the app directory).
@@ -363,6 +365,27 @@ export interface StartBuildOptions {
    * path may carry.
    */
   prefix?: string
+}
+
+/** One step of a watch mode build's edits (`StartBuildOptions.watchEdits`). */
+export interface WatchStep {
+  /** App file edits (`null` deletes a file). */
+  edits: Record<string, string | null>
+  /**
+   * Vite builds: writes the edits once this resolves, without waiting for
+   * the builds of the previous step to end (e.g. while a plugin of the
+   * test holds one of them). Default: once they ended.
+   */
+  when?: () => Promise<void>
+}
+
+/** The steps of a watch mode build's edits. */
+function watchSteps(
+  edits: Record<string, string | null> | ReadonlyArray<WatchStep>,
+): ReadonlyArray<WatchStep> {
+  return Array.isArray(edits)
+    ? edits
+    : [{ edits: edits as Record<string, string | null> }]
 }
 
 export interface StartBuild {
@@ -795,7 +818,7 @@ interface BuildTarget {
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
   viteBuild?: (builder: ViteBuilder) => Promise<void>
-  watchEdits?: Record<string, string | null>
+  watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   samePlugins: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
   startPlugins?: ReturnType<typeof startPlugins>
@@ -986,13 +1009,26 @@ async function buildWithVite(
         for (const error of await watch.first(watchTimeout)) {
           channel.report(stripAnsi(error.message), 'error', 'bundler')
         }
-        errors.length = 0
-        warnings.client.length = 0
-        warnings.ssr.length = 0
-        describedFrom.set(channel, channel.mark())
-        // (the violations the rebuild reports)
-        target.violations.length = 0
-        await watch.edit(target.root, target.watchEdits, watchTimeout)
+        const steps = watchSteps(target.watchEdits)
+        for (const [index, step] of steps.entries()) {
+          await step.when?.()
+          if (index === steps.length - 1) {
+            // what the last step's rebuilds report
+            errors.length = 0
+            warnings.client.length = 0
+            warnings.ssr.length = 0
+            describedFrom.set(channel, channel.mark())
+            target.violations.length = 0
+          }
+          await watch.write(target.root, step.edits)
+          const next = steps[index + 1]
+          if (!next) {
+            await watch.settle(watchTimeout)
+          } else if (!next.when) {
+            // (an earlier step's builds may fail)
+            await watch.settle(watchTimeout).catch(() => undefined)
+          }
+        }
       } finally {
         await watch.close()
       }
@@ -1015,9 +1051,12 @@ async function buildWithVite(
  * The builds of `vite build --watch`, per environment: its watcher (what
  * `builder.build` returns in watch mode) ends each build with `BUNDLE_END`
  * or `ERROR`. A build reads an edit when it began (`buildStart`) after the
- * environment's watcher reported the edited file (`watchChange`): an edit
- * is settled once every edited file was reported and every environment
- * that reported one ended such a build.
+ * environment's watcher reported a file (`watchChange`: an edited file, or
+ * any other file it watches, e.g. one a plugin wrote meanwhile). The edits
+ * written since the last settle are settled once every edited file was
+ * reported, every environment that reported a file ended such a build, and
+ * no watcher reported anything or began a build for `quietMs` (a file a
+ * build writes reaches another environment's watcher a moment later).
  */
 function trackViteWatch() {
   interface EnvironmentBuilds {
@@ -1025,15 +1064,19 @@ function trackViteWatch() {
     error: Error | null
     /** Some build has ended. */
     ended: boolean
-    /** The watcher reported an edited file after the running build began. */
+    /** The watcher reported a file after the running build began. */
     owed: boolean
-    /** The running build began after the watcher reported an edited file. */
+    /** The running build began after the watcher reported a file. */
     reading: boolean
   }
   const environments = new Map<string, EnvironmentBuilds>()
   const watchers: Array<Rolldown.RolldownWatcher> = []
-  /** The edited files (absolute) and whether a watcher reported each. */
+  /** The files edited since the last settle (absolute) and whether a watcher reported each. */
   let edited = new Map<string, boolean>()
+  /** The environments that read a file since the last settle. */
+  const readers = new Set<EnvironmentBuilds>()
+  /** When a watcher last reported a file or began a build. */
+  let lastActivity = 0
   let changed = () => {}
   const builds = (name: string) => {
     let state = environments.get(name)
@@ -1092,16 +1135,20 @@ function trackViteWatch() {
       const file = path.resolve(id)
       if (edited.has(file)) {
         edited.set(file, true)
-        builds(this.environment.name).owed = true
-        changed()
       }
+      lastActivity = performance.now()
+      builds(this.environment.name).owed = true
+      changed()
     },
     buildStart() {
       const state = builds(this.environment.name)
       state.reading = state.owed
       state.owed = false
+      lastActivity = performance.now()
     },
   }
+  /** How long the watchers stay quiet before the edits count as settled. */
+  const quietMs = 300
   return {
     plugin,
     /** The first build of every environment ended: their errors. */
@@ -1115,16 +1162,11 @@ function trackViteWatch() {
       )
       return failures(() => true)
     },
-    /** Writes `edits` and waits for the builds that read them (rejects with an error of one). */
-    edit: async (
-      root: string,
-      edits: Record<string, string | null>,
-      timeout: number,
-    ) => {
-      edited = new Map(
-        Object.keys(edits).map((file) => [path.resolve(root, file), false]),
-      )
-      const readers = new Set<EnvironmentBuilds>()
+    /** Writes `edits` (relative to `root`; `null` deletes a file). */
+    write: async (root: string, edits: Record<string, string | null>) => {
+      for (const file of Object.keys(edits)) {
+        edited.set(path.resolve(root, file), false)
+      }
       for (const [file, content] of Object.entries(edits)) {
         const absolute = path.join(root, file)
         if (content === null) {
@@ -1134,22 +1176,37 @@ function trackViteWatch() {
           await writeFile(absolute, content)
         }
       }
-      await until(
-        () => {
-          for (const state of environments.values()) {
-            if (state.owed || state.reading) {
-              readers.add(state)
-            }
+    },
+    /** Waits until the edits written since the last settle are settled (rejects with an error of a build that read one). */
+    settle: async (timeout: number) => {
+      const files = [...edited.keys()].map((file) => path.basename(file))
+      const settled = () => {
+        for (const state of environments.values()) {
+          if (state.owed || state.reading) {
+            readers.add(state)
           }
-          return (
-            [...edited.values()].every(Boolean) &&
-            [...readers].every((state) => !state.owed && !state.reading)
-          )
-        },
-        timeout,
-        `rebuild of ${Object.keys(edits).join(', ')}`,
-      )
+        }
+        return (
+          [...edited.values()].every(Boolean) &&
+          [...readers].every((state) => !state.owed && !state.reading)
+        )
+      }
+      const deadline = performance.now() + timeout
+      for (;;) {
+        await until(
+          settled,
+          Math.max(0, deadline - performance.now()),
+          `rebuild of ${files.join(', ')}`,
+        )
+        const quiet = lastActivity + quietMs - performance.now()
+        if (quiet <= 0) {
+          break
+        }
+        await new Promise((resolve) => setTimeout(resolve, quiet))
+      }
       const [error] = failures((state) => readers.has(state))
+      edited = new Map()
+      readers.clear()
       if (error) {
         throw error
       }
@@ -1300,13 +1357,25 @@ async function buildWithRsbuild(
       const watching = await rsbuild.build({ watch: true })
       try {
         await compiles.first(watchTimeout)
-        errors.length = 0
-        warnings.client.length = 0
-        warnings.ssr.length = 0
-        describedFrom.set(channel, channel.mark())
-        // (the violations the rebuild reports)
-        target.violations.length = 0
-        await compiles.edit(target.root, target.watchEdits, watchTimeout)
+        const steps = watchSteps(target.watchEdits)
+        for (const [index, step] of steps.entries()) {
+          if (step.when) {
+            throw new Error('watchEdits: `when` is for Vite builds')
+          }
+          if (index === steps.length - 1) {
+            // what the last step's rebuilds report
+            errors.length = 0
+            warnings.client.length = 0
+            warnings.ssr.length = 0
+            describedFrom.set(channel, channel.mark())
+            target.violations.length = 0
+          }
+          const edit = compiles.edit(target.root, step.edits, watchTimeout)
+          // (an earlier step's builds may fail)
+          await (index === steps.length - 1
+            ? edit
+            : edit.catch(() => undefined))
+        }
       } finally {
         await watching.close()
       }

@@ -76,8 +76,9 @@ interface RawFactsOptions {
    */
   opaque?: (path: string, text: string) => boolean
   /**
-   * A file's modification time (null: unknown). Without it, every file
-   * event that reads a file empty waits for its text (`readChange`).
+   * A file's modification time in milliseconds (null: unknown; a whole
+   * number of seconds counts as unknown). Without it, every file event that
+   * reads a file empty waits for its text (`readChange`).
    */
   modifiedAt?: (path: string) => Promise<number | null>
 }
@@ -257,7 +258,13 @@ export class RawFactsCache {
     if (readable) {
       text = await this.readEvent(path)
       if (text === '') {
-        const at = (await this.opts.modifiedAt?.(path)) ?? null
+        // a whole number of seconds is unknown: on a filesystem of coarse
+        // times (HFS+, ext3, FAT, some network shares) a save stamps the
+        // file as the write before it did within that second
+        let at = (await this.opts.modifiedAt?.(path)) ?? null
+        if (at !== null && at % 1000 === 0) {
+          at = null
+        }
         if (
           at === null ||
           this.emptyAt.get(path) !== at ||
@@ -564,6 +571,7 @@ export class RawFactsCache {
       rawFactsMarkerless: markerless,
       rawFactsOpaque: opaque,
       seenPaths: this.seen.size,
+      emptyReadPaths: this.emptyAt.size,
       ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }

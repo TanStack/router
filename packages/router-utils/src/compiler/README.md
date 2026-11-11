@@ -313,27 +313,35 @@ text compiles waits for it and emits its own output from the result.
   with that text still moves the file set (what looked for the file meanwhile, and another environment's resolver
   that answered before it existed, ask again) without marking its facts. Any file event may hide a creation
   (chokidar folds a removal and a re-creation within its window into one change; Rspack lists a file back in its
-  batch as modified): every one, a repeated change included, asks the failed resolutions again, and a change of a
-  path the caches hold nothing of that reads as a file is judged an add. An event that reads the file empty reads
-  it again for a moment (an in-place save reported between truncation and write), unless an event read it empty
-  and waited in vain and the file's modification time is the same (a repeat of that event through another hook).
+  batch as modified): every one, a repeated change included, asks the failed resolutions again (a compile in flight
+  that met one is restarted only when one resolves now: its row carries the failed resolutions it recorded), and a
+  change of a path the caches hold nothing of that reads as a file is judged an add. A repeat moves no file set (a
+  `package.json` or tsconfig saved once moved it). An event that reads the file empty reads it again for a moment
+  (an in-place save reported between truncation and write), unless an event read it empty and waited in vain and
+  the file's modification time is the same (a repeat of that event through another hook; a time of whole seconds
+  counts as unknown: a filesystem of coarse times stamps a save like the write before it).
   Calls for one path run one after the
   other, and `caches.settled()` resolves once none runs. An event is judged by the file as it is (a removal of a file
   that reads back is an add, a change of one that reads nothing a removal). A change marks the file's raw facts
   stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
   add/unlink and a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
-  take: a file of the same name with another extension, or of a directory a resolution went into). The file's own
+  take: a file of the same name with another extension, or of a directory a resolution went into, looked up in the
+  dependents index by directory and name, not scanned). The file's own
   plans are keyed by its text and stay (a bundler that built the new text already keeps their rows) until a compile
   of a newer text ends: with its plan, or, for a text without one (untouched, empty, not parsed), without; a removal
   evicts them and stales every plan that read the file, unasked. The plans found stale enter their environment's
   **stale set** (`caches.stale`): the files whose modules the bundler must build again and will not build on its own,
   kept until a host takes them (`take(env, { held })`; `held`: stale only because a file they read was removed). The
-  other writers: a registry change (the file, in every environment that has compiled), a plan hit that fails
+  other writers: a registry change (the file, in every environment that has compiled or whose bundler holds modules:
+  `stale.track(env)`, a Vite dev environment, a webpack-family compiler from its first drain), a plan hit that fails
   validation (the file, so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect: `invalidate()` checks every fact, and as `lazyHits` when only a resolution or a route-registry digest did, which the next request asks again by design), and a compile
-  every attempt of which was overtaken. Start's Rsbuild host takes its environments' sets at `finishMake`; the call
-  also returns `{ evicted, dependents }`, which the router's webpack-family host and the Vite hosts still
-  hard-invalidate in the bundler. A summary change invalidates an importer
+  every attempt of which was overtaken. The webpack-family hosts take their environments' sets at `finishMake`
+  (`StaleSetDrain`), the Vite dev hosts in each environment's `hotUpdate` (`staleHotUpdate`: the event's own file
+  leaves the set first, its modules are the event's), and a Vite watch build at each environment's `buildEnd`, as
+  an audit (`auditStaleSet`: a watch build builds what its watcher reports; a path stale when the build began that
+  it bundles and did not compile counts as a stale hit). The call also returns `{ evicted, dependents }`, which no
+  host reads (design 3 step 6 removes it). A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per
@@ -366,13 +374,13 @@ text compiles waits for it and emits its own output from the result.
 
 ## Hosts
 
-| host                     | where                                                                                                                                                                                                                                                                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Router, Vite             | `router-plugin/src/hosts/vite.ts` (+ `session.ts`): native plugin, hook filters, `load` for derived ids, `hotUpdate` invalidation                                                                                                                                                                                                        |
-| Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader on every JS module outside `node_modules` (compiles route modules, composes input maps, `addDependency`); the stale set built again at `finishMake` (`StaleSetDrain`)                                                                                         |
-| Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                                                                                                                                               |
-| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `compiler-state.ts`, `invalidation.ts`, `late-pass-plugin.ts`, `server-fn-plugins.ts`, `handler-reach.ts`, `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env |
-| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache                                                                                                                     |
+| host                     | where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Router, Vite             | `router-plugin/src/hosts/vite.ts` (+ `session.ts`): native plugin, hook filters, `load` for derived ids, `hotUpdate` invalidation                                                                                                                                                                                                                                                                                                                                                                              |
+| Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader on every JS module outside `node_modules` (compiles route modules, composes input maps, `addDependency`); the stale set built again at `finishMake` (`StaleSetDrain`)                                                                                                                                                                                                                                                               |
+| Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `compiler-state.ts`, `invalidation.ts`, `late-pass-plugin.ts`, `server-fn-plugins.ts`, `handler-reach.ts`, `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env; the client build the server embeds is one record of the run (`ClientBuildRecord`), and a watch build's server watches a sentinel the client rewrites when it differs |
+| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache                                                                                                                                                                                                                                                                                           |
 
 The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
 invalidation and live modules of a hot update, a webpack-family loader's map and module id,

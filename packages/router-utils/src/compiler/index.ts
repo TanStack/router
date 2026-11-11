@@ -135,8 +135,10 @@ export {
 // compilations, eager extracted exports, emitted source maps); nothing of the
 // compiler model uses them
 export {
+  auditStaleSet,
   isFinalBuild,
-  liveModules,
+  reloadStaleModules,
+  staleHotUpdate,
   takeStaleModules,
   loadDerivedSource,
   viteLog,

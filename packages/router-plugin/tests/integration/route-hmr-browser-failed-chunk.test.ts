@@ -55,15 +55,13 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
         { 'routes/index.tsx': broken },
         'failed SyntaxError',
       )
-      // Rsbuild applies the edit in place: the route module's hot import of
-      // the chunk fails, the path this test is about. Vite reloads the page
-      // instead: @vitejs/plugin-react makes the chunk (it registers `Page`)
-      // import itself, and Vite reloads an update that fails within a
-      // circular import; the fixing edit then reaches a wrapper whose first
-      // load failed.
-      if (bundler === 'rsbuild') {
-        expect(failed.reloaded).toBe(false)
-      }
+      // The edit applies in place: the route module's hot import of the
+      // chunk fails, the path this test is about. (Vite's client reloads the
+      // page when an update fails to import within an import cycle; the
+      // route module and its chunk are none. Source: design 3 step 4
+      // review, finding 1: the chunk's `load` declared the route file with
+      // `addWatchFile`, which Vite's dev server records as an import.)
+      expect(failed.reloaded).toBe(false)
 
       const fixed = await app.edit(
         { 'routes/index.tsx': healthy('page v3') },

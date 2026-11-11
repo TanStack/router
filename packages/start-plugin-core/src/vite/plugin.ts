@@ -32,7 +32,6 @@ import {
 } from './plugins'
 import { parseStartConfig } from './schema'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
-import { ClientRebuild } from './client-rebuild'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import {
   getClientOutputDirectory,
@@ -40,6 +39,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import { ViteCompilerState } from './compiler-state'
 import type { ViteStartEnvironment } from './compiler-state'
 import type { OnwarnLike } from './planning'
 import type {
@@ -63,8 +63,6 @@ export function tanStackStartVite(
   const { getConfig, resolvedStartConfig } = configContext
   // the generator's registry, read by the compiler's router planner
   const routerPluginContext = createRouterPluginContext()
-  // `build --watch`: the client's rebuild the server's rebuild waits for
-  const clientRebuild = new ClientRebuild()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
 
   // When the router basepath and vite base are misaligned during dev,
@@ -91,6 +89,18 @@ export function tanStackStartVite(
       type: 'server',
     })
   }
+  // the compiler's state of each run (its sessions), shared with the start
+  // manifest: the client build the server embeds
+  const compiler = new ViteCompilerState({
+    framework: corePluginOpts.framework,
+    environments,
+    generateFunctionId: normalizedStartPluginOpts.serverFns?.generateFunctionId,
+    rsc: corePluginOpts.rsc,
+    providerEnvName: serverFnProviderEnv,
+    getConfig,
+    routerPluginContext,
+    resolveEntries: () => configContext.resolveEntries(),
+  })
   return [
     {
       name: 'tanstack-start-core:config',
@@ -219,7 +229,8 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
-                clientRebuild,
+                followClientWatcher: (environment, watcher) =>
+                  compiler.followClientWatcher(environment, watcher),
               })
             },
           },
@@ -259,18 +270,7 @@ export function tanStackStartVite(
     // The compiler: one compile per (environment, module) running Start's
     // environment separation, server functions, <Hydrate>, RSC CSS, the
     // router's splitting and HMR, and import protection
-    startCompilerPlugin({
-      framework: corePluginOpts.framework,
-      environments,
-      generateFunctionId:
-        normalizedStartPluginOpts.serverFns?.generateFunctionId,
-      rsc: corePluginOpts.rsc,
-      providerEnvName: serverFnProviderEnv,
-      getConfig,
-      routerPluginContext,
-      resolveEntries: () => configContext.resolveEntries(),
-      clientRebuild,
-    }),
+    startCompilerPlugin(compiler),
     tanStackStartRouter(
       normalizedStartPluginOpts,
       getConfig,
@@ -284,7 +284,8 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
-      clientRebuild,
+      // the client build of each run, which the server embeds
+      clientBuilds: compiler,
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
     // install a middleware that rewrites incoming request URLs to prepend the vite base prefix.

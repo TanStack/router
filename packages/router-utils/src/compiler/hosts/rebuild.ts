@@ -180,6 +180,9 @@ export class StaleSetDrain {
     pathOf: (resource: string) => string,
   ): Promise<void> {
     const { caches } = this
+    // the environment's compilation holds modules: a registry change stales
+    // its file here whether or not a plan of it exists
+    caches.stale.track(env)
     if (caches.invalidations.size > 0) {
       await caches.settled()
     }

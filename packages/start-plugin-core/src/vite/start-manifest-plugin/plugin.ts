@@ -8,8 +8,8 @@ import {
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
 import { normalizeViteClientBuild } from './normalized-client-build'
-import type { ClientRebuild } from '../client-rebuild'
-import type { GetConfigFn, NormalizedClientBuild } from '../../types'
+import type { ClientBuilds, ClientManifest } from '../compiler-state'
+import type { GetConfigFn } from '../../types'
 import type { PluginOption, Rollup } from 'vite'
 
 type StartManifestEnvironment = {
@@ -21,11 +21,12 @@ type StartManifestEnvironment = {
 
 export function startManifestPlugin(opts: {
   getConfig: GetConfigFn
-  /** `build --watch`: the client's running rebuild, whose chunks the manifest lists. */
-  clientRebuild?: ClientRebuild
+  /**
+   * The client build of each run (the compiler's sessions): the capture
+   * publishes it, the server's manifest module embeds it.
+   */
+  clientBuilds: ClientBuilds
 }): PluginOption {
-  let clientBuild: NormalizedClientBuild | undefined
-  let cssCodeSplitDisabledFileName: string | undefined
   let devClientRuntime: string | undefined
 
   return [
@@ -49,14 +50,16 @@ export function startManifestPlugin(opts: {
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
         }
-        clientBuild = normalizeViteClientBuild(
-          bundle,
-          opts.getConfig().startConfig.server.build.inlineCss.enabled,
-        )
-        cssCodeSplitDisabledFileName = getAssetFileNameByName(
-          bundle,
-          'style.css',
-        )
+        opts.clientBuilds.publishClientBuild(this.environment, {
+          clientBuild: normalizeViteClientBuild(
+            bundle,
+            opts.getConfig().startConfig.server.build.inlineCss.enabled,
+          ),
+          cssCodeSplitDisabledFileName: getAssetFileNameByName(
+            bundle,
+            'style.css',
+          ),
+        })
       },
     },
     createVirtualModule({
@@ -78,15 +81,12 @@ export function startManifestPlugin(opts: {
           return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
-        // `build --watch`: the client rebuild the same file event started
-        // writes the chunks this manifest lists
-        const rebuilt = this.meta?.watchMode
-          ? opts.clientRebuild?.ended()
-          : undefined
         const environment = this.environment
-        return rebuilt
-          ? rebuilt.then(() => manifestModule(environment, clientEntry))
-          : manifestModule(environment, clientEntry)
+        return opts.clientBuilds
+          .embedClientBuild(this)
+          .then((record) =>
+            manifestModule(environment, clientEntry, record?.manifest),
+          )
       },
     }),
   ]
@@ -94,15 +94,17 @@ export function startManifestPlugin(opts: {
   function manifestModule(
     environment: { config: { build: { cssCodeSplit?: boolean } } },
     clientEntry: string,
+    manifest: ClientManifest | undefined,
   ) {
     const { resolvedStartConfig, startConfig } = opts.getConfig()
     const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
     // TODO this needs further discussion with vite-rsc, this is a temporary workaround
     // If the client bundle isn't available yet (e.g., during RSC scan builds),
     // return a dummy manifest. The real manifest will be generated in the actual build.
-    if (!clientBuild) {
+    if (!manifest) {
       return getEmptyStartManifestModule(clientEntry)
     }
+    const { clientBuild, cssCodeSplitDisabledFileName } = manifest
     const startManifest = buildStartManifest({
       clientBuild,
       routeTreeRoutes,

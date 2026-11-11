@@ -6,13 +6,13 @@
 import {
   invalidate,
   normalizePath,
-  takeStaleModules,
+  reloadStaleModules,
 } from '@tanstack/router-utils/compiler'
 import type {
   HostServices,
   InvalidateChange,
 } from '@tanstack/router-utils/compiler'
-import type { DevEnvironment } from 'vite'
+import type { DevEnvironment, Environment } from 'vite'
 import type { Session, ViteCompilerState } from './compiler-state'
 
 /** The host of the invalidation operation (a dev environment's own resolver). */
@@ -62,6 +62,30 @@ export function invalidationHosts(
 }
 
 /**
+ * `build --watch`: the hosts of a file event's invalidation, per
+ * environment: a plan's resolutions are asked again with its own
+ * environment's resolver (`Session.resolvers`: the plugin context of its
+ * last build), or the calling hook's (`own`) for an environment that has
+ * not built.
+ */
+export function buildInvalidationHosts(
+  state: ViteCompilerState,
+  s: Session,
+  own: Environment,
+  resolve: NonNullable<ReturnType<Session['resolvers']['get']>>,
+): (key: { env: string }) => HostServices {
+  const hosts = new Map<string, HostServices>()
+  return ({ env: name }) => {
+    let h = hosts.get(name)
+    if (!h) {
+      h = state.hostFor(s, own, s.resolvers.get(name) ?? resolve)
+      hosts.set(name, h)
+    }
+    return h
+  }
+}
+
+/**
  * The invalidation of a file event or a registry change, by one hook
  * (each environment's hook forwards the event: the core compares, so a
  * repeat changes nothing). A failure is the dev server's to print: the hook
@@ -85,22 +109,7 @@ export async function invalidateFor(
   })
 }
 
-/**
- * The modules of an environment's stale set, invalidated, as a hot update
- * outside a hook (a registry change): Vite sends their update
- * (`reloadModule`), as a hook's returned modules (a dev server without HMR
- * transforms them again on their next request).
- */
-export function reloadStaleModules(
-  s: Session,
-  environment: DevEnvironment,
-): void {
-  for (const node of takeStaleModules(s.start.caches, environment, false)) {
-    void environment.reloadModule(node)
-  }
-}
-
-/** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
+/** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`), and their updates are sent. */
 export async function invalidateRegistry(
   state: ViteCompilerState,
   s: Session,
@@ -114,22 +123,31 @@ export async function invalidateRegistry(
   if (!first) {
     return
   }
-  const path = normalizePath(file)
-  await invalidateFor(state, s, first, { path, kind: 'registry' })
+  await invalidateFor(state, s, first, {
+    path: normalizePath(file),
+    kind: 'registry',
+  })
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
-      // the core stales the file in the environments that compiled; one
-      // that has not (a module served before it was a route, after a
-      // restart) has its module built again too
-      s.start.caches.stale.add(environment.name, path)
-      reloadStaleModules(s, environment)
+      reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
     }
+  }
+}
+
+/**
+ * A removed file's server functions leave the registry, when the core
+ * judged the event a removal: a removal of a file that reads back (a
+ * removal and re-creation delivered late) is a change and keeps them.
+ */
+export function forgetRemoved(s: Session, change: InvalidateChange): void {
+  if (change.kind === 'unlink' && !s.start.caches.rawFacts.knows(change.path)) {
+    s.start.forget(change.path)
   }
 }
 
 /** The compiler's change kind of a Vite file event. */
 export function changeKindOf(
   event: 'create' | 'update' | 'delete',
-): InvalidateChange['kind'] {
+): 'change' | 'add' | 'unlink' {
   return event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
 }

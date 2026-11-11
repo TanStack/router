@@ -4,7 +4,9 @@
  * what derives from them, and the session of each build run or dev server
  * with the state of its environments' hooks.
  */
-import { promises as fs, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { promises as fs, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import {
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
@@ -27,7 +29,6 @@ import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { invalidateRegistry } from './invalidation'
 import { createVirtualWaits } from './virtual-waits'
-import type { ClientRebuild } from './client-rebuild'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type {
   CompileOutcome,
@@ -37,6 +38,7 @@ import type { GenerateFunctionId } from '../server-fns/ids'
 import type {
   CompileStartFrameworkOptions,
   GetConfigFn,
+  NormalizedClientBuild,
   StartRscOptions,
 } from '../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
@@ -52,6 +54,7 @@ import type {
   Environment,
   OptimizedDepInfo,
   ResolvedConfig,
+  Rolldown,
   ViteDevServer,
 } from 'vite'
 
@@ -70,8 +73,6 @@ export interface StartCompilerPluginOptions {
   getConfig: GetConfigFn
   /** The generator's registry (route modules by file), shared with the generator plugin. */
   routerPluginContext: RouterPluginContext
-  /** `build --watch`: the client's running rebuild, shared with the start manifest. */
-  clientRebuild: ClientRebuild
   /** The app's resolved entries (import protection's trace roots). */
   resolveEntries: () => {
     entryPaths: {
@@ -188,6 +189,43 @@ export function inputMapOf(
   return map
 }
 
+/** What the start manifest reads of the client's build (its capture, `start-manifest-plugin`). */
+export interface ClientManifest {
+  clientBuild: NormalizedClientBuild
+  /** The `style.css` the client emits when `build.cssCodeSplit` is off. */
+  cssCodeSplitDisabledFileName: string | undefined
+}
+
+/**
+ * A client build of a build run, as the server environment embeds it: the
+ * start manifest (the client's files) and the server functions the client
+ * references (the server's resolver answers only those, J4.2).
+ */
+export interface ClientBuildRecord {
+  /** A digest of what the server embeds of the build. */
+  digest: string
+  manifest: ClientManifest
+  functionIds: ReadonlySet<string>
+}
+
+/** The client build as the server's modules embed it (`ViteCompilerState.embedClientBuild`). */
+export interface ClientBuilds {
+  /** The client's build of the environment's run ended with its bundle (the start manifest's capture). */
+  publishClientBuild: (
+    environment: Environment,
+    manifest: ClientManifest,
+  ) => void
+  /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
+  embedClientBuild: (ctx: EmbeddingContext) => Promise<ClientBuildRecord | null>
+}
+
+/** The hook context of a server module that embeds the client build. */
+export interface EmbeddingContext {
+  environment: Environment
+  meta: { watchMode: boolean }
+  addWatchFile: (id: string) => void
+}
+
 /**
  * What one run of the plugins shares across the Start environments: a build
  * run (one `buildApp` of a builder: every environment it builds, the
@@ -213,15 +251,49 @@ export interface Session {
   /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
   readonly virtualWaits: ReturnType<typeof createVirtualWaits>
   /**
-   * The client environment's build in this run: null until one ended.
-   * The server's resolver of a build lists (or gates on) the functions the
-   * client build references, which it reads from the client's compiles.
-   * `build --watch`: the files of the client's module graph (else none),
-   * which the server's resolver watches (an edit only the client bundles
-   * rebuilds the server too), and it waits for the client rebuild a file
-   * event started (`opts.clientRebuild`): the environments rebuild at once.
+   * The client environment's last build in this run that ended with its
+   * bundle (null: none yet): what the server's resolver and start manifest
+   * embed.
    */
-  clientFiles: Array<string> | null
+  clientBuild: ClientBuildRecord | null
+  /**
+   * `build --watch`: the digests of the client builds each server
+   * environment's current build embedded (emptied when its build starts).
+   * The environments build at once, in any order: a client build whose
+   * digest differs from one embedded writes the sentinel, a file those
+   * modules watch, and the server environment's own watcher rebuilds it.
+   */
+  readonly embedded: Map<string, Set<string>>
+  /** `build --watch`: the sentinel's path, once a server module watches it. */
+  sentinel: string | null
+  /**
+   * `build --watch`: the client's build running now (its watcher's
+   * `BUNDLE_START` to its `BUNDLE_END` or `ERROR`, when Start's `buildApp`
+   * follows the watcher), which a server module waits for before it embeds
+   * the client build: an edit both environments bundle then builds the
+   * server once. An optimisation only: the sentinel rebuilds a server that
+   * embedded another client build.
+   */
+  clientBuilding: { ended: Promise<void>; end: () => void } | null
+  /**
+   * `build --watch`: each environment's resolver (its plugin context's, from
+   * its last build), for the invalidations of a file event: a plan's
+   * resolutions are asked again with its own environment's resolver.
+   */
+  readonly resolvers: Map<
+    string,
+    (
+      source: string,
+      importer?: string,
+      options?: { skipSelf?: boolean },
+    ) => Promise<{ id: string; external?: boolean | string } | null>
+  >
+  /**
+   * `build --watch`: per environment, what its running build is to build
+   * again (its stale set when it began) and the files it compiled: the
+   * build's audit (`auditStaleSet`) at its end.
+   */
+  readonly builds: Map<string, { stale: Set<string>; compiled: Set<string> }>
   /** Dev: the server functions the dev lookup warned about (once each). */
   readonly devWarned: Set<string>
   /** Dev: stops what the session listens to (`closeServer`). */
@@ -234,7 +306,7 @@ export interface Session {
  * resolved config (the transform filters), and the session of each
  * environment's run (`sessionOf`).
  */
-export class ViteCompilerState {
+export class ViteCompilerState implements ClientBuilds {
   readonly ssrIsProvider: boolean
   readonly envNames: Set<string>
   readonly resolverEnvironments: Set<string>
@@ -369,7 +441,12 @@ export class ViteCompilerState {
       server,
       virtualLoaders,
       virtualWaits: createVirtualWaits(),
-      clientFiles: null,
+      clientBuild: null,
+      embedded: new Map(),
+      sentinel: null,
+      clientBuilding: null,
+      resolvers: new Map(),
+      builds: new Map(),
       devWarned: new Set(),
       disposers: [],
     }
@@ -453,6 +530,97 @@ export class ViteCompilerState {
       }
     }
     return host
+  }
+
+  /**
+   * The client's build of the environment's run ended with its bundle (the
+   * start manifest's capture, `generateBundle`): the record the server
+   * embeds, with the server functions the build references (its compiles
+   * are done). `build --watch`: a server build that embedded another client
+   * build is built again by its own watcher, whichever of the two watchers
+   * runs first (the sentinel it watches is written).
+   */
+  publishClientBuild(environment: Environment, manifest: ClientManifest): void {
+    const s = this.sessionOf(environment)
+    const functionIds = s.start.registry
+      .entries()
+      .filter((e) => e.clientReferenced)
+      .map((e) => e.id)
+      .sort()
+    const digest = createHash('sha1')
+      .update(JSON.stringify([manifest, functionIds]))
+      .digest('base64url')
+    s.clientBuild = { digest, manifest, functionIds: new Set(functionIds) }
+    if (
+      s.sentinel !== null &&
+      [...s.embedded.values()].some((digests) =>
+        [...digests].some((embedded) => embedded !== digest),
+      )
+    ) {
+      writeFileSync(s.sentinel, digest)
+    }
+  }
+
+  /**
+   * `build --watch`: follows the client environment's watcher (Start's
+   * `buildApp`): the client build running now (`Session.clientBuilding`).
+   */
+  followClientWatcher(
+    environment: Environment,
+    watcher: Rolldown.RolldownWatcher,
+  ): void {
+    const s = this.sessionOf(environment)
+    watcher.on('event', (event) => {
+      if (event.code === 'BUNDLE_START' && !s.clientBuilding) {
+        let end!: () => void
+        const ended = new Promise<void>((resolve) => (end = resolve))
+        s.clientBuilding = { ended, end }
+      } else if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
+        s.clientBuilding?.end()
+        s.clientBuilding = null
+      }
+    })
+  }
+
+  /**
+   * A module of a server environment's build embeds the run's client build
+   * (null: none built in this run). `build --watch`: once the client's
+   * running build ended (`Session.clientBuilding`); the module watches the
+   * sentinel, and the digest is noted as the server build's (none built yet,
+   * e.g. a client whose first build failed, is a digest of its own: the
+   * client's first build rebuilds the server).
+   */
+  async embedClientBuild(
+    ctx: EmbeddingContext,
+  ): Promise<ClientBuildRecord | null> {
+    const s = this.sessionOf(ctx.environment)
+    if (ctx.meta.watchMode) {
+      await s.clientBuilding?.ended
+    }
+    const record = s.clientBuild
+    if (ctx.meta.watchMode) {
+      const digest = record?.digest ?? ''
+      if (s.sentinel === null) {
+        // one file per app's cache directory, rewritten by each run (a
+        // run's write rebuilds another run's server at most)
+        const sentinel = path.join(
+          ctx.environment.config.cacheDir,
+          'tanstack-start',
+          'client-build',
+        )
+        mkdirSync(path.dirname(sentinel), { recursive: true })
+        writeFileSync(sentinel, digest)
+        s.sentinel = normalizePath(sentinel)
+      }
+      ctx.addWatchFile(s.sentinel)
+      let digests = s.embedded.get(ctx.environment.name)
+      if (!digests) {
+        digests = new Set()
+        s.embedded.set(ctx.environment.name, digests)
+      }
+      digests.add(digest)
+    }
+    return record
   }
 
   /** Whether `env` is a server-fn provider of its own (RSC), not the SSR environment. */

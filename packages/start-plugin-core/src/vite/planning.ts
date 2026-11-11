@@ -8,7 +8,6 @@ import {
   START_ENVIRONMENT_NAMES,
 } from '../constants'
 import { getBundlerOptions } from '../utils'
-import type { ClientRebuild } from './client-rebuild'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { ResolvedStartEntryPlan } from '../planning'
 import type * as vite from 'vite'
@@ -197,8 +196,11 @@ export function createViteDefineConfig(opts: {
 export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
-  /** `build --watch`: follows the client's watcher (its rebuilds' ends). */
-  clientRebuild: ClientRebuild
+  /** `build --watch`: the client environment's watcher, to follow its builds. */
+  followClientWatcher: (
+    environment: vite.BuildEnvironment,
+    watcher: vite.Rolldown.RolldownWatcher,
+  ) => void
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -213,11 +215,13 @@ export async function buildStartViteEnvironments(opts: {
 
   if (!client.isBuilt) {
     // `build --watch`: the build returns the client's watcher at once; the
-    // server's resolver lists the functions the client compiled, so the
-    // server builds once the client's first build ended
+    // server embeds the client's build (its files, the functions it
+    // references), so the server builds once the client's first build
+    // ended. The client's later builds, and a first one that failed, reach
+    // the server by cause (`ViteCompilerState.publishClientBuild`)
     const output = await opts.builder.build(client)
     if ('on' in output) {
-      opts.clientRebuild.follow(output)
+      opts.followClientWatcher(client, output)
     }
     await firstBuildEnd(output)
   }

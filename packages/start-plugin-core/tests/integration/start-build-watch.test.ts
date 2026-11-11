@@ -19,6 +19,7 @@ import {
   routerFile,
   startPageEntries,
 } from './start-compose-app'
+import type { Plugin } from 'vite'
 
 const timeout = 60_000
 
@@ -259,6 +260,35 @@ export const read = () => secret()
     timeout,
   )
 
+  test(
+    'a rebuild after a failed one shows the fix',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: [
+          { edits: { 'greeting.ts': `export const greeting = \n` } },
+          {
+            edits: {
+              'greeting.ts': `export const greeting = 'MARK_AFTER'
+`,
+            },
+          },
+        ],
+      })
+      expect((await client.run(`return entry.greeting`)).result).toBe(
+        'MARK_AFTER',
+      )
+      const url = (await client.run(`return entry.greet.url`)).result
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_AFTER')
+    },
+    timeout,
+  )
+
   // Source: review round 3 (R3-G5-4: the Rsbuild host reported the
   // allocator's error once per watch session).
   test(
@@ -315,6 +345,146 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
       const emitted = new Set(client.chunks.map((c) => c.fileName))
       expect(named.length).toBeGreaterThan(0)
       expect(named.filter((file) => !emitted.has(file))).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('vite build --watch: the client build the server embeds', () => {
+  const index = (
+    marker: string,
+  ) => `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
+`
+  const serverEntry = startPageEntries['harness/server-entry.ts']
+
+  // An edit of the route and of the server entry, which no longer parses:
+  // the server's build fails at once, the client builds the route. The fix
+  // (the entry, and the route again) is saved while the client still builds
+  // the first edit: the server's watcher, idle after its failure, reports
+  // it at once, the client's after its build. The server's rebuild must not
+  // keep a client build older than the client's last one.
+  // Source: Fable 5.2 review (F6-2: the server waited for "the client build
+  // that is running", not the one the event causes).
+  test(
+    'a fix saved while the client builds the edit that broke the server: the document names the files of the last client build',
+    async () => {
+      let reachedHold!: () => void
+      const holding = new Promise<void>((resolve) => (reachedHold = resolve))
+      let releaseHold!: () => void
+      const hold = new Promise<void>((resolve) => (releaseHold = resolve))
+      let serverFailed!: () => void
+      const serverFailedOnce = new Promise<void>(
+        (resolve) => (serverFailed = resolve),
+      )
+      let fixWritten = false
+      /** Holds the client's build of the first edit until the server's build of the fix began. */
+      const holdClient: Plugin = {
+        name: 'test:hold-client-build',
+        transform(code, id) {
+          if (
+            this.environment.name === 'client' &&
+            id.includes('/routes/index.tsx') &&
+            code.includes('MARK_ONE')
+          ) {
+            reachedHold()
+            // (a guard: the hold ends without the server's build too)
+            const timer = setTimeout(releaseHold, 10_000)
+            return hold.then(() => {
+              clearTimeout(timer)
+              return null
+            })
+          }
+          return null
+        },
+        buildStart() {
+          if (this.environment.name === 'ssr' && fixWritten) {
+            releaseHold()
+          }
+        },
+        buildEnd(error) {
+          if (this.environment.name === 'ssr' && error) {
+            serverFailed()
+          }
+        },
+      }
+      const { client, ssr } = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...startPageEntries,
+          ...pageEntries,
+          'src/router.ts': routerFile,
+          'src/routes/__root.tsx': rootDocument(),
+          'src/routes/index.tsx': index('MARK_BEFORE'),
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        viteConfig: { plugins: [holdClient] },
+        watchEdits: [
+          {
+            edits: {
+              'src/routes/index.tsx': index('MARK_ONE'),
+              'harness/server-entry.ts': `${serverEntry}export const = ;\n`,
+            },
+          },
+          {
+            edits: {
+              'src/routes/index.tsx': index('MARK_TWO'),
+              'harness/server-entry.ts': serverEntry,
+            },
+            when: async () => {
+              await Promise.all([holding, serverFailedOnce])
+              fixWritten = true
+            },
+          },
+        ],
+      })
+      expect(client.where('MARK_TWO')).not.toBe('nowhere')
+      const { result: html } = await ssr.run(
+        `return await (await entry.startServerEntry.fetch(new Request('http://localhost/'))).text()`,
+      )
+      expect(html).toContain('MARK_TWO')
+      const named = [
+        ...(html as string).matchAll(/["']\/([^"'\s]+?\.js)["']/g),
+      ].map((m) => m[1]!)
+      const emitted = new Set(client.chunks.map((c) => c.fileName))
+      expect(named.length).toBeGreaterThan(0)
+      expect(named.filter((file) => !emitted.has(file))).toEqual([])
+    },
+    timeout,
+  )
+
+  // The client's first build fails (a module only the client bundles does
+  // not parse); the server builds meanwhile, with no client build to embed.
+  // The fix reaches only the client's watcher; the client's first build
+  // rebuilds the server, which then answers the client's calls.
+  // Source: design 3 step 4 review, step 5 item 6 (the server built after
+  // a failed client build raised the build-order error, J4.2, and was not
+  // built again).
+  test(
+    'a client whose first build fails: its first build rebuilds the server, which answers its calls',
+    async () => {
+      const clientOnly = (text: string) => `export const label = ${text}\n`
+      const { client, ssr, firstBuild } = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...files,
+          'client-only.ts': clientOnly(''),
+          'client-entry.ts': `export { greet } from './fns'
+export { label } from './client-only'
+`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+      })
+      expect(
+        firstBuild.some(({ text }) => text.includes('built before the client')),
+      ).toBe(false)
+      expect((await client.run(`return entry.label`)).result).toBe('MARK_LABEL')
+      const url = (await client.run(`return entry.greet.url`)).result
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_BEFORE')
     },
     timeout,
   )
