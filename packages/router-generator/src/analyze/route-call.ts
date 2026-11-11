@@ -177,15 +177,20 @@ export function routeCallOf(
     usesConstructor: usesConstructor(file, expected.routerPackage),
     call,
   })
-  const declaredName =
-    routeExport.kind === 'named' ? routeExport.local?.declarations[0] : null
-  const declarator = declaredName ? file.parentOf(declaredName) : null
-  if (
-    !declarator ||
-    declarator.type !== 'VariableDeclarator' ||
-    declarator.id !== declaredName
-  ) {
-    // re-exported, imported, destructured, a function...
+  // the one declarator of the binding (a type, interface or type namespace
+  // of the same name declares no value)
+  const declarators: Array<VariableDeclarator> = []
+  for (const name of routeExport.kind === 'named'
+    ? (routeExport.local?.declarations ?? [])
+    : []) {
+    const parent = file.parentOf(name)
+    if (parent?.type === 'VariableDeclarator' && parent.id === name) {
+      declarators.push(parent)
+    }
+  }
+  const declarator = declarators.length === 1 ? declarators[0]! : null
+  if (!declarator) {
+    // re-exported, imported, destructured, a function, declared twice...
     return foreign(null)
   }
   const init = declarator.init ? unwrap(declarator.init) : null

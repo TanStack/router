@@ -34,8 +34,6 @@ interface Row {
   root?: false
   /** The route renders in the app (another framework's route does not). */
   renders?: false
-  /** Pinned: the sides disagree today. */
-  pinned?: boolean
 }
 
 const rows: Array<Row> = [
@@ -65,12 +63,10 @@ const rows: Array<Row> = [
     route: true,
   },
   {
-    // Bug: the planner takes any framework's router package (design 5 D3)
     name: "another framework's router package",
     code: `import { createFileRoute } from '@tanstack/solid-router'\nexport const Route = createFileRoute('/x')(${options})\n`,
     route: false,
     renders: false,
-    pinned: true,
   },
   {
     name: 'an export list',
@@ -177,6 +173,5 @@ const check = async (row: Row) => {
 }
 
 describe('the generator and the code splitter agree on what a route is', () => {
-  it.for(rows.filter((row) => !row.pinned))('$name', check)
-  it.for(rows.filter((row) => row.pinned))('$name', { fails: true }, check)
+  it.for(rows)('$name', check)
 })

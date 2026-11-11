@@ -26,23 +26,18 @@ export const Route = createFileRoute('/widget')({
   },
 })
 
-// Bug: the router planner recognises the route call by itself and splits
-// the file and removes its `server` option (design 5 D5).
-test.fails(
-  'a route file the generator does not list is served as written, with nothing reported',
-  async () => {
-    const { host: dev, diagnostics, root } = await host()
-    const served = await dev.transform('/src/widgets/w.tsx', 'client')
+test('a route file the generator does not list is served as written, with nothing reported', async () => {
+  const { host: dev, diagnostics, root } = await host()
+  const served = await dev.transform('/src/widgets/w.tsx', 'client')
 
-    // the component stays in the module, `server` stays too
-    expect(served).toContain('MARK_W_PAGE')
-    expect(served).toContain('MARK_W_SERVER')
-    expect(
-      findDiagnostics(diagnostics, {
-        severity: ['warning', 'error'],
-        file: 'src/widgets/w.tsx',
-        root,
-      }),
-    ).toEqual([])
-  },
-)
+  // the component stays in the module, `server` stays too
+  expect(served).toContain('MARK_W_PAGE')
+  expect(served).toContain('MARK_W_SERVER')
+  expect(
+    findDiagnostics(diagnostics, {
+      severity: ['warning', 'error'],
+      file: 'src/widgets/w.tsx',
+      root,
+    }),
+  ).toEqual([])
+})

@@ -117,6 +117,25 @@ export const Route = (R as any).createFileRoute('/x')({})
     routerConstructor: true,
   },
   {
+    name: 'an interface of the same name',
+    source: `import { createFileRoute } from '@tanstack/react-router'
+interface Route {
+  meta: string
+}
+export const Route = createFileRoute('/x')({})
+`,
+    routerConstructor: true,
+  },
+  {
+    // (no one call makes it)
+    name: 'two declarations',
+    source: `import { createFileRoute } from '@tanstack/react-router'
+export var Route = createFileRoute('/x')({})
+var Route
+`,
+    routerConstructor: false,
+  },
+  {
     name: "another framework's router package",
     source: `import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/x')({})

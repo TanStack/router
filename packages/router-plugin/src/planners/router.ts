@@ -51,18 +51,17 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
     },
     plan(ctx) {
       const cfg = ctx.config
-      // (the prefetch always stores the entry)
+      // (the prefetch always stores the entry) a file the generator does not
+      // list is no route: served as written (R145)
       const entry = ctx.prefetched.get(ROUTER_PLANNER) ?? null
-      const recognition = recognizeRoute(ctx, entry)
-      const route = recognition.route
+      if (!entry) {
+        return
+      }
+      const route = recognizeRoute(ctx, entry)
       for (const d of unownedRouteOptions(ctx, cfg, route)) {
         ctx.diagnostic(d)
       }
       if (!route) {
-        // no recognised route: report what recognition found (J2.10, J2.11)
-        for (const w of recognition.warnings) {
-          ctx.diagnostic(w)
-        }
         return
       }
       const round: RouterRound = {

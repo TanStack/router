@@ -9,6 +9,7 @@ import {
   unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
+import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
@@ -20,7 +21,6 @@ import {
   isExportedSymbol,
   isFallbackLiteral,
   liveInEnv,
-  propertyKeyName,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
@@ -122,7 +122,7 @@ function effectiveGroupings(
   if (route.fileGroupings) {
     return route.fileGroupings
   }
-  if (cfg.splitBehavior && route.routeId !== null) {
+  if (cfg.splitBehavior) {
     const fromPlugin = cfg.splitBehavior({ routeId: route.routeId })
     if (fromPlugin) {
       const problem = groupingsProblem(fromPlugin)
@@ -459,7 +459,10 @@ export function splitPlanOf(
         })
         continue
       }
-      if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
+      if (
+        isFallbackLiteral(target.value) ||
+        isAlreadyLazy(ctx, route.routerPackage, target.value)
+      ) {
         continue
       }
       if (readsOwnThis(ctx, calledFunctionOf(ctx, target))) {

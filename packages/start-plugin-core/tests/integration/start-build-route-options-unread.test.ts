@@ -20,6 +20,13 @@ const shared = `export const shared = {
 
 const clean = `export const shared = { staleTime: 1 }\n`
 
+/** The app's root route: the route file is one the generator lists. */
+const root = {
+  'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+}
+
 async function build(
   bundler: (typeof startBundlers)[number],
   route: string,
@@ -30,13 +37,14 @@ async function build(
     files: {
       'src/x.shared.ts': sharedModule,
       'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { shared } from './x.shared'
-import { readSecret } from './admin-helper'
+      ...root,
+      'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { shared } from '../x.shared'
+import { readSecret } from '../admin-helper'
 const key = (globalThis as any).key ?? 'staticData'
 export const Route = createFileRoute('/x')(${route})
 `,
-      'src/entry.ts': `export { Route } from './r'\n`,
+      'src/entry.ts': `export { Route } from './routes/x'\n`,
     },
     entry: 'src/entry.ts',
   })
@@ -60,7 +68,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const result = await build(bundler, route)
       expectDiagnostic(result.diagnostics, {
         severity: 'warning',
-        file: 'src/r.tsx',
+        file: 'src/routes/x.tsx',
       })
       expect(result.client.where('MARK_SPREAD_SERVER')).not.toBe('nowhere')
     },
@@ -95,18 +103,19 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const result = await buildStart({
         bundler,
         files: {
-          'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          ...root,
+          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
 const options: any = { ${component} }
 options.server = { handlers: { GET: () => new Response('MARK_SPREAD_SERVER') } }
 export const Route = createFileRoute('/x')(options)
 `,
-          'src/entry.ts': `export { Route } from './r'\n`,
+          'src/entry.ts': `export { Route } from './routes/x'\n`,
         },
         entry: 'src/entry.ts',
       })
       expectDiagnostic(result.diagnostics, {
         severity: 'warning',
-        file: 'src/r.tsx',
+        file: 'src/routes/x.tsx',
       })
     },
     timeout,
@@ -123,12 +132,13 @@ export const Route = createFileRoute('/x')(options)
         bundler,
         files: {
           'src/x.shared.ts': shared,
-          'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { shared } from './x.shared'
+          ...root,
+          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { shared } from '../x.shared'
 export const Route = createFileRoute('/x')({ ${component} })
 export const Other = createFileRoute('/y' as any)(${options})
 `,
-          'src/entry.ts': `export { Route, Other } from './r'\n`,
+          'src/entry.ts': `export { Route, Other } from './routes/x'\n`,
         },
         entry: 'src/entry.ts',
       })
