@@ -62,6 +62,7 @@
     "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "catalog:",
     "@rsbuild/core": "catalog:",
+    "@tanstack/router-utils": "workspace:*",
     "esbuild": "^0.28.2",
     "globals": "^16.2.0",
     "vite": "catalog:",

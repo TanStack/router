@@ -30,6 +30,9 @@
  * unless the environment says otherwise: every compile of the suite
  * re-parses its outputs, and a broken output or a violated compiler
  * invariant fails it loudly (users' runs only get a warning).
+ *
+ * The compiler's stats knob (`TSR_COMPILER_STATS`) is on too: each test file
+ * ends with a check of the compilers' stale counts (`./test-scope-setup`).
  */
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -55,6 +58,7 @@ export default function setup() {
     TSR_TMP_DIR: path.join(dir, 'generator'),
     NODE_COMPILE_CACHE: path.join(dir, 'node-compile-cache'),
     TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1',
+    TSR_COMPILER_STATS: process.env.TSR_COMPILER_STATS ?? '1',
   }
   const previous = Object.fromEntries(
     Object.keys(variables).map((name) => [name, process.env[name]]),
