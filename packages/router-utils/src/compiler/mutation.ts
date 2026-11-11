@@ -27,6 +27,7 @@ import type { ClassifiedRef, RefIndex, Tier1 } from './analysis'
 import type { Range } from './header'
 import type { SymbolId } from './symbols'
 import type { UnitId } from './units'
+import type { Node, SourceFile } from 'yuku'
 
 type WriteKind = 'assign' | 'member'
 
@@ -48,11 +49,11 @@ export function writeKind(ref: ClassifiedRef): WriteKind | null {
 /** What the value walk reads of the module. */
 type ModuleShape = Pick<
   Tier1,
-  'units' | 'declaringUnits' | 'runsLaterAt' | 'unitAt' | 'nodeAt' | 'parentOf'
+  'units' | 'declaringUnits' | 'runsLaterAt' | 'unitAt'
 >
 
 /** The expressions and statements a write reference writes through (`writeTargets`' constructs). */
-const WRITES = new Set([
+const WRITES: ReadonlySet<string> = new Set([
   'AssignmentExpression',
   'UpdateExpression',
   'UnaryExpression',
@@ -62,6 +63,17 @@ const WRITES = new Set([
   'VariableDeclarator',
 ])
 
+/** The range of the expression or statement write reference `node` writes through (`x.p = v`, `x.push(v)`, `x = v`). */
+export function writeConstruct(file: SourceFile, node: Node): Range {
+  let n: Node | null = node
+  while (n !== null && !WRITES.has(n.type)) {
+    n = file.parentOf(n)
+  }
+  return n === null
+    ? { start: node.start, end: node.end }
+    : { start: n.start, end: n.end }
+}
+
 const NO_UNITS: ReadonlyArray<UnitId> = []
 const NO_SYMS: ReadonlyArray<SymbolId> = []
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
@@ -69,7 +81,6 @@ const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 export class MutationModel {
   private sites: Map<SymbolId, ReadonlyArray<ClassifiedRef>> | null = null
   private owns: Map<SymbolId, boolean> | null = null
-  private constructs: Map<ClassifiedRef, Range> | null = null
   /** Per member write through another name, the other bindings whose objects it may write; per binding, those writes (built at the first ask, once). */
   private through: {
     objects: Map<ClassifiedRef, ReadonlyArray<SymbolId>>
@@ -78,6 +89,8 @@ export class MutationModel {
 
   constructor(
     private readonly refs: RefIndex,
+    /** Each write reference's expression or statement (`writeConstruct`). */
+    private readonly constructs: ReadonlyMap<ClassifiedRef, Range>,
     /** The module (the tier the model belongs to, complete when first asked). */
     private readonly module: () => ModuleShape,
   ) {}
@@ -137,6 +150,17 @@ export class MutationModel {
     return hit
   }
 
+  /** Whether `sym` names an object of its own (`ownsObject`), or one no declaration here gives it (an import, a parameter-like binding): not another binding's alias. */
+  private namesObject(sym: SymbolId): boolean {
+    const { units, declaringUnits } = this.module()
+    const declaring = declaringUnits.get(sym)
+    return (
+      declaring !== undefined &&
+      (this.ownsObject(sym) ||
+        !declaring.some((u) => units[u]!.kind === 'declaration'))
+    )
+  }
+
   /** The other bindings whose objects member write `ref` may write: what its name's value holds (none when it writes the object its name owns). */
   objectsWrittenBy(ref: ClassifiedRef): ReadonlyArray<SymbolId> {
     return this.throughWrites().objects.get(ref) ?? NO_SYMS
@@ -156,6 +180,8 @@ export class MutationModel {
     this.through = { objects, writes }
     const { units, declaringUnits } = this.module()
     const textOf = (u: UnitId) => this.refs.refsIn(units[u]!.range)
+    /** Per name written through, what its value may hold (`held` below). */
+    const heldBy = new Map<SymbolId, ReadonlyArray<SymbolId>>()
     for (const ref of this.refs.all) {
       if (
         writeKind(ref) !== 'member' ||
@@ -164,21 +190,42 @@ export class MutationModel {
       ) {
         continue
       }
-      // (a call's result is not its callee: `const [a, b] = make()`)
-      const held: Array<SymbolId> = []
-      this.visitValues([ref], true, textOf, (r) => {
-        if (
-          r.sym !== ref.sym &&
-          r.kind === 'value' &&
-          r.ctx !== 'callee' &&
-          r.ctx !== 'newCallee' &&
-          declaringUnits.has(r.sym) &&
-          !held.includes(r.sym)
-        ) {
-          held.push(r.sym)
-        }
-        return false
-      })
+      // the bindings naming an object of their own (or another module's):
+      // a read through any other name walks to them (`visitValues`); a
+      // call's result is not its callee (`const [a, b] = make()`). Per
+      // name, once: a name already walked is not followed again (a chain of
+      // aliases, each written through, walks each link once).
+      let held = heldBy.get(ref.sym)
+      if (held === undefined) {
+        const set = new Set<SymbolId>()
+        const known = (r: ClassifiedRef) => heldBy.has(r.sym)
+        this.visitValues(
+          [ref],
+          true,
+          textOf,
+          (r) => {
+            if (
+              r.sym === ref.sym ||
+              r.kind !== 'value' ||
+              r.ctx === 'callee' ||
+              r.ctx === 'newCallee'
+            ) {
+              return false
+            }
+            if (this.namesObject(r.sym)) {
+              set.add(r.sym)
+            }
+            for (const t of heldBy.get(r.sym) ?? NO_SYMS) {
+              set.add(t)
+            }
+            return false
+          },
+          known,
+        )
+        set.delete(ref.sym)
+        held = [...set]
+        heldBy.set(ref.sym, held)
+      }
       if (held.length === 0) {
         continue
       }
@@ -193,22 +240,6 @@ export class MutationModel {
       }
     }
     return this.through
-  }
-
-  /** The range of the expression or statement write reference `site` writes through (`x.p = v`, `x.push(v)`, `x = v`). */
-  private constructOf(site: ClassifiedRef): Range {
-    this.constructs ??= new Map()
-    let hit = this.constructs.get(site)
-    if (hit === undefined) {
-      const { nodeAt, parentOf } = this.module()
-      let n = nodeAt(site.range.start)
-      while (n !== null && !WRITES.has(n.type)) {
-        n = parentOf(n)
-      }
-      hit = n === null ? site.range : { start: n.start, end: n.end }
-      this.constructs.set(site, hit)
-    }
-    return hit
   }
 
   /**
@@ -227,6 +258,8 @@ export class MutationModel {
     eagerOnly: boolean,
     textOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
     visit: (ref: ClassifiedRef, at: number) => boolean,
+    /** A name the caller knows the value of: seen, not followed. */
+    known?: (ref: ClassifiedRef) => boolean,
   ): boolean {
     const { units, declaringUnits, runsLaterAt, unitAt } = this.module()
     const ordered =
@@ -234,8 +267,6 @@ export class MutationModel {
         ? roots
         : [...roots].sort((a, b) => a.range.start - b.range.start)
     const seen = new Set<UnitId>()
-    /** The writes whose expressions were entered (not inside a unit `seen` holds). */
-    const seenWrites = new Set<ClassifiedRef>()
     /** The names whose declarations and writes were entered (once per walk). */
     const followed = new Set<SymbolId>()
     const work: Array<ClassifiedRef> = []
@@ -260,7 +291,7 @@ export class MutationModel {
         if (visit(inner, at)) {
           return true
         }
-        if (!inner.memberWrite) {
+        if (!inner.memberWrite && known?.(inner) !== true) {
           work.push(inner)
         }
       }
@@ -281,16 +312,14 @@ export class MutationModel {
           }
         }
         for (const site of this.sitesOf(r.sym)) {
-          if (
-            !site.eager ||
-            runsLaterAt(site.range.start) ||
-            seenWrites.has(site)
-          ) {
+          if (!site.eager || runsLaterAt(site.range.start)) {
             continue
           }
-          seenWrites.add(site)
           const u = unitAt(site.range)
-          if (u !== null && enter(u, at, this.constructOf(site))) {
+          if (
+            u !== null &&
+            enter(u, at, this.constructs.get(site) ?? site.range)
+          ) {
             return true
           }
         }

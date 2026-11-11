@@ -17,7 +17,7 @@ import {
 } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, memberUse } from './units'
-import { MutationModel } from './mutation'
+import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
   linkedBuilder,
   noteBuilderConsts,
@@ -1208,6 +1208,8 @@ export class ModuleAnalysis {
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
     const builders = this.purity.builders
+    /** Each write reference's expression or statement (`MutationModel.visitValues` reads what it writes). */
+    const constructs = new Map<ClassifiedRef, Range>()
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1232,7 +1234,7 @@ export class ModuleAnalysis {
           : builders !== undefined && linksOn(file, builders, node)
             ? 'write'
             : memberUse(file, node)
-      refs.push({
+      const r: ClassifiedRef = {
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
         kind: c.kind,
@@ -1241,7 +1243,11 @@ export class ModuleAnalysis {
         exportShorthand: c.exportShorthand,
         memberWrite: use === 'write' || use === 'write-through',
         readsThrough: use === 'through' || use === 'write-through',
-      })
+      }
+      refs.push(r)
+      if (writeKind(r) !== null) {
+        constructs.set(r, writeConstruct(file, node))
+      }
     }
 
     // a `var` declared again: what that declaration gives it is a write, like
@@ -1268,14 +1274,16 @@ export class ModuleAnalysis {
           (i > 0 || !own || id.start < own.range.start) &&
           declarationAssigns(file, id)
         ) {
-          refs.push({
+          const r: ClassifiedRef = {
             sym,
             range: { start: id.start, end: id.end },
             ...classify(file, { node: id, isWrite: true }),
             eager: !isLazyAt(id.start),
             memberWrite: false,
             readsThrough: false,
-          })
+          }
+          refs.push(r)
+          constructs.set(r, writeConstruct(file, id))
         }
       })
     }
@@ -1341,7 +1349,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refIndex, () => tier1)
+    const mutation = new MutationModel(refIndex, constructs, () => tier1)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
