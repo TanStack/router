@@ -2068,22 +2068,74 @@ describe("the env module's pieces", () => {
     )
   })
 
-  it('renders the inserts at the edges of a statement placement drops', () => {
-    const code = `const h = 1\nexport const y = h\n`
+  // Source: the final review of design 1 (findings 1 and 2): an insert has
+  // one owner, the text holding its position (the innermost node strictly
+  // holding it, else the unit holding the byte there), and renders and is
+  // read with that text only.
+  it('renders an insert once where a unit is anchored inside a node that renders as its source', () => {
+    const code = `const a = 1\nfunction b() { return 2 }\nexport const c = a + b\n`
     const e = engine(code)
+    e.ctx.region(
+      rangeOf(code, 'const a = 1\nfunction b() { return 2 }\n'),
+      'custom',
+    )
+    e.ctx.rewrites.edit({
+      range: rangeOf(code, '1'),
+      body: [text('3')],
+      by: 'toy',
+    })
+    e.ctx.rewrites.insert({
+      at: rangeOf(code, 'function b').start,
+      body: [text('/*i*/')],
+      by: 'toy',
+    })
+    e.ctx.addRoot('env', {
+      t: 'gen',
+      id: unit(e, { k: 'before-unit', unit: 1 }),
+    })
+    expect(e.render().code).toBe(
+      `const a = 3\n;/*i*/const gen = 1\nfunction b() { return 2 }\nexport const c = a + b\n`,
+    )
+  })
+
+  it.each([
+    [
+      'the start of a statement placement drops: it goes with it',
+      'function h',
+      'export const y = 2\n',
+    ],
+    [
+      'the start of a kept declarator: what it names stays',
+      'y = h',
+      'const k = 5\nexport const use(k);y = 2\n',
+    ],
+  ])('renders an insert naming a binding at %s', (_, at, expected) => {
+    const code = `const k = 5\nfunction h() { return k }\nexport const y = h\n`
+    const e = engine(code)
+    const k = e.ctx.t1.units[0]!.declares[0]!
     // (`h` is orphaned by the edit of its only reader)
     e.ctx.rewrites.edit({
       range: rangeOf(code, 'h', 1),
       body: [text('2')],
       by: 'toy',
     })
-    e.ctx.rewrites.insert({ at: 0, body: [text('a0;')], by: 'toy' })
     e.ctx.rewrites.insert({
-      at: rangeOf(code, 'export').start,
-      body: [text('b0;')],
+      at: rangeOf(code, at).start,
+      body: [{ k: 'text', parts: ['use(', { sym: k }, ');'] }],
       by: 'toy',
     })
-    expect(e.render().code).toBe(`a0;b0;export const y = 2\n`)
+    expect(e.render().code).toBe(expected)
+  })
+
+  it.each([
+    ["a statement's keyword", (code: string) => rangeOf(code, 'export').start],
+    ['the end of the module', (code: string) => code.length],
+  ])('refuses an insert at %s: no text holds it', (_, at) => {
+    const code = `const h = 1\nexport const y = h\n`
+    const e = engine(code)
+    expect(() =>
+      e.ctx.rewrites.insert({ at: at(code), body: [text('b0;')], by: 'toy' }),
+    ).toThrow(/stands in no statement/)
   })
 
   it('fails the compile when a planner edit across two statements holds an anchored unit', () => {
