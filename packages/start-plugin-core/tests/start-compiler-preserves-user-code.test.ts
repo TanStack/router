@@ -271,9 +271,12 @@ export const fn = createServerFn().handler(async () => [first, second, third])`,
 
 // The same with a declaration the module keeps calling the same import, and
 // an effect between two augmentations of an object only the handler reads:
-// the server runs every one once, in source order; the client, which keeps
-// the augmented object, too.
-test('effectful declarations and augmentations a handler reads keep their order on the server', async () => {
+// the server runs every one once; the object and its writes, which only
+// call an import (they change nothing else: R146 amendment), go with the
+// handler and run in source order there, after the call between them,
+// which stays (no order between effects). The client, which keeps the
+// augmented object, runs them in source order.
+test('effectful declarations and augmentations a handler reads run once each, the object with its writes in order', async () => {
   const startCase = await effectCase(
     await host(),
     `import { createServerFn } from '@tanstack/react-start'
@@ -298,6 +301,13 @@ export const fn = createServerFn().handler(async () => [
     'register:second',
   ]
   expect(await recordClientSideEffects(startCase)).toEqual(calls)
+  const serverCalls = [
+    'register:kept',
+    'register:middle',
+    'register:tools',
+    'register:first',
+    'register:second',
+  ]
   const global = globalThis as Record<string, unknown>
   global[effectsKey] = []
   try {
@@ -308,7 +318,7 @@ export const fn = createServerFn().handler(async () => [
       'registered',
     ])
     await callFromClient(startCase, 'module.fn')
-    expect(global[effectsKey]).toEqual(calls)
+    expect(global[effectsKey]).toEqual(serverCalls)
   } finally {
     delete global[effectsKey]
   }

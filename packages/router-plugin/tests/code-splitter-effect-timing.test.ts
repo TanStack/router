@@ -12,10 +12,13 @@ import { describe, expect, it } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { head, loadRoute } from './route-app'
 
+// (a global function the setup defines: a method of `globalThis` would be
+// a change of a global, which keeps a statement in the route module and not
+// a declaration: R146 amendment)
 const shapes = {
-  initialiser: `let calls = globalThis.seed()`,
-  assignment: `let calls = 0\ncalls = globalThis.seed()`,
-  'compound assignment': `let calls = 0\ncalls += globalThis.seed()`,
+  initialiser: `let calls = seed()`,
+  assignment: `let calls = 0\ncalls = seed()`,
+  'compound assignment': `let calls = 0\ncalls += seed()`,
   'pure value (control)': `let calls = 0\ncalls = 5`,
 }
 

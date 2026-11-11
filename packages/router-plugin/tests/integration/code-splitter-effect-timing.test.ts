@@ -21,11 +21,15 @@ import {
 
 const timeout = 180_000
 
-/** Each shape's route renders `calls`. */
+/**
+ * Each shape's route renders `calls`. (`seed` is imported: a method of
+ * `globalThis` would be a change of a global, which keeps a statement in
+ * the route module and not a declaration, R146 amendment.)
+ */
 const shapes = {
-  initialiser: `let calls = globalThis.seed('initialiser')`,
-  assignment: `let calls = 0\ncalls = globalThis.seed('assignment')`,
-  'compound assignment': `let calls = 0\ncalls += globalThis.seed('compound assignment')`,
+  initialiser: `let calls = seed('initialiser')`,
+  assignment: `let calls = 0\ncalls = seed('assignment')`,
+  'compound assignment': `let calls = 0\ncalls += seed('compound assignment')`,
   'pure value (control)': `let calls = 0\ncalls = 5`,
 }
 const rows = Object.entries(shapes)
@@ -35,7 +39,7 @@ const files = {
   'routes/__root.tsx': rootRoute,
   // evaluated before the routes: records each effect, in order
   'seed.ts': `;(globalThis as any).seeded = []
-;(globalThis as any).seed = (name: string) => {
+export const seed = (name: string) => {
   ;(globalThis as any).seeded.push(name)
   return 1
 }
@@ -43,7 +47,8 @@ const files = {
   ...Object.fromEntries(
     rows.map(([, code], i) => [
       file(i),
-      `${head}${code}
+      `${head}import { seed } from '../seed'
+${code}
 export const Route = createFileRoute('/')({ component: () => <p>{String(calls)}</p> })
 `,
     ]),
