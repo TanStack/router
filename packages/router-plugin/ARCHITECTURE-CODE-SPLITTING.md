@@ -10,8 +10,10 @@ core; read the
   the plugin's own loader), `session.ts` (one compiler session per plugin instance: caches, route registry view,
   planner configuration per environment). `src/esbuild.ts` runs the generator only and throws on
   `autoCodeSplitting`.
-- `src/planners/`: `route.ts` recognises the route (`export const Route = createFileRoute(…)({…})` and the other
-  constructors, by import binding) and reads its options; `decisions.ts` turns `codeSplittingOptions` and the route's
+- `src/planners/`: `route.ts` reads the route of a file the generator lists, as the generator reads it
+  (`routeCallOf` of `@tanstack/router-generator`: `export const Route = createFileRoute(…)({…})` and the other
+  constructors of the configured framework's router package, by import binding, for the entry's kind; a file the
+  generator does not list, or one it still repairs, is left as written) and reads its options; `decisions.ts` turns `codeSplittingOptions` and the route's
   options into split groups, `deleteNodes` and not-split reasons; `router.ts` is the `router` planner: per planning
   round one recognition and one decision table (`RouterRound`), read by its split part (`split.ts`) and its route HMR
   part (`hmr.ts`: hoists before the split, the dev block and the refresh markers after it); `config.ts` builds its

@@ -6,50 +6,22 @@
  * every property of it with its kind and source ranges. Computed once per
  * planning round.
  */
-import {
-  isExpressionWrapper,
-  unwrapExpression,
-} from '@tanstack/router-utils/compiler'
+import { unwrapExpression } from '@tanstack/router-utils/compiler'
 import { propertyKeyName, routeCallOf } from '@tanstack/router-generator'
 import { GROUPINGS_SHAPE, groupingsProblem } from '../core/config'
 import { ROUTER_PLANNER } from './config'
 import type {
   ClassifiedRef,
   Diagnostic,
-  ModuleAnalysis,
   PlanContext,
-  Range,
   SymbolId,
   Unit,
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
-import type { RouteCall } from '@tanstack/router-generator'
 import type { CodeSplitGroupings } from '../core/constants'
 import type { RouterPlannerConfig } from './config'
 
 type RouteKind = 'file' | 'root' | 'lazy'
-
-type RouteFactory =
-  | 'createFileRoute'
-  | 'createRootRoute'
-  | 'createRootRouteWithContext'
-  | 'createLazyFileRoute'
-
-/** The factories whose first call takes the route path, and the call it returns the options. */
-const CURRIED_FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
-  'createFileRoute',
-  'createRootRouteWithContext',
-  'createLazyFileRoute',
-])
-const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
-  'createFileRoute',
-  'createRootRoute',
-  'createRootRouteWithContext',
-  'createLazyFileRoute',
-])
-
-/** Packages whose `createFileRoute` & co. are the router's. */
-const ROUTER_PACKAGE_RE = /^@tanstack\/(react|solid|vue)-router(\/|$)/
 
 type OptionKind =
   | 'init'
@@ -88,8 +60,6 @@ export interface RouteModuleInfo {
   routeUnit: Unit
   /** The call receiving the options. */
   optionsCall: Node
-  /** How many references the factory's import has. */
-  factoryReferences: number
   options: OptionsResolution
   /** The unit holding the options object (the route declarator or a module-level constant). */
   optionsUnit: Unit
@@ -290,8 +260,9 @@ export function recognizeRoute(
   const fileName = ctx.displayPath
   const call = routeCallOf(file, { routerPackage, kind: entry.kind })
   if (call.kind !== 'ours') {
-    if (call.kind === 'foreign') {
-      reportForeignRoute(ctx, call)
+    // (a route made by the app's own helper gets nothing: R130)
+    if (call.kind === 'foreign' && call.usesConstructor) {
+      reportUnrecognizedRoute(ctx)
     }
     return null
   }
@@ -395,7 +366,6 @@ export function recognizeRoute(
     routeSym,
     routeUnit,
     optionsCall: outer,
-    factoryReferences: factoryRefs.length,
     options,
     optionsUnit,
     props,
@@ -406,39 +376,10 @@ export function recognizeRoute(
 }
 
 /**
- * A listed route file whose `Route` is not the router package's route
- * call: an app helper re-exporting a constructor under its name
- * (`foreignFactory`), or a file using the router's constructor otherwise
- * (J2.10).
+ * J2.10: the route of a listed file importing a route constructor is not
+ * the one call the compiler reads: it is not split or hot-updated, and
+ * under `deleteNodes` its server options stay.
  */
-function reportForeignRoute(
-  ctx: PlanContext<typeof ROUTER_PLANNER>,
-  call: Extract<RouteCall, { kind: 'foreign' }>,
-): void {
-  const { analysis } = ctx
-  if (call.call) {
-    const callee = unwrapExpression(call.call.callee as Node)
-    const factoryNode =
-      callee.type === 'CallExpression'
-        ? unwrapExpression(callee.callee as Node)
-        : callee
-    const foreign = foreignFactory(analysis, factoryNode)
-    if (foreign) {
-      ctx.diagnostic(
-        foreignFactoryDiagnostic(ctx.config, ctx.displayPath, foreign, {
-          start: factoryNode.start,
-          end: factoryNode.end,
-        }),
-      )
-      return
-    }
-  }
-  if (call.usesConstructor) {
-    reportUnrecognizedRoute(ctx)
-  }
-}
-
-/** J2.10: the route of a listed file importing a route constructor is not the one call the compiler reads. */
 function reportUnrecognizedRoute(
   ctx: PlanContext<typeof ROUTER_PLANNER>,
 ): void {
@@ -455,212 +396,16 @@ function reportUnrecognizedRoute(
     routeUnit.node.type === 'VariableDeclarator'
       ? routeUnit.node
       : null
+  const deleted = ctx.config.deleteNodes.map((k) => `\`${k}\``).join(', ')
   ctx.diagnostic({
     severity: 'warning',
-    message: `[tanstack-router] The route of ${ctx.displayPath} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
+    message: `[tanstack-router] The route of ${ctx.displayPath} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated${deleted ? `, and ${deleted} in its options are not removed, so any server code in them ships to the client` : ''}. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
     range: declarator
       ? { start: declarator.start, end: declarator.end }
       : routeExport?.range,
     by: ROUTER_PLANNER,
     code: 'route-unrecognized',
   })
-}
-
-/**
- * A callee named like a route factory whose import is not a router
- * package's (an app module re-exporting the router's `createFileRoute`): it
- * is not recognised (only the router's own export is, by its binding), so
- * the route is reported instead of passing silently.
- */
-function foreignFactory(
-  analysis: ModuleAnalysis,
-  node: Node,
-): { name: string; specifier: string } | null {
-  const file = analysis.file
-  if (node.type === 'Identifier') {
-    const imp = file.referenceOf(node)?.binding?.import ?? null
-    if (!imp || imp.kind !== 'named' || ROUTER_PACKAGE_RE.test(imp.specifier)) {
-      return null
-    }
-    const name = FACTORIES.has(node.name) ? node.name : imp.name
-    return name !== null && FACTORIES.has(name)
-      ? { name, specifier: imp.specifier }
-      : null
-  }
-  if (
-    node.type === 'MemberExpression' &&
-    !node.computed &&
-    node.property.type === 'Identifier' &&
-    FACTORIES.has(node.property.name)
-  ) {
-    const obj = unwrapExpression(node.object as Node)
-    const imp =
-      obj.type === 'Identifier'
-        ? (file.referenceOf(obj)?.binding?.import ?? null)
-        : null
-    return imp?.kind === 'namespace' && !ROUTER_PACKAGE_RE.test(imp.specifier)
-      ? { name: node.property.name, specifier: imp.specifier }
-      : null
-  }
-  return null
-}
-
-/**
- * The report of a route whose factory comes from another module
- * (`foreignFactory`): a warning, an error where `deleteNodes` must remove
- * options (Start's client: its server options would ship otherwise).
- */
-function foreignFactoryDiagnostic(
-  cfg: RouterPlannerConfig,
-  fileName: string,
-  foreign: { name: string; specifier: string },
-  range: Range,
-): Diagnostic {
-  const pkg = `@tanstack/${cfg.framework}-router`
-  const deleted = cfg.deleteNodes.map((k) => `\`${k}\``).join(', ')
-  return {
-    severity: cfg.deleteNodes.length > 0 ? 'error' : 'warning',
-    code: 'route-factory-foreign',
-    by: ROUTER_PLANNER,
-    message: `[tanstack-router] The route of ${fileName} calls \`${foreign.name}\` imported from "${foreign.specifier}", not from ${pkg}, so it is not code-split or hot-updated${deleted ? `, and the options ${deleted} are not removed from the client code` : ''}: only the router's own \`${foreign.name}\` is recognised. Import it from the router: \`import { ${foreign.name} } from '${pkg}'\`.`,
-    range,
-  }
-}
-
-/**
- * A route factory call other than the route's own (a second call, a wrapped
- * or a stored factory) holding an option `deleteNodes` must remove: only the
- * route's own call has it removed, so it is an error at the call. The
- * generator takes one `Route` export per file, so such a call is no route.
- */
-export function unownedRouteOptions(
-  ctx: PlanContext,
-  cfg: RouterPlannerConfig,
-  route: RouteModuleInfo | null,
-): Array<Diagnostic> {
-  if (cfg.deleteNodes.length === 0) {
-    return []
-  }
-  const factories: ModuleAnalysis['imports'][number]['specifiers'] = []
-  for (const imp of ctx.analysis.imports) {
-    for (const spec of imp.specifiers) {
-      if (
-        spec.local >= 0 &&
-        (spec.imported === '*' || FACTORIES.has(spec.imported)) &&
-        ROUTER_PACKAGE_RE.test(imp.specifier)
-      ) {
-        factories.push(spec)
-      }
-    }
-  }
-  // the usual route file holds one call, its own
-  if (route && factories.length === 1 && route.factoryReferences === 1) {
-    return []
-  }
-  const file = ctx.analysis.file
-  const out: Array<Diagnostic> = []
-  /** The expression `node` is, through wrappers, and its parent. */
-  const outermost = (node: Node) => {
-    let outer = node
-    let p = file.parentOf(outer)
-    while (p && isExpressionWrapper(p)) {
-      outer = p
-      p = file.parentOf(outer)
-    }
-    return { outer, p }
-  }
-  /** The call `node` is the callee of. */
-  const called = (node: Node): Node | null => {
-    const { outer, p } = outermost(node)
-    return p?.type === 'CallExpression' && p.callee === outer ? p : null
-  }
-  /** The references of the variable `node` initialises. */
-  const readsOf = (node: Node) => {
-    const { p } = outermost(node)
-    return p?.type === 'VariableDeclarator' && p.id.type === 'Identifier'
-      ? (file.bindingOf(p.id)?.references ?? [])
-      : []
-  }
-  /** `takesOptions`: the call's first argument is the options, not a route path. */
-  const judge = (call: Node | null, takesOptions: boolean) => {
-    if (call?.type !== 'CallExpression' || call === route?.optionsCall) {
-      return
-    }
-    let options = call.arguments[0] && unwrapExpression(call.arguments[0])
-    if (options?.type === 'Identifier') {
-      const b = file.referenceOf(options)?.binding
-      const decl = b && declaratorOf(ctx, ctx.symbols.ofBinding(b))
-      options = decl ? unwrapExpression(decl.init) : options
-    }
-    const deleted: Array<string> = []
-    let unread = false
-    if (options?.type === 'ObjectExpression') {
-      for (const prop of options.properties) {
-        const key = propertyKeyName(prop)
-        if (key === null) {
-          unread = true
-        } else if (cfg.deleteNodes.includes(key)) {
-          deleted.push(key)
-        }
-      }
-    } else {
-      unread = options !== undefined
-    }
-    if (deleted.length > 0) {
-      out.push({
-        severity: 'error',
-        code: 'route-unowned-options',
-        by: ROUTER_PLANNER,
-        message: `[tanstack-router] ${ctx.displayPath} holds \`${deleted.join('`, `')}\` in a route factory call that is not bound directly to its \`Route\` export (\`export const Route = createFileRoute(path)(options)\`), so ${deleted.length === 1 ? 'it is' : 'they are'} not removed from the client code. The generator takes one \`Route\` export per file: write this call in that form, or move it to its own route file.`,
-        range: { start: call.start, end: call.end },
-      })
-    } else if (unread && takesOptions) {
-      out.push({
-        severity: 'warning',
-        code: 'route-unowned-unread',
-        by: ROUTER_PLANNER,
-        message: `[tanstack-router] ${ctx.displayPath} has a route factory call that is not bound directly to its \`Route\` export, with options the compiler cannot read: any \`${cfg.deleteNodes.join('`, `')}\` in them are not removed, so any server code in them ships to the client. Write what to remove as properties of an object literal, in a call of the form \`export const Route = createFileRoute(path)({ ... })\`, or move it to its own route file.`,
-        range: { start: call.start, end: call.end },
-      })
-    }
-  }
-  const aliases = new Set<Node>()
-  /** The calls of a factory read at `node`: `factory(path)(options)`, `factory(options)`, a stored `factory(path)`, the factory under another name. */
-  const judgeCalls = (node: Node, curried: boolean) => {
-    const first = called(node)
-    if (!first) {
-      for (const ref of readsOf(node)) {
-        if (!aliases.has(ref.node)) {
-          aliases.add(ref.node)
-          judgeCalls(ref.node, curried)
-        }
-      }
-      return
-    }
-    const second = called(first)
-    judge(second ?? first, !curried || second !== null)
-    if (!second && curried) {
-      for (const ref of readsOf(first)) {
-        judge(called(ref.node), true)
-      }
-    }
-  }
-  for (const spec of factories) {
-    const named = spec.imported !== '*'
-    for (const ref of file.bindings[spec.local]?.references ?? []) {
-      const member = named ? ref.node : file.parentOf(ref.node)
-      const name = named
-        ? spec.imported
-        : member?.type === 'MemberExpression' &&
-            member.property.type === 'Identifier'
-          ? member.property.name
-          : null
-      if (name !== null && FACTORIES.has(name)) {
-        judgeCalls(member!, CURRIED_FACTORIES.has(name))
-      }
-    }
-  }
-  return out
 }
 
 /** The router's id of a registry entry (`/__root` is `__root__` on the router). */

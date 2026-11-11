@@ -121,37 +121,6 @@ export const Route = createFileRoute('/x')(options)
     timeout,
   )
 
-  test.each([
-    { name: 'a spread', options: `{ ...shared }` },
-    { name: 'imported options', options: `shared` },
-    { name: 'a call', options: `((o) => o)(shared)` },
-  ])(
-    'a route factory call other than the route’s, with $name: the build warns, and what it holds ships',
-    async ({ options }) => {
-      const result = await buildStart({
-        bundler,
-        files: {
-          'src/x.shared.ts': shared,
-          ...root,
-          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { shared } from '../x.shared'
-export const Route = createFileRoute('/x')({ ${component} })
-export const Other = createFileRoute('/y' as any)(${options})
-`,
-          'src/entry.ts': `export { Route, Other } from './routes/x'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect(
-        result.diagnostics.some(
-          (d) => d.severity === 'warning' && d.text.includes('ships'),
-        ),
-      ).toBe(true)
-      expect(result.client.where('MARK_SPREAD_SERVER')).not.toBe('nowhere')
-    },
-    timeout,
-  )
-
   test(
     'a property written next to the spread is split, and server options written next to it are removed',
     async () => {
