@@ -69,7 +69,8 @@ jobs:
     permissions:
       contents: read
                 ActionScript
-      pull-requests: write
+      pull-requests: read
+                     ActionScript 
     steps:
       - name: Checkout
         uses: actions/checkout@ # v7.5.8
