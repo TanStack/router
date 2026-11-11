@@ -533,7 +533,12 @@ export function settleRoots(
     liveEnv = reach('env', envRoots)
     solveSlots()
     let changed = false
-    for (const [c, pin] of pins) {
+    // (in cluster order: the reports of the kept follow it)
+    for (const { id: c } of clusters) {
+      const pin = pins.get(c)
+      if (pin === undefined) {
+        continue
+      }
       const neededHere = needs(c)
       if (seeds.fromErased.has(c) && !neededHere) {
         continue // orphaned by us: removable with its initialiser effects
