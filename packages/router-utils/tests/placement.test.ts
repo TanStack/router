@@ -5273,6 +5273,146 @@ describe('readers and writers of state written at load', () => {
     expect(r.chunks.component).toContain('const seen = []')
     expect(r.chunks.component).toContain("seen.push('x')")
   })
+  // Architect rulings on the design 2 step 3 review. An assignment in the
+  // value is a write of its event as a member write is (finding 2): `n`
+  // read later at load saw it unassigned.
+  it.each([
+    [
+      'the route module',
+      'loader: () => snap,\ncomponent: f((n = 1, () => null)),',
+    ],
+    [
+      'another chunk',
+      'component: f((n = 1, () => null)),\nerrorComponent: () => snap,',
+    ],
+    ['its own chunk', 'component: f((n = 1, () => snap)),'],
+    ['its own chunk, through `++`', 'component: f((n++, () => snap)),'],
+  ])(
+    'keeps an option value that assigns a binding at load in place when %s reads it later',
+    async (_, options) => {
+      const r = await split(route('let n = 0', options, 'const snap = [n]'), {
+        files: lib,
+        keys: ['component', 'errorComponent'],
+      })
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+      })
+      expect(r.env).toContain('component: f((n')
+    },
+  )
+
+  // A member write of an import (finding 3): the specifier has an instance
+  // per output, the object one. The value stays unless no other output
+  // names the import and nothing in its own output reads it at load.
+  it.each([
+    [
+      'the route module reads it',
+      'loader: () => snap,\ncomponent: f((open.page = 1, () => null)),',
+      'const snap = [open]',
+    ],
+    [
+      'another output names it',
+      'loader: () => open.page,\ncomponent: f((open.page = 1, () => null)),',
+      '',
+    ],
+    [
+      'its own chunk reads it at load',
+      'component: f((open.page = 1, () => snap)),',
+      'const snap = [open.page]',
+    ],
+  ])(
+    'keeps an option value that writes a member of an import in place when %s',
+    async (_, options, extra) => {
+      const r = await split(route('', options, extra), { files: lib })
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+      expect(r.env).toContain('component: f((open.page = 1')
+    },
+  )
+
+  it('splits an option value that writes a member of an import only its chunk names', async () => {
+    const r = await split(
+      route('', 'component: f((open.page = 1, () => open.page)),'),
+      { files: lib },
+    )
+    expect(r.env).not.toContain('open.page')
+    expect(r.chunks.component).toContain('open.page = 1')
+  })
+
+  // A function passed to a call runs when the call does (`runs`): its write
+  // is a write of the evaluation passing it, inline as when it is named
+  // (finding 4).
+  it.each([
+    [
+      'inline',
+      'component: f(function Page() { seen.n = 1; return null }),',
+      '',
+    ],
+    [
+      'named',
+      'component: f(Page),',
+      'function Page() { seen.n = 1; return null }',
+    ],
+  ])(
+    'keeps an option value whose call runs a function writing a binding the route module reads in place (%s)',
+    async (_, options, decls) => {
+      const r = await split(
+        route(
+          `const seen = {}\n${decls}`,
+          `loader: () => snap,\n${options}`,
+          'const snap = [seen]',
+        ),
+        { files: lib },
+      )
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+    },
+  )
+
+  // A member write inside a planner's unclaimed region is its declaration's
+  // write (finding 1): the declaration stays with the binding it writes.
+  it('keeps a declaration writing a member inside an unclaimed region with the binding', async () => {
+    const code = route(
+      'const cfg = {}\nconst y = track(cfg.x = 1)\nconst get = () => cfg.x\nconst r = [/* @__PURE__ */ get()]',
+      'loader: () => r,\ncomponent: () => y,',
+    )
+    const region: Planner = {
+      name: 'toy-region',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const start = ctx.analysis.source.code.indexOf('cfg.x = 1')
+        ctx.region({ start, end: start + 'cfg.x = 1'.length }, 'custom')
+      },
+    }
+    const host = new MemoryHost({ files: { '/app/route.tsx': code, ...lib } })
+    const out = await host.compile(
+      '/app/route.tsx',
+      [toySplitPlanner(), region],
+      { env: envInfo({ mode: 'build' }) },
+    )
+    expect(out?.code).toContain('const y = track(cfg.x = 1)')
+    expect(out?.diagnostics.map((d) => d.code)).not.toContain(
+      'internal-invariant',
+    )
+  })
+
+  // The same in a declaration: a write in a function passed to a call is a
+  // write when the declaration evaluates, so it stays with its binding.
+  it('keeps a declaration whose call runs a function writing a binding the route module reads with it', async () => {
+    const r = await split(
+      route(
+        'const cfg = {}\nconst y = track(() => { cfg.x = 1 })\nconst get = () => cfg.x\nconst r = [/* @__PURE__ */ get()]',
+        'loader: () => r,\ncomponent: () => y,',
+      ),
+      { files: lib },
+    )
+    expect(r.env).toContain('const y = track(() => { cfg.x = 1 })')
+  })
 })
 
 describe('declarations only split code needs that stay in the route module', () => {
