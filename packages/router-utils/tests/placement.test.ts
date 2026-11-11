@@ -2286,6 +2286,28 @@ describe('extracted-export outputs', () => {
     expect(r.diagnostics).toEqual([])
   })
 
+  // The binding is what is reassigned, not the export (`export default
+  // items` names it): the warning names it and the reassignment's line.
+  it('names the reassigned binding of an export and where it is reassigned', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      var items = ['a']
+      export default items
+      var items = ['b']
+      export const Route = createFileRoute('/')({ component: () => items })
+    `)
+    const r = await extract(code)
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'eager-export:reassigned',
+        range: { start: code.indexOf("items = ['a']") },
+      },
+    ])
+    const message = r.diagnostics[0]!.message
+    expect(message).toContain('`items` is reassigned (line 4)')
+    expect(message).toContain('Move `items` and the code assigning it')
+  })
+
   // In dev the same clusters leave nothing: an extracted cluster
   // stays in the env module as written, its companions with it, and the
   // chunk copies or imports it exactly as in a build
