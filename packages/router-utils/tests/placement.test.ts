@@ -5819,6 +5819,27 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(eager(r)[0]!.message).toContain('the call `track(…)`')
   })
 
+  // an unknown call in the route options the client keeps runs after them
+  // in the route module's body: they would run after it from the chunk
+  it('keeps the column helper and the columns when a route option the route module keeps calls an unknown function', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createColumnHelper, useTable } from '@tanstack/react-table'
+      import { createSchema } from 'schema-lib'
+      ${helperAndColumns.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/table')({
+        validateSearch: createSchema({ page: 'number' }),
+        component: () => {
+          const table = useTable({ columns })
+        },
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain(helperAndColumns)
+    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(eager(r)[0]!.message).toContain('the call `createSchema(…)`')
+  })
+
   it('keeps both when an effect after them stays, naming it', async () => {
     const r = await split(
       route(
