@@ -34,6 +34,7 @@ async function split(
     groups?: Array<Array<string>>
     env?: 'client' | 'server'
     identifierEdits?: boolean
+    extractExports?: boolean
     files?: Record<string, string>
   } = {},
 ) {
@@ -46,6 +47,7 @@ async function split(
       keys: opts.keys,
       groups: opts.groups,
       identifierEdits: opts.identifierEdits,
+      extractExports: opts.extractExports,
     }),
   ]
   const env = envInfo(
@@ -5078,6 +5080,140 @@ describe('what an evaluation runs: one walk for every rule', () => {
 // route module (evaluation order, writes, eager reads) is reported once, at its
 // cause, positioned at the declaration and naming why; nothing is reported
 // when it moves, or when the split code needs nothing pinned.
+// design 2 step 3: a reader of written state is a cluster of its own, placed
+// by the order rule against the writes on both sides' slots; a binding's
+// writers at load stay in its cluster
+describe('readers and writers of state written at load', () => {
+  const route = (decls: string, options: string, extra = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { f, track, open } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+      ${extra}
+    `)
+  const lib = {
+    '/app/lib.ts':
+      'export const f = (x: unknown) => x\nexport const track = (x: unknown) => x\nexport const open = {}\n',
+  }
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  // the listed difference of step 3: it no longer travels with the binding
+  // the route module keeps, nor is it reported
+  it('moves a declaration that reads a binding after its last write at load, which the route module keeps', async () => {
+    const r = await split(
+      route(
+        'const a = {}\na.v = 1\nconst x = [a]',
+        'loader: () => a,\ncomponent: () => x,',
+      ),
+      { files: lib },
+    )
+    expect(r.env).toContain('a.v = 1')
+    expect(r.env).not.toContain('const x = [a]')
+    expect(r.chunks.component).toContain('const x = [a]')
+    expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
+    expect(eager(r)).toEqual([])
+  })
+
+  it('moves a reader, its binding and the write after it together when one chunk needs them', async () => {
+    const r = await split(
+      route(
+        'const a = {}\nconst x = [a]\na.v = 1',
+        'loader: () => 1,\ncomponent: () => [x, a],',
+      ),
+      { files: lib },
+    )
+    expect(r.env).not.toContain('const x')
+    expect(r.chunks.component).toContain('const a = {}\nconst x = [a]\na.v = 1')
+    expect(eager(r)).toEqual([])
+  })
+
+  it('keeps a declaration that reads a binding before a later write the route module keeps', async () => {
+    const r = await split(
+      route(
+        'let n = 0\nconst x = [n]\nn = 5',
+        'loader: () => n,\ncomponent: () => x,',
+      ),
+      { files: lib },
+    )
+    expect(r.env).toContain('const x = [n]')
+    expect(eager(r)).toMatchObject([{ code: 'eager-split:state' }])
+    expect(eager(r)[0]!.message).toContain('`n`')
+  })
+
+  // a member write in an initialiser is a writer of the binding: it stays
+  // in the binding's cluster, so the route module's reader sees it
+  it.each([
+    [
+      'an effectful call',
+      'const y = track(cfg.x = 1)',
+      'const r = [/* @__PURE__ */ get()]',
+    ],
+    [
+      'a pure call',
+      'const y = /* @__PURE__ */ f(cfg.x = 1)',
+      'const r = [/* @__PURE__ */ get()]',
+    ],
+    [
+      'a pure call, read directly',
+      'const y = /* @__PURE__ */ f(cfg.x = 1)',
+      'const r = [cfg]',
+    ],
+  ])(
+    'keeps a declaration whose initialiser writes a member of a binding the route module reads, in %s',
+    async (_, writer, reader) => {
+      const r = await split(
+        route(
+          `const cfg = {}\n${writer}\nconst get = () => cfg.x\n${reader}`,
+          'loader: () => r,\ncomponent: () => y,',
+        ),
+        { files: lib },
+      )
+      expect(r.env).toContain(writer)
+      expect(r.chunks.component).toContain("import { y } from '/app/route.tsx'")
+      expect(eager(r)).toMatchObject([{ code: 'eager-split:state' }])
+      expect(eager(r)[0]!.message).toContain('`cfg`')
+    },
+  )
+
+  it('keeps an exported reader of an import a declaration writes when the module loads', async () => {
+    const r = await split(
+      route(
+        'const y = /* @__PURE__ */ f(open.x = 1)\nconst get = () => open.x\nexport const snap = [/* @__PURE__ */ get()]',
+        'loader: () => y,\ncomponent: () => snap,',
+      ),
+      { files: lib, extractExports: true },
+    )
+    expect(r.env).toContain('export const snap = [/* @__PURE__ */ get()]')
+    expect(r.env).toContain('const y = /* @__PURE__ */ f(open.x = 1)')
+    expect(eager(r)).toMatchObject([{ code: 'eager-export:reads' }])
+  })
+
+  // pre-existing (at dd7a83110f too): the single-writer rule takes
+  // assignments in an option value, not member writes, so the write moves to
+  // the chunk and the route module's later reader sees the object unwritten
+  it.fails(
+    'keeps a member write an option value makes at load with the route module that reads it after',
+    async () => {
+      const r = await split(
+        route(
+          'const seen = []',
+          "loader: () => snap,\ncomponent: f(seen.push('x') && (() => null)),",
+          'const snap = seen.length',
+        ),
+        { files: lib },
+      )
+      const writes = (code: string) => code.includes("seen.push('x')")
+      expect(writes(r.env) || r.chunks.component!.includes('const snap')).toBe(
+        true,
+      )
+    },
+  )
+})
+
 describe('declarations only split code needs that stay in the route module', () => {
   async function kept(
     code: string,
@@ -5566,6 +5702,8 @@ describe('declarations only split code needs that stay in the route module', () 
     )
     expect(r.diagnostics).toMatchObject([{ code: 'eager-split:state' }])
     expect(r.diagnostics[0]!.message).toContain('`snapshot`')
+    // the binding it reads (design 2 step 2 review, finding 6)
+    expect(r.diagnostics[0]!.message).toContain('`n`')
     expect(r.diagnostics[0]!.message).not.toContain('side effects')
   })
 
