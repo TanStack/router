@@ -114,7 +114,7 @@ server compilation's event puts the client's dependents in its set before the co
 compilation, which drains them (Start starts none beside it).
 A dependent is built after the file whose event made it stale (in `make`, the drain at `finishMake`): a module edited
 to be marked is built while its unchanged importer's plan still imports it. Import protection reads the stale sets
-(`takesStaleSets`): an importer whose plan is stale in the environment explains the module's presence, so the module
+(`useStaleImporters`, Rsbuild only): an importer whose plan is stale in the environment explains the module's presence, so the module
 is served as its mock without a report and is stale itself; the importer's rebuild reports the import (or allows it),
 and the module's own rebuild after it reports the module if something else still brings it.
 A dev server started again on the persistent cache checks, at its compilers' first `finishMake`, the plans persisted
