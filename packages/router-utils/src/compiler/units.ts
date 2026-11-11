@@ -218,7 +218,11 @@ function writesOnly(purity: PurityContext, expr: Node): boolean {
  * class, a literal, a function or class expression, a call's result. Not
  * another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
- * only what it names (R139), while nothing reassigns it.
+ * only what it names (R139), while nothing reassigns it. The write side of
+ * "the object a binding names"; the read side is `readsThrough` and
+ * `visitRuns`: a read through a binding reads what its value holds, its
+ * own object or not (`const holder = { cfg }` owns its object and holds
+ * `cfg`'s).
  */
 export function ownsItsValue(u: Unit): boolean {
   const n = u.node
@@ -285,6 +289,46 @@ export function writesMember(file: SourceFile, node: Node): boolean {
       ? file.parentOf(parent)
       : parent
   return construct !== null && writeTargets(construct).includes(n)
+}
+
+/**
+ * Whether `node` (an identifier) reads, where it evaluates, the contents of
+ * the object it names, not only its identity: the object of a member read
+ * (`alias.v`, `all[0]`), a spread's argument (`{ ...alias }`), the source of
+ * a destructuring or a for-in/of loop. What it reads is then what that
+ * object holds, which may be another binding's object (`const alias = cfg`,
+ * `const holder = { cfg }`): `visitRuns` follows its value. The read side
+ * of `writesMember` (a member it writes is not read here).
+ */
+export function readsThrough(file: SourceFile, node: Node): boolean {
+  let n = node
+  let parent = file.parentOf(n)
+  while (parent !== null && isExpressionWrapper(parent)) {
+    n = parent
+    parent = file.parentOf(n)
+  }
+  if (parent === null) {
+    return false
+  }
+  switch (parent.type) {
+    case 'MemberExpression':
+      return parent.object === n && !writesMember(file, node)
+    case 'SpreadElement':
+      return true
+    case 'VariableDeclarator':
+      return parent.init === n && parent.id.type !== 'Identifier'
+    case 'AssignmentExpression':
+      return (
+        parent.right === n &&
+        parent.left.type !== 'Identifier' &&
+        parent.left.type !== 'MemberExpression'
+      )
+    case 'ForOfStatement':
+    case 'ForInStatement':
+      return parent.right === n
+    default:
+      return false
+  }
 }
 
 /** The node types `unwrapExpression` looks through. */

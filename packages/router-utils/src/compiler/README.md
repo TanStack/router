@@ -185,8 +185,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   and the text of the module's declarations its running references name and of the statements writing those names
   when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
-  reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
-  holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
+  reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`) reads what that name's
+  value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
+  it reads `cfg`), so it is ordered against a write of the original. A method nested in an object argument
+  (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
+  function declaration evaluates nothing. A claimed
   option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
   may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another

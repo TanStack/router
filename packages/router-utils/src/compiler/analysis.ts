@@ -12,7 +12,7 @@ import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, writesMember } from './units'
+import { buildItems, buildUnits, readsThrough, writesMember } from './units'
 import { MutationModel } from './mutation'
 import {
   noteBuilderConsts,
@@ -147,6 +147,8 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`: `readsThrough`), which may be another binding's object; always present. */
+  readsThrough: boolean
 }
 
 /** Whether the reference calls its value (the callee of a call, a `new` or a tagged template): the callee's body runs where the reference evaluates. */
@@ -1229,6 +1231,7 @@ export class ModuleAnalysis {
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
         memberWrite: c.kind === 'value' && writesMember(file, node),
+        readsThrough: c.kind === 'value' && readsThrough(file, node),
       })
     }
 
@@ -1262,6 +1265,7 @@ export class ModuleAnalysis {
             ...classify(file, { node: id, isWrite: true }),
             eager: !isLazyAt(id.start),
             memberWrite: false,
+            readsThrough: false,
           })
         }
       })
@@ -1280,6 +1284,7 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
+            readsThrough: false,
           })
         },
         JSXFragment: (n) => {
@@ -1290,6 +1295,7 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
+            readsThrough: false,
           })
         },
       })
@@ -1317,6 +1323,7 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
+            readsThrough: false,
           })
         },
       })
@@ -1666,6 +1673,14 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * member write), nor a method nested in an object argument
  * (`defineComponent({ setup() {} })`).
  *
+ * The object a binding names is its value: its declaration and those
+ * statements. A reference reading that object's contents (`readsThrough`:
+ * `alias.v`, `{ ...alias }`, `const { v } = alias`) reads what the value
+ * holds when the module loads, which may be another binding's object
+ * (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`): it
+ * runs the eager references of that value, transitively, as if read in
+ * place (an evaluation that calls something runs all of it already).
+ *
  * `visit(ref, at)` sees each reference that runs with where it runs: its
  * own position in the evaluation's text, in a body the position of the
  * reference that reached the body first in source order (`const snap =
@@ -1683,6 +1698,8 @@ export function visitRuns(
   visit: (ref: ClassifiedRef, at: number) => boolean,
 ): boolean {
   const roots: Array<ClassifiedRef> = []
+  /** Without a call: the references reading through their binding (only their values' eager references run). */
+  const through: Array<ClassifiedRef> = []
   for (const ref of text) {
     if (
       !ref.eager &&
@@ -1698,7 +1715,12 @@ export function visitRuns(
     }
     if (calls !== null && !ref.memberWrite) {
       roots.push(ref)
+    } else if (calls === null && ref.readsThrough) {
+      through.push(ref)
     }
+  }
+  if (through.length > 0) {
+    return visitValues(t1, through, bodyOf, visit)
   }
   if (roots.length === 0) {
     return false
@@ -1725,6 +1747,70 @@ export function visitRuns(
     return false
   }
   for (const root of roots) {
+    const at = root.range.start
+    work.push(root)
+    while (work.length > 0) {
+      const r = work.pop()!
+      if (followed.has(r.sym)) {
+        continue
+      }
+      followed.add(r.sym)
+      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
+        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
+          return true
+        }
+      }
+      for (const site of t1.mutation.sitesOf(r.sym)) {
+        if (!site.eager || t1.runsLaterAt(site.range.start)) {
+          continue
+        }
+        const u = t1.unitAt(site.range)
+        if (u !== null && enter(u, at)) {
+          return true
+        }
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * `visitRuns` for an evaluation that calls nothing: what the references
+ * reading through their binding (`through`) read, the eager references of
+ * each one's value (its declarations and the statements writing it when the
+ * module loads), and of what those hold, at the reference's position.
+ */
+function visitValues(
+  t1: Pick<
+    Tier1,
+    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
+  >,
+  through: ReadonlyArray<ClassifiedRef>,
+  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
+  visit: (ref: ClassifiedRef, at: number) => boolean,
+): boolean {
+  const seen = new Set<UnitId>()
+  const followed = new Set<SymbolId>()
+  const work: Array<ClassifiedRef> = []
+  const enter = (u: UnitId, at: number): boolean => {
+    if (seen.has(u)) {
+      return false
+    }
+    seen.add(u)
+    for (const inner of bodyOf(u)) {
+      if (!inner.eager || t1.runsLaterAt(inner.range.start)) {
+        continue
+      }
+      if (visit(inner, at)) {
+        return true
+      }
+      if (!inner.memberWrite) {
+        work.push(inner)
+      }
+    }
+    return false
+  }
+  for (const root of through) {
     const at = root.range.start
     work.push(root)
     while (work.length > 0) {

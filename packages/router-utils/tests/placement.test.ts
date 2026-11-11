@@ -7017,6 +7017,26 @@ function evaluatedNames(
         }
       }
     }
+  } else {
+    // without a call, a read through a name (`alias.v`, `{ ...alias }`)
+    // reads what that name's value holds: its declaration and writers,
+    // outside functions, transitively
+    const seen = new Set<Node>(evaluated)
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const name of [...names]) {
+        for (const d of [
+          declarations.get(name),
+          ...(writers.get(name) ?? []),
+        ]) {
+          if (d !== undefined && !seen.has(d)) {
+            seen.add(d)
+            collect(d, false)
+            grew = true
+          }
+        }
+      }
+    }
   }
   return names
 }
