@@ -8,7 +8,7 @@
  * what earlier stages produced, in place (see there).
  */
 import { buildClusters } from './placement/clusters'
-import { checkPlacement, eventTable } from './placement/events'
+import { eventTable } from './placement/events'
 import { readIndex } from './placement/reads'
 import { seedRoots } from './placement/roots'
 import {
@@ -198,8 +198,7 @@ export interface Placement {
  *   an identity an extracted module and another output share) `settleRoots`
  *   rooted, inside its fixed point, so that a candidate reading it at load
  *   was cancelled;
- * - `includeAndImport` reads the final `roots` and homes, and
- *   `checkPlacement` (`Placement.check`) what it includes.
+ * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
   // 1. clusters (a binding with its writers at load), the write table
@@ -246,16 +245,6 @@ export function computePlacement(input: PlacementInput): Placement {
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
-    // 8. P2 and P3 over the final homes
-    check: () =>
-      inclusion.violation ??
-      checkPlacement(
-        input,
-        graph,
-        events,
-        homes.home,
-        inclusion.included,
-        roots.liveEnv,
-      ),
+    check: () => inclusion.violation,
   }
 }

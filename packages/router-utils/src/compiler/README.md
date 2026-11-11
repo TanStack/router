@@ -236,10 +236,9 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   of mutable state that stay and that some output needs to env roots, then cancels extraction candidates the env
   module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
   observe mutable state. Each round that goes on demotes a cluster, so the rounds end within the cluster count;
-  past it the compile fails naming the file. Nothing is rooted after homes are assigned: `checkPlacement` checks
-  the final homes against the same time model (effects in source order, no read outside the route module seeing
-  a write at another time than in the source, no extracted module reading the route module at load), with the
-  other invariants (`self-checks.ts`). When a split would break single-writer or evaluation-order
+  past it the compile fails naming the file. Nothing is rooted after homes are assigned. The time model is checked
+  by running modules: the executing placement property (`tests/placement-exec`, router-plugin's with the router
+  planner) runs random modules and their outputs as ES modules and compares what they do. When a split would break single-writer or evaluation-order
   rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
   planners with that region kept in place, until no new region is reported (a kept region can free the next one;
   every round keeps one more, so the rounds end within the module's region count). Past that bound every

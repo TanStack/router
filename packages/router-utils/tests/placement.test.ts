@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { walk } from 'yuku'
 import {
   EMPTY_RECOGNIZER,
@@ -4737,46 +4737,6 @@ describe('one mutation model: eager reads of state something writes', () => {
     })
     expect(r.env).toContain('component: makeComp(n)')
     expect(r.chunks.component).toBe('export {}\n')
-  })
-
-  // design 2 step 2 review, finding 1: the plan a module is compiled with
-  // can keep a fallback nobody acted on (the router's dev HMR hoist never
-  // asks), and its placement is checked like any other
-  it("reports a placement its planner did not keep in place, in users' runs", async () => {
-    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
-    vi.resetModules()
-    try {
-      const h = await import('./helpers')
-      const code = h.dedent(`
-        import { createFileRoute } from 'toy-router'
-        import { makeComp } from './state'
-        let n = 0
-        export function inc() { n++ }
-        export const Route = createFileRoute('/')({
-          loader: () => inc(),
-          component: makeComp(n),
-        })
-      `)
-      const host = new h.MemoryHost({
-        files: {
-          '/app/route.tsx': code,
-          '/app/state.ts': 'export const makeComp = (v: number) => () => v\n',
-        },
-      })
-      const out = await host.compile(
-        '/app/route.tsx',
-        [h.toySplitPlanner({ ignoreFallbacks: true })],
-        { env: h.envInfo({ mode: 'build' }) },
-      )
-      // the value moved although it reads state a function writes
-      expect(out!.code).not.toContain('makeComp(n)')
-      expect(out!.diagnostics).toMatchObject([
-        { severity: 'warning', code: 'internal-invariant' },
-      ])
-    } finally {
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
   })
 
   it('declares the route unit benign only when its option values are pure', async () => {
