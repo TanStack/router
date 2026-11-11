@@ -484,10 +484,17 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** A registry change: its files are stale in every environment that compiled; idle compilers are asked to build them. */
+  /**
+   * A registry change: its files are stale in every environment that
+   * compiled; idle compilers are asked to build them (after a failed
+   * invalidation too: what it made stale before gets its compilation).
+   */
   private async registryChanged(files: ReadonlyArray<string>): Promise<void> {
-    await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
-    this.drain.registryChanged()
+    try {
+      await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
+    } finally {
+      this.drain.registryChanged()
+    }
   }
 
   /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */

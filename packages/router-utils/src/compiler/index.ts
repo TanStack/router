@@ -151,6 +151,7 @@ export {
   StaleSetDrain,
   pathsOf,
   rebuildModules,
+  reportingFailure,
   rspackCallsEveryRebuildCallback,
 } from './hosts/rebuild'
 export type { IdleCompilerLike, RebuildCompilationLike } from './hosts/rebuild'

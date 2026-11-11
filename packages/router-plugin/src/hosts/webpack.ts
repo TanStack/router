@@ -20,6 +20,7 @@ import {
   initialChunkResources,
   locateDiagnostics,
   normalizePath,
+  reportingFailure,
   warnEagerExports,
   webpackImporters,
   webpackResourceId,
@@ -52,6 +53,7 @@ export interface CompilerLike extends IdleCompilerLike {
   name?: string
   /** In watch mode: the files changed since the last compilation, as one starts. */
   modifiedFiles?: ReadonlySet<string>
+  watchMode?: boolean
   /** The project root (`context`). */
   context: string
   options: {
@@ -74,7 +76,10 @@ export interface CompilerLike extends IdleCompilerLike {
     finishMake: {
       tapPromise: (
         name: string,
-        fn: (compilation: { compiler?: unknown }) => Promise<void>,
+        fn: (compilation: {
+          compiler?: unknown
+          errors: Array<Error>
+        }) => Promise<void>,
       ) => void
     }
     afterDone: { tap: (name: string, fn: () => void) => void }
@@ -256,15 +261,15 @@ export function createRouterCompilerWebpackPlugin(
             changedRoutePaths(next, previous).map((file) =>
               session.invalidate(file, 'registry'),
             ),
-          ).then(
-            () => drain.registryChanged(),
-            (error: unknown) => {
+          )
+            .catch((error: unknown) => {
               console.error(
                 `[tanstack-router] invalidating after a route change failed:`,
                 error,
               )
-            },
-          )
+            })
+            // (what the change made stale before a failure gets its compilation)
+            .then(() => drain.registryChanged())
         },
       )
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
@@ -275,7 +280,11 @@ export function createRouterCompilerWebpackPlugin(
         }
       })
       const WebpackError = compiler.webpack?.WebpackError ?? Error
+      /** A failed `watchRun` of ours, reported by the compilation it started (`reportingFailure`). */
+      const failedBeforeCompilation: Array<Error> = []
+      const failure = (what: string) => ({ tag: '[tanstack-router]', what })
       compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
+        compilation.errors.push(...failedBeforeCompilation.splice(0))
         // the loader's diagnostics at their positions: the bundlers keep
         // none of a loader's warning or error
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
@@ -323,22 +332,29 @@ export function createRouterCompilerWebpackPlugin(
       })
       // edits and removals, invalidated before the compilation starts (all
       // at once: calls for one path queue in the core)
-      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
-        const changed = [...(c.modifiedFiles ?? [])].map(
-          (f) => [f, 'change'] as const,
-        )
-        const removed = [...(c.removedFiles ?? [])].map(
-          (f) => [f, 'unlink'] as const,
-        )
-        if (changed.length > 0 || removed.length > 0) {
-          drain.caused(envName)
-        }
-        await Promise.all(
-          [...changed, ...removed].map(([file, kind]) =>
-            session.invalidate(normalizePath(file), kind),
-          ),
-        )
-      })
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, (c) =>
+        reportingFailure(
+          compiler,
+          failedBeforeCompilation,
+          failure('Finding the routes the changed files affect'),
+          async () => {
+            const changed = [...(c.modifiedFiles ?? [])].map(
+              (f) => [f, 'change'] as const,
+            )
+            const removed = [...(c.removedFiles ?? [])].map(
+              (f) => [f, 'unlink'] as const,
+            )
+            if (changed.length > 0 || removed.length > 0) {
+              drain.caused(envName)
+            }
+            await Promise.all(
+              [...changed, ...removed].map(([file, kind]) =>
+                session.invalidate(normalizePath(file), kind),
+              ),
+            )
+          },
+        ),
+      )
       // (child compilers take the parent's `finishMake` taps)
       compiler.hooks.make.tap(PLUGIN_NAME, (compilation) => {
         if (compilation.compiler === compiler) {
@@ -350,11 +366,17 @@ export function createRouterCompilerWebpackPlugin(
       })
       compiler.hooks.finishMake.tapPromise(PLUGIN_NAME, async (compilation) => {
         if (compilation.compiler === compiler) {
-          await drain.rebuild(
-            envName,
-            compilation as RebuildCompilationLike<ModuleLike>,
-            (resource) =>
-              normalizePath(identify(webpackResourceId(resource)).path),
+          await reportingFailure(
+            compiler,
+            compilation.errors,
+            failure('Building the out-of-date route modules again'),
+            () =>
+              drain.rebuild(
+                envName,
+                compilation as unknown as RebuildCompilationLike<ModuleLike>,
+                (resource) =>
+                  normalizePath(identify(webpackResourceId(resource)).path),
+              ),
           )
         }
       })

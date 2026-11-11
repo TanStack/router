@@ -3,7 +3,10 @@
  * native RSC plugins (step 7), and the RSC build's manifest placeholder
  * replacement in the server assets (step 8b).
  */
-import { rebuildModules } from '@tanstack/router-utils/compiler'
+import {
+  rebuildModules,
+  reportingFailure,
+} from '@tanstack/router-utils/compiler'
 import { CLIENT_REFERENCED_IDS_PLACEHOLDER } from '../server-fns/resolver'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
@@ -168,31 +171,41 @@ export function registerRsc(
               // server compile concurrently).
               stage: 10,
             },
-            async (compilation: RspackCompilationExtended) => {
-              const clientBuild = getClientBuild()
+            (compilation: RspackCompilationExtended) =>
+              reportingFailure(
+                compiler,
+                compilation.errors,
+                {
+                  tag: '[tanstack-start]',
+                  what: 'Building the RSC manifest again',
+                },
+                async () => {
+                  const clientBuild = getClientBuild()
 
-              if (!clientBuild) {
-                return
-              }
+                  if (!clientBuild) {
+                    return
+                  }
 
-              virtualModuleState.updateManifest(clientBuild)
+                  virtualModuleState.updateManifest(clientBuild)
 
-              if (api.context.action === 'dev') {
-                // only when the manifest changed: rebuilding an
-                // unchanged module can rebuild the whole chunk graph
-                const writeCount = virtualModuleState.getDevManifestWriteCount()
-                if (writeCount === rebuiltAtWriteCount) {
-                  return
-                }
-                rebuiltAtWriteCount = writeCount
-              }
+                  if (api.context.action === 'dev') {
+                    // only when the manifest changed: rebuilding an
+                    // unchanged module can rebuild the whole chunk graph
+                    const writeCount =
+                      virtualModuleState.getDevManifestWriteCount()
+                    if (writeCount === rebuiltAtWriteCount) {
+                      return
+                    }
+                    rebuiltAtWriteCount = writeCount
+                  }
 
-              await rebuildModules(
-                compilation,
-                new Set([virtualModuleState.manifestPath]),
-                (r) => r,
-              )
-            },
+                  await rebuildModules(
+                    compilation,
+                    new Set([virtualModuleState.manifestPath]),
+                    (r) => r,
+                  )
+                },
+              ),
           )
         },
       })
