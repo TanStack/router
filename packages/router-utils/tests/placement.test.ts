@@ -7564,12 +7564,20 @@ function evaluatedNames(
       // value: it evaluates with a subject, and with a name a call reaches
       walk(d, {
         enter: (n) => {
+          // (and a mutating method's receiver: `a.push(b)`)
           let target =
             n.type === 'AssignmentExpression'
               ? n.left
               : n.type === 'UpdateExpression'
                 ? n.argument
-                : null
+                : n.type === 'CallExpression' &&
+                    n.callee.type === 'MemberExpression' &&
+                    n.callee.property.type === 'Identifier' &&
+                    /^(push|unshift|splice|set|add|delete|clear)$/.test(
+                      n.callee.property.name,
+                    )
+                  ? n.callee.object
+                  : null
           while (target?.type === 'MemberExpression') {
             target = target.object
           }

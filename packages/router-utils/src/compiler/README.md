@@ -126,8 +126,10 @@ extends Z`, directly or through what they carry) share the module of the first i
   chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
   merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
   bundled and the static re-export would only load the extracted module one request level deeper: the same
-  clusters stay in the route module as written, and chunks copy or import them exactly as in a build, so state and
-  identity agree between dev and a build. An exported declaration a chunk needs that stays in the route module
+  clusters stay in the route module as written, and chunks import them where a build's chunks import them from the
+  extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
+  is imported from the route module in dev. Every decision but these homes is the same, so state and identity
+  agree between dev and a build. An exported declaration a chunk needs that stays in the route module
   (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named

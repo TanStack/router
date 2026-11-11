@@ -243,6 +243,8 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         const pascal = key.charAt(0).toUpperCase() + key.slice(1)
         const split = ctx.names.alloc(`TsrSplit${pascal}`)
         const importer = ctx.names.alloc(`tsrImport${pascal}`)
+        // (one import of the runtime wrapper, on the first importer)
+        const first = lazyImportSym === null
         if (lazyImportSym === null) {
           lazyImportSym = ctx.names.alloc('lazyRouteComponent').sym
         }
@@ -265,17 +267,21 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           anchor: { k: 'after-header' },
           home: 'auto',
           by: 'toy-split',
-          imports: [
-            {
-              names: [{ imported: 'lazyRouteComponent', local: lazyImportSym }],
-              spec: {
-                k: 'spec',
-                specifier: ROUTER_SPEC,
-                edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
-                provenance: { origin: 'runtime' },
-              },
-            },
-          ],
+          imports: first
+            ? [
+                {
+                  names: [
+                    { imported: 'lazyRouteComponent', local: lazyImportSym },
+                  ],
+                  spec: {
+                    k: 'spec',
+                    specifier: ROUTER_SPEC,
+                    edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
+                    provenance: { origin: 'runtime' },
+                  },
+                },
+              ]
+            : [],
         })
         // the chunk unit owning the option value (an identifier the env
         // module rewrites in place: the chunk names its binding)
