@@ -186,6 +186,41 @@ export function eventTable(
     return false
   }
 
+  /** Per binding, the clusters whose evaluation touches it at load (`ownLate`; walked once per binding asked, rarely). */
+  const touchersOfSym = new Map<SymbolId, Array<ClusterId>>()
+  /**
+   * Whether every write of `sym` at an unknown time is `c`'s own: in a
+   * function its own text holds (`memo(function Page() { seen.n++ })`,
+   * passed to a call or not), which runs only through what `c` evaluates
+   * or returns, never before it; and no other evaluation touches `sym` when
+   * the module loads. Such a write pins neither a declaration (V) nor an
+   * option value (`fallbacks`): one rule for a function passed to a call,
+   * wherever it is written (the architect's ruling on the final review's
+   * finding 5).
+   */
+  function ownLate(c: ClusterId, sym: SymbolId): boolean {
+    for (const w of writesOfSym.get(sym) ?? []) {
+      if (
+        w.live &&
+        !w.eager &&
+        (w.owner === null || clusterOfRegion.get(w.owner) !== c)
+      ) {
+        return false
+      }
+    }
+    let touchers = touchersOfSym.get(sym)
+    if (touchers === undefined) {
+      touchers = []
+      for (const d of clusters) {
+        if (touches(d.id, (t) => t.sym === sym)) {
+          touchers.push(d.id)
+        }
+      }
+      touchersOfSym.set(sym, touchers)
+    }
+    return touchers.every((d) => d === c)
+  }
+
   const statePin = (t: Touch, w: Write): Pin => ({
     reason: 'state',
     other: { at: w.at },
@@ -255,7 +290,7 @@ export function eventTable(
       lastSpan!.first = Math.min(lastSpan!.first, t.at)
       lastSpan!.last = Math.max(lastSpan!.last, t.at)
       const w = graph.lateWrite(t.sym, c)
-      if (w !== undefined) {
+      if (w !== undefined && !ownLate(c, t.sym)) {
         // V ends the walk: such a cluster takes no slot, so nothing asks
         // its reads or the rest of its spans (the checker meets this touch)
         found.late = statePin(t, w)
@@ -558,7 +593,9 @@ export function eventTable(
         const late = lateOf(t.sym)
         const later = graph.laterWrite(t.sym, t.at, c) !== undefined
         if (
-          (late === null || (late === 'inside' && confined(c, hr!, t.sym))) &&
+          (late === null ||
+            (late === 'inside' &&
+              (ownLate(c, t.sym) || confined(c, hr!, t.sym)))) &&
           !later
         ) {
           return false
