@@ -106,7 +106,10 @@ export interface Events {
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
-  fallbacks: (home: ReadonlyMap<ClusterId, Home>) => Array<Fallback>
+  fallbacks: (
+    home: ReadonlyMap<ClusterId, Home>,
+    included: ReadonlyMap<OutputId, ReadonlySet<ClusterId>>,
+  ) => Array<Fallback>
   /** The effects O orders, in source order: surviving effect units, benign framework calls aside. */
   effects: () => ReadonlyArray<Unit>
 }
@@ -398,41 +401,54 @@ export function eventTable(
     return undefined
   }
 
-  function fallbacks(home: ReadonlyMap<ClusterId, Home>): Array<Fallback> {
+  function fallbacks(
+    home: ReadonlyMap<ClusterId, Home>,
+    included: ReadonlyMap<OutputId, ReadonlySet<ClusterId>>,
+  ): Array<Fallback> {
     const out: Array<Fallback> = []
     if (graph.writes.length === 0) {
       return out
     }
-    // O on its writes: a member write at load inside the value (an
-    // assignment is the single-writer rule's) evaluates with the value (the
-    // innermost claimed region holding it, its owner's output, after that
-    // output's own code), and a reader of the binding evaluates where the
-    // binding does, at load or later. So the value stays in place unless the
-    // binding evaluates in the same output and nothing else there reads it
-    // at load (a reader elsewhere keeps the binding out of that output). (A
-    // binding with an instance per output, an import, has no home to
-    // compare: outside the rule, as in `checkPlacement`.)
+    // O on its writes: a write at load by the value (an assignment or a
+    // member write its evaluation runs; the write's owner is the claimed
+    // region holding it) evaluates with the value (its owner's output, after
+    // that output's own code), and a reader of the binding evaluates where
+    // the binding does, at load or later. So the value stays in place unless
+    // the binding evaluates in the same output and nothing else there reads
+    // it at load (a reader elsewhere keeps the binding out of that output).
+    // An import has an instance per output but names one object: the value
+    // stays unless no other output includes the import and nothing in its
+    // own output reads it at load, as `const y = f(registry.page = 1)`
+    // stays with its import.
     const writtenAt = new Map<RegionId, SymbolId>()
     for (const w of graph.writes) {
-      if (!w.live || !w.eager || !w.member || w.owner === null) {
+      const r = w.owner
+      if (!w.live || !w.eager || r === null || !claimed.has(r)) {
         continue
       }
       const bc = clusterOfSym.get(w.sym)
-      const hb = bc === undefined ? undefined : home.get(bc)
-      if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
-        continue
-      }
-      let r: RegionId | null = w.owner
-      while (r !== null && regions.get(r).unit === null && !claimed.has(r)) {
-        r = regions.parentOf(r)
-      }
-      if (r === null || !claimed.has(r) || writtenAt.has(r)) {
+      if (bc === undefined || writtenAt.has(r)) {
         continue
       }
       const rc = clusterOfRegion.get(r)!
       const hr = home.get(rc)
-      if (hr === 'env') {
+      if (hr === 'env' || hr === undefined) {
         continue // in place: everything evaluates in source order
+      }
+      const hb = home.get(bc)
+      let elsewhere: boolean
+      if (clusters[bc]!.kind === 'import') {
+        elsewhere = false
+        for (const [o, set] of included) {
+          if (o !== hr && set.has(bc)) {
+            elsewhere = true
+            break
+          }
+        }
+      } else if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
+        continue
+      } else {
+        elsewhere = hr !== hb
       }
       const readHere = (): boolean => {
         for (const d of clusters) {
@@ -446,7 +462,7 @@ export function eventTable(
         }
         return false
       }
-      if (hr !== hb || readHere()) {
+      if (elsewhere || readHere()) {
         writtenAt.set(r, w.sym)
       }
     }
@@ -623,27 +639,32 @@ export function checkPlacement(
       return false
     })
     for (const [sym, { first, last }] of span) {
+      const bc = clusterOfSym.get(sym)
       for (const w of writesOfSym.get(sym)!) {
         const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
         if (!w.live || wc === cl.id) {
           continue
         }
         const wt = wc === undefined ? 1 : timeOf(wc)
-        // two chunks are unordered; an extracted module and a chunk see the
-        // route module's body on either side of them
-        const apart =
-          wt === t && t === 2 && wc !== undefined && home.get(wc) !== own
+        // the output the write evaluates in holds the binding too: the
+        // reader's output imports it from there, so it evaluates after it
+        // (a chunk importing a shared module or another chunk)
+        const hw = wc === undefined ? 'env' : home.get(wc)
+        const imports = hw !== own && bc !== undefined && home.get(bc) === hw
+        // two chunks are unordered otherwise; an extracted module and a
+        // chunk see the route module's body on either side of them
+        const apart = !imports && wt === t && t === 2 && hw !== own
         // (a relocated option value evaluates after its output's own code)
-        const atEnd = wc !== undefined && home.get(wc) === own && relocated(w)
+        const atEnd = hw === own && relocated(w)
         // the touch the write misorders: one before it evaluating before the
         // write's side, or one after it evaluating after
         const at = !w.eager
           ? first
           : wt === null
             ? undefined
-            : first < w.at && (wt < t || apart)
+            : first < w.at && (imports || wt < t || apart)
               ? first
-              : last >= w.at && (wt > t || apart || atEnd)
+              : last >= w.at && !imports && (wt > t || apart || atEnd)
                 ? last
                 : undefined
         if (at !== undefined) {

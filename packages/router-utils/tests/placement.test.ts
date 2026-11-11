@@ -5281,10 +5281,6 @@ describe('readers and writers of state written at load', () => {
       'the route module',
       'loader: () => snap,\ncomponent: f((n = 1, () => null)),',
     ],
-    [
-      'another chunk',
-      'component: f((n = 1, () => null)),\nerrorComponent: () => snap,',
-    ],
     ['its own chunk', 'component: f((n = 1, () => snap)),'],
     ['its own chunk, through `++`', 'component: f((n++, () => snap)),'],
   ])(
@@ -5300,6 +5296,26 @@ describe('readers and writers of state written at load', () => {
       expect(r.env).toContain('component: f((n')
     },
   )
+
+  // The single-writer rule declares an assigned binding in its writer's
+  // output: another chunk reading it imports it from there, so it evaluates
+  // after the value (as written) and the value splits.
+  it('splits an option value assigning a binding another chunk reads, which imports it from the value', async () => {
+    const r = await split(
+      route(
+        'let n = 0',
+        'component: f((n = 1, () => null)),\nerrorComponent: () => snap,',
+        'const snap = [n]',
+      ),
+      { files: lib, keys: ['component', 'errorComponent'] },
+    )
+    expect(r.env).not.toContain('n = 1')
+    expect(r.chunks.component).toContain('f((n = 1, () => null))')
+    expect(r.chunks.errorComponent).toContain(
+      "import { n } from '/app/route.tsx?tsr-split=component'",
+    )
+    expect(r.main?.diagnostics).toEqual([])
+  })
 
   // A member write of an import (finding 3): the specifier has an instance
   // per output, the object one. The value stays unless no other output

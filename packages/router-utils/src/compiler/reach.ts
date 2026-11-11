@@ -225,7 +225,10 @@ export function computePlacement(input: PlacementInput): Placement {
     homes,
     extracted,
   )
-  const fallbacks = [...events.fallbacks(homes.home), ...homes.fallbacks]
+  const fallbacks = [
+    ...events.fallbacks(homes.home, inclusion.included),
+    ...homes.fallbacks,
+  ]
   return {
     clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,

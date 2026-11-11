@@ -10,10 +10,11 @@
  */
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
+import { callsWhenEvaluated } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type { RegionId, Unit, UnitId } from '../units'
+import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
 import type {
   Frag,
   GenFrag,
@@ -85,9 +86,18 @@ export interface Cluster {
 export interface Write {
   sym: SymbolId
   at: number
+  /** When the module loads (not inside a function, nor in code that runs later). */
   eager: boolean
   live: boolean
+  /** The evaluation writing it: the unit, or the claimed region (an option value a chunk owns), holding it (a planner's unclaimed region is its unit's text). */
   owner: RegionId | null
+  /**
+   * In a function its owner's evaluation passes to a call (`track(() => {
+   * cfg.x = 1 })`): the call may run it then, or keep it and run it later
+   * (`runs`), so it is a write at an unknown time of that evaluation too,
+   * as when the function is named (`track(set)`).
+   */
+  passed: boolean
   augment: boolean
   /** A member write (`x.p = …`, `x.push(…)`), not an assignment of the binding. */
   member: boolean
@@ -114,10 +124,19 @@ export interface ClusterGraph {
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
+   * What evaluating region `r` calls (`callsWhenEvaluated`), null when it
+   * calls nothing: a unit's own; a region nested in one, its unit's calls
+   * inside it but for those inside a function it holds that only a call
+   * around it receives (`createServerFn().handler(() => …)`: the handler's
+   * region evaluates a function, the call around it may run it).
+   */
+  callsOf: (r: RegionId) => EvaluatedCalls | null
+  /**
    * The late half of the mutation model (V): a live write of `sym` by
    * another cluster than `by` at an unknown time (inside a function, or in
-   * code evaluated with the module that runs later): it may run before or
-   * after any evaluation, wherever that evaluation is.
+   * code evaluated with the module that runs later), or by `by` in a
+   * function its evaluation passes to a call (`passed`): it may run before
+   * or after any evaluation, wherever that evaluation is.
    */
   lateWrite: (sym: SymbolId, by: ClusterId) => Write | undefined
   /**
@@ -322,6 +341,45 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       : !envView.isErasedAt(unit.range.start)
   }
 
+  const callsOfUnit: Array<EvaluatedCalls | undefined> = []
+  const unitCalls = (u: UnitId): EvaluatedCalls =>
+    (callsOfUnit[u] ??= callsWhenEvaluated(units[u]!.node))
+  const callsOfRegion: Array<EvaluatedCalls | null | undefined> = []
+  const callsOf = (id: RegionId): EvaluatedCalls | null => {
+    const hit = callsOfRegion[id]
+    if (hit !== undefined) {
+      return hit
+    }
+    const r = regions.get(id)
+    let result: EvaluatedCalls | null = null
+    if (r.unit !== null) {
+      const all = unitCalls(r.unit)
+      result = all.calls.length > 0 ? all : null
+    } else {
+      const unit = regions.unitAt(r.range.start, r.range.end)?.unit
+      if (unit !== undefined && unit !== null) {
+        const all = unitCalls(unit)
+        const { start, end } = r.range
+        const inside = (x: Range) => x.start >= start && x.end <= end
+        const held = all.callbacks.filter((f) => inside(f) && !inside(f.call))
+        const own = (x: Range) =>
+          inside(x) && !held.some((f) => x.start >= f.start && x.end <= f.end)
+        const calls = all.calls.filter(own)
+        result =
+          calls.length === 0
+            ? null
+            : {
+                calls,
+                callbacks: all.callbacks.filter(
+                  (f) => own(f) && inside(f.call),
+                ),
+              }
+      }
+    }
+    callsOfRegion[id] = result
+    return result
+  }
+
   // ---- owner index: refs by owning region --------------------------------
   const ownedRefs = new Map<RegionId, Array<ClassifiedRef>>()
   for (const ref of refs.all) {
@@ -376,11 +434,30 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     list.push(w)
   }
+  // the evaluation owning a write: the innermost unit or claimed region
+  // holding it (an unclaimed region is its unit's text)
+  const claimedRegions = new Set<RegionId>()
+  for (const claim of rewrites.claims.values()) {
+    claimedRegions.add(claim.region)
+  }
+  const evaluationAt = (range: Range): RegionId | null => {
+    let r = regions.innermostAt(range.start, range.end)
+    while (
+      r !== null &&
+      regions.get(r).unit === null &&
+      !claimedRegions.has(r)
+    ) {
+      r = regions.parentOf(r)
+    }
+    return r
+  }
   for (const ref of refs.all) {
     const kind = writeKind(ref)
     if (kind === null || !declMember.has(ref.sym)) {
       continue
     }
+    const owner = evaluationAt(ref.range)
+    const calls = ref.eager || owner === null ? null : callsOf(owner)
     addWrite({
       sym: ref.sym,
       at: ref.range.start,
@@ -388,7 +465,12 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       // its write has not happened where it is written)
       eager: ref.eager && !t1.runsLaterAt(ref.range.start),
       live: isLive(ref, 'env'),
-      owner: regions.innermostAt(ref.range.start, ref.range.end),
+      owner,
+      passed:
+        calls !== null &&
+        calls.callbacks.some(
+          (f) => f.start <= ref.range.start && ref.range.end <= f.end,
+        ),
       augment: false,
       member: kind === 'member',
     })
@@ -405,6 +487,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         eager: true,
         live,
         owner: u.region,
+        passed: false,
         augment: true,
         member: false,
       })
@@ -599,7 +682,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       return undefined
     }
     for (const w of writesOfSym.get(sym)!) {
-      if (w.live && !w.eager && byOther(w, by)) {
+      if (w.live && !w.eager && (w.passed || byOther(w, by))) {
         return w
       }
     }
@@ -633,6 +716,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     viewOf,
     isLive,
     unitSurvives,
+    callsOf,
     lateWrite,
     laterWrite,
   }
