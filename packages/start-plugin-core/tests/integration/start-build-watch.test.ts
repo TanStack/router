@@ -672,18 +672,44 @@ export { label } from './client-only'
             clearTimeout(timer)
           }
         },
+        buildStart() {
+          if (this.environment.name === 'ssr' && clientWrites >= 2) {
+            serverRebuilding = true
+          }
+        },
         writeBundle() {
           if (this.environment.name === 'client' && ++clientWrites === 2) {
             released()
           }
+          if (this.environment.name === 'ssr' && serverRebuilding) {
+            serverRebuilt()
+          }
         },
       }
+      // the outcome: a server build begun after the client's rebuild ends
+      let serverRebuilding = false
+      let serverRebuilt!: () => void
+      const rebuilt = new Promise<void>((resolve) => (serverRebuilt = resolve))
       const build = await buildStart({
         bundler: 'vite',
         files: pageApp,
         entry: pageEntry,
         viteConfig: { plugins: [hold] },
-        watchEdits: [{ edits: {} }],
+        watchEdits: [
+          {
+            edits: {},
+            when: () =>
+              Promise.race([
+                rebuilt,
+                new Promise<never>((_, reject) =>
+                  setTimeout(
+                    () => reject(new Error('the server was not rebuilt')),
+                    15_000,
+                  ),
+                ),
+              ]),
+          },
+        ],
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
