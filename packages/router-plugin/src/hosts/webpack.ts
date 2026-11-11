@@ -238,7 +238,10 @@ export function createRouterCompilerWebpackPlugin(
       // file events, the route files whose registry entry changed: the
       // bundler sees no file event for them) are built again in the
       // compilation that takes it
-      const drain = new StaleSetDrain(session.caches)
+      const drain = new StaleSetDrain(session.caches, {
+        tag: '[tanstack-router]',
+        root: compiler.context,
+      })
       drain.register(envName, compiler)
       const unsubscribe = onRoutesChanged(
         routerPluginContext,
@@ -330,7 +333,7 @@ export function createRouterCompilerWebpackPlugin(
       // what became stale after a compilation's drain (a registry change
       // published meanwhile, a compile overtaken) gets another one
       compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {
-        drain.wake()
+        drain.compiled(envName)
       })
       // the session lives as long as the compiler: until it shuts down
       // (`compiler.close()`, after a one-shot `run()` too) or stops watching

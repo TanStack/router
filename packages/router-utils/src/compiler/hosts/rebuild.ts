@@ -6,6 +6,7 @@
  * read no mutable state), in the compilation of the event; a set that fills
  * while its compiler is idle gets it a compilation.
  */
+import { displayPath } from '../diagnostics'
 import { identify } from '../identity'
 import type { CompilerCaches } from '../host'
 import type { PlanKey } from '../identity'
@@ -20,6 +21,12 @@ export interface RebuildCompilationLike<
     module: TModule,
     callback: (error?: Error | null) => void,
   ) => void
+  /**
+   * The modules this compilation built (webpack: a `WeakSet`, without a
+   * module its snapshot found current; Rspack: a `Set`, which also lists
+   * modules it did not build again).
+   */
+  builtModules?: { has: (module: TModule) => boolean }
   /** Rspack's compiler namespace names its version; webpack's does not. */
   compiler?: { webpack?: { rspackVersion?: string } }
   entries?: ReadonlyMap<string, { dependencies: ReadonlyArray<TDependency> }>
@@ -53,17 +60,23 @@ const MAX_ASKED = 3
  * cause (`caused`); the files a compilation builds from their own events
  * leave its set at `make` (`building`); the rest of the set is built at
  * `finishMake` (`rebuild`). What fills a set after its compilation's
- * `rebuild` (another environment's event, a registry change, a compile overtaken) is
- * built by another compilation (`wake`).
+ * `rebuild` (another environment's event, a registry change, a compile
+ * overtaken) is built by another compilation (`compiled`).
  */
 export class StaleSetDrain {
-  /** Each environment's compiler; `asked`: the compilations `wake` asked it for since its last cause. */
+  /** Each environment's compiler; `asked`: the compilations `wake` asked it for since its last cause, or since one ended with its set empty. */
   private readonly compilers = new Map<
     string,
     { compiler: IdleCompilerLike; asked: number }
   >()
+  /** By environment, the paths `building` took out of its set: built by its compilation, or by `rebuild`. */
+  private readonly takenAtMake = new Map<string, Set<string>>()
 
-  constructor(private readonly caches: CompilerCaches) {}
+  constructor(
+    private readonly caches: CompilerCaches,
+    /** The tag of the host's messages and the project root (`HostServices`). */
+    private readonly host: { tag: string; root: string },
+  ) {}
 
   /** The compiler of an environment. */
   register(env: string, compiler: IdleCompilerLike): void {
@@ -79,20 +92,34 @@ export class StaleSetDrain {
   }
 
   /**
-   * The files a compilation of `env` builds now from their own events, once
-   * every invalidation of its events ended: the drain needn't build them
-   * again (what makes them stale from here on enters the set again).
+   * The files a compilation of `env` builds from their own events (its
+   * modified files, once every invalidation of its events ended): they
+   * leave the set (what makes them stale from here on enters it again).
+   * `rebuild` builds those the compilation did not (webpack with content
+   * hashes in its snapshots skips a file written again unchanged).
    */
   building(env: string, files: Iterable<string>): void {
-    this.caches.stale.drop(env, files)
+    const { stale } = this.caches
+    let taken = this.takenAtMake.get(env)
+    for (const file of files) {
+      if (stale.holds(env, file)) {
+        taken ??= new Set()
+        taken.add(file)
+      }
+    }
+    if (taken) {
+      this.takenAtMake.set(env, taken)
+      stale.drop(env, taken)
+    }
   }
 
   /**
    * Builds again the modules of the environment's stale set (the held ones
    * too: a module importing a removed file fails here as it would in the
    * bundler's own rebuild), once the invalidations running (a registry
-   * change published during this compilation's `watchRun`) ended. `pathOf`:
-   * a module resource as the stale sets spell its path.
+   * change published during this compilation's `watchRun`) ended, and the
+   * modules of what `building` took that the compilation did not build.
+   * `pathOf`: a module resource as the stale sets spell its path.
    */
   async rebuild<
     TModule extends { identifier: () => string; resource?: string },
@@ -106,10 +133,37 @@ export class StaleSetDrain {
     if (caches.invalidations.size > 0) {
       await caches.settled()
     }
-    const paths = caches.stale.take(env, { held: true })
-    if (paths.length > 0) {
-      await rebuildModules(compilation, new Set(paths), pathOf)
+    const paths = new Set(caches.stale.take(env, { held: true }))
+    const taken = this.takenAtMake.get(env)
+    this.takenAtMake.delete(env)
+    if (paths.size === 0 && !taken) {
+      return
     }
+    const built = compilation.builtModules
+    await rebuildModulesWhere(compilation, (m) => {
+      if (!m.resource) {
+        return false
+      }
+      const path = pathOf(m.resource)
+      return (
+        paths.has(path) ||
+        (taken !== undefined && taken.has(path) && !built?.has(m))
+      )
+    })
+  }
+
+  /**
+   * A compilation of `env` ended (`afterDone`: in `done` the compiler is not
+   * idle yet, and a compilation asked for there would start inside it): if
+   * its set is empty, the compilations asked for so far did their work.
+   * Then `wake`.
+   */
+  compiled(env: string): void {
+    const entry = this.compilers.get(env)
+    if (entry && !this.caches.stale.has(env)) {
+      entry.asked = 0
+    }
+    this.wake()
   }
 
   /** A registry change (its files are stale in every environment that compiled): every compiler may be asked again, the idle ones now. */
@@ -121,23 +175,28 @@ export class StaleSetDrain {
   }
 
   /**
-   * Asks each idle compiler whose stale set is not empty for a compilation:
-   * after every compilation (`afterDone`: in `done` the compiler is not idle
-   * yet, and a compilation asked for there would start inside it) and after
-   * a registry change. At most `MAX_ASKED` in a row without a cause: a module
-   * whose rebuild finds itself stale again (its plan's validation and its
-   * compile disagreeing) waits for the next event instead of compiling
-   * forever.
+   * Asks each idle compiler whose stale set is not empty for a compilation.
+   * At most `MAX_ASKED` in a row that each end with the set still not empty
+   * and no cause between: a module whose rebuild finds itself stale again
+   * (its plan's validation and its compile disagreeing) then waits for the
+   * next event instead of compiling forever, and a warning names its files.
    */
-  wake(): void {
+  private wake(): void {
     for (const [env, entry] of this.compilers) {
-      if (
-        entry.compiler.idle &&
-        entry.asked < MAX_ASKED &&
-        this.caches.stale.has(env)
-      ) {
+      if (!entry.compiler.idle || !this.caches.stale.has(env)) {
+        continue
+      }
+      if (entry.asked < MAX_ASKED) {
         entry.asked++
         entry.compiler.watching?.invalidate()
+      } else if (entry.asked === MAX_ASKED) {
+        entry.asked++
+        const files = this.caches.stale
+          .paths(env)
+          .map((file) => displayPath(file, this.host.root))
+        console.warn(
+          `${this.host.tag} ${files.join(', ')} ${files.length === 1 ? 'was' : 'were'} still out of date after ${MAX_ASKED} rebuilds in a row (${env}), so the dev server stops rebuilding ${files.length === 1 ? 'it' : 'them'} until a file changes. Save ${files.length === 1 ? 'the file' : 'one of them'} to build ${files.length === 1 ? 'it' : 'them'} again, and please report this to TanStack.`,
+        )
       }
     }
   }
@@ -181,9 +240,21 @@ export async function rebuildModules<
   paths: ReadonlySet<string>,
   pathOf: (resource: string) => string,
 ): Promise<void> {
-  const pending = [...compilation.modules].filter(
-    (m) => m.resource && paths.has(pathOf(m.resource)),
+  return rebuildModulesWhere(
+    compilation,
+    (m) => m.resource !== undefined && paths.has(pathOf(m.resource)),
   )
+}
+
+/** Rebuilds the modules of `compilation` that `wanted` takes, in place. */
+async function rebuildModulesWhere<
+  TModule extends { identifier: () => string; resource?: string },
+  TDependency,
+>(
+  compilation: RebuildCompilationLike<TModule, TDependency>,
+  wanted: (module: TModule) => boolean,
+): Promise<void> {
+  const pending = [...compilation.modules].filter(wanted)
   if (pending.length === 0) {
     return
   }

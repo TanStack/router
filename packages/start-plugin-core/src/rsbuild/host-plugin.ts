@@ -467,7 +467,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // idle (in `done` Rspack has not marked it so: a compilation asked for there would
       // start inside it)
       compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {
-        session.drain.wake()
+        session.drain.compiled(environment.name)
       })
 
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {

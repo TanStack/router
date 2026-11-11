@@ -208,7 +208,10 @@ export class StartRsbuildCompilerSession {
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
     })
-    this.drain = new StaleSetDrain(this.start.caches)
+    this.drain = new StaleSetDrain(this.start.caches, {
+      tag: '[tanstack-start]',
+      root: opts.root,
+    })
     registerCompilerStats(
       'start:rsbuild:host',
       this,
