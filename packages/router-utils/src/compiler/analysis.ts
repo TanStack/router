@@ -10,7 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { namespaceName, patternIdentifiers, unwrapExpression } from './source'
+import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
@@ -20,7 +20,7 @@ import {
   statementHasEffects,
 } from './purity'
 import { ownEntry } from './strings'
-import type { BuilderPurity, PurityContext } from './purity'
+import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'

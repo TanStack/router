@@ -26,7 +26,6 @@ import type {
   WalkVisitor,
 } from '../rewrite'
 import type { PlacementInput } from '../reach'
-import type { Range } from '../header'
 
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
