@@ -408,6 +408,23 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
   }
 
+  // per written binding, what lets the mutation predicate answer "none"
+  // without a scan: whether a live write runs at an unknown time, and where
+  // its last live eager write is (a registry filled by n statements and read
+  // by n declarations asks it n² times)
+  const lateWritten = new Set<SymbolId>()
+  const lastEagerWrite = new Map<SymbolId, number>()
+  for (const w of writes) {
+    if (!w.live) {
+      continue
+    }
+    if (!w.eager) {
+      lateWritten.add(w.sym)
+    } else if (w.at > (lastEagerWrite.get(w.sym) ?? -1)) {
+      lastEagerWrite.set(w.sym, w.at)
+    }
+  }
+
   // ---- live writes and augmentations join the cluster they write -----------
   const writersOfMember = new Map<number, Set<RegionId>>() // declaring member → writer sub-regions
   const regionWrittenSyms = new Set<SymbolId>()
@@ -619,11 +636,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     readAt: number,
     by: ClusterId,
   ): Write | undefined => {
-    const list = writesOfSym.get(sym)
-    if (list === undefined) {
+    if (
+      !lateWritten.has(sym) &&
+      (lastEagerWrite.get(sym) ?? -1) <= readAt
+    ) {
       return undefined
     }
-    for (const w of list) {
+    for (const w of writesOfSym.get(sym)!) {
       if (!w.live || (w.eager && w.at <= readAt)) {
         continue
       }

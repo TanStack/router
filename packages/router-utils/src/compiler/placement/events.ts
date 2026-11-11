@@ -428,7 +428,9 @@ export function checkPlacement(
     }
   }
 
-  // what an evaluation outside the env module touches
+  // what an evaluation outside the env module touches: per written binding,
+  // its first and last touch decide every comparison with a write (one scan
+  // of its writes per binding, not per touch)
   let found: InvariantViolation | undefined
   for (const cl of graph.writes.length > 0 ? clusters : []) {
     const t = timeOf(cl.id)
@@ -436,8 +438,19 @@ export function checkPlacement(
       continue
     }
     const own = home.get(cl.id)
+    const span = new Map<SymbolId, { first: number; last: number }>()
     events.touches(cl.id, (touch) => {
-      for (const w of writesOfSym.get(touch.sym) ?? []) {
+      const s = span.get(touch.sym)
+      if (s !== undefined) {
+        s.first = Math.min(s.first, touch.at)
+        s.last = Math.max(s.last, touch.at)
+      } else if (writesOfSym.has(touch.sym)) {
+        span.set(touch.sym, { first: touch.at, last: touch.at })
+      }
+      return false
+    })
+    for (const [sym, { first, last }] of span) {
+      for (const w of writesOfSym.get(sym)!) {
         const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
         if (!w.live || wc === cl.id) {
           continue
@@ -447,27 +460,26 @@ export function checkPlacement(
         // route module's body on either side of them
         const apart =
           wt === t && t === 2 && wc !== undefined && home.get(wc) !== own
-        const misordered = !w.eager
-          ? true
+        // the touch the write misorders: one before it evaluating before the
+        // write's side, or one after it evaluating after
+        const at = !w.eager
+          ? first
           : wt === null
-            ? false
-            : w.at > touch.at
-              ? wt < t || apart
-              : wt > t || apart
-        if (misordered) {
-          found = fail(
+            ? undefined
+            : first < w.at && (wt < t || apart)
+              ? first
+              : last >= w.at && (wt > t || apart)
+                ? last
+                : undefined
+        if (at !== undefined) {
+          return fail(
             `${namesOf(input, cl) ?? 'a value'} may read a binding at another time than written`,
-            `evaluates outside the env module and touches ${input.t1.symbols.name(touch.sym)} (at ${touch.at}), written at ${w.at}${w.eager ? '' : ' at an unknown time'}`,
+            `evaluates outside the env module and touches ${input.t1.symbols.name(sym)} (at ${at}), written at ${w.at}${w.eager ? '' : ' at an unknown time'}`,
             cl.id,
-            touch.at,
+            at,
           )
-          return true
         }
       }
-      return false
-    })
-    if (found !== undefined) {
-      return found
     }
   }
   // T: an extracted module reads nothing of the env module at its evaluation

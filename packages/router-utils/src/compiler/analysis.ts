@@ -1691,6 +1691,8 @@ export function visitRuns(
   }
   roots.sort((a, b) => a.range.start - b.range.start)
   const seen = new Set<UnitId>()
+  /** The names whose declarations and writing statements were entered (once per evaluation: `seen` would skip them anyway). */
+  const followed = new Set<SymbolId>()
   const work: Array<ClassifiedRef> = []
   /** Runs the text of unit `u` at `at` (once per evaluation); true ends the walk. */
   const enter = (u: UnitId, at: number): boolean => {
@@ -1713,6 +1715,10 @@ export function visitRuns(
     work.push(root)
     while (work.length > 0) {
       const r = work.pop()!
+      if (followed.has(r.sym)) {
+        continue
+      }
+      followed.add(r.sym)
       for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
         if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
           return true
