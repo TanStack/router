@@ -81,11 +81,12 @@ export function startManifestPlugin(opts: {
           return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
-        return manifestModule(
-          this.environment,
-          clientEntry,
-          opts.clientBuilds.embedClientBuild(this)?.manifest,
-        )
+        const environment = this.environment
+        return opts.clientBuilds
+          .embedClientBuild(this)
+          .then((record) =>
+            manifestModule(environment, clientEntry, record?.manifest),
+          )
       },
     }),
   ]

@@ -19,7 +19,9 @@ function clientBuilds() {
       manifest = published
     },
     embedClientBuild: () =>
-      manifest && { digest: '', manifest, functionIds: new Set<string>() },
+      Promise.resolve(
+        manifest && { digest: '', manifest, functionIds: new Set<string>() },
+      ),
   } as unknown as ClientBuilds
 }
 
@@ -28,7 +30,7 @@ describe('startManifestPlugin', () => {
 
   test.each([false, true])(
     'captures inline CSS according to the resolved config (%s)',
-    (enabled) => {
+    async (enabled) => {
       vi.stubGlobal('TSS_ROUTES_MANIFEST', { __root__: {} })
       const plugins = startManifestPlugin({
         getConfig: () =>
@@ -67,7 +69,7 @@ describe('startManifestPlugin', () => {
         (item) => item.name === 'tanstack-start:start-manifest-plugin',
       )!
       const resolvedId = plugin.resolveId.handler(VIRTUAL_MODULES.startManifest)
-      const manifest = plugin.load.handler.call(
+      const manifest = await plugin.load.handler.call(
         {
           environment: {
             name: START_ENVIRONMENT_NAMES.server,

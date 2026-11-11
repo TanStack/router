@@ -196,6 +196,11 @@ export function createViteDefineConfig(opts: {
 export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
+  /** `build --watch`: the client environment's watcher, to follow its builds. */
+  followClientWatcher: (
+    environment: vite.BuildEnvironment,
+    watcher: vite.Rolldown.RolldownWatcher,
+  ) => void
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -214,7 +219,11 @@ export async function buildStartViteEnvironments(opts: {
     // references), so the server builds once the client's first build
     // ended. The client's later builds, and a first one that failed, reach
     // the server by cause (`ViteCompilerState.publishClientBuild`)
-    await firstBuildEnd(await opts.builder.build(client))
+    const output = await opts.builder.build(client)
+    if ('on' in output) {
+      opts.followClientWatcher(client, output)
+    }
+    await firstBuildEnd(output)
   }
 
   if (!server.isBuilt) {

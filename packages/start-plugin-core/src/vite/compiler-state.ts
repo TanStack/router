@@ -54,6 +54,7 @@ import type {
   Environment,
   OptimizedDepInfo,
   ResolvedConfig,
+  Rolldown,
   ViteDevServer,
 } from 'vite'
 
@@ -215,7 +216,7 @@ export interface ClientBuilds {
     manifest: ClientManifest,
   ) => void
   /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
-  embedClientBuild: (ctx: EmbeddingContext) => ClientBuildRecord | null
+  embedClientBuild: (ctx: EmbeddingContext) => Promise<ClientBuildRecord | null>
 }
 
 /** The hook context of a server module that embeds the client build. */
@@ -265,6 +266,15 @@ export interface Session {
   readonly embedded: Map<string, Set<string>>
   /** `build --watch`: the sentinel's path, once a server module watches it. */
   sentinel: string | null
+  /**
+   * `build --watch`: the client's build running now (its watcher's
+   * `BUNDLE_START` to its `BUNDLE_END` or `ERROR`, when Start's `buildApp`
+   * follows the watcher), which a server module waits for before it embeds
+   * the client build: an edit both environments bundle then builds the
+   * server once. An optimisation only: the sentinel rebuilds a server that
+   * embedded another client build.
+   */
+  clientBuilding: { ended: Promise<void>; end: () => void } | null
   /**
    * `build --watch`: each environment's resolver (its plugin context's, from
    * its last build), for the invalidations of a file event: a plan's
@@ -434,6 +444,7 @@ export class ViteCompilerState implements ClientBuilds {
       clientBuild: null,
       embedded: new Map(),
       sentinel: null,
+      clientBuilding: null,
       resolvers: new Map(),
       builds: new Map(),
       devWarned: new Set(),
@@ -551,14 +562,41 @@ export class ViteCompilerState implements ClientBuilds {
   }
 
   /**
+   * `build --watch`: follows the client environment's watcher (Start's
+   * `buildApp`): the client build running now (`Session.clientBuilding`).
+   */
+  followClientWatcher(
+    environment: Environment,
+    watcher: Rolldown.RolldownWatcher,
+  ): void {
+    const s = this.sessionOf(environment)
+    watcher.on('event', (event) => {
+      if (event.code === 'BUNDLE_START' && !s.clientBuilding) {
+        let end!: () => void
+        const ended = new Promise<void>((resolve) => (end = resolve))
+        s.clientBuilding = { ended, end }
+      } else if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
+        s.clientBuilding?.end()
+        s.clientBuilding = null
+      }
+    })
+  }
+
+  /**
    * A module of a server environment's build embeds the run's client build
-   * (null: none built in this run). `build --watch`: the module watches the
+   * (null: none built in this run). `build --watch`: once the client's
+   * running build ended (`Session.clientBuilding`); the module watches the
    * sentinel, and the digest is noted as the server build's (none built yet,
    * e.g. a client whose first build failed, is a digest of its own: the
    * client's first build rebuilds the server).
    */
-  embedClientBuild(ctx: EmbeddingContext): ClientBuildRecord | null {
+  async embedClientBuild(
+    ctx: EmbeddingContext,
+  ): Promise<ClientBuildRecord | null> {
     const s = this.sessionOf(ctx.environment)
+    if (ctx.meta.watchMode) {
+      await s.clientBuilding?.ended
+    }
     const record = s.clientBuild
     if (ctx.meta.watchMode) {
       const digest = record?.digest ?? ''

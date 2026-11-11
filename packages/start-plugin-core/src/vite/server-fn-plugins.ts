@@ -134,12 +134,14 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
     moduleId: VIRTUAL_MODULES.serverFnResolver,
     enforce: 'pre',
     applyToEnvironment: (e) => state.resolverEnvironments.has(e.name),
-    load() {
+    async load() {
       const s = state.sessionOf(this.environment)
       // the functions the client build references (J4.2), as the client's
       // last build of the run left them
       const clientBuild =
-        this.environment.mode === 'build' ? state.embedClientBuild(this) : null
+        this.environment.mode === 'build'
+          ? await state.embedClientBuild(this)
+          : null
       if (
         this.environment.mode === 'build' &&
         this.environment.name === VITE_ENVIRONMENT_NAMES.server &&

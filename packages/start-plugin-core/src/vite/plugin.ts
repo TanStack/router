@@ -229,6 +229,8 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
+                followClientWatcher: (environment, watcher) =>
+                  compiler.followClientWatcher(environment, watcher),
               })
             },
           },
