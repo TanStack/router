@@ -6812,6 +6812,121 @@ describe('pure calls of known packages', () => {
   })
 })
 
+// rule L (DESIGN-order-guarantee-schemas.md, decision 1): a member read, a
+// spread, `in`/`instanceof`, a call or `new` of a standard global (and a
+// method of the value one returns, or of a literal) with pure arguments,
+// a callback's body judged the same way, is no effect of placement's
+// model: the declaration moves with its only reader, whatever follows it.
+// Getters, proxies, iterators and `toString` stay outside the model (R97).
+describe('language operations are no effect (rule L)', () => {
+  const route = (decls: string, options: string, after = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { z } from 'zod'
+      import { format, register, track } from './lib'
+      const LABELS = { admin: 'Admin', user: 'User' }
+      ${decls}
+      ${after}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  // the schemas note's decision 1
+  it('moves options built from standard globals past a schema the route module keeps', async () => {
+    const decl =
+      'const ROLE_OPTIONS = Object.entries(LABELS).map(([value, label]) => ({ value, label }))'
+    const r = await split(
+      route(
+        decl,
+        'validateSearch: z.object({ role: z.string().optional() }),\ncomponent: () => ROLE_OPTIONS,',
+      ),
+    )
+    expect(r.env).not.toContain('ROLE_OPTIONS =')
+    expect(r.env).not.toContain('const LABELS')
+    expect(r.chunks.component).toContain(decl)
+    expect(eager(r)).toEqual([])
+  })
+
+  it.each([
+    'const ids = Object.keys(LABELS)',
+    "const all = new Set([...Object.values(LABELS), 'guest'])",
+    "const names = { ...LABELS, guest: 'Guest' }",
+    'const first = LABELS.admin',
+    "const has = 'admin' in LABELS",
+    'const max = Math.max(...Object.values(LABELS).map((l) => l.length))',
+    'const json = JSON.stringify(LABELS)',
+    "const sorted = Object.keys(LABELS).sort().join(', ')",
+    "const opts = Object.entries(LABELS).filter(([k]) => k !== 'user').map(([value, label]) => ({ value, label }))",
+    "const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })",
+    "const params = new URLSearchParams({ tab: 'a' }).toString()",
+    'const nonEmpty = Object.values(LABELS).filter(Boolean)',
+  ])('moves `%s` past a bare call after it', async (decl) => {
+    const name = /const (\w+)/.exec(decl)![1]!
+    const r = await split(
+      route(decl, `component: () => ${name},`, "track('after')"),
+    )
+    expect(r.env).not.toContain(decl)
+    expect(r.env).toContain("track('after')")
+    expect(r.chunks.component).toContain(decl)
+    expect(eager(r)).toEqual([])
+  })
+
+  // what is no language operation stays an effect: an exported declaration
+  // a chunk needs is then kept for its effects, not extracted
+  describe('what still is an effect', () => {
+    const build = (code: string) =>
+      new MemoryHost({ files: { '/app/route.tsx': code } }).compile(
+        '/app/route.tsx',
+        [toySplitPlanner({ keys: ['component'], extractExports: true })],
+        { env: envInfo({ mode: 'build' }) },
+      )
+    const exported = (decl: string) =>
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { format, register } from './lib'
+        const LABELS = { admin: 'Admin', user: 'User' }
+        const LIST = ['a', 'b']
+        export ${decl}
+        export const Route = createFileRoute('/')({
+          component: () => ${/const (\w+)/.exec(decl)![1]!},
+        })
+      `)
+    it.each([
+      [
+        'a callback calling an unknown function',
+        'const a = Object.keys(LABELS).map((k) => format(k))',
+      ],
+      [
+        'an imported function as the callback',
+        'const a = Object.keys(LABELS).map(register)',
+      ],
+      ['a method of a binding of the module', 'const a = LIST.map((x) => x)'],
+      ['a method of a member', 'const a = LABELS.admin.toUpperCase()'],
+      [
+        'a global the language does not define',
+        'const a = new Worker(LABELS.admin)',
+      ],
+    ])('%s', async (_, decl) => {
+      const r = await build(exported(decl))
+      expect(r?.code).toContain(decl)
+      expect(r?.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
+    })
+
+    it('extracts the same export when it is a language operation', async () => {
+      const decl = 'const a = Object.keys(LABELS).map((k) => k.length)'
+      const r = await build(exported(decl))
+      expect(r?.code).not.toContain(decl)
+      expect(r?.code).toContain(
+        "export { a } from '/app/route.tsx?tsr-split=export---a'",
+      )
+      expect(r?.diagnostics).toEqual([])
+    })
+  })
+})
+
 describe('generated imports', () => {
   // A planner's runtime helper (Start's server-fn stubs `createClientRpc`,
   // `createSsrRpc`) is an import like one the source wrote: every output
