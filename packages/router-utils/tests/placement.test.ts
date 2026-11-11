@@ -6933,6 +6933,177 @@ describe('language operations are no effect (rule L)', () => {
   })
 })
 
+// No order rule (DESIGN-order-none.md): code moves by the bindings it reads
+// and writes; what moves keeps its source order in its chunk, what stays its
+// order in the route module. Its two conditions: a write through another
+// name writes the object (design 2 closing), and a call the model does not
+// know is a possible write of every binding of the module it is handed (an
+// argument, the receiver of a method).
+describe('no order rule: bindings decide', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { z } from 'zod'
+      import { createTable, snapshot, snap, createStore, hydrateStores, load, getAuth, initializeApp, takeSnapshot, advance, eff1, eff2, log, setup, observer, track } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it('moves a schema only the component reads past the schema `validateSearch` keeps', async () => {
+    const r = await split(
+      route(
+        'const Schema = z.object({ email: z.string() })\nconst SearchSchema = z.object({ next: z.string().optional() })',
+        'validateSearch: SearchSchema,\ncomponent: () => Schema,',
+      ),
+    )
+    expect(r.env).not.toContain('const Schema')
+    expect(r.env).toContain('const SearchSchema = z.object(')
+    expect(r.chunks.component).toContain(
+      'const Schema = z.object({ email: z.string() })',
+    )
+    expect(eager(r)).toEqual([])
+  })
+
+  // the second condition: `snapshot(table)` and `table.addColumn()` are
+  // handed `table`, so each is a write of it, and joins its cluster, which
+  // the statement keeps in the route module
+  it('keeps a snapshot of a table an unknown call after it is handed', async () => {
+    const decls =
+      "const table = createTable()\nconst columns = snapshot(table)\ntable.addColumn('x')"
+    const r = await split(route(decls, 'component: () => columns,'))
+    expect(r.env).toContain(decls)
+    expect(r.chunks.component).toContain(
+      "import { columns } from '/app/route.tsx'",
+    )
+  })
+
+  it('moves the snapshot when the call after it is not handed what it read', async () => {
+    const r = await split(
+      route(
+        "const table = createTable()\nconst other = createTable()\nconst columns = snapshot(table)\nother.addColumn('x')",
+        'loader: () => other,\ncomponent: () => columns,',
+      ),
+    )
+    expect(r.env).not.toContain('snapshot(table)')
+    expect(r.chunks.component).toContain(
+      'const table = createTable()\nconst columns = snapshot(table)',
+    )
+  })
+
+  // the first condition: the write through `alias` writes `cfg`, which
+  // `snap(cfg)` reads before it; all of them move together, in source order
+  it('moves a snapshot with the object it reads and a write through another name after it, in source order', async () => {
+    const decls =
+      'const cfg = { v: 1 }\nconst alias = cfg\nconst seen = snap(cfg)\nalias.v = 2'
+    const r = await split(route(decls, 'component: () => seen,'))
+    expect(r.env).not.toContain('snap(cfg)')
+    expect(r.chunks.component).toContain(decls)
+  })
+
+  // what no order rule reorders (DESIGN-order-none.md §3, DESIGN-order-
+  // guarantee-aggressive.md S-1 to S-3): the module then runs them in
+  // another order, without a warning. The router-plugin build test
+  // (`code-splitter-effect-order`) runs S-1, S-2 and (a).
+  describe('what it reorders', () => {
+    it('moves a value only the component reads past a bare call after it (a)', async () => {
+      const r = await split(
+        route(
+          'const store = createStore()\nhydrateStores()',
+          'component: () => store,',
+        ),
+      )
+      expect(r.env).not.toContain('createStore()')
+      expect(r.env).toContain('hydrateStores()')
+      expect(r.chunks.component).toContain('const store = createStore()')
+      expect(eager(r)).toEqual([])
+    })
+
+    // R65's case: the augmentations move with `Page`, in their order; `log()`
+    // now runs before `eff1()`
+    it('moves a declaration and its augmentations past a call between them (b, R65)', async () => {
+      const r = await split(
+        route(
+          'function Page() { return Page.a + Page.b }\nPage.a = eff1()\nlog()\nPage.b = eff2()',
+          'component: Page,',
+        ),
+      )
+      expect(r.env).toContain('log()')
+      expect(r.env).not.toContain('eff1()')
+      expect(r.chunks.component).toContain('Page.a = eff1()\nPage.b = eff2()')
+    })
+
+    // a top-level await that moves no longer delays what follows it
+    it('moves an awaited declaration only the component reads into its chunk (c)', async () => {
+      const r = await split(
+        route(
+          'const data = await load()\nconst auth = getAuth()',
+          'loader: () => auth,\ncomponent: () => data,',
+        ),
+      )
+      expect(r.env).not.toContain('await load()')
+      expect(r.env).toContain('const auth = getAuth()')
+      expect(r.chunks.component).toContain('const data = await load()')
+    })
+
+    it('moves a value a split option value reads past a bare call after the route (d)', async () => {
+      const r = await split(
+        dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { setup, observer, track } from './lib'
+          const cfg = setup()
+          function Page() { return 'page' }
+          export const Route = createFileRoute('/')({
+            component: observer(Page, cfg),
+          })
+          track('ready')
+        `),
+      )
+      expect(r.env).not.toContain('setup()')
+      expect(r.env).toContain("track('ready')")
+      expect(r.chunks.component).toContain('const cfg = setup()')
+    })
+
+    it('moves a setup call only the component reads past a call that needs it (S-1)', async () => {
+      const r = await split(
+        route(
+          'const app = initializeApp({ name: "x" })\nconst auth = getAuth()',
+          'loader: () => auth,\ncomponent: () => app,',
+        ),
+      )
+      expect(r.env).not.toContain('initializeApp(')
+      expect(r.chunks.component).toContain('const app = initializeApp(')
+    })
+
+    it('moves a snapshot past a later value whose call advances what it read (S-2)', async () => {
+      const r = await split(
+        route(
+          'const before = takeSnapshot()\nconst state = advance()',
+          'loader: () => state,\ncomponent: () => before,',
+        ),
+      )
+      expect(r.env).not.toContain('takeSnapshot()')
+      expect(r.chunks.component).toContain('const before = takeSnapshot()')
+    })
+
+    it('moves two values two chunks read to their chunks, which load in either order (S-3)', async () => {
+      const r = await split(
+        route(
+          'const a = track(1)\nconst b = track(2)',
+          'component: () => a,\nerrorComponent: () => b,',
+        ),
+        { keys: ['component', 'errorComponent'] },
+      )
+      expect(r.env).not.toContain('track(')
+      expect(r.chunks.component).toContain('const a = track(1)')
+      expect(r.chunks.errorComponent).toContain('const b = track(2)')
+    })
+  })
+})
+
 describe('generated imports', () => {
   // A planner's runtime helper (Start's server-fn stubs `createClientRpc`,
   // `createSsrRpc`) is an import like one the source wrote: every output
