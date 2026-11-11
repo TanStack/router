@@ -130,23 +130,26 @@ ${component('B.X')}`)
   )
 })
 
-describe('member reads that stay effects', () => {
+// Rule L: a member read is a language operation, no effect, whatever the
+// object (a getter stays outside the model, as for reads, R97): these
+// moved with the chunk; they stayed effects, with a warning, before
+describe('member reads that are language operations (rule L)', () => {
   test(
-    "control: a const object's member may be a getter, so the enum stays and the build says so",
+    "a const object's member, a getter, loads with the chunk, unreported",
     async () => {
       const { app, warnings } = await buildRoute(
         `${head}const O = { get y() { return 'MARK_READ' } }
 export enum B { X = O.y as any }
 ${component('B.X')}`,
       )
-      expect(app.where('MARK_READ')).toBe('eager')
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(app.where('MARK_READ')).toBe('lazy')
+      expect(warnings).toEqual([])
     },
     timeout,
   )
 
   test(
-    'an imported enum is opaque to one module: its member read stays an effect',
+    "an imported enum's member read is no effect",
     async () => {
       const { warnings } = await buildRoute(
         `${head}import { A } from '../a'
@@ -154,13 +157,13 @@ export enum B { X = A.Y }
 ${component('B.X')}`,
         { 'a.ts': `export enum A { Y = 'MARK_A' }\n` },
       )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(warnings.some((text) => text.includes('side effects'))).toBe(false)
     },
     timeout,
   )
 
   test(
-    'a declared enum is whatever the global is: its member read stays an effect',
+    "a declared enum's member read is no effect",
     async () => {
       const { warnings } = await buildRoute(
         `${head};(globalThis as any).A = { Y: 'y' }
@@ -168,7 +171,7 @@ declare enum A { Y = 'y' }
 export enum B { X = A.Y as any }
 ${component('B.X')}`,
       )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
+      expect(warnings.some((text) => text.includes('side effects'))).toBe(false)
     },
     timeout,
   )
