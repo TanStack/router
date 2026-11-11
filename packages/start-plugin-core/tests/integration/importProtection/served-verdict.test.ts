@@ -159,7 +159,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   // F5-1: the exempt importer reached first serves the file real; the
   // checked pattern importer gets it too (R142), and no report says
   // "mocked" (or fails the build on an import that got the real module).
-  test.fails.each(['mock', 'error'] as const)(
+  test.each(['mock', 'error'] as const)(
     'an exempt plain import reached first and a checked pattern import: both get the real module, nothing reported (%s)',
     async (behavior) => {
       expect(
