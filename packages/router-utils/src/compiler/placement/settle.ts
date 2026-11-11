@@ -688,6 +688,12 @@ export function settleRoots(
       }
       if (readsKept(cl.id) !== undefined) {
         envRoots.add(cl.id)
+      } else if (!cl.effectful && graph.runsCode(cl.id)) {
+        // code that may run or throw never moves there either (`slotFor`
+        // judges an effect so; rule L decides no deletion, and a host may
+        // flag the module side-effect free whatever it holds)
+        envRoots.add(cl.id)
+        pinnedNeeded.set(cl.id, { reason: 'effects' })
       } else if (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2) {
         continue
       } else {

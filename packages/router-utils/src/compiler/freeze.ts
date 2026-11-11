@@ -149,13 +149,10 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     edges[id] = dedupeEdges(recipeEdges)
     // the flag is a property of the content: placement moves no cluster
     // with effects into an extracted export's module (the only opted-in
-    // outputs); a pure write of what the output exports is no effect. It
-    // lets a bundler drop the module: judged as deletion is (`runsCode`),
-    // so language operations that may throw (`new URL(text)`, rule L's
-    // only for timing) keep it
+    // outputs); a pure write of what the output exports is no effect
     sideEffects[id] =
       decl.sideEffectFree === true &&
-      ![...included].some((c) => placement.runsCode(c))
+      ![...included].some((c) => placement.clusters[c]!.effectful)
   }
 
   return {

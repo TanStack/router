@@ -130,8 +130,9 @@ export interface ClusterGraph {
    * with its units judged as deletion judges them (`Tier1.deletionEffects`:
    * every operation that may, rule L's language operations included).
    * `effectful` is placement's timing (rule L) and decides no deletion:
-   * unread code that may run stays (`settle.ts`, `homes.ts`), and an output
-   * holding it is not side-effect free (`freeze.ts`).
+   * unread code that may run stays (`settle.ts`, `homes.ts`), and none
+   * moves into an extracted export's module (`roots.ts` candidates,
+   * `settle.ts`), which a host may flag side-effect free whatever it holds.
    */
   runsCode: (c: ClusterId) => boolean
   /**

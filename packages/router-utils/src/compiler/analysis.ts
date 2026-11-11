@@ -270,9 +270,9 @@ export interface Tier1 {
   /**
    * Unit `u`'s effects as deletion judges them (`unitEffects` with the
    * planners' purity, `ModuleAnalysis.purity`: every operation that may run
-   * code or throw): what may be dropped as dead code, and whether an output
-   * is side-effect free. The unit's own fields are placement's timing (rule
-   * L). Asked of a few units; each once.
+   * code or throw): what may be dropped as dead code, and what may move
+   * into an extracted export's module. The unit's own fields are
+   * placement's timing (rule L). Asked of a few units; each once.
    */
   deletionEffects: (u: UnitId) => UnitEffects
   /**

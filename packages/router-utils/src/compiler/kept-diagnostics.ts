@@ -5,6 +5,7 @@
  * is (`PlanContext.describeModule`).
  */
 import { isPureExpression } from './purity'
+import type { PurityContext } from './purity'
 import { unwrapExpression } from './source'
 import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
@@ -51,9 +52,14 @@ export function keptDiagnostic(
     let fix: string
     switch (k.reason) {
       case 'effects':
-        if (unit?.effectful) {
+        // (judged as deletion is: what may run code never moves into an
+        // extracted export's module, rule L aside)
+        if (
+          declaring !== undefined &&
+          plan.t1.deletionEffects(declaring).effectful
+        ) {
           why = 'its initialiser has side effects'
-          fix = `Move it to its own module and import it from there${annotatable(plan, k.syms) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
+          fix = `Move it to its own module and import it from there${annotatable(plan, k.syms, true) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
         } else {
           why = 'a statement setting a property of it has side effects'
           fix =
@@ -203,14 +209,13 @@ function writtenWith(
 function annotationFrees(
   plan: Pick<AnalysisPlan, 'analysis'>,
   node: Node | null,
+  purity: PurityContext,
 ): boolean {
   const n = node === null ? null : unwrapExpression(node)
   return (
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
     n.arguments.every(
-      (a) =>
-        a.type !== 'SpreadElement' &&
-        isPureExpression(plan.analysis.effectPurity, a),
+      (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
     )
   )
 }
@@ -223,14 +228,17 @@ function annotationFrees(
 export function annotatable(
   plan: Pick<AnalysisPlan, 't1' | 'analysis'>,
   syms: ReadonlyArray<SymbolId>,
+  /** The report rests on deletion's judgement (an export kept for its effects), not placement's timing (rule L). */
+  deletion = false,
 ): boolean {
   const { t1, analysis } = plan
+  const purity = deletion ? analysis.purity : analysis.effectPurity
   let any = false
   for (const u of new Set(
     syms.flatMap((s) => t1.declaringUnits.get(s) ?? []),
   )) {
     const unit = t1.units[u]!
-    if (!unit.effectful) {
+    if (!(deletion ? t1.deletionEffects(u) : unit).effectful) {
       continue
     }
     const decl =
@@ -241,7 +249,7 @@ export function annotatable(
       unit.node.type !== 'VariableDeclarator' ||
       (decl?.type === 'VariableDeclaration' &&
         (decl.kind === 'using' || decl.kind === 'await using')) ||
-      !annotationFrees(plan, unit.node.init)
+      !annotationFrees(plan, unit.node.init, purity)
     ) {
       return false
     }

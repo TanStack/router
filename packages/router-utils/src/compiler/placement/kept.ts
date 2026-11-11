@@ -125,7 +125,8 @@ export function keptDeclarations(
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    const cause: Pin = cl.effectful
+    // (no candidate when it may run code, as deletion judges it: `roots.ts`)
+    const cause: Pin = graph.runsCode(c)
       ? { reason: 'effects' }
       : t1.mutation.isReassigned(sym, liveInEnv) ||
           graph.regionWrittenSyms.has(sym)
