@@ -6502,6 +6502,72 @@ describe('language operations are no effect (rule L)', () => {
     expect(r.chunks.component).toContain('const r6 = { ...b5.o }')
   })
 
+  // rule L decides when code runs, never whether it is deleted: what may run
+  // code or throw (`JSON.parse(text)`, `new URL(x)`, a getter) stays in
+  // every output when nothing reads it, with what it reads (Fable's review
+  // of order rule v2, finding 2: `src3/`)
+  describe('what may run code is never deleted', () => {
+    it.each([
+      ['client', 'const check = JSON.parse(cols.v)'],
+      ['client', 'const url = new URL(cols.v)'],
+      ['client', 'const got = cols.getter'],
+      ['server', 'const check = JSON.parse(cols.v)'],
+      ['server', 'const url = new URL(cols.v)'],
+      ['server', 'const got = cols.getter'],
+    ] as const)(
+      'keeps an unread declaration reading what a chunk needs (%s): `%s`',
+      async (env, decl) => {
+        const r = await split(
+          dedent(`
+            import { createFileRoute } from 'toy-router'
+            import { box } from './lib'
+            const cols = box(1)
+            ${decl}
+            export const Route = createFileRoute('/')({
+              component: () => cols.v,
+            })
+          `),
+          { env },
+        )
+        expect(r.env).toContain(decl)
+        expect(r.env).toContain('const cols = box(1)')
+        expect(r.chunks.component).not.toContain('box(1)')
+      },
+    )
+
+    // an extracted export moves (rule L: nothing is deleted), but its module
+    // is no module a bundler may skip while nothing imports what it exports
+    it('extracts an exported language operation into a module that is not side-effect free', async () => {
+      const host = new MemoryHost({
+        files: {
+          '/app/route.tsx': dedent(`
+            import { createFileRoute } from 'toy-router'
+            const text = '{'
+            export const url = new URL(text)
+            export const Route = createFileRoute('/')({
+              component: () => String(url),
+            })
+          `),
+        },
+      })
+      const planners = [
+        toySplitPlanner({ keys: ['component'], extractExports: true }),
+      ]
+      const env = { env: envInfo({ mode: 'build' }) }
+      const r = await host.compile('/app/route.tsx', planners, env)
+      expect(r?.code).toContain(
+        "export { url } from '/app/route.tsx?tsr-split=export---url'",
+      )
+      const e = await host.compile(
+        '/app/route.tsx?tsr-split=export---url',
+        planners,
+        env,
+      )
+      expect(e?.code).toContain('const url = new URL(text)')
+      expect(e?.sideEffectFree).toBe(false)
+    })
+  })
+
   // what is no language operation stays an effect: an exported declaration
   // a chunk needs is then kept for its effects, not extracted
   describe('what still is an effect', () => {
