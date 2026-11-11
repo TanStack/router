@@ -2072,32 +2072,6 @@ describe("the env module's pieces", () => {
   // one owner, the text holding its position (the innermost node strictly
   // holding it, else the unit holding the byte there), and renders and is
   // read with that text only.
-  it('renders an insert once where a unit is anchored inside a node that renders as its source', () => {
-    const code = `const a = 1\nfunction b() { return 2 }\nexport const c = a + b\n`
-    const e = engine(code)
-    e.ctx.region(
-      rangeOf(code, 'const a = 1\nfunction b() { return 2 }\n'),
-      'custom',
-    )
-    e.ctx.rewrites.edit({
-      range: rangeOf(code, '1'),
-      body: [text('3')],
-      by: 'toy',
-    })
-    e.ctx.rewrites.insert({
-      at: rangeOf(code, 'function b').start,
-      body: [text('/*i*/')],
-      by: 'toy',
-    })
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'before-unit', unit: 1 }),
-    })
-    expect(e.render().code).toBe(
-      `const a = 3\n;/*i*/const gen = 1\nfunction b() { return 2 }\nexport const c = a + b\n`,
-    )
-  })
-
   it.each([
     [
       'the start of a statement placement drops: it goes with it',

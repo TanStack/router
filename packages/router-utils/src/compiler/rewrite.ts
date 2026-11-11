@@ -299,6 +299,20 @@ export class RegionTable {
       return existing
     }
     const node = this.node(range, `a ${kind} region`)!
+    // a region nests in one unit (on exactly its range at most): one holding
+    // statements would own their references, which no unit would then read
+    const k = this.lastUnitStartingBy(range.end - 1)
+    const last = k < 0 ? null : this.unitRegions[k]!
+    if (
+      last !== null &&
+      last.range.start >= range.start &&
+      last.range.end <= range.end &&
+      (last.range.start !== range.start || last.range.end !== range.end)
+    ) {
+      throw new Error(
+        `conflict: a ${kind} region [${range.start}, ${range.end}) holds unit ${last.unit} [${last.range.start}, ${last.range.end}): a region stands inside one statement`,
+      )
+    }
     const id = this.regions.length
     this.regions.push({ id, range, kind, unit: null })
     this.subRegionByKey.set(key, id)

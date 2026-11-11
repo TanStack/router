@@ -6201,10 +6201,10 @@ describe('generated units for the env module readers', () => {
 /**
  * What the evaluation of some module-level bindings may read, by name: a
  * reference written apart from the compiler. The names their declarations
- * and the top-level statements assigning them evaluate (a function nested
+ * and the top-level statements writing them evaluate (a function nested
  * in them only when it is passed to a call or called in place) and, once
  * that text calls anything, every name in the module's declarations of
- * those names, transitively.
+ * those names and in the top-level statements writing them, transitively.
  */
 function evaluatedNames(
   code: string,
@@ -6215,6 +6215,7 @@ function evaluatedNames(
     return null
   }
   const declarations = new Map<string, Node>()
+  const writers = new Map<string, Array<Node>>()
   const evaluated: Array<Node> = []
   for (const statement of parsed.file.program.body) {
     const d =
@@ -6233,22 +6234,28 @@ function evaluatedNames(
         }
       }
     } else {
-      // a statement assigning a subject evaluates with it
-      let assigns = false as boolean
+      // a statement writing a binding (`x = …`, `x.p = …`) is part of its
+      // value: it evaluates with a subject, and with a name a call reaches
       walk(d, {
         enter: (n) => {
-          const target =
+          let target =
             n.type === 'AssignmentExpression'
               ? n.left
               : n.type === 'UpdateExpression'
                 ? n.argument
                 : null
-          assigns ||= target?.type === 'Identifier' && subjects.has(target.name)
+          while (target?.type === 'MemberExpression') {
+            target = target.object
+          }
+          if (target?.type === 'Identifier') {
+            const list = writers.get(target.name) ?? []
+            if (!list.includes(d)) {
+              list.push(d)
+            }
+            writers.set(target.name, list)
+          }
         },
       })
-      if (assigns) {
-        evaluated.push(d)
-      }
     }
   }
   for (const name of subjects) {
@@ -6256,7 +6263,7 @@ function evaluatedNames(
     if (d === undefined) {
       return null
     }
-    evaluated.push(d)
+    evaluated.push(d, ...(writers.get(name) ?? []))
   }
   const names = new Set<string>()
   let calls = false as boolean
@@ -6301,11 +6308,15 @@ function evaluatedNames(
     for (let grew = true; grew; ) {
       grew = false
       for (const name of [...names]) {
-        const d = declarations.get(name)
-        if (d !== undefined && !seen.has(d)) {
-          seen.add(d)
-          collect(d, true)
-          grew = true
+        for (const d of [
+          declarations.get(name),
+          ...(writers.get(name) ?? []),
+        ]) {
+          if (d !== undefined && !seen.has(d)) {
+            seen.add(d)
+            collect(d, true)
+            grew = true
+          }
         }
       }
     }

@@ -376,8 +376,8 @@ describe('random rewrite trees', () => {
 // Seeded random modules for the env module's pieces (final review of
 // design 1, finding 4): declarations (one or two declarators), functions
 // and effect statements reading each other, edits that orphan some of them
-// (placement drops their statements), `custom` regions over statement
-// edges (rendered as their source), generated units anchored before and
+// (placement drops their statements), `custom` regions on a statement
+// (rendered as their source), generated units anchored before and
 // after units (some rooted in the env module), and inserts naming a
 // binding at unit starts and call edges. I5: an insert renders at most
 // once; I2: every binding name the env module renders is declared there
@@ -421,11 +421,7 @@ function randomStatements(rand: () => number): {
   }
 }
 
-function piecesPlanner(
-  seed: number,
-  names: ReadonlyArray<string>,
-  made: { span: boolean },
-): Planner {
+function piecesPlanner(seed: number, names: ReadonlyArray<string>): Planner {
   return {
     name: 'toy-pieces',
     tier: 1,
@@ -459,23 +455,10 @@ function piecesPlanner(
           })
         }
       }
-      // a region over two neighbouring statements (renders as its source)
-      if (units.length > 1 && rand() < 0.5) {
-        const i = Math.floor(rand() * (units.length - 1))
-        const a = t1.items[units[i]!.item]!
-        const b = t1.items[units[i + 1]!.item]!
-        if (a !== b) {
-          made.span = true
-          const ofItem = (x: typeof a) =>
-            t1.units.filter((u) => u.item === x.index).map((u) => u.range)
-          ctx.region(
-            {
-              start: Math.min(a.range.start, ...ofItem(a).map((r) => r.start)),
-              end: Math.max(b.range.end, ...ofItem(b).map((r) => r.end)),
-            },
-            'custom',
-          )
-        }
+      // a region on exactly a statement's range (renders as its source;
+      // a region holding statements is refused: it nests in one unit)
+      if (units.length > 0 && rand() < 0.5) {
+        ctx.region(units[Math.floor(rand() * units.length)]!.range, 'custom')
       }
       // generated units at statements, naming a binding
       let gens = 0
@@ -554,12 +537,10 @@ describe('random env pieces', () => {
     for (let seed = 1; seed <= seeds; seed++) {
       const { code, names } = randomStatements(random(seed))
       const host = new MemoryHost({ files: { '/app/mod.ts': code } })
-      const made = { span: false }
       let out: string
       try {
-        out = (await host.compile('/app/mod.ts', [
-          piecesPlanner(seed, names, made),
-        ]))!.code
+        out = (await host.compile('/app/mod.ts', [piecesPlanner(seed, names)]))!
+          .code
       } catch (e) {
         bad.push(`seed ${seed}: throws ${String(e).split('\n')[0]}\n${code}`)
         continue
@@ -569,11 +550,7 @@ describe('random env pieces', () => {
           bad.push(`seed ${seed}: ${m} renders twice\n${code}---\n${out}`)
         }
       }
-      // (a region over whole statements owns their references: placement
-      // reads them for no unit, outside its model; only I5 is checked then)
-      for (const name of made.span
-        ? []
-        : [...names, ...(out.match(/\bg\d+\b/g) ?? [])]) {
+      for (const name of [...names, ...(out.match(/\bg\d+\b/g) ?? [])]) {
         const used = new RegExp(`\\b${name}\\b`).test(out)
         // (nothing is assigned: `<name> =` is its declarator)
         const declared = new RegExp(

@@ -1643,7 +1643,10 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * declaration a running reference names (`bodyOf`): the callee can be an
  * alias, a method of an object it reads (`o.m()`, `read.call()`), a
  * function it returns, or take the function as an argument
- * (`apply(read)`); what such a body names may run too, transitively.
+ * (`apply(read)`); what such a body names may run too, transitively. A
+ * name's value is its declaration and the statements writing it when the
+ * module loads (`handlers.count = () => n`, `g = () => n`): a call
+ * reaching the name may run what they attach, so their text runs too.
  * Holding a function runs nothing (`const config = { read }`), nor does
  * writing one of its properties (`Page.displayName = …`, the root of a
  * member write), nor a method nested in an object argument
@@ -1656,7 +1659,10 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * from `visit` ends the walk; the result says whether it did.
  */
 export function visitRuns(
-  t1: Pick<Tier1, 'units' | 'declaringUnits'>,
+  t1: Pick<
+    Tier1,
+    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
+  >,
   text: ReadonlyArray<ClassifiedRef>,
   calls: EvaluatedCalls | null,
   bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
@@ -1686,23 +1692,39 @@ export function visitRuns(
   roots.sort((a, b) => a.range.start - b.range.start)
   const seen = new Set<UnitId>()
   const work: Array<ClassifiedRef> = []
+  /** Runs the text of unit `u` at `at` (once per evaluation); true ends the walk. */
+  const enter = (u: UnitId, at: number): boolean => {
+    if (seen.has(u)) {
+      return false
+    }
+    seen.add(u)
+    for (const inner of bodyOf(u)) {
+      if (visit(inner, at)) {
+        return true
+      }
+      if (!inner.memberWrite) {
+        work.push(inner)
+      }
+    }
+    return false
+  }
   for (const root of roots) {
     const at = root.range.start
     work.push(root)
     while (work.length > 0) {
       const r = work.pop()!
       for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
-        if (t1.units[u]!.kind !== 'declaration' || seen.has(u)) {
+        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
+          return true
+        }
+      }
+      for (const site of t1.mutation.sitesOf(r.sym)) {
+        if (!site.eager || t1.runsLaterAt(site.range.start)) {
           continue
         }
-        seen.add(u)
-        for (const inner of bodyOf(u)) {
-          if (visit(inner, at)) {
-            return true
-          }
-          if (!inner.memberWrite) {
-            work.push(inner)
-          }
+        const u = t1.unitAt(site.range)
+        if (u !== null && enter(u, at)) {
+          return true
         }
       }
     }

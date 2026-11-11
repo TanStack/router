@@ -30,7 +30,8 @@ emits its own output. Nothing depends on transform order.
 - **Units** (`units.ts`): the top level split into the smallest things placement reasons about: one import specifier,
   one declarator, one function/class/enum/namespace (merged declarations together), one export specifier, every other
   statement. **Regions** are ranges planned as one thing; every unit is one, and planners register sub-regions
-  (route option values, Hydrate children, nested server-fn chains).
+  (route option values, Hydrate children, nested server-fn chains). A sub-region nests in one unit (on exactly its
+  range at most): one holding statements is a conflict as it is registered.
 - **Rewrite tree** (`rewrite.ts`): every range a planner addresses has two answers per output: its **text** (what it
   reads as wherever it renders) and its **place** (what stands where it is written). `edit` sets the text, in every
   output: an edit's body names source text only as slices of the range it rewrites (rendered with what the output
@@ -169,7 +170,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
   module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
   owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
-  and the text of the module's declarations its running references name, transitively (`n++`, `n += 1` and
+  and the text of the module's declarations its running references name and of the statements writing those names
+  when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
   reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
   holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
