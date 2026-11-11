@@ -237,8 +237,8 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
   observe mutable state. Each round that goes on demotes a cluster, so the rounds end within the cluster count;
   past it the compile fails naming the file. Nothing is rooted after homes are assigned. The time model is checked
-  by running modules: the executing placement property (`tests/placement-exec`, router-plugin's with the router
-  planner) runs random modules and their outputs as ES modules and compares what they do. When a split would break single-writer or evaluation-order
+  by running modules: the cases the executing placement property (a development tool kept outside the repository)
+  found, running random modules and their outputs as ES modules, are static tests (`tests/placement.test.ts`). When a split would break single-writer or evaluation-order
   rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
   planners with that region kept in place, until no new region is reported (a kept region can free the next one;
   every round keeps one more, so the rounds end within the module's region count). Past that bound every
