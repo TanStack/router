@@ -234,9 +234,10 @@ describe('module-size scaling', () => {
   }, 60_000)
 
   // At 64 times the size (25,600 against 400), linear time reads about 50 to
-  // 70 and a guard scanning the statement's children per child (quadratic in
-  // them) about 800, so the bound of 160 tells them apart with room for load.
-  it('compiles a statement of 25,600 replaced JSX children in less than 160 times one of 400', async () => {
+  // 70 here (176 once on CI's macOS runners) and a guard scanning the
+  // statement's children per child (quadratic in them) about 800, so the bound
+  // of 400 tells them apart with room for load.
+  it('compiles a statement of 25,600 replaced JSX children in less than 400 times one of 400', async () => {
     const r = await ratio(
       boundaries,
       (code, n) => {
@@ -250,7 +251,7 @@ describe('module-size scaling', () => {
         samples: 5,
       },
     )
-    expect(r).toBeLessThan(160)
+    expect(r).toBeLessThan(400)
   }, 120_000)
 
   // At 4 times the size (1,600 against 400), quadratic time reads about 10 to
