@@ -192,6 +192,7 @@ export function formatUncheckedImporters(
   ctx: ReportContext,
 ): string {
   const root = ctx.config.root
+  const denied = identify(info.resolved ?? info.importer).path
   return [
     ``,
     `[import-protection] Denied file mocked in ${info.envType} environment, for importers that are not checked`,
@@ -199,7 +200,11 @@ export function formatUncheckedImporters(
     deniedBy(info, ctx),
     `  Denied file: ${relativizePath(info.importer, root)}`,
     `  Importers (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
-    ...importers.map((file) => `    - ${relativizePath(file, root)}`),
+    ...importers.map((file) => {
+      const site = reachOf(ctx, file, denied)
+      // (an exempt importer's plain import gets the real module: say why this one does not)
+      return `    - ${site.found ? reachLine(site, ctx) : relativizePath(file, root)}`
+    }),
     ``,
     `  Not a violation: these importers get the mock, so nothing of the file ships to the ${info.envType}.`,
     `    - If they should be checked, move them inside srcDirectory/include (or out of exclude/ignoreImporters)`,
@@ -228,6 +233,9 @@ export function formatServedMismatch(
   const rel = (p: string) => relativizePath(p, root)
   const denied = identify(info.resolved ?? info.importer).path
   const list = (files: Array<string>) => files.map((f) => `    - ${rel(f)}`)
+  // how each importer that is not a needer reaches the file
+  const sites =
+    served === 'mock' ? others.map((o) => reachOf(ctx, o, denied)) : []
   const lines = [``]
   if (served === 'mock') {
     lines.push(
@@ -241,9 +249,14 @@ export function formatServedMismatch(
             ...list(needers),
           ]
         : [`  Needed as it is by: an import that allowImport allowed`]),
-      ...(others.length > 0 ? [`  Also reached by:`, ...list(others)] : []),
+      ...(sites.length > 0
+        ? [
+            `  Also reached by:`,
+            ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
+          ]
+        : []),
       ``,
-      `  The build compiles each module once. It compiled this file for an import it does not read (a pattern import) before it read the import that needs the file as it is, so every importer got the mock.`,
+      `  The build compiles each module once. It compiled this file for an import it does not read (${sites[0]?.cause === 'added' ? 'one another plugin added' : 'a pattern import'}) before it read the import that needs the file as it is, so every importer got the mock.`,
     )
   } else {
     lines.push(
@@ -262,24 +275,8 @@ export function formatServedMismatch(
       `    - Save any file this build bundles: the next rebuild compiles the file again, as its mock`,
     )
   } else {
-    // the fix of the first importer whose pattern import matches the file
-    let site: PatternSite | null = null
-    for (const importer of others) {
-      const hit = locateIn(ctx.readSource, importer, (text) => {
-        const found = findPatternImport(text, importer, denied, root)
-        return found && { offset: found.offset, value: found }
-      })
-      if (hit) {
-        site = {
-          importer,
-          found: hit.value,
-          cause: 'pattern',
-          loc: hit.loc,
-          frame: hit.frame,
-        }
-        break
-      }
-    }
+    // the fix of the first importer that brought it
+    const site = sites.find((x) => x.found) ?? sites[0] ?? null
     for (const s of patternSuggestions(
       denied,
       site,
@@ -292,6 +289,131 @@ export function formatServedMismatch(
   }
   lines.push(``)
   return lines.join('\n')
+}
+
+/**
+ * R147: a denied file one importer needs as it is (`needers`: exempt or
+ * outside the scope; `allowed`: an import `allowImport` allowed, or
+ * `elsewhere`, one of another environment of this type) and checked
+ * importers reach itself (`checked`: a pattern import, an import another
+ * plugin added). One of the imports is a mistake: a build fails whichever
+ * was served; a dev server says so and serves it as the ledger says
+ * (`served`).
+ */
+export function formatServedConflict(
+  info: ViolationInfo,
+  demand: {
+    needers: Array<string>
+    allowed: Array<string>
+    elsewhere: boolean
+  },
+  checked: Array<string>,
+  served: 'mock' | 'real',
+  ctx: ReportContext,
+): string {
+  const root = ctx.config.root
+  const rel = (p: string) => relativizePath(p, root)
+  const denied = identify(info.resolved ?? info.importer).path
+  const sites = checked.map((importer) => reachOf(ctx, importer, denied))
+  const exempt = demand.needers.filter((f) => !demand.allowed.includes(f))
+  const lines = [
+    ``,
+    `[import-protection] Denied file needed as it is by one importer and reached by a checked importer in ${info.envType} environment`,
+    ``,
+    deniedBy(info, ctx),
+    `  Denied file: ${rel(denied)}`,
+    `  Needed as it is by:`,
+    ...exempt.map(
+      (f) =>
+        `    - ${rel(f)} (exempt by exclude/ignoreImporters, or outside include/srcDirectory)`,
+    ),
+    ...demand.allowed.map(
+      (f) => `    - ${rel(f)} (an import allowImport allowed)`,
+    ),
+    ...(demand.elsewhere
+      ? [
+          `    - an import allowImport allowed in another ${info.envType} environment`,
+        ]
+      : []),
+    `  Reached by checked importers, which would get it as it is:`,
+    ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
+    ``,
+    `  A file is served once, as its mock or as it is, to every importer that reaches it: one of these imports is a mistake. ${
+      ctx.config.mode === 'build'
+        ? 'The build fails whichever was served.'
+        : `The dev server serves it ${served === 'real' ? 'as it is' : 'as its mock'} meanwhile; a build fails.`
+    }`,
+    ``,
+    `  Suggestions:`,
+  ]
+  const first = sites.find((x) => x.found) ?? sites[0]
+  if (first) {
+    for (const s of patternSuggestions(
+      denied,
+      first,
+      'build',
+      info.envType,
+      root,
+    )) {
+      lines.push(`    - If ${rel(first.importer)} should not load it: ${s}`)
+    }
+  }
+  const needing = [...exempt, ...demand.allowed].map(rel)
+  lines.push(
+    `    - If it should not ship to the ${info.envType}: narrow ${exempt.length > 0 ? 'the exemption (exclude/ignoreImporters)' : ''}${exempt.length > 0 && demand.allowed.length > 0 ? ' and ' : ''}${demand.allowed.length > 0 || demand.elsewhere ? 'allowImport' : ''} so that it no longer covers ${needing.length > 0 ? needing.join(', ') : 'that import'}: the checked importers then get the mock, reported`,
+    ``,
+  )
+  return lines.join('\n')
+}
+
+/**
+ * How an importer that does not import a denied file plainly reaches it:
+ * its pattern import, located; else an import another plugin's transform
+ * added (its source has no pattern import) or a pattern import it could
+ * not locate.
+ */
+function reachOf(
+  ctx: ReportContext,
+  importer: string,
+  denied: string,
+): PatternSite {
+  const hit = locateIn(ctx.readSource, importer, (text) => {
+    const found = findPatternImport(text, importer, denied, ctx.config.root)
+    return found && { offset: found.offset, value: found }
+  })
+  if (hit) {
+    return {
+      importer,
+      found: hit.value,
+      cause: 'pattern',
+      loc: hit.loc,
+      frame: hit.frame,
+    }
+  }
+  const text = ctx.readSource(importer)
+  return {
+    importer,
+    found: null,
+    cause: text !== null && !mayHavePatternImport(text) ? 'added' : 'pattern',
+    loc: null,
+    frame: null,
+  }
+}
+
+/** An importer's line in a report: where and how it reaches the file (`reachOf`). */
+function reachLine(site: PatternSite, ctx: ReportContext): string {
+  const rel = relativizePath(site.importer, ctx.config.root)
+  if (site.found) {
+    const at = site.loc ? `${rel}:${site.loc.line}:${site.loc.column}` : rel
+    const kind =
+      site.found.kind === 'import()'
+        ? 'an import() with a variable path'
+        : site.found.kind
+    return `${at}, through ${kind}: a pattern import, which import protection does not read`
+  }
+  return site.cause === 'added'
+    ? `${rel}, through an import its source does not have (another plugin's transform added it)`
+    : `${rel}, through a pattern import, which import protection does not read`
 }
 
 /** Where a pattern import matched the denied file (`formatViolation`). */

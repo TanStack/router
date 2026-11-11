@@ -178,7 +178,7 @@ test(
       transform(code, id) {
         if (id.endsWith('/src/glob.ts')) {
           return {
-            code: `import { secret } from './lib/db.server'\n;(globalThis as any).added = secret\n${code}`,
+            code: `import { secret } from './lib/db.server'\nglobalThis.added = secret\n${code}`,
             map: null,
           }
         }

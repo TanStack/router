@@ -140,7 +140,8 @@ export async function invalidateRegistry(
  * than their importers now ask for (import protection's ledger: an exempt
  * import the compile added or removed, an import `allowImport` allowed),
  * built again through the environment's stale set: invalidated, and their
- * updates sent, before the compiled module is served (design 4).
+ * updates sent, before the compiled module is served (design 4); and the
+ * files whose importers disagree (R147) reported as errors, once.
  */
 export async function reloadMismatched(
   s: Session,
@@ -152,13 +153,16 @@ export async function reloadMismatched(
     return
   }
   const ids = await ipEnv.mismatches()
-  if (ids.length === 0) {
-    return
+  if (ids.length > 0) {
+    for (const id of ids) {
+      s.start.caches.stale.add(env.name, identify(id).path)
+    }
+    reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
   }
-  for (const id of ids) {
-    s.start.caches.stale.add(env.name, identify(id).path)
+  // importers that disagree (R147): said once, served as the ledger says
+  for (const message of ipEnv.conflictReports(false)) {
+    environment.logger.error(message)
   }
-  reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
 }
 
 /** The compiler's change kind of a Vite file event. */

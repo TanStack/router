@@ -63,15 +63,21 @@ export class IdsByFile {
     set.add(id)
   }
 
+  /** Forgets one id. */
+  delete(id: string): void {
+    const file = traceFile(id)
+    const set = this.ids.get(file)
+    set?.delete(id)
+    if (set?.size === 0) {
+      this.ids.delete(file)
+    }
+  }
+
   /** The ids of `file`, forgotten here. */
   take(file: string): Iterable<string> {
     const set = this.ids.get(file)
     this.ids.delete(file)
     return set ?? []
-  }
-
-  files(): Iterable<string> {
-    return this.ids.keys()
   }
 }
 
@@ -96,11 +102,8 @@ export class EdgeIndex {
     edges: ReadonlyArray<IndexedEdge>,
     revision: string | null = null,
   ): void {
-    if (this.forward.has(importerId)) {
-      this.delete(importerId)
-    } else {
-      this.idsByFile.add(importerId)
-    }
+    this.delete(importerId)
+    this.idsByFile.add(importerId)
     const byTarget = new Map<string, IndexedEdge>()
     for (const e of edges) {
       if (!byTarget.has(e.resolved)) {
@@ -151,6 +154,12 @@ export class EdgeIndex {
       }
     }
     this.forward.delete(importerId)
+    this.idsByFile.delete(importerId)
+  }
+
+  /** The importer ids. */
+  ids(): Iterable<string> {
+    return this.forward.keys()
   }
 
   has(importerId: string): boolean {
@@ -160,11 +169,6 @@ export class EdgeIndex {
   /** The edges of an importer (Rspack: recorded in its `buildInfo` for a restored module's traces). */
   edgesOf(importerId: string): Array<IndexedEdge> {
     return [...(this.forward.get(importerId)?.byTarget.values() ?? [])]
-  }
-
-  /** The files of the importers (a file whose importer was deleted may stay listed; forgetting it is a no-op). */
-  files(): Iterable<string> {
-    return this.idsByFile.files()
   }
 
   /** Forgets the edges of every importer id of a deleted file. */

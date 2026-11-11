@@ -102,7 +102,8 @@ async function watched(
   })
   return {
     uses: await uses(build),
-    problems: problems(build.diagnostics).map(named),
+    // (Rsbuild's rebuild may be more than one compilation, each printing it)
+    problems: [...new Set(problems(build.diagnostics).map(named))],
     where: build.client.where('MARK_SECRET'),
   }
 }
@@ -209,7 +210,7 @@ export const Route = createFileRoute('/')({
     'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-    'src/entry.ts': `export { getRouter } from './router'
+    'src/entry.ts': `export { routeTree } from './routeTree.gen'
 export { viaGlob } from './generated/glob'
 `,
   }
@@ -253,7 +254,8 @@ describe.each(['vite', 'rsbuild'] as const)(
         )
         expect({
           glob: result,
-          problems: problems(build.diagnostics).map(named),
+          // (Rsbuild's rebuild may be more than one compilation, each printing it)
+          problems: [...new Set(problems(build.diagnostics).map(named))],
           where: build.client.where('MARK_SECRET'),
         }).toEqual({
           glob: ['mock'],
