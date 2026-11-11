@@ -196,9 +196,12 @@ extends Z`, directly or through what they carry) share the module of the first i
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
   one is kept in place (`ordered-effect`). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
-  preserved) when nothing outside it writes it eagerly, it observes no mutable state, its reads at load are
-  imports (read lazily: the chunk loads after the route module),
-  pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind. It
+  preserved) when nothing outside it writes it eagerly, it observes no mutable state, what it reads at load of
+  another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
+createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
+  R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
+  (the chunk loads after the route module), and no surviving effect after its first one stays behind. Both sides
+  are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
   module, which the extracted module imports it from. An exported binding whose writes at load are pure

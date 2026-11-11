@@ -3359,26 +3359,6 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain("const page = make('page')")
   })
 
-  it('keeps an initialiser reading an effectful binding eager, with that binding', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { make } from './make'
-      const store = make('store')
-      const view = store.read()
-      export const Route = createFileRoute('/')({
-        component: () => view,
-      })
-    `)
-    const r = await split(code)
-    expect(r.env).toContain(
-      "const store = make('store')\nconst view = store.read()",
-    )
-    expect(r.chunks.component).toContain(
-      "import { view } from '/app/route.tsx'",
-    )
-    expect(r.chunks.component).not.toContain('make(')
-  })
-
   it('moves an initialiser reading a const the route module keeps', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -5588,9 +5568,12 @@ describe('effectful declarations reading each other (R138)', () => {
       'a literal reading a helper result',
       'const defaults = make()\nconst fields = [defaults.name, defaults.email]',
     ],
+    ['a member read of the helper result', 'const a = make()\nconst x = [a.v]'],
     [
-      'a member read after a write of the helper result',
-      'const a = make()\na.v = 1\nconst x = [a.v]',
+      // (step 4: the pure writer is no effect, so this moved there; kept
+      // as a guard, REVIEW-design2-step4 step 5 item 6)
+      'a member read after a pure write',
+      'const a = {}\na.v = 1\nconst x = [a.v]',
     ],
     [
       'three in a chain',
@@ -5622,7 +5605,7 @@ describe('effectful declarations reading each other (R138)', () => {
     )
     // (one report, at the cause: `columnHelper` is what `columns` reads)
     expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
-      ['eager-split:order', '[toy-split] `columns`'],
+      ['eager-split:order', '[tanstack-router] `columns`'],
     ])
     expect(eager(r)[0]!.message).toContain('`z.object(…)`')
   })
@@ -5642,7 +5625,7 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(r.chunks.component).toContain('const b = wrap(a)')
     expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
     expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
-      ['eager-split:order', '[toy-split] `a`'],
+      ['eager-split:order', '[tanstack-router] `a`'],
     ])
   })
 
@@ -5872,13 +5855,15 @@ describe('declarations only split code needs that stay in the route module', () 
       Object.fromEntries(
         r.diagnostics.map((d) => [/`(\w+)` in \//.exec(d.message)![1]!, d]),
       )
+    // (R138: `client` and `api`, which reads it, move to the component's
+    // chunk together; `api` was kept, reported `eager-split:reads`)
     expect(Object.keys(byName).sort()).toEqual([
-      'api',
       'first',
       'registry',
       'shared',
       'snapshot',
     ])
+    expect(r.env).not.toContain('const api')
     expect(byName.first).toMatchObject({ code: 'eager-split:order' })
     expect(byName.first!.message).toContain(
       `the call \`log(…)\` (line ${lineOf(code, "log('ready')")}) runs after it and stays`,
@@ -5892,12 +5877,6 @@ describe('declarations only split code needs that stay in the route module', () 
     expect(byName.snapshot).toMatchObject({ code: 'eager-split:state' })
     // ("uses": the pin also covers a load that assigns the binding, R3-G1-2)
     expect(byName.snapshot!.message).toContain('uses `n`')
-    // `client` stays only because `api`, which stays, reads it: one
-    // warning, at the cause
-    expect(byName.api).toMatchObject({ code: 'eager-split:reads' })
-    expect(byName.api!.message).toContain(
-      'reads `client` when the module loads, and `client` has side effects',
-    )
     for (const [name, d] of Object.entries(byName)) {
       expect(d.range, name).toMatchObject({
         start: code.indexOf(`${name} = `),
