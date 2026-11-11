@@ -1252,7 +1252,9 @@ function Page() {
     })
   })
 
-  it('keeps one another one reads, and that one, in the route module', async () => {
+  // (R138, design 2 step 5: both evaluate in the component's chunk, in
+  // source order; the row asserted that both stayed in the route module)
+  it('moves one another one reads with it, in source order', async () => {
     expect(
       await observe(
         `export const Route = createFileRoute('/')({ component: Page })
@@ -1263,10 +1265,10 @@ function Page() {
 }
 `,
         ['component'],
-        [],
+        ['first', 'second'],
       ),
     ).toEqual({
-      loaded: ['MARK_first', 'MARK_second'],
+      loaded: [],
       rendered: ['MARK_first', 'MARK_second'],
       html: ['<p>MARK_first MARK_second</p>'],
       eagerHolds: [],
