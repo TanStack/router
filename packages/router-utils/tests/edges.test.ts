@@ -717,41 +717,37 @@ describe('unresolved resolutions (J6.13)', () => {
   })
 
   // `imports` and `exports` decide what a specifier resolves to, as a
-  // tsconfig's `paths` do: the answers of the memo and the plans'
-  // resolutions don't outlive an edit of either. Each file's creation was
-  // seen first (a change of a path nothing knows is a creation).
+  // tsconfig's `paths` do, and any file event may hide a creation: the
+  // answers of the memo and the plans' resolutions don't outlive a file
+  // event. Each file's creation was seen first (a change of a path nothing
+  // knows is a creation).
   it.each([
-    ['change', '/app/package.json', true],
-    ['add', '/app/package.json', true],
-    ['change', '/app/tsconfig.json', true],
-    ['change', '/app/tsconfig.app.json', true],
-    ['change', '/app/jsconfig.json', true],
-    ['change', '/app/other.ts', false],
-    ['change', '/app/my-package.json', false],
-    ['change', '/app/my-tsconfig.json', false],
-  ] as const)(
-    'a %s of %s re-asks the resolver: %s',
-    async (kind, path, again) => {
-      let target = '/app/one.server.ts'
-      const host = new MemoryHost({
-        files: {
-          '/app/a.ts': `import { s } from '#lib'\nexport const x = s\n`,
-          '/app/one.server.ts': `export const s = 1\n`,
-          '/app/two.ts': `export const s = 2\n`,
-          '/app/other.ts': `export {}\n`,
-        },
-        resolve: () => target,
-      })
-      const planners = [denyServer([])]
-      await invalidate(host.caches, { path, kind: 'add' }, host)
-      const before = await host.compile('/app/a.ts', planners)
-      expect(before!.code).toContain(`mock:#lib`)
-      target = '/app/two.ts'
-      await invalidate(host.caches, { path, kind }, host)
-      const after = await host.compile('/app/a.ts', planners)
-      expect(after!.code.includes('mock:#lib')).toBe(!again)
-    },
-  )
+    ['change', '/app/package.json'],
+    ['add', '/app/package.json'],
+    ['change', '/app/tsconfig.json'],
+    ['change', '/app/tsconfig.app.json'],
+    ['change', '/app/jsconfig.json'],
+    ['change', '/app/other.ts'],
+  ] as const)('a %s of %s re-asks the resolver', async (kind, path) => {
+    let target = '/app/one.server.ts'
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { s } from '#lib'\nexport const x = s\n`,
+        '/app/one.server.ts': `export const s = 1\n`,
+        '/app/two.ts': `export const s = 2\n`,
+        '/app/other.ts': `export {}\n`,
+      },
+      resolve: () => target,
+    })
+    const planners = [denyServer([])]
+    await invalidate(host.caches, { path, kind: 'add' }, host)
+    const before = await host.compile('/app/a.ts', planners)
+    expect(before!.code).toContain(`mock:#lib`)
+    target = '/app/two.ts'
+    await invalidate(host.caches, { path, kind }, host)
+    const after = await host.compile('/app/a.ts', planners)
+    expect(after!.code).not.toContain('mock:#lib')
+  })
 
   it('re-plans an importer when its denied target is deleted and recreated', async () => {
     const host = new MemoryHost({

@@ -74,7 +74,6 @@ export function createCompilerCaches(
     plans: new Map(),
     rawFacts,
     fileSetVersion: 0,
-    events: 0,
     stale: new StaleSets(),
     invalidations,
     removed: opts.removed,
@@ -154,10 +153,8 @@ export async function compileModule(
       // what was validated at the current versions stands (not asked again)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
-      // (every file event asks a published plan's failed resolutions)
       const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
         resolutions: hit.resolvedAt === fileSetVersion,
-        failed: true,
         facts: hit.factsAt === factsVersion,
       })
       if (cache.lookup(key, rev) === hit) {
@@ -174,13 +171,13 @@ export async function compileModule(
         caches.stale.add(env.name, identity.path)
         if (caches.invalidations.size === 0) {
           // `invalidate()` checks every fact again, and leaves resolutions
-          // (but failed ones) and route-registry digests to the next request
+          // and route-registry digests to the next request
           const factsHeld = await fingerprintsCurrent(
             hit.plan.dependencies.filter(
               (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
             ),
             src,
-            { resolutions: true, failed: true, facts: false },
+            { resolutions: true, facts: false },
           )
           cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
         }
@@ -297,7 +294,6 @@ async function settle(
       const generation = cache.generation(key)
       const fileSetVersion = caches.fileSetVersion
       const factsVersion = caches.rawFacts.version
-      let events = caches.events
       const ledger = new DependencyLedger(key, cache.dependents)
       const result = await runAttempt(
         input,
@@ -332,22 +328,21 @@ async function settle(
       entry.plan.dependencies = ledger.published()
       const src = fingerprintSourceFor(caches, host, key.env)
       // the snapshot: whether every fact the attempt recorded is still
-      // current. Standing answers (no file appeared or disappeared, no raw
-      // fact went stale since the attempt started) are not asked again; a
-      // failed resolution is asked again once a file event ran since (no
-      // event restarts the attempt for it), until a check overlaps none
+      // current. Standing answers (no file event applied, no raw fact went
+      // stale since the attempt started) are not asked again; once a file
+      // event ran since, the resolutions are asked again (no event restarts
+      // the attempt for a failed one), until a check overlaps no event
       let snapshotOk: boolean
-      for (;;) {
-        const checkedAt = caches.events
+      for (let standingAt = fileSetVersion; ; ) {
+        const checkedAt = caches.fileSetVersion
         snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
-          resolutions: caches.fileSetVersion === fileSetVersion,
-          failed: checkedAt === events,
+          resolutions: checkedAt === standingAt,
           facts: caches.rawFacts.version === factsVersion,
         })
-        if (!snapshotOk || caches.events === checkedAt) {
+        if (!snapshotOk || caches.fileSetVersion === checkedAt) {
           break
         }
-        events = checkedAt
+        standingAt = checkedAt
       }
       if (snapshotOk && cache.generation(key) === generation) {
         if (cache.set(entry)) {

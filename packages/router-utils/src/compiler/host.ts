@@ -331,23 +331,18 @@ export interface CompilerCaches {
   plans: Map<string, PlanCache>
   rawFacts: RawFactsCache
   /**
-   * Bumped when a file appeared or disappeared (`invalidate` add/unlink).
-   * A plan's recorded resolutions and an environment's
+   * Bumped at every file event `invalidate` applies, a repeat included: any
+   * may hide a creation (a removal and re-creation reported as one change),
+   * and a resolver's answer from before it may name another file of the
+   * name, or none. A plan's recorded resolutions and an environment's
    * resolution memo are current while the version they were validated or
-   * filled at is the current one. It moves when a file appears or disappears
-   * and when a `package.json` (`imports`, `exports`) or a `tsconfig` /
-   * `jsconfig` (`paths`, `baseUrl`, which vite-tsconfig-paths reloads) changes:
-   * what a resolver's answers depend on for the life of a server. The
-   * bundler's own aliases need a restart of its resolver.
+   * filled at is the current one. (So are a `package.json`'s `imports`,
+   * `exports` and a `tsconfig` / `jsconfig`'s `paths`, `baseUrl`, which
+   * vite-tsconfig-paths reloads: what a resolver's answers depend on for
+   * the life of a server. The bundler's own aliases need a restart of its
+   * resolver.)
    */
   fileSetVersion: number
-  /**
-   * The file events `invalidate` applied, repeats included: a failed
-   * resolution asked before one may be answered from before it (the file
-   * the event made appear), so it is asked again (`resolveForAnalysis`, a
-   * compile's snapshot).
-   */
-  events: number
   /** Per environment, the files whose modules its bundler must build again (`invalidate` and the compiles fill them, hosts take them). */
   stale: StaleSets
   /** Resolves once no `invalidate()` is running. */
@@ -455,7 +450,9 @@ async function applyChange(
 ): Promise<void> {
   const path = event.path
   if (event.kind !== 'registry') {
-    caches.events++
+    // (before the read: an answer given from now on was asked after the
+    // file event, as the file was)
+    caches.fileSetVersion++
   }
   // `imports` and `exports` decide what specifiers resolve to, as files
   // appearing do. (A resolution from a package to a target outside its
@@ -492,10 +489,9 @@ async function applyChange(
         kind = 'add'
       }
       if (read.same) {
-        // no fact of the file moved. A creation, or a removal of a file
-        // that is back, still moves the file set: what looked for the file
-        // meanwhile, and a resolver that answered before it existed
-        // (another environment's event came first), ask again
+        // no fact of the file moved. What looked for the file meanwhile,
+        // and a resolver that answered before it existed (another
+        // environment's event came first), ask again: the file set moved
         if (kind === 'change') {
           repeat = true
         } else {
@@ -504,8 +500,8 @@ async function applyChange(
       }
     }
     if (kind === 'unlink' && !knownAt(caches, path)) {
-      // nothing read the file, but a resolution memo may still name it
-      caches.fileSetVersion++
+      // nothing read the file (a resolution memo that names it is of an
+      // older file-set version)
       caches.removed?.(path)
       return
     }
@@ -546,17 +542,11 @@ async function applyChange(
   const resolverConfig =
     manifest ||
     (!repeat && change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
-  const fileSetMoved =
-    change.kind === 'add' || change.kind === 'unlink' || resolverConfig
-  if (fileSetMoved) {
-    caches.fileSetVersion++
-  }
   const revalidate = async (
     cache: PlanCache,
     indexKey: string,
     relevant: (fp: DependencyFingerprint) => boolean,
     seen = new Set<string>(),
-    fresh = false,
   ): Promise<void> => {
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
@@ -566,15 +556,15 @@ async function applyChange(
       seen.add(ks)
       if (entry.asked && indexKey !== UNRESOLVED_DEPENDENCY) {
         // a compile running now asked for what changed: it starts again. A
-        // failed resolution it met is its own to ask again (an event ran
-        // since: its snapshot asks it), so the event leaves it running
+        // failed resolution it met is its own to ask again (the file set
+        // moved since: its snapshot asks it), so the event leaves it running
         cache.bump(entry.key)
       }
       if (!entry.published) {
         continue
       }
       const host = hostOf(entry.key)
-      const src = fingerprintSourceFor(caches, host, cache.env, fresh)
+      const src = fingerprintSourceFor(caches, host, cache.env)
       const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
       if (!fps) {
         continue
@@ -603,8 +593,7 @@ async function applyChange(
     }
   }
   // any event of a file but its removal: a creation may hide in a change
-  // (a removal and re-creation reported as one), and the memo may hold an
-  // answer from while the file was gone (asked past it, `fresh`)
+  // (a removal and re-creation reported as one)
   // (a `package.json`'s repeat moved nothing: only its first event asks)
   const shadows =
     change.kind === 'add' ||
@@ -618,8 +607,8 @@ async function applyChange(
       await revalidate(
         cache,
         change.path,
-        // a change keeps the file set: the resolver's answers stand (as for
-        // plan validation at an unchanged `fileSetVersion`); the file's new
+        // a change's resolutions are asked at their plans' next request
+        // (the file set moved) and by the shadow pass below; the file's new
         // facts are what its dependents are checked against
         (fp) =>
           fingerprintPath(fp) === change.path &&
@@ -672,7 +661,6 @@ async function applyChange(
             return found !== null && found !== change.path && shadows(found)
           },
           seen,
-          !fileSetMoved,
         )
       }
     }
@@ -825,12 +813,10 @@ export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.stale.release(env)
 }
 
-/** `fresh`: resolutions are asked past the environment's memo (`resolveForAnalysis`). */
 export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,
   env: string,
-  fresh = false,
 ): FingerprintSource {
   return {
     summary: async (id) => (await caches.rawFacts.get(id, env)).summary,
@@ -838,7 +824,7 @@ export function fingerprintSourceFor(
     targetMarker: (id) => caches.rawFacts.marker(id, env),
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (importer, specifier) =>
-      resolveForAnalysis(caches, host, env, importer, specifier, fresh),
+      resolveForAnalysis(caches, host, env, importer, specifier),
   }
 }
 
@@ -866,9 +852,8 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
  * resolved before at the current file-set version, settling or settled (the
  * compiles of a build ask for a barrel's re-exports once per importing
  * module); unresolved pairs are not kept. The caller records the answer in
- * its ledger. `fresh`: the resolver is asked again, and its answer replaces
- * the memo's (a file created unseen may take a resolution the memo answers
- * from before it, at an unchanged file-set version).
+ * its ledger: an answer a file event overlapped is of the version before
+ * it, which the caller's check asks again.
  */
 export function resolveForAnalysis(
   caches: CompilerCaches,
@@ -876,7 +861,6 @@ export function resolveForAnalysis(
   env: string,
   importerCanonicalId: string,
   specifier: string,
-  fresh = false,
 ): Promise<string | null> {
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
     // known packages are recognised by specifier, never resolved
@@ -895,23 +879,16 @@ export function resolveForAnalysis(
     memo = new Map()
     memos.set(memoKey, memo)
   }
-  const hit = fresh ? undefined : memo.get(specifier)
+  const hit = memo.get(specifier)
   if (hit !== undefined) {
     return typeof hit === 'string' ? Promise.resolve(hit) : hit
   }
   const ask = async (): Promise<string | null> => {
-    for (;;) {
-      const askedAt = caches.events
-      const r = await host.resolve(specifier, importerCanonicalId)
-      if (r) {
-        return r.external ? EXTERNAL_RESOLUTION : identify(r.id).canonicalId
-      }
-      if (caches.events === askedAt) {
-        return null
-      }
-      // a failed answer a file event overlapped may be from before it (the
-      // file it made appear): asked again before anyone records it
+    const r = await host.resolve(specifier, importerCanonicalId)
+    if (!r) {
+      return null
     }
+    return r.external ? EXTERNAL_RESOLUTION : identify(r.id).canonicalId
   }
   const asked: Promise<string | null> = ask().then((resolved) => {
     if (memo.get(specifier) === asked) {

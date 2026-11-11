@@ -5,7 +5,8 @@
  *
  * - Repeating an invalidation is harmless (I1): while a file's text is
  *   unchanged, another `invalidate()` of it changes no plan, restarts no
- *   compile and adds nothing to a stale set.
+ *   compile and adds nothing to a stale set (it moves the file set: the
+ *   plans ask their resolutions again at their next request).
  * - After any edits, the same as a fresh start (I3, "property (b)"): saves,
  *   in-place saves, deletions and re-adds (a stash and pop: the same text,
  *   modules requested in between; or reported as one change, beside a
@@ -141,7 +142,6 @@ describe('repeating an invalidation', () => {
       user: cache.get(userKey!),
       pageGeneration: cache.generation(pageKey!),
       factsVersion: host.rawFacts.version,
-      fileSetVersion: host.caches.fileSetVersion,
     }
     // an echo of the same change, twice at once (two environments' hooks),
     // while a compile of an importer is in flight
@@ -164,7 +164,6 @@ describe('repeating an invalidation', () => {
       user: cache.get(userKey!),
       pageGeneration: cache.generation(pageKey!),
       factsVersion: host.rawFacts.version,
-      fileSetVersion: host.caches.fileSetVersion,
     }).toEqual(before)
     expect(cache.get(pageKey!)).toBe(before.page)
     expect(cache.get(userKey!)).toBe(before.user)
@@ -382,14 +381,15 @@ describe('repeating an invalidation', () => {
     )
   })
 
-  // A `package.json` or tsconfig saved once moves the file set (what
-  // specifiers resolve to may have changed); the same event through a
-  // second hook, or a touch, finds the text the caches read.
-  // Source: design 3 step 4 review, finding 3 (a repeat moved the file
-  // set again: the resolution memo dropped, the resolutions under the
-  // directory asked again).
+  // A `package.json` or tsconfig saved once asks, at its event, the
+  // resolutions under its directory (what specifiers resolve to may have
+  // changed); the same event through a second hook, or a touch, finds the
+  // text the caches read and asks none (each plan asks its own at its next
+  // request: every file event moves the file set).
+  // Source: design 3 step 4 review, finding 3 (a repeat asked the
+  // resolutions under the directory again).
   it.for(['/app/package.json', '/app/tsconfig.json'])(
-    'a repeat of an event of %s moves no file set and asks no resolution',
+    'a repeat of an event of %s asks no resolution at the event',
     async (path) => {
       const host = memoryHost({
         [path]: '{"name":"a"}',
@@ -399,10 +399,8 @@ describe('repeating an invalidation', () => {
       await host.compile('/app/x.ts', planners())
       host.write(path, '{"name":"b"}')
       await invalidate(host.caches, { path, kind: 'change' }, host)
-      const fileSetVersion = host.caches.fileSetVersion
       const resolverCalls = host.resolveCalls.length
       await invalidate(host.caches, { path, kind: 'change' }, host)
-      expect(host.caches.fileSetVersion).toBe(fileSetVersion)
       expect(host.resolveCalls.length).toBe(resolverCalls)
     },
   )
