@@ -352,6 +352,13 @@ export interface CompilerCaches {
   stale: StaleSets
   /** Resolves once no `invalidate()` is running. */
   settled: () => Promise<void>
+  /**
+   * The session's own records of a file go with it (its server functions,
+   * import protection's records): called where an invalidation applies a
+   * removal (the file reads as missing), never for a removal of a file
+   * that reads back.
+   */
+  removed: ((path: string) => void) | undefined
   /** The `invalidate()` running per path: calls for one path run one after the other. */
   invalidations: Map<string, Promise<unknown>>
 }
@@ -406,14 +413,14 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * resolutions the new file may take (`shadowTest`). A registry change stales the file in every environment
  * that has compiled or whose bundler holds modules. Restored plans (`restorePlans`) are checked like
  * published ones. Each plan's fingerprints are checked with its host
- * (`hosts` of its key: the resolver its module resolves with). The returned
- * keys are the evicted and stale plans.
+ * (`hosts` of its key: the resolver its module resolves with). A removal
+ * applied is told to the session (`CompilerCaches.removed`).
  */
 export function invalidate(
   caches: CompilerCaches,
   change: InvalidateChange,
   hosts: InvalidationHosts,
-): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
+): Promise<void> {
   const path = change.path
   const before = caches.invalidations.get(path)
   const apply = () => applyChange(caches, change, hosts)
@@ -445,8 +452,7 @@ async function applyChange(
   caches: CompilerCaches,
   event: InvalidateChange,
   hosts: InvalidationHosts,
-): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-  const none = { evicted: [], dependents: [] }
+): Promise<void> {
   const path = event.path
   if (event.kind !== 'registry') {
     caches.events++
@@ -500,22 +506,19 @@ async function applyChange(
     if (kind === 'unlink' && !knownAt(caches, path)) {
       // nothing read the file, but a resolution memo may still name it
       caches.fileSetVersion++
-      return none
+      caches.removed?.(path)
+      return
     }
   }
   const change: InvalidateChange = { path, kind }
   const hostOf = typeof hosts === 'function' ? hosts : () => hosts
-  const evicted: Array<PlanKey> = []
-  const dependents: Array<PlanKey> = []
   if (kind === 'unlink' || kind === 'registry') {
     // a changed file's plans are keyed by its text: a request of the new
     // text compiles it again, and a bundler that built it already keeps
     // the plan and its rows (its dependencies' events must find it)
     for (const cache of caches.plans.values()) {
       for (const key of cache.keysAt(path)) {
-        if (cache.delete(key)) {
-          evicted.push(key)
-        }
+        cache.delete(key)
         cache.bump(key)
       }
     }
@@ -523,6 +526,7 @@ async function applyChange(
   if (kind === 'unlink') {
     caches.rawFacts.forget(path)
     caches.stale.remove(path)
+    caches.removed?.(path)
   } else if (!unchanged && !repeat) {
     caches.rawFacts.markStale(path, read?.text)
   }
@@ -587,7 +591,6 @@ async function applyChange(
         }
       }
       if (stale) {
-        dependents.push(entry.key)
         cache.delete(entry.key)
         cache.bump(entry.key)
         caches.stale.add(
@@ -665,7 +668,6 @@ async function applyChange(
       }
     }
   }
-  return { evicted, dependents }
 }
 
 /**

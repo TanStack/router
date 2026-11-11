@@ -55,7 +55,6 @@ import { compileHandlerReach } from './handler-reach'
 import {
   buildInvalidationHosts,
   changeKindOf,
-  forgetRemoved,
   invalidateFor,
 } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
@@ -411,10 +410,7 @@ function envCompilerPlugins(
         s.start.caches,
         change,
         ctx.modules,
-        async () => {
-          await invalidateFor(state, s, environment, change)
-          forgetRemoved(s, change)
-        },
+        () => invalidateFor(state, s, environment, change),
       )
     },
     // The one invalidation of a file event. Bundled dev, and a dev server
@@ -451,11 +447,9 @@ function envCompilerPlugins(
             this.resolve(source, importer, { skipSelf: true }),
           ),
         )
-        forgetRemoved(s, change)
         return
       }
       await invalidateFor(state, s, environment, change)
-      forgetRemoved(s, change)
       const environments = s.server
         ? Object.values(s.server.environments).filter((e) =>
             state.envNames.has(e.name),

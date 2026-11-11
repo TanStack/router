@@ -12,6 +12,7 @@ import {
   invalidate,
 } from '@tanstack/router-utils/compiler'
 import { createImportProtection } from '../../src/import-protection/session'
+import { takeStale } from '../planners/memory-host'
 import type {
   CompileOutput,
   CompilerCaches,
@@ -190,8 +191,13 @@ export class MemoryApp {
     return { out, outcome }
   }
 
-  /** The one invalidation operation (a file edit). */
-  invalidate(rel: string, kind: 'change' | 'add' | 'unlink' = 'change') {
-    return invalidate(this.caches, { path: `${ROOT}/${rel}`, kind }, this.host)
+  /** The one invalidation operation (a file edit): the paths it made stale. */
+  async invalidate(
+    rel: string,
+    kind: 'change' | 'add' | 'unlink' = 'change',
+  ): Promise<Array<string>> {
+    takeStale(this.caches)
+    await invalidate(this.caches, { path: `${ROOT}/${rel}`, kind }, this.host)
+    return takeStale(this.caches)
   }
 }

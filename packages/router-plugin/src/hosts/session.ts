@@ -225,7 +225,7 @@ export class RouterCompiler {
   invalidate(
     path: string,
     kind: InvalidateChange['kind'],
-  ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
+  ): Promise<void> {
     return invalidate(this.caches, { path, kind }, this.host)
   }
 }

@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { invalidate } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
-import { MemoryHost, clientEnv } from './memory-host'
+import { MemoryHost, clientEnv, takeStale } from './memory-host'
 import type { StartEnvConfig } from '../../src/planners'
 import type { HostServices } from '@tanstack/router-utils/compiler'
 
@@ -103,12 +103,9 @@ describe('a route file the registry vouches for', () => {
     // the generator reports the own route's constructor as foreign now: the
     // tree's plan is stale, and its next compile reads the file
     t.entries[OWN] = false
-    const res = await invalidate(
-      t.memory.caches,
-      { path: OWN, kind: 'registry' },
-      t.host,
-    )
-    expect(res.dependents.map((k) => k.canonicalId)).toContain(TREE)
+    takeStale(t.memory.caches)
+    await invalidate(t.memory.caches, { path: OWN, kind: 'registry' }, t.host)
+    expect(takeStale(t.memory.caches)).toContain(TREE)
     await compileModule(
       {
         id: TREE,

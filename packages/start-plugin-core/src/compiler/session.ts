@@ -191,7 +191,12 @@ export class StartCompilerSession {
       opaque: (path, text) =>
         (opts.opaque?.(path) ?? false) || packageModule(path, text),
     })
-    this.caches = createCompilerCaches(this.rawFacts, opts.label)
+    // a removed file's server functions and import protection's records go
+    // where the core applies the removal (a removal of a file that reads
+    // back is a change and keeps them)
+    this.caches = createCompilerCaches(this.rawFacts, opts.label, {
+      removed: (path) => this.forget(path),
+    })
     registerCompilerStats(
       `${opts.label}:session`,
       this,

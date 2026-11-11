@@ -346,8 +346,9 @@ text compiles waits for it and emits its own output from the result.
   (`StaleSetDrain`), the Vite dev hosts in each environment's `hotUpdate` (`staleHotUpdate`: the event's own file
   leaves the set first, its modules are the event's), and a Vite watch build at each environment's `buildEnd`, as
   an audit (`auditStaleSet`: a watch build builds what its watcher reports; a path stale when the build began that
-  it bundles and did not compile counts as a stale hit). The call also returns `{ evicted, dependents }`, which no
-  host reads (design 3 step 6 removes it). A summary change invalidates an importer
+  it bundles and did not compile counts as a stale hit). The call returns nothing; a removal it applies is told to
+  the session (`createCompilerCaches`' `removed`: Start forgets the file's server functions and import protection's
+  records there). A summary change invalidates an importer
   only when what it read changed: the digest of an export it looked up (`exportKeyOf`; an absent name
   appearing counts), the `export *` list a lookup walked, or the whole export-facts digest for a listing. An export
   added to a widely imported module re-plans none of its importers. A published plan keeps one `exports` record per

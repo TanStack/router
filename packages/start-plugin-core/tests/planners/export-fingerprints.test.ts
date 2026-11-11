@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { invalidate } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
-import { MemoryHost, clientEnv } from './memory-host'
+import { MemoryHost, clientEnv, takeStale } from './memory-host'
 import type { StartEnvConfig } from '../../src/planners'
 
 const config = {
@@ -36,12 +36,9 @@ function session(files: Record<string, string>) {
   /** Edits a file and returns the importers the invalidation re-plans. */
   const edit = async (path: string, text: string) => {
     memory.files[path] = text
-    const res = await invalidate(
-      memory.caches,
-      { path, kind: 'change' },
-      memory,
-    )
-    return res.dependents.map((k) => k.canonicalId)
+    takeStale(memory.caches)
+    await invalidate(memory.caches, { path, kind: 'change' }, memory)
+    return takeStale(memory.caches)
   }
   /** The output a fresh session gives for `path` over the current files. */
   const fresh = async (path: string) => {

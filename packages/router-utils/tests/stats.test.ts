@@ -8,10 +8,11 @@ import { collectionSizes, compilerStats, invalidate } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
+  staleAfter,
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type { PlanKey, Planner } from '../src/compiler'
+import type { Planner } from '../src/compiler'
 
 const ROUTE = dedent(`
   import { createFileRoute } from 'toy-router'
@@ -148,17 +149,14 @@ describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
           '/app/helper.ts',
           'export const helper = (n: number) => n\nexport const other = 1\n',
         )
-        const res = await invalidate(
+        return staleAfter(
           host.caches,
           { path: '/app/helper.ts', kind: 'change' },
           host,
         )
-        const ids = (keys: Array<PlanKey>) =>
-          keys.map((k) => `${k.env}:${k.canonicalId}`).sort()
-        return { evicted: ids(res.evicted), dependents: ids(res.dependents) }
       }
       const reference = await dependentsOfHelperEdit()
-      expect(reference.dependents.length).toBeGreaterThan(0)
+      expect(reference.length).toBeGreaterThan(0)
       vi.stubEnv('TSR_COMPILER_NO_CACHE', knob)
       expect(await dependentsOfHelperEdit()).toEqual(reference)
     },

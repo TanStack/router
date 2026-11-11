@@ -432,12 +432,7 @@ export class StartRsbuildCompilerSession {
     events: ReadonlyArray<{ file: string; kind: FileEventKind }>,
   ): Promise<void> {
     await Promise.all(
-      events.map(async ({ file, kind }) => {
-        await this.invalidate(file, kind)
-        if (kind === 'unlink') {
-          this.start.forget(normalizePath(file))
-        }
-      }),
+      events.map(({ file, kind }) => this.invalidate(file, kind)),
     )
   }
 

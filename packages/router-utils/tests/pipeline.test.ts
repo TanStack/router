@@ -8,6 +8,7 @@ import {
   envInfo,
   findRouteOptions,
   propertyOf,
+  staleAfter,
   toyEdgePolicyPlanner,
   toyEnvPlanner,
   toyHydratePlanner,
@@ -352,35 +353,31 @@ describe('resolution for analysis', () => {
     ])
     // a file of another name takes no resolution of the plan
     host.write('/app/services.ts', 'export const make = () => "other"\n')
-    const other = await invalidate(
+    const other = await staleAfter(
       host.caches,
       { path: '/app/services.ts', kind: 'add' },
       host,
     )
-    expect(other.dependents).toEqual([])
+    expect(other).toEqual([])
     // `./service` now resolves to the file that appeared before the
     // directory: the plan read the directory's module, it is stale
     host.write('/app/service.ts', 'export const make = () => "file"\n')
-    const added = await invalidate(
+    const added = await staleAfter(
       host.caches,
       { path: '/app/service.ts', kind: 'add' },
       host,
     )
-    expect(added.dependents.map((k) => k.canonicalId)).toEqual([
-      '/app/page.tsx',
-    ])
+    expect(added).toEqual(['/app/page.tsx'])
     const second = await host.compile('/app/page.tsx', planners)
     expect(second!.dependencies).toEqual(['/app/service.ts', '/app/helper.ts'])
     // the file disappears: back to the directory
     delete host.files['/app/service.ts']
-    const removed = await invalidate(
+    const removed = await staleAfter(
       host.caches,
       { path: '/app/service.ts', kind: 'unlink' },
       host,
     )
-    expect(removed.dependents.map((k) => k.canonicalId)).toEqual([
-      '/app/page.tsx',
-    ])
+    expect(removed).toEqual(['/app/page.tsx'])
     const third = await host.compile('/app/page.tsx', planners)
     expect(third!.dependencies).toEqual([
       '/app/service/index.ts',
@@ -448,12 +445,12 @@ describe('resolution for analysis', () => {
     helperAnswers = false
     host.write('/app/service.web.ts', 'export const make = () => "web"\n')
     host.resolveCalls.length = 0
-    const added = await invalidate(
+    const added = await staleAfter(
       host.caches,
       { path: '/app/service.web.ts', kind: 'add' },
       host,
     )
-    expect(added.dependents).toEqual([])
+    expect(added).toEqual([])
     expect(host.resolveCalls).toEqual([
       { specifier: './service', importer: '/app/page.tsx' },
     ])
@@ -513,14 +510,12 @@ describe('resolution for analysis', () => {
       '/app/src/package.json',
       JSON.stringify({ imports: { '#foo': './foo.ts' } }),
     )
-    const added = await invalidate(
+    const added = await staleAfter(
       host.caches,
       { path: '/app/src/package.json', kind: 'add' },
       host,
     )
-    expect(added.dependents.map((k) => k.canonicalId)).toEqual([
-      '/app/src/page.tsx',
-    ])
+    expect(added).toEqual(['/app/src/page.tsx'])
     const second = await host.compile('/app/src/page.tsx', planners)
     expect(second!.dependencies).toEqual([
       '/app/src/foo.ts',
@@ -733,25 +728,24 @@ describe('slice gates: invalidation', () => {
     }
     // handler-body edit: digest unchanged → no dependents
     host.write('/app/factory-inner.ts', FACTORY('createServerOnlyFn', '2'))
-    const r1 = await invalidate(
+    const r1 = await staleAfter(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
       host,
     )
-    expect(r1.dependents).toEqual([])
-    expect(r1.evicted).toEqual([])
+    expect(r1).toEqual([])
     const entry = host.caches.plans.get('client')!.get(key)
     const again = await host.compile('/app/consumer.ts', planners)
     expect(host.caches.plans.get('client')!.get(key)).toBe(entry)
     expect(again!.facts).toBe(first!.facts)
     // flip make from server-only to client-only: digest changes → the consumer is a dependent
     host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-    const r2 = await invalidate(
+    const r2 = await staleAfter(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
       host,
     )
-    expect(r2.dependents).toEqual([key])
+    expect(r2).toEqual(['/app/consumer.ts'])
     expect(host.caches.plans.get('client')!.get(key)).toBeNull()
     const second = await host.compile('/app/consumer.ts', planners)
     expect(second!.facts.planners['toy-summary']).toEqual({
@@ -780,14 +774,12 @@ describe('slice gates: invalidation', () => {
     }
     await host.compile('/app/page.ts', [resolvesOnly])
     delete host.files['/app/dep.ts']
-    const removed = await invalidate(
+    const removed = await staleAfter(
       host.caches,
       { path: '/app/dep.ts', kind: 'unlink' },
       host,
     )
-    expect(removed.dependents.map((k) => k.canonicalId)).toEqual([
-      '/app/page.ts',
-    ])
+    expect(removed).toEqual(['/app/page.ts'])
   })
 
   it('re-validates each environment with its own resolver on add/unlink (no cross-env resolution contamination)', async () => {
@@ -849,20 +841,23 @@ describe('slice gates: invalidation', () => {
     ])
     // an unrelated file appears, then the client's dependency is deleted: every
     // environment's fingerprints are checked with that environment's resolver
-    const added = await invalidate(
+    const added = await staleAfter(
       client.caches,
       { path: '/app/other.ts', kind: 'add' },
       hosts,
     )
-    expect(added.dependents).toEqual([])
+    expect(added).toEqual([])
     client.files['/app/dep.client.ts'] = undefined as never
     delete client.files['/app/dep.client.ts']
-    const r = await invalidate(
+    await invalidate(
       client.caches,
       { path: '/app/dep.client.ts', kind: 'unlink' },
       hosts,
     )
-    expect(r.dependents.map((k) => k.env).sort()).toEqual(['client'])
+    expect(client.caches.stale.take('client', { held: true })).toEqual([
+      '/app/a.ts',
+    ])
+    expect(client.caches.stale.take('ssr', { held: true })).toEqual([])
     expect(client.caches.plans.get('ssr')!.stats(false).plans).toBe(1)
     expect(client.caches.plans.get('client')!.stats(false).plans).toBe(0)
   })
@@ -1037,12 +1032,12 @@ describe('slice gates: invalidation', () => {
     )
     // the dependency changes what the consumer sees: the host must hear of the consumer
     host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-    const r = await invalidate(
+    const r = await staleAfter(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
       host,
     )
-    expect(r.dependents).toEqual([key])
+    expect(r).toEqual(['/app/consumer.ts'])
   })
 
   it('(d) two quick saves of a module with two imports: a later dependency edit still invalidates it', async () => {
@@ -1071,14 +1066,12 @@ describe('slice gates: invalidation', () => {
     const r2 = save(`${consumer}export const v2 = 2\n`)
     await Promise.all([r1, r2])
     host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-    const r = await invalidate(
+    const r = await staleAfter(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
       host,
     )
-    expect(r.dependents).toEqual([
-      { env: 'client', canonicalId: '/app/consumer.ts', configKey: 'cfg' },
-    ])
+    expect(r).toEqual(['/app/consumer.ts'])
   })
 
   it('(f) in-flight dependency-only edit restarts the compile', async () => {
@@ -1107,12 +1100,12 @@ describe('slice gates: invalidation', () => {
     expect(edges.calls).toHaveLength(1)
     // the dependency flips while the consumer waits in phase C
     host.write('/app/factory-inner.ts', FACTORY('createClientOnlyFn'))
-    const inv = await invalidate(
+    const inv = await staleAfter(
       host.caches,
       { path: '/app/factory-inner.ts', kind: 'change' },
       host,
     )
-    expect(inv.dependents).toEqual([])
+    expect(inv).toEqual([])
     verdict.resolve(true)
     const out = await pending
     expect(out!.facts.planners['toy-summary']).toEqual({

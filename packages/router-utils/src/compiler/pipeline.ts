@@ -68,6 +68,7 @@ const MAX_ATTEMPTS = 3
 export function createCompilerCaches(
   rawFacts: HostServices['rawFacts'],
   label = 'compiler',
+  opts: { removed?: (path: string) => void } = {},
 ): CompilerCaches {
   const invalidations = new Map<string, Promise<unknown>>()
   const caches: CompilerCaches = {
@@ -77,6 +78,7 @@ export function createCompilerCaches(
     events: 0,
     stale: new StaleSets(),
     invalidations,
+    removed: opts.removed,
     settled: async () => {
       while (invalidations.size > 0) {
         await Promise.allSettled([...invalidations.values()])
