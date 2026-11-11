@@ -3321,26 +3321,6 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain("const page = make('page')")
   })
 
-  it('keeps an initialiser reading an effectful binding eager, with that binding', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { make } from './make'
-      const store = make('store')
-      const view = store.read()
-      export const Route = createFileRoute('/')({
-        component: () => view,
-      })
-    `)
-    const r = await split(code)
-    expect(r.env).toContain(
-      "const store = make('store')\nconst view = store.read()",
-    )
-    expect(r.chunks.component).toContain(
-      "import { view } from '/app/route.tsx'",
-    )
-    expect(r.chunks.component).not.toContain('make(')
-  })
-
   it('moves an initialiser reading a const the route module keeps', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -5475,6 +5455,63 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
+  // REVIEW-design2-step4 finding 3: that write pins the value only when
+  // the binding is not confined to its chunk, as a write at load by the
+  // value (rulings 2 and 3): nothing else touching it, it splits, with the
+  // binding, inline or named.
+  it.each([
+    [
+      'an assignment, inline',
+      'let didInit = false',
+      'component: f(function Page() { if (!didInit) { didInit = true } return null }),',
+    ],
+    [
+      'a member write, inline',
+      'const seen = { n: 0 }',
+      'component: f(function Page() { seen.n++; return null }),',
+    ],
+    [
+      'a member write in an event handler, inline',
+      'const seen = { n: 0 }',
+      'component: f(function Page() { return () => { seen.n++ } }),',
+    ],
+    [
+      'a member write of an import, inline',
+      '',
+      'component: f(function Page() { open.count = 1; return null }),',
+    ],
+    [
+      'a member write, named',
+      'const seen = { n: 0 }\nfunction Page() { seen.n++; return null }',
+      'component: f(Page),',
+    ],
+  ])(
+    'splits an option value whose call runs a function writing a binding nothing else touches (%s)',
+    async (_, decls, options) => {
+      const r = await split(route(decls, options), { files: lib })
+      const facts = r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+      expect(facts?.notSplittable).toBeUndefined()
+      expect(r.chunks.component).toContain('function Page()')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  it('keeps an option value whose call runs a function writing a binding another function writes later in place', async () => {
+    const r = await split(
+      route(
+        'const seen = { n: 0 }\nexport function reset() { seen.n = 0 }',
+        'component: f(function Page() { seen.n++; return null }),',
+      ),
+      { files: lib },
+    )
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      notSplittable: 'component',
+      reasons: { component: 'ordered-effect' },
+    })
+  })
+
   // A member write inside a planner's unclaimed region is its declaration's
   // write (finding 1): the declaration stays with the binding it writes.
   it('keeps a declaration writing a member inside an unclaimed region with the binding', async () => {
@@ -5514,6 +5551,317 @@ describe('readers and writers of state written at load', () => {
       { files: lib },
     )
     expect(r.env).toContain('const y = track(() => { cfg.x = 1 })')
+  })
+})
+
+// R138 (design 2 step 5): the order rule is judged on the slots of both
+// sides. An effectful declaration reading another one at load moves when
+// the one it reads evaluates in the same chunk (source order there), or
+// stays in the route module as a `const`; each is still ordered against
+// the effects that stay.
+// REVIEW-design2-step4 findings 1 and 2: state reached through another
+// name. A read through an alias, a holder or a spread reads the object
+// the other name names (what its declaration and its writes at load name,
+// as a call would follow), so it is ordered against a write of the
+// original. A method named like a mutator (`push`, `set`, `add`) of an
+// object the module defines is its own code: a call, an effect (R65).
+describe('state reached through another name', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it.each([
+    ['an alias', 'const alias = cfg\nconst y = alias.v'],
+    ['a holder', 'const holder = { cfg }\nconst y = holder.cfg.v'],
+    ['an array holding it', 'const all = [cfg]\nconst y = all[0].v'],
+    [
+      'a holder of a holder',
+      'const h1 = { cfg }\nconst h2 = [h1]\nconst y = h2[0].cfg.v',
+    ],
+    ['a spread of an alias', 'const alias = cfg\nconst y = { ...alias }'],
+    [
+      'a destructuring of an alias',
+      'const alias = cfg\nconst { v: y } = alias',
+    ],
+    [
+      'a holder given it at load',
+      'const holder = {}\nholder.c = cfg\nconst y = holder.c.v',
+    ],
+  ])(
+    'keeps a read through %s before a write of the original',
+    async (_, reader) => {
+      const r = await split(
+        route(
+          `const cfg = { v: 'OLD' }\n${reader}\ncfg.v = 'NEW'`,
+          'loader: () => cfg,\ncomponent: () => y,',
+        ),
+      )
+      expect(r.env).toContain(reader.split('\n').at(-1)!)
+      expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+    },
+  )
+
+  it.each([
+    [
+      'after the write',
+      "const cfg = { v: 'OLD' }\ncfg.v = 'NEW'\nconst alias = cfg\nconst y = alias.v",
+    ],
+    [
+      'holding a function only',
+      "const cfg = { v: 'OLD' }\nconst holder = { get: () => cfg }\nconst y = holder.get\ncfg.v = 'NEW'",
+    ],
+  ])('moves a read through another name %s (control)', async (_, decls) => {
+    const r = await split(
+      route(decls, 'loader: () => cfg,\ncomponent: () => y,'),
+    )
+    expect(r.env).not.toContain('const y')
+    expect(r.chunks.component).toContain('const y')
+  })
+
+  it.each([
+    [
+      'an object literal',
+      "const log = { push(x) { track(x) } }\nlog.push('first')",
+      'log',
+    ],
+    [
+      'a class',
+      "class Reg { static add(x) { track(x) } }\nReg.add('first')",
+      'Reg',
+    ],
+    [
+      'a function given the method',
+      "function Page() {}\nPage.set = (x) => track(x)\nPage.set('first')",
+      'Page',
+    ],
+    [
+      'an array whose method is replaced',
+      "const queue = []\nqueue.push = (x) => track(x)\nqueue.push('first')",
+      'queue',
+    ],
+    [
+      'a pure call result',
+      "const store = /* @__PURE__ */ track()\nstore.set('k', 1)",
+      'store',
+    ],
+  ])(
+    'keeps a mutator-named method call of %s in order with an effect after it',
+    async (_, decls, name) => {
+      const r = await split(
+        route(`${decls}\ntrack('second')`, `component: () => ${name},`),
+      )
+      expect(r.env).toContain(`${decls}\ntrack('second')`)
+      expect(eager(r).map((d) => d.code)).toEqual(['eager-split:order'])
+    },
+  )
+
+  it.each([
+    ['an array literal', "const plugins = []\nplugins.push('a')"],
+    ['a Map', "const byId = /* @__PURE__ */ new Map()\nbyId.set('k', 1)"],
+    ['a Set', "const seen = /* @__PURE__ */ new Set()\nseen.add('k')"],
+  ])(
+    'moves a built-in mutator call of %s with its binding past an effect (control)',
+    async (_, decls) => {
+      const name = /const (\w+)/.exec(decls)![1]!
+      const r = await split(
+        route(`${decls}\ntrack('second')`, `component: () => ${name},`),
+      )
+      expect(r.env).not.toContain(decls)
+      expect(r.chunks.component).toContain(decls)
+      expect(eager(r)).toEqual([])
+    },
+  )
+})
+
+describe('effectful declarations reading each other (R138)', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { z } from 'zod'
+      import { createColumnHelper } from './table'
+      import { make, wrap, log } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it.each([
+    [
+      'TanStack Table columns reading their helper',
+      "const columnHelper = createColumnHelper()\nconst columns = [columnHelper.accessor('name', {})]",
+    ],
+    [
+      'a schema reading a schema',
+      'const Option = z.object({ id: z.string() })\nconst Field = Option.nullable()',
+    ],
+    [
+      'a literal reading a helper result',
+      'const defaults = make()\nconst fields = [defaults.name, defaults.email]',
+    ],
+    ['a member read of the helper result', 'const a = make()\nconst x = [a.v]'],
+    [
+      // (step 4: the pure writer is no effect, so this moved there; kept
+      // as a guard, REVIEW-design2-step4 step 5 item 6)
+      'a member read after a pure write',
+      'const a = {}\na.v = 1\nconst x = [a.v]',
+    ],
+    [
+      'three in a chain',
+      'const a = make()\nconst b = wrap(a)\nconst c = wrap(b)',
+    ],
+  ])(
+    'moves two declarations one chunk needs together, in source order: %s',
+    async (_, decls) => {
+      const last = /const (\w+) = [^\n]*$/.exec(decls)![1]!
+      const r = await split(route(decls, `component: () => ${last},`))
+      for (const line of decls.split('\n')) {
+        expect(r.env).not.toContain(line)
+      }
+      expect(r.chunks.component).toContain(decls)
+      expect(eager(r)).toEqual([])
+    },
+  )
+
+  // the user's module (architect, design 2 step 5)
+  const tableRoute = (after: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createColumnHelper, useTable } from '@tanstack/react-table'
+      import { track } from './lib'
+      const helper = createColumnHelper()
+      const columns = [
+        helper.display({ id: 'actions', header: 'Actions' }),
+        helper.accessor('firstName', {}),
+        helper.accessor((row) => row.lastName, { id: 'lastName' }),
+      ]
+      ${after}
+      export const Route = createFileRoute('/table')({
+        component: () => {
+          const table = useTable({ columns })
+        },
+      })
+    `)
+  const helperAndColumns = dedent(`
+    const helper = createColumnHelper()
+    const columns = [
+      helper.display({ id: 'actions', header: 'Actions' }),
+      helper.accessor('firstName', {}),
+      helper.accessor((row) => row.lastName, { id: 'lastName' }),
+    ]
+  `).trim()
+
+  it('moves a column helper and the columns reading it to the component chunk, in source order', async () => {
+    const r = await split(tableRoute(''))
+    expect(r.env).not.toContain('createColumnHelper()')
+    expect(r.env).not.toContain('const columns')
+    expect(r.chunks.component).toContain(helperAndColumns)
+    expect(r.chunks.component).toContain(
+      "import { createColumnHelper, useTable } from '@tanstack/react-table'",
+    )
+    expect(eager(r)).toEqual([])
+  })
+
+  it('keeps the column helper and the columns when an unknown call after them stays (R31, R65)', async () => {
+    const r = await split(tableRoute("track('after')"))
+    expect(r.env).toContain(`${helperAndColumns}\ntrack('after')`)
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[tanstack-router] `columns`'],
+    ])
+    expect(eager(r)[0]!.message).toContain('the call `track(…)`')
+  })
+
+  // an unknown call in the route options the client keeps runs after them
+  // in the route module's body: they would run after it from the chunk
+  it('keeps the column helper and the columns when a route option the route module keeps calls an unknown function', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createColumnHelper, useTable } from '@tanstack/react-table'
+      import { createSchema } from 'schema-lib'
+      ${helperAndColumns.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/table')({
+        validateSearch: createSchema({ page: 'number' }),
+        component: () => {
+          const table = useTable({ columns })
+        },
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain(helperAndColumns)
+    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(eager(r)[0]!.message).toContain('the call `createSchema(…)`')
+  })
+
+  it('keeps both when an effect after them stays, naming it', async () => {
+    const r = await split(
+      route(
+        "const columnHelper = createColumnHelper()\nconst columns = [columnHelper.accessor('name', {})]\nconst Search = z.object({})",
+        'loader: () => Search,\ncomponent: () => columns,',
+      ),
+    )
+    expect(r.env).toContain('const columnHelper = createColumnHelper()')
+    expect(r.env).toContain(
+      "const columns = [columnHelper.accessor('name', {})]",
+    )
+    // (one report, at the cause: `columnHelper` is what `columns` reads)
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[tanstack-router] `columns`'],
+    ])
+    expect(eager(r)[0]!.message).toContain('`z.object(…)`')
+  })
+
+  // the one it reads stays for its own reason (an effect after it stays):
+  // a `const` the route module keeps is read from there by the chunk
+  // (R67), judged on its final slot, not on whether it was decided first
+  it('moves a declaration reading a `const` that stays for an effect between them', async () => {
+    const r = await split(
+      route(
+        'const a = make()\nlog()\nconst b = wrap(a)',
+        'component: () => b,',
+      ),
+    )
+    expect(r.env).toContain('const a = make()\nlog()')
+    expect(r.env).not.toContain('const b')
+    expect(r.chunks.component).toContain('const b = wrap(a)')
+    expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[tanstack-router] `a`'],
+    ])
+  })
+
+  it('moves a declaration reading a `const` that two chunks need', async () => {
+    const r = await split(
+      route(
+        'const helper = make()\nconst cols = [helper.x()]',
+        'component: () => cols,\nerrorComponent: () => helper,',
+      ),
+      { keys: ['component', 'errorComponent'] },
+    )
+    expect(r.env).toContain('const helper = make()')
+    expect(r.env).not.toContain('const cols')
+    expect(r.chunks.component).toContain('const cols = [helper.x()]')
+    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:needers'])
+  })
+
+  // control: a `let` the route module keeps still pins (R67)
+  it('keeps a declaration reading a `let` that stays', async () => {
+    const r = await split(
+      route('let a = make()\nlog()\nconst b = wrap(a)', 'component: () => b,'),
+    )
+    expect(r.env).toContain('const b = wrap(a)')
+    const reads = eager(r).find((d) => d.code === 'eager-split:reads')
+    expect(reads?.message).toContain('`b` in /app/route.tsx')
+    expect(reads?.message).toContain('reads `a` when the module loads')
   })
 })
 
@@ -5717,13 +6065,15 @@ describe('declarations only split code needs that stay in the route module', () 
       Object.fromEntries(
         r.diagnostics.map((d) => [/`(\w+)` in \//.exec(d.message)![1]!, d]),
       )
+    // (R138: `client` and `api`, which reads it, move to the component's
+    // chunk together; `api` was kept, reported `eager-split:reads`)
     expect(Object.keys(byName).sort()).toEqual([
-      'api',
       'first',
       'registry',
       'shared',
       'snapshot',
     ])
+    expect(r.env).not.toContain('const api')
     expect(byName.first).toMatchObject({ code: 'eager-split:order' })
     expect(byName.first!.message).toContain(
       `the call \`log(…)\` (line ${lineOf(code, "log('ready')")}) runs after it and stays`,
@@ -5737,12 +6087,6 @@ describe('declarations only split code needs that stay in the route module', () 
     expect(byName.snapshot).toMatchObject({ code: 'eager-split:state' })
     // ("uses": the pin also covers a load that assigns the binding, R3-G1-2)
     expect(byName.snapshot!.message).toContain('uses `n`')
-    // `client` stays only because `api`, which stays, reads it: one
-    // warning, at the cause
-    expect(byName.api).toMatchObject({ code: 'eager-split:reads' })
-    expect(byName.api!.message).toContain(
-      'reads `client` when the module loads, and `client` has side effects',
-    )
     for (const [name, d] of Object.entries(byName)) {
       expect(d.range, name).toMatchObject({
         start: code.indexOf(`${name} = `),
@@ -6251,16 +6595,25 @@ describe('generated imports', () => {
 describe('builder chains in a compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
-    factories: { 'toy-start': { createServerFn: 'serverFn' } },
-    builderKinds: new Set(['serverFn']),
-    terminal: { serverFn: 'serverFn' },
+    factories: {
+      'toy-start': {
+        createServerFn: 'serverFn',
+        createMiddleware: 'middleware',
+      },
+    },
+    builderKinds: new Set(['serverFn', 'middleware']),
+    terminal: { serverFn: 'serverFn', middleware: 'middleware' },
     builderLinks: {
       serverFn: {
         middleware: 'both',
         validator: 'server',
         handler: 'server',
       },
+      middleware: { middleware: 'both', server: 'server' },
     },
+    // a middleware's links assign the options of the builder they are
+    // called on; a server fn's copy them into a new one
+    builderLinksWrite: new Set(['middleware']),
   }
   async function compile(code: string, type: 'client' | 'server') {
     const host = new MemoryHost({
@@ -6339,9 +6692,110 @@ describe('builder chains in a compile', () => {
     }
   })
 
-  // Two links on one builder: each writes it, so the builder and both
-  // exports are one cluster and leave together, to the first one's module.
+  // REVIEW-design2-step4 finding 4: whether a link writes its builder is a
+  // fact of the builder's kind. A server fn's links copy the options, so
+  // two server fns on one shared base are independent readers of it; a
+  // middleware's write it, so its links and the base are one cluster.
+  it('moves a page-only server fn on a shared const base, the other one staying', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createServerFn } from 'toy-start'
+      const base = createServerFn().middleware([])
+      const getA = base.handler(async () => 1)
+      const getB = base.handler(async () => 2)
+      export const Route = createFileRoute('/')({
+        loader: () => getB,
+        component: () => getA,
+      })
+    `)
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+      recognizer,
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      { env },
+    )
+    expect(main?.code).toContain('const base = createServerFn()')
+    expect(main?.code).toContain('const getB = base.handler(')
+    expect(main?.code).not.toContain('const getA')
+    expect(chunk?.code).toContain('const getA = base.handler(')
+    expect(chunk?.code).toContain("import { base } from '/app/route.tsx'")
+    expect(main?.diagnostics).toEqual([])
+  })
+
+  it('keeps the links of a middleware on a shared const base with it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createMiddleware } from 'toy-start'
+      const base = createMiddleware().middleware([])
+      const forPage = base.server(async () => 1)
+      const forLoader = base.server(async () => 2)
+      export const Route = createFileRoute('/')({
+        loader: () => forLoader,
+        component: () => forPage,
+      })
+    `)
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+      recognizer,
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).toContain(
+      'const base = createMiddleware().middleware([])\nconst forPage = base.server(',
+    )
+  })
+
+  // Two links on one middleware builder: each writes it, so the builder
+  // and both exports are one cluster and leave together, to the first
+  // one's module. (Finding 4: a server fn's links write nothing, so this
+  // row moved to the middleware kind; the server fn spelling follows.)
   it('extracts two exports linked on one const builder together', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { createMiddleware } from 'toy-start'
+          const base = createMiddleware()
+          export const one = base.server(async () => 1)
+          export const two = base.server(async () => 2)
+          export const Route = createFileRoute('/')({
+            component: () => [one, two],
+          })
+        `),
+      },
+      recognizer,
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).not.toContain('createMiddleware()')
+    expect(main?.code).toContain(
+      "export { one, two } from '/app/route.tsx?tsr-split=export---one'",
+    )
+    const extracted = await host.compile(
+      '/app/route.tsx?tsr-split=export---one',
+      planners,
+      { env },
+    )
+    expect(extracted?.code).toContain(
+      'const base = createMiddleware()\nconst one = base.server(',
+    )
+    expect(main?.diagnostics).toEqual([])
+  })
+
+  // Two exported server fns on one shared base read it, each from its own
+  // extracted module: the base, a call result, exists once (R77), so the
+  // route module keeps it and both, which read it when they load (T).
+  it('keeps two exported server fns on one shared const base in the route module', async () => {
     const host = new MemoryHost({
       files: {
         '/app/route.tsx': dedent(`
@@ -6362,19 +6816,13 @@ describe('builder chains in a compile', () => {
     ]
     const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
     const main = await host.compile('/app/route.tsx', planners, { env })
-    expect(main?.code).not.toContain('createServerFn()')
     expect(main?.code).toContain(
-      "export { one, two } from '/app/route.tsx?tsr-split=export---one'",
+      'const base = createServerFn()\nexport const one = base.handler(',
     )
-    const extracted = await host.compile(
-      '/app/route.tsx?tsr-split=export---one',
-      planners,
-      { env },
-    )
-    expect(extracted?.code).toContain(
-      'const base = createServerFn()\nconst one = base.handler(',
-    )
-    expect(main?.diagnostics).toEqual([])
+    expect(main?.diagnostics.map((d) => d.code)).toEqual([
+      'eager-export:reads',
+      'eager-export:reads',
+    ])
   })
 
   // A builder in a `const` and its one link is the inline chain spelled in
@@ -6761,6 +7209,26 @@ function evaluatedNames(
           if (d !== undefined && !seen.has(d)) {
             seen.add(d)
             collect(d, true)
+            grew = true
+          }
+        }
+      }
+    }
+  } else {
+    // without a call, a read through a name (`alias.v`, `{ ...alias }`)
+    // reads what that name's value holds: its declaration and writers,
+    // outside functions, transitively
+    const seen = new Set<Node>(evaluated)
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const name of [...names]) {
+        for (const d of [
+          declarations.get(name),
+          ...(writers.get(name) ?? []),
+        ]) {
+          if (d !== undefined && !seen.has(d)) {
+            seen.add(d)
+            collect(d, false)
             grew = true
           }
         }

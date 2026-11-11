@@ -164,8 +164,10 @@ extends Z`, directly or through what they carry) share the module of the first i
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
   (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
   cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding
-  its cluster declares (`Page.displayName = …`, `plugins.push(a)`, a link on a `const` holding a builder, which
-  writes the builder: R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
+  its cluster declares (`Page.displayName = …`, `plugins.push(a)` on an array literal or a `new Map`/`Set`: a
+  method of that name on another object is its own code, a call, R65; a link on a `const` holding a builder of a kind
+  whose links write it, `RecognizerTable.builderLinksWrite`: a middleware's assign its options, a server fn's copy
+  them and only read the builder; R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
   write's owner is the evaluation holding it (its unit, or a claimed option value); one in a function that
   evaluation passes to a call (`track(() => { cfg.x = 1 })`) is also that evaluation's write at an unknown time,
   as when the function is named. The writes have two halves, each
@@ -185,8 +187,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   and the text of the module's declarations its running references name and of the statements writing those names
   when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
-  reading it). A method nested in an object argument (`defineComponent({ setup() {} })`) and a function it only
-  holds (`const api = { getCached }`) run nothing, and a function declaration evaluates nothing. A claimed
+  reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`) reads what that name's
+  value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
+  it reads `cfg`), so it is ordered against a write of the original. A method nested in an object argument
+  (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
+  function declaration evaluates nothing. A claimed
   option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
   may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
@@ -194,11 +199,16 @@ extends Z`, directly or through what they carry) share the module of the first i
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
   (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
-  one is kept in place (`ordered-effect`). An effectful,
+  one is kept in place (`ordered-effect`), unless that write is only its output's code (its own text, or a function
+  only that output holds: `memo(function Page() { didInit = true })`) and the binding is confined there, the rule
+  for an option value's writes at load (it evaluates in that output, and nothing else there touches it). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
-  preserved) when nothing outside it writes it eagerly, it observes no mutable state, its reads at load are
-  imports (read lazily: the chunk loads after the route module),
-  pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind. It
+  preserved) when nothing outside it writes it eagerly, it observes no mutable state, what it reads at load of
+  another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
+createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
+  R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
+  (the chunk loads after the route module), and no surviving effect after its first one stays behind. Both sides
+  are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
   module, which the extracted module imports it from. An exported binding whose writes at load are pure

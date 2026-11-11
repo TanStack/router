@@ -80,8 +80,10 @@ interface NotSplit {
   key: string
   reason: NotSplitReason
   range: Range
-  /** The module binding a writer fallback writes. */
+  /** The module binding a writer fallback writes (`ordered-effect`: writes or reads). */
   binding?: string
+  /** `ordered-effect`: the option writes `binding` and other code uses it. */
+  writes?: true
 }
 
 export interface SplitPlan {
@@ -518,6 +520,7 @@ export function splitPlanOf(
           reason: fallback.reason,
           range: target.region,
           ...(fallback.binding !== undefined && { binding: fallback.binding }),
+          ...(fallback.writes && { writes: true }),
         })
         continue
       }
@@ -545,7 +548,7 @@ export function splitPlanOf(
       severity: 'warning',
       code: `not-split:${n.reason}`,
       by: ROUTER_PLANNER,
-      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding)}`,
+      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding, n.writes)}`,
       range: n.range,
     })
   }
@@ -562,6 +565,7 @@ function describeReason(
   reason: NotSplitReason,
   key: string,
   binding?: string,
+  writes?: true,
 ): string {
   const written = binding === undefined ? 'a module binding' : `\`${binding}\``
   const inObject = `\`state.${binding ?? 'count'}\``
@@ -571,6 +575,12 @@ function describeReason(
     case 'multi-writer':
       return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
     case 'ordered-effect':
+      if (writes) {
+        // (when it loads, or in a function its call runs, which may run at
+        // any time: other code of the module would see the write at another
+        // time)
+        return `it writes ${written}, which other code also uses, so a split would change when that code sees the write. Use ${written} only inside the option's functions.`
+      }
       return `it uses ${written} when the module loads, and other code of the module changes it later or reads it after the option, so a split would change what one of them sees. Use ${written} only inside the option's functions, or move what writes it out of the option, before the route.`
     case 'hydrate-writer':
       return 'it writes a binding a hydration boundary also uses. Keep that state in an object or in its own module.'

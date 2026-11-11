@@ -70,8 +70,10 @@ export type Home = OutputId | 'duplicate' | 'removed'
 
 export interface Fallback {
   region: RegionId
-  /** `shared-writer`, `multi-writer`: the module binding the region writes. */
+  /** `shared-writer`, `multi-writer`: the module binding the region writes; `ordered-effect`: the one it writes or reads. */
   binding?: SymbolId
+  /** `ordered-effect`: the value writes `binding` (when it loads, or in a function its call runs) and other code uses it, rather than reading what other code writes. */
+  writes?: true
   reason:
     | 'shared-writer'
     | 'multi-writer'

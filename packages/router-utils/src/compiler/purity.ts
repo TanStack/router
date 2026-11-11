@@ -55,6 +55,8 @@ export interface BuilderPurity {
   links: Readonly<Record<string, Record<string, 'client' | 'server' | 'both'>>>
   /** Env-only kind → the environment keeping its argument (`RecognizerTable.envOnlyKinds`). */
   envOnly: Readonly<Record<string, 'client' | 'server'>>
+  /** The kinds whose links write their receiver (`RecognizerTable.builderLinksWrite`). */
+  writes: ReadonlySet<string>
   /**
    * Local names of imports of known packages' chain factories → the import's
    * binding and the kind. A callee of that name is the factory when it
@@ -73,10 +75,10 @@ export interface BuilderPurity {
   /** The arguments the environment's compile erases, as the checks met them (their reads are erased with them). */
   erased: Array<{ start: number; end: number }>
   /**
-   * The receivers of the links on a `const` holding a builder the checks
-   * took as no effect (`b.handler(h)`): each link writes the builder (a
-   * middleware's links assign its options), a write of pure values, not an
-   * effect (R139; placement's write table).
+   * The receivers of the links on a `const` holding a builder of a kind
+   * whose links write it (`writes`: a middleware's assign its options) the
+   * checks took as no effect (`b.server(f)`): a write of pure values, not
+   * an effect (R139; placement's write table).
    */
   linked: Array<Node>
 }
@@ -439,7 +441,7 @@ export function builderCall(
       if (keep === undefined || !keptPure(keep)) {
         return null
       }
-      if (object.type === 'Identifier') {
+      if (object.type === 'Identifier' && b.writes.has(receiver!)) {
         b.linked.push(object)
       }
       return {

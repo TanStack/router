@@ -160,21 +160,25 @@ export function settleRoots(
     if (cl.effectful && outputs.get(needers[0]!)?.kind === 'export') {
       return { reason: 'effects' }
     }
-    return events.lazyConflict(cl.id, liveEnv) ?? needers[0]!
+    return events.lazyConflict(cl.id) ?? needers[0]!
   }
 
   /**
    * The slots of this round: each timed cluster's (`slotFor`); then O as a
-   * greatest fixed point over the clusters leaving the env module: one an
-   * effect, or a write when the module loads, that stays (or goes
-   * elsewhere) would change order with is demoted, which can demote others
-   * (a reader and the writer after it evaluate in one slot, or both stay).
-   * The pairs of the demoted go to `pins`.
+   * greatest fixed point over the clusters leaving the env module: one
+   * reading an effectful cluster that evaluates elsewhere (unless the env
+   * module keeps it, a `const`), or that an effect or a write when the
+   * module loads that stays (or goes elsewhere) would change order with, is
+   * demoted, which can demote others (a reader and what it reads evaluate
+   * in one slot, or both stay). The pairs of the demoted go to `pins`.
    */
   function solveSlots(): void {
     const target = slots
     target.clear()
     pins.clear()
+    /** What the env module keeps after this round: what it evaluates, and the demoted. */
+    const stays = (d: ClusterId) =>
+      liveEnv.has(d) || envRoots.has(d) || pins.has(d)
     for (const cl of clusters) {
       if (!timed(cl)) {
         continue
@@ -189,11 +193,14 @@ export function settleRoots(
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
-        const effect = events.orderConflict(c, to, target)
-        const pin: Pin | undefined =
-          effect !== undefined
-            ? { reason: 'order', other: { unit: effect.id } }
-            : events.writeConflict(c, to, slotOf)
+        let pin = events.readConflict(c, to, target, stays)
+        if (pin === undefined) {
+          const effect = events.orderConflict(c, to, target)
+          pin =
+            effect !== undefined
+              ? { reason: 'order', other: { unit: effect.id } }
+              : events.writeConflict(c, to, slotOf)
+        }
         if (pin !== undefined) {
           target.delete(c)
           pins.set(c, pin)
