@@ -153,7 +153,7 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, `(a ?? {}).p`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
 }
 

@@ -378,70 +378,117 @@ export function ownsItsValue(u: Unit): boolean {
  * it reads `x.c` first); `'through'` when it reads that object's contents
  * where it evaluates (the object of a member read `alias.v`, `all[0]`, a
  * spread's argument `{ ...alias }`, the source of a destructuring or a
- * for-in/of loop, the object `in` asks): what it reads is what that object holds, which may be
- * another binding's object (`const alias = cfg`, `const holder = { cfg }`),
- * and the mutation model follows its value (`MutationModel.visitValues`);
- * else null.
+ * for-in/of loop, the object `in` asks): what it reads is what that object
+ * holds, which may be another binding's object (`const alias = cfg`,
+ * `const holder = { cfg }`), and the mutation model follows its value
+ * (`MutationModel.visitValues`); else null. The climb goes through every
+ * expression that hands its operand's value on (`forwards`: `(alias ??
+ * {}).b`, `[alias][0].b`) before asking what reads or writes it.
  */
 export function memberUse(
   file: SourceFile,
   node: Node,
 ): 'write' | 'write-through' | 'through' | null {
-  // climb the member chain (and wrappers) grown on `node`
-  let member = false
-  /** The member expressions of the chain. */
+  /** The member expressions of the chain grown on the value. */
   let depth = 0
+  /** The chain ends in a member of the value (not of a literal holding it). */
+  let member = false
+  /** The array and object literals holding the value that no member read has read back yet. */
+  let held = 0
   let n = node
   let parent = file.parentOf(n)
-  /** The first parent that is no wrapper, and its child. */
-  let first: Node | null = null
-  let firstChild = node
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
-    const wrapper = isExpressionWrapper(parent)
-    if (first === null && !wrapper) {
-      first = parent
-      firstChild = n
-    }
     if (parent.type === 'MemberExpression' && parent.object === n) {
-      member = true
-      depth++
-    } else if (!wrapper) {
+      // a member of a literal holding it reads it back (`[alias][0]`)
+      member = held === 0
+      if (member) {
+        depth++
+      } else {
+        held--
+      }
+    } else if (
+      parent.type === 'ArrayExpression' ||
+      (parent.type === 'ObjectExpression' && n.type === 'Property')
+    ) {
+      held++
+      member = false
+    } else if (
+      !isExpressionWrapper(parent) &&
+      !forwards(parent, n) &&
+      !(
+        parent.type === 'Property' &&
+        parent.value === n &&
+        file.parentOf(parent)?.type === 'ObjectExpression'
+      )
+    ) {
       break
     }
   }
-  if (parent !== null && writesAt(file, parent, n, member)) {
+  if (parent === null || held > 0) {
+    // a literal holding it is what it gives (`const holder = { cfg }`)
+    return depth > 0 ? 'through' : null
+  }
+  if (writesAt(file, parent, n, member)) {
     // the written object: the chain's own value for an `Object.assign`-style
     // argument, else the object of its last member (`x.p = …`, `x.push`)
     const own = parent.type === 'CallExpression' && parent.callee !== n ? 0 : 1
     return depth > own ? 'write-through' : 'write'
   }
-  if (first === null) {
-    return null
+  if (depth > 0) {
+    return 'through'
   }
-  switch (first.type) {
-    case 'MemberExpression':
-      return first.object === firstChild ? 'through' : null
+  switch (parent.type) {
     case 'SpreadElement':
       return 'through'
     case 'VariableDeclarator':
-      return first.init === firstChild && first.id.type !== 'Identifier'
+      return parent.init === n && parent.id.type !== 'Identifier'
         ? 'through'
         : null
     case 'AssignmentExpression':
-      return first.right === firstChild &&
-        first.left.type !== 'Identifier' &&
-        first.left.type !== 'MemberExpression'
+      // the source of a destructuring
+      return parent.right === n &&
+        parent.left.type !== 'Identifier' &&
+        parent.left.type !== 'MemberExpression'
         ? 'through'
         : null
     case 'ForOfStatement':
     case 'ForInStatement':
-      return first.right === firstChild ? 'through' : null
+      return parent.right === n ? 'through' : null
     case 'BinaryExpression':
-      return first.operator === 'in' && first.right === firstChild
-        ? 'through'
-        : null
+      return parent.operator === 'in' && parent.right === n ? 'through' : null
     default:
       return null
+  }
+}
+
+/**
+ * Whether expression `parent` evaluates to the value of its operand `n`:
+ * a conditional's branch, an operand of `??`, `||` or `&&`, a sequence's
+ * last expression, `await`'s operand, the value of an assignment to a
+ * binding or a member (`(tmp = alias)`; a destructuring's source is read
+ * through instead).
+ */
+function forwards(parent: Node, n: Node): boolean {
+  switch (parent.type) {
+    case 'ConditionalExpression':
+      return parent.test !== n
+    case 'LogicalExpression':
+    case 'AwaitExpression':
+      return true
+    case 'SequenceExpression':
+      return parent.expressions.at(-1) === n
+    case 'AssignmentExpression':
+      return (
+        parent.right === n &&
+        (parent.left.type === 'Identifier' ||
+          parent.left.type === 'MemberExpression') &&
+        (parent.operator === '=' ||
+          parent.operator === '??=' ||
+          parent.operator === '||=' ||
+          parent.operator === '&&=')
+      )
+    default:
+      return false
   }
 }
 
@@ -453,9 +500,10 @@ function writesAt(
   member: boolean,
 ): boolean {
   if (parent.type === 'CallExpression') {
-    // the receiver of a mutating method, or the first argument of an
-    // `Object.assign`-style call (the common argument position is neither)
-    if (parent.callee !== n && parent.arguments[0] !== n) {
+    // the receiver of a mutating method (the chain is a member of the
+    // value: `x.push`, not a literal's `[x].push`), or the first argument of
+    // an `Object.assign`-style call (the common argument position is neither)
+    if (parent.callee === n ? !member : parent.arguments[0] !== n) {
       return false
     }
   } else if (!member) {

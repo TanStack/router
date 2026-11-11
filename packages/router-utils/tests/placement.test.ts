@@ -7916,9 +7916,23 @@ function evaluatedNames(
       declarations.set(d.id.name, d)
     } else if (d.type === 'VariableDeclaration') {
       for (const declarator of d.declarations) {
-        if (declarator.id.type === 'Identifier') {
-          declarations.set(declarator.id.name, declarator)
+        // (each name a pattern binds: `const { cfg: alias } = holder`)
+        const bind = (p: Node): void => {
+          if (p.type === 'Identifier') {
+            declarations.set(p.name, declarator)
+          } else if (p.type === 'ObjectPattern') {
+            p.properties.forEach((q) =>
+              bind(q.type === 'Property' ? q.value : q),
+            )
+          } else if (p.type === 'ArrayPattern') {
+            p.elements.forEach((e) => e && bind(e))
+          } else if (p.type === 'RestElement') {
+            bind(p.argument)
+          } else if (p.type === 'AssignmentPattern') {
+            bind(p.left)
+          }
         }
+        bind(declarator.id)
       }
     } else {
       // a statement writing a binding (`x = …`, `x.p = …`) is part of its
