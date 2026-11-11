@@ -127,6 +127,8 @@ export interface ToySplitOptions {
   glueNames?: ReadonlyArray<string>
   /** Tag the env module's glue exports (`tagGlueExports`). */
   glueTag?: string
+  /** Split a value whatever fallback placement reports for it (a planner that does not act on fallbacks, as the router's dev HMR hoist). */
+  ignoreFallbacks?: boolean
 }
 
 /**
@@ -203,7 +205,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           declaringRanges
             .map((r) => ctx.fallbackAt(r))
             .find((f) => f !== undefined)
-        if (fallback) {
+        if (fallback && opts.ignoreFallbacks !== true) {
           reasons[key] = fallback.reason
           ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
