@@ -11,6 +11,7 @@ import path from 'node:path'
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
+import type { StartBuildOptions } from '../build-harness'
 
 const timeout = 60_000
 
@@ -68,32 +69,31 @@ test(
  * `__webpack_require__` reads `__webpack_modules__`, which it never
  * declares).
  */
-const appWithClip = (extension: string) =>
-  ({
-    bundler: 'rsbuild',
-    mode: 'development',
-    files: {
-      [`media/clip.${extension}`]: clip,
-      'src/greeting.ts': `export const greeting = 'MARK_GREETING'\n`,
-      'entry.ts': `export { greeting } from './src/greeting'\nexport { default as clip } from './media/clip.${extension}'\n`,
-    },
-    rsbuildConfig: {
-      source: { exclude: [/[\\/]media[\\/]/] },
-      tools: {
-        rspack: {
-          module: {
-            rules: [
-              {
-                test: /[\\/]media[\\/]clip\./,
-                type: 'asset/resource',
-                generator: { filename: 'clip.out' },
-              },
-            ],
-          },
+const appWithClip = (extension: string): StartBuildOptions => ({
+  bundler: 'rsbuild',
+  mode: 'development',
+  files: {
+    [`media/clip.${extension}`]: clip,
+    'src/greeting.ts': `export const greeting = 'MARK_GREETING'\n`,
+    'entry.ts': `export { greeting } from './src/greeting'\nexport { default as clip } from './media/clip.${extension}'\n`,
+  },
+  rsbuildConfig: {
+    source: { exclude: [/[\\/]media[\\/]/] },
+    tools: {
+      rspack: {
+        module: {
+          rules: [
+            {
+              test: /[\\/]media[\\/]clip\./,
+              type: 'asset/resource',
+              generator: { filename: 'clip.out' },
+            },
+          ],
         },
       },
     },
-  }) as const
+  },
+})
 
 test(
   'Rsbuild: a binary .ts file of the app fails the build naming it, and builds under another extension',
