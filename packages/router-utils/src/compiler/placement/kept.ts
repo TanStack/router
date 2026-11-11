@@ -148,7 +148,7 @@ export function keptDeclarations(
     }
   }
   for (const [c, at] of seeds.augmentedRoots) {
-    if (derivedNeeds(input, derivedReach, c)) {
+    if (envRoots.has(c) && derivedNeeds(input, derivedReach, c)) {
       causes.set(c, { reason: 'written', other: { at } })
     }
   }

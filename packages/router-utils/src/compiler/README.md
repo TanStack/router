@@ -217,8 +217,15 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
   (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
-  and writes; a statement declares nothing, so nothing needs it and it stays. A call the model does not know
-  writes nothing it is handed (`snapshot(table)` reads `table`). Both sides
+  and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`). A
+  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block) follows what it touches: the
+  module bindings its text names and the objects their values hold (`MutationModel.heldBy`, the owner of "the
+  object a binding names"); it moves into a chunk when every one of them goes to that chunk, a binding only it
+  reads following it, in source order there (`const table = createTable(); const columns = snapshot(table);
+  table.addColumn('x')`, only the component reading `columns`, all move), and stays in the route module when it
+  touches an import (another module's object, which other code uses: `Sentry.init({ dsn })`, `i18n.use(backend)`)
+  or a binding that stays or goes elsewhere (`placement/settle.ts`, followers). An effect it has outside what it
+  touches (`registry.install()` patching `fetch`) then runs when the chunk loads. Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route

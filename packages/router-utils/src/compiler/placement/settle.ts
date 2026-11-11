@@ -68,7 +68,7 @@ export function settleRoots(
   const { refs } = t1
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion } = graph
-  const { envRoots, pinned, derivedRoots, candidates } = seeds
+  const { envRoots, pinned, derivedRoots, candidates, followers } = seeds
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
   const derivedReach = new Map<OutputId, Set<ClusterId>>()
@@ -163,6 +163,71 @@ export function settleRoots(
     return events.lazyConflict(cl.id) ?? needers[0]!
   }
 
+  /** The outputs reaching `d` (a provider's copy counts). */
+  const needersOf = (d: ClusterId): Array<OutputId> => {
+    const out: Array<OutputId> = []
+    for (const [id, set] of derivedReach) {
+      if (set.has(d)) {
+        out.push(id)
+      }
+    }
+    return out
+  }
+  /** The chunk each follower (`Seeds.followers`) follows, rooted there until it is demoted. */
+  const follows = new Map<ClusterId, OutputId>()
+  /**
+   * Where follower `c` goes, judged once before it is rooted anywhere: the
+   * one chunk the clusters its statements touch (`Events.statementTouches`)
+   * and its own declarations go to, none staying in the env module; a
+   * touched cluster nothing else needs follows it. Never an extracted
+   * export's module or a provider: one instance of the effect, in a module
+   * that surely evaluates. Then the lazy-slot rules (`written` for what it
+   * declares, V).
+   */
+  function followSlot(c: ClusterId): OutputId | Pin {
+    let to: OutputId | null = null
+    for (const d of [c, ...events.statementTouches(c).clusters]) {
+      if (d !== c && (liveEnv.has(d) || envRoots.has(d))) {
+        return { reason: 'needers' }
+      }
+      for (const n of needersOf(d)) {
+        if (to !== null && n !== to) {
+          return { reason: 'needers' }
+        }
+        to = n
+      }
+    }
+    const kind = to === null ? undefined : outputs.get(to)?.kind
+    if (to === null || kind === 'export' || kind === 'provider') {
+      return { reason: 'needers' }
+    }
+    return events.lazyConflict(c) ?? to
+  }
+  /**
+   * A follower rooted in `to` whose touches do not all go there this
+   * round: one stays in the env module, another output needs it, or its
+   * slot matters and is elsewhere.
+   */
+  const followConflict = (
+    c: ClusterId,
+    to: OutputId,
+    target: ReadonlyMap<ClusterId, OutputId>,
+    stays: (d: ClusterId) => boolean,
+  ): Pin | undefined => {
+    for (const d of events.statementTouches(c).clusters) {
+      const needers = needersOf(d)
+      if (
+        stays(d) ||
+        needers.length !== 1 ||
+        needers[0] !== to ||
+        ((follows.has(d) || timed(clusters[d]!)) && target.get(d) !== to)
+      ) {
+        return { reason: 'needers' }
+      }
+    }
+    return undefined
+  }
+
   /**
    * The slots of this round: each timed cluster's (`slotFor`); then O as a
    * greatest fixed point over the clusters leaving the env module: one
@@ -190,10 +255,14 @@ export function settleRoots(
         pins.set(cl.id, to)
       }
     }
+    for (const [c, to] of follows) {
+      target.set(c, to)
+    }
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
         const pin =
+          (follows.has(c) ? followConflict(c, to, target, stays) : undefined) ??
           events.readConflict(c, to, target, stays) ??
           events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
@@ -534,12 +603,43 @@ export function settleRoots(
       }
     }
     liveEnv = reach('env', envRoots)
+    // the followers judged once, before the slots: each is rooted in its
+    // chunk (what its statements touch that nothing else needs follows
+    // it), or an env root; then derived reach is recomputed
+    if (round === 0 && followers.size > 0) {
+      for (const c of followers) {
+        if (envRoots.has(c)) {
+          continue
+        }
+        const to = followSlot(c)
+        if (typeof to === 'string') {
+          follows.set(c, to)
+          derivedRoots.get(to)!.add(c)
+        } else {
+          envRoots.add(c)
+        }
+      }
+      derivedStale = true
+      continue
+    }
     solveSlots()
     let changed = false
     // (in cluster order: the reports of the kept follow it)
     for (const { id: c } of clusters) {
       const pin = pins.get(c)
       if (pin === undefined) {
+        continue
+      }
+      const follow = follows.get(c)
+      if (follow !== undefined) {
+        // a follower kept: an env root, what it touches live there (it
+        // declares nothing a chunk needs, or what it declares is reported
+        // as an augmented root's write, `kept.ts`)
+        follows.delete(c)
+        derivedRoots.get(follow)!.delete(c)
+        envRoots.add(c)
+        derivedStale = true
+        changed = true
         continue
       }
       const neededHere = needs(c)

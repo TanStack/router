@@ -201,7 +201,7 @@ export function computePlacement(input: PlacementInput): Placement {
   const reads = readIndex(input, graph)
   const events = eventTable(input, graph, reads)
   // 3. the roots planners and the module declare, extraction candidates, provenance
-  const seeds = seedRoots(input, graph, reads)
+  const seeds = seedRoots(input, graph, reads, events)
   // 4. the solver: env roots, slots and extracted exports, one fixed point
   const roots = settleRoots(input, graph, reads, events, seeds)
   // 5. what only split code needs that stays, and why

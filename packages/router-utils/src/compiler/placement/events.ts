@@ -69,6 +69,12 @@ export interface Touch {
   cluster: ClusterId
 }
 
+/** What a cluster's statements touch (`Events.statementTouches`). */
+export interface StatementTouches {
+  clusters: ReadonlyArray<ClusterId>
+  import: SymbolId | null
+}
+
 /** Per written binding an evaluation touches, its first and last touch: they decide every comparison with a write. */
 type Spans = ReadonlyMap<SymbolId, { first: number; last: number }>
 
@@ -110,6 +116,17 @@ export interface Events {
     to: OutputId,
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
+  /**
+   * What the statements of cluster `c` (its effect units) touch: the
+   * clusters of every module binding their text names in the env module
+   * and of the objects each one's value may hold (`MutationModel.heldBy`,
+   * the one owner of "the object a binding names": `alias.add()` touches
+   * `table` through `const alias = table`), `c` aside, in source order;
+   * `import`: the first import among them (another module's object, which
+   * other code uses). Asked of the clusters that may follow what they
+   * touch (`settle.ts`), once each.
+   */
+  statementTouches: (c: ClusterId) => StatementTouches
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
   fallbacks: (
     home: ReadonlyMap<ClusterId, Home>,
@@ -563,9 +580,52 @@ export function eventTable(
     return out
   }
 
+  const statementTouchesOf = new Map<ClusterId, StatementTouches>()
+  function statementTouches(c: ClusterId): StatementTouches {
+    let hit = statementTouchesOf.get(c)
+    if (hit !== undefined) {
+      return hit
+    }
+    const found = new Set<ClusterId>()
+    let imported: SymbolId | null = null
+    const add = (s: SymbolId) => {
+      const d = clusterOfSym.get(s)
+      if (d === undefined || d === c) {
+        return
+      }
+      found.add(d)
+      if (imported === null && clusters[d]!.kind === 'import') {
+        imported = s
+      }
+    }
+    for (const u of clusters[c]!.units) {
+      const unit = t1.units[u]!
+      if (unit.kind !== 'effect') {
+        continue
+      }
+      for (const ref of t1.refs.refsIn(unit.range)) {
+        if (
+          !NEED_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym) ||
+          !graph.isLive(ref, 'env')
+        ) {
+          continue
+        }
+        add(ref.sym)
+        for (const s of t1.mutation.heldBy(ref)) {
+          add(s)
+        }
+      }
+    }
+    hit = { clusters: [...found], import: imported }
+    statementTouchesOf.set(c, hit)
+    return hit
+  }
+
   return {
     volatile,
     ordered,
+    statementTouches,
     lazyConflict,
     readsKept,
     readConflict,
