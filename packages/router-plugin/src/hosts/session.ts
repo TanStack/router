@@ -121,6 +121,7 @@ export class RouterCompiler {
     this.warnings = internals.warnings
     const rawFacts = new RawFactsCache({
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
+      modifiedAt: fileModifiedAt,
       loadVirtual: () => Promise.resolve(null),
       // the router's and the frameworks' pure APIs
       recognizer: { ...EMPTY_RECOGNIZER, ...knownPureCalls() },

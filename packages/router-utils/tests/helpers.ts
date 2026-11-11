@@ -557,12 +557,16 @@ export class MemoryHost implements HostServices {
   readonly caches: CompilerCaches
   readonly resolveCalls: Array<{ specifier: string; importer: string }> = []
   private readonly opts: MemoryHostOptions
+  /** A modification time per written file: the count of writes so far, at its last write. */
+  private readonly writtenAt = new Map<string, number>()
+  private writes = 0
 
   constructor(opts: MemoryHostOptions) {
     this.opts = opts
     this.files = { ...opts.files }
     this.rawFacts = new RawFactsCache({
       readFile: (p) => this.readFile(p),
+      modifiedAt: (p) => Promise.resolve(this.writtenAt.get(p) ?? null),
       loadVirtual: (id) => Promise.resolve(opts.virtual?.[id] ?? null),
       recognizer: opts.recognizer,
       markerSpecifiers: opts.markerSpecifiers,
@@ -610,6 +614,7 @@ export class MemoryHost implements HostServices {
 
   write(path: string, code: string): void {
     this.files[path] = code
+    this.writtenAt.set(path, ++this.writes)
   }
 
   compile(

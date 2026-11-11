@@ -391,10 +391,12 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * its bundler's, which reported the event). A removed file's plans are
  * evicted, and every plan that read it is stale, unasked (held: their
  * modules wait for a file to appear).
- * File `add`/`unlink` events also re-resolve every failed resolution of
- * every env: a plan whose unresolved specifier now resolves is a dependent;
- * an `add` also re-resolves the resolutions the new file may take
- * (`shadowTest`). A registry change stales the file in every environment
+ * Every file event, a repeat included, also re-resolves every failed
+ * resolution of every env (one may hide a creation: a removal and a
+ * re-creation the watcher folded into one change): a plan whose unresolved
+ * specifier now resolves is a dependent; a change of a path the caches hold
+ * nothing of that reads as a file is an `add`, which also re-resolves the
+ * resolutions the new file may take (`shadowTest`). A registry change stales the file in every environment
  * that has compiled. Restored plans (`restorePlans`) are checked like
  * published ones. Each plan's fingerprints are checked with its host
  * (`hosts` of its key: the resolver its module resolves with). The returned
@@ -451,11 +453,15 @@ async function applyChange(
   let read: { text: string | null; same: boolean } | undefined
   /** The file reads as the caches read it: only the file set may have moved. */
   let unchanged = false
+  /** A change to the text the caches read: a repeat of an applied event, or a file removed and created again unseen. */
+  let repeat = false
   // (a virtual module has no file to read: its event always applies)
   if (kind !== 'registry' && !isVirtualId(path)) {
-    if (kind === 'change' && !resolverFile && !knownAt(caches, path)) {
-      return none
-    }
+    // a change of a path the caches hold nothing of: nothing here tells a
+    // file that was there all along from one that is back (its removal was
+    // applied, and a module compiled meanwhile found nothing), so it is a
+    // creation: what looked for the file asks again
+    const created = kind === 'change' && !resolverFile && !knownAt(caches, path)
     // an event is judged by the file as it is: one delivered late (a
     // removal of a file that is back, a change of one that is gone) is
     // what the file says. A file the compiler has no language for is not
@@ -466,15 +472,19 @@ async function applyChange(
       if (readable) {
         kind = read.text === null ? 'unlink' : kind === 'unlink' ? 'add' : kind
       }
+      if (created && kind === 'change') {
+        kind = 'add'
+      }
       if (read.same) {
-        // no fact of the file moved. A change is a repeat; a creation, or a
-        // removal of a file that is back, still moves the file set: what
-        // looked for the file meanwhile, and a resolver that answered before
-        // it existed (another environment's event came first), ask again
+        // no fact of the file moved. A creation, or a removal of a file
+        // that is back, still moves the file set: what looked for the file
+        // meanwhile, and a resolver that answered before it existed
+        // (another environment's event came first), ask again
         if (kind === 'change') {
-          return none
+          repeat = true
+        } else {
+          unchanged = true
         }
-        unchanged = true
       }
     }
     if (kind === 'unlink' && !knownAt(caches, path)) {
@@ -503,7 +513,7 @@ async function applyChange(
   if (kind === 'unlink') {
     caches.rawFacts.forget(path)
     caches.stale.remove(path)
-  } else if (!unchanged) {
+  } else if (!unchanged && !repeat) {
     caches.rawFacts.markStale(path, read?.text)
   }
   if (kind === 'registry') {
@@ -576,18 +586,25 @@ async function applyChange(
   const shadows =
     change.kind === 'add' || manifest ? shadowTest(change.path) : null
   for (const cache of caches.plans.values()) {
-    await revalidate(
-      cache,
-      change.path,
-      // a change keeps the file set: the resolver's answers stand (as for
-      // plan validation at an unchanged `fileSetVersion`); the file's new
-      // facts are what its dependents are checked against
-      (fp) =>
-        fingerprintPath(fp) === change.path &&
-        !(change.kind === 'change' && fp.kind === 'resolution'),
-    )
-    if (fileSetMoved) {
-      // failed resolutions have no path; re-resolve them all (the memo asks the host once per distinct entry)
+    // (a repeat of a change moved no fact of the file: only failed
+    // resolutions may have moved, below)
+    if (!repeat) {
+      await revalidate(
+        cache,
+        change.path,
+        // a change keeps the file set: the resolver's answers stand (as for
+        // plan validation at an unchanged `fileSetVersion`); the file's new
+        // facts are what its dependents are checked against
+        (fp) =>
+          fingerprintPath(fp) === change.path &&
+          !(change.kind === 'change' && fp.kind === 'resolution'),
+      )
+    }
+    if (kind !== 'registry') {
+      // failed resolutions have no path; re-resolve them all (the memo asks
+      // the host once per distinct entry). Every file event asks them: one
+      // may hide a creation (a removal and re-creation reported as one
+      // change, or a file back reported as modified)
       await revalidate(
         cache,
         UNRESOLVED_DEPENDENCY,

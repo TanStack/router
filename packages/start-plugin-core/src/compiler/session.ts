@@ -196,6 +196,7 @@ export class StartCompilerSession {
     const packageModule = opaquePackageModule(this.ip)
     this.rawFacts = new RawFactsCache({
       readFile: opts.readFile,
+      modifiedAt: fileModifiedAt,
       loadVirtual: opts.loadVirtual,
       recognizer: startRecognizer(),
       // every analysis of the session agrees on the marker specifiers

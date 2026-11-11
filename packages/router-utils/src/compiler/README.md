@@ -294,12 +294,18 @@ text compiles waits for it and emits its own output from the result.
   text is what the caches read (an echo, a touch, the same event through a second hook). The same text proves that
   no fact of the file moved, not that the file was there all along: an add, or a removal of a file that reads back,
   with that text still moves the file set (what looked for the file meanwhile, and another environment's resolver
-  that answered before it existed, ask again) without marking its facts. Calls for one path run one after the
+  that answered before it existed, ask again) without marking its facts. Any file event may hide a creation
+  (chokidar folds a removal and a re-creation within its window into one change; Rspack lists a file back in its
+  batch as modified): every one, a repeated change included, asks the failed resolutions again, and a change of a
+  path the caches hold nothing of that reads as a file is judged an add. An event that reads the file empty reads
+  it again for a moment (an in-place save reported between truncation and write), unless an event read it empty
+  and waited in vain and the file's modification time is the same (a repeat of that event through another hook).
+  Calls for one path run one after the
   other, and `caches.settled()` resolves once none runs. An event is judged by the file as it is (a removal of a file
   that reads back is an add, a change of one that reads nothing a removal). A change marks the file's raw facts
   stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
-  add/unlink also retry failed resolutions, and they or a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
+  add/unlink and a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
   take: a file of the same name with another extension, or of a directory a resolution went into). The file's own
   plans are keyed by its text and stay (a bundler that built the new text already keeps their rows) until a compile
   of a newer text ends: with its plan, or, for a text without one (untouched, empty, not parsed), without; a removal
