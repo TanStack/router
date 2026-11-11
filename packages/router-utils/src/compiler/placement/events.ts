@@ -79,6 +79,8 @@ export interface StatementChanges {
   syms: ReadonlyArray<SymbolId>
   /** The module bindings they read (not imports), and the objects those may hold, in source order. */
   reads: ReadonlyArray<SymbolId>
+  /** The imports they read: where none of `clusters` decides, their users' one chunk does (imports go wherever their users go; every output imports one itself, so none keeps a statement). */
+  imports: ReadonlyArray<SymbolId>
   /** What they follow, the statement's own cluster aside: the clusters of `syms`, or of `reads` when they change no binding (R148: dead code follows what it reads, like a statement). */
   clusters: ReadonlyArray<ClusterId>
   /** The first thing outside the module's own bindings they change, if any: an import's object, a global, `import.meta`, a dynamically imported module. */
@@ -604,6 +606,7 @@ export function eventTable(
   const NO_CHANGES: StatementChanges = {
     syms: [],
     reads: [],
+    imports: [],
     clusters: [],
     outside: null,
   }
@@ -633,6 +636,7 @@ export function eventTable(
     const file = t1.purity.file
     const syms = new Set<SymbolId>()
     const read = new Set<SymbolId>()
+    const imported = new Set<SymbolId>()
     // (declaring a function runs nothing)
     let outside =
       unit.node.type === 'FunctionDeclaration'
@@ -644,7 +648,13 @@ export function eventTable(
       if (
         NEED_KINDS.has(ref.kind) &&
         symbols.isModuleLevel(ref.sym) &&
-        !symbols.isImport(ref.sym) &&
+        symbols.isImport(ref.sym) &&
+        graph.isLive(ref, 'env')
+      ) {
+        imported.add(ref.sym)
+      } else if (
+        NEED_KINDS.has(ref.kind) &&
+        symbols.isModuleLevel(ref.sym) &&
         graph.isLive(ref, 'env')
       ) {
         read.add(ref.sym)
@@ -719,11 +729,15 @@ export function eventTable(
     }
     const own = clusterOfRegion.get(unit.region)
     hit =
-      syms.size === 0 && read.size === 0 && outside === null
+      syms.size === 0 &&
+      read.size === 0 &&
+      imported.size === 0 &&
+      outside === null
         ? NO_CHANGES
         : {
             syms: [...syms],
             reads: [...read],
+            imports: [...imported],
             clusters: followed(own, syms, read, syms.size > 0),
             outside,
           }
@@ -739,6 +753,7 @@ export function eventTable(
     }
     const syms: Array<SymbolId> = []
     const read: Array<SymbolId> = []
+    const imported: Array<SymbolId> = []
     let outside: OutsideChange | null = null
     for (const u of clusters[c]!.units) {
       const kind = t1.units[u]!.kind
@@ -760,13 +775,22 @@ export function eventTable(
           read.push(s)
         }
       }
+      for (const s of one.imports) {
+        if (!imported.includes(s)) {
+          imported.push(s)
+        }
+      }
     }
     hit =
-      syms.length === 0 && read.length === 0 && outside === null
+      syms.length === 0 &&
+      read.length === 0 &&
+      imported.length === 0 &&
+      outside === null
         ? NO_CHANGES
         : {
             syms,
             reads: read,
+            imports: imported,
             clusters: followed(c, syms, read, syms.length > 0),
             outside,
           }

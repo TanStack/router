@@ -241,6 +241,23 @@ export function settleRoots(
         to = n
       }
     }
+    // where none of its bindings decides, the imports it reads do: their
+    // users' one chunk (an unused component rendering the page's UI)
+    if (to === null) {
+      for (const s of events.statementChanges(c).imports) {
+        const d = graph.clusterOfSym.get(s)
+        for (const n of d === undefined ? [] : needersOf(d)) {
+          const k = outputs.get(n)?.kind
+          if (k === 'export' || k === 'provider' || n === to) {
+            continue
+          }
+          if (to !== null) {
+            return { reason: 'needers' }
+          }
+          to = n
+        }
+      }
+    }
     const kind = to === null ? undefined : outputs.get(to)?.kind
     if (to === null || kind === 'export' || kind === 'provider') {
       return { reason: 'needers' }
