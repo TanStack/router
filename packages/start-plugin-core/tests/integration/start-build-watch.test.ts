@@ -396,6 +396,77 @@ describe('vite build --watch: tripwires', () => {
     timeout,
   )
 
+  // A client build that fails in `generateBundle` (an import-protection
+  // error fails it there) ends with its watcher's ERROR: the server's
+  // modules that embed the client build wait for the client's build running
+  // now (`Session.clientBuilding`, its watcher's BUNDLE_START to BUNDLE_END
+  // or ERROR), so a failure that ended no build would hang the server's.
+  test(
+    'a client build that fails in generateBundle ends its wait: the next save rebuilds both',
+    async () => {
+      let failed = false
+      let serverEnds = 0
+      let serverRebuilt!: () => void
+      const rebuilt = new Promise<void>((resolve) => (serverRebuilt = resolve))
+      /** Fails the client's first build of the first save, in `generateBundle`. */
+      const fail: Plugin = {
+        name: 'test:fail-generate-bundle',
+        generateBundle(_options, bundle) {
+          if (
+            this.environment.name === 'client' &&
+            !failed &&
+            Object.values(bundle).some(
+              (chunk) =>
+                chunk.type === 'chunk' && chunk.code.includes('MARK_ONE'),
+            )
+          ) {
+            failed = true
+            throw new Error('generateBundle failed')
+          }
+        },
+        buildEnd() {
+          if (this.environment.name === 'ssr' && ++serverEnds === 2) {
+            serverRebuilt()
+          }
+        },
+      }
+      const { client, ssr } = await buildStart({
+        bundler: 'vite',
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        viteConfig: { plugins: [fail] },
+        watchEdits: [
+          { edits: { 'greeting.ts': `export const greeting = 'MARK_ONE'\n` } },
+          {
+            edits: { 'greeting.ts': `export const greeting = 'MARK_TWO'\n` },
+            // the server's rebuild of the first save ends (it waited for
+            // the failed client build)
+            when: () =>
+              Promise.race([
+                rebuilt,
+                new Promise<never>((_, reject) =>
+                  setTimeout(
+                    () => reject(new Error('the server build never ended')),
+                    10_000,
+                  ),
+                ),
+              ]),
+          },
+        ],
+      })
+      expect(failed).toBe(true)
+      expect((await client.run(`return entry.greeting`)).result).toBe(
+        'MARK_TWO',
+      )
+      const url = (await client.run(`return entry.greet.url`)).result
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_TWO')
+    },
+    timeout,
+  )
+
   // A plugin context kept from an environment's finished build still
   // resolves: a file event's invalidation asks a plan's resolutions with its
   // environment's resolver of its last build (`Session.resolvers`).
