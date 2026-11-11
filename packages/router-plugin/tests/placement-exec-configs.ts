@@ -64,14 +64,11 @@ const file = '/app/src/routes/x.tsx'
 const groupings: Array<[string, CodeSplitGroupings | undefined]> = [
   ['default', undefined],
   ['l|c', [['loader'], ['component']]],
+  ['l|ce', [['loader'], ['component', 'errorComponent']]],
   [
-    'bl|ce',
-    [
-      ['beforeLoad', 'loader'],
-      ['component', 'errorComponent'],
-    ],
+    'l|c|e|n',
+    [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']],
   ],
-  ['b|l|c|e', [['beforeLoad'], ['loader'], ['component'], ['errorComponent']]],
 ]
 
 export const routerConfigs: Array<Config> = (
