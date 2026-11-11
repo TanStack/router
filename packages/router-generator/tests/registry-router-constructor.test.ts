@@ -67,7 +67,7 @@ test('a route made by the router package is listed with routerConstructor, a for
       ]),
     )
   expect(byRoute()).toEqual({
-    '/__root': false,
+    '/__root': true,
     '/about': true,
     '/foreign': false,
   })
@@ -94,23 +94,19 @@ test('a route made by the router package is listed with routerConstructor, a for
 // package's constructor of the file's kind, by binding, through any wrapper
 // (a cast around a namespace import too); another framework's router package
 // or a subpath of the router package is not the app's router.
-// Bug: the root route file is never read, so its route is listed as not
-// made by the router package's constructor, and a compiler reads the file
-// for its `Route` (design 5 D2).
-test.fails(
-  'a root route made by createRootRoute is listed with routerConstructor',
-  async () => {
-    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
-    const generator = new Generator({ config: configOf(root), root })
-    await generator.run({ type: 'build' })
+// The root route file is read like every route file (design 5 D2): a
+// compiler takes its `Route` from the registry too.
+test('a root route made by createRootRoute is listed with routerConstructor', async () => {
+  const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  const generator = new Generator({ config: configOf(root), root })
+  await generator.run({ type: 'build' })
 
-    expect(
-      [...generator.getRoutesByFileMap().values()].find(
-        (v) => v.routeId === '/__root',
-      )?.routerConstructor,
-    ).toBe(true)
-  },
-)
+  expect(
+    [...generator.getRoutesByFileMap().values()].find(
+      (v) => v.routeId === '/__root',
+    )?.routerConstructor,
+  ).toBe(true)
+})
 
 const spellings = [
   {
@@ -119,8 +115,6 @@ const spellings = [
 export const Route = (R as any).createFileRoute('/x')({})
 `,
     routerConstructor: true,
-    // Bug: a cast around the namespace object is not unwrapped (design 5 D1)
-    pinned: true,
   },
   {
     name: "another framework's router package",
@@ -150,16 +144,8 @@ async function listedConstructor(source: string) {
   )?.routerConstructor
 }
 
-test.for(spellings.filter((row) => !row.pinned))(
+test.for(spellings)(
   'a route made with $name is listed with routerConstructor $routerConstructor',
-  async ({ source, routerConstructor }) => {
-    expect(await listedConstructor(source)).toBe(routerConstructor)
-  },
-)
-
-test.for(spellings.filter((row) => row.pinned))(
-  'a route made with $name is listed with routerConstructor $routerConstructor',
-  { fails: true },
   async ({ source, routerConstructor }) => {
     expect(await listedConstructor(source)).toBe(routerConstructor)
   },

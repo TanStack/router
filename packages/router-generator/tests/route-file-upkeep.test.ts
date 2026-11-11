@@ -401,16 +401,15 @@ export const Route = createFileRoute('/new')({})
 // root route file) is repaired to the constructor of its kind, as
 // `createLazyFileRoute` in a route file is: the generator's verdict is the
 // one every compiler reads, and the file a normal route of its kind.
-// Bug: such a file is left as it is (design 5 D4).
 describe('route constructors of the root and of file routes', () => {
-  test.fails.each([
+  test.each([
     {
       name: 'createRootRoute',
       source: `import { createRootRoute } from ${router}
 
 export const Route = createRootRoute({ component: () => 'new page' })
 `,
-      call: 'createRootRoute',
+      call: 'createRootRoute(',
     },
     {
       name: 'createRootRouteWithContext',
@@ -436,7 +435,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         id: '/new',
         // (the same file with the file route's call, as far as the
         // generator's edits go)
-        source: source.replace(call, `createFileRoute('/new')`),
+        source: source.replace(
+          call,
+          call.endsWith('(')
+            ? `createFileRoute('/new')(`
+            : `createFileRoute('/new')`,
+        ),
       })
       const { exports } = await evaluateModule(written)
       expect(exports.Route.options.component()).toBe('new page')
@@ -447,7 +451,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     },
   )
 
-  test.fails.each([
+  test.each([
     {
       name: 'createFileRoute',
       source: `import { createFileRoute } from ${router}

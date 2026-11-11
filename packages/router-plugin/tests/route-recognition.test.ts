@@ -55,11 +55,9 @@ const rows: Array<Row> = [
     route: true,
   },
   {
-    // Bug: the generator does not unwrap the cast (design 5 D1)
     name: 'a namespace import in a cast',
     code: `import * as R from '${RP}'\nexport const Route = (R as any).createFileRoute('/x')(${options})\n`,
     route: true,
-    pinned: true,
   },
   {
     name: 'a constructor in a cast',
@@ -95,7 +93,6 @@ const rows: Array<Row> = [
     // (R144: the generator repairs it to createFileRoute('/x'))
     route: true,
     root: false,
-    pinned: true,
   },
   {
     name: "an app's own route helper",
