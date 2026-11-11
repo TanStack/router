@@ -1,0 +1,51 @@
+.catalog {
+  display: grid;
+  gap: 1rem;
+}
+
+.catalog-badge {
+  justify-self: start;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalog-card {
+  display: block;
+  padding: 1rem;
+  border: 1px solid #e4e4e7;
+  border-radius: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.catalog-card:hover {
+  border-color: #8b5cf6;
+}
+
+.catalog-price {
+  margin: 0.25rem 0 0;
+  color: #52525b;
+}
+
+.catalog-button {
+  justify-self: start;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #7c3aed;
+  color: white;
+  cursor: pointer;
+}
