@@ -127,12 +127,12 @@ export interface ClusterGraph {
   unitSurvives: (u: UnitId) => boolean
   /**
    * Whether cluster `c` may run code or throw when it evaluates: `effectful`
-   * with its units judged as deletion judges them (`Tier1.deletionEffects`:
-   * every operation that may, rule L's language operations included).
-   * `effectful` is placement's timing (rule L) and decides no deletion:
-   * unread code that may run stays (`settle.ts`, `homes.ts`), and none
-   * moves into an extracted export's module (`roots.ts` candidates,
-   * `settle.ts`), which a host may flag side-effect free whatever it holds.
+   * with its units judged as extraction judges them
+   * (`Tier1.extractionEffects`: every operation that may, rule L's language
+   * operations included). `effectful` is placement's timing (rule L): none
+   * of what may run moves into an extracted export's module (`roots.ts`
+   * candidates, `settle.ts`), which a host may flag side-effect free
+   * whatever it holds, and its report says so (`kept.ts`).
    */
   runsCode: (c: ClusterId) => boolean
   /**
@@ -782,7 +782,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (hit === undefined) {
       const cl = clusters[c]!
       hit =
-        cl.effectful || hasEffects(cl, (unit) => t1.deletionEffects(unit.id))
+        cl.effectful || hasEffects(cl, (unit) => t1.extractionEffects(unit.id))
       runsCodeOf.set(c, hit)
     }
     return hit

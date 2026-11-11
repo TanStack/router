@@ -54,11 +54,15 @@
  * (`factsOf`). A module that writes no module binding asks only of
  * effectful clusters and candidates.
  */
+import { changesObject, outsideChangeIn } from '../units'
+import { callChangesNothing } from '../purity'
 import { NEED_KINDS } from './clusters'
 import type { ClusterGraph, ClusterId, Write } from './clusters'
 import type { ReadIndex } from './reads'
+import type { Node } from 'yuku'
+import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
-import type { RegionId } from '../units'
+import type { OutsideChange, RegionId, UnitId } from '../units'
 import type { OutputId } from '../rewrite'
 import type { Fallback, Home, KeptReason, PlacementInput } from '../reach'
 
@@ -69,10 +73,16 @@ export interface Touch {
   cluster: ClusterId
 }
 
-/** What a cluster's statements touch (`Events.statementTouches`). */
-export interface StatementTouches {
+/** What statements change (`Events.unitChanges`, `Events.statementChanges`). */
+export interface StatementChanges {
+  /** The module bindings they change (assign, write a member of, call a method on), in source order; a statement's own cluster's included. */
+  syms: ReadonlyArray<SymbolId>
+  /** The module bindings they read (not imports), and the objects those may hold, in source order. */
+  reads: ReadonlyArray<SymbolId>
+  /** What they follow, the statement's own cluster aside: the clusters of `syms`, or of `reads` when they change no binding (R148: dead code follows what it reads, like a statement). */
   clusters: ReadonlyArray<ClusterId>
-  import: SymbolId | null
+  /** The first thing outside the module's own bindings they change, if any: an import's object, a global, `import.meta`, a dynamically imported module. */
+  outside: OutsideChange | null
 }
 
 /** Per written binding an evaluation touches, its first and last touch: they decide every comparison with a write. */
@@ -89,6 +99,12 @@ export interface Pin {
   reason: KeptReason
   other?: { at: number }
   binding?: SymbolId
+  /** `written`: what the statement at `other` changes outside the module's bindings, which keeps it (R146 amendment). */
+  outside?: OutsideChange
+  /** `written`: the split output using `binding` (another than the subject's), or the subject's second one. */
+  in?: OutputId
+  /** `written`: the statement only uses the subject (it changes no binding of the module). */
+  uses?: boolean
 }
 
 export interface Events {
@@ -117,16 +133,20 @@ export interface Events {
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
   /**
-   * What the statements of cluster `c` (its effect units) touch: the
-   * clusters of every module binding their text names in the env module
-   * and of the objects each one's value may hold (`MutationModel.heldBy`,
-   * the one owner of "the object a binding names": `alias.add()` touches
-   * `table` through `const alias = table`), `c` aside, in source order;
-   * `import`: the first import among them (another module's object, which
-   * other code uses). Asked of the clusters that may follow what they
-   * touch (`settle.ts`), once each.
+   * What statement `u` (an effect unit) changes when it runs (R146
+   * amendment): the objects it writes or calls a method on (`changesObject`;
+   * a call the purity model knows changes nothing is none), directly or in
+   * what it runs (`ReadIndex.runs`, when it calls something), and the
+   * objects those bindings' values may hold (`MutationModel.heldBy`, the one
+   * owner of "the object a binding names": `alias.add()` changes `table`
+   * through `const alias = table`); a binding it assigns. Calling, reading
+   * or passing a binding changes nothing (an unknown call writes nothing it
+   * is handed). An import's object, a global, `import.meta` or a module it
+   * imports dynamically is `outside`. Once per unit.
    */
-  statementTouches: (c: ClusterId) => StatementTouches
+  unitChanges: (u: UnitId) => StatementChanges
+  /** `unitChanges` of the statements and declarations of cluster `c`, together: what a follower (a statement, or dead code: R148) follows (`settle.ts`) or keeps it (`roots.ts`). */
+  statementChanges: (c: ClusterId) => StatementChanges
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
   fallbacks: (
     home: ReadonlyMap<ClusterId, Home>,
@@ -580,52 +600,181 @@ export function eventTable(
     return out
   }
 
-  const statementTouchesOf = new Map<ClusterId, StatementTouches>()
-  function statementTouches(c: ClusterId): StatementTouches {
-    let hit = statementTouchesOf.get(c)
+  const known = (call: Node) => callChangesNothing(t1.purity, call)
+  const NO_CHANGES: StatementChanges = {
+    syms: [],
+    reads: [],
+    clusters: [],
+    outside: null,
+  }
+  /** The clusters `c` follows: of what it changes, else of what it reads. */
+  const followed = (
+    own: ClusterId | undefined,
+    changed: Iterable<SymbolId>,
+    read: Iterable<SymbolId>,
+    changes: boolean,
+  ): Array<ClusterId> => {
+    const out: Array<ClusterId> = []
+    for (const s of changes ? changed : read) {
+      const d = clusterOfSym.get(s)
+      if (d !== undefined && d !== own && !out.includes(d)) {
+        out.push(d)
+      }
+    }
+    return out
+  }
+  const changesOfUnit = new Map<UnitId, StatementChanges>()
+  function unitChanges(u: UnitId): StatementChanges {
+    let hit = changesOfUnit.get(u)
     if (hit !== undefined) {
       return hit
     }
-    const found = new Set<ClusterId>()
-    let imported: SymbolId | null = null
-    const add = (s: SymbolId) => {
-      const d = clusterOfSym.get(s)
-      if (d === undefined || d === c) {
-        return
-      }
-      found.add(d)
-      if (imported === null && clusters[d]!.kind === 'import') {
-        imported = s
+    const unit = t1.units[u]!
+    const file = t1.purity.file
+    const syms = new Set<SymbolId>()
+    const read = new Set<SymbolId>()
+    // (declaring a function runs nothing)
+    let outside =
+      unit.node.type === 'FunctionDeclaration'
+        ? null
+        : outsideChangeIn(file, unit.node, known, false)
+    // what its text names (a function's body too: dead code follows what
+    // it reads, R148), with the objects those may hold
+    const noteRead = (ref: ClassifiedRef) => {
+      if (
+        NEED_KINDS.has(ref.kind) &&
+        symbols.isModuleLevel(ref.sym) &&
+        !symbols.isImport(ref.sym) &&
+        graph.isLive(ref, 'env')
+      ) {
+        read.add(ref.sym)
+        for (const h of t1.mutation.heldBy(ref)) {
+          if (!symbols.isImport(h)) {
+            read.add(h)
+          }
+        }
       }
     }
+    for (const ref of t1.refs.refsIn(unit.range)) {
+      noteRead(ref)
+    }
+    // what it runs beyond its text when it calls something: the units
+    // `runs` enters (functions it calls, values whose methods it calls),
+    // whole, as `runs` takes them
+    const calls = graph.callsOf(unit.region) !== null
+    const entered: Array<UnitId> = []
+    reads.runs(
+      unit.region,
+      (ref) => {
+        if (
+          !symbols.isModuleLevel(ref.sym) ||
+          !graph.isLive(ref, 'env') ||
+          (!calls &&
+            (ref.range.start < unit.range.start ||
+              ref.range.end > unit.range.end))
+        ) {
+          return false
+        }
+        noteRead(ref)
+        let changed: ReadonlyArray<SymbolId> = []
+        if (ref.kind === 'write') {
+          changed = [ref.sym]
+        } else if (ref.kind === 'value') {
+          const node = t1.nodeAt(ref.range.start)
+          if (node !== null && changesObject(file, node, known)) {
+            changed =
+              ref.memberWrite &&
+              !ref.readsThrough &&
+              t1.mutation.ownsObject(ref.sym)
+                ? [ref.sym]
+                : [ref.sym, ...t1.mutation.heldBy(ref)]
+          }
+        }
+        for (const s of changed) {
+          if (symbols.isImport(s)) {
+            outside ??= {
+              at: ref.range.start,
+              name: symbols.name(s),
+              kind: 'import',
+            }
+          } else {
+            syms.add(s)
+          }
+        }
+        return false
+      },
+      calls ? (e) => entered.push(e) : undefined,
+    )
+    for (const e of entered) {
+      if (outside !== null) {
+        break
+      }
+      if (e !== u) {
+        outside = outsideChangeIn(file, t1.units[e]!.node, known, true)
+      }
+    }
+    const own = clusterOfRegion.get(unit.region)
+    hit =
+      syms.size === 0 && read.size === 0 && outside === null
+        ? NO_CHANGES
+        : {
+            syms: [...syms],
+            reads: [...read],
+            clusters: followed(own, syms, read, syms.size > 0),
+            outside,
+          }
+    changesOfUnit.set(u, hit)
+    return hit
+  }
+
+  const changesOfCluster = new Map<ClusterId, StatementChanges>()
+  function statementChanges(c: ClusterId): StatementChanges {
+    let hit = changesOfCluster.get(c)
+    if (hit !== undefined) {
+      return hit
+    }
+    const syms: Array<SymbolId> = []
+    const read: Array<SymbolId> = []
+    let outside: OutsideChange | null = null
     for (const u of clusters[c]!.units) {
-      const unit = t1.units[u]!
-      if (unit.kind !== 'effect') {
+      const kind = t1.units[u]!.kind
+      if (
+        (kind !== 'effect' && kind !== 'declaration') ||
+        !graph.unitSurvives(u)
+      ) {
         continue
       }
-      for (const ref of t1.refs.refsIn(unit.range)) {
-        if (
-          !NEED_KINDS.has(ref.kind) ||
-          !symbols.isModuleLevel(ref.sym) ||
-          !graph.isLive(ref, 'env')
-        ) {
-          continue
+      const one = unitChanges(u)
+      outside ??= one.outside
+      for (const s of one.syms) {
+        if (!syms.includes(s)) {
+          syms.push(s)
         }
-        add(ref.sym)
-        for (const s of t1.mutation.heldBy(ref)) {
-          add(s)
+      }
+      for (const s of one.reads) {
+        if (!read.includes(s)) {
+          read.push(s)
         }
       }
     }
-    hit = { clusters: [...found], import: imported }
-    statementTouchesOf.set(c, hit)
+    hit =
+      syms.length === 0 && read.length === 0 && outside === null
+        ? NO_CHANGES
+        : {
+            syms,
+            reads: read,
+            clusters: followed(c, syms, read, syms.length > 0),
+            outside,
+          }
+    changesOfCluster.set(c, hit)
     return hit
   }
 
   return {
     volatile,
     ordered,
-    statementTouches,
+    unitChanges,
+    statementChanges,
     lazyConflict,
     readsKept,
     readConflict,

@@ -5945,8 +5945,6 @@ describe('declarations only split code needs that stay in the route module', () 
       ),
     }
   }
-  const lineOf = (code: string, needle: string) =>
-    code.slice(0, code.indexOf(needle)).split('\n').length
 
   // the planners word what the core reports: a Hydrate chunk is named as
   // its boundary, and a module no planner describes is just "the module"

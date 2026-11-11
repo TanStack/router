@@ -268,13 +268,15 @@ export interface Tier1 {
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
   /**
-   * Unit `u`'s effects as deletion judges them (`unitEffects` with the
+   * Unit `u`'s effects as extraction judges them (`unitEffects` with the
    * planners' purity, `ModuleAnalysis.purity`: every operation that may run
-   * code or throw): what may be dropped as dead code, and what may move
-   * into an extracted export's module. The unit's own fields are
-   * placement's timing (rule L). Asked of a few units; each once.
+   * code or throw): what may move into an extracted export's module. The
+   * unit's own fields are placement's timing (rule L). Asked of a few
+   * units; each once.
    */
-  deletionEffects: (u: UnitId) => UnitEffects
+  extractionEffects: (u: UnitId) => UnitEffects
+  /** The planners' purity (`ModuleAnalysis.purity`): what extraction and the statement rule's "what it changes" ask. */
+  purity: PurityContext
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
@@ -1389,7 +1391,8 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
-      deletionEffects: (u) => {
+      purity,
+      extractionEffects: (u) => {
         let hit = deletion.get(u)
         if (hit === undefined) {
           hit = unitEffects(purity, units[u]!)

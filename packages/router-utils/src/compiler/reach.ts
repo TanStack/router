@@ -23,7 +23,7 @@ import type { Cluster, ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
-import type { RegionId, UnitId } from './units'
+import type { OutsideChange, RegionId, UnitId } from './units'
 import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
 
 export type RootRef =
@@ -140,8 +140,14 @@ export interface KeptDeclaration {
   needers: Array<OutputId>
   /** `written`, `reassigned`: where it is written. */
   at?: number
-  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
+  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned; `written`: the binding the statement also changes, which keeps it. */
   read?: SymbolId
+  /** `written`: what the statement changes outside the module's bindings. */
+  outside?: OutsideChange
+  /** `written`: the split output using `read`, or the subject's second one. */
+  in?: OutputId
+  /** `written`: the statement only uses it (it changes no binding of the module). */
+  uses?: boolean
 }
 
 export interface ExtractedExport {
@@ -205,7 +211,7 @@ export function computePlacement(input: PlacementInput): Placement {
   // 4. the solver: env roots, slots and extracted exports, one fixed point
   const roots = settleRoots(input, graph, reads, events, seeds)
   // 5. what only split code needs that stays, and why
-  const kept = keptDeclarations(input, graph, reads, seeds, roots)
+  const kept = keptDeclarations(input, graph, reads, events, seeds, roots)
   if (!input.extractedOutputs) {
     foldExtractions(reads, roots)
   }

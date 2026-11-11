@@ -219,14 +219,22 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
   and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`). A
-  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block) follows what it touches: the
-  module bindings its text names and the objects their values hold (`MutationModel.heldBy`, the owner of "the
-  object a binding names"); it moves into a chunk when every one of them goes to that chunk, a binding only it
-  reads following it, in source order there (`const table = createTable(); const columns = snapshot(table);
-  table.addColumn('x')`, only the component reading `columns`, all move), and stays in the route module when it
-  touches an import (another module's object, which other code uses: `Sentry.init({ dsn })`, `i18n.use(backend)`)
-  or a binding that stays or goes elsewhere (`placement/settle.ts`, followers). An effect it has outside what it
-  touches (`registry.install()` patching `fetch`) then runs when the chunk loads. Both sides
+  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block) follows what it changes
+  (R146 amendment, `Events.statementChanges`): the module bindings it assigns, writes a member of or calls a method
+  on, directly or in what it runs (`ReadIndex.runs`), and the objects their values hold (`MutationModel.heldBy`,
+  the owner of "the object a binding names"); calling, reading or passing a binding or an import changes nothing
+  (`plugins.push(sentryPlugin())`, `reg.client = createClient()`, in an `if` or not, move with their binding). It
+  moves into a chunk when everything it changes goes to that chunk, what only it touches following it, in source
+  order there (`const table = createTable(); const columns = snapshot(table); table.addColumn('x')`, only the
+  component reading `columns`, all move; what it only reads may stay, and the chunk imports it); a statement that
+  changes no binding follows what it reads (`log(client)`). It stays in the route module, keeping what it touches,
+  when it changes something the rest of the app sees (`OutsideChange`: another module's object, `Sentry.init(cfg)`,
+  `i18n.use(x)`; a global, `window.x = …`, `console.log(…)`; `import.meta`; a module it imports dynamically), also
+  through a local function it calls, or when what it changes stays or goes to several outputs
+  (`placement/settle.ts`, followers); a declaration's own write (`Page.x = …`) is judged the same way, and the
+  warning (`eager-split:written`) names the cause with the statement's line. A call the purity model knows changes
+  nothing (`JSON.parse`, a pure export) is none; inside imported code the compiler sees nothing
+  (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
@@ -252,9 +260,10 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   planners with that region kept in place, until no new region is reported (a kept region can free the next one;
   every round keeps one more, so the rounds end within the module's region count). Past that bound every
   sub-region is kept in place, which is always correct, and a warning (`fallback-rounds-exhausted`) says so;
-- **pre-existing dead code**: a pure declaration cluster nothing reads is kept (code dead before the transform is
-  never removed), including a dead pure cycle; the one exception is a dead pure cluster whose reads would pull a
-  chunk's dependency into the env module (an unused function rendering the split component): it is dropped.
+- **pre-existing dead code** (R148): a declaration cluster nothing reads, or a dead cycle, is never removed: it
+  follows what it changes or reads, like a statement (a follower), into that one chunk (`function Unused() { return
+<Page /> }` with `Page`, `const check = JSON.parse(cols.schema)` with `cols`), else stays in the env module; the
+  bundler decides. What erased code reaches is not dead: it goes with that code (orphaned by us).
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 
@@ -307,10 +316,9 @@ directives, never license comments.
   or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
   runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
   is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). Rule L decides
-  when code runs, never whether it is kept: what may be deleted (`effects()` of raw facts, function-scope orphans, the
-  dead declarations placement drops: `ClusterGraph.runsCode`, `Tier1.deletionEffects`) still counts every operation
-  that may run code or throw, and so does what may move into an extracted export's module (a host may flag it
-  side-effect free whatever it holds: `export const url = new URL(x)` stays, reported `eager-export:effects`).
+  when code runs, nothing else: what may move into an extracted export's module (a host may flag it side-effect free
+  whatever it holds: `export const url = new URL(x)` stays, reported `eager-export:effects`) and `effects()` of raw
+  facts count every operation that may run code or throw (`ClusterGraph.runsCode`, `Tier1.extractionEffects`).
 - **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's

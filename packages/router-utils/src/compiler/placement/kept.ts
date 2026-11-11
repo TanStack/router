@@ -11,7 +11,7 @@ import { derivedNeeds } from './settle'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
-import type { Pin } from './events'
+import type { Events, Pin } from './events'
 import type { Roots } from './settle'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -22,6 +22,7 @@ export function keptDeclarations(
   input: PlacementInput,
   graph: ClusterGraph,
   reads: ReadIndex,
+  events: Events,
   seeds: Seeds,
   roots: Roots,
 ): Array<KeptDeclaration> {
@@ -61,6 +62,9 @@ export function keptDeclarations(
           at: other.at,
         }),
       ...(pin.binding !== undefined && { read: pin.binding }),
+      ...(pin.outside !== undefined && { outside: pin.outside }),
+      ...(pin.in !== undefined && { in: pin.in }),
+      ...(pin.uses === true && { uses: true }),
     }
   }
   /** `reassigned`: the binding and its first live assignment (the declaration aside). */
@@ -125,7 +129,7 @@ export function keptDeclarations(
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    // (no candidate when it may run code, as deletion judges it: `roots.ts`)
+    // (no candidate when it may run code, as extraction judges it: `roots.ts`)
     const cause: Pin = graph.runsCode(c)
       ? { reason: 'effects' }
       : t1.mutation.isReassigned(sym, liveInEnv) ||
@@ -148,9 +152,35 @@ export function keptDeclarations(
       causes.set(c, pin)
     }
   }
-  for (const [c, at] of seeds.augmentedRoots) {
-    if (envRoots.has(c) && derivedNeeds(input, derivedReach, c)) {
-      causes.set(c, { reason: 'written', other: { at } })
+  // what a statement that stays changes, or uses when it changes no binding
+  // (its own declarations, the clusters it follows: `statementChanges`),
+  // and only split code needs stays with it: reported with why the
+  // statement stays (`written`), the binding that keeps it aside (R146
+  // amendment)
+  const statements = new Set<ClusterId>()
+  for (const [c, pin] of seeds.stayPins) {
+    if (!envRoots.has(c)) {
+      continue
+    }
+    statements.add(c)
+    const blocker =
+      pin.binding === undefined ? undefined : clusterOfSym.get(pin.binding)
+    const changes = events.statementChanges(c)
+    const followed = changes.clusters
+    for (const d of clusters[c]!.declares.size > 0
+      ? [c, ...followed]
+      : followed) {
+      if (
+        d !== blocker &&
+        !causes.has(d) &&
+        clusters[d]!.kind !== 'import' &&
+        derivedNeeds(input, derivedReach, d)
+      ) {
+        causes.set(
+          d,
+          d !== c && changes.syms.length === 0 ? { ...pin, uses: true } : pin,
+        )
+      }
     }
   }
   const kept: Array<KeptDeclaration> = []
@@ -181,7 +211,9 @@ export function keptDeclarations(
   }
   const envOwn = reads.reach(
     'env',
-    [...envRoots].filter((c) => !causes.has(c) && !gluesCauses(c)),
+    [...envRoots].filter(
+      (c) => !causes.has(c) && !statements.has(c) && !gluesCauses(c),
+    ),
   )
   for (const [c, pin] of causes) {
     if (envOwn.has(c)) {
@@ -235,7 +267,10 @@ export function keptDeclarations(
     if (other || needers.length === 0) {
       continue
     }
-    const syms = [...cl.declares].filter((s) => symbols.isModuleLevel(s))
+    // (an import joined to the cluster is no declaration to report)
+    const syms = [...cl.declares].filter(
+      (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
+    )
     kept.push({
       syms,
       exported: false,

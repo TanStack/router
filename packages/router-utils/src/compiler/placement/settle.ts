@@ -177,23 +177,65 @@ export function settleRoots(
   const follows = new Map<ClusterId, OutputId>()
   /**
    * Where follower `c` goes, judged once before it is rooted anywhere: the
-   * one chunk the clusters its statements touch (`Events.statementTouches`)
+   * one chunk the clusters its statements change (`Events.statementChanges`)
    * and its own declarations go to, none (itself included) evaluated by the
-   * env module; a
-   * touched cluster nothing else needs follows it. Never an extracted
+   * env module (what it only reads may stay: the chunk imports it); what
+   * it touches that nothing else needs follows it. Never an extracted
    * export's module or a provider: one instance of the effect, in a module
    * that surely evaluates. Then the lazy-slot rules (`written` for what it
    * declares, V).
    */
+  /**
+   * Why follower `c` stays (`written`, reported on what it changes,
+   * `kept.ts`): `d`, a cluster it changes (its own aside), stays or goes to
+   * another output (`in`), at the first of its statements changing it.
+   */
+  const stayPin = (
+    c: ClusterId,
+    d: ClusterId | null,
+    other?: OutputId,
+  ): Pin => {
+    const changes = events.statementChanges(c)
+    const sym =
+      d === null
+        ? undefined
+        : [...changes.syms, ...changes.reads].find(
+            (s) => graph.clusterOfSym.get(s) === d,
+          )
+    let at: number | undefined
+    for (const u of clusters[c]!.units) {
+      const unit = t1.units[u]!
+      if (unit.kind !== 'effect' && unit.kind !== 'declaration') {
+        continue
+      }
+      const one = events.unitChanges(u)
+      if (
+        sym === undefined
+          ? one.syms.length > 0 || unit.kind === 'effect'
+          : one.syms.includes(sym) || one.reads.includes(sym)
+      ) {
+        at = unit.range.start
+        break
+      }
+    }
+    return {
+      reason: 'written',
+      ...(at !== undefined && { other: { at } }),
+      ...(sym !== undefined && { binding: sym }),
+      ...(other !== undefined && { in: other }),
+    }
+  }
+  /** `c` and the clusters it follows (`Events.statementChanges`). */
+  const followed = (c: ClusterId) => [c, ...events.statementChanges(c).clusters]
   function followSlot(c: ClusterId): OutputId | Pin {
     let to: OutputId | null = null
-    for (const d of [c, ...events.statementTouches(c).clusters]) {
+    for (const d of followed(c)) {
       if (liveEnv.has(d) || envRoots.has(d)) {
-        return { reason: 'needers' }
+        return d === c ? { reason: 'needers' } : stayPin(c, d)
       }
       for (const n of needersOf(d)) {
         if (to !== null && n !== to) {
-          return { reason: 'needers' }
+          return stayPin(c, d === c ? null : d, n)
         }
         to = n
       }
@@ -204,12 +246,6 @@ export function settleRoots(
     }
     return events.lazyConflict(c) ?? to
   }
-  /**
-   * A follower rooted in `to` whose touches do not all go there this
-   * round: the env module evaluates it (reads what it declares), or a
-   * touched cluster stays there, another output needs it, or its slot
-   * matters and is elsewhere.
-   */
   const followConflict = (
     c: ClusterId,
     to: OutputId,
@@ -219,15 +255,18 @@ export function settleRoots(
     if (liveEnv.has(c)) {
       return { reason: 'needers' }
     }
-    for (const d of events.statementTouches(c).clusters) {
+    for (const d of events.statementChanges(c).clusters) {
+      if (stays(d)) {
+        return stayPin(c, d)
+      }
       const needers = needersOf(d)
-      if (
-        stays(d) ||
-        needers.length !== 1 ||
-        needers[0] !== to ||
-        ((follows.has(d) || timed(clusters[d]!)) && target.get(d) !== to)
-      ) {
-        return { reason: 'needers' }
+      const elsewhere = needers.find((n) => n !== to)
+      if (elsewhere !== undefined || needers.length !== 1) {
+        return stayPin(c, d, elsewhere)
+      }
+      if ((follows.has(d) || timed(clusters[d]!)) && target.get(d) !== to) {
+        const slot = target.get(d)
+        return slot === undefined ? stayPin(c, d) : stayPin(c, d, slot)
       }
     }
     return undefined
@@ -454,69 +493,45 @@ export function settleRoots(
   for (const [id, from] of derivedRoots) {
     derivedReach.set(id, reach(id, from))
   }
-  // a pure declaration cluster nobody reads (and no derived output roots) is harmless in the
-  // env module and keeps what it reads alive; clusters only read by each other (a dead pure cycle)
-  // are such dead code too: code that was dead before the transform is never removed (G16).
-  // Pure as deletion judges it (`runsCode`): one that may run code or throw is no candidate, it
-  // stays (rule L decides when code runs, never whether it is kept), as an unread effect does
-  // (`timed`: an env root, or orphaned by us)
-  const deadCandidates = new Set<ClusterId>()
+  // dead code (R148): a declaration cluster nobody reads (and no derived
+  // output roots), or clusters only read by each other (a dead cycle), was
+  // dead before the transform; nothing deletes it: it follows what it
+  // changes or reads, like a statement (a follower, judged in round 0),
+  // into that one chunk, else stays in the env module. What erased code
+  // reaches (reads or assigns) is not dead: orphaned by us, it goes with
+  // that code (R6)
+  const dead = new Set<ClusterId>()
   for (const cl of clusters) {
     if (
-      cl.kind !== 'declaration' ||
-      cl.effectful ||
-      cl.exported ||
-      !cl.units.every(graph.unitSurvives) ||
-      needs(cl.id)
+      cl.kind === 'declaration' &&
+      !cl.exported &&
+      !envRoots.has(cl.id) &&
+      !seeds.fromErased.has(cl.id) &&
+      cl.units.every(graph.unitSurvives) &&
+      !needs(cl.id)
     ) {
-      continue
-    }
-    if (!graph.runsCode(cl.id)) {
-      deadCandidates.add(cl.id)
-    } else if (!seeds.fromErased.has(cl.id)) {
-      envRoots.add(cl.id)
+      dead.add(cl.id)
     }
   }
   for (let changed = true; changed; ) {
     changed = false
-    for (const c of deadCandidates) {
+    for (const c of dead) {
       const read = [...clusters[c]!.declares].some((s) =>
         refs.valueRefsOf(s).some((ref) => {
-          // a reader outside the candidates, or inside erased text (an
-          // orphan of ours, decided by provenance), is a real reader
+          // a reader outside the dead, or inside erased text (an orphan of
+          // ours, decided by provenance), is a real reader
           const owner = clusterOfRegion.get(regions.ownerOf(ref))
-          return (
-            owner === undefined || !deadCandidates.has(owner) || !liveInEnv(ref)
-          )
+          return owner === undefined || !dead.has(owner) || !liveInEnv(ref)
         }),
       )
       if (read) {
-        deadCandidates.delete(c)
+        dead.delete(c)
         changed = true
       }
     }
   }
-  for (const c of deadCandidates) {
-    // dead code that would keep a chunk's dependency in the env module (an
-    // unused function rendering the split component) is dropped instead
-    let pulls = false
-    for (const d of reach('env', [c])) {
-      if (d === c) {
-        continue
-      }
-      for (const set of derivedReach.values()) {
-        if (set.has(d)) {
-          pulls = true
-          break
-        }
-      }
-      if (pulls) {
-        break
-      }
-    }
-    if (!pulls) {
-      envRoots.add(c)
-    }
+  for (const c of dead) {
+    followers.add(c)
   }
   // what derived outputs need before any extraction (a chunk may reach a
   // candidate through another one)
@@ -628,6 +643,9 @@ export function settleRoots(
           derivedRoots.get(to)!.add(c)
         } else {
           envRoots.add(c)
+          if (to.reason === 'written') {
+            seeds.stayPins.set(c, to)
+          }
         }
       }
       derivedStale = true
@@ -649,6 +667,9 @@ export function settleRoots(
         follows.delete(c)
         derivedRoots.get(follow)!.delete(c)
         envRoots.add(c)
+        if (pin.reason === 'written') {
+          seeds.stayPins.set(c, pin)
+        }
         derivedStale = true
         changed = true
         continue

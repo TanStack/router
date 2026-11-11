@@ -11,6 +11,8 @@ import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
 import type { SymbolId } from './symbols'
+import type { OutputId } from './rewrite'
+import type { OutsideChange } from './units'
 import type { Node } from 'yuku'
 
 /**
@@ -29,15 +31,14 @@ export function keptDiagnostic(
   const tag = plan.moduleWords === null ? '' : `${plan.moduleWords.tag} `
   const module = plan.moduleWords?.name ?? 'module'
   const file = plan.displayPath
-  const split = k.needers
-    .map((o) => {
-      const decl = plan.outputs.get(o)!
-      if (decl.kind === 'export') {
-        return `the module of the export \`${decl.key.slice('export~'.length)}\``
-      }
-      return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
-    })
-    .join(', ')
+  const output = (o: OutputId) => {
+    const decl = plan.outputs.get(o)!
+    if (decl.kind === 'export') {
+      return `the module of the export \`${decl.key.slice('export~'.length)}\``
+    }
+    return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
+  }
+  const split = k.needers.map(output).join(', ')
   const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
   if (k.exported) {
     const names = analysis.exports.flatMap((e) =>
@@ -51,11 +52,11 @@ export function keptDiagnostic(
     let fix: string
     switch (k.reason) {
       case 'effects':
-        // (judged as deletion is: what may run code never moves into an
+        // (judged as extraction is: what may run code never moves into an
         // extracted export's module, rule L aside)
         if (
           declaring !== undefined &&
-          plan.t1.deletionEffects(declaring).effectful
+          plan.t1.extractionEffects(declaring).effectful
         ) {
           why = 'its initialiser has side effects'
           fix = `Move it to its own module and import it from there${annotatable(plan, k.syms, true) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
@@ -127,10 +128,25 @@ export function keptDiagnostic(
       because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
       fix = `move ${subject} to ${own} own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none` : ''}`
       break
-    case 'written':
-      because = `the module changes ${them} outside ${own} declaration${several ? 's' : ''} when it loads (${line(k.at!)})`
-      fix = `move ${subject} and what writes ${them} to their own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} no side effects` : ''}`
+    case 'written': {
+      // a statement changing it stays (R146 amendment): what else it
+      // changes keeps it, or several split options use what it changes
+      const statement = `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
+      const users = [
+        ...new Set([...k.needers, ...(k.in === undefined ? [] : [k.in])]),
+      ]
+      because =
+        k.outside !== undefined
+          ? `${statement}: it also ${outsideWords(k.outside)}`
+          : k.read !== undefined
+            ? `${statement}: it also changes ${read}, which ${k.in === undefined ? `the ${module} keeps` : `the split ${output(k.in)} uses`}`
+            : `${statement}: several split options use what it changes (${users.map(output).join(', ')})`
+      fix =
+        k.outside === undefined && k.read !== undefined
+          ? `change ${read} in a statement of its own`
+          : `move ${subject} and that statement to their own module`
       break
+    }
     case 'shared':
       // an exported binding's extracted module and other split code both
       // read a value with an identity (or state): one instance, in the module
@@ -176,6 +192,20 @@ export function keptDiagnostic(
     range: k.range,
     by: 'core',
     code: `eager-split:${k.reason}`,
+  }
+}
+
+/** What a statement changes outside the module's bindings, as the `written` warning words it. */
+function outsideWords(o: OutsideChange): string {
+  switch (o.kind) {
+    case 'import':
+      return `changes \`${o.name}\`, another module's object`
+    case 'global':
+      return `changes the global \`${o.name}\``
+    case 'import.meta':
+      return 'changes `import.meta`'
+    case 'import()':
+      return 'imports a module dynamically'
   }
 }
 
@@ -227,17 +257,17 @@ function annotationFrees(
 export function annotatable(
   plan: Pick<AnalysisPlan, 't1' | 'analysis'>,
   syms: ReadonlyArray<SymbolId>,
-  /** The report rests on deletion's judgement (an export kept for its effects), not placement's timing (rule L). */
-  deletion = false,
+  /** The report rests on extraction's judgement (an export kept for its effects), not placement's timing (rule L). */
+  extraction = false,
 ): boolean {
   const { t1, analysis } = plan
-  const purity = deletion ? analysis.purity : analysis.effectPurity
+  const purity = extraction ? analysis.purity : analysis.effectPurity
   let any = false
   for (const u of new Set(
     syms.flatMap((s) => t1.declaringUnits.get(s) ?? []),
   )) {
     const unit = t1.units[u]!
-    if (!(deletion ? t1.deletionEffects(u) : unit).effectful) {
+    if (!(extraction ? t1.extractionEffects(u) : unit).effectful) {
       continue
     }
     const decl =
