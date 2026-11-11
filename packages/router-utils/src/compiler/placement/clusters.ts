@@ -10,7 +10,7 @@
  */
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
-import { callsWhenEvaluated } from '../units'
+import { callsWhenEvaluated, ownsItsValue } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
@@ -544,6 +544,28 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
   }
 
+  /**
+   * Whether an augmentation is a write of pure values to bindings of its
+   * cluster that name objects of their own (R139): it assigns the binding,
+   * or writes a member of one its declaration created (`ownsItsValue`) and
+   * nothing reassigns. A write through an alias (`const alias = E;
+   * alias.A = …`, `import F = E`) or a member's value (`holder.e.A = …`,
+   * `writesOnly`) writes another binding's object: an effect.
+   */
+  const pureWrite = (unit: Unit, cl: Cluster): boolean =>
+    !unit.augmentEffects &&
+    ownAugmentation(units, unit, cl) &&
+    unit.augments.every(
+      (sym) =>
+        !(writesOfSym.get(sym) ?? []).some(
+          (w) => w.member && w.owner === unit.region,
+        ) ||
+        (!t1.mutation.isReassigned(sym) &&
+          (t1.declaringUnits.get(sym) ?? []).every((d) =>
+            ownsItsValue(units[d]!),
+          )),
+    )
+
   // ---- materialise clusters ------------------------------------------------
   const clusters: Array<Cluster> = []
   const clusterOfRoot = new Map<number, ClusterId>()
@@ -659,7 +681,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       if (
         unit.effectful &&
         statementSurvives(items[unit.item]!.nodeRange) &&
-        !(!unit.augmentEffects && ownAugmentation(units, unit, cl))
+        !pureWrite(unit, cl)
       ) {
         cl.effectful = true
         cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
