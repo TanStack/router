@@ -5771,6 +5771,54 @@ describe('effectful declarations reading each other (R138)', () => {
     },
   )
 
+  // the user's module (architect, design 2 step 5)
+  const tableRoute = (after: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createColumnHelper, useTable } from '@tanstack/react-table'
+      import { track } from './lib'
+      const helper = createColumnHelper()
+      const columns = [
+        helper.display({ id: 'actions', header: 'Actions' }),
+        helper.accessor('firstName', {}),
+        helper.accessor((row) => row.lastName, { id: 'lastName' }),
+      ]
+      ${after}
+      export const Route = createFileRoute('/table')({
+        component: () => {
+          const table = useTable({ columns })
+        },
+      })
+    `)
+  const helperAndColumns = dedent(`
+    const helper = createColumnHelper()
+    const columns = [
+      helper.display({ id: 'actions', header: 'Actions' }),
+      helper.accessor('firstName', {}),
+      helper.accessor((row) => row.lastName, { id: 'lastName' }),
+    ]
+  `).trim()
+
+  it('moves a column helper and the columns reading it to the component chunk, in source order', async () => {
+    const r = await split(tableRoute(''))
+    expect(r.env).not.toContain('createColumnHelper()')
+    expect(r.env).not.toContain('const columns')
+    expect(r.chunks.component).toContain(helperAndColumns)
+    expect(r.chunks.component).toContain(
+      "import { createColumnHelper, useTable } from '@tanstack/react-table'",
+    )
+    expect(eager(r)).toEqual([])
+  })
+
+  it('keeps the column helper and the columns when an unknown call after them stays (R31, R65)', async () => {
+    const r = await split(tableRoute("track('after')"))
+    expect(r.env).toContain(`${helperAndColumns}\ntrack('after')`)
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[tanstack-router] `columns`'],
+    ])
+    expect(eager(r)[0]!.message).toContain('the call `track(…)`')
+  })
+
   it('keeps both when an effect after them stays, naming it', async () => {
     const r = await split(
       route(
