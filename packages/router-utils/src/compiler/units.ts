@@ -378,7 +378,7 @@ export function ownsItsValue(u: Unit): boolean {
  * it reads `x.c` first); `'through'` when it reads that object's contents
  * where it evaluates (the object of a member read `alias.v`, `all[0]`, a
  * spread's argument `{ ...alias }`, the source of a destructuring or a
- * for-in/of loop): what it reads is what that object holds, which may be
+ * for-in/of loop, the object `in` asks): what it reads is what that object holds, which may be
  * another binding's object (`const alias = cfg`, `const holder = { cfg }`),
  * and the mutation model follows its value (`MutationModel.visitValues`);
  * else null.
@@ -436,6 +436,10 @@ export function memberUse(
     case 'ForOfStatement':
     case 'ForInStatement':
       return first.right === firstChild ? 'through' : null
+    case 'BinaryExpression':
+      return first.operator === 'in' && first.right === firstChild
+        ? 'through'
+        : null
     default:
       return null
   }

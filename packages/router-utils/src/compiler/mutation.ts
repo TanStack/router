@@ -152,13 +152,20 @@ export class MutationModel {
     return hit
   }
 
-  /** Whether `sym` names an object of its own (`ownsObject`), or one no declaration here gives it (an import, a parameter-like binding): not another binding's alias. */
+  /**
+   * Whether `sym` names an object of its own (`ownsObject`), one a
+   * declaration of it creates although it is reassigned (`let o = { v: 1 }`:
+   * that object, and what is assigned to it, which the walk follows), or
+   * one no declaration here gives it (an import, a parameter-like binding):
+   * not only another binding's alias.
+   */
   private namesObject(sym: SymbolId): boolean {
     const { units, declaringUnits } = this.module()
     const declaring = declaringUnits.get(sym)
     return (
       declaring !== undefined &&
       (this.ownsObject(sym) ||
+        declaring.some((u) => ownsItsValue(units[u]!)) ||
         !declaring.some((u) => units[u]!.kind === 'declaration'))
     )
   }
