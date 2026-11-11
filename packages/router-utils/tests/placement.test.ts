@@ -6424,54 +6424,63 @@ describe('language operations are no effect (rule L)', () => {
     expect(eager(r)).toEqual([])
   })
 
-  // the executing property (seed 1919): the read of `o0` is no effect
-  // under rule L, and the write through the holder of `o0`'s first object
-  // is no write of `o0` (it is reassigned: no object of its own), so
-  // nothing orders them; the order rule ordered the two effects before
-  it('keeps a read of a reassigned binding before a write through a holder of its object', async () => {
-    const r = await split(
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        let o0 = { v: 1 }
-        const h3 = { c: o0 }
-        o0 = o0
-        const r7 = [o0.v, o0.p]
-        h3.c.v = 4
-        export const Route = createFileRoute('/x')({
-          component: () => ({ r7 }),
-        })
-      `),
-    )
-    expect(r.env).toContain('const r7 = [o0.v, o0.p]')
-  })
+  // a read and a later write of one object at load evaluate in one module,
+  // in source order (`inOrder`): all of it in the chunk, or the read stays
+  // with the write when the route module keeps the object (the loader)
+  const inOrder = (
+    r: Awaited<ReturnType<typeof split>>,
+    read: string,
+    write: string,
+  ) => {
+    const where = [r.env, r.chunks.component!].find((t) => t.includes(read))!
+    expect(where.indexOf(write)).toBeGreaterThan(where.indexOf(read))
+  }
+  const seedRoute = (decls: string, loader: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/x')({
+        ${loader}component: () => ({ r }),
+      })
+    `)
+
+  // the executing property (seed 1919): `o0` is reassigned, so it owns no
+  // object, but its declaration creates the one `h3` holds: the write
+  // through the holder writes `o0`
+  it.each([
+    ['alone', ''],
+    ['with the holder the loader keeps', 'loader: () => h3,\n'],
+  ])(
+    'orders a read of a reassigned binding before a write through a holder of its object (%s)',
+    async (_, loader) => {
+      const decls =
+        'let o0 = { v: 1 }\nconst h3 = { c: o0 }\no0 = o0\nconst r = [o0.v, o0.p]\nh3.c.v = 4'
+      const r = await split(seedRoute(decls, loader))
+      inOrder(r, 'const r = [o0.v, o0.p]', 'h3.c.v = 4')
+    },
+  )
 
   // the executing property (seed 309): `'p' in l8` reads what `l8` holds
-  // (`o0`, through a conditional alias), but `in` is no read through a
-  // name for the alias model, so the write through the holder after it
-  // orders nothing
-  it('keeps an `in` through an alias before a write through a holder of the object', async () => {
-    const r = await split(
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        const on = true
-        const o0 = { v: 1 }
-        const h2 = { c: o0 }
-        const l8 = on ? o0 : null
-        const r9 = 'p' in l8
-        h2.c.p = 4
-        export const Route = createFileRoute('/x')({
-          component: () => ({ r9 }),
-        })
-      `),
-    )
-    expect(r.env).toContain("const r9 = 'p' in l8")
-  })
+  // (`o0`, through a conditional alias): `in` reads through its name
+  it.each([
+    ['alone', ''],
+    ['with the object the loader keeps', 'loader: () => o0,\n'],
+  ])(
+    'orders an `in` through an alias before a write through a holder of the object (%s)',
+    async (_, loader) => {
+      const decls =
+        "const on = true\nconst o0 = { v: 1 }\nconst h2 = { c: o0 }\nconst l8 = on ? o0 : null\nconst r = 'p' in l8\nh2.c.p = 4"
+      const r = await split(seedRoute(decls, loader))
+      inOrder(r, "const r = 'p' in l8", 'h2.c.p = 4')
+    },
+  )
 
-  // the executing property (seeds 555, 1880): a spread of a builder's
-  // options is no effect under rule L, and a call of its method inside a
-  // route option's function is no recorded write (at an unknown time), so
-  // nothing keeps the copy before the call that changes them
-  it('keeps a copy of an object before a method call on it in a route option function', async () => {
+  // the executing property (seeds 555, 1880), reported: a spread of an
+  // object's member is no effect under rule L, and an unknown method called
+  // on it in a route option's function writes nothing it is handed, so the
+  // copy moves and may run after the call that changes the object (a
+  // recognised builder's link is a write, R139, and keeps it)
+  it('moves a copy of an object past a method call on it in a route option function', async () => {
     const r = await split(
       dedent(`
         import { createFileRoute } from 'toy-router'
@@ -6485,7 +6494,8 @@ describe('language operations are no effect (rule L)', () => {
       `),
       { keys: ['component'] },
     )
-    expect(r.env).toContain('const r6 = { ...b5.o }')
+    expect(r.env).not.toContain('const r6')
+    expect(r.chunks.component).toContain('const r6 = { ...b5.o }')
   })
 
   // what is no language operation stays an effect: an exported declaration
