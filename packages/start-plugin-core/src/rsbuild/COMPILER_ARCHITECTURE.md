@@ -95,18 +95,30 @@ re-export from the start.
 
 ## Development invalidation
 
-The compiler core's invalidation runs once per logical change (the environment compilers of one watch cycle report the
-same modified and removed files; the session dedupes them by path, kind and mtime) and decides which modules are
-stale; each environment compiler is told their files changed. An edit or a removal of a file the last compilation
-read is invalidated at `watchRun` (a file's facts need no resolver, and a resolution that found a removed file is
-stale): its stale dependents join the compilation that starts, built with the edited file. A created file is
-invalidated at `make`, once Rspack's resolver forgot what it found in the last compilation (a file that appeared takes
-the resolutions it shadows): its stale dependents are built by the next compilation (`invalidateFiles`).
+Each environment compiler forwards its own file events to the compiler core's invalidation, which compares the file
+with what the caches read (another compiler's event of the same change is a repeat and changes nothing) and puts the
+files of the plans it finds stale in each environment's stale set. The session keeps no record of the events. An edit
+or a removal of a file the last compilation read is forwarded at `watchRun` (a file's facts need no resolver, and a
+resolution that found a removed file is stale); a created file at `make`, once Rspack's resolver forgot what it found
+in the last compilation (a file that appeared takes the resolutions it shadows). At `finishMake` (stage −20, after the
+client route tree's rebuild) each compiler takes its environment's stale set and builds those modules again in place
+(`rebuildModules`), in the compilation of the event: an edit's, a creation's and a route change's dependents alike.
+What becomes stale after that (another environment's event, a registry change, a compile overtaken) is built by
+another compilation: after every compilation (`afterDone`, once Rspack marked the compiler idle) and after a registry
+change, each idle compiler with a non-empty set is asked for one, at most three in a row without a file event or a
+registry change of its own (a module whose rebuild finds itself stale again waits for the next event). Under RSC a
+server compilation's event puts the client's dependents in its set before the coordinator starts the client
+compilation, which drains them (Start starts none beside it).
+A dependent is built after the file whose event made it stale (in `make`, the drain at `finishMake`): a module edited
+to be marked is built while its unchanged importer's plan still imports it. Import protection reads the stale sets
+(`takesStaleSets`): an importer whose plan is stale in the environment explains the module's presence, so the module
+is served as its mock without a report and is stale itself; the importer's rebuild reports the import (or allows it),
+and the module's own rebuild after it reports the module if something else still brings it.
 A dev server started again on the persistent cache checks, at its compilers' first `finishMake`, the plans persisted
 with the modules the cache restored: a module whose plan read facts that changed meanwhile (or another configuration's
-plan) is built again first; the others' plans join the session's invalidation.
-A route-registry change (the generator published new route ids) evicts the plans of the files concerned; Rspack sees
-no file event for them, so each environment compiler is told they changed (`invalidateFiles`) and builds them again,
-rules re-matched, at the compilation it starts. The generator runs before each compilation with the compiler's file
-events (and its own watcher for files outside the bundle); when the client's pruned route set changes without the
-tree file changing, the client compiler rebuilds the tree module at `finishMake`.
+plan) enters the stale set, built by the same drain; the others' plans join the session's invalidation.
+A route-registry change (the generator published new route ids) evicts the plans of the files concerned and puts them
+in every environment's stale set; the session listens once for all its compilers. The generator runs before each
+compilation with the compiler's file events (and its own watcher for files outside the bundle); when the client's
+pruned route set changes without the tree file changing, the client compiler rebuilds the tree module at
+`finishMake`.

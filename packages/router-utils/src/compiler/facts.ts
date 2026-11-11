@@ -124,10 +124,6 @@ const EMPTY_REVISION = revision('')
  * path applies) or that differed from it.
  */
 const UNKNOWN = '\u0000unknown'
-/** Prefix of a `seen` revision an `add` applied: a repeat of the `add` is a repeat (a `change` vouches for the text only). */
-const ADDED = '+'
-const textOf = (seen: string | undefined): string | undefined =>
-  seen?.startsWith(ADDED) ? seen.slice(ADDED.length) : seen
 
 interface FactsEntry {
   stale: boolean
@@ -197,21 +193,15 @@ export class RawFactsCache {
   /**
    * Marks the facts at `path` stale. `text`: what a file event read
    * (`readChange`): the path's text from now on, which the entries' next
-   * builds take instead of reading the file again; `added`: the event moved
-   * the file set (an `add`).
+   * builds take instead of reading the file again.
    */
-  markStale(path: string, text?: string | null, added = false): void {
+  markStale(path: string, text?: string | null): void {
     this.changes++
     if (text !== undefined && !this.noFacts) {
       if (text === null) {
         this.seen.delete(path)
       } else {
-        const was = this.seen.get(path)
-        this.seen.set(
-          path,
-          (added || (was?.startsWith(ADDED) ?? false) ? ADDED : '') +
-            revision(text),
-        )
+        this.seen.set(path, revision(text))
       }
     }
     for (const id of this.byPath.get(path) ?? []) {
@@ -233,42 +223,39 @@ export class RawFactsCache {
   }
 
   /**
-   * A file event's read of `path`: its text when it differs from what the
-   * cache read of the path since the last event that changed it (or when a
-   * read of the path is in flight, which may hold another text), undefined
-   * when it is the same. `readable`: false for a file the compiler has no
-   * language for (an asset), which is never read (its text is `''`, as for
-   * its facts). The caller applies a differing text with `markStale`. An
-   * empty read is read again for a moment (`readSaved`: an in-place save
-   * reported between truncation and write), unless an event already read
-   * it empty (and waited). An `add` (or a removal of a file that reads
-   * back) repeats an `add` only: a `change` vouches for the text, not for
-   * the file set.
+   * A file event's read of `path`: its text, and whether it is the same as
+   * what the cache read of the path since the last event that changed it
+   * (never while a read of the path is in flight, which may hold another
+   * text). `readable`: false for a file the compiler has no language for (an
+   * asset), which is never read (its text is `''`, as for its facts). The
+   * caller applies a differing text with `markStale`. An empty read is read
+   * again for a moment (`readSaved`: an in-place save reported between
+   * truncation and write), unless an event already read it empty (and
+   * waited). The same text proves that no fact of the file moved, not that
+   * the file was there all along: the caller still moves the file set for
+   * an `add` or a removal.
    */
   async readChange(
     path: string,
     readable: boolean,
-    kind: 'change' | 'add' | 'unlink',
-  ): Promise<{ text: string | null } | undefined> {
+  ): Promise<{ text: string | null; same: boolean }> {
     const seen = () => this.seen.get(path)
     let text: string | null = ''
     if (readable) {
       text = await this.readEvent(path)
-      if (text === '' && textOf(seen()) !== EMPTY_REVISION) {
+      if (text === '' && seen() !== EMPTY_REVISION) {
         for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
           await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
           text = await this.readEvent(path)
         }
       }
     }
-    const was = seen()
     const same =
       !this.noFacts &&
       text !== null &&
-      textOf(was) === revision(text) &&
-      (kind === 'change' || was!.startsWith(ADDED)) &&
+      seen() === revision(text) &&
       !this.reads.has(path)
-    return same ? undefined : { text }
+    return { text, same }
   }
 
   private readEvent(path: string): Promise<string | null> {
@@ -622,7 +609,7 @@ export class RawFactsCache {
         this.seen.delete(path)
       } else if (
         seen === undefined ||
-        (seen !== UNKNOWN && textOf(seen) !== revision(text))
+        (seen !== UNKNOWN && seen !== revision(text))
       ) {
         this.seen.set(path, UNKNOWN)
       }

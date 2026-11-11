@@ -448,7 +448,9 @@ async function applyChange(
   const manifestAt = path.endsWith('/package.json')
   const resolverFile = manifestAt || RESOLVER_CONFIG.test(path)
   let kind = event.kind
-  let read: { text: string | null } | undefined
+  let read: { text: string | null; same: boolean } | undefined
+  /** The file reads as the caches read it: only the file set may have moved. */
+  let unchanged = false
   // (a virtual module has no file to read: its event always applies)
   if (kind !== 'registry' && !isVirtualId(path)) {
     if (kind === 'change' && !resolverFile && !knownAt(caches, path)) {
@@ -460,12 +462,19 @@ async function applyChange(
     // read: its event's kind stands
     const readable = resolverFile || identify(path).lang !== null
     if (readable || kind !== 'unlink') {
-      read = await caches.rawFacts.readChange(path, readable, kind)
-      if (!read) {
-        return none
-      }
+      read = await caches.rawFacts.readChange(path, readable)
       if (readable) {
         kind = read.text === null ? 'unlink' : kind === 'unlink' ? 'add' : kind
+      }
+      if (read.same) {
+        // no fact of the file moved. A change is a repeat; a creation, or a
+        // removal of a file that is back, still moves the file set: what
+        // looked for the file meanwhile, and a resolver that answered before
+        // it existed (another environment's event came first), ask again
+        if (kind === 'change') {
+          return none
+        }
+        unchanged = true
       }
     }
     if (kind === 'unlink' && !knownAt(caches, path)) {
@@ -494,8 +503,8 @@ async function applyChange(
   if (kind === 'unlink') {
     caches.rawFacts.forget(path)
     caches.stale.remove(path)
-  } else {
-    caches.rawFacts.markStale(path, read?.text, kind === 'add')
+  } else if (!unchanged) {
+    caches.rawFacts.markStale(path, read?.text)
   }
   if (kind === 'registry') {
     // a module the host's route gate skipped has no plan to evict, and its

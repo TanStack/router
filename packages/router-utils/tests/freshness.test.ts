@@ -7,7 +7,8 @@
  *   unchanged, another `invalidate()` of it changes no plan, restarts no
  *   compile and adds nothing to a stale set.
  * - After any edits, the same as a fresh start (I3, "property (b)"): saves,
- *   in-place saves, deletions and re-adds, each event delivered one to
+ *   in-place saves, deletions and re-adds (a stash and pop: the same text,
+ *   modules requested in between), each event delivered one to
  *   three times to each environment's hook in any order, with compiles
  *   interleaved; once the stale sets are taken and built, every output
  *   equals a cold compile of the final files.
@@ -326,8 +327,25 @@ async function run(seed: number): Promise<void> {
       host.write(path, textOf(i, pick))
       deliver({ path, kind: 'add' })
     } else if (action === 0) {
+      const text = host.files[path]!
       delete host.files[path]
       deliver({ path, kind: 'unlink' })
+      if (pick(2) === 0) {
+        // a stash and pop: modules are requested while the file is gone,
+        // and it is back with the same text before the events are read
+        // (reported as created, or as modified: Rspack's form for a file
+        // its last compilation read)
+        for (const env of ENVS) {
+          build(env, pathOf(pick(MODULES)))
+        }
+        const kind = pick(2) === 0 ? 'add' : 'change'
+        later(1 + pick(6), () => {
+          if (host.files[path] === undefined) {
+            host.write(path, text)
+            deliver({ path, kind })
+          }
+        })
+      }
     } else if ((action === 1 || action === 6) && host.files[path] !== '') {
       // saved in place: truncated, reported, then written (no event of
       // its own: the watcher drops a change within a moment of the last).
@@ -442,5 +460,158 @@ describe('after any edits', () => {
     }
     expect(host.rawFacts.stats(false).seenPaths).toBeLessThanOrEqual(1)
     expect(host.caches.stale.stats()).toEqual({ stalePaths: 0, staleHeld: 0 })
+  })
+})
+
+const SERVER_ONLY = dedent(`
+  import { createServerOnlyFn } from 'toy-start'
+  export const make = createServerOnlyFn(() => 1)
+`)
+
+describe('events that move the file set', () => {
+  const IMPORTER = "import { make } from './a'\nexport const use = make\n"
+  const factsOf = (out: CompileOutput | null) => out?.facts.planners
+
+  // `a.ts` was created in the session; it is removed, a module that imports
+  // it is compiled for the first time while it is gone, and it is created
+  // again with the same text. Both events arrive once it is back: the
+  // removal is no repeat (the file was gone for a while, and something
+  // looked for it), so the importer's failed resolution is asked again.
+  // The second event is an `add`, or a `change` (Rspack reports a file the
+  // last compilation read as modified).
+  // Source: design 3 steps 0-1 review, finding 1 (a stash and pop, a
+  // checkout and back).
+  it.for([['unlink', 'add'] as const, ['unlink', 'change'] as const])(
+    'a file removed and created again with the same text re-plans what looked for it meanwhile (%s, %s)',
+    async (events) => {
+      const host = memoryHost({})
+      host.write('/app/a.ts', SERVER_ONLY)
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, host)
+      await host.compile('/app/a.ts', planners())
+      delete host.files['/app/a.ts']
+      host.write('/app/c.ts', IMPORTER)
+      await host.compile('/app/c.ts', planners())
+      host.write('/app/a.ts', SERVER_ONLY)
+      for (const kind of events) {
+        await invalidate(host.caches, { path: '/app/a.ts', kind }, host)
+      }
+      expect(host.caches.stale.take(CLIENT.name, { held: true })).toContain(
+        '/app/c.ts',
+      )
+      expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
+        factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+      )
+    },
+  )
+
+  // A created file reaches each environment's hook at its own time (Rspack:
+  // each compiler's `make`). The first one's invalidation asks every
+  // environment's failed resolutions again, each with its own resolver, and
+  // the SSR resolver still answers from before the file existed. SSR's own
+  // event, the same text, asks them again: its resolver finds the file now.
+  // Source: design 3 steps 0-1 review, step 2 item 3.
+  it("a created file's event re-asks the resolutions of an environment whose resolver answered from before it", async () => {
+    const host = memoryHost({ '/app/c.ts': IMPORTER })
+    let lagging = false
+    const ssrHost: MemoryHost = Object.create(host, {
+      resolve: {
+        value: (specifier: string, importer: string) =>
+          lagging ? Promise.resolve(null) : host.resolve(specifier, importer),
+      },
+    })
+    const hostOf = (key: { env: string }) =>
+      key.env === SSR.name ? ssrHost : host
+    await host.compile('/app/c.ts', planners(), { env: CLIENT })
+    await ssrHost.compile('/app/c.ts', planners(), { env: SSR })
+    host.write('/app/a.ts', SERVER_ONLY)
+    lagging = true
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, hostOf)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/c.ts'])
+    expect(host.caches.stale.take(SSR.name)).toEqual([])
+    lagging = false
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, hostOf)
+    expect(host.caches.stale.take(SSR.name)).toEqual(['/app/c.ts'])
+    expect(
+      factsOf(await ssrHost.compile('/app/c.ts', planners(), { env: SSR })),
+    ).toEqual(
+      factsOf(
+        await memoryHost(host.files).compile('/app/c.ts', planners(), {
+          env: SSR,
+        }),
+      ),
+    )
+  })
+})
+
+describe('a text without a plan', () => {
+  // `a.ts` had a plan that read `l.ts`; it is saved to a text the compiler
+  // leaves alone, to one that does not parse, and empty. None of those has a
+  // plan, and the plan of the old text goes with it: a later edit of what
+  // the old text read finds nothing stale.
+  // Source: design 3 steps 0-1 review, finding 2 (Vite's `liveModules`
+  // reads the plan at the path).
+  it.for([
+    { name: 'that the compiler leaves alone', text: 'export const use = 1\n' },
+    { name: 'that does not parse', text: 'export const = \n' },
+    { name: 'that is empty', text: '' },
+  ])("keeps no plan of the file's old text ($name)", async ({ text }) => {
+    const host = memoryHost({
+      '/app/l.ts': 'export const make = 1\n',
+      '/app/a.ts': "import { make } from './l'\nexport const use = make\n",
+    })
+    await host.compile('/app/a.ts', planners())
+    host.write('/app/a.ts', text)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    await host.compile('/app/a.ts', planners())
+    const cache = host.caches.plans.get(CLIENT.name)!
+    expect(
+      cache.keysAt('/app/a.ts').filter((key) => cache.get(key) !== null),
+    ).toEqual([])
+    host.write('/app/l.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/l.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([])
+  })
+})
+
+describe('a plan hit that fails validation', () => {
+  // A tsconfig edit moves a resolution that had found a file: `invalidate()`
+  // asks failed resolutions only, and the next request asks the others. The
+  // hit that fails there is by design, not a defect: it is counted apart
+  // from `staleHits` (an invalidation that missed a fact). The file still
+  // enters the stale set (its other outputs follow).
+  // Source: design 3 steps 0-1 review, finding 3.
+  it('counts a resolution asked again at the next request apart from a stale fact', async () => {
+    let target = '/app/x1.ts'
+    const host = new MemoryHost({
+      files: {
+        '/app/tsconfig.json': '{"paths":1}',
+        '/app/x1.ts': 'export const make = 1\n',
+        '/app/x2.ts': SERVER_ONLY,
+        '/app/a.ts': "import { make } from './x'\nexport const use = make\n",
+      },
+      recognizer: RECOGNIZER,
+      resolve: (specifier) => (specifier === './x' ? target : null),
+    })
+    await host.compile('/app/a.ts', planners())
+    target = '/app/x2.ts'
+    host.write('/app/tsconfig.json', '{"paths":2}')
+    await invalidate(
+      host.caches,
+      { path: '/app/tsconfig.json', kind: 'change' },
+      host,
+    )
+    const out = await host.compile('/app/a.ts', planners())
+    expect(out?.facts.planners).toEqual(
+      (
+        await new MemoryHost({
+          files: host.files,
+          recognizer: RECOGNIZER,
+          resolve: (specifier) => (specifier === './x' ? target : null),
+        }).compile('/app/a.ts', planners())
+      )?.facts.planners,
+    )
+    const { staleHits, lazyHits } = host.caches.plans.get(CLIENT.name)!.counters
+    expect({ staleHits, lazyHits }).toEqual({ staleHits: 0, lazyHits: 1 })
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
   })
 })

@@ -42,7 +42,7 @@ import {
 } from './violations'
 import { witnessLookup } from './witness'
 import { formatUncheckedImporters, formatViolation } from './trace'
-import type { Planner } from '@tanstack/router-utils/compiler'
+import type { Planner, StaleSets } from '@tanstack/router-utils/compiler'
 import type {
   ImportProtectionConfig,
   ImportProtectionMode,
@@ -86,6 +86,13 @@ export interface CreateImportProtectionOptions {
   isEntry?: (path: string) => boolean
   /** The app's framework: the package reports name for `<ClientOnly>` (default `react`). */
   framework?: CompileStartFrameworkOptions
+  /**
+   * The compiler's stale sets, from a host that takes them as it builds
+   * (Rsbuild): an importer whose plan is stale in an environment explains
+   * the presence of what it imports there. Default: none (a host that does
+   * not take them would find importers stale for good).
+   */
+  stale?: Pick<StaleSets, 'holds' | 'add'>
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -118,6 +125,7 @@ export function createImportProtection(
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
+        opts.stale,
       )
     : null
 }
@@ -164,6 +172,8 @@ export class ImportProtection {
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
     readonly readSource: SourceReader = readSourceFile,
     readonly framework: CompileStartFrameworkOptions = 'react',
+    /** `CreateImportProtectionOptions.stale`. */
+    readonly stale?: Pick<StaleSets, 'holds' | 'add'>,
   ) {
     this.planner = importEdgesPlanner(this)
     this.report = { config, readSource, framework }
@@ -641,7 +651,7 @@ class ImportProtectionEnv {
           : { error: null }
       }
       const mock = this.mockOf(self)
-      if (!dev) {
+      if (!dev || this.explainedByStaleImporter(self)) {
         return { error: null, mock }
       }
       await this.notify(self)
@@ -719,6 +729,28 @@ class ImportProtectionEnv {
     for (const importerId of this.edges.importers(self.resolved!)) {
       const importer = traceFile(importerId)
       if (!this.ip.inScope(importer) && (!inside || this.ip.exempt(importer))) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Development: whether an importer whose plan is stale in this environment
+   * explains the presence of a module that is its own violation (a module
+   * edited to be marked, built before its unchanged importer): the
+   * importer's rebuild reports the import or allows it. The module is then
+   * stale too, judged again once the importer is built (it is reported if
+   * something else still brings it).
+   */
+  private explainedByStaleImporter(self: EdgeViolation): boolean {
+    const stale = this.ip.stale
+    if (!stale) {
+      return false
+    }
+    for (const importerId of this.edges.importers(self.resolved!)) {
+      if (stale.holds(this.name, traceFile(importerId))) {
+        stale.add(this.name, traceFile(self.importerId))
         return true
       }
     }

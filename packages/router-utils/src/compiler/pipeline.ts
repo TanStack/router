@@ -170,7 +170,16 @@ export async function compileModule(
         // the bundler holds from the plan, follow
         caches.stale.add(env.name, identity.path)
         if (caches.invalidations.size === 0) {
-          cache.counters.staleHits++
+          // `invalidate()` checks every fact again, and leaves resolutions
+          // (but failed ones) and route-registry digests to the next request
+          const factsHeld = await fingerprintsCurrent(
+            hit.plan.dependencies.filter(
+              (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
+            ),
+            src,
+            { resolutions: true, facts: false },
+          )
+          cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
         }
       }
       // evicted, or evicted and published again, meanwhile: look again
@@ -299,6 +308,14 @@ async function settle(
         rev,
       )
       if (result.kind !== 'plan') {
+        if (cache.latestRevision(key) === rev) {
+          // the file's text has no plan: the plan of its old text goes with
+          // its rows (a later event of what that text read reports nothing)
+          const old = cache.get(key)
+          if (old && old.revision !== rev) {
+            cache.delete(key)
+          }
+        }
         return result
       }
       const entry: CacheEntry = {

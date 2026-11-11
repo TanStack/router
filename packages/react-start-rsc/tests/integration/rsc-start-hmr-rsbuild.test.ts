@@ -57,4 +57,51 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
     expect(browser.loads()).toBe(1)
     expect(browser.errors).toEqual([])
   })
+
+  // A module the route imports changes what the route reads of it: `base`
+  // becomes a server fn builder, so the route's `getLabel` becomes a server
+  // fn. The route is built again for the client (a stale dependent: no file
+  // event of its own), in the compilation that the RSC coordinator starts
+  // for the edit: the edit ends, the page takes the update without a full
+  // reload, the client output no longer has the handler, and the call
+  // reaches the server.
+  // Source: F7-6 (Fable review 2026-11-10: Start and the coordinator both
+  // started a client compilation for one edit).
+  test('an edit that makes the import of a client module a server fn builder hot-updates the page once built', async () => {
+    const plainBase = `export const base = { handler: (fn: () => string) => fn }\n`
+    const builderBase = `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`
+    const server = await startRscRsbuildDevServer({
+      browser: true,
+      hmr: true,
+      config: { plugins: [pluginReact()] },
+      files: {
+        'src/lib/base.ts': plainBase,
+        'src/routes/index.tsx': route(
+          'MARK_HANDLER_V1',
+          'Page v1',
+          '../lib/base',
+        ),
+      },
+    })
+    expect(server.errors).toEqual([])
+    const browser = await openRscPage(server, '/')
+    await browser.waitForText('Page v1 MARK_HANDLER_V1')
+    await waitForHydration(browser)
+    expect(Object.values(await server.outputs('client')).join('\n')).toContain(
+      'MARK_HANDLER_V1',
+    )
+
+    await server.edit({ 'src/lib/base.ts': builderBase })
+    expect(server.errors).toEqual([])
+    const client = [
+      ...Object.values(await server.outputs('client')),
+      ...Object.values(await server.hotUpdates('client')),
+    ].join('\n')
+    expect(client).not.toContain('MARK_HANDLER_V1')
+    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
+    expect(browser.loads()).toBe(1)
+    expect(browser.errors).toEqual([])
+  })
 })

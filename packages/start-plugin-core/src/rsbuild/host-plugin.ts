@@ -1,8 +1,9 @@
 /**
  * The Rspack plugin of one Start environment compiler: installs the loader
  * implementation on the compiler, the generator as a precondition of the
- * compilation (`beforeRun`/`watchRun`), the one invalidation operation of
- * the file events (`watchRun`, `make`), the `finishMake` replay of plan, server-fn and import-protection
+ * compilation (`beforeRun`/`watchRun`), the intake of the file events into
+ * the one invalidation operation (`watchRun`, `make`), the `finishMake`
+ * drain of the environment's stale set and replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build reports
  * (`processAssets` witness) and dev reports (`finishModules`),
  * the custom server-fn id patching, and the client route tree rebuild when
@@ -15,7 +16,6 @@ import {
   emittedMapTexts,
   identify,
   initialChunkResources,
-  invalidateFiles,
   locateDiagnostics,
   locatedError,
   normalizePath,
@@ -272,28 +272,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }),
       )
-      /**
-       * The changed files of the compilation this compiler is starting, open
-       * during its `watchRun`. Rspack's `Watching` hands the compiler its own
-       * set (`this.compiler.modifiedFiles = this.#collectedChangedFiles`), calls
-       * `watchRun`, then `compiler.compile()`, whose `#build` reads the set
-       * (`instance.rebuild(Array.from(this.modifiedFiles || []), …)`):
-       * packages/rspack/src/Watching.ts L310/316/347 and Compiler.ts
-       * L790/800/845 at v2.1.1, L313/327/359 and L798/808/857 at v2.2.9,
-       * L326/340/372 and L805/815/864 at v2.3.0. Typed `ReadonlySet`: no
-       * official way for a plugin to add changed files exists (a stale
-       * dependent added here is built by this compilation, not a second one).
-       */
-      let starting: Set<string> | null = null
-      session.rebuilders.set(environment.name, (paths) => {
-        if (!starting) {
-          invalidateFiles(compiler, paths)
-          return
-        }
-        for (const file of paths) {
-          starting.add(path.normalize(file))
-        }
-      })
+      const compilerEntry = { compiler, asked: 0 }
+      session.compilers.set(environment.name, compilerEntry)
 
       // import-protection edge modules are virtual files of this environment, written when
       // they are defined (the importer's compile); an importer
@@ -392,8 +372,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       const eventOf = (file: string) =>
         session.files.eventOf(environment.name, file)
       // edits and removals of files the last compilation read, invalidated before this
-      // compilation starts: the modules of their stale dependents are built with them (a
-      // file's facts need no resolver, and a resolution that found a removed file is stale)
+      // compilation starts (a file's facts need no resolver, and a resolution that found a
+      // removed file is stale): the modules of their stale dependents are built at its
+      // `finishMake`
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         if (
           environment.type === 'client' &&
@@ -405,26 +386,23 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
-        ipEnvOf()?.beginBuild()
-        starting = (c.modifiedFiles as Set<string> | undefined) ?? null
-        try {
-          await session.invalidateFileEvents([
-            ...modified
-              .filter(
-                (file) =>
-                  eventOf(file) === 'change' && !isPackageManifest(file),
-              )
-              .map((file) => ({ file, kind: 'change' as const })),
-            ...removed.map((file) => ({ file, kind: 'unlink' as const })),
-          ])
-        } finally {
-          starting = null
+        if (modified.length > 0 || removed.length > 0) {
+          compilerEntry.asked = 0
         }
+        ipEnvOf()?.beginBuild()
+        await session.invalidateFileEvents([
+          ...modified
+            .filter(
+              (file) => eventOf(file) === 'change' && !isPackageManifest(file),
+            )
+            .map((file) => ({ file, kind: 'change' as const })),
+          ...removed.map((file) => ({ file, kind: 'unlink' as const })),
+        ])
         await opts.generator.watchRun(modified, removed)
       })
       // created files, invalidated once Rspack's resolver forgot what it found in the last
       // compilation (at `make`, before the modules build; a new file may take resolutions):
-      // the modules of their stale dependents are built by the next compilation
+      // the modules of their stale dependents are built at this compilation's `finishMake`
       compiler.hooks.make.tapPromise(PLUGIN_NAME, async (compilation) => {
         if (compilation.compiler !== compiler) {
           return
@@ -432,8 +410,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // Rspack reports no event for a file created while nothing depended on it (a
         // target deleted and recreated between edits): missing-file facts are read again
         session.forgetMisses()
+        const modified = [...(compiler.modifiedFiles ?? [])]
         await session.invalidateFileEvents(
-          [...(compiler.modifiedFiles ?? [])]
+          modified
             .filter(
               (file) => eventOf(file) === 'add' || isPackageManifest(file),
             )
@@ -444,27 +423,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 : ('add' as const),
             })),
         )
+        // this compilation builds the modules of its changed files from their text now,
+        // once every invalidation of its events ended: the drain needn't build them again
+        // (what makes them stale from here on enters the set again)
+        session.start.caches.stale.drop(
+          environment.name,
+          modified.map(normalizePath),
+        )
       })
-      // a registry change (the generator published new route ids): Rspack sees
-      // no file event for the files concerned, so it is told they changed and
-      // builds them again. Before the first compilation finished nothing is
-      // stale (the first publication lists every route; the modules are
-      // built with it).
-      const unsubscribeRoutes = opts.generator.onRoutesChanged((files) => {
-        void session
-          .registryChanged(files)
-          .then((paths) => {
-            if (session.compiledOnce) {
-              invalidateFiles(compiler, paths)
-            }
-          })
-          .catch((error: unknown) => {
-            console.error(
-              `[tanstack-start] invalidating after a route change failed:`,
-              error,
-            )
-          })
-      })
+      // a registry change (the generator published new route ids): its files
+      // are stale in each environment (the session listens once for all
+      // compilers)
+      const unsubscribeRoutes = session.listenToRoutes(opts.generator)
 
       // (the context outlives the compiler: a second `build()` of the
       // Rsbuild instance creates another one)
@@ -484,7 +454,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             reports,
           }
         }
-        session.compiledOnce = true
         const changed = session.files.record(
           environment.name,
           stats.compilation.fileDependencies as Iterable<string>,
@@ -498,6 +467,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // a production build's end: nothing compiles in this environment any more
           session.release(environment.name)
         }
+      })
+
+      // what became stale after this compilation's drain (another environment's event, a
+      // registry change, a compile overtaken) is built by another one; once the compiler is
+      // idle (in `done` Rspack has not marked it so: a compilation asked for there would
+      // start inside it)
+      compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {
+        session.wake()
       })
 
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
@@ -710,6 +687,27 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       }
 
+      /**
+       * Builds again the modules of the environment's stale set (the held
+       * ones too: a module importing a removed file fails here as it would
+       * in Rspack's own rebuild), once the invalidations running (a registry
+       * change published during this compilation's `watchRun`) ended.
+       */
+      async function drainStale(compilation: Rspack.Compilation) {
+        const { caches } = session.start
+        if (caches.invalidations.size > 0) {
+          await caches.settled()
+        }
+        const paths = caches.stale.take(environment.name, { held: true })
+        if (paths.length > 0) {
+          await rebuildModules(
+            compilation,
+            new Set(paths),
+            (r) => identify(canonicalResource(r)).path,
+          )
+        }
+      }
+
       // the client route tree without its server-only routes: served by the host's transform
       // of the tree module; when its routes change without the file, the module is rebuilt
       if (opts.clientRouteTree && environment.type === 'client') {
@@ -734,10 +732,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         )
       }
 
-      // the replay of this compilation's modules (built now or restored from the persistent
-      // cache): the plans of restored modules, the environment's server-fn snapshot and the
-      // import-protection records. A restored module whose plan read facts that changed since
-      // (or no plan of this configuration) is built again first. So is, with `allowImport`, a
+      // the drain and the replay of this compilation's modules (built now or restored from
+      // the persistent cache): the plans of restored modules, then the modules of the
+      // environment's stale set built again (a restored module whose plan read facts that
+      // changed since, or no plan of this configuration, is in it; so are the dependents an
+      // invalidation found stale), then the environment's server-fn snapshot and the
+      // import-protection records. So is built again, with `allowImport`, a
       // restored edge module or a module that is its own violation: another session's answer
       // chose their state, and the build asks once per import anyway; and, in dev, a module
       // restored with violations or an edge module restored with pending ones: another
@@ -772,15 +772,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 })
               }
             }
-            const stale = await session.restorePlans(environment.name, restored)
-            if (stale.size > 0) {
-              await rebuildModules(
-                compilation,
-                stale,
-                (r) => identify(canonicalResource(r)).path,
-              )
-            }
+            await session.restorePlans(environment.name, restored)
           }
+          await drainStale(compilation)
           const ipEnv = ipEnvOf()
           // a compiler's first compilation judges what it restored: its modules'
           // import-protection records are replayed first, the modules to judge

@@ -4,11 +4,11 @@
  * derived) of a module of an environment and layer through the shared Start
  * session (`compiler/session.ts`), from one `pre` loader per environment
  * (`compiler-loader.ts`); the server-fn facts and the plan's dependencies
- * persisted in the modules' `buildInfo`; and the one invalidation operation
- * of a compilation's file events, whose stale dependents the environment
- * compilers are told to build again (a module depends on no file but its
- * own). The Rspack hooks live in `host-plugin.ts`; this module is bundler-API
- * free except for the loader context shape.
+ * persisted in the modules' `buildInfo`; and the intake of file events and
+ * registry changes into the one invalidation operation, whose stale sets
+ * the environment compilers take at `finishMake` (a module depends on no
+ * file but its own). The Rspack hooks live in `host-plugin.ts`; this module
+ * is bundler-API free except for the loader context shape.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -107,6 +107,7 @@ type StartRsbuildSessionOptions = Omit<
   | 'readFile'
   | 'loadVirtual'
   | 'label'
+  | 'takesStaleSets'
 >
 
 /** What the loader implementation uses of Rspack's loader context. */
@@ -174,10 +175,14 @@ export class StartRsbuildCompilerSession {
     ) => Promise<string | null>
   >()
   /**
-   * Tells each environment's compiler that files changed (it builds their
-   * modules again): the compilation it is starting, or its next one.
+   * The compiler of each environment, for `wake`; `asked`: the compilations
+   * `wake` asked it for since the last cause (a file event of its own, a
+   * registry change).
    */
-  readonly rebuilders = new Map<string, (paths: Array<string>) => void>()
+  readonly compilers = new Map<
+    string,
+    { compiler: IdleCompiler; asked: number }
+  >()
   /** The RSC layer of the server environment (RSC on). */
   private readonly rscLayer: string | undefined
 
@@ -203,6 +208,8 @@ export class StartRsbuildCompilerSession {
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       readFile: (file) => this.readFile(file),
+      // the environment compilers take the stale sets at `finishMake`
+      takesStaleSets: true,
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
@@ -402,15 +409,14 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The one invalidation operation (compiler plans and bundler modules
-   * together): the caller has the modules of the stale dependents built
-   * again (`rebuildDependents`, a registry change's listeners).
+   * The one invalidation operation: the stale plans' files enter their
+   * environment's stale set, which its compiler takes at `finishMake`.
    */
-  invalidate(
+  async invalidate(
     file: string,
     kind: InvalidateChange['kind'],
-  ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    return invalidate(
+  ): Promise<void> {
+    await invalidate(
       this.start.caches,
       { path: normalizePath(file), kind },
       (key) => this.hostOfPlan(key),
@@ -418,77 +424,77 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The last file event invalidated per path (`kind:mtime:size`, or
-   * `unlink`), and the end of the invalidation it was part of. Keyed by the
-   * path as compiler keys hold it (`normalizePath`): Rspack reports native
-   * paths (backslashes on Windows), `rebuildDependents` records the plans'.
-   */
-  private readonly lastEvent = new Map<
-    string,
-    { stamp: string; done: Promise<void> }
-  >()
-
-  /**
-   * The invalidation of a compilation's file events, once per logical
-   * change: every environment compiler of the cycle reports the same
-   * modified and removed files, and a second invalidation of the same
-   * change would evict the plans the first compiler just rebuilt and
-   * restart the compiles in flight (a compiler seeing a change another one
-   * is invalidating waits for it). The modules of the dependents it finds
-   * stale are built again (`rebuildDependents`).
+   * The file events of a compilation that starts: each environment compiler
+   * forwards its own (a repeat of another compiler's changes nothing), all
+   * at once (calls for one path queue in the core).
    */
   async invalidateFileEvents(
     events: ReadonlyArray<{ file: string; kind: FileEventKind }>,
   ): Promise<void> {
-    const others: Array<Promise<void>> = []
-    const mine: Array<{ file: string; kind: FileEventKind }> = []
-    let end!: () => void
-    const done = new Promise<void>((resolve) => (end = resolve))
-    for (const event of events) {
-      const file = normalizePath(event.file)
-      const stamp = stampOf(file, event.kind)
-      const last = this.lastEvent.get(file)
-      if (last?.stamp === stamp) {
-        others.push(last.done)
-      } else {
-        this.lastEvent.set(file, { stamp, done })
-        mine.push({ file, kind: event.kind })
-      }
-    }
-    try {
-      const stale: Array<PlanKey> = []
-      for (const { file, kind } of mine) {
-        stale.push(...(await this.invalidate(file, kind)).dependents)
+    await Promise.all(
+      events.map(async ({ file, kind }) => {
+        await this.invalidate(file, kind)
         if (kind === 'unlink') {
-          this.start.forget(file)
+          this.start.forget(normalizePath(file))
         }
-      }
-      this.rebuildDependents(stale)
-    } finally {
-      end()
-    }
-    await Promise.all(others)
+      }),
+    )
   }
 
   /**
-   * Has each environment compiler build again the modules of its stale
-   * plans (`rebuilders`): Rspack builds a module for a change of its own
-   * file only, so it is told their files changed. That change is no new
-   * event (the files are as the invalidation saw them): recorded as
-   * invalidated.
+   * Asks each idle compiler whose stale set is not empty for a compilation
+   * (after a compilation, and after a registry change: a set fills while
+   * its compiler is not compiling). At most `MAX_ASKED` in a row without a
+   * cause: a module whose rebuild finds itself stale again (its plan's
+   * validation and its compile disagreeing) waits for the next event
+   * instead of compiling forever.
    */
-  private rebuildDependents(keys: ReadonlyArray<PlanKey>): void {
-    if (keys.length === 0) {
-      return
-    }
-    const done = Promise.resolve()
-    for (const [env, rebuild] of this.rebuilders) {
-      const paths = pathsOf(keys, env)
-      for (const file of paths) {
-        this.lastEvent.set(file, { stamp: stampOf(file, 'change'), done })
+  wake(): void {
+    for (const [envName, entry] of this.compilers) {
+      if (
+        entry.compiler.idle &&
+        entry.asked < MAX_ASKED &&
+        this.start.caches.stale.has(envName)
+      ) {
+        entry.asked++
+        entry.compiler.watching?.invalidate()
       }
-      rebuild(paths)
     }
+  }
+
+  /** Unsubscribes the route listener (`listenToRoutes`). */
+  private unlistenRoutes: (() => void) | null = null
+
+  /**
+   * Invalidates the route files whose registry entry changed (the generator
+   * published new route ids: Rspack sees no file event for them), once per
+   * publication for every compiler of the session; returns the
+   * unsubscribe.
+   */
+  listenToRoutes(generator: {
+    onRoutesChanged: (listener: (files: Array<string>) => void) => () => void
+  }): () => void {
+    this.unlistenRoutes ??= generator.onRoutesChanged((files) => {
+      this.registryChanged(files).catch((error: unknown) => {
+        console.error(
+          `[tanstack-start] invalidating after a route change failed:`,
+          error,
+        )
+      })
+    })
+    return () => {
+      this.unlistenRoutes?.()
+      this.unlistenRoutes = null
+    }
+  }
+
+  /** A registry change: its files are stale in every environment that compiled; idle compilers are asked to build them. */
+  private async registryChanged(files: ReadonlyArray<string>): Promise<void> {
+    await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
+    for (const entry of this.compilers.values()) {
+      entry.asked = 0
+    }
+    this.wake()
   }
 
   /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */
@@ -503,13 +509,13 @@ export class StartRsbuildCompilerSession {
    * (`PLAN_BUILD_INFO_FIELD`), which Rspack's persistent cache restored
    * without a compile: each one compiled with this session's configuration
    * and whose dependencies are all current joins the session's plans
-   * (`restorePlans`); returns the files of the others, whose modules are
-   * to be built again.
+   * (`restorePlans`); the files of the others enter the environment's stale
+   * set (built again by the drain that follows).
    */
   async restorePlans(
     envName: string,
     modules: Iterable<{ plan: PersistedPlan; layer: string | undefined }>,
-  ): Promise<Set<string>> {
+  ): Promise<void> {
     const env = this.env(envName)
     const current = new Map<string, PersistedPlan>()
     const stale: Array<PlanKey> = []
@@ -525,36 +531,9 @@ export class StartRsbuildCompilerSession {
         this.hostOfPlan(key),
       )),
     )
-    return new Set(pathsOf(stale))
-  }
-
-  /** Whether a compilation of any environment finished (the hosts set it at `done`). */
-  compiledOnce = false
-  private readonly registryInvalidations = new WeakMap<
-    ReadonlyArray<string>,
-    Promise<Array<string>>
-  >()
-
-  /**
-   * The one invalidation of a registry change (`files`: the publication's
-   * changed route files, the same array for every listener): the paths whose
-   * modules the environment compilers must build again (the files, and the
-   * evicted and dependent plans' files), once per publication.
-   */
-  registryChanged(files: ReadonlyArray<string>): Promise<Array<string>> {
-    let pending = this.registryInvalidations.get(files)
-    if (!pending) {
-      pending = Promise.all(
-        files.map((file) => this.invalidate(file, 'registry')),
-      ).then((results) => [
-        ...new Set([
-          ...files.map(normalizePath),
-          ...pathsOf(results.flatMap((r) => [...r.evicted, ...r.dependents])),
-        ]),
-      ])
-      this.registryInvalidations.set(files, pending)
+    for (const file of pathsOf(stale)) {
+      this.start.caches.stale.add(envName, file)
     }
-    return pending
   }
 
   /**
@@ -924,14 +903,14 @@ export class CompilationFiles {
 /** A file event of a compilation: an edit, a creation, a removal. */
 export type FileEventKind = 'change' | 'add' | 'unlink'
 
-/** A file event's record (`lastEvent`): its kind and the file as it is now. */
-function stampOf(file: string, kind: FileEventKind): string {
-  if (kind === 'unlink') {
-    return kind
-  }
-  const stat = fs.statSync(file, { throwIfNoEntry: false })
-  return stat ? `${kind}:${stat.mtimeMs}:${stat.size}` : kind
+/** What `wake` uses of a compiler (Rspack's, typed and documented: `idle`, `watching`). */
+export interface IdleCompiler {
+  idle?: boolean
+  watching?: { invalidate: () => void } | undefined
 }
+
+/** How many compilations in a row `wake` asks a compiler for without a cause. */
+const MAX_ASKED = 3
 
 /**
  * A module resource as a compiler id. Rspack's RSC plugin requests a
