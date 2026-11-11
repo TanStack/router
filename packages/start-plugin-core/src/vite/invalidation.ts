@@ -4,6 +4,7 @@
  * re-validate fingerprints, and the stale sets handed to Vite.
  */
 import {
+  identify,
   invalidate,
   normalizePath,
   reloadStaleModules,
@@ -132,6 +133,32 @@ export async function invalidateRegistry(
       reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
     }
   }
+}
+
+/**
+ * Dev, after a compile: the denied files the dev server served otherwise
+ * than their importers now ask for (import protection's ledger: an exempt
+ * import the compile added or removed, an import `allowImport` allowed),
+ * built again through the environment's stale set: invalidated, and their
+ * updates sent, before the compiled module is served (design 4).
+ */
+export async function reloadMismatched(
+  s: Session,
+  env: { name: string; type: 'client' | 'server' },
+): Promise<void> {
+  const ipEnv = s.start.ip?.env(env.name, env.type)
+  const environment = s.server?.environments[env.name]
+  if (!ipEnv?.serving || !environment) {
+    return
+  }
+  const ids = await ipEnv.mismatches()
+  if (ids.length === 0) {
+    return
+  }
+  for (const id of ids) {
+    s.start.caches.stale.add(env.name, identify(id).path)
+  }
+  reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
 }
 
 /** The compiler's change kind of a Vite file event. */

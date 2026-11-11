@@ -126,14 +126,14 @@ interface RspackCompilationLike {
       module: RspackModuleLike,
       runtime: Array<string> | string | undefined,
     ) => ReadonlyArray<string> | boolean | null
-    getIncomingConnections?: (
+    getIncomingConnections: (
       module: RspackModuleLike,
     ) => Iterable<RspackConnectionLike>
-    getModule?: (dependency: unknown) => RspackModuleLike | null
+    getModule: (dependency: unknown) => RspackModuleLike | null
     /** The module a dependency belongs to (the inner module of a ConcatenatedModule). */
-    getParentModule?: (dependency: unknown) => RspackModuleLike | null
+    getParentModule: (dependency: unknown) => RspackModuleLike | null
   }
-  entries?: Map<string, { dependencies: Iterable<unknown> }>
+  entries: { values: () => Iterable<{ dependencies: Iterable<unknown> }> }
 }
 
 function runtimesOf(compilation: RspackCompilationLike): Array<string> {
@@ -237,7 +237,7 @@ export function rspackGraphView(
     importers(id) {
       const out: Array<string> = []
       const visit = (m: RspackModuleLike, viaContext: boolean) => {
-        for (const c of moduleGraph.getIncomingConnections?.(m) ?? []) {
+        for (const c of moduleGraph.getIncomingConnections(m)) {
           // a ConcatenatedModule holds the connections of each of its inner modules
           const target = c.resolvedModule?.resource
           if (target !== undefined && idOf(target) !== id) {
@@ -246,7 +246,7 @@ export function rspackGraphView(
           // the importing module itself, inside a ConcatenatedModule origin
           const origin =
             (c.dependency !== undefined
-              ? moduleGraph.getParentModule?.(c.dependency)
+              ? moduleGraph.getParentModule(c.dependency)
               : null) ?? c.originModule
           const res = origin?.resource && idOf(origin.resource)
           if (res) {
@@ -268,10 +268,10 @@ export function rspackGraphView(
     isEntry(id) {
       if (!entries) {
         entries = new Set()
-        for (const entry of compilation.entries?.values() ?? []) {
+        for (const entry of compilation.entries.values()) {
           for (const dep of entry.dependencies) {
             // a production entry is usually a ConcatenatedModule (scope hoisting)
-            const m = compilation.moduleGraph.getModule?.(dep)
+            const m = compilation.moduleGraph.getModule(dep)
             const res = m?.resource ?? m?.rootModule?.resource
             if (res) {
               entries.add(idOf(res))

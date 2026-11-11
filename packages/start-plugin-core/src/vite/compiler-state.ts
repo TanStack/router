@@ -35,7 +35,7 @@ import { StartCompilerSession } from '../compiler/session'
 import { dependencyTextFilter } from '../compiler/scope'
 import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
-import { invalidateRegistry } from './invalidation'
+import { invalidateRegistry, reloadMismatched } from './invalidation'
 import { createVirtualWaits } from './virtual-waits'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type {
@@ -796,9 +796,10 @@ export class ViteCompilerState implements ClientBuilds {
    * What follows a compile (`StartCompilerSession.afterCompile`): an
    * `error`-behaviour violation fails the module; otherwise the import
    * protection reports whose importers the graph (or the judged edges) can
-   * reach now are printed, before the module is served (a host completion
-   * event, no microtask polling). Gives the mock to serve instead of the
-   * output, if any.
+   * reach now are printed, and (dev) a denied file its importers now ask
+   * for otherwise is built again (`reloadMismatched`), before the module is
+   * served (a host completion event, no microtask polling). Gives the mock
+   * to serve instead of the output, if any.
    */
   afterCompile(
     s: Session,
@@ -811,8 +812,11 @@ export class ViteCompilerState implements ClientBuilds {
       if (error) {
         fail(error)
       }
-      s.start.ip?.env(env.name, env.type).reporter?.flush()
-      return mock
+      const ipEnv = s.start.ip?.env(env.name, env.type)
+      ipEnv?.reporter?.flush()
+      return s.server && ipEnv?.serving
+        ? reloadMismatched(s, env).then(() => mock)
+        : mock
     }
     const outcome = s.start.afterCompile(env, id, out)
     return outcome instanceof Promise ? outcome.then(finish) : finish(outcome)

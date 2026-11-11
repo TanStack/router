@@ -87,26 +87,9 @@ const COMPILER_PACKAGES = [
   '@tanstack/router-utils',
 ]
 
-/** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
-function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
-  const view = rspackGraphView(compilation as never, canonicalResource)
-  return {
-    importers(id) {
-      try {
-        return view.importers(id)
-      } catch {
-        return []
-      }
-    },
-    isEntry(id) {
-      try {
-        return view.isEntry(id)
-      } catch {
-        return false
-      }
-    },
-  }
-}
+/** The compilation's graph view, by canonical resource. */
+const graphView = (compilation: Rspack.Compilation): ImportGraphView =>
+  rspackGraphView(compilation as never, canonicalResource)
 
 interface ModuleLike {
   resource?: string
@@ -558,7 +541,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (ipEnv) {
           // Rspack's module graph is not readable while modules build (a loader asking for a
           // trace would abort the process): no graph until `finishModules`, when the
-          // compilation's complete graph replaces it (traces built before use the edge index)
+          // compilation's complete graph replaces it (traces built before use the edge index).
+          // Rspack drops the previous compilation as it creates this one, and a read of it
+          // would throw: no later read (an `onViolation` reading `info.trace` late) reaches it
           ipEnv.graph = null
           if (session.start.opts.mode === 'dev') {
             if (!reporterInstalled) {
@@ -579,7 +564,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 compilation.errors,
                 'Checking import protection',
                 async () => {
-                  ipEnv.graph = guardedGraphView(compilation)
+                  ipEnv.graph = graphView(compilation)
                   if (session.start.ip!.config.log === 'always') {
                     // modules this compilation kept without compiling them report again: an
                     // importer its violations, an edge module the pending ones it witnesses
@@ -622,7 +607,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     )
                     const reports = await buildEnv.surviving(
                       live,
-                      guardedGraphView(compilation),
+                      graphView(compilation),
                     )
                     for (const report of reports) {
                       ;(report.severity === 'error'
