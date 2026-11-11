@@ -9,7 +9,7 @@
  * substitution environments and context-aware reference rewrites; no Yuku
  * object is reachable from the result.
  */
-import { walk } from 'yuku'
+import { CHILD_KEYS } from 'yuku'
 import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
@@ -919,12 +919,6 @@ class Renderer {
   private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
-  /** Per statement of the module: the statements of the lists inside it by start, found on first need (`statementStartsIn`). */
-  private readonly statementStarts = new Map<
-    number,
-    Map<number, 'program' | 'nested'>
-  >()
-
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
@@ -1118,10 +1112,7 @@ class Renderer {
 
   /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
   private tokenStart(start: number, end: number): number {
-    const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/.exec(
-      this.code.slice(start, end),
-    )
-    return start + m![0].length
+    return start + LEADING_TRIVIA.exec(this.code.slice(start, end))![0].length
   }
 
   /**
@@ -1269,21 +1260,19 @@ class Renderer {
       const seg = out[i]!
       const text =
         seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-      // the first token's first character: a comment (`/* @__PURE__ */`) is no `/`
-      const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*(\S)/.exec(text)
-      if (m) {
-        first = m[1]!
-      }
+      // the first token's first character: a comment (`/* @__PURE__ */`) is
+      // no `/`, and a text that is only one has none
+      first = text.charAt(LEADING_TRIVIA.exec(text)![0].length)
     }
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
     }
+    // (the text before it first: the statement list is a descent of the AST)
+    if (!this.continuable(out, from)) {
+      return
+    }
     const list = this.statementListAt(offset)
-    if (
-      list !== undefined &&
-      (list === 'nested' || !nestedOnly) &&
-      this.continuable(out, from)
-    ) {
+    if (list !== undefined && (list === 'nested' || !nestedOnly)) {
       out.splice(from, 0, { k: 'text', text: ';' })
     }
   }
@@ -1313,12 +1302,7 @@ class Renderer {
       // (the module's first statement: nothing renders before it)
       return offset === program.start ? undefined : 'program'
     }
-    let starts = this.statementStarts.get(at)
-    if (starts === undefined) {
-      starts = statementStartsIn(st)
-      this.statementStarts.set(at, starts)
-    }
-    return starts.get(offset)
+    return nestedStatementAt(st, offset) ? 'nested' : undefined
   }
 
   /**
@@ -1401,34 +1385,85 @@ class Renderer {
   }
 }
 
+/** Whitespace and comments at a text's start (its first token follows them). */
+const LEADING_TRIVIA = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/
+
 /**
- * The statements of the statement lists inside one statement of the module,
- * by start (`nested`: a block's, a static block's, a case's). One walk of
- * that statement.
+ * Whether a statement of a statement list inside `statement` (a block's, a
+ * static block's, a case's) starts at `offset`: a descent from `statement`
+ * through the nodes holding `offset`.
  */
-function statementStartsIn(statement: Node): Map<number, 'nested'> {
-  const out = new Map<number, 'nested'>()
-  const add = (holder: Node, list: ReadonlyArray<Node>) => {
-    for (const st of list) {
-      if (st.start !== holder.start) {
-        out.set(st.start, 'nested')
+function nestedStatementAt(statement: Node, offset: number): boolean {
+  let holder: Node | undefined = statement
+  while (holder !== undefined) {
+    const fields = holder as unknown as Record<string, unknown>
+    let inner: Node | undefined
+    for (const key of CHILD_KEYS[holder.type] ?? []) {
+      const value = fields[key] as Node | ReadonlyArray<Node | null> | null
+      inner = Array.isArray(value)
+        ? childAt(value, offset)
+        : value != null && holds(value as Node, offset)
+          ? (value as Node)
+          : undefined
+      if (inner !== undefined) {
+        if (inner.start === offset && isStatementList(holder, key)) {
+          return true
+        }
+        break
       }
     }
+    holder = inner
   }
-  walk(statement, {
-    enter: (n) => {
-      switch (n.type) {
-        case 'BlockStatement':
-        case 'StaticBlock':
-          add(n, n.body)
-          break
-        case 'SwitchCase':
-          add(n, n.consequent)
-          break
-      }
-    },
-  })
-  return out
+  return false
+}
+
+/**
+ * The node of a list holding `offset`: a binary search, the list being in
+ * source order (a hole, `[, a]`, reads as the node before it).
+ */
+function childAt(
+  list: ReadonlyArray<Node | null>,
+  offset: number,
+): Node | undefined {
+  let lo = 0
+  let hi = list.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    let at = mid
+    while (at >= lo && list[at] === null) {
+      at--
+    }
+    if (at < lo) {
+      lo = mid + 1
+      continue
+    }
+    const child = list[at]!
+    if (offset < child.start) {
+      hi = at - 1
+    } else if (offset >= child.end) {
+      lo = mid + 1
+    } else {
+      return child
+    }
+  }
+  return undefined
+}
+
+function holds(node: Node, offset: number): boolean {
+  return node.start <= offset && offset < node.end
+}
+
+/** Whether `holder[key]` is a statement list (`nestedStatementAt`). */
+function isStatementList(holder: Node, key: string): boolean {
+  switch (holder.type) {
+    case 'BlockStatement':
+    case 'StaticBlock':
+      return key === 'body'
+    case 'SwitchCase':
+      return key === 'consequent'
+    default:
+      return false
+  }
 }
 
 function mergeEnv(
