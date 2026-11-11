@@ -5,8 +5,8 @@
  * is (`PlanContext.describeModule`).
  */
 import { isPureExpression } from './purity'
-import type { PurityContext } from './purity'
 import { unwrapExpression } from './source'
+import type { PurityContext } from './purity'
 import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
@@ -47,7 +47,6 @@ export function keptDiagnostic(
     )
     const one = names.length === 1
     const declaring = (plan.t1.declaringUnits.get(k.syms[0]!) ?? [])[0]
-    const unit = declaring === undefined ? null : plan.t1.units[declaring]!
     let why: string
     let fix: string
     switch (k.reason) {
