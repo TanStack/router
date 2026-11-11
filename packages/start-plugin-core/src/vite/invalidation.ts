@@ -114,12 +114,14 @@ export async function invalidateRegistry(
   if (!first) {
     return
   }
-  await invalidateFor(state, s, first, {
-    path: normalizePath(file),
-    kind: 'registry',
-  })
+  const path = normalizePath(file)
+  await invalidateFor(state, s, first, { path, kind: 'registry' })
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
+      // the core stales the file in the environments that compiled; one
+      // that has not (a module served before it was a route, after a
+      // restart) has its module built again too
+      s.start.caches.stale.add(environment.name, path)
       reloadStaleModules(s, environment)
     }
   }

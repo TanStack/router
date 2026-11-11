@@ -160,11 +160,20 @@ export function createRouterCompilerVitePlugin(
       // a registry change (the generator published new route ids) re-plans
       // the route modules concerned
       s.unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {
+        const files = changedRoutePaths(next, previous).map(normalizePath)
         void Promise.all(
-          changedRoutePaths(next, previous).map((file) =>
-            invalidatePath(s, file, 'registry'),
-          ),
-        ).then(() => reloadStale(s, false))
+          files.map((file) => invalidatePath(s, file, 'registry')),
+        ).then(() => {
+          // the core stales a file in the environments that compiled; one
+          // that has not (a module served before it was a route, after a
+          // restart) has its module built again too
+          for (const environment of Object.keys(s.server?.environments ?? {})) {
+            for (const file of files) {
+              s.compiler.caches.stale.add(environment, file)
+            }
+          }
+          reloadStale(s, false)
+        })
       })
       return s
     },
