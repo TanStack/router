@@ -6,8 +6,9 @@
  * analysis), and an edit of such a module sends the page nothing (Vite
  * stops an update's propagation at a module it never analysed). The hosts
  * therefore do not transform a route for derived modules that were never
- * loaded: keeping or dropping them changes nothing. Goes red when Vite
- * changes either.
+ * loaded: keeping or dropping them changes nothing. The same shortcut is
+ * taken in every environment (the SSR environment's graph leaves the field
+ * unset as the client's does). Goes red when Vite changes either.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -72,6 +73,11 @@ test('a module only imported, never requested, is not analysed and its edit send
   const lazy = await client.moduleGraph.getModuleByUrl('/lazy.ts')
   expect(lazy).toBeDefined()
   expect(lazy!.isSelfAccepting).toBeUndefined()
+  const ssr = server.environments.ssr
+  await ssr.transformRequest('/a.ts')
+  const ssrLazy = await ssr.moduleGraph.getModuleByUrl('/lazy.ts')
+  expect(ssrLazy).toBeDefined()
+  expect(ssrLazy!.isSelfAccepting).toBeUndefined()
   // an edit of the unanalysed module, then of an analysed one: the
   // watcher reports them in order, so the second's payload comes after
   // whatever the first sent
@@ -93,4 +99,6 @@ test('a module only imported, never requested, is not analysed and its edit send
   // once requested, the module is analysed
   await client.transformRequest('/lazy.ts')
   expect(typeof lazy!.isSelfAccepting).toBe('boolean')
+  await ssr.transformRequest('/lazy.ts')
+  expect(typeof ssrLazy!.isSelfAccepting).toBe('boolean')
 }, 30_000)

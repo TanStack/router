@@ -13996,6 +13996,9 @@ importers:
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.3.1
+      '@tanstack/router-utils':
+        specifier: workspace:*
+        version: link:../router-utils
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2

@@ -5,9 +5,16 @@
  * (Start's own server entry, inside a real request). A rebuild judges an
  * unchanged module against what the edit changed in the modules it imports.
  */
-import { existsSync, readdirSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import {
   buildStart,
   callByIdExports,
@@ -155,10 +162,16 @@ export { old } from './old'
           'ssr-entry.ts': ssrEntry,
         },
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-        watchEdits: {
-          'client-entry.ts': `export { greet } from './fns'
+        // (the server is rebuilt by the client's build: Vite settles on it)
+        watchEdits: [
+          {
+            edits: {
+              'client-entry.ts': `export { greet } from './fns'
 `,
-        },
+            },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       const { result } =
         await ssr.run(`${callByIdPrelude}const settle = async (run) => {
@@ -527,6 +540,8 @@ export { label } from './client-only'
   const clientOnlyEdit = {
     'src/client-only.ts': `export const label = 'MARK_EDIT'\n`,
   }
+  /** The client-only save, settled once the server was rebuilt after the client's build of it. */
+  const clientOnlySave = [{ edits: clientOnlyEdit, rebuilds: ['ssr'] }]
   /** The files of `dir` (relative, `/`-separated), at any depth. */
   const filesOf = (dir: string): Array<string> =>
     existsSync(dir)
@@ -573,7 +588,7 @@ export { label } from './client-only'
         bundler: 'vite',
         files: pageApp,
         entry: pageEntry,
-        watchEdits: clientOnlyEdit,
+        watchEdits: clientOnlySave,
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
@@ -599,7 +614,7 @@ export { label } from './client-only'
         files: pageApp,
         entry: pageEntry,
         viteConfig: { environments: { client: watch, ssr: watch } },
-        watchEdits: clientOnlyEdit,
+        watchEdits: clientOnlySave,
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
@@ -628,12 +643,17 @@ export { label } from './client-only'
             client: { build: { rolldownOptions: { output: names } } },
           },
         },
-        watchEdits: {
-          'src/client-entry.ts': `import './app.css'
+        watchEdits: [
+          {
+            edits: {
+              'src/client-entry.ts': `import './app.css'
 export { getRouter } from './router'
 export { label } from './client-only'
 `,
-        },
+            },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       const css = filesOf(build.client.outDir).filter((f) => f.endsWith('.css'))
       expect(css.length).toBeGreaterThan(0)
@@ -745,10 +765,100 @@ export { label } from './client-only'
               return Promise.resolve()
             },
           },
-          { edits: clientOnlyEdit },
+          { edits: clientOnlyEdit, rebuilds: ['ssr'] },
         ],
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
+      await expectLastClientBuild(build)
+    },
+    timeout,
+  )
+
+  /** Runs `build` with the system's temporary directory at `dir` (`TMPDIR`, as `os.tmpdir()` reads it). */
+  async function withTemporaryDirectory<T>(
+    dir: string,
+    build: () => Promise<T>,
+  ): Promise<T> {
+    const before = process.env.TMPDIR
+    process.env.TMPDIR = dir
+    try {
+      return await build()
+    } finally {
+      if (before === undefined) {
+        delete process.env.TMPDIR
+      } else {
+        process.env.TMPDIR = before
+      }
+    }
+  }
+
+  // What a watch build keeps in the system's temporary directory, which
+  // other users of the machine share (Linux's `/tmp`).
+  // Source: design 3 final review, finding 1 (a directory at a name derived
+  // from the app's path, made with the default mode: another user could
+  // create it first and plant a link that the build wrote through; it was
+  // never removed).
+  test(
+    'a watch build keeps its temporary files in a directory only the user can open, removed when its watchers close',
+    async () => {
+      const temporary = mkdtempSync(path.join(runDirectory(), 'tmpdir-'))
+      /** The entries the build made in the temporary directory, with their modes, while it watches. */
+      let during: Array<{ name: string; dir: boolean; mode: number }> = []
+      await withTemporaryDirectory(temporary, () =>
+        buildStart({
+          bundler: 'vite',
+          files: pageApp,
+          entry: pageEntry,
+          watchEdits: [
+            {
+              edits: clientOnlyEdit,
+              rebuilds: ['ssr'],
+              when: () => {
+                during = readdirSync(temporary).map((name) => {
+                  const stat = lstatSync(path.join(temporary, name))
+                  return {
+                    name,
+                    dir: stat.isDirectory(),
+                    mode: stat.mode & 0o777,
+                  }
+                })
+                return Promise.resolve()
+              },
+            },
+          ],
+        }),
+      )
+      expect(during.length).toBeGreaterThan(0)
+      for (const entry of during) {
+        expect(entry).toEqual({ name: entry.name, dir: true, mode: 0o700 })
+      }
+      expect(readdirSync(temporary)).toEqual([])
+    },
+    timeout,
+  )
+
+  // A sandbox whose temporary directory does not exist (or isn't usable):
+  // the build goes on, as without a watch.
+  // Source: design 3 final review, finding 1 (resolving the missing
+  // directory threw in a server module's `load`: the server's build failed).
+  test(
+    'a temporary directory that does not exist: the watch build succeeds and a save rebuilds both environments',
+    async () => {
+      const missing = path.join(runDirectory(), 'no-such-tmpdir')
+      const build = await withTemporaryDirectory(missing, () =>
+        buildStart({
+          bundler: 'vite',
+          files: pageApp,
+          entry: pageEntry,
+          watchEdits: { 'src/routes/index.tsx': index('MARK_EDIT') },
+        }),
+      )
+      expect(
+        build.firstBuild.filter(({ severity }) => severity === 'error'),
+      ).toEqual([])
+      expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
+      const { html } = await documentOf(build)
+      expect(html).toContain('MARK_EDIT')
       await expectLastClientBuild(build)
     },
     timeout,
@@ -870,7 +980,12 @@ export { label } from './client-only'
 `,
         },
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-        watchEdits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+        watchEdits: [
+          {
+            edits: { 'client-only.ts': clientOnly(`'MARK_LABEL'`) },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       expect(
         firstBuild.some(({ text }) => text.includes('built before the client')),

@@ -378,6 +378,16 @@ export interface WatchStep {
    * test holds one of them). Default: once they ended.
    */
   when?: () => Promise<void>
+  /**
+   * Vite builds (Rsbuild's settle follows its compilations already): the
+   * environments the step rebuilds by cause, after the
+   * others' builds of it (e.g. the server's, after a save only the client
+   * bundles): the step settles once each of them began a build after every
+   * other environment's last build began, and all of them ended. Its
+   * outcome, not a moment of quiet: such a rebuild starts when a file
+   * another build wrote reaches its watcher, which takes longer under load.
+   */
+  rebuilds?: ReadonlyArray<string>
 }
 
 /** The steps of a watch mode build's edits. */
@@ -1004,7 +1014,13 @@ async function buildWithVite(
         target.viteConfig ?? {},
       ),
     )
-    await (target.viteBuild ? target.viteBuild(builder) : builder.buildApp())
+    try {
+      await (target.viteBuild ? target.viteBuild(builder) : builder.buildApp())
+    } catch (error) {
+      // (a watch build's watchers that started before the failure close too)
+      await watch?.close()
+      throw error
+    }
     if (watch && target.watchEdits) {
       try {
         for (const error of await watch.first(watchTimeout)) {
@@ -1024,10 +1040,12 @@ async function buildWithVite(
           await watch.write(target.root, step.edits)
           const next = steps[index + 1]
           if (!next) {
-            await watch.settle(watchTimeout)
+            await watch.settle(watchTimeout, step.rebuilds)
           } else if (!next.when) {
             // (an earlier step's builds may fail)
-            await watch.settle(watchTimeout).catch(() => undefined)
+            await watch
+              .settle(watchTimeout, step.rebuilds)
+              .catch(() => undefined)
           }
         }
       } finally {
@@ -1055,7 +1073,8 @@ async function buildWithVite(
  * environment's watcher reported a file (`watchChange`: an edited file, or
  * any other file it watches, e.g. one a plugin wrote meanwhile). The edits
  * written since the last settle are settled once every edited file was
- * reported, every environment that reported a file ended such a build, and
+ * reported, every environment that reported a file ended such a build, the
+ * environments the step rebuilds by cause did (`WatchStep.rebuilds`), and
  * no watcher reported anything or began a build for `quietMs` (a file a
  * build writes reaches another environment's watcher a moment later).
  */
@@ -1069,6 +1088,9 @@ function trackViteWatch() {
     owed: boolean
     /** The running build began after the watcher reported a file. */
     reading: boolean
+    /** When its last build began and ended (`performance.now()`; -1: none yet). */
+    began: number
+    endedAt: number
   }
   const environments = new Map<string, EnvironmentBuilds>()
   const watchers: Array<Rolldown.RolldownWatcher> = []
@@ -1082,7 +1104,14 @@ function trackViteWatch() {
   const builds = (name: string) => {
     let state = environments.get(name)
     if (!state) {
-      state = { error: null, ended: false, owed: false, reading: false }
+      state = {
+        error: null,
+        ended: false,
+        owed: false,
+        reading: false,
+        began: -1,
+        endedAt: -1,
+      }
       environments.set(name, state)
     }
     return state
@@ -1121,6 +1150,7 @@ function trackViteWatch() {
             output.on('event', (event) => {
               if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
                 state.ended = true
+                state.endedAt = performance.now()
                 state.reading = false
                 state.error = event.code === 'ERROR' ? event.error : null
                 changed()
@@ -1145,7 +1175,7 @@ function trackViteWatch() {
       const state = builds(this.environment.name)
       state.reading = state.owed
       state.owed = false
-      lastActivity = performance.now()
+      state.began = lastActivity = performance.now()
     },
   }
   /** How long the watchers stay quiet before the edits count as settled. */
@@ -1178,9 +1208,24 @@ function trackViteWatch() {
         }
       }
     },
-    /** Waits until the edits written since the last settle are settled (rejects with an error of a build that read one). */
-    settle: async (timeout: number) => {
+    /**
+     * Waits until the edits written since the last settle are settled
+     * (rejects with an error of a build that read one), and the
+     * environments `rebuilds` names were rebuilt after the others' builds
+     * (`WatchStep.rebuilds`).
+     */
+    settle: async (timeout: number, rebuilds: ReadonlyArray<string> = []) => {
       const files = [...edited.keys()].map((file) => path.basename(file))
+      const rebuilt = (name: string) => {
+        const state = builds(name)
+        return (
+          state.endedAt > state.began &&
+          [...environments].every(
+            ([other, { began, endedAt }]) =>
+              other === name || (endedAt > began && state.began > began),
+          )
+        )
+      }
       const settled = () => {
         for (const state of environments.values()) {
           if (state.owed || state.reading) {
@@ -1189,7 +1234,8 @@ function trackViteWatch() {
         }
         return (
           [...edited.values()].every(Boolean) &&
-          [...readers].every((state) => !state.owed && !state.reading)
+          [...readers].every((state) => !state.owed && !state.reading) &&
+          rebuilds.every(rebuilt)
         )
       }
       const deadline = performance.now() + timeout
@@ -1197,7 +1243,7 @@ function trackViteWatch() {
         await until(
           settled,
           Math.max(0, deadline - performance.now()),
-          `rebuild of ${files.join(', ')}`,
+          `rebuild of ${[...files, ...rebuilds.map((name) => `the ${name} environment`)].join(', ')}`,
         )
         const quiet = lastActivity + quietMs - performance.now()
         if (quiet <= 0) {

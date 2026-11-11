@@ -164,13 +164,11 @@ export async function fingerprintCurrent(
 
 /**
  * The answers a validation takes as current: resolutions at an unchanged
- * `fileSetVersion` (failed ones also while no file event was applied:
- * `CompilerCaches.events`), raw facts at an unchanged
- * `RawFactsCache.version`.
+ * `fileSetVersion` (no file event applied since), raw facts at an
+ * unchanged `RawFactsCache.version`.
  */
 export interface StandingAnswers {
   resolutions: boolean
-  failed: boolean
   facts: boolean
 }
 
@@ -190,7 +188,7 @@ export async function fingerprintsCurrent(
   for (const fp of fps) {
     const skip =
       fp.kind === 'resolution'
-        ? standing.resolutions && (fp.resolved !== null || standing.failed)
+        ? standing.resolutions
         : fp.kind !== 'route-registry' && standing.facts
     if (!skip) {
       checks.push(fingerprintCurrent(fp, src))

@@ -158,6 +158,10 @@ export const Route = createServerFn()
     expect(t.reads).toContain(OWN)
     expect(out).not.toContain(SECRET)
     expect(out).toBe(await compile(setup({ [OWN]: false }, app)))
+    // the hit that failed validation left the tree in the stale set, for
+    // the host's next take (each host takes its set at its next file event
+    // or build)
+    expect(takeStale(t.memory.caches)).toEqual([TREE])
   })
 })
 

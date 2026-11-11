@@ -141,6 +141,7 @@ export {
   takeStaleModules,
   loadDerivedSource,
   viteLog,
+  watchLoadedFile,
   ViteRunSessions,
   watchDependencies,
   withOwnSourcesNamedByFile,
