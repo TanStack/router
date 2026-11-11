@@ -292,6 +292,13 @@ directives, never license comments.
   the mutation model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
   `E.__defineGetter__(…)`),
   an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
+  Placement's own judgement of a top-level evaluation (the unit model, `ModuleAnalysis.effectPurity`) adds rule L
+  (`languagePurity`): a member read, a spread, `in`/`instanceof`, a call or `new` of a standard global
+  (`Object.keys`, `new Set`, `Math.max`, `JSON.stringify`, `new Intl.NumberFormat`) and a method of what one returns
+  or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
+  runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
+  is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). What may be
+  deleted (`effects()` of raw facts, function-scope orphans) still counts every operation that may run code.
 - **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's

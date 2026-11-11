@@ -11,7 +11,7 @@
  * plain enum of the module (`isPlainEnum`; a property of any other object may be a getter).
  * `import()` is impure. The same classification yields the module's own effects at statement granularity (`ModuleAnalysis.effects()`).
  */
-import { BindingFlags } from 'yuku'
+import { BindingFlags, walk } from 'yuku'
 import { unwrapExpression } from './source'
 import { ownEntry } from './strings'
 import type {
@@ -46,6 +46,251 @@ export interface PurityContext {
    * (`ModuleAnalysisOptions.env`).
    */
   builders?: BuilderPurity
+  /**
+   * Rule L (`languagePurity`): language operations are no effect. Set on
+   * the purity placement judges effects with (`ModuleAnalysis.effectPurity`),
+   * never on the one that decides what may be deleted.
+   */
+  language?: boolean
+}
+
+/**
+ * The purity placement judges a top-level evaluation's effects with (rule
+ * L): `ctx`, and a member read, a spread, `in` and `instanceof`, a call or
+ * `new` of a standard global (`Object.keys`, `new Set`, `Math.max`,
+ * `JSON.stringify`, `new Intl.NumberFormat`, …) and a method of the value
+ * one returns or of a literal (`Object.entries(x).map(f)`, `'a,b'.split()`),
+ * with pure arguments, are no effect. A function such a call is handed runs
+ * there: an inline one's calls must be language operations too, a named one
+ * of the module is judged so, an imported one is an effect. Getters,
+ * proxies, iterators and `toString` stay outside the model, as for reads
+ * (R97): the language defines what these operations do, a library does not.
+ * Only placement's timing takes it: what may be deleted (`effects()`, the
+ * orphans) still counts every operation that may run code.
+ */
+export function languagePurity(ctx: PurityContext): PurityContext {
+  return { ...ctx, language: true }
+}
+
+/** The standard globals whose calls (`Number(x)`) are language operations. */
+const LANGUAGE_FUNCTIONS = new Set([
+  'Array',
+  'BigInt',
+  'Boolean',
+  'Number',
+  'Object',
+  'String',
+  'Symbol',
+  'decodeURI',
+  'decodeURIComponent',
+  'encodeURI',
+  'encodeURIComponent',
+  'isFinite',
+  'isNaN',
+  'parseFloat',
+  'parseInt',
+  'structuredClone',
+])
+/** The standard constructors whose `new` is a language operation. */
+const LANGUAGE_CONSTRUCTORS = new Set([
+  'Array',
+  'Date',
+  'Error',
+  'Map',
+  'Object',
+  'RegExp',
+  'Set',
+  'URL',
+  'URLSearchParams',
+  'WeakMap',
+  'WeakSet',
+])
+/** The standard namespaces and constructors whose statics (`Object.keys`) are language operations: all of them (`true`), or these. */
+const LANGUAGE_STATICS = new Map<string, ReadonlySet<string> | true>([
+  [
+    'Object',
+    new Set([
+      'create',
+      'entries',
+      'freeze',
+      'fromEntries',
+      'getOwnPropertyNames',
+      'keys',
+      'values',
+    ]),
+  ],
+  ['Array', new Set(['from', 'isArray', 'of'])],
+  ['Date', new Set(['UTC', 'now', 'parse'])],
+  ['Symbol', new Set(['for'])],
+  ['Intl', true],
+  ['JSON', true],
+  ['Math', true],
+  ['Number', true],
+  ['String', true],
+])
+
+/** Whether an identifier names a global (no binding of the module or of a scope around it). */
+function isGlobal(ctx: PurityContext, id: Node): boolean {
+  return ctx.file.referenceOf(id)?.binding === null
+}
+
+/** Whether calling (or `new` of) `callee` is a language operation, its arguments aside (rule L). */
+function languageCallee(
+  ctx: PurityContext,
+  callee: Node,
+  isNew: boolean,
+): boolean {
+  const c = unwrapExpression(callee)
+  if (c.type === 'Identifier') {
+    return (
+      isGlobal(ctx, c) &&
+      (isNew ? LANGUAGE_CONSTRUCTORS : LANGUAGE_FUNCTIONS).has(c.name)
+    )
+  }
+  if (c.type !== 'MemberExpression') {
+    return false
+  }
+  const object = unwrapExpression(c.object as Node)
+  if (object.type === 'Identifier' && isGlobal(ctx, object)) {
+    const statics = LANGUAGE_STATICS.get(object.name)
+    const name =
+      !c.computed && c.property.type === 'Identifier' ? c.property.name : null
+    return (
+      statics === true ||
+      (statics !== undefined && name !== null && statics.has(name))
+    )
+  }
+  // a method of a value the language made: a literal, or what a language
+  // operation returns (`Object.entries(x).map`, `new Set(a).has`)
+  if (isNew) {
+    return false
+  }
+  switch (object.type) {
+    case 'ArrayExpression':
+    case 'ObjectExpression':
+    case 'Literal':
+    case 'TemplateLiteral':
+      return true
+    case 'CallExpression':
+    case 'NewExpression':
+      return languageCallee(ctx, object.callee, object.type === 'NewExpression')
+    default:
+      return false
+  }
+}
+
+/**
+ * A function a language operation is handed, which it may call: an inline
+ * one whose body only calls language operations (or calls the model takes
+ * as pure), and creates no module; a named one, if a function of the module
+ * (`follow`: judged so) or not a function the module declares. An import
+ * may be any function: an effect.
+ */
+function languageCallback(
+  ctx: PurityContext,
+  arg: Node,
+  follow: boolean,
+): boolean {
+  const a = unwrapExpression(arg)
+  if (a.type === 'ArrowFunctionExpression' || a.type === 'FunctionExpression') {
+    return languageBody(ctx, a)
+  }
+  if (a.type !== 'Identifier') {
+    return true
+  }
+  const b = ctx.file.referenceOf(a)?.binding
+  if (b === undefined || b === null) {
+    return true
+  }
+  if (b.has(BindingFlags.Import)) {
+    return false
+  }
+  if (b.scope !== ctx.file.rootScope) {
+    return true
+  }
+  const decl = b.declarations[0]
+  const parent = decl === undefined ? null : ctx.file.parentOf(decl)
+  const fn =
+    parent?.type === 'FunctionDeclaration'
+      ? parent
+      : parent?.type === 'VariableDeclarator' && parent.init !== null
+        ? unwrapExpression(parent.init)
+        : null
+  if (
+    fn === null ||
+    (fn.type !== 'FunctionDeclaration' &&
+      fn.type !== 'ArrowFunctionExpression' &&
+      fn.type !== 'FunctionExpression')
+  ) {
+    return true
+  }
+  return follow && languageBody(ctx, fn)
+}
+
+/** Whether every call a function's body makes is a language operation or one the model takes as pure (rule L: what a language operation it is handed runs). */
+function languageBody(ctx: PurityContext, fn: Node): boolean {
+  let pure = true
+  walk(fn, {
+    enter: (n, w) => {
+      if (!pure) {
+        w.stop()
+        return
+      }
+      switch (n.type) {
+        case 'CallExpression':
+        case 'NewExpression':
+          pure =
+            hasPureAnnotation(ctx, n) ||
+            (n.type === 'CallExpression' &&
+              isPureCallee(ctx, unwrapExpression(n.callee))) ||
+            (languageCallee(ctx, n.callee, n.type === 'NewExpression') &&
+              n.arguments.every((a) =>
+                languageCallback(
+                  ctx,
+                  a.type === 'SpreadElement' ? a.argument : a,
+                  false,
+                ),
+              ))
+          break
+        case 'TaggedTemplateExpression':
+          pure = languageCallee(ctx, n.tag, false)
+          break
+        case 'ImportExpression':
+          pure = false
+          break
+        case 'ClassExpression':
+        case 'ClassDeclaration':
+          pure = isPureClass(ctx, n)
+          break
+        case 'JSXElement':
+          pure = isPureJsxTag(ctx, n.openingElement.name)
+          break
+      }
+    },
+  })
+  return pure
+}
+
+/** A call or `new` that is a language operation with pure arguments, each function it is handed judged as it may run (rule L). */
+function isLanguageCall(
+  ctx: PurityContext,
+  node: Extract<Node, { type: 'CallExpression' | 'NewExpression' }>,
+): boolean {
+  const callee = unwrapExpression(node.callee)
+  return (
+    languageCallee(ctx, callee, node.type === 'NewExpression') &&
+    // (a method's receiver is evaluated: `[f()].map(g)`)
+    (callee.type !== 'MemberExpression' || isPureExpression(ctx, callee)) &&
+    node.arguments.every((a) => {
+      const arg = a.type === 'SpreadElement' ? a.argument : a
+      const f = unwrapExpression(arg)
+      return f.type === 'ArrowFunctionExpression' ||
+        f.type === 'FunctionExpression' ||
+        f.type === 'Identifier'
+        ? languageCallback(ctx, arg, true)
+        : isPureExpression(ctx, arg)
+    })
+  )
 }
 
 /** The builder chains `isPureExpression` takes as pure in one environment (`PurityContext.builders`). */
@@ -277,7 +522,8 @@ export function isPureExpression(
         (e) =>
           e === null ||
           (e.type === 'SpreadElement'
-            ? unwrapExpression(e.argument).type === 'ArrayExpression' &&
+            ? (ctx.language === true ||
+                unwrapExpression(e.argument).type === 'ArrayExpression') &&
               isPureExpression(ctx, e.argument)
             : isPureExpression(ctx, e)),
       )
@@ -285,7 +531,8 @@ export function isPureExpression(
       return node.properties.every((p) => {
         if (p.type === 'SpreadElement') {
           return (
-            unwrapExpression(p.argument).type === 'ObjectExpression' &&
+            (ctx.language === true ||
+              unwrapExpression(p.argument).type === 'ObjectExpression') &&
             isPureExpression(ctx, p.argument)
           )
         }
@@ -301,8 +548,8 @@ export function isPureExpression(
       return node.operator !== 'delete' && isPureExpression(ctx, node.argument)
     case 'BinaryExpression':
       return (
-        node.operator !== 'in' &&
-        node.operator !== 'instanceof' &&
+        (ctx.language === true ||
+          (node.operator !== 'in' && node.operator !== 'instanceof')) &&
         isPureExpression(ctx, node.left) &&
         isPureExpression(ctx, node.right)
       )
@@ -334,27 +581,20 @@ export function isPureExpression(
         )
       }
       return (
-        ctx.builders !== undefined &&
-        node.type === 'CallExpression' &&
-        builderCall(ctx, ctx.builders, node) !== null
+        (ctx.builders !== undefined &&
+          node.type === 'CallExpression' &&
+          builderCall(ctx, ctx.builders, node) !== null) ||
+        (ctx.language === true && isLanguageCall(ctx, node))
       )
     }
     case 'JSXElement': {
-      const name = node.openingElement.name
-      if (name.type === 'JSXNamespacedName') {
+      if (!isPureJsxTag(ctx, node.openingElement.name)) {
         return false
-      }
-      if (name.type === 'JSXIdentifier') {
-        const c = name.name.charCodeAt(0)
-        const intrinsic = c >= 97 && c <= 122
-        if (!intrinsic && !ctx.file.referenceOf(name)?.binding) {
-          return false
-        }
       }
       return (
         node.openingElement.attributes.every((a) =>
           a.type === 'JSXSpreadAttribute'
-            ? false
+            ? ctx.language === true && isPureExpression(ctx, a.argument)
             : a.value === null ||
                 a.value.type === 'Literal' ||
                 a.value.type === 'JSXElement' ||
@@ -368,9 +608,20 @@ export function isPureExpression(
     case 'JSXFragment':
       return node.children.every((ch) => isPureJsxChild(ctx, ch))
     case 'MemberExpression':
-      return isPlainMemberRead(ctx, node)
+      return (
+        isPlainMemberRead(ctx, node) ||
+        (ctx.language === true &&
+          isPureExpression(ctx, node.object as Node) &&
+          (!node.computed || isPureExpression(ctx, node.property as Node)))
+      )
     case 'ChainExpression':
+      return ctx.language === true && isPureExpression(ctx, node.expression)
     case 'TaggedTemplateExpression':
+      return (
+        ctx.language === true &&
+        languageCallee(ctx, node.tag, false) &&
+        node.quasi.expressions.every((e) => isPureExpression(ctx, e))
+      )
     case 'ImportExpression':
     case 'AwaitExpression':
     case 'YieldExpression':
@@ -620,6 +871,21 @@ function isPureCallee(ctx: PurityContext, callee: Node): boolean {
     )
   }
   return false
+}
+
+/** A JSX tag whose element runs no code of its own: intrinsic (`div`), or bound (`<Page>`, `<ui.Card>`). */
+function isPureJsxTag(ctx: PurityContext, name: Node): boolean {
+  if (name.type === 'JSXNamespacedName') {
+    return false
+  }
+  if (name.type === 'JSXIdentifier') {
+    const c = name.name.charCodeAt(0)
+    const intrinsic = c >= 97 && c <= 122
+    if (!intrinsic && !ctx.file.referenceOf(name)?.binding) {
+      return false
+    }
+  }
+  return true
 }
 
 function isPureJsxChild(ctx: PurityContext, ch: Node): boolean {

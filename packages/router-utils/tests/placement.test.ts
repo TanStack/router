@@ -2616,13 +2616,15 @@ describe('extracted-export outputs', () => {
     ["Page[track('k')] = 1", false],
     ['Page.count++', false],
     // a member of a namespace import reads that module's binding (no code
-    // runs, as for an imported identifier); a property of an imported
-    // object, or of a namespace member's value, may be a getter
+    // runs, as for an imported identifier); so, under rule L, does a
+    // property of an imported object
     ['Page.icon = Icons.Home', true],
     ["Page.icon = Icons['Home']", true],
     ['Object.assign(Page, { Item: Icons.Item })', true],
-    ['Page.icon = Shapes.Home', false],
-    ['Page.icon = Icons.Home.small', false],
+    // (rule L: a member read is a language operation, a getter outside the
+    // model as for reads, R97; not extracted before)
+    ['Page.icon = Shapes.Home', true],
+    ['Page.icon = Icons.Home.small', true],
   ])(
     'extracts an export augmented by `%s` only when the augmentation writes nothing but pure values (%s)',
     async (augmentation, extracted) => {
@@ -6478,8 +6480,9 @@ describe('declarations only split code needs that stay in the route module', () 
   it('names the initialisers of several declarations in the plural', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      const homeUrl = new URL('https://example.com/')
-      const docsUrl = new URL('https://example.com/docs')
+      import { Link } from './lib'
+      const homeUrl = new Link('https://example.com/')
+      const docsUrl = new Link('https://example.com/docs')
       homeUrl.search = docsUrl.search = '?ref=x'
       export const Route = createFileRoute('/')({
         component: () => [homeUrl, docsUrl],
@@ -6487,11 +6490,13 @@ describe('declarations only split code needs that stay in the route module', () 
     `)
     // (design 2 step 3: one statement writes both, so they are one cluster;
     // `const HOME = homeUrl.toString()` after `homeUrl.search = …` was one
-    // with `homeUrl` through ordered evaluation, and now moves)
+    // with `homeUrl` through ordered evaluation, and now moves; tanstack.com
+    // wrote `new URL`, a language operation under rule L: an unknown
+    // constructor keeps the shape)
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 4); move `homeUrl`, `docsUrl` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
+        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 5); move `homeUrl`, `docsUrl` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
       ),
     ])
   })
@@ -6541,7 +6546,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const route = (body: Array<string>, options: Array<string>) =>
       [
         "import { createFileRoute } from 'toy-router'",
-        "import { CONFIG, make } from './lib'",
+        "import { CONFIG, Link, make } from './lib'",
         ...body,
         "export const Route = createFileRoute('/')({",
         ...options,
@@ -6581,8 +6586,9 @@ describe('declarations only split code needs that stay in the route module', () 
       const at = (source: string) => (d: { range?: { start: number } }) =>
         d.range?.start === source.indexOf(`${name} = `)
       // a template literal (openstory), or a call the annotation cannot
-      // free (an argument has effects): only the move
-      for (const init of ['`${CONFIG.url}/mcp`', 'make(CONFIG.url)']) {
+      // free (an argument has effects): only the move (rule L: a member
+      // read is none, `CONFIG.url()` is a call)
+      for (const init of ['`${CONFIG.url()}/mcp`', 'make(CONFIG.url())']) {
         const source = route(body(init), options)
         const d = (await report(source)).find(at(source))
         expect(d, source).toMatchObject({ code })
@@ -6590,7 +6596,7 @@ describe('declarations only split code needs that stay in the route module', () 
         expect(d!.message, source).toContain('own module')
       }
       // a call or `new`: the annotation too, and it works
-      for (const init of ['make()', "new URL('https://x')"]) {
+      for (const init of ['make()', "new Link('https://x')"]) {
         const source = route(body(init), options)
         const d = (await report(source)).find(at(source))
         expect(d, source).toMatchObject({ code })
@@ -6616,7 +6622,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const [freed] = (await kept(effect("'ready'"))).diagnostics
     expect(freed).toMatchObject({ code: 'eager-split:order' })
     expect(freed!.message).toContain('mark the call `/* @__PURE__ */`')
-    const [kept_] = (await kept(effect('CONFIG.url'))).diagnostics
+    const [kept_] = (await kept(effect('CONFIG.url()'))).diagnostics
     expect(kept_).toMatchObject({ code: 'eager-split:order' })
     expect(kept_!.message).not.toContain('@__PURE__')
     expect(kept_!.message).toContain('declare `first` after it')

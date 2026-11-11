@@ -286,7 +286,8 @@ function annotationFrees(
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
     n.arguments.every(
       (a) =>
-        a.type !== 'SpreadElement' && isPureExpression(plan.analysis.purity, a),
+        a.type !== 'SpreadElement' &&
+        isPureExpression(plan.analysis.effectPurity, a),
     )
   )
 }
@@ -419,12 +420,15 @@ export function firstImpure(
     if (n.type === 'ObjectExpression') {
       for (const p of n.properties) {
         if (p.type === 'SpreadElement') {
-          if (!isPureExpression(analysis.purity, p)) {
+          if (!isPureExpression(analysis.effectPurity, p)) {
             return { node: p, key }
           }
           continue
         }
-        if (p.computed && !isPureExpression(analysis.purity, p.key as Node)) {
+        if (
+          p.computed &&
+          !isPureExpression(analysis.effectPurity, p.key as Node)
+        ) {
           return { node: p.key as Node, key }
         }
         if (p.kind !== 'init' || env.isErasedAt(p.start)) {
@@ -440,7 +444,7 @@ export function firstImpure(
       }
       return null
     }
-    return isPureExpression(analysis.purity, v) ? null : { node: v, key }
+    return isPureExpression(analysis.effectPurity, v) ? null : { node: v, key }
   }
   let n: Node = unwrapExpression(expr)
   let calls = 0
