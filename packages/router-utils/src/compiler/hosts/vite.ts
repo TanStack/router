@@ -354,9 +354,10 @@ export class ViteRunSessions<TSession, TConfig, TServer> {
  * read here. Vite's load fallback cleans the id of its query and fragment,
  * and a `#` of a project path (`C#`, `project #2`) would end the path there.
  * A derived id with a foreign query (`.vue?vue&…`) or of a virtual module is
- * its owner's to load (null). A watch build is told to watch the file; a dev
- * server is not: its watcher covers the project, the derived module's `file`
- * is the file (each event finds it), and Vite records a file a `load`
+ * its owner's to load (null). Rolldown is told to watch the file where it
+ * builds the environment (a watch build, Vite's bundled dev); an unbundled
+ * dev server is not: its watcher covers the project, the derived module's
+ * `file` is the file (each event finds it), and Vite records a file a `load`
  * watches as an import of the module, which would put every derived module
  * in an import cycle with its file's module (Vite's client reloads the page
  * when an update within a cycle fails to import).
@@ -365,7 +366,7 @@ export async function loadDerivedSource(
   ctx: {
     addWatchFile: (id: string) => void
     meta: { watchMode: boolean }
-    environment: { mode: string }
+    environment: { mode: string; config: { isBundled?: boolean } }
   },
   id: string,
 ): Promise<string | null> {
@@ -381,7 +382,11 @@ export async function loadDerivedSource(
   if (code === null) {
     return null
   }
-  if (ctx.environment.mode === 'build' && ctx.meta.watchMode) {
+  if (
+    ctx.environment.mode === 'build'
+      ? ctx.meta.watchMode
+      : ctx.environment.config.isBundled === true
+  ) {
     ctx.addWatchFile(identity.path)
   }
   return code
