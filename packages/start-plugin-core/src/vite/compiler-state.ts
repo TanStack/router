@@ -367,12 +367,6 @@ export interface Session {
       options?: { skipSelf?: boolean },
     ) => Promise<{ id: string; external?: boolean | string } | null>
   >
-  /**
-   * `build --watch`: per environment, what its running build is to build
-   * again (its stale set when it began) and the files it compiled: the
-   * build's audit (`auditStaleSet`) at its end.
-   */
-  readonly builds: Map<string, { stale: Set<string>; compiled: Set<string> }>
   /** Dev: the server functions the dev lookup warned about (once each). */
   readonly devWarned: Set<string>
   /** Dev: stops what the session listens to (`closeServer`). */
@@ -525,7 +519,6 @@ export class ViteCompilerState implements ClientBuilds {
       sentinel: null,
       clientBuilding: null,
       resolvers: new Map(),
-      builds: new Map(),
       devWarned: new Set(),
       disposers: [],
     }

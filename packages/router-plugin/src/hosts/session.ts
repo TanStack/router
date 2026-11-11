@@ -42,7 +42,6 @@ import type {
   EnvInfo,
   HostServices,
   InvalidateChange,
-  PlanKey,
   Planner,
   WarningLedger,
 } from '@tanstack/router-utils/compiler'
@@ -222,10 +221,7 @@ export class RouterCompiler {
   }
 
   /** The one invalidation operation for a file event. */
-  invalidate(
-    path: string,
-    kind: InvalidateChange['kind'],
-  ): Promise<void> {
+  invalidate(path: string, kind: InvalidateChange['kind']): Promise<void> {
     return invalidate(this.caches, { path, kind }, this.host)
   }
 }

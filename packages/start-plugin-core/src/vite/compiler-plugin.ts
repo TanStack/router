@@ -23,7 +23,6 @@ import {
   OutputBuilder,
   SAME_FILE_SPECIFIER_RE,
   SourceText,
-  auditStaleSet,
   identify,
   invalidate,
   isAssetId,
@@ -155,7 +154,6 @@ function envCompilerPlugins(
     if (!out) {
       return null
     }
-    s.builds.get(env.name)?.compiled.add(identity.path)
     watchDependencies(this, out.dependencies, normalizePath(identity.path))
     state.reportDiagnostics(
       s,
@@ -234,16 +232,14 @@ function envCompilerPlugins(
       if (this.environment.mode === 'build' && this.meta.watchMode) {
         s.start.ip?.env(env.name, env.type).beginBuild()
         // a file event's invalidation asks this environment's resolutions
-        // with its resolver; the build embeds the client build afresh; what
-        // it is to build again is audited at its end
+        // with its resolver; the build embeds the client build afresh, and
+        // compiles every module again (Rolldown's watch rebuilds run every
+        // `load` and `transform`): its stale set is built
         s.resolvers.set(env.name, (source, importer, options) =>
           this.resolve(source, importer, options),
         )
         s.embedded.delete(env.name)
-        s.builds.set(env.name, {
-          stale: new Set(s.start.caches.stale.paths(env.name)),
-          compiled: new Set(),
-        })
+        s.start.caches.stale.take(env.name, { held: true })
       }
       if (this.environment.mode === 'build' && env.type === 'client') {
         if (!this.meta.watchMode) {
@@ -278,11 +274,6 @@ function envCompilerPlugins(
         return
       }
       const s = state.sessionOf(this.environment)
-      const build = s.builds.get(env.name)
-      if (build) {
-        s.builds.delete(env.name)
-        auditStaleSet(s.start.caches, env.name, build, this.getModuleIds())
-      }
       if (env.type === 'client') {
         // a rebuild keeps the registry (a new build cleared it): the
         // functions the client references are those of the modules this

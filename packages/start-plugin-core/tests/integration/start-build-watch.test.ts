@@ -352,6 +352,87 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
   )
 })
 
+// What Start's watch builds rely on of Rolldown's watch mode, which its
+// documentation does not promise. Each goes red when Rolldown changes it.
+describe('vite build --watch: tripwires', () => {
+  // Rolldown's watch rebuild is a whole build: every module's `load` and
+  // `transform` run again. Start and the router take a watch build's stale
+  // set at its start (and Start embeds the client build afresh in each
+  // server build) on that ground. With incremental rebuilds, a module stale
+  // only through a dependency would keep its old output.
+  test(
+    'a rebuild transforms every module of the first build again',
+    async () => {
+      /** Per environment, the app modules each build transformed. */
+      const builds: Record<string, Array<Set<string>>> = { client: [], ssr: [] }
+      const record: Plugin = {
+        name: 'test:transforms',
+        buildStart() {
+          builds[this.environment.name]?.push(new Set())
+        },
+        transform(_code, id) {
+          if (!id.includes('/node_modules/')) {
+            builds[this.environment.name]?.at(-1)?.add(id)
+          }
+          return null
+        },
+      }
+      await buildStart({
+        bundler: 'vite',
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        viteConfig: { plugins: [record] },
+        watchEdits: { 'greeting.ts': `export const greeting = 'MARK_AFTER'\n` },
+      })
+      for (const env of ['client', 'ssr']) {
+        const [first, ...rebuilds] = builds[env]!
+        expect(first!.size).toBeGreaterThan(0)
+        expect(rebuilds.length).toBeGreaterThan(0)
+        for (const rebuild of rebuilds) {
+          expect([...first!].filter((id) => !rebuild.has(id))).toEqual([])
+        }
+      }
+    },
+    timeout,
+  )
+
+  // A plugin context kept from an environment's finished build still
+  // resolves: a file event's invalidation asks a plan's resolutions with its
+  // environment's resolver of its last build (`Session.resolvers`).
+  test(
+    "a plugin context's resolve still answers after its build ended",
+    async () => {
+      let resolve:
+        | ((source: string, importer: string) => Promise<{ id: string } | null>)
+        | undefined
+      let answer: string | null | undefined
+      const keep: Plugin = {
+        name: 'test:kept-resolver',
+        buildStart() {
+          if (this.environment.name === 'ssr' && !resolve) {
+            resolve = (source, importer) => this.resolve(source, importer)
+          }
+        },
+        async watchChange(id) {
+          if (this.environment.name === 'ssr' && id.endsWith('greeting.ts')) {
+            const importer = id.replace(/greeting\.ts$/, 'fns.ts')
+            answer = (await resolve!('./greeting', importer))?.id ?? null
+          }
+        },
+      }
+      const build = await buildStart({
+        bundler: 'vite',
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        viteConfig: { plugins: [keep] },
+        watchEdits: { 'greeting.ts': `export const greeting = 'MARK_AFTER'\n` },
+      })
+      expect(answer).toBe(path.join(build.root, 'greeting.ts'))
+    },
+    timeout,
+  )
+})
+
 describe('vite build --watch: the client build the server embeds', () => {
   const index = (
     marker: string,
