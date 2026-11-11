@@ -4,8 +4,10 @@
  * time, but when nothing else of the module touches that state, it and the
  * state load with the component's chunk, so the option is split, with no
  * warning (REVIEW design 2 step 4, finding 3; the same write at load is
- * split already). Another reader keeps the option in place. Real builds,
- * mounted in a DOM.
+ * split already). Another reader keeps the option in place, wherever it
+ * evaluates: one in a module two chunks share too, which would otherwise
+ * import the state from the component's chunk while that chunk imports it
+ * (REVIEW design 2 final, finding 2). Real builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -13,11 +15,19 @@ import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
 const timeout = 120_000
 
-async function buildRoute(bundler: 'vite' | 'rspack', route: string) {
+async function buildRoute(
+  bundler: 'vite' | 'rspack',
+  route: string,
+  /** Split groupings (`codeSplittingOptions.defaultBehavior`). */
+  groupings?: Array<Array<'loader' | 'component'>>,
+) {
   const app = await build({
     bundler,
     env: 'client',
     minify: false,
+    ...(groupings && {
+      pluginOptions: { codeSplittingOptions: { defaultBehavior: groupings } },
+    }),
     files: routeApp(route, {
       env: 'client',
       files: {
@@ -87,6 +97,26 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       expect(r.where).toBe('lazy')
       expect(r.text).toBe(text)
       expect(r.warnings).toEqual([])
+    },
+    timeout,
+  )
+
+  test(
+    'keeps a value assigning a `let` that a module two chunks share reads in place',
+    async () => {
+      const r = await buildRoute(
+        bundler,
+        `${head}let n = 1
+export const Route = createFileRoute('/')({
+  loader: () => flags,
+  component: (n = 5, () => <p>MARK_PAGE{String(flags)}</p>),
+})
+const flags = [n]
+`,
+        [['loader'], ['component']],
+      )
+      expect(r.where).toBe('eager')
+      expect(r.text).toBe('MARK_PAGE5')
     },
     timeout,
   )

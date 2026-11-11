@@ -5417,6 +5417,27 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
+  // REVIEW-design2-final finding 2: the binding the value writes would be
+  // homed with it (the single-writer rule) while a module two chunks share
+  // reads it: the shared module and the component's chunk would import
+  // each other. Another reader anywhere keeps the value in place.
+  it('keeps an option value in place whose `let` a module two chunks share reads', async () => {
+    const r = await split(
+      route(
+        'let n = 1',
+        'loader: () => flags,\ncomponent: (n = 5, () => flags),',
+        'const flags = [n]',
+      ),
+      { keys: ['loader', 'component'] },
+    )
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      notSplittable: 'component',
+      reasons: { component: 'ordered-effect' },
+    })
+    expect(r.env).toContain('let n = 1')
+    expect(r.env).toContain('component: (n = 5, () => flags)')
+  })
+
   it('splits an option value that writes a member of an import only its chunk names', async () => {
     const r = await split(
       route('', 'component: f((open.page = 1, () => open.page)),'),
