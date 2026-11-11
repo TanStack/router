@@ -18,16 +18,32 @@ export interface RouteHmrMeta {
 }
 
 /**
- * Decides, per framework, whether a held component is kept because the
- * framework's refresh runtime patches it in place. Not a public API.
+ * What the route HMR runtime asks the framework: whether a held component is
+ * kept because the framework's refresh runtime patches it in place (absent:
+ * the new one is taken), or when the new one can be taken. Not a public API.
  */
 export interface RouteHmrAdapter {
   /** Split component: decided when the re-imported chunk resolves, from the loaded export. */
-  keep: (next: any, held: any) => boolean
+  keep?: (next: any, held: any) => boolean
   /** Unsplit component: both values come from the same module in the same round. */
-  keepUnsplit: (next: any, held: any, sameName: boolean) => boolean
+  keepUnsplit?: (next: any, held: any, sameName: boolean) => boolean
+  /**
+   * Runs `apply` once the framework's refresh runtime processed the modules
+   * evaluated so far (absent: at once): a component update applied before
+   * would remount what the refresh patches in place.
+   */
+  settled?: (apply: () => void) => void
   /** Forgets what the framework records for a route id the router no longer holds. */
   retire?: (routeId: string) => void
+}
+
+/** Runs `apply` when the adapter's refresh settled (`RouteHmrAdapter.settled`). */
+function whenSettled(adapter: RouteHmrAdapter, apply: () => void): void {
+  if (adapter.settled) {
+    adapter.settled(apply)
+  } else {
+    apply()
+  }
 }
 
 /**
@@ -42,7 +58,7 @@ export interface LazyRouteComponentHot {
   update: (
     importer: () => Promise<any>,
     exportName: string | undefined,
-    keep: RouteHmrAdapter['keep'],
+    adapter: RouteHmrAdapter,
   ) => void
 }
 
@@ -68,13 +84,13 @@ export interface LazyRouteComponentPort {
 /**
  * The hot slot of a lazy route component, with the framework's own fields
  * (`extra`). `update` re-imports through the new importer when the wrapper
- * has loaded (or is loading), then keeps the held component if
- * `keep(loaded, held)` says so (the framework's refresh runtime patches it
- * in place) or swaps to the loaded one, and re-renders the wrapper either
- * way (a failure it held is over). The newest import is the only one
- * whose completion counts: an older one that completes while a newer one is
- * pending settles with the newer one. A wrapper that never loaded only takes
- * the new importer for its first load.
+ * has loaded (or is loading), then, once the adapter's refresh settled
+ * (`settled`), keeps the held component if `keep(loaded, held)` says so (the
+ * framework's refresh runtime patches it in place) or swaps to the loaded
+ * one, and re-renders the wrapper either way (a failure it held is over).
+ * The newest import is the only one whose completion counts: an older one
+ * that completes while a newer one is pending settles with the newer one. A
+ * wrapper that never loaded only takes the new importer for its first load.
  *
  * Dev-only, called by the framework packages' `lazyRouteComponent` on the
  * client; not a public API.
@@ -89,7 +105,7 @@ export function lazyRouteComponentHot<TExtra extends object>(
     ...extra,
     importer,
     exportName,
-    update: (nextImporter, nextExportName, keep) => {
+    update: (nextImporter, nextExportName, adapter) => {
       if (!port.retarget(nextImporter, nextExportName)) {
         return
       }
@@ -98,16 +114,29 @@ export function lazyRouteComponentHot<TExtra extends object>(
           if (port.pending() !== promise) {
             return port.pending()
           }
-          port.setPending(undefined)
           const next = res[nextExportName ?? 'default']
+          const take = () => {
+            if (port.pending() !== promise) {
+              return port.pending()
+            }
+            port.setPending(undefined)
+            const held = port.held()
+            // a kept component stays (its refresh runtime patches it); either
+            // way a failure the wrapper held is over
+            port.settle(
+              held != null && adapter.keep?.(next, held) ? held : next,
+              undefined,
+            )
+            return port.held()
+          }
           const held = port.held()
-          // a kept component stays (its refresh runtime patches it); either
-          // way a failure the wrapper held is over
-          port.settle(
-            held == null || !keep(next, held) ? next : held,
-            undefined,
-          )
-          return port.held()
+          if (held == null || next === held) {
+            // nothing the refresh could patch
+            return take()
+          }
+          return new Promise((resolve) => {
+            whenSettled(adapter, () => resolve(take()))
+          })
         },
         (err) => {
           if (port.pending() !== promise) {
@@ -265,7 +294,7 @@ export function applyRouteHmr(
       }
       return
     }
-    refreshRoute(routeId, route, meta, adapter, known)
+    scheduleRefresh(routeId, route, meta, adapter, known)
   }
 }
 
@@ -286,10 +315,11 @@ const hotLazyRoutes = new Map<
  * The route loads its lazy options from this evaluation from now on (the
  * route tree's `import()` of the file keeps answering the module it first
  * loaded); a route that loaded the earlier evaluation's options takes the
- * new ones in place: a component keeps its held value when the framework
- * patches it (`keepUnsplit`, as for a route module), and the options the
- * edit removed leave the route (an option the route file sets too goes
- * with them). The first evaluation only records itself.
+ * new ones in place once the adapter's refresh settled: a component keeps
+ * its held value when the framework patches it (`keepUnsplit`, as for a
+ * route module), and the options the edit removed leave the route (an
+ * option the route file sets too goes with them). The first evaluation only
+ * records itself.
  */
 function applyLazyRouteHmr(
   routeId: string,
@@ -321,33 +351,35 @@ function applyLazyRouteHmr(
       void router._refreshRoute?.()
       return
     }
-    const { id: _id, ...next } = lazy.options
-    const { id: _previousId, ...previous } = known.route.options
-    for (const key in previous) {
-      if (!(key in next)) {
-        delete live.options[key]
+    whenSettled(adapter, () => {
+      const { id: _id, ...next } = lazy.options
+      const { id: _previousId, ...previous } = known.route.options
+      for (const key in previous) {
+        if (!(key in next)) {
+          delete live.options[key]
+        }
       }
-    }
-    for (const key of componentKeys) {
-      const held = live.options[key]
-      const value = next[key]
-      if (
-        held !== undefined &&
-        value !== undefined &&
-        held !== value &&
-        adapter.keepUnsplit(
-          value,
-          held,
-          meta.unsplit?.[key] !== undefined &&
-            meta.unsplit[key] === known.meta.unsplit?.[key],
-        )
-      ) {
-        next[key] = held
+      for (const key of componentKeys) {
+        const held = live.options[key]
+        const value = next[key]
+        if (
+          held !== undefined &&
+          value !== undefined &&
+          held !== value &&
+          adapter.keepUnsplit?.(
+            value,
+            held,
+            meta.unsplit?.[key] !== undefined &&
+              meta.unsplit[key] === known.meta.unsplit?.[key],
+          )
+        ) {
+          next[key] = held
+        }
       }
-    }
-    live.update(next)
-    live._lazy = true
-    void router._refreshRoute?.()
+      live.update(next)
+      live._lazy = true
+      void router._refreshRoute?.()
+    })
   }
 }
 
@@ -364,9 +396,97 @@ function onStatus(status: string): void {
   for (const [routeId, { route, meta, adapter }] of entries) {
     const known = hotRoutes.get(routeId)
     if (known) {
-      refreshRoute(routeId, route, meta, adapter, known)
+      scheduleRefresh(routeId, route, meta, adapter, known)
     }
   }
+}
+
+/**
+ * Refreshes the live route from one evaluation of its route module once the
+ * adapter's refresh settled (`refreshRoute`). The live route's lazy wrappers
+ * re-import now: a chunk import started after the refresh pass would wait
+ * for a pass that isn't coming.
+ */
+function scheduleRefresh(
+  routeId: string,
+  route: AnyRoute,
+  meta: RouteHmrMeta,
+  adapter: RouteHmrAdapter,
+  known: { routes: WeakSet<AnyRoute>; meta: RouteHmrMeta },
+): void {
+  const live = window.__TSR_ROUTER__?.routesById?.[routeId] as
+    | HotRoute
+    | undefined
+  const next = route as HotRoute
+  if (
+    live &&
+    known.routes.has(live) &&
+    live !== route &&
+    sameShape(live.options, next.options)
+  ) {
+    for (const key of componentKeys) {
+      retargetWrapper(live.options[key], next.options[key], adapter)
+    }
+  }
+  whenSettled(adapter, () => {
+    refreshRoute(routeId, route, meta, adapter, known)
+  })
+}
+
+/** Whether a route's components keep their places (a `shellComponent` added or removed renders another tree). */
+function sameShape(live: object, next: object): boolean {
+  return 'shellComponent' in live === 'shellComponent' in next
+}
+
+// Per lazy wrapper of an evaluation, the live wrapper it retargeted.
+const retargeted = new WeakMap<LazyRouteComponentHot, LazyRouteComponentHot>()
+
+/**
+ * Keeps the live lazy wrapper `held` of a component option, pointed at the
+ * importer of the evaluation's wrapper `value`: it re-imports and decides
+ * keep or swap. Whether both are wrappers; once per pair.
+ */
+function retargetWrapper(
+  held: any,
+  value: any,
+  adapter: RouteHmrAdapter,
+): boolean {
+  const heldHot: LazyRouteComponentHot | undefined = held?.__tsrHot
+  const valueHot: LazyRouteComponentHot | undefined = value?.__tsrHot
+  if (!heldHot || !valueHot || held === value) {
+    return false
+  }
+  if (retargeted.get(valueHot) === heldHot) {
+    return true
+  }
+  retargeted.set(valueHot, heldHot)
+  // Vite bundled dev without lazy compilation (Rolldown) turns a patch's
+  // `import()` of a chunk the page never loaded into a lookup that throws
+  // `MissingFactoryError`; only the held wrapper's own (first) importer
+  // loads that chunk.
+  const firstImporter = heldHot.importer
+  const importer = valueHot.importer
+  const onError = (err: unknown) => {
+    if (
+      err instanceof Error &&
+      err.constructor.name === 'MissingFactoryError'
+    ) {
+      return firstImporter()
+    }
+    throw err
+  }
+  heldHot.update(
+    () => {
+      try {
+        return importer().catch(onError)
+      } catch (err) {
+        return onError(err)
+      }
+    },
+    valueHot.exportName,
+    adapter,
+  )
+  return true
 }
 
 /**
@@ -417,48 +537,20 @@ function refreshRoute(
 
     const liveOptions = live.options
     const nextOptions: HotRoute['options'] = { ...next.options }
-    if ('shellComponent' in liveOptions === 'shellComponent' in nextOptions) {
+    if (sameShape(liveOptions, nextOptions)) {
       for (const key of componentKeys) {
         const held = liveOptions[key]
         const value = nextOptions[key]
         if (held === undefined || value === undefined || held === value) {
           continue
         }
-        const heldHot: LazyRouteComponentHot | undefined = held.__tsrHot
-        const valueHot: LazyRouteComponentHot | undefined = value.__tsrHot
-        if (heldHot && valueHot) {
-          // Keep the live wrapper; it re-imports and decides keep or swap.
-          // Vite bundled dev without lazy compilation (Rolldown) turns a
-          // patch's `import()` of a chunk the page never loaded into a lookup
-          // that throws `MissingFactoryError`; only the held wrapper's own
-          // (first) importer loads that chunk.
-          const firstImporter = heldHot.importer
-          const importer = valueHot.importer
-          const onError = (err: unknown) => {
-            if (
-              err instanceof Error &&
-              err.constructor.name === 'MissingFactoryError'
-            ) {
-              return firstImporter()
-            }
-            throw err
-          }
-          heldHot.update(
-            () => {
-              try {
-                return importer().catch(onError)
-              } catch (err) {
-                return onError(err)
-              }
-            },
-            valueHot.exportName,
-            adapter.keep,
-          )
+        if (retargetWrapper(held, value, adapter)) {
+          // the live wrapper stays; it re-imports and decides keep or swap
           nextOptions[key] = held
         } else if (
           !held.__tsrHot &&
-          !valueHot &&
-          adapter.keepUnsplit(
+          !value.__tsrHot &&
+          adapter.keepUnsplit?.(
             value,
             held,
             meta.unsplit?.[key] !== undefined &&

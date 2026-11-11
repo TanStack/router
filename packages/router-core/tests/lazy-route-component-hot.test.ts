@@ -8,6 +8,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '../src/utils'
 import { lazyRouteComponentHot } from '../src/hmr'
+import type { RouteHmrAdapter } from '../src/hmr'
 
 type Module = Record<string, unknown>
 
@@ -50,7 +51,8 @@ function wrapper(held?: unknown, error?: unknown) {
   return { state, hot }
 }
 
-const swap = () => false
+/** An adapter that keeps nothing: the loaded export is taken. */
+const swap: RouteHmrAdapter = {}
 const v = (label: string) => ({ label })
 
 describe('lazyRouteComponentHot', () => {
@@ -80,7 +82,9 @@ describe('lazyRouteComponentHot', () => {
     const { state, hot } = wrapper(held)
     const keep = vi.fn(() => true)
     const loaded = v('v2')
-    hot.update(() => Promise.resolve({ component: loaded }), 'component', keep)
+    hot.update(() => Promise.resolve({ component: loaded }), 'component', {
+      keep,
+    })
     // what a load in flight resolves to: the held component
     expect(await state.pending).toBe(held)
     expect(keep).toHaveBeenCalledWith(loaded, held)
@@ -93,11 +97,9 @@ describe('lazyRouteComponentHot', () => {
     const { state, hot } = wrapper(held)
     hot.update(() => Promise.reject(new Error('boom')), 'component', swap)
     await state.pending
-    hot.update(
-      () => Promise.resolve({ component: v('v2') }),
-      'component',
-      () => true,
-    )
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', {
+      keep: () => true,
+    })
     await state.pending
     expect(state).toMatchObject({ comp: held, error: undefined, renders: 2 })
   })
@@ -213,10 +215,69 @@ describe('lazyRouteComponentHot', () => {
   test('nothing held: the loaded export is taken without asking keep', async () => {
     const { state, hot } = wrapper(undefined, new Error('offline'))
     const keep = vi.fn(() => true)
-    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', keep)
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', {
+      keep,
+    })
     await state.pending
     expect(keep).not.toHaveBeenCalled()
     expect(state).toMatchObject({ comp: v('v2'), renders: 1 })
+  })
+
+  test('settled: the loaded export is taken once the refresh settled, in its wait the held one renders', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    const waiting: Array<() => void> = []
+    const loaded = v('v2')
+    hot.update(() => Promise.resolve({ component: loaded }), 'component', {
+      settled: (apply) => waiting.push(apply),
+    })
+    const pending = state.pending
+    await vi.waitFor(() => expect(waiting).toHaveLength(1))
+    expect(state).toMatchObject({ comp: held, renders: 0, pending })
+    waiting[0]!()
+    expect(await pending).toBe(loaded)
+    expect(state).toMatchObject({ comp: loaded, renders: 1 })
+    expect(state.pending).toBeUndefined()
+  })
+
+  test('settled: a newer import during the wait decides what the wrapper holds', async () => {
+    const { state, hot } = wrapper(v('v1'))
+    const waiting: Array<() => void> = []
+    const adapter: RouteHmrAdapter = {
+      settled: (apply) => waiting.push(apply),
+    }
+    hot.update(
+      () => Promise.resolve({ component: v('v2') }),
+      'component',
+      adapter,
+    )
+    const stale = state.pending
+    await vi.waitFor(() => expect(waiting).toHaveLength(1))
+    hot.update(
+      () => Promise.resolve({ component: v('v3') }),
+      'component',
+      adapter,
+    )
+    const newest = state.pending
+    await vi.waitFor(() => expect(waiting).toHaveLength(2))
+    waiting[0]!()
+    // the older import settles with the newer one, still waiting
+    waiting[1]!()
+    expect(await stale).toEqual(v('v3'))
+    expect(await newest).toEqual(v('v3'))
+    expect(state).toMatchObject({ comp: v('v3'), renders: 1 })
+  })
+
+  test('settled: an import of the held component itself takes it at once', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    const settled = vi.fn()
+    hot.update(() => Promise.resolve({ component: held }), 'component', {
+      settled,
+    })
+    expect(await state.pending).toBe(held)
+    expect(settled).not.toHaveBeenCalled()
+    expect(state.renders).toBe(1)
   })
 
   test('a stale failure leaves the newest import alone', async () => {
