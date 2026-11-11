@@ -6,11 +6,11 @@
  */
 import { createHash } from 'node:crypto'
 import {
-  existsSync,
   promises as fs,
-  mkdirSync,
+  mkdtempSync,
   readFileSync,
   realpathSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -198,32 +198,38 @@ export function inputMapOf(
 }
 
 /**
- * `build --watch`: the file a server build's modules that embed the client
- * build watch (`ViteCompilerState.embedClientBuild`), rewritten when a
- * client build moves what they embedded: one per app's cache directory, in
- * the system's temporary directory. Outside the app, so that no
- * `build.watch.exclude` of the app's directories hides it from the server's
- * watcher (Rolldown applies the filter to the files a `load` adds); a
- * `build.watch.include` takes it in (`watchesSentinel`). A run's write
- * rebuilds another run's server of the same app at most.
+ * `build --watch`: makes the file a server build's modules that embed the
+ * client build watch (`ViteCompilerState.embedClientBuild`), rewritten when a
+ * client build moves what they embedded, holding `digest`: in a directory of
+ * the run's own in the system's temporary directory (`mkdtemp`: only the
+ * user can open it, under a name nobody can predict, so nothing can be
+ * planted in it), removed when the run's watchers close. Outside the app, so
+ * that no `build.watch.exclude` of the app's directories hides it from the
+ * server's watcher (Rolldown applies the filter to the files a `load` adds);
+ * a `build.watch.include` takes it in (`watchesSentinel`). Null: the
+ * temporary directory is unusable (warned): a client-only save leaves the
+ * server's build as it is.
  */
-function sentinelPathOf(cacheDir: string): string {
-  const digest = createHash('sha1')
-    .update(normalizePath(cacheDir))
-    .digest('hex')
-    .slice(0, 16)
-  // (the real path: the watcher reports it so, e.g. macOS's `/private/var`)
-  return normalizePath(
-    path.join(
-      realpathSync(tmpdir()),
-      `tanstack-start-${digest}`,
-      'client-build',
-    ),
-  )
+function makeSentinel(digest: string, environment: Environment): string | null {
+  try {
+    // (the real path: the watcher reports it so, e.g. macOS's
+    // `/private/var`, Windows' long names)
+    const dir = mkdtempSync(
+      path.join(realpathSync.native(tmpdir()), 'tanstack-start-'),
+    )
+    const sentinel = normalizePath(path.join(dir, 'client-build'))
+    writeFileSync(sentinel, digest)
+    return sentinel
+  } catch (error) {
+    environment.logger.warn(
+      `[tanstack-start] a save of a file only the client bundles will not rebuild the server: making a directory in ${tmpdir()} failed (${String(error)}). Save a file the server bundles to rebuild it.`,
+    )
+    return null
+  }
 }
 
-/** The sentinel's path, whatever the app (`sentinelPathOf`). */
-const SENTINEL_RE = /[\\/]tanstack-start-[0-9a-f]{16}[\\/]client-build$/
+/** The sentinel's path, whatever the run (`makeSentinel`). */
+const SENTINEL_RE = /[\\/]tanstack-start-[^\\/]+[\\/]client-build$/
 
 /**
  * The build options a server environment of `build --watch` adds to the
@@ -343,8 +349,14 @@ export interface Session {
    * modules watch, and the server environment's own watcher rebuilds it.
    */
   readonly embedded: Map<string, Set<string>>
-  /** `build --watch`: the sentinel's path (`sentinelPathOf`), once a server module watches it. */
-  sentinel: string | null
+  /**
+   * `build --watch`: the sentinel's path (`makeSentinel`), from a server
+   * module's first embed until the run's watchers close (`watching`); null:
+   * none (the temporary directory was unusable, or the watchers closed).
+   */
+  sentinel: string | null | undefined
+  /** `build --watch`: the environments whose watchers have not closed yet. */
+  readonly watching: Set<string>
   /**
    * `build --watch`: the client's build running now (its watcher's
    * `BUNDLE_START` to its `BUNDLE_END` or `ERROR`, when Start's `buildApp`
@@ -471,6 +483,22 @@ export class ViteCompilerState implements ClientBuilds {
     }
   }
 
+  /**
+   * `build --watch`: an environment's watcher closed. Once every watcher of
+   * the run closed, the sentinel's directory goes.
+   */
+  closeWatcher(environment: Environment): void {
+    const s = this.runs.peek(environment)
+    if (!s) {
+      return
+    }
+    s.watching.delete(environment.name)
+    if (s.watching.size === 0 && s.sentinel) {
+      rmSync(path.dirname(s.sentinel), { recursive: true, force: true })
+      s.sentinel = null
+    }
+  }
+
   envOf(name: string): ViteStartEnvironment | undefined {
     return this.opts.environments.find((e) => e.name === name)
   }
@@ -516,7 +544,8 @@ export class ViteCompilerState implements ClientBuilds {
       virtualWaits: createVirtualWaits(),
       clientBuild: null,
       embedded: new Map(),
-      sentinel: null,
+      sentinel: undefined,
+      watching: new Set(),
       clientBuilding: null,
       resolvers: new Map(),
       devWarned: new Set(),
@@ -634,7 +663,7 @@ export class ViteCompilerState implements ClientBuilds {
   private followClientBuild(s: Session, environment: Environment): void {
     const digest = s.clientBuild?.digest ?? ''
     if (
-      s.sentinel !== null &&
+      s.sentinel &&
       [...s.embedded.values()].some((digests) =>
         [...digests].some((embedded) => embedded !== digest),
       )
@@ -688,12 +717,12 @@ export class ViteCompilerState implements ClientBuilds {
     const record = s.clientBuild
     if (ctx.meta.watchMode) {
       const digest = record?.digest ?? ''
-      s.sentinel ??= sentinelPathOf(ctx.environment.config.cacheDir)
-      if (!existsSync(s.sentinel)) {
-        // (also when something removed it: a file the watcher can report)
-        writeSentinel(s.sentinel, digest, ctx.environment)
+      if (s.sentinel === undefined) {
+        s.sentinel = makeSentinel(digest, ctx.environment)
       }
-      ctx.addWatchFile(s.sentinel)
+      if (s.sentinel) {
+        ctx.addWatchFile(s.sentinel)
+      }
       let digests = s.embedded.get(ctx.environment.name)
       if (!digests) {
         digests = new Set()
@@ -791,9 +820,10 @@ export class ViteCompilerState implements ClientBuilds {
 }
 
 /**
- * Writes the sentinel (its directory again, if something removed it). A
- * failed write leaves the server's build as it is: it is the environment's
- * logger's to print, not the client build's to fail.
+ * Writes the sentinel. A failed write (its directory gone) leaves the
+ * server's build as it is: it is the environment's logger's to print, not
+ * the client build's to fail. The directory is never made again: under a
+ * name others can see, it would no longer be the run's own.
  */
 function writeSentinel(
   sentinel: string,
@@ -801,7 +831,6 @@ function writeSentinel(
   environment: Environment,
 ): void {
   try {
-    mkdirSync(path.dirname(sentinel), { recursive: true })
     writeFileSync(sentinel, digest)
   } catch (error) {
     environment.logger.warn(

@@ -239,6 +239,7 @@ function envCompilerPlugins(
           this.resolve(source, importer, options),
         )
         s.embedded.delete(env.name)
+        s.watching.add(env.name)
         s.start.caches.stale.take(env.name, { held: true })
       }
       if (this.environment.mode === 'build' && env.type === 'client') {
@@ -268,6 +269,9 @@ function envCompilerPlugins(
           ),
         )
       }
+    },
+    closeWatcher() {
+      state.closeWatcher(this.environment)
     },
     buildEnd() {
       if (this.environment.mode !== 'build' || !this.meta.watchMode) {
