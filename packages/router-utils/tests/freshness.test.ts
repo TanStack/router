@@ -1102,6 +1102,38 @@ describe('events that move the file set', () => {
     )
   })
 
+  // The same fold, and what found the twin while `a.ts` was gone is a plan
+  // of `x.ts` saved to another text before `a.ts` is back: at the change no
+  // plan holds a row under the twin and no compile runs. `x.ts` is saved
+  // back to its import of `./a`, and its compile asks the resolver, not the
+  // answer given while `a.ts` was gone.
+  // Source: design 3 final review, finding 2 (form c; the property (b) row
+  // seed 1732051583 with twins and folded removals, where the SSR `m5.ts`
+  // kept `./m2 -> m2/index.ts`).
+  it('a twin found by a plan replaced before the change that brought its file back is asked again', async () => {
+    const host = memoryHost({
+      '/app/a.ts': SERVER_ONLY,
+      '/app/a/index.ts': 'export const make = 1\n',
+      '/app/w.ts': IMPORTER,
+      '/app/x.ts': IMPORTER,
+    })
+    // (the caches know `a.ts`: another module read it)
+    await host.compile('/app/w.ts', planners())
+    delete host.files['/app/a.ts']
+    await host.compile('/app/x.ts', planners())
+    host.write('/app/x.ts', 'export const use = 1\n')
+    await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
+    await host.compile('/app/x.ts', planners())
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    host.write('/app/x.ts', IMPORTER)
+    await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
+    host.caches.stale.take(CLIENT.name, { held: true })
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+    )
+  })
+
   // A created file reaches each environment's hook at its own time (Rspack:
   // each compiler's `make`). The first one's invalidation asks every
   // environment's failed resolutions again, each with its own resolver, and
