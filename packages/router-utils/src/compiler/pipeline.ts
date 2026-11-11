@@ -833,7 +833,6 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     region: (range, kind) => plan.region(range, kind),
     declareOutput: (spec) => plan.declareOutput(spec),
     addRoot: (output, root) => plan.addRoot(output, root),
-    markBenignEffect: (unit) => plan.markBenignEffect(unit),
     extractExport: (sym, exportName) => plan.extractExport(sym, exportName),
     keep: (sym) => plan.keep(sym),
     setRouteModule: () => plan.setRouteModule(),

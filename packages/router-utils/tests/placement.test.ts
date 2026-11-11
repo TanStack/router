@@ -1240,8 +1240,9 @@ describe('extracted-export outputs', () => {
   })
 
   it('does not extract a declaration reading what an effectful declaration a chunk needs reads', async () => {
-    // `store` is only read by the chunk and by code the env planner erases;
-    // the effect after it keeps it in the env module, with `Shared`
+    // `store` is only read by the chunk and by code the env planner erases:
+    // it moves (no order rule), and the chunk imports `Shared` from the env
+    // module, which keeps it for `Page`
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { wrapServer } from 'toy-start'
@@ -1261,7 +1262,7 @@ describe('extracted-export outputs', () => {
       toySplitPlanner({ keys: ['component'], extractExports: true }),
     ]
     const env = (await host.compile('/app/route.tsx', planners))?.code ?? ''
-    expect(env).toContain('const store = see(Shared)')
+    expect(env).not.toContain('const store = see(Shared)')
     expect(env).toContain('export const Page = Shared')
     expect(env).not.toContain('export---')
   })
@@ -2113,14 +2114,8 @@ describe('extracted-export outputs', () => {
     },
   )
 
-  // no order rule, condition 2: `wrap(api)` may write `api`, so `api` and
-  // `plugin` are one cluster, a cause whose re-export (`export { plugin }`)
-  // no longer counts as the route module needing it: both exports are
-  // reported, `plugin` as used by split code that never reads it
-  it.fails(
-    'does not report an export the route module needs through a declaration it re-exports',
-    async () => {
-      const code = dedent(`
+  it('does not report an export the route module needs through a declaration it re-exports', async () => {
+    const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make, wrap } from './lib'
       export const api = make()
@@ -2129,10 +2124,9 @@ describe('extracted-export outputs', () => {
       function Page() { return api.x }
       export const Route = createFileRoute('/')({ component: Page })
     `)
-      const r = await extract(code)
-      expect(r.diagnostics).toEqual([])
-    },
-  )
+    const r = await extract(code)
+    expect(r.diagnostics).toEqual([])
+  })
 
   it('reports each exported cause with its own reason, also one another cause reads', async () => {
     const code = dedent(`
@@ -2847,7 +2841,6 @@ describe('route-module specifics (lane router)', () => {
         const found = findRouteOptions(ctx)!
         const p = propertyOf(found.options, 'component')!
         ctx.setRouteModule()
-        ctx.markBenignEffect(found.unit.id)
         const out = ctx.declareOutput({
           kind: 'split',
           key: 'component',
@@ -4802,10 +4795,8 @@ describe('what an evaluation runs: one walk for every rule', () => {
     expect(r.env).toContain('const x = handlers.count()')
     expect(r.chunk).not.toContain('const x = ')
     expect(r.chunk).toContain("import { x } from '/app/route.tsx'")
-    // (no order rule, condition 2: `handlers.count()` may write
-    // `handlers`, so `x` is one of its writers, which the loader keeps: no
-    // report, it stays with what it may write)
-    expect(r.kept).toEqual([])
+    expect(r.kept).toHaveLength(1)
+    expect(r.kept[0]!.code).toMatch(/^eager-split:/)
   })
 
   // F1-3a: a method nested in an object argument runs only when called,
@@ -5751,37 +5742,38 @@ describe('the fixes a kept declaration is offered work when applied', () => {
     },
   )
 
-  // (f) two registries written with each other, one read by each chunk:
-  // one cluster, in a module both chunks share (no order rule: the
-  // pushes, `a.push(b)` handing `b`, are writes, no effects to keep)
-  it('puts two registries written with each other in a module both chunks share', async () => {
+  // (f) two registries written with each other: the use is the write
+  it('offers only the move for two registries written with each other', async () => {
     const options = 'loader: () => a,\ncomponent: () => b,'
     const keys = ['loader', 'component']
     const decls = 'const a = []\nconst b = []\na.push(b)\nb.push(a)'
     const r = await run(route(decls, options), { keys })
-    expect(r.eager).toEqual([])
-    expect(r.env).not.toContain('a.push(b)')
-    expect(r.chunks.loader).toContain('?tsr-split=shared---component---loader')
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:state'])
+    expect(r.eager[0]!.message).toContain(
+      'move `a`, `b` and the statements writing them to their own module, so',
+    )
+    const f = await run(route("import { a, b } from './registries'", options), {
+      keys,
+      files: { '/app/registries.ts': decls.replace(/const/g, 'export const') },
+    })
+    expect(f.eager).toEqual([])
   })
 
   // (h) a `let` nothing assigns is read from the route module as a `const`
   it('offers `const` for a `let` nothing assigns (R67)', async () => {
     const options = 'loader: () => h,\ncomponent: () => c,'
-    // (`[h, box(2)]`: `snap(h)` would hand `h`, a write of it, condition 2)
-    const r = await run(route('let h = box(1)\nconst c = [h, box(2)]', options))
+    const r = await run(route('let h = box(1)\nconst c = [snap(h)]', options))
     expect(r.eager.map((d) => d.code)).toEqual(['eager-split:reads'])
     expect(r.eager[0]!.message).toContain(
       "declare `h` with `const`, move `c` and `h` to their own module, or mark `h`'s initialiser `/* @__PURE__ */` if it has no side effects",
     )
-    const f = await run(
-      route('const h = box(1)\nconst c = [h, box(2)]', options),
-    )
+    const f = await run(route('const h = box(1)\nconst c = [snap(h)]', options))
     expect(f.eager).toEqual([])
-    expect(f.chunks.component).toContain('const c = [h, box(2)]')
+    expect(f.chunks.component).toContain('const c = [snap(h)]')
     // assigned, it is no `const`: the offer goes
     const g = await run(
       route(
-        'let h = box(1)\nconst c = [h, box(2)]',
+        'let h = box(1)\nconst c = [snap(h)]',
         options,
         'export function reset() { h = box(2) }',
       ),
@@ -5907,15 +5899,14 @@ describe('effectful declarations reading each other (R138)', () => {
   it('moves a declaration reading a `const` that two chunks need', async () => {
     const r = await split(
       route(
-        // (`helper.x()` would hand `helper`, a write of it, condition 2)
-        'const helper = make()\nconst cols = [helper.x, make()]',
+        'const helper = make()\nconst cols = [helper.x()]',
         'component: () => cols,\nerrorComponent: () => helper,',
       ),
       { keys: ['component', 'errorComponent'] },
     )
     expect(r.env).toContain('const helper = make()')
     expect(r.env).not.toContain('const cols')
-    expect(r.chunks.component).toContain('const cols = [helper.x, make()]')
+    expect(r.chunks.component).toContain('const cols = [helper.x()]')
     expect(eager(r).map((d) => d.code)).toEqual(['eager-split:needers'])
   })
 
@@ -6152,10 +6143,9 @@ describe('declarations only split code needs that stay in the route module', () 
         // `BASE` is a `let` the route module keeps (the loader reads it)
         code: 'eager-split:reads',
         name: 'LINK',
-        // (`make(BASE)` would hand `BASE`, a write of it, condition 2)
         body: (init: string) => [
           `let BASE = ${init}`,
-          'const LINK = [BASE, make()]',
+          'const LINK = make(BASE)',
         ],
         options: ['loader: () => BASE,', 'component: () => LINK,'],
       },
@@ -6560,12 +6550,10 @@ describe('language operations are no effect (rule L)', () => {
   })
 })
 
-// No order rule (DESIGN-order-none.md): code moves by the bindings it reads
-// and writes; what moves keeps its source order in its chunk, what stays its
-// order in the route module. Its two conditions: a write through another
-// name writes the object (design 2 closing), and a call the model does not
-// know is a possible write of every binding of the module it is handed (an
-// argument, the receiver of a method).
+// No order rule: code moves by the bindings it reads and writes; what moves
+// keeps its source order in its chunk, what stays its order in the route
+// module. A write through another name writes the object (design 2
+// closing); a call the model does not know writes nothing it is handed.
 describe('no order rule: bindings decide', () => {
   const route = (decls: string, options: string) =>
     dedent(`
@@ -6595,19 +6583,6 @@ describe('no order rule: bindings decide', () => {
     expect(eager(r)).toEqual([])
   })
 
-  // the second condition: `snapshot(table)` and `table.addColumn()` are
-  // handed `table`, so each is a write of it, and joins its cluster, which
-  // the statement keeps in the route module
-  it('keeps a snapshot of a table an unknown call after it is handed', async () => {
-    const decls =
-      "const table = createTable()\nconst columns = snapshot(table)\ntable.addColumn('x')"
-    const r = await split(route(decls, 'component: () => columns,'))
-    expect(r.env).toContain(decls)
-    expect(r.chunks.component).toContain(
-      "import { columns } from '/app/route.tsx'",
-    )
-  })
-
   it('moves the snapshot when the call after it is not handed what it read', async () => {
     const r = await split(
       route(
@@ -6621,18 +6596,15 @@ describe('no order rule: bindings decide', () => {
     )
   })
 
-  // both conditions: the write through `alias` writes `cfg` (the first),
-  // and so does `snap(cfg)` (the second): one cluster, whose effect keeps
-  // it in the route module, in source order (without the second condition
-  // all of it moves together, in source order: the same value)
-  it('keeps a snapshot with the object it reads and a write through another name after it, in source order', async () => {
+  // the write through `alias` writes `cfg`: one cluster with it, which
+  // `seen` reads before the write, so all of it moves together, in source
+  // order (the snapshot sees `v: 1` as in the source)
+  it('moves a snapshot with the object it reads and a write through another name after it, in source order', async () => {
     const decls =
       'const cfg = { v: 1 }\nconst alias = cfg\nconst seen = snap(cfg)\nalias.v = 2'
     const r = await split(route(decls, 'component: () => seen,'))
-    expect(r.env).toContain(decls)
-    expect(r.chunks.component).toContain(
-      "import { seen } from '/app/route.tsx'",
-    )
+    expect(r.env).not.toContain('snap(cfg)')
+    expect(r.chunks.component).toContain(decls)
   })
 
   // what no order rule reorders (DESIGN-order-none.md §3, DESIGN-order-
@@ -6680,10 +6652,9 @@ describe('no order rule: bindings decide', () => {
       expect(r.chunks.component).toContain('const data = await load()')
     })
 
-    // (d): with the second condition, `observer(Page, cfg)` may write
-    // `cfg`, so the value stays in place with it, unsplit (no warning from
-    // the toy planner): nothing reorders, nothing splits
-    it('keeps a split option value handing a binding to an unknown call in place with it (d)', async () => {
+    // (d): the value moves with what it reads; `track('ready')` now runs
+    // before `setup()`
+    it('moves a split option value and what it hands an unknown call past a call after it (d)', async () => {
       const r = await split(
         dedent(`
           import { createFileRoute } from 'toy-router'
@@ -6696,9 +6667,11 @@ describe('no order rule: bindings decide', () => {
           track('ready')
         `),
       )
-      expect(r.env).toContain('const cfg = setup()')
-      expect(r.env).toContain('component: observer(Page, cfg)')
+      expect(r.env).not.toContain('setup()')
       expect(r.env).toContain("track('ready')")
+      expect(r.chunks.component).toContain(
+        "const cfg = setup()\nfunction Page() { return 'page' }\nconst TsrSplitComponent = observer(Page, cfg)",
+      )
     })
 
     it('moves a setup call only the component reads past a call that needs it (S-1)', async () => {

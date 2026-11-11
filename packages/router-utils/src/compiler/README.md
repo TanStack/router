@@ -217,12 +217,8 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
   (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
-  and writes; a statement declares nothing, so nothing needs it and it stays. A call the model does not know is a
-  possible member write of every binding of the module it is handed when the module loads (`ClassifiedRef.handed`:
-  an argument, inside a literal too, or the object a method is called on; not an import, not through a spread),
-  unless a planner names its chain as touching no user state (`markBenignEffect`: the route factory), so
-  `const columns = snapshot(table)` and a later `table.addColumn('x')` are writers of `table`, one cluster with it.
-  Both sides
+  and writes; a statement declares nothing, so nothing needs it and it stays. A call the model does not know
+  writes nothing it is handed (`snapshot(table)` reads `table`). Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
@@ -232,8 +228,7 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
   reader before the write may evaluate there too); several needers give it a shared module, which its readers
   import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
-  A recognised framework call a planner names (the route factory chain) writes nothing it is handed (its option
-  values' own calls are judged as any other). Every one of these
+  Every one of these
   rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through
   what it runs, its effect, the module's writes), and answers with the violated pair (the kind, the other event,
   the binding), from which the warnings are worded. The env roots, the slots and the extracted exports are one

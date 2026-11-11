@@ -27,7 +27,7 @@ import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
 import type { DerivedQuery, SourceIdentity } from './identity'
 import type { SymbolId, SymbolTable } from './symbols'
-import type { RegionId, UnitId } from './units'
+import type { RegionId } from './units'
 import type {
   EdgeProvenance,
   GlueImport,
@@ -162,14 +162,6 @@ export interface PlanContext<TName extends string = string> {
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
-   * Names a recognised framework call known not to touch user state (the
-   * route factory chain): what it is handed (`component: Page`, `validateSearch:
-   * SearchSchema`) is no write of the binding by it, as a call the model
-   * does not know would be (`ClassifiedRef.handed`). Its option values'
-   * own calls are judged as any other.
-   */
-  markBenignEffect: (unit: UnitId) => void
-  /**
    * Allows an exported, pure, unwritten declaration into its extracted-export
    * output: the core moves it there when only derived outputs need it, and the
    * env module re-exports it. The output takes the first name the module
@@ -251,7 +243,6 @@ export class AnalysisPlan implements PlanContext {
     unlessLive: ReadonlyArray<Range>
   }> = []
   readonly facts: PlannerFactsByName = {}
-  readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
   private readonly keptSyms = new Set<SymbolId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
@@ -523,10 +514,6 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** The core phase after all planners: placement over the live rewrite tree. */
-  markBenignEffect(unit: UnitId): void {
-    this.benignEffects.add(unit)
-  }
-
   resolve(): Placement {
     // function-scope declarations only erased code read go once every
     // planner erased what it erases (placement decides the module level)
@@ -540,7 +527,6 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
       routeModule: this.routeModule,
-      isBenign: (u) => this.benignEffects.has(u),
       extractions: this.extractions,
       extractedOutputs: this.env.mode === 'build',
     })

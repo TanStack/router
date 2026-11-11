@@ -16,7 +16,7 @@ import {
   patternIdentifiers,
 } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, handedToCall, memberUse } from './units'
+import { buildItems, buildUnits, memberUse } from './units'
 import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
   languagePurity,
@@ -155,16 +155,6 @@ export interface ClassifiedRef {
   memberWrite: boolean
   /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
-  /**
-   * Where the call starts that this module binding (not an import) is
-   * handed to when the module loads, a call the purity model does not know
-   * (`handedToCall`: `snapshot(table)`, `table.addColumn('x')`), else -1:
-   * that call may write its object. Placement's write table counts it as a
-   * member write (the no-order rule's second condition) unless a planner
-   * named the call's chain one that touches no user state (the route
-   * factory); the planners' `isMutated` does not.
-   */
-  handed: number
 }
 
 /** Whether the reference calls its value (the callee of a call, a `new` or a tagged template): the callee's body runs where the reference evaluates. */
@@ -1257,13 +1247,6 @@ export class ModuleAnalysis {
         exportShorthand: c.exportShorthand,
         memberWrite: use === 'write' || use === 'write-through',
         readsThrough: use === 'through' || use === 'write-through',
-        handed:
-          c.kind === 'value' &&
-          b.scope === file.rootScope &&
-          !b.has(BindingFlags.Import) &&
-          !isLazyAt(node.start)
-            ? handedToCall(file, this.effectPurity, node)
-            : -1,
       }
       refs.push(r)
       if (writeKind(r) !== null) {
@@ -1302,7 +1285,6 @@ export class ModuleAnalysis {
             eager: !isLazyAt(id.start),
             memberWrite: false,
             readsThrough: false,
-            handed: -1,
           }
           refs.push(r)
           constructs.set(r, writeConstruct(file, id))
@@ -1324,7 +1306,6 @@ export class ModuleAnalysis {
             eager: !isLazyAt(n.start),
             memberWrite: false,
             readsThrough: false,
-            handed: -1,
           })
         },
         JSXFragment: (n) => {
@@ -1336,7 +1317,6 @@ export class ModuleAnalysis {
             eager: !isLazyAt(n.start),
             memberWrite: false,
             readsThrough: false,
-            handed: -1,
           })
         },
       })
@@ -1365,7 +1345,6 @@ export class ModuleAnalysis {
             eager: !isLazyAt(n.start),
             memberWrite: false,
             readsThrough: false,
-            handed: -1,
           })
         },
       })

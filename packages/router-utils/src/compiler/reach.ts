@@ -92,8 +92,6 @@ export interface PlacementInput {
   /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
   routeModule: boolean
-  /** Whether a unit is a recognised framework call known not to touch user state (`PlanContext.markBenignEffect`): it writes nothing it is handed. */
-  isBenign: (unit: UnitId) => boolean
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
   /**
