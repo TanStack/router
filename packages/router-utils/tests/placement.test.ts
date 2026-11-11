@@ -2896,6 +2896,39 @@ describe('route-module specifics (lane router)', () => {
     )
   })
 
+  // R148: an unused function reading only imports goes where their users
+  // go (imports go wherever their users go)
+  it.each([
+    [
+      'moves an unused function reading only imports with the chunk using them',
+      ['component'],
+      'moves',
+    ],
+    [
+      'keeps an unused function reading imports two chunks use',
+      ['component', 'errorComponent'],
+      'stays',
+    ],
+  ] as const)('%s', async (_, keys, outcome) => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { Button } from './ui'
+      function Page() { return Button() }
+      function Other() { return Button() }
+      function Unused() { return Button() + 1 }
+      export const Route = createFileRoute('/')({ component: Page, errorComponent: Other })
+    `)
+    const r = await split(code, { keys: [...keys] })
+    if (outcome === 'moves') {
+      expect(r.env).not.toContain('function Unused')
+      expect(r.chunks.component).toContain(
+        'function Unused() { return Button() + 1 }',
+      )
+    } else {
+      expect(r.env).toContain('function Unused() { return Button() + 1 }')
+    }
+  })
+
   it('treats a var declared in a for head as a binding of that statement', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
