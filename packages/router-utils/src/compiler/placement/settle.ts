@@ -28,7 +28,7 @@ export interface Roots {
   derivedReach: Map<OutputId, Set<ClusterId>>
   /** The candidates still extracted. */
   remaining: Map<ClusterId, Candidate>
-  /** Why each cancelled candidate stays in the env module (`live`, `reads`, `state`, `order`), taken when it was cancelled. */
+  /** Why each cancelled candidate stays in the env module (`live`, `reads`, `state`, `unneeded`), taken when it was cancelled. */
   cancelled: Map<ClusterId, Pin>
   /** The extracted candidates a chunk copies instead of importing their module. */
   copied: Set<ClusterId>
@@ -167,8 +167,8 @@ export function settleRoots(
    * The slots of this round: each timed cluster's (`slotFor`); then O as a
    * greatest fixed point over the clusters leaving the env module: one
    * reading an effectful cluster that evaluates elsewhere (unless the env
-   * module keeps it, a `const`), or that an effect or a write when the
-   * module loads that stays (or goes elsewhere) would change order with, is
+   * module keeps it, a `const`), or that a write when the module loads that
+   * stays (or goes elsewhere) would change order with, is
    * demoted, which can demote others (a reader and what it reads evaluate
    * in one slot, or both stay). The pairs of the demoted go to `pins`.
    */
@@ -193,14 +193,9 @@ export function settleRoots(
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
-        let pin = events.readConflict(c, to, target, stays)
-        if (pin === undefined) {
-          const effect = events.orderConflict(c, to, target)
-          pin =
-            effect !== undefined
-              ? { reason: 'order', other: { unit: effect.id } }
-              : events.writeConflict(c, to, slotOf)
-        }
+        const pin =
+          events.readConflict(c, to, target, stays) ??
+          events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
           target.delete(c)
           pins.set(c, pin)
@@ -471,7 +466,7 @@ export function settleRoots(
     if (needed.has(c)) {
       return events.volatile(c) ?? events.writeConflict(c, to, slotOf)
     }
-    return { reason: 'order' }
+    return { reason: 'unneeded' }
   }
 
   // ---- the solver: env roots, slots and extraction, one fixed point -------

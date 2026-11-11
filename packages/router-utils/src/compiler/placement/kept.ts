@@ -29,8 +29,8 @@ export function keptDeclarations(
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
   const { units, symbols } = t1
   const { regions } = input.rewrites
-  const { clusters, clusterOfRegion, clusterOfSym } = graph
-  const { cancelled, derivedReach, envRoots, movable, remaining } = roots
+  const { clusters, clusterOfSym } = graph
+  const { cancelled, derivedReach, envRoots, remaining } = roots
   const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
 
   const lazyNeeders = (c: ClusterId): Array<OutputId> => {
@@ -52,19 +52,11 @@ export function keptDeclarations(
         : units[declaring]!.range
     return { start: range.start, end: range.end }
   }
-  const effectStays = (effect: number) =>
-    !movable.has(clusterOfRegion.get(units[effect]!.region)!)
   /** The pair's other event and binding, as a record words them. */
   const pairOf = (pin: Pin): Partial<KeptDeclaration> => {
     const other = pin.other
     return {
       ...(other !== undefined &&
-        'unit' in other && {
-          effect: other.unit,
-          effectStays: effectStays(other.unit),
-        }),
-      ...(other !== undefined &&
-        'at' in other &&
         (pin.reason === 'written' || pin.reason === 'reassigned') && {
           at: other.at,
         }),
@@ -250,38 +242,7 @@ export function keptDeclarations(
       range: declaringRange(cl, syms[0]),
       needers,
       ...pairOf(pin),
-      ...(pin.reason === 'order' && sameEffect(c, pin)),
     })
   }
   return kept
-
-  /**
-   * `order`: the causes `c` reads that the same effect keeps, reported with
-   * it (a fix moving `c` alone past that effect leaves them kept).
-   */
-  function sameEffect(c: ClusterId, pin: Pin): Partial<KeptDeclaration> {
-    const effect =
-      pin.other !== undefined && 'unit' in pin.other ? pin.other.unit : null
-    const out: Array<{ sym: SymbolId; at: number }> = []
-    for (const d of effect === null ? [] : reachOf.get(c)!) {
-      const p = causes.get(d)
-      if (
-        d === c ||
-        p?.reason !== 'order' ||
-        p.other === undefined ||
-        !('unit' in p.other) ||
-        p.other.unit !== effect
-      ) {
-        continue
-      }
-      for (const s of clusters[d]!.declares) {
-        if (symbols.isModuleLevel(s)) {
-          out.push({ sym: s, at: declaringRange(clusters[d]!, s).start })
-        }
-      }
-    }
-    return out.length === 0
-      ? {}
-      : { with: out.sort((a, b) => a.at - b.at).map((x) => x.sym) }
-  }
 }

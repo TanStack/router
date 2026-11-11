@@ -1,7 +1,6 @@
 /**
  * The user-facing warning for a declaration only split code needs that
- * stays in the env module (`Placement.kept`), and the benign-call judgement
- * it shares with placement (`firstImpure`). The planners supply the words:
+ * stays in the env module (`Placement.kept`). The planners supply the words:
  * how their outputs are named (`OutputSpec.describe`) and what the module
  * is (`PlanContext.describeModule`).
  */
@@ -10,7 +9,6 @@ import { unwrapExpression } from './source'
 import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
-import type { Unit, UnitId } from './units'
 import type { SymbolId } from './symbols'
 import type { Node } from 'yuku'
 
@@ -30,27 +28,6 @@ export function keptDiagnostic(
   const tag = plan.moduleWords === null ? '' : `${plan.moduleWords.tag} `
   const module = plan.moduleWords?.name ?? 'module'
   const file = plan.displayPath
-  const code = analysis.source.code
-  const text = (n: Node) => {
-    const t = code.slice(n.start, n.end)
-    return t.length > 40 || t.includes('\n')
-      ? `${t.slice(0, 37).split('\n')[0]}…`
-      : t
-  }
-  // `the call \`f(…)\` in \`validateSearch\``
-  const describe = ({ node, key }: { node: Node; key: string | null }) => {
-    const where = key === null ? '' : ` in \`${key}\``
-    switch (node.type) {
-      case 'CallExpression':
-        return `the call \`${text(node.callee)}(…)\`${where}`
-      case 'NewExpression':
-        return `\`new ${text(node.callee)}(…)\`${where}`
-      case 'AssignmentExpression':
-        return `the assignment to \`${text(node.left)}\`${where}`
-      default:
-        return `\`${text(node)}\`${where}`
-    }
-  }
   const split = k.needers
     .map((o) => {
       const decl = plan.outputs.get(o)!
@@ -110,17 +87,11 @@ export function keptDiagnostic(
         fix = `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
         break
       }
-      default: {
-        // `order`: its extracted module would evaluate before the module's body
-        const effect = k.effect === undefined ? null : effectAt(plan, k.effect)
-        why =
-          effect === null
-            ? 'an effect of the module keeps it in place'
-            : `${describe(effect)} (${line(effect.node.start)}) runs before it and ${k.effectStays ? 'stays' : 'does not move with it'}`
-        fix =
-          'Move it and the statements setting its properties to their own module and import it from there.'
+      default:
+        // `unneeded`: no split output needed it once extraction was decided
+        why = 'no split code needs its extracted module'
+        fix = 'Stop exporting it if no other file imports it.'
         break
-      }
     }
     return {
       severity: 'warning',
@@ -147,54 +118,6 @@ export function keptDiagnostic(
   let because: string
   let fix: string
   switch (k.reason) {
-    case 'order': {
-      // the least effort first: move the declaration below the effect
-      // (it then follows it, wherever it loads), or the effect's value
-      // above it; an annotation only where the effect is a call. Each fix
-      // names the declarations it reads that the same effect keeps (moving
-      // one alone leaves the other kept). An effect another split option
-      // loads has no order with this one's chunk: declaring one after the
-      // other only swaps which one stays.
-      const effect = effectAt(plan, k.effect!)
-      const withNames = (k.with ?? []).map((s) => `\`${symbols.name(s)}\``)
-      const all = [...withNames, ...names].join(', ')
-      const fixes: Array<string> = []
-      if (k.effectStays === false) {
-        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them} but loads with another split option, which may load before or after ${them}`
-        fixes.push(`move ${subject} to ${own} own module`)
-      } else {
-        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them}${withNames.length === 0 ? '' : ` and ${withNames.join(', ')}, which ${it} read${it === 'it' ? 's' : ''},`} and stays`
-        const unit = plan.t1.units[k.effect!]!
-        const after =
-          unit.declares.length > 0
-            ? unit.declares.map((s) => `\`${symbols.name(s)}\``).join(', ')
-            : 'it'
-        fixes.push(`declare ${all} after ${after}`)
-        if (plan.benignEffects.has(k.effect!)) {
-          fixes.push(
-            `create that value in a \`const\` before ${withNames[0] ?? subject}`,
-          )
-        }
-      }
-      if (
-        (effect.node.type === 'CallExpression' ||
-          effect.node.type === 'NewExpression') &&
-        annotationFrees(plan, effect.node)
-      ) {
-        const local = localFunctionName(plan, effect.node.callee)
-        const annotations = [
-          ...(local === null
-            ? []
-            : [`mark \`${local}\` \`/* #__NO_SIDE_EFFECTS__ */\``]),
-          'mark the call `/* @__PURE__ */`',
-        ]
-        annotations[annotations.length - 1] += ' if it has no side effects'
-        fixes.push(...annotations)
-      }
-      const last = fixes.pop()!
-      fix = fixes.length === 0 ? last : `${fixes.join(', ')}, or ${last}`
-      break
-    }
     case 'needers':
       because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
       fix = `move ${subject} to ${own} own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none` : ''}`
@@ -325,155 +248,4 @@ export function annotatable(
     any = true
   }
   return any
-}
-
-/** The name of a callee that is a function declared in this module (`function f`, `const f = () => …`), which `#__NO_SIDE_EFFECTS__` can mark. */
-function localFunctionName(plan: AnalysisPlan, callee: Node): string | null {
-  const id = unwrapExpression(callee)
-  if (id.type !== 'Identifier') {
-    return null
-  }
-  const file = plan.analysis.file
-  const b = file.referenceOf(id)?.binding
-  const decl = b?.scope === file.rootScope ? b.declarations[0] : undefined
-  const parent = decl ? file.parentOf(decl) : null
-  const fn =
-    parent?.type === 'FunctionDeclaration' ||
-    (parent?.type === 'VariableDeclarator' &&
-      parent.init !== null &&
-      (unwrapExpression(parent.init).type === 'ArrowFunctionExpression' ||
-        unwrapExpression(parent.init).type === 'FunctionExpression'))
-  return fn ? id.name : null
-}
-
-/** The expression that makes a unit an effect: for a recognised call a planner named, the option value or argument that is not pure (`firstImpure`). */
-function effectAt(
-  plan: AnalysisPlan,
-  u: UnitId,
-): { node: Node; key: string | null } {
-  const unit = plan.t1.units[u]!
-  const option = plan.benignEffects.has(u) ? firstImpure(plan, unit) : null
-  const node =
-    option?.node ??
-    (unit.node.type === 'ExpressionStatement'
-      ? unit.node.expression
-      : unit.node.type === 'VariableDeclarator' && unit.node.init
-        ? unit.node.init
-        : unit.node)
-  return { node: unwrapExpression(node), key: option?.key ?? null }
-}
-
-/**
- * The value that makes a unit no benign call chain: the first impure
- * argument, or option value with its property key; the unit's own
- * expression when it is no call chain; null when benign. A unit a planner
- * named benign is when its expression is a call chain (`f(a)(b)`,
- * `f(a).g(b)`) whose every argument is a pure value. An object literal
- * argument is judged per property; a value that is a claimed region
- * evaluates in another output through a pure wrapper, and one the env
- * output erases not at all.
- */
-export function firstImpure(
-  plan: AnalysisPlan,
-  unit: Unit,
-): { node: Node; key: string | null } | null {
-  const { analysis, rewrites } = plan
-  const node = unit.node
-  const expr =
-    node.type === 'VariableDeclarator'
-      ? node.init
-      : node.type === 'ExpressionStatement'
-        ? node.expression
-        : node.type === 'ExportDefaultDeclaration'
-          ? node.declaration
-          : null
-  if (expr === null) {
-    return { node, key: null }
-  }
-  const env = rewrites.view('env')
-  const claimed = (v: Node): boolean => {
-    for (const claim of rewrites.claims.values()) {
-      const r = plan.regions.get(claim.region).range
-      if (r.start === v.start && r.end === v.end) {
-        return true
-      }
-    }
-    return false
-  }
-  const impureIn = (
-    v: Node,
-    key: string | null,
-  ): { node: Node; key: string | null } | null => {
-    const n = unwrapExpression(v)
-    // the common values: a function, an identifier, a literal
-    if (
-      n.type === 'ArrowFunctionExpression' ||
-      n.type === 'FunctionExpression' ||
-      n.type === 'Identifier' ||
-      n.type === 'Literal'
-    ) {
-      return null
-    }
-    if (claimed(v) || env.isErasedAt(v.start)) {
-      return null
-    }
-    if (n.type === 'ObjectExpression') {
-      for (const p of n.properties) {
-        if (p.type === 'SpreadElement') {
-          if (!isPureExpression(analysis.effectPurity, p)) {
-            return { node: p, key }
-          }
-          continue
-        }
-        if (
-          p.computed &&
-          !isPureExpression(analysis.effectPurity, p.key as Node)
-        ) {
-          return { node: p.key as Node, key }
-        }
-        if (p.kind !== 'init' || env.isErasedAt(p.start)) {
-          continue
-        }
-        const found = impureIn(
-          p.value as Node,
-          p.computed ? key : propertyName(p.key as Node),
-        )
-        if (found !== null) {
-          return found
-        }
-      }
-      return null
-    }
-    return isPureExpression(analysis.effectPurity, v) ? null : { node: v, key }
-  }
-  let n: Node = unwrapExpression(expr)
-  let calls = 0
-  for (;;) {
-    if (n.type === 'CallExpression') {
-      calls++
-      for (const a of n.arguments) {
-        const found =
-          a.type === 'SpreadElement'
-            ? { node: a, key: null }
-            : impureIn(a, null)
-        if (found !== null) {
-          return found
-        }
-      }
-      n = unwrapExpression(n.callee)
-    } else if (n.type === 'MemberExpression' && !n.computed) {
-      n = unwrapExpression(n.object)
-    } else {
-      return calls > 0 ? null : { node: expr, key: null }
-    }
-  }
-}
-
-/** The name of a non-computed property key (`validateSearch`, `'a-b'`), for diagnostics. */
-function propertyName(key: Node): string | null {
-  return key.type === 'Identifier'
-    ? key.name
-    : key.type === 'Literal'
-      ? String(key.value)
-      : null
 }

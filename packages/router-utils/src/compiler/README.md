@@ -130,10 +130,9 @@ extends Z`, directly or through what they carry) share the module of the first i
   extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
   is imported from the route module in dev. Every decision but these homes is the same, so state and identity
   agree between dev and a build. An exported declaration a chunk needs that stays in the route module
-  (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
+  (effects, reassigned, read by the route module, reading what it keeps) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
-  needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
-  with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
+  needs that the movable rule below keeps (`eager-split:<reason>`: `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
   binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
   split code both read, one instance), once at the cause (a cluster kept only because another kept one reads it is not
@@ -216,7 +215,14 @@ extends Z`, directly or through what they carry) share the module of the first i
   another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
 createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
   R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
-  (the chunk loads after the route module), and no surviving effect after its first one stays behind. Both sides
+  (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
+  its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
+  and writes; a statement declares nothing, so nothing needs it and it stays. A call the model does not know is a
+  possible member write of every binding of the module it is handed when the module loads (`ClassifiedRef.handed`:
+  an argument, inside a literal too, or the object a method is called on; not an import, not through a spread),
+  unless a planner names its chain as touching no user state (`markBenignEffect`: the route factory), so
+  `const columns = snapshot(table)` and a later `table.addColumn('x')` are writers of `table`, one cluster with it.
+  Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
   nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
@@ -226,8 +232,8 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
   reader before the write may evaluate there too); several needers give it a shared module, which its readers
   import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
-  A recognised framework call a planner names (the route factory chain) is no such effect only when its option
-  values are pure, claimed (relocated) or erased: the core checks, the planner only names it. Every one of these
+  A recognised framework call a planner names (the route factory chain) writes nothing it is handed (its option
+  values' own calls are judged as any other). Every one of these
   rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through
   what it runs, its effect, the module's writes), and answers with the violated pair (the kind, the other event,
   the binding), from which the warnings are worded. The env roots, the slots and the extracted exports are one

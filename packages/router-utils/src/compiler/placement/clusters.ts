@@ -9,6 +9,7 @@
  * mutation model every later rule asks (`lateWrite`, `laterWrite`).
  */
 import { observesIdentity } from '../analysis'
+import { unwrapExpression } from '../source'
 import { writeKind } from '../mutation'
 import { callsWhenEvaluated } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
@@ -24,6 +25,7 @@ import type {
   OutputView,
 } from '../rewrite'
 import type { PlacementInput } from '../reach'
+import type { Node } from 'yuku'
 
 export type ClusterId = number
 
@@ -34,7 +36,7 @@ export interface Cluster {
   units: Array<UnitId>
   declares: Set<SymbolId>
   /**
-   * It has an effect (`effectUnits`) or an effectful generated unit. A write
+   * It has an effect (a surviving effectful unit) or an effectful generated unit. A write
    * of pure values to a binding it declares (`Page.displayName = …`) is no
    * effect (R139): such a cluster may be an extracted export, and its
    * output stays side-effect free.
@@ -45,8 +47,6 @@ export interface Cluster {
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Source position of the cluster's first effect unit (its effects keep their order with the surviving effects after it); Infinity when none (generated units are compiler code). */
-  firstEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -119,8 +119,6 @@ export interface ClusterGraph {
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** The effect units that only augment bindings their cluster's pure declarations declare: decided with that cluster. */
   ownAugmentations: ReadonlySet<UnitId>
-  /** The units with an effect O orders: effectful, surviving, not a write of pure values to their own cluster's binding (R139). */
-  effectUnits: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
@@ -398,6 +396,34 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
 
   // ---- writes: every write of a module binding, one table -----------------
+  // the calls of the chains planners name as touching no user state
+  // (`isBenign`: the route factory, `createFileRoute('/')({ … })`)
+  const benignCalls = new Set<number>()
+  for (const u of units) {
+    if (!input.isBenign(u.id)) {
+      continue
+    }
+    const node = u.node
+    let n: Node | null =
+      node.type === 'VariableDeclarator'
+        ? node.init
+        : node.type === 'ExpressionStatement'
+          ? node.expression
+          : node.type === 'ExportDefaultDeclaration'
+            ? node.declaration
+            : null
+    while (n !== null) {
+      n = unwrapExpression(n)
+      if (n.type === 'CallExpression') {
+        benignCalls.add(n.start)
+        n = n.callee
+      } else if (n.type === 'MemberExpression') {
+        n = n.object as Node
+      } else {
+        n = null
+      }
+    }
+  }
   const writes: Array<Write> = []
   const writesOfSym = new Map<SymbolId, Array<Write>>()
   const addWrite = (w: Write) => {
@@ -428,8 +454,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
   for (const ref of refs.all) {
     // (a link on a `const` holding a writing builder is a member write of
-    // it: R139, `linkedBuilder`)
-    const kind = writeKind(ref)
+    // it: R139, `linkedBuilder`; a binding handed to a call the model does
+    // not know may be written by it, `ClassifiedRef.handed`, unless the call
+    // is a chain a planner names as touching no user state)
+    const kind =
+      ref.handed >= 0 && !benignCalls.has(ref.handed)
+        ? 'member'
+        : writeKind(ref)
     if (kind === null || !declMember.has(ref.sym)) {
       continue
     }
@@ -579,7 +610,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         writer: false,
         exported: false,
         start: Infinity,
-        firstEffect: Infinity,
         kind: 'region',
         copyable: false,
         identityFree: false,
@@ -590,7 +620,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
-  const effectUnits = new Set<UnitId>()
   const ownAugmentations = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
@@ -706,8 +735,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         !pureWrite(unit, own(unit))
       ) {
         cl.effectful = true
-        cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
-        effectUnits.add(u)
       }
     }
   }
@@ -768,7 +795,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     regionWrittenSyms,
     viewOf,
     isLive,
-    effectUnits,
     ownAugmentations,
     unitSurvives,
     callsOf,

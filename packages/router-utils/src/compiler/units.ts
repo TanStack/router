@@ -439,6 +439,71 @@ export function memberUse(
   }
 }
 
+/**
+ * Whether the value a reference names (`node`) is handed to a call the
+ * purity model does not know (`purity`: placement's): an argument, also
+ * inside an array or object literal or a conditional's branch (a spread
+ * hands a copy), or
+ * the object a method is called on, directly or through a member chain
+ * (`snapshot(table)`, `f({ cfg })`, `table.addColumn('x')`, `f(holder.c)`).
+ * Such a call may write that object. Calling the binding itself is no
+ * handing (`init()`), nor is reading it into another value (`[cfg.v]`).
+ * The call's start, else -1.
+ */
+export function handedToCall(
+  file: SourceFile,
+  purity: PurityContext,
+  node: Node,
+): number {
+  let member = false
+  let n = node
+  for (
+    let parent = file.parentOf(n);
+    parent !== null;
+    n = parent, parent = file.parentOf(n)
+  ) {
+    if (isExpressionWrapper(parent)) {
+      continue
+    }
+    switch (parent.type) {
+      case 'MemberExpression':
+        if (parent.object !== n) {
+          return -1
+        }
+        member = true
+        continue
+      case 'ArrayExpression':
+      case 'ObjectExpression':
+      case 'LogicalExpression':
+        continue
+      case 'Property':
+        if (parent.value !== n) {
+          return -1
+        }
+        continue
+      case 'ConditionalExpression':
+        if (parent.test === n) {
+          return -1
+        }
+        continue
+      case 'SequenceExpression':
+        if (parent.expressions.at(-1) !== n) {
+          return -1
+        }
+        continue
+      case 'CallExpression':
+      case 'NewExpression':
+        return (parent.callee !== n || member) &&
+          !isPureExpression(purity, parent)
+          ? parent.start
+          : -1
+      default:
+        return -1
+    }
+  }
+  return -1
+}
+
 /** Whether `parent`, around the member chain `n` grown on a reference (`member`: it is one), writes that chain's object. */
 function writesAt(
   file: SourceFile,

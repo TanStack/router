@@ -183,8 +183,9 @@ export class MutationModel {
     /** Per name written through, what its value may hold (`held` below). */
     const heldBy = new Map<SymbolId, ReadonlyArray<SymbolId>>()
     for (const ref of this.refs.all) {
+      // (a binding handed to an unknown call: a possible member write)
       if (
-        writeKind(ref) !== 'member' ||
+        (writeKind(ref) !== 'member' && ref.handed < 0) ||
         !declaringUnits.has(ref.sym) ||
         (!ref.readsThrough && this.ownsObject(ref.sym))
       ) {

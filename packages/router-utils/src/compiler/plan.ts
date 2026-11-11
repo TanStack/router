@@ -10,7 +10,7 @@
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './reach'
-import { annotatable, firstImpure, keptDiagnostic } from './kept-diagnostics'
+import { annotatable, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
@@ -163,10 +163,10 @@ export interface PlanContext<TName extends string = string> {
   addRoot: (output: OutputId, root: RootRef) => void
   /**
    * Names a recognised framework call known not to touch user state (the
-   * route factory chain): the core treats the unit as no effect for the
-   * evaluation-order rules when its option values are pure expressions,
-   * claimed regions (relocated: a lazy wrapper replaces them) or values the
-   * env output erases; an impure option value keeps it an effect.
+   * route factory chain): what it is handed (`component: Page`, `validateSearch:
+   * SearchSchema`) is no write of the binding by it, as a call the model
+   * does not know would be (`ClassifiedRef.handed`). Its option values'
+   * own calls are judged as any other.
    */
   markBenignEffect: (unit: UnitId) => void
   /**
@@ -352,10 +352,6 @@ export class AnalysisPlan implements PlanContext {
     decl.roots.push(root)
   }
 
-  markBenignEffect(unit: UnitId): void {
-    this.benignEffects.add(unit)
-  }
-
   extractExport(sym: SymbolId, exportName: string): void {
     if (this.extractions.has(sym) || this.keptSyms.has(sym)) {
       return
@@ -527,13 +523,16 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** The core phase after all planners: placement over the live rewrite tree. */
+  markBenignEffect(unit: UnitId): void {
+    this.benignEffects.add(unit)
+  }
+
   resolve(): Placement {
     // function-scope declarations only erased code read go once every
     // planner erased what it erases (placement decides the module level)
     if (this.rewrites.view('env').erasedParts().length > 0) {
       cleanOrphanedDeclarations(this, this.outputs)
     }
-    const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({
       t1: this.t1,
       rewrites: this.rewrites,
@@ -541,17 +540,7 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
       routeModule: this.routeModule,
-      isBenign: (u) => {
-        if (!this.benignEffects.has(u)) {
-          return false
-        }
-        let hit = benign.get(u)
-        if (hit === undefined) {
-          hit = firstImpure(this, this.t1.units[u]!) === null
-          benign.set(u, hit)
-        }
-        return hit
-      },
+      isBenign: (u) => this.benignEffects.has(u),
       extractions: this.extractions,
       extractedOutputs: this.env.mode === 'build',
     })
