@@ -164,10 +164,8 @@ export function readIndex(
     }
     visit(regions.module, null)
     for (const e of rewrites.inserts) {
-      const id = regions.insertOwnerAt(e.range.start)
-      if (id !== null) {
-        push(inserts, id, e)
-      }
+      // (`RewriteSet` refused an insert without an owner)
+      push(inserts, regions.insertOwnerAt(e.range.start)!.region, e)
     }
     // where each unit is: a merge of the units with the module's nodes (both
     // in source order); a unit no node holds has none inside or around it
