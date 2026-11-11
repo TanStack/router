@@ -178,12 +178,13 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
       await page.waitForText('index-v1', { selector: '[data-probe=index]' })
 
       await server.edit({ 'src/routes/index.tsx': indexRoute('index-v3') })
-      await settlePage(server, page, inFlight)
+      // (the page that reloads never settles: the outcome is asserted)
+      await settlePage(server, page, inFlight).catch(() => undefined)
+      expect(page.loads(), 'the page reloaded after the fix').toBe(1)
       await page.waitForText('index-v3', {
         selector: '[data-probe=index]',
         timeout: 20_000,
       })
-      expect(page.loads()).toBe(1)
     },
     timeout,
   )
