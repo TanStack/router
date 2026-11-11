@@ -6,7 +6,7 @@
 import {
   invalidate,
   normalizePath,
-  takeStaleModules,
+  reloadStaleModules,
 } from '@tanstack/router-utils/compiler'
 import type {
   HostServices,
@@ -85,22 +85,7 @@ export async function invalidateFor(
   })
 }
 
-/**
- * The modules of an environment's stale set, invalidated, as a hot update
- * outside a hook (a registry change): Vite sends their update
- * (`reloadModule`), as a hook's returned modules (a dev server without HMR
- * transforms them again on their next request).
- */
-export function reloadStaleModules(
-  s: Session,
-  environment: DevEnvironment,
-): void {
-  for (const node of takeStaleModules(s.start.caches, environment, false)) {
-    void environment.reloadModule(node)
-  }
-}
-
-/** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
+/** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`), and their updates are sent. */
 export async function invalidateRegistry(
   state: ViteCompilerState,
   s: Session,
@@ -114,22 +99,31 @@ export async function invalidateRegistry(
   if (!first) {
     return
   }
-  const path = normalizePath(file)
-  await invalidateFor(state, s, first, { path, kind: 'registry' })
+  await invalidateFor(state, s, first, {
+    path: normalizePath(file),
+    kind: 'registry',
+  })
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
-      // the core stales the file in the environments that compiled; one
-      // that has not (a module served before it was a route, after a
-      // restart) has its module built again too
-      s.start.caches.stale.add(environment.name, path)
-      reloadStaleModules(s, environment)
+      reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
     }
+  }
+}
+
+/**
+ * A removed file's server functions leave the registry, when the core
+ * judged the event a removal: a removal of a file that reads back (a
+ * removal and re-creation delivered late) is a change and keeps them.
+ */
+export function forgetRemoved(s: Session, change: InvalidateChange): void {
+  if (change.kind === 'unlink' && !s.start.caches.rawFacts.knows(change.path)) {
+    s.start.forget(change.path)
   }
 }
 
 /** The compiler's change kind of a Vite file event. */
 export function changeKindOf(
   event: 'create' | 'update' | 'delete',
-): InvalidateChange['kind'] {
+): 'change' | 'add' | 'unlink' {
   return event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
 }

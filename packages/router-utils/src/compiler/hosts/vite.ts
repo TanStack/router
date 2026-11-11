@@ -138,6 +138,77 @@ export function takeStaleModules<TNode>(
   return nodes
 }
 
+/** What the stale-set helpers read of a Vite dev environment. */
+interface StaleEnvironment<TNode> {
+  name: string
+  moduleGraph: ModuleGraphLike<TNode>
+}
+
+/**
+ * Design 3's `hotUpdate` of a Vite host (router and Start): the event
+ * forwarded (`forward`, the host's invalidation: every hook forwards, the
+ * core compares), the event's own modules that the file's current plan
+ * still produces (`liveModules`), and the environment's stale set, its
+ * modules invalidated and handed to Vite with them (a creation takes the
+ * held paths too). The event's file leaves the set first: its modules are
+ * this event's, judged here (in the set, from a failed hit since the last
+ * take, a compile overtaken or a registry change racing the save, it would
+ * bring back the derived modules `liveModules` dropped). A path that enters
+ * the set after the take waits for the next event's hook. `undefined`:
+ * Vite's own update.
+ */
+export async function staleHotUpdate<
+  T extends {
+    id: string | null
+    url: string
+    importers: ReadonlySet<unknown>
+  },
+>(
+  environment: StaleEnvironment<T> & {
+    transformRequest: (url: string) => Promise<unknown>
+  },
+  caches: CompilerCaches,
+  change: { path: string; kind: 'change' | 'add' | 'unlink' },
+  modules: Array<T>,
+  forward: () => Promise<void>,
+): Promise<Array<T> | undefined> {
+  await forward()
+  const live =
+    (await liveModules(environment, caches, change.path, modules)) ?? modules
+  caches.stale.drop(environment.name, [change.path])
+  const stale = takeStaleModules(
+    caches,
+    environment,
+    change.kind === 'add',
+  ).filter((node) => !live.includes(node))
+  return stale.length > 0 || live !== modules ? [...live, ...stale] : undefined
+}
+
+/**
+ * Outside a hot update (a registry change, a dev server without HMR): the
+ * environment's stale set taken, each module invalidated and its update
+ * sent (`reloadModule`; nothing is sent without HMR). A failure to send one
+ * is the dev server's to print (`tag`: the plugin, as messages name it);
+ * the others are still sent.
+ */
+export function reloadStaleModules<TNode extends { file: string | null }>(
+  caches: CompilerCaches,
+  environment: StaleEnvironment<TNode> & {
+    reloadModule: (node: TNode) => Promise<void>
+    logger: { error: (message: string) => void }
+  },
+  held: boolean,
+  tag: string,
+): void {
+  for (const node of takeStaleModules(caches, environment, held)) {
+    environment.reloadModule(node).catch((error: unknown) => {
+      environment.logger.error(
+        `${tag} sending the update of ${node.file ?? 'a module'} failed: ${String(error)}`,
+      )
+    })
+  }
+}
+
 /**
  * `vite build --watch`: declares the files a module's plan read to the
  * watcher, so an edit of one outside the module graph (a denied file its
@@ -248,13 +319,22 @@ export class ViteRunSessions<TSession, TConfig, TServer> {
 /**
  * The `load` of a derived id of a file of the project (`route.tsx?tsr-split=…`,
  * Start's `?tss-hydrate=…`, `?tss-serverfn-split`): the file's own text,
- * read here and watched. Vite's load fallback cleans the id of its query and
- * fragment, and a `#` of a project path (`C#`, `project #2`) would end the
- * path there. A derived id with a foreign query (`.vue?vue&…`) or of a
- * virtual module is its owner's to load (null).
+ * read here. Vite's load fallback cleans the id of its query and fragment,
+ * and a `#` of a project path (`C#`, `project #2`) would end the path there.
+ * A derived id with a foreign query (`.vue?vue&…`) or of a virtual module is
+ * its owner's to load (null). A watch build is told to watch the file; a dev
+ * server is not: its watcher covers the project, the derived module's `file`
+ * is the file (each event finds it), and Vite records a file a `load`
+ * watches as an import of the module, which would put every derived module
+ * in an import cycle with its file's module (Vite's client reloads the page
+ * when an update within a cycle fails to import).
  */
 export async function loadDerivedSource(
-  ctx: { addWatchFile: (id: string) => void },
+  ctx: {
+    addWatchFile: (id: string) => void
+    meta: { watchMode: boolean }
+    environment: { mode: string }
+  },
   id: string,
 ): Promise<string | null> {
   const identity = identify(id)
@@ -269,7 +349,9 @@ export async function loadDerivedSource(
   if (code === null) {
     return null
   }
-  ctx.addWatchFile(identity.path)
+  if (ctx.environment.mode === 'build' && ctx.meta.watchMode) {
+    ctx.addWatchFile(identity.path)
+  }
   return code
 }
 

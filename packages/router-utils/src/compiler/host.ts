@@ -397,7 +397,7 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * specifier now resolves is a dependent; a change of a path the caches hold
  * nothing of that reads as a file is an `add`, which also re-resolves the
  * resolutions the new file may take (`shadowTest`). A registry change stales the file in every environment
- * that has compiled. Restored plans (`restorePlans`) are checked like
+ * that has compiled or whose bundler holds modules. Restored plans (`restorePlans`) are checked like
  * published ones. Each plan's fingerprints are checked with its host
  * (`hosts` of its key: the resolver its module resolves with). The returned
  * keys are the evicted and stale plans.
@@ -518,14 +518,20 @@ async function applyChange(
   }
   if (kind === 'registry') {
     // a module the host's route gate skipped has no plan to evict, and its
-    // bundler sees no file event
-    for (const env of caches.plans.keys()) {
+    // bundler sees no file event: every environment that compiled, and
+    // every one whose bundler holds modules (`StaleSets.track`)
+    for (const env of new Set([
+      ...caches.plans.keys(),
+      ...caches.stale.trackedEnvs(),
+    ])) {
       caches.stale.add(env, path)
     }
   }
-  const manifest = change.kind === 'change' && manifestAt
+  // (a repeat moved nothing: the first event moved the file set)
+  const manifest = !repeat && change.kind === 'change' && manifestAt
   const resolverConfig =
-    manifest || (change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
+    manifest ||
+    (!repeat && change.kind === 'change' && RESOLVER_CONFIG.test(change.path))
   const fileSetMoved =
     change.kind === 'add' || change.kind === 'unlink' || resolverConfig
   if (fileSetMoved) {
@@ -543,29 +549,31 @@ async function applyChange(
         continue
       }
       seen.add(ks)
+      const host = hostOf(entry.key)
+      const src = fingerprintSourceFor(caches, host, cache.env)
       if (entry.inFlight) {
-        cache.bump(entry.key)
+        // a compile that met a failed resolution goes on unless one resolves
+        // now (every file event asks them: most leave them failing)
+        if (
+          indexKey !== UNRESOLVED_DEPENDENCY ||
+          entry.failed === undefined ||
+          !(await allCurrent(entry.failed, src, host))
+        ) {
+          cache.bump(entry.key)
+        }
         continue
       }
       const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
       if (!fps) {
         continue
       }
-      const host = hostOf(entry.key)
-      const src = fingerprintSourceFor(caches, host, cache.env)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
         // what read the removed file is stale, unasked (a resolver may
         // still cache the file until its next compile)
         if (
           (change.kind === 'unlink' && fingerprintPath(fp) === change.path) ||
-          // what can't be checked isn't known to be current. This operation
-          // runs from file events and registry publications, where a
-          // rejection would have nobody to answer to
-          !(await fingerprintCurrent(fp, src).catch((error: unknown) => {
-            host.onInvalidationError?.(error)
-            return false
-          }))
+          !(await checked(fp, src, host))
         ) {
           stale = true
           break
@@ -622,12 +630,9 @@ async function applyChange(
     if (shadows) {
       // a new file may take a resolution that found another file of its
       // name (`./x` found `x/index.ts`, and `x.ts` appeared)
-      const shadowed: Array<string> = []
-      for (const path of cache.dependents.paths()) {
-        if (path !== change.path && shadows(path)) {
-          shadowed.push(path)
-        }
-      }
+      const shadowed = cache.dependents
+        .shadowedBy(change.path)
+        .filter((path) => path !== change.path)
       // only those resolutions are asked again, once per plan under many of
       // those paths: the plan's others found files the new one can't take.
       // A `package.json` decides more than the files it is next to (its
@@ -654,6 +659,35 @@ async function applyChange(
     }
   }
   return { evicted, dependents }
+}
+
+/**
+ * Whether a fingerprint is current. What can't be checked isn't known to be
+ * current: an invalidation runs from file events and registry publications,
+ * where a rejection would have nobody to answer to.
+ */
+function checked(
+  fp: DependencyFingerprint,
+  src: FingerprintSource,
+  host: HostServices,
+): Promise<boolean> {
+  return fingerprintCurrent(fp, src).catch((error: unknown) => {
+    host.onInvalidationError?.(error)
+    return false
+  })
+}
+
+async function allCurrent(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  src: FingerprintSource,
+  host: HostServices,
+): Promise<boolean> {
+  for (const fp of fps) {
+    if (!(await checked(fp, src, host))) {
+      return false
+    }
+  }
+  return true
 }
 
 /** A TypeScript or JavaScript project file (`tsconfig.json`, `tsconfig.app.json`, `jsconfig.json`): its `paths` decide resolutions. */
@@ -727,8 +761,8 @@ function shadowTest(added: string): (resolved: string) => boolean {
   }
   const stem = dir + base.split('.')[0]!
   const end = stem.length
-  // the character after the stem rules out almost every path of an app without
-  // comparing their long common prefix: an `add` asks this of every dependency
+  // (the dependency paths it holds for are looked up: `shadowedBy`; this
+  // asks it of their plans' resolutions)
   return (resolved) => {
     const next = resolved.charCodeAt(end)
     return (

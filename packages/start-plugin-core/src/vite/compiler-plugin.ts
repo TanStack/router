@@ -28,11 +28,11 @@ import {
   invalidate,
   isAssetId,
   isFinalBuild,
-  liveModules,
   loadDerivedSource,
   normalizePath,
   resolveSameFileSpecifier,
   rollupEntryModuleIds,
+  staleHotUpdate,
   takeStaleModules,
   warnEagerExports,
   watchDependencies,
@@ -53,7 +53,7 @@ import {
   optimizedDependency,
 } from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
-import { changeKindOf, invalidateFor } from './invalidation'
+import { changeKindOf, forgetRemoved, invalidateFor } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
 import {
   devLookupPlugin,
@@ -194,6 +194,9 @@ function envCompilerPlugins(
       )
       const environment = viteServer.environments[env.name]
       if (environment) {
+        // (its modules: a registry change stales its file here whether or
+        // not a plan of it exists)
+        s.start.caches.stale.track(env.name)
         // each environment loads the virtual ids it resolved (Vite runs a
         // plugin's `buildStart` only for the client environment in dev)
         s.virtualLoaders.set(env.name, async (id) => {
@@ -385,36 +388,24 @@ function envCompilerPlugins(
      * not compile while the file was missing). A path that enters the set
      * after the take waits for the next event's hook.
      */
-    async hotUpdate(ctx) {
+    hotUpdate(ctx) {
       const s = state.sessionOf(this.environment)
       const environment = this.environment as DevEnvironment
       // the file's path once, as every module id and compiler key holds it
-      const change: InvalidateChange = {
+      const change = {
         path: normalizePath(ctx.file),
         kind: changeKindOf(ctx.type),
-      }
-      await invalidateFor(state, s, environment, change)
-      if (change.kind === 'unlink') {
-        s.start.forget(change.path)
-      }
-      // see router-plugin's Vite host: the file's modules its current plan
-      // produces (the event's own modules only: a taken path is stale for a
-      // reason of its own)
-      const live =
-        (await liveModules(
-          environment,
-          s.start.caches,
-          change.path,
-          ctx.modules,
-        )) ?? ctx.modules
-      const stale = takeStaleModules(
-        s.start.caches,
+      } as const
+      return staleHotUpdate(
         environment,
-        change.kind === 'add',
-      ).filter((node) => !live.includes(node))
-      return stale.length > 0 || live !== ctx.modules
-        ? [...live, ...stale]
-        : undefined
+        s.start.caches,
+        change,
+        ctx.modules,
+        async () => {
+          await invalidateFor(state, s, environment, change)
+          forgetRemoved(s, change)
+        },
+      )
     },
     // The one invalidation of a file event. Bundled dev, and a dev server
     // without HMR (`server.hmr: false`, as Vitest's): every environment's
@@ -441,9 +432,6 @@ function envCompilerPlugins(
         path: normalizePath(id),
         kind: changeKindOf(event.event),
       }
-      if (change.kind === 'unlink') {
-        s.start.forget(change.path)
-      }
       if (environment.mode !== 'dev') {
         await invalidate(
           s.start.caches,
@@ -452,9 +440,11 @@ function envCompilerPlugins(
             this.resolve(source, importer, options),
           ),
         )
+        forgetRemoved(s, change)
         return
       }
       await invalidateFor(state, s, environment, change)
+      forgetRemoved(s, change)
       const environments = s.server
         ? Object.values(s.server.environments).filter((e) =>
             state.envNames.has(e.name),

@@ -199,6 +199,12 @@ export async function fingerprintsCurrent(
 interface DependentEntry {
   key: PlanKey
   inFlight: boolean
+  /**
+   * A row in flight in the unresolved bucket: the failed resolutions its
+   * compiles recorded so far. A file event asks them again, and restarts
+   * the compile only when one resolves now.
+   */
+  failed?: Array<DependencyFingerprint>
 }
 
 /**
@@ -214,6 +220,14 @@ interface DependentEntry {
 class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
   private readonly byKey = new Map<string, Set<string>>()
+  /**
+   * The dependency paths by the name a created file shares with them
+   * (`shadowedBy`): by directory and first name segment (`/app/x` for
+   * `/app/x.web.ts`), and the directory tree (each directory to the paths
+   * and directories directly in it).
+   */
+  private readonly byStem = new Map<string, Set<string>>()
+  private readonly byDir = new Map<string, Set<string>>()
 
   /** The row of (path, key); a new row is in flight. */
   add(path: string, key: PlanKey): DependentEntry {
@@ -221,6 +235,7 @@ class DependentsIndex {
     if (!m) {
       m = new Map()
       this.byPath.set(path, m)
+      this.place(path)
     }
     const ks = planKeyString(key)
     let e = m.get(ks)
@@ -237,6 +252,14 @@ class DependentsIndex {
     return e
   }
 
+  /** A compile in flight of `key` met a failed resolution (`DependentEntry.failed`). */
+  failedInFlight(key: PlanKey, fp: DependencyFingerprint): void {
+    const e = this.byPath.get(UNRESOLVED_DEPENDENCY)?.get(planKeyString(key))
+    if (e?.inFlight) {
+      ;(e.failed ??= []).push(fp)
+    }
+  }
+
   get(path: string): Array<DependentEntry> {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
@@ -246,9 +269,102 @@ class DependentsIndex {
     return this.byPath.has(path)
   }
 
-  /** The dependency paths with rows (and the unresolved bucket, if it has any). */
-  paths(): IterableIterator<string> {
-    return this.byPath.keys()
+  /**
+   * The dependency paths whose resolution a file created at `added` may
+   * take (`shadowTest` in the invalidation): a file of its directory and
+   * first name segment (`x.ts` beside `x.web.ts`), any file under a
+   * directory of its stem (`x.ts` beside `x/index.ts`), or any file under a
+   * `package.json`'s directory. Looked up, not scanned: a checkout creates
+   * thousands of files.
+   */
+  shadowedBy(added: string): Array<string> {
+    const slash = added.lastIndexOf('/')
+    const dir = added.slice(0, slash)
+    const base = added.slice(slash + 1)
+    if (base === 'package.json') {
+      return this.under(dir)
+    }
+    const dot = base.indexOf('.')
+    const stem = `${dir}/${dot < 0 ? base : base.slice(0, dot)}`
+    return [...(this.byStem.get(stem) ?? []), ...this.under(stem)]
+  }
+
+  /** Every dependency path under directory `dir`, at any depth. */
+  private under(dir: string): Array<string> {
+    const out: Array<string> = []
+    const dirs = [dir]
+    for (let d = dirs.pop(); d !== undefined; d = dirs.pop()) {
+      for (const child of this.byDir.get(d) ?? []) {
+        if (this.byPath.has(child)) {
+          out.push(child)
+        }
+        if (this.byDir.has(child)) {
+          dirs.push(child)
+        }
+      }
+    }
+    return out
+  }
+
+  /** Indexes a new dependency path by stem and directory (`shadowedBy`). */
+  private place(path: string): void {
+    const slash = path.lastIndexOf('/')
+    if (slash < 0) {
+      // (a bucket: the unresolved and external resolutions)
+      return
+    }
+    const base = path.slice(slash + 1)
+    const dot = base.indexOf('.')
+    if (dot >= 0) {
+      const stem = path.slice(0, slash + 1 + dot)
+      let paths = this.byStem.get(stem)
+      if (!paths) {
+        paths = new Set()
+        this.byStem.set(stem, paths)
+      }
+      paths.add(path)
+    }
+    let child = path
+    for (let d = parentOf(child); d !== null; d = parentOf(child)) {
+      const children = this.byDir.get(d)
+      if (children) {
+        children.add(child)
+        return
+      }
+      this.byDir.set(d, new Set([child]))
+      child = d
+    }
+  }
+
+  /** Unindexes a dependency path without rows (`place` reversed). */
+  private displace(path: string): void {
+    const slash = path.lastIndexOf('/')
+    if (slash < 0) {
+      return
+    }
+    const dot = path.indexOf('.', slash + 1)
+    if (dot >= 0) {
+      const stem = path.slice(0, dot)
+      const paths = this.byStem.get(stem)
+      paths?.delete(path)
+      if (paths?.size === 0) {
+        this.byStem.delete(stem)
+      }
+    }
+    // a name stays in its directory while it is a path or a directory
+    let child = path
+    for (let d = parentOf(child); d !== null; d = parentOf(child)) {
+      if (this.byPath.has(child) || this.byDir.has(child)) {
+        return
+      }
+      const children = this.byDir.get(d)
+      children?.delete(child)
+      if (children === undefined || children.size > 0) {
+        return
+      }
+      this.byDir.delete(d)
+      child = d
+    }
   }
 
   /**
@@ -263,7 +379,9 @@ class DependentsIndex {
       }
     }
     for (const path of paths) {
-      this.add(path, key).inFlight = false
+      const e = this.add(path, key)
+      e.inFlight = false
+      e.failed = undefined
     }
   }
 
@@ -283,6 +401,7 @@ class DependentsIndex {
       m.delete(ks)
       if (m.size === 0) {
         this.byPath.delete(path)
+        this.displace(path)
       }
     }
     const paths = this.byKey.get(ks)
@@ -299,6 +418,8 @@ class DependentsIndex {
     paths: number
     entries: number
     keys: number
+    stems: number
+    dirs: number
   } {
     let entries = 0
     for (const m of this.byPath.values()) {
@@ -308,8 +429,16 @@ class DependentsIndex {
       paths: this.byPath.size,
       entries,
       keys: this.byKey.size,
+      stems: this.byStem.size,
+      dirs: this.byDir.size,
     }
   }
+}
+
+/** The directory of a path (null: none, the root's parent). */
+function parentOf(path: string): string | null {
+  const slash = path.lastIndexOf('/')
+  return slash > 0 ? path.slice(0, slash) : null
 }
 
 /**
@@ -340,7 +469,11 @@ export class DependencyLedger {
     }
     this.byId.set(id, fp)
     this.entries.push(fp)
-    this.indexPath(fingerprintIndexKey(fp))
+    const indexKey = fingerprintIndexKey(fp)
+    this.indexPath(indexKey)
+    if (indexKey === UNRESOLVED_DEPENDENCY) {
+      this.index.failedInFlight(this.key, fp)
+    }
   }
 
   /** A lookup read export `name` of a module (`key`: its `exportKeyOf` answer, null when it has none). */
@@ -757,6 +890,8 @@ export class PlanCache {
       dependentPaths: d.paths,
       dependentKeys: d.keys,
       dependentEntries: d.entries,
+      dependentStems: d.stems,
+      dependentDirs: d.dirs,
       ...(withBytes && { planBytes }),
     }
   }
@@ -773,6 +908,23 @@ export class PlanCache {
  */
 export class StaleSets {
   private readonly byEnv = new Map<string, Map<string, boolean>>()
+  /** The environments whose bundler holds modules (`track`). */
+  private readonly tracked = new Set<string>()
+
+  /**
+   * The environment's bundler holds modules from now on (a dev server's
+   * environment, a compiler past its first compilation's make): a registry
+   * change stales its file there whether or not a plan of it exists (a
+   * module served before it was a route has none).
+   */
+  track(env: string): void {
+    this.tracked.add(env)
+  }
+
+  /** The tracked environments (`track`). */
+  trackedEnvs(): ReadonlySet<string> {
+    return this.tracked
+  }
 
   add(env: string, path: string, held = false): void {
     let set = this.byEnv.get(env)
@@ -848,6 +1000,7 @@ export class StaleSets {
   /** An environment that compiles nothing more (`releaseEnvironment`). */
   release(env: string): void {
     this.byEnv.delete(env)
+    this.tracked.delete(env)
   }
 
   /** Sizes for `compilerStats()`. */

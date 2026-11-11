@@ -136,7 +136,8 @@ export {
 // compiler model uses them
 export {
   isFinalBuild,
-  liveModules,
+  reloadStaleModules,
+  staleHotUpdate,
   takeStaleModules,
   loadDerivedSource,
   viteLog,
