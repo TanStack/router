@@ -200,17 +200,127 @@ function writesOnly(purity: PurityContext, expr: Node): boolean {
   switch (e.type) {
     case 'AssignmentExpression':
       return pureTarget(e.left) && isPureExpression(purity, e.right)
-    case 'CallExpression':
-      // a mutating method of the binding (`X.push(…)`), `Object.assign(X, …)`
+    case 'CallExpression': {
+      // `Object.assign(X, …)`, a link on a builder, or a mutating method of
+      // a collection (`X.push(…)`); a method of that name on another object
+      // is its own code: a call (R65), which also writes its receiver
+      const callee = unwrapExpression(e.callee)
+      const mutator =
+        callee.type === 'MemberExpression' &&
+        !callee.computed &&
+        callee.property.type === 'Identifier' &&
+        MUTATORS.has(callee.property.name)
       return (
-        (isObjectMutator(unwrapExpression(e.callee)) || pureTarget(e.callee)) &&
+        (isObjectMutator(callee) ||
+          (mutator
+            ? builtinCollection(purity.file, callee.object)
+            : pureTarget(e.callee))) &&
         e.arguments.every(
           (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
         )
       )
+    }
     default:
       return false
   }
+}
+
+const COLLECTIONS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet'])
+
+/**
+ * Whether the methods `MUTATORS` names are the built-in ones on the object
+ * `receiver` names: a `const` declared with an array literal or a `new` of
+ * the global `Map`, `Set`, `WeakMap` or `WeakSet`, whose methods of those
+ * names nothing replaces (`x.push = …`, `x['push'] = …`, `Object.assign(x,
+ * …)`). Any other object's `push` or `set` is code of the module's own.
+ */
+function builtinCollection(file: SourceFile, receiver: Node): boolean {
+  const id = unwrapExpression(receiver)
+  if (id.type !== 'Identifier') {
+    return false
+  }
+  const b = file.referenceOf(id)?.binding
+  if (!b || !b.has(BindingFlags.Const)) {
+    return false
+  }
+  const [name, ...more] = b.declarations
+  if (name === undefined || more.length > 0) {
+    return false
+  }
+  const declarator = file.parentOf(name)
+  if (
+    declarator?.type !== 'VariableDeclarator' ||
+    declarator.id.start !== name.start ||
+    declarator.init === null
+  ) {
+    return false
+  }
+  const init = unwrapExpression(declarator.init)
+  if (
+    init.type !== 'ArrayExpression' &&
+    !(
+      init.type === 'NewExpression' &&
+      init.callee.type === 'Identifier' &&
+      COLLECTIONS.has(init.callee.name) &&
+      !file.referenceOf(init.callee)?.binding
+    )
+  ) {
+    return false
+  }
+  for (const ref of b.references) {
+    let n: Node = ref.node
+    let parent = file.parentOf(n)
+    while (parent !== null && isExpressionWrapper(parent)) {
+      n = parent
+      parent = file.parentOf(n)
+    }
+    if (parent?.type === 'CallExpression') {
+      if (
+        parent.arguments[0] === n &&
+        isObjectMutator(unwrapExpression(parent.callee))
+      ) {
+        return false
+      }
+      continue
+    }
+    if (parent?.type !== 'MemberExpression' || parent.object !== n) {
+      continue
+    }
+    const key = parent.computed
+      ? parent.property.type === 'Literal'
+        ? String(parent.property.value)
+        : null
+      : parent.property.type === 'Identifier'
+        ? parent.property.name
+        : null
+    if (key !== null && MUTATORS.has(key) && writeTargetOf(file, parent)) {
+      return false
+    }
+  }
+  return true
+}
+
+/** Whether member expression `m` is what an assignment, update, `delete`, for-in/of or destructuring writes. */
+function writeTargetOf(file: SourceFile, m: Node): boolean {
+  let n = m
+  let parent = file.parentOf(n)
+  while (parent !== null && isExpressionWrapper(parent)) {
+    n = parent
+    parent = file.parentOf(n)
+  }
+  if (parent === null) {
+    return false
+  }
+  const construct =
+    parent.type === 'Property' && parent.value === n
+      ? file.parentOf(parent)
+      : parent
+  // (a call of the method is no write of it)
+  return (
+    construct !== null &&
+    construct.type !== 'CallExpression' &&
+    writeTargets(construct).includes(n)
+  )
 }
 
 /**

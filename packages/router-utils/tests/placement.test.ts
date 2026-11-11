@@ -5624,6 +5624,11 @@ describe('state reached through another name', () => {
       'Page',
     ],
     [
+      'an array whose method is replaced',
+      "const queue = []\nqueue.push = (x) => track(x)\nqueue.push('first')",
+      'queue',
+    ],
+    [
       'a pure call result',
       "const store = /* @__PURE__ */ track()\nstore.set('k', 1)",
       'store',
