@@ -456,46 +456,41 @@ export function handedToCall(
   node: Node,
 ): number {
   let member = false
-  let n = node
-  for (
-    let parent = file.parentOf(n);
-    parent !== null;
-    n = parent, parent = file.parentOf(n)
-  ) {
-    if (isExpressionWrapper(parent)) {
+  let n: Node = node
+  for (let at = file.parentOf(n); at !== null; n = at, at = file.parentOf(n)) {
+    if (isExpressionWrapper(at)) {
       continue
     }
-    switch (parent.type) {
+    switch (at.type) {
       case 'MemberExpression':
-        if (parent.object !== n) {
+        if (at.object !== n) {
           return -1
         }
         member = true
-        continue
+        break
       case 'ArrayExpression':
       case 'ObjectExpression':
       case 'LogicalExpression':
-        continue
+        break
       case 'Property':
-        if (parent.value !== n) {
+        if (at.value !== n) {
           return -1
         }
-        continue
+        break
       case 'ConditionalExpression':
-        if (parent.test === n) {
+        if (at.test === n) {
           return -1
         }
-        continue
+        break
       case 'SequenceExpression':
-        if (parent.expressions.at(-1) !== n) {
+        if (at.expressions.at(-1) !== n) {
           return -1
         }
-        continue
+        break
       case 'CallExpression':
       case 'NewExpression':
-        return (parent.callee !== n || member) &&
-          !isPureExpression(purity, parent)
-          ? parent.start
+        return (at.callee !== n || member) && !isPureExpression(purity, at)
+          ? at.start
           : -1
       default:
         return -1
