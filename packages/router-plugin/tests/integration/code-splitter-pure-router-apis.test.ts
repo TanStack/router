@@ -1,4 +1,6 @@
 /**
+ * (No order rule: the effect before the API and the API load with the
+ * chunk, whatever follows them, unreported.)
  * The router's own APIs that are pure at module level, first
  * `getRouteApi`, are no effect: a module-level `const { useParams } =
  * getRouteApi(…)` only the split component reads loads with its chunk, and

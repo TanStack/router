@@ -1,5 +1,7 @@
 /**
- * The framework calls that are pure at module level when their arguments
+ * (No order rule: every route here loads its component with the chunk,
+ * whatever follows it; the rows below kept what an effect after it pinned
+ * before.) The framework calls that are pure at module level when their arguments
  * are (React `memo`, `forwardRef`, `lazy`; Vue `defineComponent`,
  * `defineAsyncComponent`; Solid `lazy`) are no effect: a module-level
  * component only the split `component` reads loads with its chunk although

@@ -1,4 +1,6 @@
 /**
+ * (No order rule: nothing below is pinned any more; every route loads its
+ * declaration with the chunk, unreported, on every host and in dev.)
  * A declaration only split code needs that the evaluation-order rules keep
  * in the route module (an effect after it stays there) loads with the route
  * instead of with its chunk, and the build or dev server says so once,
