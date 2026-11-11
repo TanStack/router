@@ -228,11 +228,11 @@ export function isDuplicable(
   return true
 }
 
-/** The symbols generated text reads (its `SymRef`s and reference rewrites). */
+/** The symbols generated text reads (its `SymRef`s and reference rewrites), pushed into `out`. */
 export function symRefsOf(
   frags: ReadonlyArray<Frag | GenFrag>,
+  out: Array<SymbolId> = [],
 ): Array<SymbolId> {
-  const out: Array<SymbolId> = []
   for (const f of frags) {
     if (f.k === 'text') {
       for (const p of f.parts) {

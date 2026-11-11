@@ -11,14 +11,13 @@
 import { visitRuns } from '../analysis'
 import { RewriteSet } from '../rewrite'
 import { callsWhenEvaluated } from '../units'
-import { NEED_KINDS } from './clusters'
+import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { EvaluatedCalls, RegionId, UnitId } from '../units'
 import type {
   Frag,
-  GenFrag,
   OutputId,
   OutputView,
   PlannerEdit,
@@ -81,6 +80,8 @@ export type RunVisitor = (ref: ClassifiedRef, at: number) => boolean
 interface MemberReads {
   syms: Array<SymbolId>
   children: Array<RegionId>
+  /** In the env module (live): the references of the text the walk renders (what `runs` reads; the children's are theirs). */
+  refs: Array<ClassifiedRef> | null
 }
 
 /**
@@ -199,44 +200,18 @@ export function readIndex(
   >()
   const deadMemberReads: Array<MemberReads | undefined> = []
   /**
-   * Where the live reads push references instead of symbols (`runs`: the
-   * references of a member's text; generated text names no reference).
-   */
-  let refsInto: Array<ClassifiedRef> | null = null
-  /** Pushes the module-level reads of a body (its `SymRef`s and reference targets, as `symRefsOf`). */
-  const bodyReads = (
-    body: ReadonlyArray<Frag | GenFrag>,
-    into: MemberReads,
-  ) => {
-    if (refsInto !== null) {
-      return
-    }
-    for (const f of body) {
-      if (f.k === 'text') {
-        for (const p of f.parts) {
-          if (typeof p !== 'string') {
-            into.syms.push(p.sym)
-          }
-        }
-      } else if (f.k === 'ref') {
-        into.syms.push('sym' in f.to ? f.to.sym : f.to.member[0])
-      }
-    }
-  }
-  /**
-   * Pushes the references of `list` (sorted) starting in `[s, e)`, those
-   * live in `live` only when given. A member's text read for its references
-   * (`refsInto`) holds every reference there: the regions nested in it that
-   * the walk renders as its text are its text.
+   * Pushes the reads of the references of `list` (sorted) starting in
+   * `[s, e)`, those live in `live` only when given; and, in the env module,
+   * the references themselves (`MemberReads.refs`, every kind).
    */
   const refReads = (
-    owned: ReadonlyArray<ClassifiedRef>,
+    list: ReadonlyArray<ClassifiedRef>,
     s: number,
     e: number,
     live: OutputId | null,
     into: MemberReads,
   ) => {
-    const list = refsInto === null ? owned : t1.refs.all
+    const refs = into.refs
     let lo = 0
     let hi = list.length
     while (lo < hi) {
@@ -255,9 +230,10 @@ export function readIndex(
       if (live !== null && !isLive(ref, live)) {
         continue
       }
-      if (refsInto !== null) {
-        refsInto.push(ref)
-      } else if (NEED_KINDS.has(ref.kind)) {
+      if (refs !== null) {
+        refs.push(ref)
+      }
+      if (NEED_KINDS.has(ref.kind)) {
         into.syms.push(ref.sym)
       }
     }
@@ -285,7 +261,7 @@ export function readIndex(
   let partial = false
   /** What a body standing for node `n` reads (its slices walked, its references among `owned`). */
   const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
-    bodyReads(body, into)
+    symRefsOf(body, into.syms)
     for (const f of body) {
       if (f.k === 'slice') {
         view.walk(n, f.range.start, f.range.end, reader)
@@ -324,7 +300,7 @@ export function readIndex(
     },
     insert: (e) => {
       if (!partial || !view.isErasedAt(e.range.start)) {
-        bodyReads(e.body, into)
+        symRefsOf(e.body, into.syms)
       }
     },
     member: (n) => {
@@ -333,37 +309,29 @@ export function readIndex(
       }
       const cid = n.region!
       if (!rewrites.claims.has(cid)) {
-        // a successor; what the member evaluates holds its text
-        if (refsInto !== null) {
-          readNested(n, cid)
-        }
-        return true
+        return true // (a successor)
       }
       if (view.isClaimed(n)) {
         // its text is its owner's: what stands at its place is read here
         const place = view.placeOf(n)
         if (place !== null && !(partial && view.isErasedAt(n.start))) {
-          bodyReads(place, into)
+          symRefsOf(place, into.syms)
         }
         return true
       }
       // claimed for other outputs: in this one its text is this member's
-      readNested(n, cid)
+      const outer = owned
+      owned = ownedRefs.get(cid) ?? NO_REFS
+      const text = view.textOf(n)
+      if (text === null) {
+        view.walk(n, n.start, n.end, reader)
+      } else if (!(partial && view.isErasedAt(n.start))) {
+        read(n, text)
+      }
+      owned = outer
       pushChildren(cid, into)
       return true
     },
-  }
-  /** Reads the text of region `cid` nested in the member (node `n`) as the member's own. */
-  const readNested = (n: RangeNode, cid: RegionId) => {
-    const outer = owned
-    owned = ownedRefs.get(cid) ?? NO_REFS
-    const text = view.textOf(n)
-    if (text === null) {
-      view.walk(n, n.start, n.end, reader)
-    } else if (!(partial && view.isErasedAt(n.start))) {
-      read(n, text)
-    }
-    owned = outer
   }
 
   /**
@@ -425,7 +393,7 @@ export function readIndex(
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
       if (RewriteSet.inScope(e.scope, o)) {
-        bodyReads(e.body, into)
+        symRefsOf(e.body, into.syms)
       }
     }
     pushChildren(r.id, into)
@@ -441,7 +409,10 @@ export function readIndex(
         // claimed only for other outputs
         if (view.isClaimed(n)) {
           const place = view.placeholderAt(n)!
-          bodyReads('owner' in place ? place.placeholder : place.body, into)
+          symRefsOf(
+            'owner' in place ? place.placeholder : place.body,
+            into.syms,
+          )
         } else {
           refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, null, into)
           textReads(nested, o, into)
@@ -451,12 +422,12 @@ export function readIndex(
       }
       for (const e of n.edits ?? []) {
         if (RewriteSet.inScope(e.scope, o)) {
-          bodyReads(e.body, into)
+          symRefsOf(e.body, into.syms)
         }
       }
       for (const p of n.places ?? []) {
         if (RewriteSet.inScope(p.scope, o)) {
-          bodyReads(p.body, into)
+          symRefsOf(p.body, into.syms)
         }
       }
     }
@@ -479,7 +450,11 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const into: MemberReads = { syms: [], children: [] }
+    const into: MemberReads = {
+      syms: [],
+      children: [],
+      refs: live && o === 'env' && m < regionCount ? [] : null,
+    }
     if (m < regionCount) {
       if (live) {
         regionReads(regions.get(m), o, into)
@@ -488,7 +463,7 @@ export function readIndex(
       }
     } else {
       // (a claimed region it names reads itself: the same cluster)
-      bodyReads(gens[m - regionCount]!.body, into)
+      symRefsOf(gens[m - regionCount]!.body, into.syms)
     }
     byMember[m] = into
     return into
@@ -622,22 +597,28 @@ export function readIndex(
     return included
   }
 
-  // ---- what an evaluation runs: the walk of its text in the env module ----
-  /** Per region: the references of its text in the env module (`runs`). */
+  // ---- what an evaluation runs: the references of its reads' walk --------
+  /**
+   * Per region: the references of its text in the env module, those of the
+   * unclaimed regions nested in it with them (its successors there: their
+   * text evaluates with it). The env module's walk of its reads gives them.
+   */
   const textOfRegion: Array<ReadonlyArray<ClassifiedRef> | undefined> = []
-  const scratch: MemberReads = { syms: [], children: [] }
   function regionText(id: RegionId): ReadonlyArray<ClassifiedRef> {
     const hit = textOfRegion[id]
     if (hit !== undefined) {
       return hit
     }
-    const refs: Array<ClassifiedRef> = []
-    refsInto = refs
-    regionReads(regions.get(id), 'env', scratch)
-    refsInto = null
-    scratch.children.length = 0
-    textOfRegion[id] = refs
-    return refs
+    const own = memberReads(id, 'env', true)
+    let text: ReadonlyArray<ClassifiedRef> = own.refs!
+    if (own.children.length > 0) {
+      text = [...text]
+      for (const c of own.children) {
+        ;(text as Array<ClassifiedRef>).push(...regionText(c))
+      }
+    }
+    textOfRegion[id] = text
+    return text
   }
   /** Per unit: what its evaluation calls (`callsWhenEvaluated`). */
   const callsOfUnit: Array<EvaluatedCalls | undefined> = []
