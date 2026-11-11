@@ -28,7 +28,6 @@ import {
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
-  routeRefreshMarkers,
   routerPlanner,
   routerPlannerConfigDigest,
   routerPlannerConfigFrom,
@@ -310,10 +309,7 @@ export class StartCompilerSession {
         providerDirective: opts.rsc?.providerDirective,
       }
       const router = rsc ? null : this.routerConfig(env.type)
-      const hydrate: HydratePlannerConfig = {
-        root: opts.root,
-        refreshMarkers: routeRefreshMarkers(router),
-      }
+      const hydrate: HydratePlannerConfig = { root: opts.root }
       const rscCss: RscCssConfig | undefined =
         rsc && opts.rsc
           ? { loadCssExpression: opts.rsc.loadCssExpression }

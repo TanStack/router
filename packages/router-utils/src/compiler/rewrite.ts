@@ -36,12 +36,8 @@ export type EditScope =
 export type RefTarget =
   | { sym: SymbolId }
   | { member: [SymbolId, ...Array<string>] }
-/**
- * How a `SymRef` renders: the binding's name (`expr`, `callee`, `jsxTag`),
- * or `homeId`: a string literal of the id of the module the output takes the
- * binding from (its own id when it holds the binding), decided by placement.
- */
-export type SymRefContext = 'expr' | 'callee' | 'jsxTag' | 'homeId'
+/** How a `SymRef` renders the binding's name: as an expression, a callee or a JSX tag. */
+export type SymRefContext = 'expr' | 'callee' | 'jsxTag'
 export interface SymRef {
   sym: SymbolId
   ctx?: SymRefContext

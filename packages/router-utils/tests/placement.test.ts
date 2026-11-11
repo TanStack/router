@@ -794,44 +794,6 @@ describe('extracted-export outputs', () => {
     expect((await r.extracted('Card'))?.code).toBe('export {}\n')
   })
 
-  it('renders a homeId ref as the id of the module the chunk takes the binding from', async () => {
-    const homeOf = async (code: string) => {
-      const files = { '/app/route.tsx': dedent(code) }
-      const planners = [
-        toySplitPlanner({
-          extractExports: true,
-          identifierEdits: true,
-          homeIds: true,
-        }),
-      ]
-      const chunk = await new MemoryHost({ files }).compile(
-        '/app/route.tsx?tsr-split=component',
-        planners,
-      )
-      return /export const home = (".*")/.exec(chunk?.code ?? '')?.[1]
-    }
-    const route = (page: string, loader = '') => `
-      import { createFileRoute } from 'toy-router'
-      ${page}
-      export const Route = createFileRoute('/')({${loader}
-        component: Page,
-      })
-    `
-    // in the chunk, copied into the chunk (extracted for importers), kept
-    // in the route module (its loader reads it)
-    expect(await homeOf(route('function Page() { return 1 }'))).toBe(
-      '"/app/route.tsx?tsr-split=component"',
-    )
-    expect(await homeOf(route('export function Page() { return 1 }'))).toBe(
-      '"/app/route.tsx?tsr-split=component"',
-    )
-    expect(
-      await homeOf(
-        route('export function Page() { return 1 }', ' loader: () => Page,'),
-      ),
-    ).toBe('"/app/route.tsx"')
-  })
-
   it('re-exports under every public name and drops the export companions', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

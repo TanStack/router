@@ -19,7 +19,7 @@ declare const __react_refresh_utils__:
 // Globals of the Vite (plugin-react) and webpack/Rspack refresh runtimes.
 type RefreshWindow = Window & {
   __getReactRefreshIgnoredExports?: (ctx: { id: string }) => Array<string>
-  __registerBeforePerformReactRefresh?: unknown
+  __registerBeforePerformReactRefresh?: (hook: () => unknown) => void
   __reactRefreshInjected?: boolean
 }
 
@@ -37,23 +37,68 @@ function refreshActive() {
   )
 }
 
-// A kept component is patched by React Refresh. On webpack/Rspack the route
-// module is never a refresh boundary, so ask the runtime to run.
-function kept() {
-  if (typeof __react_refresh_utils__ !== 'undefined') {
-    __react_refresh_utils__.enqueueUpdate(() => {})
+// How long an update waits for a refresh pass that doesn't come (a route
+// file the refresh plugin doesn't compile, a chunk first loaded after the
+// pass): then it applies, and the edit shows that much later.
+const REFRESH_BOUND = 200
+
+// The updates waiting for the next refresh pass, in evaluation order.
+let waiting: Array<() => void> = []
+let hooked = false
+
+function flush() {
+  const entries = waiting
+  waiting = []
+  for (const entry of entries) {
+    entry()
   }
-  return true
+}
+
+/**
+ * Runs `apply` once React Refresh processed the modules evaluated so far
+ * (its next refresh pass), or after `REFRESH_BOUND`, whichever comes first;
+ * at once without a refresh runtime. After the pass React answers whether
+ * the held component and the new one are one family (the mounted component
+ * and its state stay) or not (a remount with the new code), so the router
+ * always takes the new value.
+ */
+function whenRefreshed(apply: () => void): void {
+  if (!refreshActive()) {
+    apply()
+    return
+  }
+  let done = false
+  const entry = () => {
+    if (!done) {
+      done = true
+      apply()
+    }
+  }
+  waiting.push(entry)
+  const w = window as RefreshWindow
+  if (typeof __react_refresh_utils__ !== 'undefined') {
+    // webpack/Rspack: a route module is never a refresh boundary, so this
+    // also makes the pass happen; the callback runs after it (the runtime
+    // drops it while a pass is pending: the bound applies then)
+    __react_refresh_utils__.enqueueUpdate(flush)
+  } else if (
+    !hooked &&
+    typeof w.__registerBeforePerformReactRefresh === 'function'
+  ) {
+    // Vite: the runtime awaits these hooks, then runs the pass in the same
+    // microtask chain, so a task queued here runs after it
+    hooked = true
+    w.__registerBeforePerformReactRefresh(() => {
+      setTimeout(flush, 0)
+    })
+  }
+  // the bound is the entry's own: it can only apply the update it was armed
+  // for, never a later one before its pass
+  setTimeout(entry, REFRESH_BOUND)
 }
 
 const adapter: RouteHmrAdapter = {
-  keep: (next, held) =>
-    refreshActive() &&
-    next?.$$tsrRefreshId !== undefined &&
-    next.$$tsrRefreshId === held?.$$tsrRefreshId &&
-    kept(),
-  keepUnsplit: (_next, _held, sameName) =>
-    sameName && refreshActive() && kept(),
+  settled: whenRefreshed,
   retire: (routeId) => {
     ignoredExportsById?.forEach((entry, id, byId) => {
       if (entry.routeId === routeId) {

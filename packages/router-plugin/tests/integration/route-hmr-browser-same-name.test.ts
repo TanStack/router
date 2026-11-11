@@ -137,10 +137,9 @@ export const Route = createFileRoute('/')({ component: flag ? Wide : Narrow })
   )
 })
 
-// Bug: the split chunk of a React route set its identity marker
-// (`$$tsrRefreshId`) on the component value without checking that it can
-// hold one: a frozen component object (or a call returning `undefined`)
-// threw "Cannot add property" when the chunk evaluated, in dev only.
+// A frozen component object as a split React component: dev code writes
+// nothing onto a component value, so the chunk evaluates, and an edit
+// shows.
 describe.concurrent('vite, react: a frozen split component', () => {
   const route = (
     version: string,

@@ -8,7 +8,6 @@
 export { routerPlanner } from './router'
 export {
   ROUTER_PLANNER,
-  routeRefreshMarkers,
   routerPlannerApplies,
   routerPlannerConfigDigest,
   routerPlannerConfigFrom,
