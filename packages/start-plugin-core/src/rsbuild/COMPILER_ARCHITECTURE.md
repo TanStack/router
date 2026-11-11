@@ -106,7 +106,8 @@ client route tree's rebuild) each compiler takes its environment's stale set and
 What becomes stale after that (another environment's event, a registry change, a compile overtaken) is built by
 another compilation: after every compilation (`afterDone`, once Rspack marked the compiler idle) and after a registry
 change, each idle compiler with a non-empty set is asked for one, at most three in a row without a file event or a
-registry change of its own (a module whose rebuild finds itself stale again waits for the next event). Under RSC a
+registry change of its own (a module whose rebuild finds itself stale again waits for the next event): router-utils'
+`StaleSetDrain`, which the router plugin's webpack-family host uses too. Under RSC a
 server compilation's event puts the client's dependents in its set before the coordinator starts the client
 compilation, which drains them (Start starts none beside it).
 A dependent is built after the file whose event made it stale (in `make`, the drain at `finishMake`): a module edited

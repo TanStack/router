@@ -1,21 +1,24 @@
 /**
  * Rspack / webpack host of the router compiler: `apply`
- * installs the loader rule for route modules (env and derived ids), the
- * `sideEffects: false` rule for extracted-export outputs, the one
- * invalidation operation on `watchRun`, and the mode from the compiler's
- * options (never `process.env.NODE_ENV`). HMR style is always `'webpack'`.
+ * installs the loader rule (every JS module outside `node_modules`: the
+ * loader compiles route modules, env and derived ids, and passes the rest
+ * through), the `sideEffects: false` rule for extracted-export outputs, the
+ * one invalidation operation on `watchRun` and on registry changes, whose
+ * stale set the compiler takes at `finishMake` (`StaleSetDrain`), and the
+ * mode from the compiler's options (never `process.env.NODE_ENV`). HMR style
+ * is always `'webpack'`.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   EXTRACTED_EXPORT_QUERY_RE,
+  StaleSetDrain,
   emittedMapTexts,
+  identify,
   initialChunkResources,
-  invalidateFiles,
   locateDiagnostics,
   normalizePath,
-  pathsOf,
   warnEagerExports,
   webpackImporters,
   webpackResourceId,
@@ -36,15 +39,18 @@ import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type {
   EmittedMapsCompilerLike,
+  IdleCompilerLike,
   InitialChunksLike,
-  WatchingCompilerLike,
+  RebuildCompilationLike,
 } from '@tanstack/router-utils/compiler'
 
 type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 
 /** The parts of a webpack / Rspack compiler the host uses. */
-export interface CompilerLike extends WatchingCompilerLike {
+export interface CompilerLike extends IdleCompilerLike {
   name?: string
+  /** In watch mode: the files changed since the last compilation, as one starts. */
+  modifiedFiles?: ReadonlySet<string>
   /** The project root (`context`). */
   context: string
   options: {
@@ -58,7 +64,19 @@ export interface CompilerLike extends WatchingCompilerLike {
       tap: (name: string, fn: (compilation: CompilationLike) => void) => void
     }
     beforeRun: { tap: (name: string, fn: () => void) => void }
-    done: { tap: (name: string, fn: () => void) => void }
+    make: {
+      tap: (
+        name: string,
+        fn: (compilation: { compiler?: unknown }) => void,
+      ) => void
+    }
+    finishMake: {
+      tapPromise: (
+        name: string,
+        fn: (compilation: { compiler?: unknown }) => Promise<void>,
+      ) => void
+    }
+    afterDone: { tap: (name: string, fn: () => void) => void }
     watchRun: {
       tapPromise: (
         name: string,
@@ -71,6 +89,12 @@ export interface CompilerLike extends WatchingCompilerLike {
     watchClose: { tap: (name: string, fn: () => void) => void }
     shutdown: { tapPromise: (name: string, fn: () => Promise<void>) => void }
   }
+}
+
+/** The parts of a module the stale-set drain uses. */
+interface ModuleLike {
+  identifier: () => string
+  resource?: string
 }
 
 /** The parts of a compilation the host uses (webpack and Rspack). */
@@ -192,9 +216,15 @@ export function createRouterCompilerWebpackPlugin(
           ),
         ),
       )
+      // the rule reads no mutable state: a module stays one module when its
+      // file becomes a route or stops being one (the loader decides), so a
+      // registry change rebuilds it in place (`StaleSetDrain`; Rspack never
+      // calls a `rebuildModule` callback of a module whose rules match
+      // otherwise)
       compiler.options.module.rules.unshift(
         {
-          test: isRouteFile,
+          test: JS_FILE_RE,
+          exclude: /[\\/]node_modules[\\/]/,
           enforce: 'pre',
           use: [{ loader: routerLoaderPath(), options: { instance } }],
         },
@@ -204,37 +234,28 @@ export function createRouterCompilerWebpackPlugin(
           sideEffects: false,
         },
       )
-      // a registry change: the one invalidation operation evicts the plans
-      // of the route files whose entry changed; the bundler sees no file
-      // event for them, so it is told they changed and builds them again
-      // (rules re-matched: a file that was no route is one now). Before the
-      // first compilation finished nothing is stale (the registry's first
-      // publication lists every route; the modules are built with it).
-      let compiled = false
-      compiler.hooks.done.tap(PLUGIN_NAME, () => {
-        compiled = true
-      })
+      // the modules of the environment's stale set (the dependents of its
+      // file events, the route files whose registry entry changed: the
+      // bundler sees no file event for them) are built again in the
+      // compilation that takes it
+      const drain = new StaleSetDrain(session.caches)
+      drain.register(envName, compiler)
       const unsubscribe = onRoutesChanged(
         routerPluginContext,
         (next, previous) => {
-          for (const file of changedRoutePaths(next, previous)) {
-            void session
-              .invalidate(file, 'registry')
-              .then((res) => {
-                if (compiled) {
-                  invalidateFiles(compiler, [
-                    file,
-                    ...pathsOf([...res.evicted, ...res.dependents], envName),
-                  ])
-                }
-              })
-              .catch((error: unknown) => {
-                console.error(
-                  `[tanstack-router] invalidating ${file} after a route change failed:`,
-                  error,
-                )
-              })
-          }
+          Promise.all(
+            changedRoutePaths(next, previous).map((file) =>
+              session.invalidate(file, 'registry'),
+            ),
+          ).then(
+            () => drain.registryChanged(),
+            (error: unknown) => {
+              console.error(
+                `[tanstack-router] invalidating after a route change failed:`,
+                error,
+              )
+            },
+          )
         },
       )
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
@@ -269,16 +290,47 @@ export function createRouterCompilerWebpackPlugin(
           })
         }
       })
+      // edits and removals, invalidated before the compilation starts (all
+      // at once: calls for one path queue in the core)
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
-        const changed = [...(c.modifiedFiles ?? []).values()].map(
+        const changed = [...(c.modifiedFiles ?? [])].map(
           (f) => [f, 'change'] as const,
         )
-        const removed = [...(c.removedFiles ?? []).values()].map(
+        const removed = [...(c.removedFiles ?? [])].map(
           (f) => [f, 'unlink'] as const,
         )
-        for (const [file, kind] of [...changed, ...removed]) {
-          await session.invalidate(normalizePath(file), kind)
+        if (changed.length > 0 || removed.length > 0) {
+          drain.caused(envName)
         }
+        await Promise.all(
+          [...changed, ...removed].map(([file, kind]) =>
+            session.invalidate(normalizePath(file), kind),
+          ),
+        )
+      })
+      // (child compilers take the parent's `finishMake` taps)
+      compiler.hooks.make.tap(PLUGIN_NAME, (compilation) => {
+        if (compilation.compiler === compiler) {
+          drain.building(
+            envName,
+            [...(compiler.modifiedFiles ?? [])].map(normalizePath),
+          )
+        }
+      })
+      compiler.hooks.finishMake.tapPromise(PLUGIN_NAME, async (compilation) => {
+        if (compilation.compiler === compiler) {
+          await drain.rebuild(
+            envName,
+            compilation as RebuildCompilationLike<ModuleLike>,
+            (resource) =>
+              normalizePath(identify(webpackResourceId(resource)).path),
+          )
+        }
+      })
+      // what became stale after a compilation's drain (a registry change
+      // published meanwhile, a compile overtaken) gets another one
+      compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {
+        drain.wake()
       })
       // the session lives as long as the compiler: until it shuts down
       // (`compiler.close()`, after a one-shot `run()` too) or stops watching

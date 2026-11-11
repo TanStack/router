@@ -148,12 +148,12 @@ export type { ModuleGraphLike } from './hosts/vite'
 export { composeLoaderMap, webpackResourceId } from './hosts/loader'
 export {
   RSPACK_REBUILD_CALLBACKS_FIXED_IN,
-  invalidateFiles,
+  StaleSetDrain,
   pathsOf,
   rebuildModules,
   rspackCallsEveryRebuildCallback,
 } from './hosts/rebuild'
-export type { WatchingCompilerLike } from './hosts/rebuild'
+export type { IdleCompilerLike, RebuildCompilationLike } from './hosts/rebuild'
 export {
   initialChunkResources,
   rollupEntryModuleIds,

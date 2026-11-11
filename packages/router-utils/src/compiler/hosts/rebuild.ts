@@ -1,20 +1,17 @@
 /**
- * The host side of the one invalidation operation in the webpack family
- * (Rspack, webpack) for a change the bundler sees no file event for: a
- * route-registry change. `invalidate()` evicts the plans and returns them;
- * the bundler rebuilds a module only for a file event, so the host reports
- * the files concerned as changed to the watching compiler (`invalidateFiles`):
- * their modules are created again, rules re-matched (a file that was no route
- * is one now), at a compilation it starts after the running one, if any.
- * `rebuildModules` rebuilds modules of the current compilation in place
- * (same loaders), for hosts that must re-run a module's build at `finishMake`.
+ * The webpack-family (Rspack, webpack) host's side of the stale sets, shared
+ * by Start's Rsbuild host and the router's host (`StaleSetDrain`): each
+ * environment's compiler builds the modules of its stale set again in place
+ * at `finishMake` (`rebuildModules`, same loaders: the hosts' loader rules
+ * read no mutable state), in the compilation of the event; a set that fills
+ * while its compiler is idle gets it a compilation.
  */
-import path from 'node:path'
 import { identify } from '../identity'
+import type { CompilerCaches } from '../host'
 import type { PlanKey } from '../identity'
 
 /** A compilation of the webpack family (`TModule`: its module type). */
-interface RebuildCompilationLike<
+export interface RebuildCompilationLike<
   TModule extends { identifier: () => string; resource?: string },
   TDependency = unknown,
 > {
@@ -29,18 +26,10 @@ interface RebuildCompilationLike<
   moduleGraph?: { getModule: (dependency: TDependency) => TModule | null }
 }
 
-/** A compiler of the webpack family, watching or not. */
-export interface WatchingCompilerLike {
-  watching?:
-    | {
-        invalidate: (callback?: () => void) => void
-        invalidateWithChangesAndRemovals?: (
-          changedFiles: Set<string>,
-          removedFiles: Set<string>,
-          callback?: () => void,
-        ) => void
-      }
-    | undefined
+/** What the drain asks of a compiler (typed and documented on Rspack and webpack). */
+export interface IdleCompilerLike {
+  idle?: boolean
+  watching?: { invalidate: () => void } | undefined
 }
 
 /** The paths of the plans `invalidate()` evicted or found stale, for `env` (every environment when omitted). */
@@ -54,29 +43,103 @@ export function pathsOf(keys: Iterable<PlanKey>, env?: string): Array<string> {
   return [...out]
 }
 
+/** How many compilations in a row `wake` asks a compiler for without a cause. */
+const MAX_ASKED = 3
+
 /**
- * Tells a watching compiler that `paths` changed (a one-shot build has
- * nothing to tell: its modules are built after the registry is published).
+ * The stale sets of a session's caches, taken by the webpack-family
+ * compilers of its environments (one compiler per environment). A compiler
+ * forwards its own file events to `invalidate()` and reports them here as a
+ * cause (`caused`); the files a compilation builds from their own events
+ * leave its set at `make` (`building`); the rest of the set is built at
+ * `finishMake` (`rebuild`). What fills a set after its compilation's
+ * `rebuild` (another environment's event, a registry change, a compile overtaken) is
+ * built by another compilation (`wake`).
  */
-export function invalidateFiles(
-  compiler: WatchingCompilerLike,
-  paths: Iterable<string>,
-): void {
-  const watching = compiler.watching
-  if (!watching) {
-    return
+export class StaleSetDrain {
+  /** Each environment's compiler; `asked`: the compilations `wake` asked it for since its last cause. */
+  private readonly compilers = new Map<
+    string,
+    { compiler: IdleCompilerLike; asked: number }
+  >()
+
+  constructor(private readonly caches: CompilerCaches) {}
+
+  /** The compiler of an environment. */
+  register(env: string, compiler: IdleCompilerLike): void {
+    this.compilers.set(env, { compiler, asked: 0 })
   }
-  const changed = new Set<string>()
-  for (const p of paths) {
-    changed.add(path.normalize(p))
+
+  /** A file event of the environment's own compilation: `wake` may ask for compilations again. */
+  caused(env: string): void {
+    const entry = this.compilers.get(env)
+    if (entry) {
+      entry.asked = 0
+    }
   }
-  if (changed.size === 0) {
-    return
+
+  /**
+   * The files a compilation of `env` builds now from their own events, once
+   * every invalidation of its events ended: the drain needn't build them
+   * again (what makes them stale from here on enters the set again).
+   */
+  building(env: string, files: Iterable<string>): void {
+    this.caches.stale.drop(env, files)
   }
-  if (watching.invalidateWithChangesAndRemovals) {
-    watching.invalidateWithChangesAndRemovals(changed, new Set())
-  } else {
-    watching.invalidate()
+
+  /**
+   * Builds again the modules of the environment's stale set (the held ones
+   * too: a module importing a removed file fails here as it would in the
+   * bundler's own rebuild), once the invalidations running (a registry
+   * change published during this compilation's `watchRun`) ended. `pathOf`:
+   * a module resource as the stale sets spell its path.
+   */
+  async rebuild<
+    TModule extends { identifier: () => string; resource?: string },
+    TDependency,
+  >(
+    env: string,
+    compilation: RebuildCompilationLike<TModule, TDependency>,
+    pathOf: (resource: string) => string,
+  ): Promise<void> {
+    const { caches } = this
+    if (caches.invalidations.size > 0) {
+      await caches.settled()
+    }
+    const paths = caches.stale.take(env, { held: true })
+    if (paths.length > 0) {
+      await rebuildModules(compilation, new Set(paths), pathOf)
+    }
+  }
+
+  /** A registry change (its files are stale in every environment that compiled): every compiler may be asked again, the idle ones now. */
+  registryChanged(): void {
+    for (const entry of this.compilers.values()) {
+      entry.asked = 0
+    }
+    this.wake()
+  }
+
+  /**
+   * Asks each idle compiler whose stale set is not empty for a compilation:
+   * after every compilation (`afterDone`: in `done` the compiler is not idle
+   * yet, and a compilation asked for there would start inside it) and after
+   * a registry change. At most `MAX_ASKED` in a row without a cause: a module
+   * whose rebuild finds itself stale again (its plan's validation and its
+   * compile disagreeing) waits for the next event instead of compiling
+   * forever.
+   */
+  wake(): void {
+    for (const [env, entry] of this.compilers) {
+      if (
+        entry.compiler.idle &&
+        entry.asked < MAX_ASKED &&
+        this.caches.stale.has(env)
+      ) {
+        entry.asked++
+        entry.compiler.watching?.invalidate()
+      }
+    }
   }
 }
 
