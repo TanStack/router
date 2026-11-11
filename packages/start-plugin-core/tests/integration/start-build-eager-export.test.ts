@@ -126,13 +126,14 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
   )
 })
 
+// (no order rule: a `validateSearch` call after the declaration pins
+// nothing; two split options reading its effect do, `needers`)
 const pinned = `import { createFileRoute } from '@tanstack/react-router'
 import { Marker } from '../marker'
-import { makeSchema } from '../schema'
 const confetti = new Marker('MARK_CONFETTI')
 export const Route = createFileRoute('/account')({
-  validateSearch: makeSchema({ tab: 'string' }),
   component: () => <p>{confetti.name}</p>,
+  errorComponent: () => <p>{confetti.name}</p>,
 })
 `
 
@@ -150,7 +151,7 @@ const pinnedFiles = {
 
 describe.each(startBundlers)('a %s build', (bundler) => {
   test(
-    'keeps a declaration a later effect pins in the route module and warns once for every environment',
+    'keeps a declaration two split options read in the route module and warns once for every environment',
     async () => {
       const build = await buildStart({ bundler, files: pinnedFiles })
       expect(build.client.where('MARK_CONFETTI')).toBe('eager')
@@ -215,28 +216,20 @@ describe.each(startBundlers)(
   'a %s build of routes reading their API',
   (bundler) => {
     test(
-      'loads the API and a memo component with the chunk and warns of the effect before the API only',
+      'loads the API, the effect before it and a memo component with the chunk, unreported',
       async () => {
         const build = await buildStart({ bundler, files: routeApiFiles })
         const reported = [...build.client.warnings, ...build.ssr.warnings]
+        // (no order rule: the effect before the API moves with it)
         for (const path of ['direct']) {
           expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
-          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe(
-            'eager',
-          )
-          // one warning, at the pinned declaration
-          expectDiagnostic(reported, {
-            severity: 'warning',
-            file: `src/routes/${path}.tsx`,
-            root: build.root,
-            position: diagnosticPosition(
-              routeApiFiles[
-                `src/routes/${path}.tsx` as keyof typeof routeApiFiles
-              ],
-              'confetti = new',
-            ),
-            times: 1,
-          })
+          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe('lazy')
+          expect(
+            findDiagnostics(reported, {
+              file: `src/routes/${path}.tsx`,
+              root: build.root,
+            }),
+          ).toEqual([])
         }
         expect(build.client.where('MARK_MEMO')).toBe('lazy')
         expect(

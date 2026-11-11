@@ -140,7 +140,9 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       "function Page() { return null }\nPage.set = (x: string) => track(x)\nPage.set('first')",
     ],
   ])(
-    'a mutator-named method of %s keeps its order with an effect after it',
+    // (no order rule: the binding and its augmentation move with the
+    // component, in their order; the bare call after them runs first)
+    'a mutator-named method of %s moves with its binding past an effect after it',
     async (_, decls) => {
       const r = await mounted(
         bundler,
@@ -150,7 +152,7 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
         ),
       )
       expect(r.text).toBe('true')
-      expect(r.atLoad).toEqual(['first', 'second'])
+      expect(r.atLoad).toEqual(['second'])
     },
     timeout,
   )

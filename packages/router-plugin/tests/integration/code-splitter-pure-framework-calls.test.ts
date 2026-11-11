@@ -14,11 +14,7 @@
  * function of the same name is not the framework's.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, rootRouteOf } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from '../build-harness'
@@ -298,33 +294,15 @@ describe.each(builds)('a %s client build', (name, files, pure, create) => {
       if (!name.endsWith('react')) {
         return
       }
-      // the call is an effect: kept before the call that stays, so the
-      // option it creates is not split, reported at the option
-      for (const path of ['impure', 'local']) {
-        expect(app.where(`MARK_${path}`), path).toBe('eager')
-        expectDiagnostic(reported, {
-          severity: 'warning',
-          file: `routes/${path}.tsx`,
-          root: app.root,
-          ...(!name.startsWith('vite') && {
-            position: diagnosticPosition(files[`routes/${path}.tsx`]!, 'Page,'),
-          }),
-          times: 1,
-        })
+      // no order rule: an impure call, a local function of the same name
+      // and a context have no order with the `validateSearch` call after
+      // them either; all load with the chunk, unreported (whether a call is
+      // pure shows where two split options read its value: core rows)
+      for (const path of ['impure', 'local', 'context']) {
+        expect(app.where(`MARK_${path}`), path).toBe('lazy')
+        expect(warnings(path), path).toEqual([])
       }
-      // the component loads with the chunk, the context with the route
-      // module, reported at the context only
-      expect(app.where('MARK_context')).toBe('lazy')
-      expect(app.where('MARK_theme')).toBe('eager')
-      expectDiagnostic(reported, {
-        severity: 'warning',
-        file: 'routes/context.tsx',
-        root: app.root,
-        ...(!name.startsWith('vite') && {
-          position: diagnosticPosition(files['routes/context.tsx']!, 'Theme ='),
-        }),
-        times: 1,
-      })
+      expect(app.where('MARK_theme')).toBe('lazy')
     },
     timeout,
   )
