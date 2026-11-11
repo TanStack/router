@@ -19,6 +19,7 @@ import {
   routerFile,
   startPageEntries,
 } from './start-compose-app'
+import type { Plugin } from 'vite'
 
 const timeout = 60_000
 
@@ -338,6 +339,110 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
       const { result: html } = await ssr.run(
         `return await (await entry.startServerEntry.fetch(new Request('http://localhost/'))).text()`,
       )
+      const named = [
+        ...(html as string).matchAll(/["']\/([^"'\s]+?\.js)["']/g),
+      ].map((m) => m[1]!)
+      const emitted = new Set(client.chunks.map((c) => c.fileName))
+      expect(named.length).toBeGreaterThan(0)
+      expect(named.filter((file) => !emitted.has(file))).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('vite build --watch: the client build the server embeds', () => {
+  const index = (
+    marker: string,
+  ) => `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
+`
+  const serverEntry = startPageEntries['harness/server-entry.ts']
+
+  // An edit of the route and of the server entry, which no longer parses:
+  // the server's build fails at once, the client builds the route. The fix
+  // (the entry, and the route again) is saved while the client still builds
+  // the first edit: the server's watcher, idle after its failure, reports
+  // it at once, the client's after its build. The server's rebuild must not
+  // keep a client build older than the client's last one.
+  // Source: Fable 5.2 review (F6-2: the server waited for "the client build
+  // that is running", not the one the event causes).
+  test(
+    'a fix saved while the client builds the edit that broke the server: the document names the files of the last client build',
+    async () => {
+      let reachedHold!: () => void
+      const holding = new Promise<void>((resolve) => (reachedHold = resolve))
+      let releaseHold!: () => void
+      const hold = new Promise<void>((resolve) => (releaseHold = resolve))
+      let serverFailed!: () => void
+      const serverFailedOnce = new Promise<void>(
+        (resolve) => (serverFailed = resolve),
+      )
+      let fixWritten = false
+      /** Holds the client's build of the first edit until the server's build of the fix began. */
+      const holdClient: Plugin = {
+        name: 'test:hold-client-build',
+        transform(code, id) {
+          if (
+            this.environment.name === 'client' &&
+            id.includes('/routes/index.tsx') &&
+            code.includes('MARK_ONE')
+          ) {
+            reachedHold()
+            // (a guard: the hold ends without the server's build too)
+            const timer = setTimeout(releaseHold, 10_000)
+            return hold.then(() => {
+              clearTimeout(timer)
+              return null
+            })
+          }
+          return null
+        },
+        buildStart() {
+          if (this.environment.name === 'ssr' && fixWritten) {
+            releaseHold()
+          }
+        },
+        buildEnd(error) {
+          if (this.environment.name === 'ssr' && error) {
+            serverFailed()
+          }
+        },
+      }
+      const { client, ssr } = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...startPageEntries,
+          ...pageEntries,
+          'src/router.ts': routerFile,
+          'src/routes/__root.tsx': rootDocument(),
+          'src/routes/index.tsx': index('MARK_BEFORE'),
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        viteConfig: { plugins: [holdClient] },
+        watchEdits: [
+          {
+            edits: {
+              'src/routes/index.tsx': index('MARK_ONE'),
+              'harness/server-entry.ts': `${serverEntry}export const = ;\n`,
+            },
+          },
+          {
+            edits: {
+              'src/routes/index.tsx': index('MARK_TWO'),
+              'harness/server-entry.ts': serverEntry,
+            },
+            when: async () => {
+              await Promise.all([holding, serverFailedOnce])
+              fixWritten = true
+            },
+          },
+        ],
+      })
+      expect(client.where('MARK_TWO')).not.toBe('nowhere')
+      const { result: html } = await ssr.run(
+        `return await (await entry.startServerEntry.fetch(new Request('http://localhost/'))).text()`,
+      )
+      expect(html).toContain('MARK_TWO')
       const named = [
         ...(html as string).matchAll(/["']\/([^"'\s]+?\.js)["']/g),
       ].map((m) => m[1]!)
