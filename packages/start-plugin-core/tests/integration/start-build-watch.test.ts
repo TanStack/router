@@ -534,6 +534,8 @@ export { label } from './client-only'
   const clientOnlyEdit = {
     'src/client-only.ts': `export const label = 'MARK_EDIT'\n`,
   }
+  /** The client-only save, settled once the server was rebuilt after the client's build of it. */
+  const clientOnlySave = [{ edits: clientOnlyEdit, rebuilds: ['ssr'] }]
   /** The files of `dir` (relative, `/`-separated), at any depth. */
   const filesOf = (dir: string): Array<string> =>
     existsSync(dir)
@@ -580,7 +582,7 @@ export { label } from './client-only'
         bundler: 'vite',
         files: pageApp,
         entry: pageEntry,
-        watchEdits: clientOnlyEdit,
+        watchEdits: clientOnlySave,
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
@@ -606,7 +608,7 @@ export { label } from './client-only'
         files: pageApp,
         entry: pageEntry,
         viteConfig: { environments: { client: watch, ssr: watch } },
-        watchEdits: clientOnlyEdit,
+        watchEdits: clientOnlySave,
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
@@ -635,12 +637,17 @@ export { label } from './client-only'
             client: { build: { rolldownOptions: { output: names } } },
           },
         },
-        watchEdits: {
-          'src/client-entry.ts': `import './app.css'
+        watchEdits: [
+          {
+            edits: {
+              'src/client-entry.ts': `import './app.css'
 export { getRouter } from './router'
 export { label } from './client-only'
 `,
-        },
+            },
+            rebuilds: ['ssr'],
+          },
+        ],
       })
       const css = filesOf(build.client.outDir).filter((f) => f.endsWith('.css'))
       expect(css.length).toBeGreaterThan(0)
@@ -752,7 +759,7 @@ export { label } from './client-only'
               return Promise.resolve()
             },
           },
-          { edits: clientOnlyEdit },
+          { edits: clientOnlyEdit, rebuilds: ['ssr'] },
         ],
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
@@ -799,6 +806,7 @@ export { label } from './client-only'
           watchEdits: [
             {
               edits: clientOnlyEdit,
+              rebuilds: ['ssr'],
               when: () => {
                 during = readdirSync(temporary).map((name) => {
                   const stat = lstatSync(path.join(temporary, name))
