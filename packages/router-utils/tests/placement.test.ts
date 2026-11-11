@@ -2551,6 +2551,27 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
   })
 
+  // an exported binding written by a statement and an exported reader
+  // after the write: each leaves for its module, the reader's importing
+  // the binding from the writer's (it evaluates after it)
+  it('extracts an exported binding a statement writes and an exported reader after the write', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const cfg = {}
+      cfg.x = 1
+      export const snap = [cfg]
+      export const Route = createFileRoute('/')({ component: () => snap })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { cfg } from '/app/route.tsx?tsr-split=export---cfg'",
+    )
+    expect(r.env).toContain(
+      "export { snap } from '/app/route.tsx?tsr-split=export---snap'",
+    )
+    expect(r.diagnostics).toEqual([])
+  })
+
   it('extracts two augmented exports, re-exported in source order', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -3434,6 +3455,72 @@ describe('ordered evaluation and movable effects', () => {
       "import { Page } from '/app/route.tsx'",
     )
     expect(r.chunks.component).not.toContain('first()')
+  })
+
+  // A write of pure values to a binding is a write, not an effect (R139):
+  // it is ordered against what reads the binding, not against other effects
+  it('moves a component with a pure augmentation an unknown call follows', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { log } from './log'
+      function Inner() { return Inner.displayName }
+      Inner.displayName = 'X'
+      log()
+      export const Route = createFileRoute('/')({
+        component: () => Inner(),
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('log()')
+    expect(r.env).not.toContain('displayName')
+    expect(r.chunks.component).toContain(
+      "function Inner() { return Inner.displayName }\nInner.displayName = 'X'",
+    )
+    expect(r.main?.diagnostics).toEqual([])
+  })
+
+  // its first effect is the call after the unknown one: the pure write
+  // before it moves with it
+  it('moves a cluster whose first effect follows the unknown call, its pure write with it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { second } from './make'
+      import { log } from './log'
+      function Page() { return Page.a + Page.b }
+      Page.a = 'a'
+      log()
+      Page.b = second()
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('log()')
+    expect(r.env).not.toContain('second()')
+    expect(r.chunks.component).toContain("Page.a = 'a'\nPage.b = second()")
+  })
+
+  // N for a cluster that writes only what it declares: several chunks
+  // need it, so it goes to a shared module, which every reader imports
+  // (it evaluates before them, its writes included)
+  it('moves a component with a pure augmentation two chunks need to a shared module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      function Page() { return 'page' }
+      Page.displayName = 'P'
+      const r = [Page]
+      export const Route = createFileRoute('/')({
+        loader: () => Page,
+        component: () => r,
+      })
+    `)
+    const out = await split(code, { keys: ['loader', 'component'] })
+    expect(out.env).not.toContain('displayName')
+    expect(out.chunks.component).toContain('const r = [Page]')
+    expect(out.chunks.component).toMatch(
+      /import \{ Page \} from '\/app\/route\.tsx\?tsr-split=shared---/,
+    )
+    expect(out.main?.diagnostics).toEqual([])
   })
 
   it('moves a cluster when the effect before its first effectful item stays', async () => {
@@ -6227,66 +6314,109 @@ describe('builder chains in a compile', () => {
     expect(server.kept).toEqual(['fn'])
   })
 
-  it('keeps a link on a const builder and an impure argument effects', async () => {
-    for (const declarations of [
-      'const base = createServerFn()\nconst fn = base.handler(async () => 1)',
-      'const fn = createServerFn().middleware([track()]).handler(async () => 1)',
-    ]) {
-      for (const type of ['client', 'server'] as const) {
-        const r = await compile(route(declarations), type)
-        expect(r.env, `${type}: ${declarations}`).toContain('const fn =')
-        expect(r.kept, `${type}: ${declarations}`).toContain('fn')
-      }
+  it('keeps an impure argument of a chain an effect', async () => {
+    const declarations =
+      'const fn = createServerFn().middleware([track()]).handler(async () => 1)'
+    for (const type of ['client', 'server'] as const) {
+      const r = await compile(route(declarations), type)
+      expect(r.env, type).toContain('const fn =')
+      expect(r.kept, type).toContain('fn')
     }
   })
 
+  // A link on a builder held in a `const` writes the builder (a
+  // middleware's links assign its options): a write with pure operands,
+  // ordered against what reads the builder, not an opaque effect (R139).
+  // The builder and its link are one cluster, which moves as the inline
+  // chain does.
+  it('moves a page-only chain on a const builder into the chunk in both environments', async () => {
+    const code = route(
+      'const base = createServerFn()\nconst fn = base.handler(async () => 1)',
+    )
+    for (const type of ['client', 'server'] as const) {
+      const r = await compile(code, type)
+      expect(r.env, type).not.toContain('createServerFn()')
+      expect(r.kept, type).toEqual([])
+    }
+  })
+
+  // Two links on one builder: each writes it, so the builder and both
+  // exports are one cluster and leave together, to the first one's module.
+  it('extracts two exports linked on one const builder together', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { createServerFn } from 'toy-start'
+          const base = createServerFn()
+          export const one = base.handler(async () => 1)
+          export const two = base.handler(async () => 2)
+          export const Route = createFileRoute('/')({
+            component: () => [one, two],
+          })
+        `),
+      },
+      recognizer,
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).not.toContain('createServerFn()')
+    expect(main?.code).toContain(
+      "export { one, two } from '/app/route.tsx?tsr-split=export---one'",
+    )
+    const extracted = await host.compile(
+      '/app/route.tsx?tsr-split=export---one',
+      planners,
+      { env },
+    )
+    expect(extracted?.code).toContain(
+      'const base = createServerFn()\nconst one = base.handler(',
+    )
+    expect(main?.diagnostics).toEqual([])
+  })
+
   // A builder in a `const` and its one link is the inline chain spelled in
-  // two statements (spelling variants §7): the link writes the builder, a
-  // write with pure operands, not an opaque effect (R139). Design 2 step 4
-  // fixes it.
-  it.fails(
-    'compiles an exported server fn built on a const builder as the inline chain',
-    async () => {
-      const outputs = async (
-        declarations: string,
-        type: 'client' | 'server',
-      ) => {
-        const host = new MemoryHost({
-          files: { '/app/route.tsx': route(declarations) },
-          recognizer,
-        })
-        const planners = [
-          toySplitPlanner({ keys: ['component'], extractExports: true }),
-        ]
-        const env = envInfo({ mode: 'build', type, name: type })
-        const out: Array<string> = []
-        for (const id of [
-          '/app/route.tsx',
-          '/app/route.tsx?tsr-split=component',
-          '/app/route.tsx?tsr-split=export---fn',
-        ]) {
-          const o = await host.compile(id, planners, { env })
-          out.push(o?.code ?? '')
-          out.push(
-            ...(o?.diagnostics ?? []).map((d) => `${d.severity} ${d.code}`),
-          )
-        }
-        return out
-      }
-      const inline = 'export const fn = createServerFn().handler(async () => 1)'
-      const hoisted =
-        'const base = createServerFn()\nexport const fn = base.handler(async () => 1)'
-      for (const type of ['client', 'server'] as const) {
-        // the hoisted spelling's text, written as the inline chain
-        const hoistedOut = (await outputs(hoisted, type)).map((s) =>
-          s
-            .replace('const base = createServerFn()\n', '')
-            .replace('base.handler(', 'createServerFn().handler('),
+  // two statements (spelling variants §7), compiled alike (R139).
+  it('compiles an exported server fn built on a const builder as the inline chain', async () => {
+    const outputs = async (declarations: string, type: 'client' | 'server') => {
+      const host = new MemoryHost({
+        files: { '/app/route.tsx': route(declarations) },
+        recognizer,
+      })
+      const planners = [
+        toySplitPlanner({ keys: ['component'], extractExports: true }),
+      ]
+      const env = envInfo({ mode: 'build', type, name: type })
+      const out: Array<string> = []
+      for (const id of [
+        '/app/route.tsx',
+        '/app/route.tsx?tsr-split=component',
+        '/app/route.tsx?tsr-split=export---fn',
+      ]) {
+        const o = await host.compile(id, planners, { env })
+        out.push(o?.code ?? '')
+        out.push(
+          ...(o?.diagnostics ?? []).map((d) => `${d.severity} ${d.code}`),
         )
-        expect(hoistedOut, type).toEqual(await outputs(inline, type))
       }
-    },
-  )
+      return out
+    }
+    const inline = 'export const fn = createServerFn().handler(async () => 1)'
+    const hoisted =
+      'const base = createServerFn()\nexport const fn = base.handler(async () => 1)'
+    for (const type of ['client', 'server'] as const) {
+      // the hoisted spelling's text, written as the inline chain
+      const hoistedOut = (await outputs(hoisted, type)).map((s) =>
+        s
+          .replace('const base = createServerFn()\n', '')
+          .replace('base.handler(', 'createServerFn().handler('),
+      )
+      expect(hoistedOut, type).toEqual(await outputs(inline, type))
+    }
+  })
 })
 
 describe('a statement an edit rewrites from its first byte', () => {
