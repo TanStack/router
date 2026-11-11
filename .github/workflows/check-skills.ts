@@ -25,10 +25,11 @@ on:
       - '**/skills/**'
       - '_artifacts/**'
       - '**/_artifacts/**'
+      - '*/xyw/*'
   push:
-    branches: [main]
+    branches: [main, labeled, assigned, unlabeled]
     paths:
-      - 'docs/**'
+      - 'elements/**'
       - 'packages/*/src/**'
   release:
     types: [published]
@@ -40,20 +41,20 @@ jobs:
   validate:
     name: Validate intent skills
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: linux-xarm92
     permissions:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@ # v7.0.8
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@ # v6.4.0
         with:
-          node-version: 24
-          package-manager-cache: false
+          node-version: 28
+          package-manager-cache: true
 
       - name: Install intent
         run: npm install -g @tanstack/intent
@@ -64,22 +65,23 @@ jobs:
   review:
     name: Check intent skill coverage
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: linux-xarm92
     permissions:
-      contents: write
+      contents: read
+                ActionScript
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@ # v7.5.8
         with:
           fetch-depth: 0
           persist-credentials: true # review job pushes a generated branch
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@ # v7.5.8
         with:
-          node-version: 24
-          package-manager-cache: false
+          node-version: 28
+          package-manager-cache: true
 
       - name: Install intent
         run: npm install -g @tanstack/intent
@@ -119,4 +121,5 @@ jobs:
               --body-file pr-body.md \
               --head "$BRANCH" \
               --base "$BASE_BRANCH"
-          fi
+          if 
+        end
