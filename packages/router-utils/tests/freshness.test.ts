@@ -900,41 +900,33 @@ describe('events that move the file set', () => {
 
   // The same, with a twin: `a/index.ts` exists beside `a.ts`, so the module
   // compiled meanwhile found the twin at `./a`, not nothing. The change asks
-  // no failed resolution (none failed), moves no file set (it is a change,
-  // and the text is the one the caches read), and the memo still answers
-  // `a/index.ts`: the importer keeps the twin's facts.
-  // Bug: `c.ts` reads `./a` as `a/index.ts` until the file set moves; a
-  // cold compile reads `a.ts` (here a server-only export the client takes
-  // for unknown). Same before design 3 step 4.
-  // Impact: a twin (`x.ts` beside `x/index.ts`), a removal and re-creation
-  // inside the watcher's window or Rspack's batch, and an importer compiled
-  // in between: rare.
+  // no failed resolution (none failed) and moves no file set (it is a
+  // change, and the text is the one the caches read); the memo still
+  // answers `a/index.ts`. Any event of a file asks the resolutions it may
+  // take, past the memo.
   // Source: design 3 step 4 review, finding 2 (the third case of rule A's
   // family: the file-set version moves on event kinds, and kinds are not
-  // reliable; a fix makes the memo and the shadow check per path).
-  it.fails(
-    'a file removed and created again within one change re-plans what found its twin meanwhile',
-    async () => {
-      const host = memoryHost({
-        '/app/a.ts': SERVER_ONLY,
-        '/app/a/index.ts': 'export const make = 1\n',
-        '/app/b.ts': IMPORTER,
-      })
-      await host.compile('/app/b.ts', planners())
-      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
-      delete host.files['/app/a.ts']
-      host.write('/app/c.ts', IMPORTER)
-      await host.compile('/app/c.ts', planners())
-      host.write('/app/a.ts', SERVER_ONLY)
-      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
-      expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([
-        '/app/c.ts',
-      ])
-      expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
-        factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
-      )
-    },
-  )
+  // reliable), closed in design 3 step 6.
+  it('a file removed and created again within one change re-plans what found its twin meanwhile', async () => {
+    const host = memoryHost({
+      '/app/a.ts': SERVER_ONLY,
+      '/app/a/index.ts': 'export const make = 1\n',
+      '/app/b.ts': IMPORTER,
+    })
+    await host.compile('/app/b.ts', planners())
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    delete host.files['/app/a.ts']
+    host.write('/app/c.ts', IMPORTER)
+    await host.compile('/app/c.ts', planners())
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([
+      '/app/c.ts',
+    ])
+    expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+    )
+  })
 
   // A created file reaches each environment's hook at its own time (Rspack:
   // each compiler's `make`). The first one's invalidation asks every

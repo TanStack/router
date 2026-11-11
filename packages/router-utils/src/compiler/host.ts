@@ -556,6 +556,7 @@ async function applyChange(
     indexKey: string,
     relevant: (fp: DependencyFingerprint) => boolean,
     seen = new Set<string>(),
+    fresh = false,
   ): Promise<void> => {
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
@@ -573,7 +574,7 @@ async function applyChange(
         continue
       }
       const host = hostOf(entry.key)
-      const src = fingerprintSourceFor(caches, host, cache.env)
+      const src = fingerprintSourceFor(caches, host, cache.env, fresh)
       const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
       if (!fps) {
         continue
@@ -601,8 +602,15 @@ async function applyChange(
       }
     }
   }
+  // any event of a file but its removal: a creation may hide in a change
+  // (a removal and re-creation reported as one), and the memo may hold an
+  // answer from while the file was gone (asked past it, `fresh`)
+  // (a `package.json`'s repeat moved nothing: only its first event asks)
   const shadows =
-    change.kind === 'add' || manifest ? shadowTest(change.path) : null
+    change.kind === 'add' ||
+    (change.kind === 'change' && (!manifestAt || manifest))
+      ? shadowTest(change.path)
+      : null
   for (const cache of caches.plans.values()) {
     // (a repeat of a change moved no fact of the file: only failed
     // resolutions may have moved, below)
@@ -664,6 +672,7 @@ async function applyChange(
             return found !== null && found !== change.path && shadows(found)
           },
           seen,
+          !fileSetMoved,
         )
       }
     }
@@ -816,10 +825,12 @@ export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.stale.release(env)
 }
 
+/** `fresh`: resolutions are asked past the environment's memo (`resolveForAnalysis`). */
 export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,
   env: string,
+  fresh = false,
 ): FingerprintSource {
   return {
     summary: async (id) => (await caches.rawFacts.get(id, env)).summary,
@@ -827,7 +838,7 @@ export function fingerprintSourceFor(
     targetMarker: (id) => caches.rawFacts.marker(id, env),
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (importer, specifier) =>
-      resolveForAnalysis(caches, host, env, importer, specifier),
+      resolveForAnalysis(caches, host, env, importer, specifier, fresh),
   }
 }
 
@@ -855,7 +866,9 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
  * resolved before at the current file-set version, settling or settled (the
  * compiles of a build ask for a barrel's re-exports once per importing
  * module); unresolved pairs are not kept. The caller records the answer in
- * its ledger.
+ * its ledger. `fresh`: the resolver is asked again, and its answer replaces
+ * the memo's (a file created unseen may take a resolution the memo answers
+ * from before it, at an unchanged file-set version).
  */
 export function resolveForAnalysis(
   caches: CompilerCaches,
@@ -863,6 +876,7 @@ export function resolveForAnalysis(
   env: string,
   importerCanonicalId: string,
   specifier: string,
+  fresh = false,
 ): Promise<string | null> {
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
     // known packages are recognised by specifier, never resolved
@@ -881,7 +895,7 @@ export function resolveForAnalysis(
     memo = new Map()
     memos.set(memoKey, memo)
   }
-  const hit = memo.get(specifier)
+  const hit = fresh ? undefined : memo.get(specifier)
   if (hit !== undefined) {
     return typeof hit === 'string' ? Promise.resolve(hit) : hit
   }

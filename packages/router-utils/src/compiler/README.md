@@ -331,9 +331,10 @@ text compiles waits for it and emits its own output from the result.
   that reads back is an add, a change of one that reads nothing a removal). A change marks the file's raw facts
   stale (its next build takes the text the event read) and re-validates dependents' fingerprints with each
   environment's own resolver (a resolver that throws makes the plan stale, and its next compile reports the error;
-  add/unlink and a `package.json` change drop the resolution memo; an add also re-asks the resolutions it may
-  take: a file of the same name with another extension, or of a directory a resolution went into, looked up in the
-  dependents index by directory and name, not scanned). The file's own
+  add/unlink and a `package.json` change drop the resolution memo; any event of a file but its removal also
+  re-asks the resolutions the file may take, past the memo when the file set stands (a creation may hide in a
+  change): a file of the same name with another extension, or of a directory a resolution went into, looked up in
+  the dependents index by directory and name, not scanned). The file's own
   plans are keyed by its text and stay (a bundler that built the new text already keeps their rows) until a compile
   of a newer text ends: with its plan, or, for a text without one (untouched, empty, not parsed), without; a removal
   evicts them and stales every plan that read the file, unasked. The plans found stale enter their environment's
