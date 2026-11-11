@@ -85,6 +85,12 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       'MARK_PAGE',
     ],
     [
+      'is declared in a `const`, writing a member of a `const`',
+      'const seen = { n: 0 }\nconst C = memo(function Page() { seen.n++; return <p>MARK_PAGE{seen.n}</p> })',
+      '  component: C,',
+      'MARK_PAGE1',
+    ],
+    [
       'is named, writing a member of a `const`',
       'const seen = { n: 0 }\nfunction Page() { seen.n++; return <p>MARK_PAGE{seen.n}</p> }',
       '  component: memo(Page),',

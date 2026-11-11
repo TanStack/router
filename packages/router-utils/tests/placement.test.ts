@@ -5511,6 +5511,38 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
+  // REVIEW-design2-final finding 5 (architect: one rule): the same holds
+  // for a declaration. A binding only its own callback writes, which
+  // nothing else touches when the module loads, does not pin it: the
+  // `const` spelling moves as the option value splits.
+  it.each([
+    [
+      'an assignment',
+      'let didInit = false\nconst C = f(function Page() { if (!didInit) { didInit = true } return null })',
+      'C',
+    ],
+    [
+      'a member write',
+      'const seen = { n: 0 }\nconst C = f(function Page() { seen.n++; return null })',
+      'C',
+    ],
+    [
+      'a member write in an arrow',
+      'const cache = {}\nconst getIt = f(() => { cache.v = 1 })',
+      'getIt',
+    ],
+  ])(
+    'moves a declaration whose call runs its own function writing a binding nothing else touches (%s)',
+    async (_, decls, name) => {
+      const r = await split(route(decls, `component: () => ${name},`), {
+        files: lib,
+      })
+      expect(r.env).not.toContain(`const ${name} =`)
+      expect(r.chunks.component).toContain(`const ${name} = f(`)
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
   it('keeps an option value whose call runs a function writing a binding another function writes later in place', async () => {
     const r = await split(
       route(
