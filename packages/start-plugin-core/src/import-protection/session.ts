@@ -135,24 +135,29 @@ export function createImportProtection(
 
 /**
  * Whether a module id is one of `ids` (a compilation's modules): as given
- * (the hosts record the ids they compile), else compared as the compiler
- * keys an output, its canonical id with its owned query for a derived one
+ * (most ids are already in the form the hosts record), else compared as the
+ * compiler keys an output, `key` (default: its canonical id with its owned
+ * query for a derived one; a host passes its own canonical form first)
  * (`ImportProtectionEnv.hold`). The second form is built on the first miss
  * only: an id that left the compilation is rare.
  */
-export function heldIn(ids: Iterable<string>): (id: string) => boolean {
+export function heldIn(
+  ids: Iterable<string>,
+  key: (id: string) => string = outputKey,
+): (id: string) => boolean {
   const held = new Set(ids)
   let keys: Set<string> | null = null
   return (id) => {
     if (held.has(id)) {
       return true
     }
-    keys ??= new Set([...held].map(outputKey))
-    return keys.has(outputKey(id))
+    keys ??= new Set([...held].map(key))
+    return keys.has(key(id))
   }
 }
 
-function outputKey(id: string): string {
+/** An output's key: its canonical id, with its owned query for a derived output. */
+export function outputKey(id: string): string {
   const identity = identify(normalizePath(id))
   return identity.derived
     ? deriveId(identity.canonicalId, identity.derived)

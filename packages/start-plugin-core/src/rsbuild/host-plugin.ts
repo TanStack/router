@@ -27,7 +27,7 @@ import {
   webpackImporters,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { heldIn } from '../import-protection/session'
+import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
   rspackGraphView,
@@ -728,7 +728,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       }
 
-      /** The canonical resources of a compilation's modules and of its child compilers' (built as this environment's). */
+      /** The resources of a compilation's modules and of its child compilers' (built as this environment's). */
       function* compilationResources(
         compilation: Rspack.Compilation,
       ): Generator<string> {
@@ -738,7 +738,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           for (const m of c.modules) {
             const resource = (m as unknown as ModuleLike).resource
             if (resource) {
-              yield canonicalResource(resource)
+              yield resource
             }
           }
         }
@@ -910,7 +910,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (session.files.compiled(environment.name)) {
                   // a later compilation: what it no longer holds asks for nothing (the first
                   // one holds every module it restored or built)
-                  ipEnv.hold(heldIn(compilationResources(compilation)))
+                  ipEnv.hold(
+                    heldIn(compilationResources(compilation), (r) =>
+                      outputKey(canonicalResource(r)),
+                    ),
+                  )
                 }
                 await serveAsDemanded(ipEnv, compilation)
               }
