@@ -39,6 +39,46 @@ export interface IdleCompilerLike {
   watching?: { invalidate: () => void } | undefined
 }
 
+/**
+ * Runs `work`, a hook of ours on a webpack-family compiler. In watch mode
+ * it never rejects: a rejected hook ends the bundler's watcher (webpack's
+ * and Rspack's `Watching` then neither finish the compilation nor watch
+ * again, so a dev server stops answering; Rspack 2.3.1 panics at the next
+ * compilation). Its failure is an error in `errors` instead (a
+ * compilation's; a hook that runs before there is one, `watchRun`, gives
+ * an array the host pushes into the next compilation's): the compilation
+ * ends as a failed build, which the terminal and the overlay show, and
+ * watching goes on. What the hook took and did not finish it gives back
+ * itself (`StaleSetDrain.rebuild`). A one-shot build rejects: a fatal error
+ * ends it.
+ */
+export async function reportingFailure(
+  compiler: {
+    watchMode?: boolean
+    webpack?: { WebpackError?: new (message: string) => Error }
+  },
+  errors: Array<Error>,
+  /** The host's tag and what the hook does (`Building the stale modules again`). */
+  failure: { tag: string; what: string },
+  work: () => Promise<void>,
+): Promise<void> {
+  if (!compiler.watchMode) {
+    return work()
+  }
+  try {
+    await work()
+  } catch (error) {
+    const WebpackError = compiler.webpack?.WebpackError ?? Error
+    const detail =
+      error instanceof Error ? (error.stack ?? error.message) : String(error)
+    errors.push(
+      new WebpackError(
+        `${failure.tag} ${failure.what} failed. Watching goes on, and the next change is built again.\n${detail}`,
+      ),
+    )
+  }
+}
+
 /** The paths of the plans `invalidate()` evicted or found stale, for `env` (every environment when omitted). */
 export function pathsOf(keys: Iterable<PlanKey>, env?: string): Array<string> {
   const out = new Set<string>()
@@ -150,16 +190,26 @@ export class StaleSetDrain {
       return
     }
     const built = compilation.builtModules
-    await rebuildModulesWhere(compilation, (m) => {
-      if (!m.resource) {
-        return false
+    try {
+      await rebuildModulesWhere(compilation, (m) => {
+        if (!m.resource) {
+          return false
+        }
+        const path = pathOf(m.resource)
+        return (
+          paths.has(path) ||
+          (taken !== undefined && taken.has(path) && !built?.has(m))
+        )
+      })
+    } catch (error) {
+      // what this compilation was to build stays stale (held paths too, as
+      // plain ones: a compiler of the webpack family takes both): the next
+      // compilation builds it, which `compiled` asks for, within the bound
+      for (const path of [...paths, ...(taken ?? [])]) {
+        caches.stale.add(env, path)
       }
-      const path = pathOf(m.resource)
-      return (
-        paths.has(path) ||
-        (taken !== undefined && taken.has(path) && !built?.has(m))
-      )
-    })
+      throw error
+    }
   }
 
   /**

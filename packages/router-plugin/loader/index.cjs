@@ -4,6 +4,8 @@
  * The webpack / Rspack loader of @tanstack/router-plugin. It is a static
  * file so that the bundler can load it by path; the implementation lives on
  * the compiler, installed by the plugin's `apply` (one per plugin instance).
+ * Raw: its rule matches every JavaScript file, and a module that is no
+ * route goes on as the bytes it came as (`source` is a Buffer).
  */
 module.exports = function tanstackRouterLoader(source, inputMap) {
   const callback = this.async()
@@ -20,3 +22,5 @@ module.exports = function tanstackRouterLoader(source, inputMap) {
     (error) => callback(error),
   )
 }
+
+module.exports.raw = true

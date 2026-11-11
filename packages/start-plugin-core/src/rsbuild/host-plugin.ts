@@ -20,6 +20,7 @@ import {
   locatedError,
   normalizePath,
   rebuildModules,
+  reportingFailure,
   warnEagerExports,
   webpackImporters,
 } from '@tanstack/router-utils/compiler'
@@ -198,6 +199,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
+      /** A failed `watchRun` of ours, reported by the compilation it started. */
+      const failedBeforeCompilation: Array<Error> = []
+      /** Runs a hook of ours whose failure goes to `errors` (`reportingFailure`: in watch mode it never rejects). */
+      const reporting = (
+        errors: Array<Error>,
+        what: string,
+        work: () => Promise<void>,
+      ) =>
+        reportingFailure(
+          compiler,
+          errors,
+          { tag: '[tanstack-start]', what },
+          work,
+        )
       // A persistent cache holds this compiler's outputs and restores them
       // without compiling (Rsbuild's `buildCache` keys on the app's
       // `package.json`, config and tsconfig; `tools.rspack` may set its own).
@@ -374,56 +389,72 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // compilation starts (a file's facts need no resolver, and a resolution that found a
       // removed file is stale): the modules of their stale dependents are built at its
       // `finishMake`
-      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
-        if (
-          environment.type === 'client' &&
-          session.start.opts.mode === 'build'
-        ) {
-          // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
-          // no `beforeRun`); the client compiles first
-          session.start.warnings.reset()
-        }
-        const modified = [...(c.modifiedFiles ?? [])]
-        const removed = [...(c.removedFiles ?? [])]
-        if (modified.length > 0 || removed.length > 0) {
-          session.drain.caused(environment.name)
-        }
-        ipEnvOf()?.beginBuild()
-        await session.invalidateFileEvents([
-          ...modified
-            .filter(
-              (file) => eventOf(file) === 'change' && !isPackageManifest(file),
-            )
-            .map((file) => ({ file, kind: 'change' as const })),
-          ...removed.map((file) => ({ file, kind: 'unlink' as const })),
-        ])
-        await opts.generator.watchRun(modified, removed)
-      })
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, (c) =>
+        reporting(
+          failedBeforeCompilation,
+          'Finding the modules the changed files affect',
+          async () => {
+            if (
+              environment.type === 'client' &&
+              session.start.opts.mode === 'build'
+            ) {
+              // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
+              // no `beforeRun`); the client compiles first
+              session.start.warnings.reset()
+            }
+            const modified = [...(c.modifiedFiles ?? [])]
+            const removed = [...(c.removedFiles ?? [])]
+            if (modified.length > 0 || removed.length > 0) {
+              session.drain.caused(environment.name)
+            }
+            ipEnvOf()?.beginBuild()
+            await session.invalidateFileEvents([
+              ...modified
+                .filter(
+                  (file) =>
+                    eventOf(file) === 'change' && !isPackageManifest(file),
+                )
+                .map((file) => ({ file, kind: 'change' as const })),
+              ...removed.map((file) => ({ file, kind: 'unlink' as const })),
+            ])
+            await opts.generator.watchRun(modified, removed)
+          },
+        ),
+      )
       // created files, invalidated once Rspack's resolver forgot what it found in the last
       // compilation (at `make`, before the modules build; a new file may take resolutions):
       // the modules of their stale dependents are built at this compilation's `finishMake`
-      compiler.hooks.make.tapPromise(PLUGIN_NAME, async (compilation) => {
-        if (compilation.compiler !== compiler) {
-          return
-        }
-        // Rspack reports no event for a file created while nothing depended on it (a
-        // target deleted and recreated between edits): missing-file facts are read again
-        session.forgetMisses()
-        const modified = [...(compiler.modifiedFiles ?? [])]
-        await session.invalidateFileEvents(
-          modified
-            .filter(
-              (file) => eventOf(file) === 'add' || isPackageManifest(file),
+      compiler.hooks.make.tapPromise(PLUGIN_NAME, (compilation) =>
+        reporting(
+          compilation.errors,
+          'Finding the modules the created files affect',
+          async () => {
+            if (compilation.compiler !== compiler) {
+              return
+            }
+            // Rspack reports no event for a file created while nothing depended on it (a
+            // target deleted and recreated between edits): missing-file facts are read again
+            session.forgetMisses()
+            const modified = [...(compiler.modifiedFiles ?? [])]
+            await session.invalidateFileEvents(
+              modified
+                .filter(
+                  (file) => eventOf(file) === 'add' || isPackageManifest(file),
+                )
+                .map((file) => ({
+                  file,
+                  kind: isPackageManifest(file)
+                    ? ('change' as const)
+                    : ('add' as const),
+                })),
             )
-            .map((file) => ({
-              file,
-              kind: isPackageManifest(file)
-                ? ('change' as const)
-                : ('add' as const),
-            })),
-        )
-        session.drain.building(environment.name, modified.map(normalizePath))
-      })
+            session.drain.building(
+              environment.name,
+              modified.map(normalizePath),
+            )
+          },
+        ),
+      )
       // a registry change (the generator published new route ids): its files
       // are stale in each environment (the session listens once for all
       // compilers)
@@ -471,6 +502,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
+        compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
         env.compiled.clear()
         reports = []
@@ -540,28 +572,34 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 { setTimer: () => null, clearTimer: () => {} },
               )
             }
-            compilation.hooks.finishModules.tapPromise(
-              PLUGIN_NAME,
-              async (modules) => {
-                ipEnv.graph = guardedGraphView(compilation)
-                if (session.start.ip!.config.log === 'always') {
-                  // modules this compilation kept without compiling them report again: an
-                  // importer its violations, an edge module the pending ones it witnesses
-                  for (const m of modules) {
-                    const module = m as unknown as ModuleLike
-                    if (!module.resource || env.compiled.has(module.resource)) {
-                      continue
-                    }
-                    const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-                    if (record) {
-                      await ipEnv.reportAgain(record)
-                    } else {
-                      await ipEnv.confirm(module.resource)
+            compilation.hooks.finishModules.tapPromise(PLUGIN_NAME, (modules) =>
+              reporting(
+                compilation.errors,
+                'Checking import protection',
+                async () => {
+                  ipEnv.graph = guardedGraphView(compilation)
+                  if (session.start.ip!.config.log === 'always') {
+                    // modules this compilation kept without compiling them report again: an
+                    // importer its violations, an edge module the pending ones it witnesses
+                    for (const m of modules) {
+                      const module = m as unknown as ModuleLike
+                      if (
+                        !module.resource ||
+                        env.compiled.has(module.resource)
+                      ) {
+                        continue
+                      }
+                      const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                      if (record) {
+                        await ipEnv.reportAgain(record)
+                      } else {
+                        await ipEnv.confirm(module.resource)
+                      }
                     }
                   }
-                }
-                ipEnv.reporter?.flush(true)
-              },
+                  ipEnv.reporter?.flush(true)
+                },
+              ),
             )
           } else {
             compilation.hooks.processAssets.tapPromise(
@@ -569,23 +607,29 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 name: PLUGIN_NAME,
                 stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
               },
-              async () => {
-                const buildEnv = ipEnvOf()!
-                const lookup = buildEnv.witness()
-                const live = readRspackWitness(compilation as never, (res) =>
-                  lookup(canonicalResource(res)),
-                )
-                const reports = await buildEnv.surviving(
-                  live,
-                  guardedGraphView(compilation),
-                )
-                for (const report of reports) {
-                  ;(report.severity === 'error'
-                    ? compilation.errors
-                    : compilation.warnings
-                  ).push(new WebpackError(report.message))
-                }
-              },
+              () =>
+                reporting(
+                  compilation.errors,
+                  'Checking import protection',
+                  async () => {
+                    const buildEnv = ipEnvOf()!
+                    const lookup = buildEnv.witness()
+                    const live = readRspackWitness(
+                      compilation as never,
+                      (res) => lookup(canonicalResource(res)),
+                    )
+                    const reports = await buildEnv.surviving(
+                      live,
+                      guardedGraphView(compilation),
+                    )
+                    for (const report of reports) {
+                      ;(report.severity === 'error'
+                        ? compilation.errors
+                        : compilation.warnings
+                      ).push(new WebpackError(report.message))
+                    }
+                  },
+                ),
             )
           }
         }
@@ -686,21 +730,26 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const tree = opts.clientRouteTree
         compiler.hooks.finishMake.tapPromise(
           { name: `${PLUGIN_NAME}:route-tree`, stage: -30 },
-          async (compilation) => {
-            if (compilation.compiler !== compiler) {
-              return
-            }
-            const version = tree.version()
-            if (version === clientTreeBuiltAt) {
-              return
-            }
-            await rebuildModules(
-              compilation,
-              new Set([normalizePath(tree.path())]),
-              canonicalResource,
-            )
-            clientTreeBuiltAt = version
-          },
+          (compilation) =>
+            reporting(
+              compilation.errors,
+              'Building the client route tree again',
+              async () => {
+                if (compilation.compiler !== compiler) {
+                  return
+                }
+                const version = tree.version()
+                if (version === clientTreeBuiltAt) {
+                  return
+                }
+                await rebuildModules(
+                  compilation,
+                  new Set([normalizePath(tree.path())]),
+                  canonicalResource,
+                )
+                clientTreeBuiltAt = version
+              },
+            ),
         )
       }
 
@@ -718,121 +767,128 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
-        async (compilation) => {
-          if (compilation.compiler !== compiler) {
-            return
-          }
-          if (
-            !session.files.compiled(environment.name) &&
-            env.persistsModules
-          ) {
-            const restored: Array<{
-              plan: PersistedPlan
-              layer: string | undefined
-            }> = []
-            for (const m of compilation.modules) {
-              const module = m as unknown as ModuleLike
-              const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD]
+        (compilation) =>
+          reporting(
+            compilation.errors,
+            'Building the out-of-date modules again',
+            async () => {
+              if (compilation.compiler !== compiler) {
+                return
+              }
               if (
-                typeof plan === 'string' &&
-                module.resource &&
-                !env.compiled.has(module.resource)
+                !session.files.compiled(environment.name) &&
+                env.persistsModules
               ) {
-                restored.push({
-                  plan: JSON.parse(plan) as PersistedPlan,
-                  layer: module.layer ?? undefined,
-                })
+                const restored: Array<{
+                  plan: PersistedPlan
+                  layer: string | undefined
+                }> = []
+                for (const m of compilation.modules) {
+                  const module = m as unknown as ModuleLike
+                  const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD]
+                  if (
+                    typeof plan === 'string' &&
+                    module.resource &&
+                    !env.compiled.has(module.resource)
+                  ) {
+                    restored.push({
+                      plan: JSON.parse(plan) as PersistedPlan,
+                      layer: module.layer ?? undefined,
+                    })
+                  }
+                }
+                await session.restorePlans(environment.name, restored)
               }
-            }
-            await session.restorePlans(environment.name, restored)
-          }
-          await session.drain.rebuild(
-            environment.name,
-            compilation,
-            (r) => identify(canonicalResource(r)).path,
-          )
-          const ipEnv = ipEnvOf()
-          // a compiler's first compilation judges what it restored: its modules'
-          // import-protection records are replayed first, the modules to judge
-          // again are rebuilt before the server-fn snapshot
-          const judgesRestored =
-            ipEnv !== null && !session.files.compiled(environment.name)
-          if (judgesRestored) {
-            const unjudged = new Set<string>()
-            for (const m of compilation.modules) {
-              const module = m as unknown as ModuleLike
-              const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-              if (
-                ip &&
-                module.resource &&
-                !env.compiled.has(module.resource) &&
-                ipEnv.unjudged(canonicalResource(module.resource), ip)
-              ) {
-                unjudged.add(module.resource)
+              await session.drain.rebuild(
+                environment.name,
+                compilation,
+                (r) => identify(canonicalResource(r)).path,
+              )
+              const ipEnv = ipEnvOf()
+              // a compiler's first compilation judges what it restored: its modules'
+              // import-protection records are replayed first, the modules to judge
+              // again are rebuilt before the server-fn snapshot
+              const judgesRestored =
+                ipEnv !== null && !session.files.compiled(environment.name)
+              if (judgesRestored) {
+                const unjudged = new Set<string>()
+                for (const m of compilation.modules) {
+                  const module = m as unknown as ModuleLike
+                  const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  if (
+                    ip &&
+                    module.resource &&
+                    !env.compiled.has(module.resource) &&
+                    ipEnv.unjudged(canonicalResource(module.resource), ip)
+                  ) {
+                    unjudged.add(module.resource)
+                  }
+                }
+                for (const m of compilation.modules) {
+                  const module = m as unknown as ModuleLike
+                  const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  if (ip && module.resource) {
+                    ipEnv.replay(canonicalResource(module.resource), ip)
+                  }
+                }
+                // a module compiled as its own violation before the edges of a
+                // restored exempt importer were replayed gets the real module
+                for (const resource of env.persistsModules
+                  ? env.compiled
+                  : []) {
+                  if (ipEnv.selfAllowedNow(canonicalResource(resource))) {
+                    unjudged.add(resource)
+                  }
+                }
+                const unconfirmed = new Set<string>()
+                for (const m of compilation.modules) {
+                  const resource = (m as unknown as ModuleLike).resource
+                  if (
+                    resource &&
+                    ipEnv.unconfirmed(resource, env.compiled.has(resource))
+                  ) {
+                    unconfirmed.add(resource)
+                  }
+                }
+                if (unconfirmed.size > 0) {
+                  await rebuildModules(compilation, unconfirmed, (r) => r)
+                }
+                if (unjudged.size > 0) {
+                  await rebuildModules(compilation, unjudged, (r) => r)
+                }
               }
-            }
-            for (const m of compilation.modules) {
-              const module = m as unknown as ModuleLike
-              const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-              if (ip && module.resource) {
-                ipEnv.replay(canonicalResource(module.resource), ip)
-              }
-            }
-            // a module compiled as its own violation before the edges of a
-            // restored exempt importer were replayed gets the real module
-            for (const resource of env.persistsModules ? env.compiled : []) {
-              if (ipEnv.selfAllowedNow(canonicalResource(resource))) {
-                unjudged.add(resource)
-              }
-            }
-            const unconfirmed = new Set<string>()
-            for (const m of compilation.modules) {
-              const resource = (m as unknown as ModuleLike).resource
-              if (
-                resource &&
-                ipEnv.unconfirmed(resource, env.compiled.has(resource))
-              ) {
-                unconfirmed.add(resource)
-              }
-            }
-            if (unconfirmed.size > 0) {
-              await rebuildModules(compilation, unconfirmed, (r) => r)
-            }
-            if (unjudged.size > 0) {
-              await rebuildModules(compilation, unjudged, (r) => r)
-            }
-          }
-          // one read of each module's `buildInfo`: the server-fn snapshot and,
-          // but in a first compilation (replayed above), the records
-          const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
-          for (const m of compilation.modules) {
-            const module = m as unknown as ModuleLike
-            const info = module.buildInfo
-            if (!info) {
-              continue
-            }
-            const ip = info[RSPACK_BUILD_INFO_KEY]
-            if (ipEnv && !judgesRestored && ip && module.resource) {
-              ipEnv.replay(canonicalResource(module.resource), ip)
-            }
-            addServerFns(snapshot, info)
-          }
-          // the modules of child compilers (a worker's, a service worker's:
-          // compiled as this environment's, done during `make`) call the
-          // server fns they define too
-          const children = [...compilation.children]
-          for (const child of children) {
-            children.push(...child.children)
-            for (const m of child.modules) {
-              const info = (m as unknown as ModuleLike).buildInfo
-              if (info) {
+              // one read of each module's `buildInfo`: the server-fn snapshot and,
+              // but in a first compilation (replayed above), the records
+              const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
+              for (const m of compilation.modules) {
+                const module = m as unknown as ModuleLike
+                const info = module.buildInfo
+                if (!info) {
+                  continue
+                }
+                const ip = info[RSPACK_BUILD_INFO_KEY]
+                if (ipEnv && !judgesRestored && ip && module.resource) {
+                  ipEnv.replay(canonicalResource(module.resource), ip)
+                }
                 addServerFns(snapshot, info)
               }
-            }
-          }
-          session.start.registry.replace(env, snapshot)
-          opts.onServerFnsReplayed()
-        },
+              // the modules of child compilers (a worker's, a service worker's:
+              // compiled as this environment's, done during `make`) call the
+              // server fns they define too
+              const children = [...compilation.children]
+              for (const child of children) {
+                children.push(...child.children)
+                for (const m of child.modules) {
+                  const info = (m as unknown as ModuleLike).buildInfo
+                  if (info) {
+                    addServerFns(snapshot, info)
+                  }
+                }
+              }
+              session.start.registry.replace(env, snapshot)
+              opts.onServerFnsReplayed()
+            },
+          ),
       )
     },
   }

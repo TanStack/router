@@ -19,6 +19,7 @@ import {
   identify,
   invalidate,
   langFromId,
+  loaderText,
   locatedDiagnostic,
   normalizePath,
   pathsOf,
@@ -122,7 +123,7 @@ interface LoaderContextLike extends LoaderChainLike {
 }
 
 interface LoaderResult {
-  code: string
+  code: string | Buffer
   map: unknown
 }
 
@@ -483,10 +484,17 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** A registry change: its files are stale in every environment that compiled; idle compilers are asked to build them. */
+  /**
+   * A registry change: its files are stale in every environment that
+   * compiled; idle compilers are asked to build them (after a failed
+   * invalidation too: what it made stale before gets its compilation).
+   */
   private async registryChanged(files: ReadonlyArray<string>): Promise<void> {
-    await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
-    this.drain.registryChanged()
+    try {
+      await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
+    } finally {
+      this.drain.registryChanged()
+    }
   }
 
   /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */
@@ -531,19 +539,20 @@ export class StartRsbuildCompilerSession {
   /**
    * The loader implementation: compiles every id (env and derived) of a
    * JS/TS module of an environment from the text Rspack hands it (never
-   * from a path-only "latest plan", so upstream loaders and maps compose),
+   * from a path-only "latest plan", so upstream loaders and maps compose;
+   * the loader is raw: a module it does not compile goes on as its bytes),
    * composes maps with the input map, records dependencies, server-fn
    * facts (`buildInfo`, for the replay) and import-protection records, and
    * reports diagnostics.
    */
   async compile(
     ctx: LoaderContextLike,
-    source: string,
+    bytes: Buffer,
     inputMap: unknown,
     options: LoaderOptions,
   ): Promise<LoaderResult> {
     const env = this.env(options.environment)
-    const passthrough: LoaderResult = { code: source, map: inputMap }
+    const passthrough: LoaderResult = { code: bytes, map: inputMap }
     const { ip } = this.start
     if (options.pass === 'edge') {
       // the bundler requested this edge module from the importer's post-SWC
@@ -555,7 +564,7 @@ export class StartRsbuildCompilerSession {
         // (it fails the edge module: Rspack reports it there, not at the importer)
         throwLocated(ctx, error as DevViolationError)
       }
-      return { code: ip?.load(ctx.resource)?.code ?? source, map: null }
+      return { code: ip?.load(ctx.resource)?.code ?? bytes, map: null }
     }
     const id = canonicalResource(ctx.resource)
     if (options.pass === 'asset') {
@@ -582,6 +591,7 @@ export class StartRsbuildCompilerSession {
     ) {
       return passthrough
     }
+    const source = loaderText(bytes)
     if (!late && !this.start.compiles(identity.path, source)) {
       return passthrough
     }

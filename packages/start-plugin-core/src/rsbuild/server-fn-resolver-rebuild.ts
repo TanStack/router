@@ -1,3 +1,4 @@
+import { reportingFailure } from '@tanstack/router-utils/compiler'
 import type { Rspack } from '@rsbuild/core'
 
 export interface ServerFnResolverRebuildOptions {
@@ -37,27 +38,36 @@ export function tapServerFnResolverRebuild(
 
   compiler.hooks.finishMake.tapPromise(
     { name: options.name, stage: -10 },
-    async (compilation) => {
-      options.updateResolver()
+    (compilation) =>
+      reportingFailure(
+        compiler,
+        compilation.errors,
+        {
+          tag: '[tanstack-start]',
+          what: 'Building the server function resolver again',
+        },
+        async () => {
+          options.updateResolver()
 
-      // Child compilers copy finishMake taps from their parent. Child
-      // compilations always rebuild and do not change this compiler's state.
-      if (compilation.compiler !== compiler) {
-        await options.rebuildResolver(compilation)
-        return
-      }
+          // Child compilers copy finishMake taps from their parent. Child
+          // compilations always rebuild and do not change this compiler's state.
+          if (compilation.compiler !== compiler) {
+            await options.rebuildResolver(compilation)
+            return
+          }
 
-      for (let round = 0; round < MAX_REBUILDS; round++) {
-        // Read the count before the rebuild reads the resolver, so a write
-        // that lands during the rebuild causes another rebuild.
-        const writeCount = options.getResolverWriteCount()
-        if (writeCount === rebuiltAtWriteCount) {
-          return
-        }
-        await options.rebuildResolver(compilation)
-        rebuiltAtWriteCount = writeCount
-        options.updateResolver()
-      }
-    },
+          for (let round = 0; round < MAX_REBUILDS; round++) {
+            // Read the count before the rebuild reads the resolver, so a write
+            // that lands during the rebuild causes another rebuild.
+            const writeCount = options.getResolverWriteCount()
+            if (writeCount === rebuiltAtWriteCount) {
+              return
+            }
+            await options.rebuildResolver(compilation)
+            rebuiltAtWriteCount = writeCount
+            options.updateResolver()
+          }
+        },
+      ),
   )
 }

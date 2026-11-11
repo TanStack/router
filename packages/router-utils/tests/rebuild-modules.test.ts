@@ -1,5 +1,9 @@
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { StaleSetDrain, rebuildModules } from '../src/compiler'
+import {
+  StaleSetDrain,
+  rebuildModules,
+  reportingFailure,
+} from '../src/compiler'
 import { MemoryHost } from './helpers'
 
 const moduleOf = (name: string) => ({
@@ -188,5 +192,62 @@ describe('StaleSetDrain', () => {
     )
     expect(rebuilt).toEqual(['a.ts', 'b.ts', 'd.ts'])
     expect(caches.stale.has('client')).toBe(false)
+  })
+
+  it('gives back what a failed rebuild took: the next compilation builds it, within the bound', async () => {
+    const { caches, drain, compiler } = drainOf()
+    caches.stale.add('client', '/app/a.ts')
+    caches.stale.add('client', '/app/b.ts', true)
+    drain.building('client', ['/app/b.ts'])
+    const failure = new Error('a plugin failed')
+    await expect(
+      drain.rebuild(
+        'client',
+        {
+          modules: new Set(['a.ts', 'b.ts'].map(moduleOf)),
+          rebuildModule(_m, callback) {
+            callback(failure)
+          },
+        },
+        (resource) => resource,
+      ),
+    ).rejects.toBe(failure)
+    expect(caches.stale.paths('client').sort()).toEqual([
+      '/app/a.ts',
+      '/app/b.ts',
+    ])
+    drain.compiled('client')
+    expect(compiler.asked).toBe(1)
+  })
+})
+
+describe('reportingFailure', () => {
+  class WebpackError extends Error {}
+  const failing = () => Promise.reject(new Error('a hook failed'))
+
+  it('in watch mode, reports a failure as a compilation error instead of rejecting', async () => {
+    const errors: Array<Error> = []
+    await reportingFailure(
+      { watchMode: true, webpack: { WebpackError } },
+      errors,
+      { tag: '[tanstack-router]', what: 'Building again' },
+      failing,
+    )
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toBeInstanceOf(WebpackError)
+    expect(errors[0]!.message).toContain('a hook failed')
+  })
+
+  it('rejects in a one-shot build', async () => {
+    const errors: Array<Error> = []
+    await expect(
+      reportingFailure(
+        { watchMode: false, webpack: { WebpackError } },
+        errors,
+        { tag: '[tanstack-router]', what: 'Building again' },
+        failing,
+      ),
+    ).rejects.toThrow('a hook failed')
+    expect(errors).toEqual([])
   })
 })

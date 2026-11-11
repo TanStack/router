@@ -24,6 +24,8 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin. A child compiler
   (a worker or service-worker plugin's) takes its environment's module rules but none of its plugins: the loaders find
   the implementation on its `root`, so its modules compile as the environment's.
+  The loader is raw: a module it does not compile goes on as the bytes it came as (a binary file with a JavaScript
+  extension, imported as an asset, stays intact); it decodes only to compile.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still

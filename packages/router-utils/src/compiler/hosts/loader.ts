@@ -20,6 +20,20 @@ export function webpackResourceId(resource: string): string {
   return normalizePath(id.replace(/[\0\u200b]#/g, '#'))
 }
 
+const utf8 = new TextDecoder()
+
+/**
+ * The text of a raw loader's input. A loader of ours is raw so that a
+ * module it does not compile goes on as the bytes it came as (a binary
+ * file with a JavaScript extension, imported as an asset, stays intact);
+ * the bundlers hand a raw loader bytes, an earlier loader's text included.
+ * Decoded as the bundlers decode for a loader that is not raw: UTF-8,
+ * without a byte order mark.
+ */
+export function loaderText(source: Uint8Array): string {
+  return utf8.decode(source)
+}
+
 /**
  * A loader's output map: the compiler's map naming the module's absolute
  * path (`resourcePath`), composed with the input map (an earlier loader's

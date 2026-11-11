@@ -6,8 +6,13 @@
  * id). webpack and Rspack (through Rsbuild) run the router plugin's
  * webpack-family host; Vite its Vite host.
  */
-import { test } from 'vitest'
-import { expectRouteIdChangeRebuildsRoute } from '../generator-dev-scenarios'
+import { expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectRouteIdChangeAfterWarmStart,
+  expectRouteIdChangeRebuildsRoute,
+} from '../generator-dev-scenarios'
+import type { WebpackPluginInstance } from 'webpack'
 
 test.each(['webpack', 'rsbuild', 'vite'] as const)(
   'a route id change rebuilds the route module (%s dev)',
@@ -27,3 +32,60 @@ test('a route id change rebuilds the route module written again unchanged (webpa
     webpack: { snapshot: { module: { hash: true } } },
   })
 }, 45_000)
+
+// A rebuild of ours that fails (an app plugin's `buildModule` hook throws
+// once, at the route module's build after the route id change: webpack
+// reports that as an error of the compilation when it builds the module
+// itself) fails one compilation, which reports it: the dev server goes on
+// answering, the route is built again, and the next edit is served.
+test('a failed rebuild of the route module fails one compilation, and the dev server goes on (webpack dev)', async () => {
+  let builds = 0
+  let failed = false
+  const failsOnce: WebpackPluginInstance = {
+    apply(compiler) {
+      compiler.hooks.thisCompilation.tap('test-fails-once', (compilation) => {
+        compilation.hooks.buildModule.tap('test-fails-once', (module) => {
+          if (
+            'resource' in module &&
+            String(module.resource).endsWith('contact.tsx') &&
+            builds++ === 1
+          ) {
+            failed = true
+            throw new Error('the app plugin failed')
+          }
+        })
+      })
+    },
+  }
+  const app = await expectRouteIdChangeRebuildsRoute('webpack', {
+    webpack: { plugins: [failsOnce] },
+  })
+  // (the plugin failed, at a rebuild of ours)
+  expect(failed).toBe(true)
+  expectDiagnostic(app.diagnostics(), { severity: 'error' })
+  const contact = await app.read('routes/contact.tsx')
+  await app.edit({
+    'routes/contact.tsx': contact.replace(
+      'MARK_CONTACT',
+      'MARK_CONTACT_EDITED',
+    ),
+  })
+  await app.visit('/about', 'MARK_CONTACT_EDITED')
+  expect(app.errors()).toEqual([])
+}, 45_000)
+
+// A start from the bundler's persistent cache restores the route module
+// without compiling it in that process: a route id change is compiled all
+// the same, made while the dev server runs or while none ran.
+test.each([
+  { bundler: 'webpack', whileDown: false },
+  { bundler: 'webpack', whileDown: true },
+  { bundler: 'rsbuild', whileDown: false },
+  { bundler: 'rsbuild', whileDown: true },
+] as const)(
+  'a route id change after a start from the persistent cache rebuilds the route module ($bundler dev, made while the server was down: $whileDown)',
+  async ({ bundler, whileDown }) => {
+    await expectRouteIdChangeAfterWarmStart(bundler, whileDown)
+  },
+  60_000,
+)
