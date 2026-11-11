@@ -116,6 +116,17 @@ const options = (
   ...extra,
 })
 
+/**
+ * `src/generated/reg.ts` checked (only `src/generated/glob.ts` exempt), its
+ * import of the denied file allowed by `allowImport` (the pattern
+ * importer's is not).
+ */
+const allowedPlain = (behavior: 'mock' | 'error') =>
+  options(behavior, {
+    exclude: ['src/generated/glob.ts'],
+    allowImport: (info) => info.importer.includes('generated/reg'),
+  })
+
 /** What a build's two uses read. */
 async function uses(build: StartBuild) {
   const { result } = await build.client.run(
@@ -124,7 +135,11 @@ async function uses(build: StartBuild) {
   return result as { plain: string; glob: Array<string> }
 }
 
-/** A build's outcome: the uses, the reported client importers and every warning or error; a failed build's errors. */
+/**
+ * A build's outcome: the uses, the reported client importers and every
+ * warning or error (its severity, and the denied file when it names it); a
+ * failed build's errors.
+ */
 async function outcomeOf(build: () => Promise<StartBuild>) {
   try {
     const built = await build()
@@ -132,7 +147,7 @@ async function outcomeOf(build: () => Promise<StartBuild>) {
       failed: false,
       uses: await uses(built),
       reported: importersIn(built, 'client'),
-      problems: problems(built.diagnostics).map(({ severity }) => severity),
+      problems: problems(built.diagnostics).map(named),
     }
   } catch (error) {
     if (!(error instanceof StartBuildError)) {
@@ -146,6 +161,10 @@ async function outcomeOf(build: () => Promise<StartBuild>) {
     }
   }
 }
+
+/** A problem's severity, and the denied file when it names it. */
+const named = ({ severity, text }: { severity: string; text: string }) =>
+  text.includes(denied) ? `${severity} ${denied}` : severity
 
 /** One module, real for both uses, and nothing reported. */
 const realForBoth = {
@@ -273,16 +292,23 @@ describe('rsbuild build', () => {
 })
 
 /**
- * Holds the client build's `load` of `held` until Start compiled `first`
- * (a module of the same build): a user plugin that is slow on one file.
+ * Holds the client environment's `load` of `held` until Start compiled
+ * `first` (a module of the same build), in each build of a watch build and
+ * on a dev server's first load: a user plugin that is slow on one file.
  */
 function holdUntilCompiled(held: string, first: string): Array<Plugin> {
   let release!: () => void
-  const compiled = new Promise<void>((resolve) => (release = resolve))
+  let compiled!: Promise<void>
+  const client = (environment: { name: string }) =>
+    environment.name === 'client'
   return [
     {
       name: 'test:hold-load',
       enforce: 'pre',
+      applyToEnvironment: client,
+      buildStart() {
+        compiled = new Promise<void>((resolve) => (release = resolve))
+      },
       async load(id) {
         if (id.endsWith(held)) {
           await compiled
@@ -292,6 +318,7 @@ function holdUntilCompiled(held: string, first: string): Array<Plugin> {
     },
     {
       name: 'test:compiled',
+      applyToEnvironment: client,
       transform: {
         order: 'post',
         handler(_code, id) {
@@ -308,7 +335,7 @@ describe('vite build', () => {
   // F5-2 on Vite, R142 (2): the exempt plain importer is loaded after the
   // denied file was compiled (served the mock) for the exempt pattern
   // importer. A Vite build cannot build the file again: `error` fails,
-  // naming the file.
+  // naming the file; `mock` warns, naming it
   test.fails(
     'two exempt importers, the plain one compiled after the denied file: the error build fails, naming the file',
     async () => {
@@ -330,11 +357,177 @@ describe('vite build', () => {
     },
     timeout,
   )
+
+  test(
+    'two exempt importers, the plain one compiled after the denied file: the mock build warns, naming the file',
+    async () => {
+      expect(
+        await outcomeOf(() =>
+          buildStart({
+            bundler: 'vite',
+            files: app({
+              bundler: 'vite',
+              glob: 'generated',
+              first: 'pattern',
+            }),
+            entry: 'src/entry.ts',
+            viteConfig: {
+              plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+            },
+            start: { importProtection: options('mock') },
+          }),
+        ),
+      ).toEqual({
+        failed: false,
+        uses: { plain: 'mock', glob: ['mock'] },
+        reported: [],
+        problems: [`warning ${denied}`],
+      })
+    },
+    timeout,
+  )
+
+  // the same order with the plain import allowed by `allowImport`
+  test.fails(
+    'an exempt pattern importer, then a plain import allowImport allows: the error build fails, naming the file',
+    async () => {
+      const outcome = await outcomeOf(() =>
+        buildStart({
+          bundler: 'vite',
+          files: app({ bundler: 'vite', glob: 'generated', first: 'pattern' }),
+          entry: 'src/entry.ts',
+          viteConfig: {
+            plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+          },
+          start: { importProtection: allowedPlain('error') },
+        }),
+      )
+      expect(outcome).toMatchObject({
+        failed: true,
+        errors: [expect.stringContaining(denied)],
+      })
+    },
+    timeout,
+  )
+
+  // I3's other direction (design 4 §6 risk 3): a watch rebuild compiles
+  // every module again, here the denied file before its exempt importer,
+  // whose edit removed the plain import: the file is served as it is to the
+  // checked pattern importer, and the rebuild says so
+  test.fails(
+    'vite build --watch: the exempt import removed, the denied file compiled before its importer: served as it is and reported',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: app({ bundler: 'vite', glob: 'src', first: 'pattern' }),
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+        },
+        start: { importProtection: options('mock') },
+        watchEdits: {
+          'src/generated/reg.ts': `export const viaPlain = () => 'none'\n`,
+        },
+      })
+      expect({
+        first: problems(build.firstBuild).map(named),
+        uses: await uses(build),
+        problems: problems(build.diagnostics).map(named),
+      }).toEqual({
+        first: [`warning ${denied}`],
+        uses: { plain: 'none', glob: ['MARK_SECRET'] },
+        problems: [`warning ${denied}`],
+      })
+    },
+    timeout,
+  )
+
+  // the report's fix: any save rebuilds, and compiles the file as its mock
+  test(
+    'vite build --watch: the denied file served as it is, a later save: the checked pattern importer gets the mock',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: app({ bundler: 'vite', glob: 'src', first: 'pattern' }),
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+        },
+        start: { importProtection: options('mock') },
+        watchEdits: [
+          {
+            edits: {
+              'src/generated/reg.ts': `export const viaPlain = () => 'none'\n`,
+            },
+          },
+          { edits: { 'src/a.ts': `export { viaPlain } from './b'\n\n` } },
+        ],
+      })
+      expect({
+        uses: await uses(build),
+        reported: importersIn(build, 'client'),
+        where: build.client.where('MARK_SECRET'),
+      }).toEqual({
+        uses: { plain: 'none', glob: ['mock'] },
+        reported: ['src/glob.ts'],
+        where: 'nowhere',
+      })
+    },
+    timeout,
+  )
 })
 
 /** The dev page's two uses. */
 const readScript = `const { plain, glob } = globalThis.uses
 return { plain: plain(), glob: await glob() }`
+
+// F5-2 in Vite dev: the denied file is compiled (served the mock) for the
+// exempt pattern importer before the exempt plain importer three modules
+// deep; the dev server builds it again once it read the plain import (the
+// page reloads), so both get the real module
+test.fails(
+  'vite dev: two exempt importers, the plain one compiled after the denied file: both get the real module',
+  async () => {
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: options('mock') },
+      files: app({ bundler: 'vite', glob: 'generated', first: 'pattern' }),
+      plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+    })
+    // (the first load compiles them in that order)
+    await runViteClient(server, '/src/router.ts', readScript)
+    await server.idle()
+    const after = await runViteClient(server, '/src/router.ts', readScript)
+    expect(after.result).toEqual({
+      plain: 'MARK_SECRET',
+      glob: ['MARK_SECRET'],
+    })
+  },
+  timeout,
+)
+
+// The same order with a checked plain importer whose import `allowImport`
+// allows (asked when the bundler requests it, after the importer's compile)
+test.fails(
+  'vite dev: a checked pattern importer, then a plain import allowImport allows: both get the real module',
+  async () => {
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: allowedPlain('mock') },
+      files: app({ bundler: 'vite', glob: 'src', first: 'pattern' }),
+      plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+    })
+    // (the first load compiles them in that order)
+    await runViteClient(server, '/src/router.ts', readScript)
+    await server.idle()
+    const after = await runViteClient(server, '/src/router.ts', readScript)
+    expect(after.result).toEqual({
+      plain: 'MARK_SECRET',
+      glob: ['MARK_SECRET'],
+    })
+  },
+  timeout,
+)
 
 // F5-6, exempt half: an edit removes the exempt plain import; the denied
 // file, reached now only by the checked pattern importer, is served the
