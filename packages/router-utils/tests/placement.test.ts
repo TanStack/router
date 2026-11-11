@@ -6955,6 +6955,62 @@ describe('builder chains in a compile', () => {
     expect(main?.diagnostics).toEqual([])
   })
 
+  // REVIEW-design2-final finding 3: a middleware's link writes its builder
+  // wherever it stands, not only where the purity check meets it: in a
+  // function (a write at an unknown time, V) and in a split option value
+  // (the value's own write at load).
+  describe('a link on a const middleware builder outside a statement', () => {
+    const linked = (decls: string, options: string) =>
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { createMiddleware } from 'toy-start'
+        import { auth } from './auth'
+        const mw = createMiddleware()
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          ${options.split('\n').join('\n          ')}
+        })
+      `)
+    async function compileKeys(code: string, keys: Array<string>) {
+      const host = new MemoryHost({
+        files: { '/app/route.tsx': code },
+        recognizer,
+      })
+      const planners = [toySplitPlanner({ keys })]
+      const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+      return host.compile('/app/route.tsx', planners, { env })
+    }
+
+    it('keeps a reader of the builder a function links on in the route module', async () => {
+      const main = await compileKeys(
+        linked(
+          'const before = { ...mw.options }\nfunction setup() { mw.middleware([auth]) }',
+          'beforeLoad: () => setup(),\ncomponent: () => before,',
+        ),
+        ['component'],
+      )
+      expect(main?.code).toContain('const before = { ...mw.options }')
+      expect(main?.diagnostics.map((d) => d.code)).toContain(
+        'eager-split:state',
+      )
+    })
+
+    it('keeps an option value linking on a builder another chunk reads in place', async () => {
+      const main = await compileKeys(
+        linked(
+          'const before = { ...mw.options }',
+          'loader: () => before,\ncomponent: (mw.middleware([auth]), () => null),',
+        ),
+        ['loader', 'component'],
+      )
+      expect(main?.code).toContain('component: (mw.middleware([auth])')
+      expect(main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+    })
+  })
+
   // Two exported server fns on one shared base read it, each from its own
   // extracted module: the base, a call result, exists once (R77), so the
   // route module keeps it and both, which read it when they load (T).
