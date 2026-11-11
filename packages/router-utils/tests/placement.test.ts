@@ -5681,6 +5681,166 @@ describe('state reached through another name', () => {
   )
 })
 
+// REVIEW-design2-final finding 1: a write through another name of an
+// object (an alias, a holder, a destructured name) writes that object, so
+// a read of it through any of its names is ordered against the write (O)
+// or pinned by it (V), as a write through its first name is.
+describe('state written through another name', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { snap, on, base, extra } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+  const PURE = 'const y = /* @__PURE__ */ snap(cfg)'
+
+  it.each([
+    [
+      'a destructuring before a write through an alias',
+      'const { v: y } = cfg',
+      'const alias = cfg\nalias.v = 11',
+    ],
+    [
+      'a pure call before a write through a holder',
+      PURE,
+      'const holder = { c: cfg }\nholder.c.v = 3',
+    ],
+    [
+      'a pure call before a `delete` through a `let` alias',
+      PURE,
+      'let alias = cfg\ndelete alias.v',
+    ],
+    [
+      'a pure call before an `Object.assign` through an alias',
+      PURE,
+      'const alias = cfg\nObject.assign(alias, { v: 5 })',
+    ],
+    [
+      'a pure call before a write through a conditional alias',
+      PURE,
+      "const alias = on ? cfg : null\nalias['v'] = 23",
+    ],
+    [
+      'a pure call before a write through an array holding it',
+      PURE,
+      'const all = [cfg]\nall[0].v = 4',
+    ],
+    [
+      'a pure call before a write through a destructured name',
+      PURE,
+      'const holder = { c: cfg }\nconst { c } = holder\nc.v = 4',
+    ],
+    [
+      'a pure call before a function called at load writing through a holder',
+      PURE,
+      'const holder = { c: cfg }\nconst bump = () => { holder.c.v = 14 }\nbump()',
+    ],
+    [
+      'a pure call through one alias before a write through another',
+      'const y = /* @__PURE__ */ snap(a1)',
+      'Object.assign(a2, { v: 5 })',
+      'const a1 = cfg\nconst a2 = cfg',
+    ],
+  ])('keeps %s', async (_, reader, writer, aliases = '') => {
+    const r = await split(
+      route(
+        ['const cfg = { v: 1 }', aliases, reader, writer]
+          .filter(Boolean)
+          .join('\n'),
+        'loader: () => cfg,\ncomponent: () => y,',
+      ),
+    )
+    expect(r.env).toContain(reader)
+    expect(r.chunks.component).not.toContain(reader)
+    expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+  })
+
+  it.each([
+    [
+      'a pure reader',
+      PURE,
+      'const holder = [cfg]\nfunction bump() { holder[0].v = 4 }',
+    ],
+    [
+      'a member reader',
+      'const y = cfg.v',
+      'const holder = [cfg]\nfunction bump() { holder[0].v = 4 }',
+    ],
+    [
+      'a reader through another holder',
+      'const y = h1.c.v',
+      'const h1 = { c: cfg }\nconst h2 = { c: cfg }\nconst bump = () => { h2.c.v = 15 }',
+    ],
+  ])(
+    'keeps %s of an object a function writes through a holder (V)',
+    async (_, reader, writer) => {
+      const r = await split(
+        route(
+          `const cfg = { v: 1 }\n${writer}\n${reader}`,
+          'beforeLoad: () => bump(),\ncomponent: () => y,',
+        ),
+      )
+      expect(r.env).toContain(reader)
+      expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+    },
+  )
+
+  it('keeps a mutating method called through an alias with the object it writes', async () => {
+    const r = await split(
+      route(
+        'export const columns = [base]\nconst cols = columns\ncols.push(extra)',
+        'component: () => cols,',
+      ),
+    )
+    expect(r.env).toContain('cols.push(extra)')
+    expect(r.chunks.component).not.toContain('cols.push(extra)')
+  })
+
+  it.each([
+    [
+      'through an array holding it, read after the route',
+      'const cfg = { v: 2 }\nconst holder = [cfg]',
+      'beforeLoad: () => y,\ncomponent: (holder[0].v = 3, () => null),',
+      'const y = snap(cfg)',
+      'holder[0].v = 3',
+      ['component'],
+    ],
+    [
+      'through an alias, read by another chunk',
+      'const cfg = { v: 1 }\nconst holder = { c: cfg }\nconst alias = cfg\nconst y = { ...holder.c }',
+      'loader: () => y,\ncomponent: (alias.v = 6, () => null),',
+      '',
+      'alias.v = 6',
+      ['loader', 'component'],
+    ],
+    [
+      'through an alias of an array, read by another chunk',
+      'const a1 = [2]\nconst y = a1.join()\nconst alias = a1',
+      'loader: (alias[0] = 26, () => null),\ncomponent: () => y,',
+      '',
+      'alias[0] = 26',
+      ['loader', 'component'],
+    ],
+  ])(
+    'keeps an option value writing state %s in place',
+    async (_, before, options, after, write, keys) => {
+      const r = await split(
+        route(before, options) + (after === '' ? '' : `${after}\n`),
+        { keys },
+      )
+      expect(r.env).toContain(write)
+      for (const key of keys) {
+        expect(r.chunks[key] ?? '').not.toContain(write)
+      }
+    },
+  )
+})
+
 describe('effectful declarations reading each other (R138)', () => {
   const route = (decls: string, options: string) =>
     dedent(`
