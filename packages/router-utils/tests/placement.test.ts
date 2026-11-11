@@ -6434,6 +6434,30 @@ describe('language operations are no effect (rule L)', () => {
     expect(eager(r)).toEqual([])
   })
 
+  // the executing property (seed 1919): the read of `o0` is no effect
+  // under rule L, and the write through the holder of `o0`'s first object
+  // is no write of `o0` (it is reassigned: no object of its own), so
+  // nothing orders them; the order rule ordered the two effects before
+  it.fails(
+    'keeps a read of a reassigned binding before a write through a holder of its object',
+    async () => {
+      const r = await split(
+        dedent(`
+        import { createFileRoute } from 'toy-router'
+        let o0 = { v: 1 }
+        const h3 = { c: o0 }
+        o0 = o0
+        const r7 = [o0.v, o0.p]
+        h3.c.v = 4
+        export const Route = createFileRoute('/x')({
+          component: () => ({ r7 }),
+        })
+      `),
+      )
+      expect(r.env).toContain('const r7 = [o0.v, o0.p]')
+    },
+  )
+
   // what is no language operation stays an effect: an exported declaration
   // a chunk needs is then kept for its effects, not extracted
   describe('what still is an effect', () => {
