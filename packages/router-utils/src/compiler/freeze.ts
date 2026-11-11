@@ -1118,10 +1118,7 @@ class Renderer {
 
   /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
   private tokenStart(start: number, end: number): number {
-    const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/.exec(
-      this.code.slice(start, end),
-    )
-    return start + m![0].length
+    return start + LEADING_TRIVIA.exec(this.code.slice(start, end))![0].length
   }
 
   /**
@@ -1269,11 +1266,9 @@ class Renderer {
       const seg = out[i]!
       const text =
         seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-      // the first token's first character: a comment (`/* @__PURE__ */`) is no `/`
-      const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*(\S)/.exec(text)
-      if (m) {
-        first = m[1]!
-      }
+      // the first token's first character: a comment (`/* @__PURE__ */`) is
+      // no `/`, and a text that is only one has none
+      first = text.charAt(LEADING_TRIVIA.exec(text)![0].length)
     }
     if (first === '' || !'([`+-/<'.includes(first)) {
       return
@@ -1400,6 +1395,9 @@ class Renderer {
     }
   }
 }
+
+/** Whitespace and comments at a text's start (its first token follows them). */
+const LEADING_TRIVIA = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/
 
 /**
  * The statements of the statement lists inside one statement of the module,
