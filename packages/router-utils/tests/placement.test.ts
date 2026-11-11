@@ -5555,6 +5555,123 @@ describe('readers and writers of state written at load', () => {
   })
 })
 
+// R138 (design 2 step 5): the order rule is judged on the slots of both
+// sides. An effectful declaration reading another one at load moves when
+// the one it reads evaluates in the same chunk (source order there), or
+// stays in the route module as a `const`; each is still ordered against
+// the effects that stay.
+describe('effectful declarations reading each other (R138)', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { z } from 'zod'
+      import { createColumnHelper } from './table'
+      import { make, wrap, log } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it.each([
+    [
+      'TanStack Table columns reading their helper',
+      "const columnHelper = createColumnHelper()\nconst columns = [columnHelper.accessor('name', {})]",
+    ],
+    [
+      'a schema reading a schema',
+      'const Option = z.object({ id: z.string() })\nconst Field = Option.nullable()',
+    ],
+    [
+      'a literal reading a helper result',
+      'const defaults = make()\nconst fields = [defaults.name, defaults.email]',
+    ],
+    [
+      'a member read after a write of the helper result',
+      'const a = make()\na.v = 1\nconst x = [a.v]',
+    ],
+    [
+      'three in a chain',
+      'const a = make()\nconst b = wrap(a)\nconst c = wrap(b)',
+    ],
+  ])(
+    'moves two declarations one chunk needs together, in source order: %s',
+    async (_, decls) => {
+      const last = /const (\w+) = [^\n]*$/.exec(decls)![1]!
+      const r = await split(route(decls, `component: () => ${last},`))
+      for (const line of decls.split('\n')) {
+        expect(r.env).not.toContain(line)
+      }
+      expect(r.chunks.component).toContain(decls)
+      expect(eager(r)).toEqual([])
+    },
+  )
+
+  it('keeps both when an effect after them stays, naming it', async () => {
+    const r = await split(
+      route(
+        "const columnHelper = createColumnHelper()\nconst columns = [columnHelper.accessor('name', {})]\nconst Search = z.object({})",
+        'loader: () => Search,\ncomponent: () => columns,',
+      ),
+    )
+    expect(r.env).toContain('const columnHelper = createColumnHelper()')
+    expect(r.env).toContain(
+      "const columns = [columnHelper.accessor('name', {})]",
+    )
+    // (one report, at the cause: `columnHelper` is what `columns` reads)
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[toy-split] `columns`'],
+    ])
+    expect(eager(r)[0]!.message).toContain('`z.object(…)`')
+  })
+
+  // the one it reads stays for its own reason (an effect after it stays):
+  // a `const` the route module keeps is read from there by the chunk
+  // (R67), judged on its final slot, not on whether it was decided first
+  it('moves a declaration reading a `const` that stays for an effect between them', async () => {
+    const r = await split(
+      route(
+        'const a = make()\nlog()\nconst b = wrap(a)',
+        'component: () => b,',
+      ),
+    )
+    expect(r.env).toContain('const a = make()\nlog()')
+    expect(r.env).not.toContain('const b')
+    expect(r.chunks.component).toContain('const b = wrap(a)')
+    expect(r.chunks.component).toContain("import { a } from '/app/route.tsx'")
+    expect(eager(r).map((d) => [d.code, d.message.split(' in /')[0]])).toEqual([
+      ['eager-split:order', '[toy-split] `a`'],
+    ])
+  })
+
+  it('moves a declaration reading a `const` that two chunks need', async () => {
+    const r = await split(
+      route(
+        'const helper = make()\nconst cols = [helper.x()]',
+        'component: () => cols,\nerrorComponent: () => helper,',
+      ),
+      { keys: ['component', 'errorComponent'] },
+    )
+    expect(r.env).toContain('const helper = make()')
+    expect(r.env).not.toContain('const cols')
+    expect(r.chunks.component).toContain('const cols = [helper.x()]')
+    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:needers'])
+  })
+
+  // control: a `let` the route module keeps still pins (R67)
+  it('keeps a declaration reading a `let` that stays', async () => {
+    const r = await split(
+      route('let a = make()\nlog()\nconst b = wrap(a)', 'component: () => b,'),
+    )
+    expect(r.env).toContain('const b = wrap(a)')
+    const reads = eager(r).find((d) => d.code === 'eager-split:reads')
+    expect(reads?.message).toContain('`b` in /app/route.tsx')
+    expect(reads?.message).toContain('reads `a` when the module loads')
+  })
+})
+
 describe('declarations only split code needs that stay in the route module', () => {
   async function kept(
     code: string,
