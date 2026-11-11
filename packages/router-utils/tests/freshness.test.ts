@@ -8,10 +8,11 @@
  *   compile and adds nothing to a stale set.
  * - After any edits, the same as a fresh start (I3, "property (b)"): saves,
  *   in-place saves, deletions and re-adds (a stash and pop: the same text,
- *   modules requested in between), each event delivered one to
- *   three times to each environment's hook in any order, with compiles
- *   interleaved; once the stale sets are taken and built, every output
- *   equals a cold compile of the final files.
+ *   modules requested in between; or reported as one change, beside a
+ *   twin `m<i>/index.ts` that its specifier finds while it is gone), each
+ *   event delivered one to three times to each environment's hook in any
+ *   order, with compiles interleaved; once the stale sets are taken and
+ *   built, every output equals a cold compile of the final files.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { invalidate } from '../src/compiler'
@@ -466,17 +467,27 @@ const snapshot = (out: CompileOutput | null): Snapshot =>
     diagnostics: out.diagnostics.map((d) => `${d.severity}:${d.code}`),
   }
 
+/** How a row varies the run (`run`). */
+interface RunOptions {
+  stretch?: number
+  jitter?: number
+  /** Each even module has a twin, `m<i>/index.ts`, which `./m<i>` finds while `m<i>.ts` is gone. */
+  twins?: boolean
+  /** A removal may be reported as one change once the file is back (chokidar's fold of a quick remove and create, Rspack's batch). */
+  fold?: boolean
+}
+
 /**
  * One run: a memory host, its two environments' bundlers (the latest build
  * of each module they hold) and their hooks, on the virtual clock (`drive`).
  * `seed` decides the edits, the event deliveries and the read delays;
  * `stretch` adds 0 to `jitter - 1` ms to each of the run's sleeps from a
  * generator of its own, as load does on a real clock: (seed, stretch,
- * jitter) replays one schedule exactly.
+ * jitter, twins, fold) replays one schedule exactly.
  */
 async function run(
   seed: number,
-  { stretch = 0, jitter = 0 }: { stretch?: number; jitter?: number } = {},
+  { stretch = 0, jitter = 0, twins = false, fold = false }: RunOptions = {},
 ): Promise<void> {
   const pick = prng(seed)
   const stretched = prng(stretch)
@@ -487,6 +498,11 @@ async function run(
   const files: Record<string, string> = {}
   for (let i = 0; i < MODULES; i++) {
     files[pathOf(i)] = textOf(i, pick)
+  }
+  if (twins) {
+    for (let i = 0; i < MODULES; i += 2) {
+      files[`/app/m${i}/index.ts`] = `export const make = ${70 + i}\n`
+    }
   }
   const host = new MemoryHost({
     files,
@@ -572,6 +588,23 @@ async function run(
     } else if (action === 0) {
       const text = host.files[path]!
       delete host.files[path]
+      if (fold && pick(2) === 0) {
+        // removed and created again within the watcher's moment: modules
+        // are requested while it is gone, and one change is all that is
+        // reported
+        for (const env of ENVS) {
+          build(env, pathOf(pick(MODULES)))
+        }
+        const back = pick(2) === 0 ? text : textOf(i, pick)
+        later(1 + pick(6), () => {
+          if (host.files[path] === undefined) {
+            host.write(path, back)
+            deliver({ path, kind: 'change' })
+          }
+        })
+        await sleep(pick(6))
+        continue
+      }
       deliver({ path, kind: 'unlink' })
       if (pick(2) === 0) {
         // a stash and pop: modules are requested while the file is gone,
@@ -658,10 +691,13 @@ async function run(
   }
 
   const fresh = memoryHost(host.files)
-  const row = `seed ${seed}, stretch ${stretch}, jitter ${jitter}`
+  const row = `seed ${seed}, stretch ${stretch}, jitter ${jitter}, twins ${twins}, fold ${fold}`
   for (const env of ENVS) {
     const held = outputs.get(env.name)!
-    const final = Object.keys(host.files).sort()
+    // (the twins are no module of the bundlers: nothing requests them)
+    const final = Object.keys(host.files)
+      .filter((path) => !path.endsWith('/index.ts'))
+      .sort()
     expect([...held.keys()].sort(), `${row}, ${env.name}`).toEqual(final)
     for (const path of final) {
       expect(
@@ -719,11 +755,13 @@ async function settle(tasks: Set<Promise<unknown>>): Promise<void> {
 const SEEDS = Array.from({ length: 48 }, (_, i) => 0x5eed + i)
 
 /**
- * Rows that found defects (seed, stretch, jitter): a file back reported as
- * a change, the first in-place save of an empty file, a removed file read
- * again before its return was reported.
+ * Rows that found defects (seed, options): a file back reported as a
+ * change, the first in-place save of an empty file, a removed file read
+ * again before its return was reported; a twin found while the file was
+ * gone, kept by the resolution memo of a key no compile ran for at the
+ * folded event (design 3 final review, finding 2, form c).
  */
-const FOUND: Array<[number, { stretch: number; jitter: number }]> = [
+const FOUND: Array<[number, RunOptions]> = [
   [24309, { stretch: 16, jitter: 12 }],
   [24335, { stretch: 86, jitter: 12 }],
   [24301, { stretch: 93, jitter: 12 }],
@@ -733,6 +771,7 @@ const FOUND: Array<[number, { stretch: number; jitter: number }]> = [
   [24303, { stretch: 46, jitter: 6 }],
   [24329, { stretch: 96, jitter: 16 }],
   [24341, { stretch: 139, jitter: 16 }],
+  [1732051583, { twins: true, fold: true }],
 ]
 
 describe('after any edits', () => {
@@ -752,18 +791,30 @@ describe('after any edits', () => {
       ],
     })
     // each seed as scheduled, then stretched: a few stretch generators per
-    // jitter, and the rows that found defects
-    const rows: Array<[number, { stretch?: number; jitter?: number }]> = [
-      ...SEEDS.map((seed) => [seed, {}] as [number, object]),
+    // jitter; with twins and folded removals, as scheduled and stretched;
+    // and the rows that found defects
+    const rows: Array<[number, RunOptions]> = [
+      ...SEEDS.map((seed) => [seed, {}] as [number, RunOptions]),
       ...[4, 8, 12].flatMap((jitter) =>
         [1, 2].flatMap((stretch) =>
-          SEEDS.map((seed) => [seed, { stretch, jitter }] as [number, object]),
+          SEEDS.map(
+            (seed) => [seed, { stretch, jitter }] as [number, RunOptions],
+          ),
+        ),
+      ),
+      ...[{}, { stretch: 1, jitter: 8 }].flatMap((options) =>
+        SEEDS.map(
+          (seed) =>
+            [seed, { ...options, twins: true, fold: true }] as [
+              number,
+              RunOptions,
+            ],
         ),
       ),
       ...FOUND,
     ]
-    for (const [seed, stretch] of rows) {
-      await drive(run(seed, stretch))
+    for (const [seed, options] of rows) {
+      await drive(run(seed, options))
     }
     // (about 2 s here; CI's macOS runners took over 30 s beside the other files)
   }, 180_000)
@@ -925,6 +976,131 @@ describe('events that move the file set', () => {
     ])
     expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
       factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+    )
+  })
+
+  // `a.ts` beside its twin `a/index.ts`: removed and created again within
+  // one change, while a compile of `x.ts`, which now imports `./a`, runs
+  // across it and finds the twin. Its key has a published plan (of a text
+  // that did not import `./a`) or none; `a.ts` is back with its text or
+  // another.
+  // Source: design 3 final review, finding 2 (form a: the compile restarted
+  // and its next attempt read the twin from the resolution memo).
+  it.for([
+    [false, true],
+    [false, false],
+    [true, true],
+    [true, false],
+  ] as const)(
+    'a compile in flight that found the twin of a file removed and created again within one change: published plan %s, same text %s',
+    async ([published, sameText]) => {
+      const reads: Array<() => void> = []
+      let hold = false
+      const host = new MemoryHost({
+        files: {
+          '/app/a.ts': SERVER_ONLY,
+          '/app/a/index.ts': 'export const make = 1\n',
+          '/app/k.ts': 'export const other = 1\n',
+          '/app/h.ts': 'export const h = 1\n',
+          '/app/w.ts': IMPORTER,
+          '/app/x.ts':
+            "import { other } from './k'\nexport const use = other\n",
+        },
+        recognizer: RECOGNIZER,
+        onRead: (path) =>
+          hold && path === '/app/h.ts'
+            ? new Promise<void>((r) => reads.push(r))
+            : undefined,
+      })
+      // (the caches know `a.ts`: another module read it)
+      await host.compile('/app/w.ts', planners())
+      if (published) {
+        await host.compile('/app/x.ts', planners())
+      }
+      host.write(
+        '/app/x.ts',
+        dedent(`
+          import { make } from './a'
+          import { other } from './k'
+          import { h } from './h'
+          export const use = make
+        `),
+      )
+      await invalidate(host.caches, { path: '/app/x.ts', kind: 'change' }, host)
+      delete host.files['/app/a.ts']
+      hold = true
+      const compiling = host.compile('/app/x.ts', planners())
+      while (reads.length === 0) {
+        await new Promise((r) => setTimeout(r, 1))
+      }
+      host.write(
+        '/app/a.ts',
+        sameText ? SERVER_ONLY : SERVER_ONLY.replace('() => 1', '() => 2'),
+      )
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+      hold = false
+      while (reads.length > 0) {
+        reads.splice(0).forEach((release) => release())
+        await new Promise((r) => setTimeout(r, 1))
+      }
+      await compiling
+      host.caches.stale.take(CLIENT.name, { held: true })
+      expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+        factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+      )
+    },
+  )
+
+  // The same fold, and the resolver checks the files while `a.ts` is gone
+  // (it finds `a/index.ts`) and answers after `a.ts` is back and its one
+  // change was applied. No compile is restarted.
+  // Source: design 3 final review, finding 2 (form b).
+  it('a twin answered after the change that brought its file back is asked again', async () => {
+    const asks: Array<() => void> = []
+    let hold = false
+    /** The files as the resolver checked them when a held ask began, by importer and specifier. */
+    const checked = new Map<string, Record<string, string>>()
+    const host: MemoryHost = new MemoryHost({
+      files: {
+        '/app/a.ts': SERVER_ONLY,
+        '/app/a/index.ts': 'export const make = 1\n',
+        '/app/w.ts': IMPORTER,
+        '/app/x.ts': IMPORTER,
+      },
+      recognizer: RECOGNIZER,
+      onResolve: (specifier, importer) => {
+        if (hold && specifier === './a') {
+          hold = false
+          checked.set(`${importer} ${specifier}`, { ...host.files })
+          return new Promise<void>((r) => asks.push(r))
+        }
+        return undefined
+      },
+      resolve: (specifier, importer, files) => {
+        const seen = checked.get(`${importer} ${specifier}`) ?? files
+        checked.delete(`${importer} ${specifier}`)
+        const dir = importer.slice(0, importer.lastIndexOf('/'))
+        const joined = `${dir}/${specifier.slice(2)}`
+        return (
+          [`${joined}.ts`, `${joined}/index.ts`].find((id) => id in seen) ??
+          null
+        )
+      },
+    })
+    await host.compile('/app/w.ts', planners())
+    delete host.files['/app/a.ts']
+    hold = true
+    const compiling = host.compile('/app/x.ts', planners())
+    while (asks.length === 0) {
+      await new Promise((r) => setTimeout(r, 1))
+    }
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    asks.splice(0).forEach((release) => release())
+    await compiling
+    host.caches.stale.take(CLIENT.name, { held: true })
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
     )
   })
 
