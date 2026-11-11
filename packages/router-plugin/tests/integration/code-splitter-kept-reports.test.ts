@@ -5,10 +5,11 @@
  * exported `queryOptions(…)` the loader reads and the component reads with
  * `Route.useLoaderData()` stays in the route module because the route
  * module needs it, which is no news. One the split component alone reads
- * is reported, and so are a declared component writing a binding the
- * loader reads and a declaration reading state the module writes at load
- * that the loader keeps; their fixes build without the report and load
- * the code with its chunk. Options of one split group writing one binding
+ * is reported, and so is a declared component writing a binding the
+ * loader reads; its fix builds without the report and loads the code with
+ * its chunk. A declaration reading state the module writes at load, after
+ * its last write, loads with its chunk as written (design 2 step 3: it
+ * stayed with the state the loader keeps, reported). Options of one split group writing one binding
  * are not reported: the binding goes to their chunk. Template-literal
  * initialisers (openstory) are reported and their fix, their own module,
  * works. Vite, Rspack, webpack and Rsbuild client builds.
@@ -126,7 +127,8 @@ export const Route = createFileRoute('/group-writers')({
   pendingComponent: () => { renders++; return <p>MARK_group-writers-pending_END{renders}</p> },
 })
 `,
-  // a reader of state the module writes at load, which the loader keeps
+  // a reader of state the module writes at load, which the loader keeps,
+  // after its last write: it moves with the component
   'routes/state.tsx': `${head}let n = 0
 n++
 const label = 'MARK_state_END' + n
@@ -167,7 +169,6 @@ export { routeTree }
 const reported: Array<[file: string, needle: string]> = [
   ['routes/eager-export.tsx', 'postOptions = queryOptions'],
   ['routes/writer.tsx', 'Counter,'],
-  ['routes/state.tsx', 'label = '],
   ['routes/template.tsx', 'BASE = '],
 ]
 const silent = [
@@ -175,6 +176,7 @@ const silent = [
   'routes/eager-export-pure.tsx',
   'routes/eager-export-module.tsx',
   'routes/writer-fixed.tsx',
+  'routes/state.tsx',
   'routes/state-fixed.tsx',
   'routes/group-writers.tsx',
   'routes/template-module.tsx',
@@ -216,6 +218,7 @@ describe.each(builds)('a %s client build', (_name, create) => {
         'eager-export-pure',
         'eager-export-module',
         'writer-fixed',
+        'state',
         'state-fixed',
         'group-writers',
         'group-writers-pending',
@@ -224,7 +227,6 @@ describe.each(builds)('a %s client build', (_name, create) => {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
       }
       expect(app.where('MARK_eager-export_END')).toBe('eager')
-      expect(app.where('MARK_state_END')).toBe('eager')
     },
     timeout,
   )
