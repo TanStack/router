@@ -440,17 +440,19 @@ export function eventTable(
     // region holding it) evaluates with the value (its owner's output, after
     // that output's own code), and a reader of the binding evaluates where
     // the binding does, at load or later. So the value stays in place unless
-    // the binding evaluates in the same output and nothing else there reads
-    // it at load (a reader elsewhere keeps the binding out of that output).
+    // the binding evaluates in the same output and nothing else, in any
+    // output, reads it at load: the single-writer rule homes a binding with
+    // its writer whoever reads it, so a reader in a module two chunks share
+    // would import it from the value's chunk, which imports that module.
     // An import has an instance per output but names one object: the value
-    // stays unless no other output includes the import and nothing in its
-    // own output reads it at load, as `const y = f(registry.page = 1)`
-    // stays with its import.
+    // stays unless no other output includes the import and nothing else
+    // reads it at load, as `const y = f(registry.page = 1)` stays with its
+    // import.
     /**
      * Whether binding `sym`, written by the value of cluster `rc` (homed in
      * `hr`), is confined to that output: it evaluates there (an import: no
-     * other output includes it), and no other evaluation there touches it.
-     * A binding with no home of its own (removed, duplicated) is.
+     * other output includes it), and no other evaluation anywhere touches
+     * it. A binding with no home of its own (removed, duplicated) is.
      */
     const confined = (rc: ClusterId, hr: Home, sym: SymbolId): boolean => {
       const bc = clusterOfSym.get(sym)
@@ -470,9 +472,11 @@ export function eventTable(
         return false
       }
       for (const d of clusters) {
+        const hd = home.get(d.id)
         if (
           d.id !== rc &&
-          home.get(d.id) === hr &&
+          hd !== undefined &&
+          hd !== 'removed' &&
           touches(d.id, (t) => t.sym === sym)
         ) {
           return false

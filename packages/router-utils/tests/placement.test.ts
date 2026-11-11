@@ -5366,26 +5366,6 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  // The single-writer rule declares an assigned binding in its writer's
-  // output: another chunk reading it imports it from there, so it evaluates
-  // after the value (as written) and the value splits.
-  it('splits an option value assigning a binding another chunk reads, which imports it from the value', async () => {
-    const r = await split(
-      route(
-        'let n = 0',
-        'component: f((n = 1, () => null)),\nerrorComponent: () => snap,',
-        'const snap = [n]',
-      ),
-      { files: lib, keys: ['component', 'errorComponent'] },
-    )
-    expect(r.env).not.toContain('n = 1')
-    expect(r.chunks.component).toContain('f((n = 1, () => null))')
-    expect(r.chunks.errorComponent).toContain(
-      "import { n } from '/app/route.tsx?tsr-split=component'",
-    )
-    expect(r.main?.diagnostics).toEqual([])
-  })
-
   // A member write of an import (finding 3): the specifier has an instance
   // per output, the object one. The value stays unless no other output
   // names the import and nothing in its own output reads it at load.
@@ -5417,26 +5397,35 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  // REVIEW-design2-final finding 2: the binding the value writes would be
-  // homed with it (the single-writer rule) while a module two chunks share
-  // reads it: the shared module and the component's chunk would import
-  // each other. Another reader anywhere keeps the value in place.
-  it('keeps an option value in place whose `let` a module two chunks share reads', async () => {
-    const r = await split(
-      route(
-        'let n = 1',
-        'loader: () => flags,\ncomponent: (n = 5, () => flags),',
-        'const flags = [n]',
-      ),
-      { keys: ['loader', 'component'] },
-    )
-    expect(r.main?.facts.planners['toy-split']).toMatchObject({
-      notSplittable: 'component',
-      reasons: { component: 'ordered-effect' },
-    })
-    expect(r.env).toContain('let n = 1')
-    expect(r.env).toContain('component: (n = 5, () => flags)')
-  })
+  // REVIEW-design2-final finding 2: the single-writer rule homes the
+  // binding the value writes with it, whoever reads it; a reader in a
+  // module two chunks share would import it from the value's chunk, which
+  // imports that module. A reader anywhere else keeps the value in place.
+  it.each([
+    [
+      'a module two chunks share',
+      'loader: () => flags,\ncomponent: (n = 5, () => flags),',
+      ['loader', 'component'],
+    ],
+    [
+      'another chunk',
+      'component: (n = 5, () => null),\nerrorComponent: () => flags,',
+      ['component', 'errorComponent'],
+    ],
+  ])(
+    'keeps an option value in place whose `let` %s reads',
+    async (_, options, keys) => {
+      const r = await split(route('let n = 1', options, 'const flags = [n]'), {
+        keys,
+      })
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+      expect(r.env).toContain('let n = 1')
+      expect(r.env).toContain('component: (n = 5, () => ')
+    },
+  )
 
   it('splits an option value that writes a member of an import only its chunk names', async () => {
     const r = await split(
