@@ -10,7 +10,6 @@ import {
   identify,
   isCommonJsPath,
   langFromId,
-  planKeyString,
   revision,
 } from './identity'
 import { parseModule } from './source'
@@ -136,7 +135,6 @@ export async function compileModule(
   }
   const rev = revision(input.code)
   const requested = outputOf(identity)
-  const keyString = planKeyString(key)
   const note = await textDiffers(
     cache.get(key),
     rev,
@@ -190,7 +188,7 @@ export async function compileModule(
       // evicted, or evicted and published again, meanwhile: look again
       continue
     }
-    const flight = cache.inFlight.get(keyString)
+    const flight = cache.flight(key)
     if (flight && flight.revision === rev) {
       // another request of this text is compiling it: its outcome answers this request too
       const settled = await flight.settled.catch(() => null)
@@ -206,7 +204,7 @@ export async function compileModule(
       revision: rev,
       settled: settle(input, identity, tier0Only, host, caches, key, rev),
     }
-    cache.inFlight.set(keyString, record)
+    cache.fly(key, record)
     try {
       return noted(
         emitSettled(
@@ -219,9 +217,7 @@ export async function compileModule(
         ),
       )
     } finally {
-      if (cache.inFlight.get(keyString) === record) {
-        cache.inFlight.delete(keyString)
-      }
+      cache.land(key, record)
     }
   }
 }

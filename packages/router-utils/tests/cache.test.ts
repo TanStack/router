@@ -1,6 +1,6 @@
 /**
- * The plan cache's bookkeeping (generations, latest revisions, the
- * dependents index) is bounded by the live plans: it does not grow with
+ * The plan cache's bookkeeping (a record per live key, the dependents
+ * index) is bounded by the live plans: it does not grow with
  * edits that change import targets, nor with unique files that come and go.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -61,12 +61,12 @@ describe('plan keys by path', () => {
       strings([plain, flavoured]),
     )
     expect(cache.keysAt('/app/other.tsx')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({ keyPaths: 1, trackedKeys: 2 })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 1, records: 2 })
     cache.delete(flavoured)
     expect(strings(cache.keysAt('/app/page.tsx'))).toEqual(strings([plain]))
     cache.delete(plain)
     expect(cache.keysAt('/app/page.tsx')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, trackedKeys: 0 })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, records: 0 })
   })
 
   it('an attempt in flight is found at its path until it ends unpublished', () => {
@@ -82,12 +82,7 @@ describe('plan keys by path', () => {
     expect(cache.keysAt('/app/mod.ts')).toEqual([k])
     cache.end(k)
     expect(cache.keysAt('/app/mod.ts')).toEqual([])
-    expect(cache.stats(false)).toMatchObject({
-      keyPaths: 0,
-      trackedKeys: 0,
-      generations: 0,
-      latest: 0,
-    })
+    expect(cache.stats(false)).toMatchObject({ keyPaths: 0, records: 0 })
   })
 
   it('a file removal evicts the plans of every identity at that path', async () => {
@@ -99,10 +94,10 @@ describe('plan keys by path', () => {
     })
     await host.compile('/app/a.ts', planners())
     await host.compile('/app/a.ts?flavour=b', planners())
-    expect(stats(host)).toMatchObject({ plans: 2, keyPaths: 1, trackedKeys: 2 })
+    expect(stats(host)).toMatchObject({ plans: 2, keyPaths: 1, records: 2 })
     delete host.files['/app/a.ts']
     await invalidate(host.caches, { path: '/app/a.ts', kind: 'unlink' }, host)
-    expect(stats(host)).toMatchObject({ plans: 0, keyPaths: 0, trackedKeys: 0 })
+    expect(stats(host)).toMatchObject({ plans: 0, keyPaths: 0, records: 0 })
   })
 })
 
@@ -382,11 +377,9 @@ describe('plan cache bookkeeping', () => {
     }
     expect(stats(host)).toMatchObject({
       plans: 0,
-      generations: 0,
-      latest: 0,
+      records: 0,
       inFlight: 0,
       keyPaths: 0,
-      trackedKeys: 0,
       dependentPaths: 0,
       dependentEntries: 0,
     })
@@ -417,7 +410,7 @@ describe('plan cache bookkeeping', () => {
   it('forgets the bookkeeping of a module no planner applies to', async () => {
     const host = new MemoryHost({ files: { '/app/plain.ts': 'export {}\n' } })
     await host.compile('/app/plain.ts', planners())
-    expect(stats(host)).toMatchObject({ generations: 0, latest: 0 })
+    expect(stats(host)).toMatchObject({ records: 0 })
   })
 })
 

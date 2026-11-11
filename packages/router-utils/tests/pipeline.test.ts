@@ -1198,7 +1198,7 @@ describe('attempts that are overtaken or throw', () => {
     const cache = host.caches.plans.get('client')!
     expect(cache.get(key)).toBeNull()
     expect(cache.dependents.stats()).toMatchObject({ entries: 0, keys: 0 })
-    expect(cache.inFlight.size).toBe(0)
+    expect(cache.flight(key)).toBeNull()
   })
 
   it('(p) fails a compile whose planner facts are not JSON data (verify)', async () => {
