@@ -71,7 +71,8 @@ export const renderRouterToStream = async ({
     if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
       const reactAppPassthrough = new PassThrough()
       let pipeable:
-        ReturnType<typeof ReactDOMServer.renderToPipeableStream> | undefined
+        | ReturnType<typeof ReactDOMServer.renderToPipeableStream>
+        | undefined
       let resolveReady!: () => void
       const ready = new Promise<void>((resolve) => {
         resolveReady = resolve

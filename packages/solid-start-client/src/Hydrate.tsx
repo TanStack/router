@@ -30,7 +30,8 @@ export type HydrationStrategy<
 > = SolidHydrationStrategy<TWhen, TCanPrefetch>
 
 export type HydrateWhen =
-  SolidHydrationStrategy | (() => SolidHydrationStrategy)
+  | SolidHydrationStrategy
+  | (() => SolidHydrationStrategy)
 
 type HydrateCommonOptions = {
   when: HydrateWhen

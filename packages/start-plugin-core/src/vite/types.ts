@@ -8,7 +8,8 @@ export interface ViteRscForwardSsrResolverStrategy {
 }
 
 export type SsrResolverStrategy =
-  { type: 'default' } | ViteRscForwardSsrResolverStrategy
+  | { type: 'default' }
+  | ViteRscForwardSsrResolverStrategy
 
 export type TanStackStartVitePluginCoreOptions = TanStackStartCoreOptions & {
   providerEnvironmentName: string

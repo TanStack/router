@@ -225,10 +225,12 @@ export function createWorkload(
 
       return navigation
         .then((value): NavigationSettlement => ({ status: 'fulfilled', value }))
-        .catch((reason: unknown): NavigationSettlement => ({
-          status: 'rejected',
-          reason,
-        }))
+        .catch(
+          (reason: unknown): NavigationSettlement => ({
+            status: 'rejected',
+            reason,
+          }),
+        )
     }
 
     await router.load()

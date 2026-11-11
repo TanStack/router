@@ -21,7 +21,9 @@ type SearchParamOptions = {
 
 type PathParamOptions = {
   params?:
-    true | Record<string, TPathParam> | ((prev: TFromParams) => TToParams)
+    | true
+    | Record<string, TPathParam>
+    | ((prev: TFromParams) => TToParams)
 }
 
 type MaskOptions = {

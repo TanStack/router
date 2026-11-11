@@ -33,7 +33,8 @@ export type HydrationStrategy<
 > = ReactHydrationStrategy<TWhen, TCanPrefetch>
 
 export type HydrateWhen =
-  ReactHydrationStrategy | (() => ReactHydrationStrategy)
+  | ReactHydrationStrategy
+  | (() => ReactHydrationStrategy)
 
 type HydrateCommonOptions = {
   when: HydrateWhen

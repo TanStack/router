@@ -43,7 +43,8 @@ export function createSerializationAdapter<
   TInput = unknown,
   TOutput = unknown,
   const TExtendsAdapters extends
-    ReadonlyArray<AnySerializationAdapter> | never = never,
+    | ReadonlyArray<AnySerializationAdapter>
+    | never = never,
 >(
   opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
 ): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {

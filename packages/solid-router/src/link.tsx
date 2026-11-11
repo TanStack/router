@@ -307,9 +307,12 @@ function createLinkProps(
       return
     }
 
-    if (!(
-      (e as IntersectionObserverEntry).isIntersecting ?? preload() === 'intent'
-    )) {
+    if (
+      !(
+        (e as IntersectionObserverEntry).isIntersecting ??
+        preload() === 'intent'
+      )
+    ) {
       if ((e as IntersectionObserverEntry).isIntersecting === false) {
         cancelPreload()
       }
@@ -583,7 +586,8 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    Solid.JSX.Element | ((state: { isActive: boolean }) => Solid.JSX.Element)
+    | Solid.JSX.Element
+    | ((state: { isActive: boolean }) => Solid.JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -625,7 +629,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,

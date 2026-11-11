@@ -236,7 +236,8 @@ export default createServerEntry({
         if (phase !== 'static' || !links.length) return
 
         const response = getNodeResponseSomehow(request) as
-          ServerResponse | undefined
+          | ServerResponse
+          | undefined
 
         response?.writeEarlyHints({ link: links })
       },

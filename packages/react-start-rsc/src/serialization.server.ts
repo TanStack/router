@@ -208,7 +208,8 @@ const adapter = createSerializationAdapter({
       kind === 'composite' &&
       RSC_SLOT_USAGES_STREAM in component
         ? ((component as any)[RSC_SLOT_USAGES_STREAM] as unknown as
-            ReadableStream<any> | undefined)
+            | ReadableStream<any>
+            | undefined)
         : undefined
 
     return {

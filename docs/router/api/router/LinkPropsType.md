@@ -9,7 +9,8 @@ The `LinkProps` type extends the [`ActiveLinkOptions`](./ActiveLinkOptionsType.m
 type LinkProps = ActiveLinkOptions &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     children?:
-      React.ReactNode | ((state: { isActive: boolean }) => React.ReactNode)
+      | React.ReactNode
+      | ((state: { isActive: boolean }) => React.ReactNode)
   }
 ```
 

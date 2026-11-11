@@ -426,7 +426,14 @@ export type ResolveAllServerContext<
     >
 
 export type RouteMethod =
-  'ANY' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD'
+  | 'ANY'
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'PATCH'
+  | 'DELETE'
+  | 'OPTIONS'
+  | 'HEAD'
 
 export type RouteMethodHandlerFn<
   TRegister,
@@ -446,10 +453,13 @@ export type RouteMethodHandlerFn<
     TMethodMiddlewares
   >,
 ) =>
-  RouteMethodResult<TServerContext> | Promise<RouteMethodResult<TServerContext>>
+  | RouteMethodResult<TServerContext>
+  | Promise<RouteMethodResult<TServerContext>>
 
 export type RouteMethodResult<TContext> =
-  Response | undefined | RouteMethodNextResult<TContext>
+  | Response
+  | undefined
+  | RouteMethodNextResult<TContext>
 
 export type RouteMethodNextResult<TContext> = {
   isNext: true

@@ -655,7 +655,9 @@ async function benchmark(name: string, fn: () => Promise<void>) {
 
 // Run on large fixture set
 await benchmark('no-async-client-component', async () => {
-  const eslint = new ESLint({/* config */})
+  const eslint = new ESLint({
+    /* config */
+  })
   await eslint.lintFiles(['fixtures/large-project/**/*.tsx'])
 })
 ```

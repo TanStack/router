@@ -483,7 +483,8 @@ export interface RouterOptions<
    * @default false
    */
   scrollRestoration?:
-    boolean | ((opts: { location: ParsedLocation }) => boolean)
+    | boolean
+    | ((opts: { location: ParsedLocation }) => boolean)
 
   /**
    * A function that will be called to get the key for the scroll restoration cache.
@@ -1115,7 +1116,8 @@ export interface RouterCore<
   _refreshRoute: (() => Promise<void>) | undefined
   /** Development-only replacement for a route's lazy chunk owner. */
   _replaceRouteChunk:
-    ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void) | undefined
+    | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
+    | undefined
 }
 
 export type HydrationHandoff = [

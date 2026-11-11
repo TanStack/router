@@ -3,7 +3,9 @@
 import * as React from 'react'
 
 export type NonRouteComponent =
-  'pendingComponent' | 'errorComponent' | 'notFoundComponent'
+  | 'pendingComponent'
+  | 'errorComponent'
+  | 'notFoundComponent'
 
 export const nonRouteComponentContext =
   process.env.NODE_ENV !== 'production'

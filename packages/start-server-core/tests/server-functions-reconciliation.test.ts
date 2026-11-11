@@ -44,7 +44,8 @@ const serverFnMocks = vi.hoisted(() => {
     previousServerFnBase,
     middleware: [] as Array<unknown>,
     action: undefined as
-      undefined | (ReturnType<typeof vi.fn> & { method: string }),
+      | undefined
+      | (ReturnType<typeof vi.fn> & { method: string }),
   }
 })
 

@@ -177,7 +177,9 @@ function createCompositeHandle(
  */
 interface SlotPropsBase {
   [key: string]:
-    ((...args: Array<any>) => React.ReactNode) | React.ReactNode | undefined
+    | ((...args: Array<any>) => React.ReactNode)
+    | React.ReactNode
+    | undefined
   children?: React.ReactNode
 }
 

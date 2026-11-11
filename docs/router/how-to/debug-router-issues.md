@@ -268,7 +268,9 @@ const route = createRoute({
 // Add to router configuration
 const router = createRouter({
   routeTree,
-  context: {/* ... */},
+  context: {
+    /* ... */
+  },
   // Log all navigation events
   onNavigate: ({ location, type }) => {
     console.log(`Navigation (${type}):`, location.pathname)
@@ -477,7 +479,9 @@ function MyComponent() {
 // Add to router configuration
 const router = createRouter({
   routeTree,
-  context: {/* ... */},
+  context: {
+    /* ... */
+  },
   onUpdate: (router) => {
     console.log('Router state updated:', {
       pathname: router.state.location.pathname,
@@ -719,7 +723,9 @@ Monitor these requests when debugging:
 ```tsx
 const router = createRouter({
   routeTree,
-  context: {/* ... */},
+  context: {
+    /* ... */
+  },
   onUpdate: (router) => {
     performance.mark('router-update')
   },

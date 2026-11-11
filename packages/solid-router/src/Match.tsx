@@ -34,8 +34,8 @@ const renderScrollRestoration =
 export const Match = (props: { routeId: string }) => {
   const router = useRouter()
 
-  const currentMatch = Solid.createMemo(() =>
-    router.stores.byRoute.get(props.routeId)!.get()!,
+  const currentMatch = Solid.createMemo(
+    () => router.stores.byRoute.get(props.routeId)!.get()!,
   )
 
   const nearestMatch = [() => props.routeId, currentMatch] as const

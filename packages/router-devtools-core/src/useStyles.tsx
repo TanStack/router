@@ -495,16 +495,12 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       const base = css`
         ${position === 'top-left' ? `top: ${size[2]}; left: ${size[2]};` : ''}
         ${position === 'top-right' ? `top: ${size[2]}; right: ${size[2]};` : ''}
-        ${
-          position === 'bottom-left'
-            ? `bottom: ${size[2]}; left: ${size[2]};`
-            : ''
-        }
-        ${
-          position === 'bottom-right'
-            ? `bottom: ${size[2]}; right: ${size[2]};`
-            : ''
-        }
+        ${position === 'bottom-left'
+          ? `bottom: ${size[2]}; left: ${size[2]};`
+          : ''}
+        ${position === 'bottom-right'
+          ? `bottom: ${size[2]}; right: ${size[2]};`
+          : ''}
       `
       return base
     },

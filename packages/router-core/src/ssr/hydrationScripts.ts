@@ -62,7 +62,10 @@ export type HydrationScriptOutput = {
 }
 
 type ConsumerOwnership =
-  HydrationScriptOutput | 'fast-path' | 'cleaned' | undefined
+  | HydrationScriptOutput
+  | 'fast-path'
+  | 'cleaned'
+  | undefined
 
 /** The one-time initial `<Scripts>` take: hydration tags plus the boundary. */
 export type InitialHydrationScriptTags = {

@@ -525,7 +525,9 @@ importProtection: {
 interface ImportProtectionOptions {
   enabled?: boolean
   behavior?:
-    'error' | 'mock' | { dev?: 'error' | 'mock'; build?: 'error' | 'mock' }
+    | 'error'
+    | 'mock'
+    | { dev?: 'error' | 'mock'; build?: 'error' | 'mock' }
   log?: 'once' | 'always'
   include?: Array<string | RegExp>
   exclude?: Array<string | RegExp>

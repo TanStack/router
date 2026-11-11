@@ -74,9 +74,9 @@ export type CodeSplittingOptions = {
 
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z
-    .custom<CodeSplittingOptions['splitBehavior']>(
-      (value) => typeof value === 'function',
-    )
+    .custom<
+      CodeSplittingOptions['splitBehavior']
+    >((value) => typeof value === 'function')
     .optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
   deleteNodes: z.array(z.string()).optional(),

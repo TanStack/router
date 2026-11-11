@@ -85,10 +85,12 @@ export type IntersectAssign<TLeft, TRight> = TLeft extends any
 export type Timeout = ReturnType<typeof setTimeout>
 
 export type Updater<TPrevious, TResult = TPrevious> =
-  TResult | ((prev?: TPrevious) => TResult)
+  | TResult
+  | ((prev?: TPrevious) => TResult)
 
 export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
-  TResult | ((prev: TPrevious) => TResult)
+  | TResult
+  | ((prev: TPrevious) => TResult)
 
 export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
   ? never
@@ -124,13 +126,16 @@ export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
     : TUnion
 
 export type PartialMergeAll<TUnion> =
-  ExtractPrimitives<TUnion> | PartialMergeAllObject<TUnion>
+  | ExtractPrimitives<TUnion>
+  | PartialMergeAllObject<TUnion>
 
 export type Constrain<T, TConstraint, TDefault = TConstraint> =
-  (T extends TConstraint ? T : never) | TDefault
+  | (T extends TConstraint ? T : never)
+  | TDefault
 
 export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
-  (T & TConstraint) | TDefault
+  | (T & TConstraint)
+  | TDefault
 
 /**
  * To be added to router types
@@ -157,7 +162,8 @@ export type MergeAllObjects<
     }
 
 export type MergeAll<TUnion> =
-  MergeAllObjects<TUnion> | ExtractPrimitives<TUnion>
+  | MergeAllObjects<TUnion>
+  | ExtractPrimitives<TUnion>
 
 export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
   ? unknown extends T

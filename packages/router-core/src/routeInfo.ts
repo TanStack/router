@@ -81,7 +81,8 @@ export type ToPath<TRouter extends AnyRouter, TTo extends string> =
       : AddTrailingSlash<TTo> | RemoveTrailingSlashes<TTo>
 
 export type CatchAllPaths<TRouter extends AnyRouter> =
-  CurrentPath<TRouter> | ParentPath<TRouter>
+  | CurrentPath<TRouter>
+  | ParentPath<TRouter>
 
 export type CodeRoutesByPath<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
@@ -107,10 +108,11 @@ export type CodeRoutePaths<TRouteTree extends AnyRoute> =
 
 export type RoutePaths<TRouteTree extends AnyRoute> = unknown extends TRouteTree
   ? string
-  : | (InferFileRouteTypes<TRouteTree> extends never
-        ? CodeRoutePaths<TRouteTree>
-        : InferFileRouteTypes<TRouteTree>['fullPaths'])
-    | '/'
+  :
+      | (InferFileRouteTypes<TRouteTree> extends never
+          ? CodeRoutePaths<TRouteTree>
+          : InferFileRouteTypes<TRouteTree>['fullPaths'])
+      | '/'
 
 export type RouteToPathAlwaysTrailingSlash<TRoute extends AnyRoute> =
   TRoute['path'] extends '/'
@@ -127,7 +129,8 @@ export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
     : TRoute['fullPath']
 
 export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =
-  RouteToPathNeverTrailingSlash<TRoute> | RouteToPathAlwaysTrailingSlash<TRoute>
+  | RouteToPathNeverTrailingSlash<TRoute>
+  | RouteToPathAlwaysTrailingSlash<TRoute>
 
 export type RouteToPathByTrailingSlashOption<TRoute extends AnyRoute> = {
   always: RouteToPathAlwaysTrailingSlash<TRoute>

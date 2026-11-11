@@ -46,7 +46,8 @@ export function createStartConfigContext<TInputConfig>(opts: {
 
   let startConfig: TanStackStartOutputConfig | null = null
   let resolvedEntryPlanCache:
-    ReturnType<typeof resolveStartEntryPlan> | undefined
+    | ReturnType<typeof resolveStartEntryPlan>
+    | undefined
 
   function requireRoot(): string {
     if (!resolvedStartConfig.root) {

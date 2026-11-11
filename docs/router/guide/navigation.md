@@ -167,10 +167,12 @@ export type LinkProps<
 > = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
-    FrameworkHTMLAnchorTagAttributes | (() => FrameworkHTMLAnchorAttributes)
+    | FrameworkHTMLAnchorTagAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
   // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   inactiveProps?:
-    FrameworkHTMLAnchorAttributes | (() => FrameworkHTMLAnchorAttributes)
+    | FrameworkHTMLAnchorAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
 }
 ```
 

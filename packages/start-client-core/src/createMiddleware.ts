@@ -191,7 +191,9 @@ export type IntersectAllMiddleware<
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
   ? TMiddleware extends
-      AnyFunctionMiddleware | AnyRequestMiddleware | AnyServerFn
+      | AnyFunctionMiddleware
+      | AnyRequestMiddleware
+      | AnyServerFn
     ? IntersectAllMiddleware<
         TRest,
         TType,
@@ -248,7 +250,9 @@ export type AssignAllMiddleware<
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
   ? TMiddleware extends
-      AnyFunctionMiddleware | AnyRequestMiddleware | AnyServerFn
+      | AnyFunctionMiddleware
+      | AnyRequestMiddleware
+      | AnyServerFn
     ? AssignAllMiddleware<
         TRest,
         TType,

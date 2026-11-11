@@ -9,7 +9,8 @@ import type {
 } from '@tanstack/vue-start/server'
 
 type CreateTransformContext =
-  { warmup: true } | { request: Request; warmup: false }
+  | { warmup: true }
+  | { request: Request; warmup: false }
 
 const cdnOrigin = 'https://cdn.example.com'
 

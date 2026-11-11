@@ -78,7 +78,8 @@ const startMocks = vi.hoisted(() => {
     requestMiddleware: [] as Array<any>,
     serverFnResult: undefined as undefined | Response | object,
     serverFnHandler: undefined as
-      undefined | ((opts: { serverFnId: string }) => unknown),
+      | undefined
+      | ((opts: { serverFnId: string }) => unknown),
     serverFnCalls: [] as Array<{ context?: unknown }>,
     router: undefined as undefined | AnyRouter,
     routerFactory: undefined as undefined | (() => AnyRouter),

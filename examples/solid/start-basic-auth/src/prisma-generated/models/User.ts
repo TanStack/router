@@ -70,7 +70,8 @@ export type UserAggregateArgs<
    * Determine the order of Users to fetch.
    */
   orderBy?:
-    Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[]
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
    *
@@ -779,9 +780,9 @@ export interface UserDelegate<
       Prisma.Extends<'skip', Prisma.Keys<T>>,
       Prisma.Extends<'take', Prisma.Keys<T>>
     >,
-    OrderByArg extends (Prisma.True extends HasSelectOrTake
+    OrderByArg extends Prisma.True extends HasSelectOrTake
       ? { orderBy: UserGroupByArgs['orderBy'] }
-      : { orderBy?: UserGroupByArgs['orderBy'] }),
+      : { orderBy?: UserGroupByArgs['orderBy'] },
     OrderFields extends Prisma.ExcludeUnderscoreKeys<
       Prisma.Keys<Prisma.MaybeTupleToUnion<T['orderBy']>>
     >,
@@ -789,8 +790,8 @@ export interface UserDelegate<
     ByValid extends Prisma.Has<ByFields, OrderFields>,
     HavingFields extends Prisma.GetHavingFields<T['having']>,
     HavingValid extends Prisma.Has<ByFields, HavingFields>,
-    ByEmpty extends (T['by'] extends never[] ? Prisma.True : Prisma.False),
-    InputErrors extends (ByEmpty extends Prisma.True
+    ByEmpty extends T['by'] extends never[] ? Prisma.True : Prisma.False,
+    InputErrors extends ByEmpty extends Prisma.True
       ? `Error: "by" must not be empty.`
       : HavingValid extends Prisma.False
         ? {
@@ -831,7 +832,7 @@ export interface UserDelegate<
                   [P in OrderFields]: P extends ByFields
                     ? never
                     : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-                }[OrderFields]),
+                }[OrderFields],
   >(
     args: Prisma.SubsetIntersection<T, UserGroupByArgs, OrderByArg> &
       InputErrors,
@@ -866,9 +867,13 @@ export interface Prisma__UserClient<
    */
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?:
-      ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+      | ((value: T) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
     onrejected?:
-      ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
   ): runtime.Types.Utils.JsPromise<TResult1 | TResult2>
   /**
    * Attaches a callback for only the rejection of the Promise.
@@ -877,7 +882,9 @@ export interface Prisma__UserClient<
    */
   catch<TResult = never>(
     onrejected?:
-      ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null,
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | undefined
+      | null,
   ): runtime.Types.Utils.JsPromise<T | TResult>
   /**
    * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
@@ -966,7 +973,8 @@ export type UserFindFirstArgs<
    * Determine the order of Users to fetch.
    */
   orderBy?:
-    Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[]
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
    *
@@ -1018,7 +1026,8 @@ export type UserFindFirstOrThrowArgs<
    * Determine the order of Users to fetch.
    */
   orderBy?:
-    Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[]
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
    *
@@ -1070,7 +1079,8 @@ export type UserFindManyArgs<
    * Determine the order of Users to fetch.
    */
   orderBy?:
-    Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[]
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
    *
