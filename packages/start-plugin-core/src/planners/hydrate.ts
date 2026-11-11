@@ -1021,7 +1021,7 @@ const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
   'ordered-effect': {
     code: 'hydrate-ordered-effect',
     message:
-      'Hydrate cannot code-split JSX that reads, at module evaluation, a binding later top-level code mutates: the split would change the order of evaluation. Use split={false}.',
+      'Hydrate cannot code-split JSX that uses, when the module loads, a binding other code of the module changes later or reads after it: the split would change what one of them sees. Use split={false}.',
   },
 }
 

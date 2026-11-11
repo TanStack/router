@@ -105,8 +105,8 @@ export interface Events {
     to: OutputId,
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
-  /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins. */
-  fallbacks: () => Array<Fallback>
+  /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
+  fallbacks: (home: ReadonlyMap<ClusterId, Home>) => Array<Fallback>
   /** The effects O orders, in source order: surviving effect units, benign framework calls aside. */
   effects: () => ReadonlyArray<Unit>
 }
@@ -120,6 +120,11 @@ export function eventTable(
   const { units, symbols } = t1
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion, clusterOfSym, writesOfSym } = graph
+  /** The regions a claim relocates (an option value a chunk owns). */
+  const claimed = new Set<RegionId>()
+  for (const claim of input.rewrites.claims.values()) {
+    claimed.add(claim.region)
+  }
 
   // (walked, not stored: what one evaluation reaches through calls can be
   // most of the module, for every declaration of a call chain)
@@ -393,17 +398,70 @@ export function eventTable(
     return undefined
   }
 
-  function fallbacks(): Array<Fallback> {
+  function fallbacks(home: ReadonlyMap<ClusterId, Home>): Array<Fallback> {
     const out: Array<Fallback> = []
     if (graph.writes.length === 0) {
       return out
+    }
+    // O on its writes: a member write at load inside the value (an
+    // assignment is the single-writer rule's) evaluates with the value (the
+    // innermost claimed region holding it, its owner's output, after that
+    // output's own code), and a reader of the binding evaluates where the
+    // binding does, at load or later. So the value stays in place unless the
+    // binding evaluates in the same output and nothing else there reads it
+    // at load (a reader elsewhere keeps the binding out of that output). (A
+    // binding with an instance per output, an import, has no home to
+    // compare: outside the rule, as in `checkPlacement`.)
+    const writtenAt = new Map<RegionId, SymbolId>()
+    for (const w of graph.writes) {
+      if (!w.live || !w.eager || !w.member || w.owner === null) {
+        continue
+      }
+      const bc = clusterOfSym.get(w.sym)
+      const hb = bc === undefined ? undefined : home.get(bc)
+      if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
+        continue
+      }
+      let r: RegionId | null = w.owner
+      while (r !== null && regions.get(r).unit === null && !claimed.has(r)) {
+        r = regions.parentOf(r)
+      }
+      if (r === null || !claimed.has(r) || writtenAt.has(r)) {
+        continue
+      }
+      const rc = clusterOfRegion.get(r)!
+      const hr = home.get(rc)
+      if (hr === 'env') {
+        continue // in place: everything evaluates in source order
+      }
+      const readHere = (): boolean => {
+        for (const d of clusters) {
+          if (
+            d.id !== rc &&
+            home.get(d.id) === hr &&
+            touches(d.id, (t) => t.sym === w.sym)
+          ) {
+            return true
+          }
+        }
+        return false
+      }
+      if (hr !== hb || readHere()) {
+        writtenAt.set(r, w.sym)
+      }
     }
     for (const r of regions.regions) {
       if (r.unit !== null) {
         continue
       }
+      const written = writtenAt.get(r.id)
+      if (written !== undefined) {
+        out.push({ region: r.id, reason: 'ordered-effect', binding: written })
+        continue
+      }
       const c = clusterOfRegion.get(r.id)!
-      // (as if what it touches stays: the planner decides its slot)
+      // V, and a write after it (as if what it touches stays: the planner
+      // decides its slot)
       touchesOfRegion(r.id, c, (t) => {
         if (
           late(t, c) === undefined &&
@@ -528,6 +586,21 @@ export function checkPlacement(
     }
   }
 
+  /** Whether write `w` is inside a claimed region its owner relocated out of the env module. */
+  const claimed = new Set<RegionId>()
+  for (const claim of input.rewrites.claims.values()) {
+    claimed.add(claim.region)
+  }
+  const { regions } = input.rewrites
+  const relocated = (w: Write): boolean => {
+    for (let r = w.owner; r !== null && regions.get(r).unit === null; ) {
+      if (claimed.has(r)) {
+        return home.get(clusterOfRegion.get(r)!) !== 'env'
+      }
+      r = regions.parentOf(r)
+    }
+    return false
+  }
   // what an evaluation outside the env module touches: per written binding,
   // its first and last touch decide every comparison with a write (one scan
   // of its writes per binding, not per touch)
@@ -560,6 +633,8 @@ export function checkPlacement(
         // route module's body on either side of them
         const apart =
           wt === t && t === 2 && wc !== undefined && home.get(wc) !== own
+        // (a relocated option value evaluates after its output's own code)
+        const atEnd = wc !== undefined && home.get(wc) === own && relocated(w)
         // the touch the write misorders: one before it evaluating before the
         // write's side, or one after it evaluating after
         const at = !w.eager
@@ -568,7 +643,7 @@ export function checkPlacement(
             ? undefined
             : first < w.at && (wt < t || apart)
               ? first
-              : last >= w.at && (wt > t || apart)
+              : last >= w.at && (wt > t || apart || atEnd)
                 ? last
                 : undefined
         if (at !== undefined) {

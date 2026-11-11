@@ -5207,26 +5207,50 @@ describe('readers and writers of state written at load', () => {
     expect(eager(r)).toMatchObject([{ code: 'eager-export:reads' }])
   })
 
-  // pre-existing (at dd7a83110f too): the single-writer rule takes
-  // assignments in an option value, not member writes, so the write moves to
-  // the chunk and the route module's later reader sees the object unwritten
-  it.fails(
-    'keeps a member write an option value makes at load with the route module that reads it after',
-    async () => {
+  // A claimed option value's evaluation writes `seen` when the module loads
+  // (a member write: the single-writer rule takes assignments only), and a
+  // later evaluation reads it: a conflicting pair under O,
+  // so the value stays in place (`ordered-effect`, naming the binding).
+  // Wrong output before design 2 step 3 (and at dd7a83110f): the write moved
+  // to the chunk and the reader saw the array empty, with no diagnostic.
+  it.each([
+    [
+      'the route module',
+      "loader: () => snap,\ncomponent: f(seen.push('x') && (() => null)),",
+    ],
+    [
+      'another chunk',
+      "component: f(seen.push('x') && (() => null)),\nerrorComponent: () => snap,",
+    ],
+    // (the option value's text evaluates after the chunk's own code)
+    ['its own chunk', "component: f(seen.push('x') && (() => snap)),"],
+  ])(
+    'keeps an option value that writes a member at load in place when %s reads it later',
+    async (_, options) => {
       const r = await split(
-        route(
-          'const seen = []',
-          "loader: () => snap,\ncomponent: f(seen.push('x') && (() => null)),",
-          'const snap = seen.length',
-        ),
-        { files: lib },
+        route('const seen = []', options, 'const snap = seen.length'),
+        { files: lib, keys: ['component', 'errorComponent'] },
       )
-      const writes = (code: string) => code.includes("seen.push('x')")
-      expect(writes(r.env) || r.chunks.component!.includes('const snap')).toBe(
-        true,
-      )
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+      expect(r.env).toContain("component: f(seen.push('x')")
     },
   )
+
+  it('splits an option value that writes a member of a binding only its chunk needs', async () => {
+    const r = await split(
+      route(
+        'const seen = []',
+        "component: f(seen.push('x') && (() => seen.length)),",
+      ),
+      { files: lib },
+    )
+    expect(r.env).not.toContain('seen')
+    expect(r.chunks.component).toContain('const seen = []')
+    expect(r.chunks.component).toContain("seen.push('x')")
+  })
 })
 
 describe('declarations only split code needs that stay in the route module', () => {

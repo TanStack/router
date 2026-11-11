@@ -21,7 +21,8 @@ type Bundler = 'vite' | 'rspack' | 'rsbuild'
 /**
  * `component`: the route's component option (default: a component rendering
  * `read`); `state`: the module state and its exported setter (default: `state`);
- * `pin`: the bundlers on which the row is a known bug (KNOWN-BUGS).
+ * `after`: code after the route; `pin`: the bundlers on which the row is a
+ * known bug (KNOWN-BUGS).
  */
 const shapes: Record<
   string,
@@ -30,6 +31,7 @@ const shapes: Record<
     read?: string
     component?: string
     state?: string
+    after?: string
     pin?: ReadonlyArray<Bundler>
   }
 > = {
@@ -136,6 +138,14 @@ const shapes: Record<
     code: `const labels = () => [prefix + 'x']`,
     read: 'labels()',
   },
+  // the option value writes the state when the route module loads; a
+  // declaration after the route reads it then (design 2 step 3 ruling: O
+  // keeps the value in place)
+  'a member write in the component option, read after the route': {
+    code: `const seen: Array<string> = []\nfunction wrap<T>(value: T) { return value }`,
+    component: `wrap(seen.push('x') && (() => <p>{String(count)}</p>))`,
+    after: `const count = seen.length`,
+  },
 }
 
 const rows = Object.entries(shapes)
@@ -146,11 +156,11 @@ async function run(bundler: Bundler, split: boolean) {
     files: {
       'routes/__root.tsx': rootRoute,
       ...Object.fromEntries(
-        rows.map(([, { code, read, component, state: own }], i) => [
+        rows.map(([, { code, read, component, state: own, after }], i) => [
           `routes/r${i}.tsx`,
           `${head}${own ?? state}${code}
 export const Route = createFileRoute('/')({ component: ${component ?? `() => <p>{String(${read ?? 'labels'})}</p>`} })
-`,
+${after ?? ''}`,
         ]),
       ),
       'entry.ts': `${ssrRenderEntry.replace(/^export \{ Route \}.*$/m, '')}
