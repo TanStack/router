@@ -1365,22 +1365,22 @@ describe('extracted-export outputs', () => {
     )
   })
 
-  it('imports a cluster declaring state or observing it from the extracted module instead of copying it', async () => {
+  // (an export observing the state at load stays in the route module: the
+  // F1-2 tests of "what an evaluation runs")
+  it('imports a cluster declaring state from the extracted module instead of copying it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       let n = 0
       export function inc() { n++ }
-      export const initial = [n]
-      function Page() { inc(); return initial }
+      export const read = () => n
+      function Page() { inc(); return read() }
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
     expect(r.chunk).toContain(
-      "import { inc } from '/app/route.tsx?tsr-split=export---inc'",
+      "import { n, inc } from '/app/route.tsx?tsr-split=export---inc'",
     )
-    expect(r.chunk).toContain(
-      "import { initial } from '/app/route.tsx?tsr-split=export---initial'",
-    )
+    expect(r.chunk).toContain('const read = () => n')
     expect(r.chunk).not.toContain('n++')
     expect(r.diagnostics).toEqual([])
   })
@@ -4997,7 +4997,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
   // F1-2: an extracted export's module evaluates when something first
   // imports it (with the chunk, once nothing imports the binding through
   // the route file): a snapshot of state the route module's functions write
-  // would then see a later value. Design 2 step 2 fixes it.
+  // would then see a later value, so it stays (V on candidates).
   const snapshot = dedent(`
     import { createFileRoute } from 'toy-router'
     let n = 0
@@ -5007,38 +5007,31 @@ describe('what an evaluation runs: one walk for every rule', () => {
       component: () => { inc(); return initial },
     })
   `)
-  it.fails(
-    'keeps an exported snapshot of state an exported function writes in the route module in a build',
-    async () => {
-      const r = await compile(snapshot, [
-        toySplitPlanner({ extractExports: true }),
-      ])
-      expect(r.env).toContain('export const initial = [n]')
-      expect(r.env).not.toContain('export---initial')
-      expect(r.kept).toMatchObject([
-        {
-          code: 'eager-export:state',
-          range: { start: snapshot.indexOf('initial = ') },
-        },
-      ])
-    },
-  )
+  it('keeps an exported snapshot of state an exported function writes in the route module in a build', async () => {
+    const r = await compile(snapshot, [
+      toySplitPlanner({ extractExports: true }),
+    ])
+    expect(r.env).toContain('export const initial = [n]')
+    expect(r.env).not.toContain('export---initial')
+    expect(r.kept).toMatchObject([
+      {
+        code: 'eager-export:state',
+        range: { start: snapshot.indexOf('initial = ') },
+      },
+    ])
+    expect(r.kept[0]!.message).toBe(
+      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move both to their own module and import them from there.',
+    )
+  })
 
-  it.fails(
-    'places an exported snapshot of written state as dev does, in a build',
-    async () => {
-      const planners = [toySplitPlanner({ extractExports: true })]
-      const build = await compile(
-        snapshot,
-        planners,
-        envInfo({ mode: 'build' }),
-      )
-      const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
-      expect(build.env).toBe(dev.env)
-      expect(build.chunk).toBe(dev.chunk)
-      expect(build.kept).toEqual(dev.kept)
-    },
-  )
+  it('places an exported snapshot of written state as dev does, in a build', async () => {
+    const planners = [toySplitPlanner({ extractExports: true })]
+    const build = await compile(snapshot, planners, envInfo({ mode: 'build' }))
+    const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
+    expect(build.env).toBe(dev.env)
+    expect(build.chunk).toBe(dev.chunk)
+    expect(build.kept).toEqual(dev.kept)
+  })
 })
 
 // A declaration only split code needs that the movable test keeps in the

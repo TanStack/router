@@ -3,7 +3,7 @@
  * splitting = dead-code removal"): every assignment of a binding and every
  * write of a member of one, with where and when it happens. Every rule that
  * asks "does something write this?" reads it: the clustering of writers with
- * what they write, ordered evaluation, the movable test, the extraction
+ * what they write, ordered evaluation, the event table's rules, the extraction
  * candidates, the router planner's identifier option values (its split
  * part), the server-fn hoist and the Hydrate setters. A view over the
  * classified references (nothing is built until a binding is asked about,

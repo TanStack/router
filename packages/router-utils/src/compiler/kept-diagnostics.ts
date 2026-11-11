@@ -20,7 +20,7 @@ import type { Node } from 'yuku'
  * which, why and how to free it, once per declaration and wording (the
  * hosts' ledgers), positioned at the declaration. An exported one is not
  * extracted (its export names are the module's own); an unexported one is
- * kept by the movable test, the cause named with its line.
+ * kept by a rule of the event table, the cause named with its line.
  */
 export function keptDiagnostic(
   plan: AnalysisPlan,
@@ -93,6 +93,14 @@ export function keptDiagnostic(
         fix =
           'Move it, with the bindings it reads when it loads, to their own module and import it from there.'
         break
+      case 'state': {
+        // its module may evaluate later than the route module, after code
+        // that writes what it reads
+        const read = `\`${symbols.name(k.read!)}\``
+        why = `it uses ${read} when it loads, and the ${module} writes ${read}`
+        fix = `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
+        break
+      }
       default: {
         // `order`: its extracted module would evaluate before the module's body
         const effect = k.effect === undefined ? null : effectAt(plan, k.effect)

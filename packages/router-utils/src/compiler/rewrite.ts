@@ -738,7 +738,15 @@ export class RewriteSet {
     this.add(edit)
   }
 
-  /** Text inserted at `at` in `scope` (default: every output where the position renders). */
+  /**
+   * Text inserted at `at` in `scope` (default: every output where the
+   * position renders). The text holding the byte at `at` owns it
+   * (`RegionTable.insertOwnerAt`): a position no statement's text holds is
+   * refused, and so is the end of a declarator (`const a = f(1)` ends
+   * before its line's end: the byte there is not its text), where an
+   * expression statement's end is its own; only an edit of its last
+   * expression appends to a declaration.
+   */
   insert(insert: {
     at: number
     body: ReadonlyArray<Frag>

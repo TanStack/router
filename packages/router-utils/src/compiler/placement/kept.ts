@@ -2,16 +2,18 @@
  * Placement, stage 5: what only lazy outputs need that stays in the env
  * module, with the reason (`Placement.kept`, worded for the user by
  * `kept-diagnostics.ts`). The exported declarations a chunk reaches that are
- * not extracted, and the unexported clusters the movable test kept
+ * not extracted, and the unexported clusters a rule of the event table kept
  * (evaluation order, writes, eager reads), reported once at the cause and
- * only when the env module does not need them anyway.
+ * only when the env module does not need them anyway, worded from the
+ * violated pair (`Pin`: the other event, the binding).
  */
 import { READ_KINDS } from './clusters'
 import { derivedNeeds } from './settle'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
-import type { Pin, Roots } from './settle'
+import type { Pin } from './events'
+import type { Roots } from './settle'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { OutputId } from '../rewrite'
@@ -53,6 +55,21 @@ export function keptDeclarations(
   }
   const effectStays = (effect: number) =>
     !movable.has(clusterOfRegion.get(units[effect]!.region)!)
+  /** The pair's other event and binding, as a record words them. */
+  const pairOf = (pin: Pin): Partial<KeptDeclaration> => {
+    const other = pin.other
+    return {
+      ...(other !== undefined &&
+        'unit' in other && {
+          effect: other.unit,
+          effectStays: effectStays(other.unit),
+        }),
+      ...(other !== undefined &&
+        'at' in other &&
+        pin.reason === 'written' && { at: other.at }),
+      ...(pin.binding !== undefined && { read: pin.binding }),
+    }
+  }
   /**
    * An export statement (`export { x as y }`, `export default x`) that
    * re-exports only causes: it evaluates nothing, so it needs nothing beyond
@@ -90,8 +107,8 @@ export function keptDeclarations(
 
   // The causes, reported once each: an exported declaration a chunk
   // reaches that is not extracted (no candidate: observable effects,
-  // assigned; or cancelled, with its cause), the unexported clusters the
-  // movable test kept, and the clusters an augmentation roots up front
+  // assigned; or cancelled, with its cause), the unexported clusters a
+  // rule kept, and the clusters an augmentation roots up front
   // (`written`). An exported declaration the env module reads (`live`)
   // would stay there without split code: nothing to report.
   const causes = new Map<ClusterId, Pin>()
@@ -130,14 +147,14 @@ export function keptDeclarations(
   }
   for (const [c, at] of seeds.augmentedRoots) {
     if (derivedNeeds(input, derivedReach, c)) {
-      causes.set(c, { reason: 'written', at })
+      causes.set(c, { reason: 'written', other: { at } })
     }
   }
   const kept: Array<KeptDeclaration> = []
   /** The clusters reported below. */
   const reported = new Set<ClusterId>()
   if (causes.size === 0) {
-    stateReaders(input, graph, roots, reported, kept)
+    readersInWrittenClusters(input, graph, roots, reported, kept)
     return kept
   }
   // reported once, at the cause: a cluster kept because another kept one
@@ -145,9 +162,22 @@ export function keptDeclarations(
   // through anything else (its loader, `Route`, an extraction cancelled
   // later); an export statement (`export { x as y }`) needs nothing beyond
   // the export itself
+  // each cause's reach, walked once; the causes each cause is reached from
   const reachOf = new Map<ClusterId, Set<ClusterId>>()
-  for (const c of causes.keys()) {
-    reachOf.set(c, reads.reach('env', [c]))
+  const reachedFrom = new Map<ClusterId, Array<ClusterId>>()
+  for (const d of causes.keys()) {
+    const set = reads.reach('env', [d])
+    reachOf.set(d, set)
+    for (const c of set) {
+      if (c !== d && causes.has(c)) {
+        const from = reachedFrom.get(c)
+        if (from) {
+          from.push(d)
+        } else {
+          reachedFrom.set(c, [d])
+        }
+      }
+    }
   }
   const envOwn = reads.reach(
     'env',
@@ -159,8 +189,8 @@ export function keptDeclarations(
     }
     // an exported cause stays for its own effects or writes, whoever reads it
     let cascade = false
-    for (const [d, set] of exported.has(c) ? [] : reachOf) {
-      if (d !== c && set.has(c) && !reachOf.get(c)!.has(d)) {
+    for (const d of exported.has(c) ? [] : (reachedFrom.get(c) ?? [])) {
+      if (!reachOf.get(c)!.has(d)) {
         cascade = true
         break
       }
@@ -181,10 +211,7 @@ export function keptDeclarations(
           reason: own.reason,
           range: declaringRange(cl, sym),
           needers,
-          ...(own.effect !== undefined && {
-            effect: own.effect,
-            effectStays: effectStays(own.effect),
-          }),
+          ...pairOf(own),
         })
       }
       reported.add(c)
@@ -216,16 +243,11 @@ export function keptDeclarations(
       reason: pin.reason,
       range: declaringRange(cl, syms[0]),
       needers,
-      ...(pin.effect !== undefined && {
-        effect: pin.effect,
-        effectStays: effectStays(pin.effect),
-      }),
-      ...(pin.at !== undefined && { at: pin.at }),
-      ...(pin.read !== undefined && { read: pin.read }),
+      ...pairOf(pin),
     })
     reported.add(c)
   }
-  stateReaders(input, graph, roots, reported, kept)
+  readersInWrittenClusters(input, graph, roots, reported, kept)
   return kept
 }
 
@@ -234,9 +256,10 @@ export function keptDeclarations(
  * module writes at load joins that binding's cluster (ordered evaluation),
  * which the env module keeps when it reads the binding too (`loader: () =>
  * n`): the declaration stays with it although only split code reads it,
- * the movable test's `state` at one declaration of the cluster.
+ * reported `state` at one declaration of the cluster (design 2 step 3
+ * deletes the union and this with it).
  */
-function stateReaders(
+function readersInWrittenClusters(
   input: PlacementInput,
   graph: ClusterGraph,
   roots: Roots,
