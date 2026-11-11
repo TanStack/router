@@ -117,6 +117,8 @@ export interface ClusterGraph {
   viewOf: (o: OutputId) => OutputView
   /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
+  /** The effect units that only augment bindings their cluster's pure declarations declare: decided with that cluster. */
+  ownAugmentations: ReadonlySet<UnitId>
   /** The units with an effect O orders: effectful, surviving, not a write of pure values to their own cluster's binding (R139). */
   effectUnits: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
@@ -268,35 +270,6 @@ export function symRefsOf(
     }
   }
   return out
-}
-
-/**
- * Whether an effect unit only augments bindings its own cluster declares
- * (`Page.displayName = …` after `function Page`): the binding and its
- * writers are one cluster, moved or kept together.
- */
-export function ownAugmentation(
-  units: ReadonlyArray<Unit>,
-  u: Unit,
-  cl: Cluster,
-): boolean {
-  if (u.kind !== 'effect' || u.augments.length === 0) {
-    return false
-  }
-  // an effectful initialiser among the augmentations (`init()` between
-  // two `plugins.push`) keeps the whole cluster an effect root
-  if (
-    cl.units.some(
-      (o) => units[o]!.kind === 'declaration' && units[o]!.effectful,
-    )
-  ) {
-    return false
-  }
-  return u.augments.every((s) =>
-    cl.units.some(
-      (o) => units[o]!.kind === 'declaration' && units[o]!.declares.includes(s),
-    ),
-  )
 }
 
 /** A generated unit that only imports: no text, no declaration, no effect. */
@@ -552,18 +525,36 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
    * alias.A = …`, `import F = E`) or a member's value (`holder.e.A = …`,
    * `writesOnly`) writes another binding's object: an effect.
    */
-  const pureWrite = (unit: Unit, cl: Cluster): boolean =>
+  const confined = new Map<SymbolId, boolean>()
+  const ownsObject = (sym: SymbolId): boolean => {
+    let hit = confined.get(sym)
+    if (hit === undefined) {
+      hit =
+        !t1.mutation.isReassigned(sym) &&
+        (t1.declaringUnits.get(sym) ?? []).every((d) => ownsItsValue(units[d]!))
+      confined.set(sym, hit)
+    }
+    return hit
+  }
+  /** The bindings each unit writes a member of (the write table's member writes it owns). */
+  const memberWritesOf = new Map<RegionId, Set<SymbolId>>()
+  for (const w of writes) {
+    if (w.member && w.owner !== null) {
+      let set = memberWritesOf.get(w.owner)
+      if (!set) {
+        set = new Set()
+        memberWritesOf.set(w.owner, set)
+      }
+      set.add(w.sym)
+    }
+  }
+  const pureWrite = (unit: Unit, own: boolean): boolean =>
     !unit.augmentEffects &&
-    ownAugmentation(units, unit, cl) &&
+    own &&
     unit.augments.every(
       (sym) =>
-        !(writesOfSym.get(sym) ?? []).some(
-          (w) => w.member && w.owner === unit.region,
-        ) ||
-        (!t1.mutation.isReassigned(sym) &&
-          (t1.declaringUnits.get(sym) ?? []).every((d) =>
-            ownsItsValue(units[d]!),
-          )),
+        !(memberWritesOf.get(unit.region)?.has(sym) ?? false) ||
+        ownsObject(sym),
     )
 
   // ---- materialise clusters ------------------------------------------------
@@ -597,6 +588,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
   const effectUnits = new Set<UnitId>()
+  const ownAugmentations = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
     clusterOfRegion.set(r.id, c)
@@ -625,6 +617,36 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   for (const cl of clusters) {
     const kinds = (...ks: Array<Unit['kind']>) =>
       cl.units.some((u) => ks.includes(units[u]!.kind))
+    // `ownAugmentation` of each unit, from one pass over the cluster (a
+    // registry of n statements is one cluster)
+    let effectfulDecl = false
+    const declared = new Set<SymbolId>()
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (unit.kind === 'declaration') {
+        effectfulDecl ||= unit.effectful
+        for (const d of unit.declares) {
+          declared.add(d)
+        }
+      }
+    }
+    // an effect unit augmenting only bindings its cluster's declarations
+    // declare (`Page.displayName = …` after `function Page`): the binding
+    // and its writers are one cluster, moved or kept together; an effectful
+    // initialiser among them (`init()` between two `plugins.push`) keeps
+    // the whole cluster an effect root
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (
+        unit.kind === 'effect' &&
+        unit.augments.length > 0 &&
+        !effectfulDecl &&
+        unit.augments.every((a) => declared.has(a))
+      ) {
+        ownAugmentations.add(u)
+      }
+    }
+    const own = (unit: Unit): boolean => ownAugmentations.has(unit.id)
     if (cl.units.length === 0) {
       // generated units that only import (a planner's runtime helper, e.g.
       // the client stub's `createClientRpc`) are an import like one the
@@ -637,10 +659,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
             ? 'import'
             : 'gen'
     } else if (
-      cl.units.some(
-        (u) =>
-          units[u]!.kind === 'effect' && !ownAugmentation(units, units[u]!, cl),
-      )
+      cl.units.some((u) => units[u]!.kind === 'effect' && !own(units[u]!))
     ) {
       cl.kind = 'effect'
     } else if (kinds('import-effect')) {
@@ -681,7 +700,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       if (
         unit.effectful &&
         statementSurvives(items[unit.item]!.nodeRange) &&
-        !pureWrite(unit, cl)
+        !pureWrite(unit, own(unit))
       ) {
         cl.effectful = true
         cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
@@ -747,6 +766,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     viewOf,
     isLive,
     effectUnits,
+    ownAugmentations,
     unitSurvives,
     callsOf,
     lateWrite,

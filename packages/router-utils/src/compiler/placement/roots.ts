@@ -6,7 +6,7 @@
  * (decided later, with the env roots), and provenance: what erased text
  * read, from which "orphaned by us" is decided once env liveness is final.
  */
-import { NEED_KINDS, describeCluster, ownAugmentation } from './clusters'
+import { NEED_KINDS, describeCluster } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Node } from 'yuku'
@@ -198,7 +198,7 @@ export function seedRoots(
     if (u.kind === 'effect' || u.kind === 'import-effect') {
       // an augmentation of its own declaration cluster is decided with the
       // cluster (movable, else an effect root when roots settle)
-      if (!ownAugmentation(units, u, clusters[c]!)) {
+      if (!graph.ownAugmentations.has(u.id)) {
         envRoots.add(c)
         if (
           u.augments.length > 0 &&
