@@ -5,9 +5,16 @@
  * (Start's own server entry, inside a real request). A rebuild judges an
  * unchanged module against what the edit changed in the modules it imports.
  */
-import { existsSync, readdirSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import {
   buildStart,
   callByIdExports,
@@ -749,6 +756,95 @@ export { label } from './client-only'
         ],
       })
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
+      await expectLastClientBuild(build)
+    },
+    timeout,
+  )
+
+  /** Runs `build` with the system's temporary directory at `dir` (`TMPDIR`, as `os.tmpdir()` reads it). */
+  async function withTemporaryDirectory<T>(
+    dir: string,
+    build: () => Promise<T>,
+  ): Promise<T> {
+    const before = process.env.TMPDIR
+    process.env.TMPDIR = dir
+    try {
+      return await build()
+    } finally {
+      if (before === undefined) {
+        delete process.env.TMPDIR
+      } else {
+        process.env.TMPDIR = before
+      }
+    }
+  }
+
+  // What a watch build keeps in the system's temporary directory, which
+  // other users of the machine share (Linux's `/tmp`).
+  // Source: design 3 final review, finding 1 (a directory at a name derived
+  // from the app's path, made with the default mode: another user could
+  // create it first and plant a link that the build wrote through; it was
+  // never removed).
+  test(
+    'a watch build keeps its temporary files in a directory only the user can open, removed when its watchers close',
+    async () => {
+      const temporary = mkdtempSync(path.join(runDirectory(), 'tmpdir-'))
+      /** The entries the build made in the temporary directory, with their modes, while it watches. */
+      let during: Array<{ name: string; dir: boolean; mode: number }> = []
+      await withTemporaryDirectory(temporary, () =>
+        buildStart({
+          bundler: 'vite',
+          files: pageApp,
+          entry: pageEntry,
+          watchEdits: [
+            {
+              edits: clientOnlyEdit,
+              when: () => {
+                during = readdirSync(temporary).map((name) => {
+                  const stat = lstatSync(path.join(temporary, name))
+                  return {
+                    name,
+                    dir: stat.isDirectory(),
+                    mode: stat.mode & 0o777,
+                  }
+                })
+                return Promise.resolve()
+              },
+            },
+          ],
+        }),
+      )
+      expect(during.length).toBeGreaterThan(0)
+      for (const entry of during) {
+        expect(entry).toEqual({ name: entry.name, dir: true, mode: 0o700 })
+      }
+      expect(readdirSync(temporary)).toEqual([])
+    },
+    timeout,
+  )
+
+  // A sandbox whose temporary directory does not exist (or isn't usable):
+  // the build goes on, as without a watch.
+  // Source: design 3 final review, finding 1 (resolving the missing
+  // directory threw in a server module's `load`: the server's build failed).
+  test(
+    'a temporary directory that does not exist: the watch build succeeds and a save rebuilds both environments',
+    async () => {
+      const missing = path.join(runDirectory(), 'no-such-tmpdir')
+      const build = await withTemporaryDirectory(missing, () =>
+        buildStart({
+          bundler: 'vite',
+          files: pageApp,
+          entry: pageEntry,
+          watchEdits: { 'src/routes/index.tsx': index('MARK_EDIT') },
+        }),
+      )
+      expect(
+        build.firstBuild.filter(({ severity }) => severity === 'error'),
+      ).toEqual([])
+      expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
+      const { html } = await documentOf(build)
+      expect(html).toContain('MARK_EDIT')
       await expectLastClientBuild(build)
     },
     timeout,
