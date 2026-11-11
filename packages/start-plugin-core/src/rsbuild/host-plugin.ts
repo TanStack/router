@@ -16,6 +16,8 @@ import {
   emittedMapTexts,
   identify,
   initialChunkResources,
+  invariantDiagnostic,
+  invariantViolated,
   locateDiagnostics,
   locatedError,
   normalizePath,
@@ -681,6 +683,61 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         warned = reported
       }
 
+      /**
+       * Builds again, through the environment's stale set, the modules of
+       * the compilation whose served state (import protection's ledger)
+       * differs from what the compilation's importers now ask for (design 4:
+       * an exempt importer compiled or restored after the denied file, an
+       * exempt import gone, a restored module's `allowImport` answer), until
+       * none differs. A module built real brings its own imports, which may
+       * ask for another one. A module flipped twice is an internal error
+       * (R116: thrown in our test runs, a warning otherwise).
+       */
+      async function serveAsDemanded(
+        ipEnv: NonNullable<ReturnType<typeof ipEnvOf>>,
+        compilation: Rspack.Compilation,
+      ): Promise<void> {
+        const pathOf = (id: string) => identify(canonicalResource(id)).path
+        const flipped = new Set<string>()
+        for (;;) {
+          const ids = await ipEnv.mismatches()
+          if (ids.length === 0) {
+            return
+          }
+          const held = new Set<string>()
+          for (const m of compilation.modules) {
+            const resource = (m as unknown as ModuleLike).resource
+            if (resource) {
+              held.add(pathOf(resource))
+            }
+          }
+          // (one the compilation no longer holds is judged when it comes back)
+          const paths = ids.map(pathOf).filter((p) => held.has(p))
+          if (paths.length === 0) {
+            return
+          }
+          const again = paths.find((p) => flipped.has(p))
+          if (again !== undefined) {
+            const v = invariantViolated({
+              effect: 'import protection may serve it as its mock or as it is',
+              detail: `import protection's served state of ${again} did not settle in one compilation`,
+            })
+            const file = path.relative(session.start.opts.root, again)
+            compilation.warnings.push(
+              new WebpackError(
+                invariantDiagnostic('[tanstack-start] ', file, v).message,
+              ),
+            )
+            return
+          }
+          for (const p of paths) {
+            flipped.add(p)
+            session.start.caches.stale.add(environment.name, p)
+          }
+          await session.drain.rebuild(environment.name, compilation, pathOf)
+        }
+      }
+
       /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
         const { allocator, errors, warnings } = session.start.allocateIds(
@@ -757,14 +814,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // the persistent cache): the plans of restored modules, then the modules of the
       // environment's stale set built again (a restored module whose plan read facts that
       // changed since, or no plan of this configuration, is in it; so are the dependents an
-      // invalidation found stale), then the environment's server-fn snapshot and the
-      // import-protection records. So is built again, with `allowImport`, a
-      // restored edge module or a module that is its own violation: another session's answer
-      // chose their state, and the build asks once per import anyway; and, in dev, a module
-      // restored with violations or an edge module restored with pending ones: another
-      // session reported them. Edge modules first: an answer brings the module it allows. Only
-      // a compiler's first compilation restores modules (Rspack loads the cache's module graph
-      // in a build, never in a rebuild)
+      // invalidation found stale), then the import-protection records (in dev, a module
+      // restored with violations or an edge module restored with pending ones is built
+      // again: another session reported them), the modules served otherwise than their
+      // importers now ask for built again (`serveAsDemanded`), and the environment's
+      // server-fn snapshot. Only a compiler's first compilation restores modules (Rspack
+      // loads the cache's module graph in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
         (compilation) =>
@@ -831,22 +886,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     ipEnv.replay(canonicalResource(module.resource), ip)
                   }
                 }
-                // a module compiled as its own violation before the edges of a
-                // restored exempt importer were replayed gets the real module
-                for (const resource of env.persistsModules
-                  ? env.compiled
-                  : []) {
-                  if (ipEnv.selfAllowedNow(canonicalResource(resource))) {
-                    unjudged.add(resource)
-                  }
-                }
                 const unconfirmed = new Set<string>()
                 for (const m of compilation.modules) {
                   const resource = (m as unknown as ModuleLike).resource
-                  if (
-                    resource &&
-                    ipEnv.unconfirmed(resource, env.compiled.has(resource))
-                  ) {
+                  if (resource && ipEnv.unconfirmed(resource)) {
                     unconfirmed.add(resource)
                   }
                 }
@@ -856,6 +899,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (unjudged.size > 0) {
                   await rebuildModules(compilation, unjudged, (r) => r)
                 }
+              }
+              if (ipEnv) {
+                await serveAsDemanded(ipEnv, compilation)
               }
               // one read of each module's `buildInfo`: the server-fn snapshot and,
               // but in a first compilation (replayed above), the records

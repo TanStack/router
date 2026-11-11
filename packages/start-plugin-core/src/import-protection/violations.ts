@@ -242,4 +242,6 @@ export interface RspackImportProtectionBuildInfo {
   edges?: Array<IndexedEdge>
   /** The revision of the input the edges were judged in (their positions are located in the raw file at that revision). */
   revision?: string
+  /** What was served: a module that is its own violation, or an edge module (`ImportProtectionEnv.mismatches`). */
+  served?: 'mock' | 'real'
 }

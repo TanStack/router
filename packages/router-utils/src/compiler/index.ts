@@ -124,6 +124,8 @@ export type {
   RouteRegistry,
 } from './host'
 export { compileModule, createCompilerCaches } from './pipeline'
+export { invariantDiagnostic, invariantViolated } from './self-checks'
+export type { InvariantViolation } from './self-checks'
 export {
   cacheDisabled,
   collectionSizes,

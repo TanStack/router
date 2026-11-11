@@ -201,7 +201,7 @@ describe('rsbuild build', () => {
     timeout,
   )
 
-  test.fails(
+  test(
     'two exempt importers, the pattern one first: both get the real module, nothing reported',
     async () => {
       expect(
@@ -224,7 +224,7 @@ describe('rsbuild build', () => {
 
   // F5-1 in the other order: the file is served the mock first, then the
   // exempt importer needs it real; Rspack builds it again
-  test.fails.each(['mock', 'error'] as const)(
+  test.each(['mock', 'error'] as const)(
     'a checked pattern import reached first and an exempt plain import: both get the real module, nothing reported (%s)',
     async (behavior) => {
       expect(
@@ -244,7 +244,7 @@ describe('rsbuild build', () => {
   // F5-1b: the persistent cache restores the file real after the exempt
   // importer's import was removed: the warm build serves it the mock, as a
   // cold build of the same files does, and reports the checked importer
-  test.fails(
+  test(
     'a persistent cache: the exempt import removed between builds, the checked pattern importer gets the mock and is reported',
     async () => {
       const cold = await buildStart({
@@ -371,7 +371,7 @@ describe('dev: the exempt import removed by an edit', () => {
     timeout,
   )
 
-  test.fails(
+  test(
     'rsbuild dev: the checked pattern importer gets the mock',
     async () => {
       const recorder = violationRecorder(options('mock'))
