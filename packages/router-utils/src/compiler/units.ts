@@ -1410,6 +1410,80 @@ export function changesObject(
   )
 }
 
+/**
+ * Whether reference `node` is an argument a call of a function the module
+ * declares (a function declaration, a `const` holding a function) may
+ * change: its parameter there is changed in the body (`changesObject`), or
+ * handed on to a call, or is no plain name (a pattern, a rest element), or
+ * a spread before it hides which parameter it is. A function the module
+ * declares shows what it does with what it is handed; any other function
+ * writes nothing it is handed (R146).
+ */
+export function changesAsArgument(
+  file: SourceFile,
+  node: Node,
+  known: (call: Node) => boolean,
+): boolean {
+  /** The call `n` (wrappers aside) is an argument of, and that argument. */
+  const argumentOf = (from: Node) => {
+    let n = from
+    let parent = file.parentOf(n)
+    while (parent !== null && isExpressionWrapper(parent)) {
+      n = parent
+      parent = file.parentOf(n)
+    }
+    return parent?.type === 'CallExpression' && parent.callee !== n
+      ? { call: parent, arg: n }
+      : null
+  }
+  const at = argumentOf(node)
+  if (at === null) {
+    return false
+  }
+  const { call, arg } = at
+  const index = call.arguments.indexOf(arg as never)
+  if (index < 0) {
+    return false
+  }
+  const callee = unwrapExpression(call.callee)
+  const declared =
+    callee.type === 'Identifier'
+      ? file.referenceOf(callee)?.binding?.declarations[0]
+      : undefined
+  const holder = declared === undefined ? null : file.parentOf(declared)
+  const fn =
+    holder?.type === 'FunctionDeclaration'
+      ? holder
+      : holder?.type === 'VariableDeclarator' && holder.init !== null
+        ? unwrapExpression(holder.init)
+        : null
+  if (
+    fn === null ||
+    (fn.type !== 'FunctionDeclaration' &&
+      fn.type !== 'FunctionExpression' &&
+      fn.type !== 'ArrowFunctionExpression')
+  ) {
+    return false
+  }
+  if (call.arguments.some((a, i) => i < index && a.type === 'SpreadElement')) {
+    return true
+  }
+  const param = fn.params[index] as Node | undefined
+  if (param === undefined) {
+    return fn.params.some((p) => p.type === 'RestElement')
+  }
+  const id = param.type === 'AssignmentPattern' ? (param.left as Node) : param
+  const own = id.type === 'Identifier' ? file.bindingOf(id) : null
+  if (own === null) {
+    return true
+  }
+  return own.references.some(
+    (r) =>
+      !r.isWrite &&
+      (changesObject(file, r.node, known) || argumentOf(r.node) !== null),
+  )
+}
+
 /** Something a statement changes outside the module's own bindings (R146 amendment): what the rest of the app sees. */
 export interface OutsideChange {
   at: number

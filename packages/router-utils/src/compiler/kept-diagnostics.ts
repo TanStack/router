@@ -139,7 +139,7 @@ export function keptDiagnostic(
         k.outside !== undefined
           ? `${statement}: it also ${outsideWords(k.outside)}`
           : k.read !== undefined
-            ? `${statement}: it also changes ${read}, which ${k.in === undefined ? `the ${module} keeps` : `the split ${output(k.in)} uses`}`
+            ? `${statement}: it also changes ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
             : `${statement}: several split options use what it changes (${users.map(output).join(', ')})`
       fix =
         k.outside === undefined && k.read !== undefined

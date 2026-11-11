@@ -54,7 +54,7 @@
  * (`factsOf`). A module that writes no module binding asks only of
  * effectful clusters and candidates.
  */
-import { changesObject, outsideChangeIn } from '../units'
+import { changesAsArgument, changesObject, outsideChangeIn } from '../units'
 import { callChangesNothing } from '../purity'
 import { NEED_KINDS } from './clusters'
 import type { ClusterGraph, ClusterId, Write } from './clusters'
@@ -681,7 +681,11 @@ export function eventTable(
           changed = [ref.sym]
         } else if (ref.kind === 'value') {
           const node = t1.nodeAt(ref.range.start)
-          if (node !== null && changesObject(file, node, known)) {
+          if (
+            node !== null &&
+            (changesObject(file, node, known) ||
+              changesAsArgument(file, node, known))
+          ) {
             changed =
               ref.memberWrite &&
               !ref.readsThrough &&
