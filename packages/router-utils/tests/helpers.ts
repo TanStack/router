@@ -539,6 +539,13 @@ export interface MemoryHostOptions {
   >[0]['markerSpecifiers']
   /** Texts of virtual modules (`loadVirtual`), by id. */
   virtual?: Record<string, string>
+  /**
+   * The modification time `write` stamps a file with, from the count of
+   * writes so far (default: that count, a clock finer than any wait). A
+   * filesystem whose times are whole seconds stamps writes of one second
+   * alike.
+   */
+  clock?: (writes: number) => number
 }
 
 /**
@@ -614,7 +621,8 @@ export class MemoryHost implements HostServices {
 
   write(path: string, code: string): void {
     this.files[path] = code
-    this.writtenAt.set(path, ++this.writes)
+    const writes = ++this.writes
+    this.writtenAt.set(path, this.opts.clock?.(writes) ?? writes)
   }
 
   compile(
