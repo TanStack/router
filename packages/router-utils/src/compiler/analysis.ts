@@ -147,7 +147,7 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`: `memberUse`), which may be another binding's object; always present. */
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
 }
 
@@ -1235,8 +1235,8 @@ export class ModuleAnalysis {
         ctx: c.ctx,
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
-        memberWrite: use === 'write',
-        readsThrough: use === 'through',
+        memberWrite: use === 'write' || use === 'write-through',
+        readsThrough: use === 'through' || use === 'write-through',
       })
     }
 
@@ -1337,7 +1337,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refIndex)
+    const mutation = new MutationModel(refIndex, () => tier1)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -1656,8 +1656,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   return true
 }
 
-const NO_UNITS: ReadonlyArray<UnitId> = []
-
 /**
  * What an evaluation runs: the one definition of "runs at load" (README,
  * "effects and mutable state"), asked of one evaluation at a time. `text`
@@ -1679,7 +1677,8 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * (`defineComponent({ setup() {} })`).
  *
  * The object a binding names is its value: its declaration and those
- * statements. A reference reading that object's contents (`readsThrough`:
+ * statements (the mutation model's `visitValues`, which also walks the
+ * bodies). A reference reading that object's contents (`readsThrough`:
  * `alias.v`, `{ ...alias }`, `const { v } = alias`) reads what the value
  * holds when the module loads, which may be another binding's object
  * (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`): it
@@ -1693,18 +1692,14 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * from `visit` ends the walk; the result says whether it did.
  */
 export function visitRuns(
-  t1: Pick<
-    Tier1,
-    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
-  >,
+  t1: Pick<Tier1, 'mutation'>,
   text: ReadonlyArray<ClassifiedRef>,
   calls: EvaluatedCalls | null,
   bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
   visit: (ref: ClassifiedRef, at: number) => boolean,
 ): boolean {
+  /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
   const roots: Array<ClassifiedRef> = []
-  /** Without a call: the references reading through their binding (only their values' eager references run). */
-  const through: Array<ClassifiedRef> = []
   for (const ref of text) {
     if (
       !ref.eager &&
@@ -1718,129 +1713,14 @@ export function visitRuns(
     if (visit(ref, ref.range.start)) {
       return true
     }
-    if (calls !== null && !ref.memberWrite) {
+    if (calls !== null ? !ref.memberWrite : ref.readsThrough) {
       roots.push(ref)
-    } else if (calls === null && ref.readsThrough) {
-      through.push(ref)
     }
   }
-  if (through.length > 0) {
-    return visitValues(t1, through, bodyOf, visit)
-  }
-  if (roots.length === 0) {
-    return false
-  }
-  roots.sort((a, b) => a.range.start - b.range.start)
-  const seen = new Set<UnitId>()
-  /** The names whose declarations and writing statements were entered (once per evaluation: `seen` would skip them anyway). */
-  const followed = new Set<SymbolId>()
-  const work: Array<ClassifiedRef> = []
-  /** Runs the text of unit `u` at `at` (once per evaluation); true ends the walk. */
-  const enter = (u: UnitId, at: number): boolean => {
-    if (seen.has(u)) {
-      return false
-    }
-    seen.add(u)
-    for (const inner of bodyOf(u)) {
-      if (visit(inner, at)) {
-        return true
-      }
-      if (!inner.memberWrite) {
-        work.push(inner)
-      }
-    }
-    return false
-  }
-  for (const root of roots) {
-    const at = root.range.start
-    work.push(root)
-    while (work.length > 0) {
-      const r = work.pop()!
-      if (followed.has(r.sym)) {
-        continue
-      }
-      followed.add(r.sym)
-      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
-        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
-          return true
-        }
-      }
-      for (const site of t1.mutation.sitesOf(r.sym)) {
-        if (!site.eager || t1.runsLaterAt(site.range.start)) {
-          continue
-        }
-        const u = t1.unitAt(site.range)
-        if (u !== null && enter(u, at)) {
-          return true
-        }
-      }
-    }
-  }
-  return false
-}
-
-/**
- * `visitRuns` for an evaluation that calls nothing: what the references
- * reading through their binding (`through`) read, the eager references of
- * each one's value (its declarations and the statements writing it when the
- * module loads), and of what those hold, at the reference's position.
- */
-function visitValues(
-  t1: Pick<
-    Tier1,
-    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
-  >,
-  through: ReadonlyArray<ClassifiedRef>,
-  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
-  visit: (ref: ClassifiedRef, at: number) => boolean,
-): boolean {
-  const seen = new Set<UnitId>()
-  const followed = new Set<SymbolId>()
-  const work: Array<ClassifiedRef> = []
-  const enter = (u: UnitId, at: number): boolean => {
-    if (seen.has(u)) {
-      return false
-    }
-    seen.add(u)
-    for (const inner of bodyOf(u)) {
-      if (!inner.eager || t1.runsLaterAt(inner.range.start)) {
-        continue
-      }
-      if (visit(inner, at)) {
-        return true
-      }
-      if (!inner.memberWrite) {
-        work.push(inner)
-      }
-    }
-    return false
-  }
-  for (const root of through) {
-    const at = root.range.start
-    work.push(root)
-    while (work.length > 0) {
-      const r = work.pop()!
-      if (followed.has(r.sym)) {
-        continue
-      }
-      followed.add(r.sym)
-      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
-        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
-          return true
-        }
-      }
-      for (const site of t1.mutation.sitesOf(r.sym)) {
-        if (!site.eager || t1.runsLaterAt(site.range.start)) {
-          continue
-        }
-        const u = t1.unitAt(site.range)
-        if (u !== null && enter(u, at)) {
-          return true
-        }
-      }
-    }
-  }
-  return false
+  return (
+    roots.length > 0 &&
+    t1.mutation.visitValues(roots, calls === null, bodyOf, visit)
+  )
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */

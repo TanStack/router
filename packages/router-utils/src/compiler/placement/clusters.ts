@@ -10,7 +10,7 @@
  */
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
-import { callsWhenEvaluated, ownsItsValue } from '../units'
+import { callsWhenEvaluated } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
@@ -432,7 +432,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     const owner = evaluationAt(ref.range)
     const calls = ref.eager || owner === null ? null : callsOf(owner)
-    addWrite({
+    const row: Write = {
       sym: ref.sym,
       at: ref.range.start,
       // (code evaluated with the module that runs later, `runsLaterAt`:
@@ -447,7 +447,18 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         ),
       augment: false,
       member: kind === 'member',
-    })
+    }
+    addWrite(row)
+    // a member write through a name that may hold other bindings' objects
+    // writes each of them (`alias.v = 1`, `holder.c.v = 1`: the mutation
+    // model's `objectsWrittenBy`)
+    if (kind === 'member' && ref.kind === 'value') {
+      for (const s of t1.mutation.objectsWrittenBy(ref)) {
+        if (declMember.has(s)) {
+          addWrite({ ...row, sym: s })
+        }
+      }
+    }
   }
   for (const u of units) {
     if (u.augments.length === 0) {
@@ -520,22 +531,11 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   /**
    * Whether an augmentation is a write of pure values to bindings of its
    * cluster that name objects of their own (R139): it assigns the binding,
-   * or writes a member of one its declaration created (`ownsItsValue`) and
-   * nothing reassigns. A write through an alias (`const alias = E;
-   * alias.A = …`, `import F = E`) or a member's value (`holder.e.A = …`,
-   * `writesOnly`) writes another binding's object: an effect.
+   * or writes a member of one that owns its object (`ownsObject`). A write
+   * through an alias (`const alias = E; alias.A = …`, `import F = E`) or a
+   * member's value (`holder.e.A = …`, `writesOnly`) writes another
+   * binding's object: an effect.
    */
-  const confined = new Map<SymbolId, boolean>()
-  const ownsObject = (sym: SymbolId): boolean => {
-    let hit = confined.get(sym)
-    if (hit === undefined) {
-      hit =
-        !t1.mutation.isReassigned(sym) &&
-        (t1.declaringUnits.get(sym) ?? []).every((d) => ownsItsValue(units[d]!))
-      confined.set(sym, hit)
-    }
-    return hit
-  }
   /** The bindings each unit writes a member of (the write table's member writes it owns). */
   const memberWritesOf = new Map<RegionId, Set<SymbolId>>()
   for (const w of writes) {
@@ -554,7 +554,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     unit.augments.every(
       (sym) =>
         !(memberWritesOf.get(unit.region)?.has(sym) ?? false) ||
-        ownsObject(sym),
+        t1.mutation.ownsObject(sym),
     )
 
   // ---- materialise clusters ------------------------------------------------

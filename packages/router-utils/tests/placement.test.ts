@@ -3434,7 +3434,9 @@ describe('ordered evaluation and movable effects', () => {
   })
 
   // a write through a binding that names another one's object writes that
-  // object: an effect, ordered against the read of the other binding
+  // object: an effect, ordered against the read of the other binding. The
+  // write joins the cluster of the object it writes (final review finding
+  // 1), so when only the chunk needs them they move together, in order.
   it.each([
     ['an alias', 'const alias = cfg\nconst y = [cfg.a]\nalias.a = 2'],
     [
@@ -3455,7 +3457,8 @@ describe('ordered evaluation and movable effects', () => {
         })
       `)
     const r = await split(code)
-    expect(r.env).toContain('const y = [cfg.a]')
+    expect(r.env).not.toContain('cfg')
+    expect(r.chunks.component).toContain(`const cfg = { a: 1 }\n${decls}`)
   })
 
   // its first effect is the call after the unknown one: the pure write

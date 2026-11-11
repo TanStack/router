@@ -189,7 +189,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
   reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`) reads what that name's
   value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
-  it reads `cfg`), so it is ordered against a write of the original. A method nested in an object argument
+  it reads `cfg`), so it is ordered against a write of the original. A member write through a name whose
+  declaration does not create its value (`const alias = cfg; alias.v = 1`, `let cur = cfg`) or through a nested
+  member (`holder.c.v = 1`, `holder[0].push(x)`) writes whatever that value may hold: it is a write of each of
+  those bindings too (`cfg`), ordered against every read of them and joining their cluster when it runs at load.
+  One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
   option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
