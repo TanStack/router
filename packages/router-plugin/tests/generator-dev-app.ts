@@ -52,6 +52,7 @@ import { tanstackRouter } from '../src/vite'
 import { tanstackRouter as tanstackRouterWebpack } from '../src/webpack'
 import { holdsMarker } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { AddressInfo } from 'node:net'
 import type { RsbuildPlugin } from '@rsbuild/core'
@@ -150,6 +151,13 @@ export interface GeneratorDevApp {
    * and waits until it shows `expected`.
    */
   navigate: (pathname: string, expected: string | RegExp) => Promise<void>
+  /**
+   * webpack and Rsbuild: stops the dev server (the bundler's cache is
+   * written), writes `files` while no dev server runs, starts a new one on
+   * the app, with new plugin instances, and opens the app at `/` once it
+   * settled (`persistentCache`: a start from the cache).
+   */
+  restart: (files?: Record<string, string | null>) => Promise<void>
   /** The routes of the live router in the page, sorted by id. */
   routes: () => Promise<Array<LiveRoute>>
   /** Each script the page loaded since the last `visit()`. */
@@ -206,6 +214,12 @@ export interface GeneratorDevAppOptions {
   symlinks?: Record<string, string>
   /** webpack: the app's own configuration over the harness's (e.g. `snapshot`; its `plugins` come after the router's). */
   webpack?: Record<string, unknown>
+  /**
+   * webpack and Rsbuild: the bundler's persistent cache, in the app's
+   * directory (webpack's `filesystem` cache, Rsbuild's `buildCache`): a
+   * `restart()` starts from it.
+   */
+  persistentCache?: boolean
 }
 
 /**
@@ -235,7 +249,7 @@ export async function generatorDevApp(
     ...workspacePackageLinks(options.links ?? []),
     ...options.symlinks,
   }
-  const app =
+  let app =
     bundler === 'vite'
       ? await viteApp(files, symlinks, options.pluginOptions)
       : bundler === 'webpack'
@@ -244,10 +258,15 @@ export async function generatorDevApp(
             symlinks,
             options.pluginOptions,
             options.webpack,
+            options.persistentCache ?? false,
             () => printed().map((diagnostic) => diagnostic.text),
           )
-        : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
-            printed().map((diagnostic) => diagnostic.text),
+        : await rsbuildApp(
+            files,
+            symlinks,
+            options.pluginOptions,
+            options.persistentCache ?? false,
+            () => printed().map((diagnostic) => diagnostic.text),
           )
   await app.settle()
 
@@ -384,6 +403,15 @@ export async function generatorDevApp(
       )
       await waitForApp(expected)
     },
+    restart: async (files = {}) => {
+      if (!app.restart) {
+        throw new Error(`restart: not supported on ${bundler}`)
+      }
+      await page.close()
+      app = await app.restart(files)
+      await app.settle()
+      await open('/')
+    },
     routes: async () => {
       const live: Array<LiveRoute> = await page.page.evaluate(() =>
         Object.values((window as any).__APP_ROUTER__.routesById).map(
@@ -397,7 +425,7 @@ export async function generatorDevApp(
       return live.sort((a, b) => a.id.localeCompare(b.id))
     },
     scripts: () => Promise.all(scripts),
-    errors: app.errors,
+    errors: () => app.errors(),
     stop: async () => {
       await page.close()
       await app.stop()
@@ -448,6 +476,24 @@ interface AppServer {
   /** Vite: a wait until no transform is in flight. */
   hmr?: {
     idle: () => Promise<void>
+  }
+  /** Stops the server, writes `files`, and starts a new one on the app (webpack, Rsbuild). */
+  restart?: (files: Record<string, string | null>) => Promise<AppServer>
+}
+
+/** Writes app files (relative to `root`; `null` deletes one). */
+async function writeAppFiles(
+  root: string,
+  files: Record<string, string | null>,
+): Promise<void> {
+  for (const [file, code] of Object.entries(files)) {
+    const absolute = path.join(root, file)
+    if (code === null) {
+      await rm(absolute, { force: true })
+    } else {
+      await mkdir(path.dirname(absolute), { recursive: true })
+      await writeFile(absolute, code)
+    }
   }
 }
 
@@ -519,9 +565,10 @@ async function rsbuildApp(
   files: Record<string, string>,
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
+  persistentCache: boolean,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
-  const server = await createRsbuildDevServer({
+  const first = await createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.generator-dev-rsbuild-',
     registerCleanup: onTestFinished,
@@ -529,7 +576,10 @@ async function rsbuildApp(
     entry: 'main.tsx',
     symlinks,
     files,
-    config: { html: { mountId: 'app' } },
+    config: {
+      html: { mountId: 'app' },
+      ...(persistentCache && { performance: { buildCache: true } }),
+    },
     plugins: ({ root }) => [
       pluginReact(),
       {
@@ -554,6 +604,14 @@ async function rsbuildApp(
       } satisfies RsbuildPlugin,
     ],
   })
+  return rsbuildAppServer(first, printedTexts)
+}
+
+/** The `AppServer` of an Rsbuild dev server (`rsbuildApp`, and again after `restart`). */
+function rsbuildAppServer(
+  server: RsbuildDevServer,
+  printedTexts: () => Array<string>,
+): AppServer {
   // What the test process printed and what the dev server's own capture
   // received (the generator prints in the server's scope), since a mark
   const mark = () => ({
@@ -593,6 +651,11 @@ async function rsbuildApp(
     // runs print (console, streams), which reaches the server's capture
     diagnostics: () =>
       server.diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
+    restart: async (written) => {
+      await server.stop()
+      await writeAppFiles(server.root, written)
+      return rsbuildAppServer(await server.restart(), printedTexts)
+    },
   }
 }
 
@@ -609,6 +672,7 @@ async function webpackApp(
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
   config: GeneratorDevAppOptions['webpack'] = {},
+  persistentCache: boolean,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
   const app = await createApp({
@@ -638,138 +702,152 @@ async function webpackApp(
   const { plugins: ownPlugins = [], ...own } = config as {
     plugins?: Array<WebpackPluginInstance>
   }
-  const compiler = webpack({
-    mode: 'development',
-    context: root,
-    entry: { main: './main.tsx' },
-    output: { path: path.join(root, 'dist'), publicPath: '/' },
-    resolve: { extensions: ['.ts', '.tsx', '.js'] },
-    module: {
-      rules: [
-        {
-          test: /\.tsx?$/,
-          include: root,
-          loader: oxcLoader,
-          options: { development: true },
-        },
+  /** A dev server on the app (again, after `restart`). */
+  const serve = async (): Promise<AppServer> => {
+    const compiler = webpack({
+      mode: 'development',
+      context: root,
+      entry: { main: './main.tsx' },
+      output: { path: path.join(root, 'dist'), publicPath: '/' },
+      resolve: { extensions: ['.ts', '.tsx', '.js'] },
+      module: {
+        rules: [
+          {
+            test: /\.tsx?$/,
+            include: root,
+            loader: oxcLoader,
+            options: { development: true },
+          },
+        ],
+      },
+      plugins: [
+        tanstackRouterWebpack({
+          target: 'react',
+          routesDirectory: path.join(root, 'routes'),
+          generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+          autoCodeSplitting: true,
+          ...(typeof pluginOptions === 'function'
+            ? pluginOptions(root)
+            : pluginOptions),
+        }),
+        ...ownPlugins,
       ],
-    },
-    plugins: [
-      tanstackRouterWebpack({
-        target: 'react',
-        routesDirectory: path.join(root, 'routes'),
-        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-        autoCodeSplitting: true,
-        ...(typeof pluginOptions === 'function'
-          ? pluginOptions(root)
-          : pluginOptions),
+      infrastructureLogging: { level: 'none' },
+      stats: 'none',
+      ...(persistentCache && {
+        cache: {
+          type: 'filesystem',
+          cacheDirectory: path.join(root, 'node_modules/.cache/webpack'),
+        },
       }),
-      ...ownPlugins,
-    ],
-    infrastructureLogging: { level: 'none' },
-    stats: 'none',
-    ...own,
-  })
-  /** Compiles started, whether one runs or is pending, and the last one's errors. */
-  let started = 0
-  let compiling = false
-  let invalidated = false
-  let errors: Array<string> = []
-  const diagnostics: Array<Diagnostic> = []
-  const name = 'generator-dev-app'
-  compiler.hooks.invalid.tap(name, () => {
-    invalidated = true
-  })
-  compiler.hooks.watchRun.tap(name, () => {
-    started++
-    compiling = true
-    invalidated = false
-  })
-  compiler.hooks.done.tap(name, (stats) => {
-    compiling = false
-    const json = stats.toJson({ all: false, errors: true, warnings: true })
-    errors = (json.errors ?? []).map((error) => error.message)
-    for (const [severity, list] of [
-      ['error', json.errors ?? []],
-      ['warning', json.warnings ?? []],
-    ] as const) {
-      for (const entry of list) {
-        diagnostics.push({ severity, text: entry.message, raw: entry })
+      ...own,
+    })
+    /** Compiles started, whether one runs or is pending, and the last one's errors. */
+    let started = 0
+    let compiling = false
+    let invalidated = false
+    let errors: Array<string> = []
+    const diagnostics: Array<Diagnostic> = []
+    const name = 'generator-dev-app'
+    compiler.hooks.invalid.tap(name, () => {
+      invalidated = true
+    })
+    compiler.hooks.watchRun.tap(name, () => {
+      started++
+      compiling = true
+      invalidated = false
+    })
+    compiler.hooks.done.tap(name, (stats) => {
+      compiling = false
+      const json = stats.toJson({ all: false, errors: true, warnings: true })
+      errors = (json.errors ?? []).map((error) => error.message)
+      for (const [severity, list] of [
+        ['error', json.errors ?? []],
+        ['warning', json.warnings ?? []],
+      ] as const) {
+        for (const entry of list) {
+          diagnostics.push({ severity, text: entry.message, raw: entry })
+        }
       }
+    })
+    compiler.hooks.failed.tap(name, (error) => {
+      compiling = false
+      errors = [error.stack ?? error.message]
+    })
+    const server = new WebpackDevServer(
+      {
+        host: '127.0.0.1',
+        port: 0,
+        hot: true,
+        static: { directory: path.join(root, 'public'), watch: false },
+        historyApiFallback: true,
+        setupExitSignals: false,
+        client: { overlay: false, logging: 'warn' },
+      },
+      compiler,
+    )
+    await server.start()
+    let stopped: Promise<void> | undefined
+    const stop = () => {
+      stopped ??= (async () => {
+        await server.stop()
+        // (the cache is written when the compiler closes)
+        await new Promise<void>((resolve, reject) =>
+          compiler.close((error) => (error ? reject(error) : resolve())),
+        )
+      })()
+      return stopped
     }
-  })
-  compiler.hooks.failed.tap(name, (error) => {
-    compiling = false
-    errors = [error.stack ?? error.message]
-  })
-  const server = new WebpackDevServer(
-    {
-      host: '127.0.0.1',
-      port: 0,
-      hot: true,
-      static: { directory: path.join(root, 'public'), watch: false },
-      historyApiFallback: true,
-      setupExitSignals: false,
-      client: { overlay: false, logging: 'warn' },
-    },
-    compiler,
-  )
-  await server.start()
-  let stopped = false
-  const stop = async () => {
-    if (!stopped) {
-      stopped = true
-      await server.stop()
+    onTestFinished(stop)
+    const port = (server.server!.address() as AddressInfo).port
+    /** `started` at the last write; `-1`: the first compile is owed. */
+    let writtenAt = -1
+    /** The files of the last write (relative), and what the process had printed before it. */
+    let lastWrite: { files: Array<string>; printed: number } = {
+      files: [],
+      printed: 0,
     }
-  }
-  onTestFinished(stop)
-  const port = (server.server!.address() as AddressInfo).port
-  /** `started` at the last write; `-1`: the first compile is owed. */
-  let writtenAt = -1
-  /** The files of the last write (relative), and what the process had printed before it. */
-  let lastWrite: { files: Array<string>; printed: number } = {
-    files: [],
-    printed: 0,
-  }
-  const reportedByGenerator = () =>
-    printedTexts()
-      .slice(lastWrite.printed)
-      .some((text) => lastWrite.files.some((file) => text.includes(file)))
-  const write = async (written: Record<string, string | null>) => {
-    writtenAt = started
-    lastWrite = { files: Object.keys(written), printed: printedTexts().length }
-    for (const [file, code] of Object.entries(written)) {
-      const absolute = path.join(root, file)
-      if (code === null) {
-        await rm(absolute, { force: true })
-      } else {
-        await mkdir(path.dirname(absolute), { recursive: true })
-        await writeFile(absolute, code)
-      }
-    }
-  }
-  return {
-    root,
-    url: `http://127.0.0.1:${port}/`,
-    write,
-    rename: async (from, to) => {
+    const reportedByGenerator = () =>
+      printedTexts()
+        .slice(lastWrite.printed)
+        .some((text) => lastWrite.files.some((file) => text.includes(file)))
+    const write = async (written: Record<string, string | null>) => {
       writtenAt = started
-      lastWrite = { files: [from, to], printed: printedTexts().length }
-      await rename(path.join(root, from), path.join(root, to))
-    },
-    settle: (settleOptions = {}) =>
-      waitForOutcome({
-        timeout: settleOptions.timeout ?? 20_000,
-        applied: () => started > writtenAt || reportedByGenerator(),
-        quiet: () => !compiling && !invalidated,
-        describe: () =>
-          `webpack did not compile the app after the last write (${started} compiles started)`,
-      }),
-    errors: () => [...errors],
-    close: stop,
-    stop,
-    diagnostics: () => [...diagnostics],
+      lastWrite = {
+        files: Object.keys(written),
+        printed: printedTexts().length,
+      }
+      await writeAppFiles(root, written)
+    }
+    return {
+      root,
+      url: `http://127.0.0.1:${port}/`,
+      write,
+      rename: async (from, to) => {
+        writtenAt = started
+        lastWrite = { files: [from, to], printed: printedTexts().length }
+        await rename(path.join(root, from), path.join(root, to))
+      },
+      settle: (settleOptions = {}) =>
+        waitForOutcome({
+          timeout: settleOptions.timeout ?? 20_000,
+          applied: () => started > writtenAt || reportedByGenerator(),
+          quiet: () => !compiling && !invalidated,
+          describe: () =>
+            `webpack did not compile the app after the last write (${started} compiles started)`,
+        }),
+      errors: () => [...errors],
+      close: stop,
+      stop,
+      diagnostics: () => [...diagnostics],
+      restart: async (written) => {
+        await stop()
+        await writeAppFiles(root, written)
+        return serve()
+      },
+    }
   }
+  return serve()
 }
 
 /** A marker that occurs in no source (where an import statement was). */

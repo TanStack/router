@@ -680,31 +680,29 @@ export const Route = createFileRoute('/')({
   expect(app.errors()).toEqual([])
 }
 
+/** The virtual route config of the route-id-change app (below): `contact.tsx` at `contact`. */
+const contactConfig = (contact: string) =>
+  virtualRouteConfig(`index('index.tsx'), route('${contact}', 'contact.tsx')`)
+
 /**
- * Returns the app, for a test that goes on editing it. An app whose
- * virtual route config (`routes.ts`) mounts `routes/contact.tsx`
- * at `/contact`, with groupings by route id
+ * An app whose virtual route config (`routes.ts`) mounts
+ * `routes/contact.tsx` at `/contact`, with groupings by route id
  * (`codeSplittingOptions.splitBehavior`) that keep the route `/contact`
  * unsplit. The file names its id through a binding, which the generator
  * leaves as it is (it warns that it cannot keep the id in sync): mounting
- * the file at `/about` changes its route id, not its text. The dev server
- * compiles the route module again with the groupings of its new id (its
- * component in its own chunk, loaded on navigation).
+ * the file at `/about` (`contactConfig('/about')`) changes its route id,
+ * not its text. Opened at `/`, where the route module, loaded with the
+ * route tree, holds the component. `holdingContact`: the scripts of the
+ * page that hold the component.
  */
-export async function expectRouteIdChangeRebuildsRoute(
+async function routeIdChangeApp(
   bundler: Bundler,
-  options: {
-    /** The route file is written again with the same text in the same edit. */
-    rewritten?: boolean
-    webpack?: GeneratorDevAppOptions['webpack']
-  } = {},
+  options: Pick<GeneratorDevAppOptions, 'webpack' | 'persistentCache'>,
 ) {
-  const config = (contact: string) =>
-    virtualRouteConfig(`index('index.tsx'), route('${contact}', 'contact.tsx')`)
   const app = await generatorDevApp({
     bundler,
     links: ['@tanstack/virtual-file-routes'],
-    webpack: options.webpack,
+    ...options,
     pluginOptions: (root) => ({
       virtualRouteConfig:
         bundler === 'vite'
@@ -716,7 +714,7 @@ export async function expectRouteIdChangeRebuildsRoute(
       },
     }),
     files: {
-      'routes.ts': config('/contact'),
+      'routes.ts': contactConfig('/contact'),
       ...index,
       'routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
 const id = '/contact' as any
@@ -729,26 +727,80 @@ function Page() {
 `,
     },
   })
-  const contact = await app.read('routes/contact.tsx')
   const holdingContact = async () =>
     (await app.scripts())
       .filter((script) => scriptHolds(script, 'MARK_CONTACT'))
       .map((script) => script.url)
   await app.visit('/', 'MARK_INDEX')
-  // unsplit: the route module, loaded with the route tree, holds the component
   expect(await holdingContact()).not.toEqual([])
+  return { app, holdingContact }
+}
 
-  await app.edit({
-    'routes.ts': config('/about'),
-    ...(options.rewritten && { 'routes/contact.tsx': contact }),
-  })
-  expect(await app.read('routes/contact.tsx')).toBe(contact)
+/**
+ * After `contact.tsx` was mounted at `/about`: the dev server compiled the
+ * route module again with the groupings of its new id (its component in its
+ * own chunk, loaded on navigation).
+ */
+async function expectContactAtAbout(
+  app: GeneratorDevApp,
+  holdingContact: () => Promise<Array<string>>,
+) {
   await app.visit('/', 'MARK_INDEX')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/about')])
   expect(await holdingContact()).toEqual([])
   await app.navigate('/about', 'MARK_CONTACT')
   expect(app.errors()).toEqual([])
+}
+
+/**
+ * The route-id-change app (`routeIdChangeApp`): mounting `contact.tsx` at
+ * `/about` while the dev server runs compiles the route module again with
+ * its new id. Returns the app, for a test that goes on editing it.
+ */
+export async function expectRouteIdChangeRebuildsRoute(
+  bundler: Bundler,
+  options: {
+    /** The route file is written again with the same text in the same edit. */
+    rewritten?: boolean
+    webpack?: GeneratorDevAppOptions['webpack']
+  } = {},
+) {
+  const { app, holdingContact } = await routeIdChangeApp(bundler, {
+    webpack: options.webpack,
+  })
+  const contact = await app.read('routes/contact.tsx')
+  await app.edit({
+    'routes.ts': contactConfig('/about'),
+    ...(options.rewritten && { 'routes/contact.tsx': contact }),
+  })
+  expect(await app.read('routes/contact.tsx')).toBe(contact)
+  await expectContactAtAbout(app, holdingContact)
   return app
+}
+
+/**
+ * The same route id change (`expectRouteIdChangeRebuildsRoute`) after a
+ * start from the bundler's persistent cache, which restores the route
+ * module without compiling it: made while the new dev server runs, or
+ * (`whileDown`) while no dev server ran, before the start.
+ */
+export async function expectRouteIdChangeAfterWarmStart(
+  bundler: 'webpack' | 'rsbuild',
+  whileDown: boolean,
+) {
+  const { app, holdingContact } = await routeIdChangeApp(bundler, {
+    persistentCache: true,
+  })
+  const config = { 'routes.ts': contactConfig('/about') }
+  if (whileDown) {
+    await app.restart(config)
+  } else {
+    await app.restart()
+    await app.visit('/', 'MARK_INDEX')
+    expect(await holdingContact()).not.toEqual([])
+    await app.edit(config)
+  }
+  await expectContactAtAbout(app, holdingContact)
 }
 
 /** A `__virtual.ts` subtree config of `children`. */

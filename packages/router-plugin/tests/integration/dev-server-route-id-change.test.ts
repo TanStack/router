@@ -8,7 +8,10 @@
  */
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectRouteIdChangeRebuildsRoute } from '../generator-dev-scenarios'
+import {
+  expectRouteIdChangeAfterWarmStart,
+  expectRouteIdChangeRebuildsRoute,
+} from '../generator-dev-scenarios'
 import type { WebpackPluginInstance } from 'webpack'
 
 test.each(['webpack', 'rsbuild', 'vite'] as const)(
@@ -70,3 +73,19 @@ test('a failed rebuild of the route module fails one compilation, and the dev se
   await app.visit('/about', 'MARK_CONTACT_EDITED')
   expect(app.errors()).toEqual([])
 }, 45_000)
+
+// A start from the bundler's persistent cache restores the route module
+// without compiling it in that process: a route id change is compiled all
+// the same, made while the dev server runs or while none ran.
+test.each([
+  { bundler: 'webpack', whileDown: false },
+  { bundler: 'webpack', whileDown: true },
+  { bundler: 'rsbuild', whileDown: false },
+  { bundler: 'rsbuild', whileDown: true },
+] as const)(
+  'a route id change after a start from the persistent cache rebuilds the route module ($bundler dev, made while the server was down: $whileDown)',
+  async ({ bundler, whileDown }) => {
+    await expectRouteIdChangeAfterWarmStart(bundler, whileDown)
+  },
+  60_000,
+)
