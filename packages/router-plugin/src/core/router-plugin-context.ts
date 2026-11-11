@@ -85,6 +85,7 @@ export function changedRoutePaths(
     const before = previous.get(path)
     if (
       before?.routeId !== entry.routeId ||
+      before.kind !== entry.kind ||
       before.routerConstructor !== entry.routerConstructor
     ) {
       out.push(path)

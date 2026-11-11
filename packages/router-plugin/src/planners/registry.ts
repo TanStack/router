@@ -18,7 +18,11 @@ export class RouteRegistryView implements RouteRegistry {
   lookup(path: string): RouteEntryFacts | null {
     const entry = this.context.routesByFile.get(normalizePath(path))
     return entry
-      ? { routeId: entry.routeId, routerConstructor: entry.routerConstructor }
+      ? {
+          routeId: entry.routeId,
+          kind: entry.kind,
+          routerConstructor: entry.routerConstructor,
+        }
       : null
   }
 

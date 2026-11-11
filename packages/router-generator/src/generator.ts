@@ -952,6 +952,12 @@ export class Generator {
       }
       const value: GetRoutesByFileMapResultValue = {
         routeId: node.routePath ?? `/${rootPathId}`,
+        kind:
+          node === this.scan!.rootRouteNode
+            ? 'root'
+            : node._fsRouteType === 'lazy'
+              ? 'lazy'
+              : 'file',
         routerConstructor: state.facts.routerConstructor,
       }
       map.set(node.fullPath, value)
