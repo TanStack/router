@@ -7141,6 +7141,23 @@ describe('statements: what they change (R146 amendment)', () => {
       stays(r, decls)
     })
 
+    // a local function shows what it does with what it is handed: a
+    // binding whose object its parameter changes is changed by the call
+    it.each([
+      ['with a binding it changes', 'if (on) { d.init(); fill(k) }'],
+      ['alone', 'fill(k)'],
+    ])(
+      'a binding the route module keeps, changed through a parameter of a local function it calls (%s)',
+      async (_, statement) => {
+        const decls = `const k = createTable()\nconst d = createTable()\nfunction fill(o) { o.v = 3 }\n${statement}`
+        const r = await split(
+          route(decls, 'loader: () => k,\ncomponent: () => d,'),
+        )
+        expect(r.env).toContain(statement)
+        expect(r.chunks.component).not.toContain(statement)
+      },
+    )
+
     // a declaration's own write that changes another module's object is
     // judged the same way
     it("a declaration's own write calling a method of another module's object", async () => {
