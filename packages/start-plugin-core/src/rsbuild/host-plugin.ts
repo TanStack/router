@@ -272,8 +272,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }),
       )
-      const compilerEntry = { compiler, asked: 0 }
-      session.compilers.set(environment.name, compilerEntry)
+      session.registerCompiler(environment.name, compiler)
 
       // import-protection edge modules are virtual files of this environment, written when
       // they are defined (the importer's compile); an importer
@@ -387,7 +386,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         if (modified.length > 0 || removed.length > 0) {
-          compilerEntry.asked = 0
+          session.drain.caused(environment.name)
         }
         ipEnvOf()?.beginBuild()
         await session.invalidateFileEvents([
@@ -423,13 +422,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 : ('add' as const),
             })),
         )
-        // this compilation builds the modules of its changed files from their text now,
-        // once every invalidation of its events ended: the drain needn't build them again
-        // (what makes them stale from here on enters the set again)
-        session.start.caches.stale.drop(
-          environment.name,
-          modified.map(normalizePath),
-        )
+        session.drain.building(environment.name, modified.map(normalizePath))
       })
       // a registry change (the generator published new route ids): its files
       // are stale in each environment (the session listens once for all
@@ -474,7 +467,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // idle (in `done` Rspack has not marked it so: a compilation asked for there would
       // start inside it)
       compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {
-        session.wake()
+        session.drain.compiled(environment.name)
       })
 
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
@@ -687,27 +680,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       }
 
-      /**
-       * Builds again the modules of the environment's stale set (the held
-       * ones too: a module importing a removed file fails here as it would
-       * in Rspack's own rebuild), once the invalidations running (a registry
-       * change published during this compilation's `watchRun`) ended.
-       */
-      async function drainStale(compilation: Rspack.Compilation) {
-        const { caches } = session.start
-        if (caches.invalidations.size > 0) {
-          await caches.settled()
-        }
-        const paths = caches.stale.take(environment.name, { held: true })
-        if (paths.length > 0) {
-          await rebuildModules(
-            compilation,
-            new Set(paths),
-            (r) => identify(canonicalResource(r)).path,
-          )
-        }
-      }
-
       // the client route tree without its server-only routes: served by the host's transform
       // of the tree module; when its routes change without the file, the module is rebuilt
       if (opts.clientRouteTree && environment.type === 'client') {
@@ -774,7 +746,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
             await session.restorePlans(environment.name, restored)
           }
-          await drainStale(compilation)
+          await session.drain.rebuild(
+            environment.name,
+            compilation,
+            (r) => identify(canonicalResource(r)).path,
+          )
           const ipEnv = ipEnvOf()
           // a compiler's first compilation judges what it restored: its modules'
           // import-protection records are replayed first, the modules to judge

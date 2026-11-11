@@ -1,7 +1,8 @@
 /**
  * Scenarios of the route generator on a running dev server, run per bundler
- * by the integration files `dev-server-*.test.ts` (Vite) and
- * `rsbuild-dev-server-*.test.ts` (Rsbuild), on a real page
+ * by the integration files `dev-server-*.test.ts` (Vite, and a row per
+ * bundler), `rsbuild-dev-server-*.test.ts` (Rsbuild) and
+ * `webpack-dev-server-*.test.ts` (webpack), on a real page
  * (`generator-dev-app.ts`): a route file created, renamed, moved or deleted
  * while the dev server runs keeps its `createFileRoute(path)` in line with
  * its location and the rest of the file untouched, the live router's routes
@@ -676,6 +677,75 @@ export const Route = createFileRoute('/')({
   ).toEqual([])
   await app.navigate('/contact', 'MARK_CONTACT')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
+  expect(app.errors()).toEqual([])
+}
+
+/**
+ * An app whose virtual route config (`routes.ts`) mounts `routes/contact.tsx`
+ * at `/contact`, with groupings by route id
+ * (`codeSplittingOptions.splitBehavior`) that keep the route `/contact`
+ * unsplit. The file names its id through a binding, which the generator
+ * leaves as it is (it warns that it cannot keep the id in sync): mounting
+ * the file at `/about` changes its route id, not its text. The dev server
+ * compiles the route module again with the groupings of its new id (its
+ * component in its own chunk, loaded on navigation).
+ */
+export async function expectRouteIdChangeRebuildsRoute(
+  bundler: Bundler,
+  options: {
+    /** The route file is written again with the same text in the same edit. */
+    rewritten?: boolean
+    webpack?: GeneratorDevAppOptions['webpack']
+  } = {},
+) {
+  const config = (contact: string) =>
+    virtualRouteConfig(`index('index.tsx'), route('${contact}', 'contact.tsx')`)
+  const app = await generatorDevApp({
+    bundler,
+    links: ['@tanstack/virtual-file-routes'],
+    webpack: options.webpack,
+    pluginOptions: (root) => ({
+      virtualRouteConfig:
+        bundler === 'vite'
+          ? './routes.ts'
+          : path.relative(process.cwd(), path.join(root, 'routes.ts')),
+      codeSplittingOptions: {
+        splitBehavior: ({ routeId }) =>
+          routeId === '/contact' ? [['loader']] : undefined,
+      },
+    }),
+    files: {
+      'routes.ts': config('/contact'),
+      ...index,
+      'routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
+const id = '/contact' as any
+export const Route = createFileRoute(id)({
+  component: Page,
+})
+function Page() {
+  return <p>MARK_CONTACT</p>
+}
+`,
+    },
+  })
+  const contact = await app.read('routes/contact.tsx')
+  const holdingContact = async () =>
+    (await app.scripts())
+      .filter((script) => scriptHolds(script, 'MARK_CONTACT'))
+      .map((script) => script.url)
+  await app.visit('/', 'MARK_INDEX')
+  // unsplit: the route module, loaded with the route tree, holds the component
+  expect(await holdingContact()).not.toEqual([])
+
+  await app.edit({
+    'routes.ts': config('/about'),
+    ...(options.rewritten && { 'routes/contact.tsx': contact }),
+  })
+  expect(await app.read('routes/contact.tsx')).toBe(contact)
+  await app.visit('/', 'MARK_INDEX')
+  expect(await app.routes()).toEqual([rootLive, live('/'), live('/about')])
+  expect(await holdingContact()).toEqual([])
+  await app.navigate('/about', 'MARK_CONTACT')
   expect(app.errors()).toEqual([])
 }
 

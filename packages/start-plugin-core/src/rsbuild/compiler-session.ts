@@ -13,6 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  StaleSetDrain,
   collectionSizes,
   composeLoaderMap,
   identify,
@@ -52,6 +53,7 @@ import type {
   CompileOutput,
   DiagnosticPosition,
   HostServices,
+  IdleCompilerLike,
   InputSourceMap,
   InvalidateChange,
   LocatedDiagnostic,
@@ -174,15 +176,8 @@ export class StartRsbuildCompilerSession {
       options: Rspack.RuleSetRule['resolve'],
     ) => Promise<string | null>
   >()
-  /**
-   * The compiler of each environment, for `wake`; `asked`: the compilations
-   * `wake` asked it for since the last cause (a file event of its own, a
-   * registry change).
-   */
-  readonly compilers = new Map<
-    string,
-    { compiler: IdleCompiler; asked: number }
-  >()
+  /** The environment compilers' side of the stale sets: each takes its own at `finishMake`. */
+  readonly drain: StaleSetDrain
   /** The RSC layer of the server environment (RSC on). */
   private readonly rscLayer: string | undefined
 
@@ -213,6 +208,10 @@ export class StartRsbuildCompilerSession {
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
       label: 'start:rsbuild',
+    })
+    this.drain = new StaleSetDrain(this.start.caches, {
+      tag: '[tanstack-start]',
+      root: opts.root,
     })
     registerCompilerStats(
       'start:rsbuild:host',
@@ -442,24 +441,20 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * Asks each idle compiler whose stale set is not empty for a compilation
-   * (after a compilation, and after a registry change: a set fills while
-   * its compiler is not compiling). At most `MAX_ASKED` in a row without a
-   * cause: a module whose rebuild finds itself stale again (its plan's
-   * validation and its compile disagreeing) waits for the next event
-   * instead of compiling forever.
+   * The compiler of an environment, for the stale-set drain. Under RSC,
+   * Rspack's coordinator starts each client compilation from a server
+   * compilation: the client's stale set gets the server compiler a
+   * compilation.
    */
-  wake(): void {
-    for (const [envName, entry] of this.compilers) {
-      if (
-        entry.compiler.idle &&
-        entry.asked < MAX_ASKED &&
-        this.start.caches.stale.has(envName)
-      ) {
-        entry.asked++
-        entry.compiler.watching?.invalidate()
-      }
-    }
+  registerCompiler(envName: string, compiler: IdleCompilerLike): void {
+    this.drain.register(
+      envName,
+      compiler,
+      this.rscLayer !== undefined &&
+        envName === RSBUILD_ENVIRONMENT_NAMES.client
+        ? RSBUILD_ENVIRONMENT_NAMES.server
+        : undefined,
+    )
   }
 
   /** Unsubscribes the route listener (`listenToRoutes`). */
@@ -491,10 +486,7 @@ export class StartRsbuildCompilerSession {
   /** A registry change: its files are stale in every environment that compiled; idle compilers are asked to build them. */
   private async registryChanged(files: ReadonlyArray<string>): Promise<void> {
     await Promise.all(files.map((file) => this.invalidate(file, 'registry')))
-    for (const entry of this.compilers.values()) {
-      entry.asked = 0
-    }
-    this.wake()
+    this.drain.registryChanged()
   }
 
   /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */
@@ -902,15 +894,6 @@ export class CompilationFiles {
 
 /** A file event of a compilation: an edit, a creation, a removal. */
 export type FileEventKind = 'change' | 'add' | 'unlink'
-
-/** What `wake` uses of a compiler (Rspack's, typed and documented: `idle`, `watching`). */
-export interface IdleCompiler {
-  idle?: boolean
-  watching?: { invalidate: () => void } | undefined
-}
-
-/** How many compilations in a row `wake` asks a compiler for without a cause. */
-const MAX_ASKED = 3
 
 /**
  * A module resource as a compiler id. Rspack's RSC plugin requests a

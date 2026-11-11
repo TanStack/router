@@ -104,4 +104,41 @@ export const base = createServerFn()
     expect(browser.loads()).toBe(1)
     expect(browser.errors).toEqual([])
   })
+
+  // A route file created while the dev server is idle: the generator
+  // publishes the new route list from its own watcher, before Rspack reports
+  // the file, and the new route is built again in each environment. The
+  // client's compilations are started by Rspack's RSC coordinator from the
+  // server's: the dev server keeps compiling, and each later edit of the
+  // page reaches it.
+  // Source: Fable review of design 3 step 2, finding 1 (a client
+  // compilation asked for beside the coordinator; observed: the compiles of
+  // the route's creation never ended).
+  test('edits after a route file is created reach the page', async () => {
+    const server = await startRscRsbuildDevServer({
+      browser: true,
+      hmr: true,
+      config: { plugins: [pluginReact()] },
+      files: { 'src/routes/index.tsx': route('MARK_HANDLER', 'Page v1') },
+    })
+    expect(server.errors).toEqual([])
+    const browser = await openRscPage(server, '/')
+    await browser.waitForText('Page v1 MARK_HANDLER')
+    await waitForHydration(browser)
+
+    await server.edit({
+      'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/about')({ component: () => <p>about</p> })
+`,
+    })
+    expect(server.errors).toEqual([])
+    for (const text of ['Page v2', 'Page v3']) {
+      await server.edit({
+        'src/routes/index.tsx': route('MARK_HANDLER', text),
+      })
+      expect(server.errors).toEqual([])
+      await browser.waitForText(text, { selector: '[data-testid=text]' })
+    }
+    expect(browser.errors).toEqual([])
+  })
 })

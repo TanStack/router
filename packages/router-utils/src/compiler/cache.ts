@@ -809,6 +809,11 @@ export class StaleSets {
     return this.byEnv.has(env)
   }
 
+  /** The paths of the environment's set (held ones included), left in it. */
+  paths(env: string): Array<string> {
+    return [...(this.byEnv.get(env)?.keys() ?? [])]
+  }
+
   /** Whether the environment's set holds `path`. */
   holds(env: string, path: string): boolean {
     return this.byEnv.get(env)?.has(path) ?? false
