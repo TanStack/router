@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { walk } from 'yuku'
 import {
   EMPTY_RECOGNIZER,
@@ -3434,7 +3434,9 @@ describe('ordered evaluation and movable effects', () => {
   })
 
   // a write through a binding that names another one's object writes that
-  // object: an effect, ordered against the read of the other binding
+  // object: an effect, ordered against the read of the other binding. The
+  // write joins the cluster of the object it writes (final review finding
+  // 1), so when only the chunk needs them they move together, in order.
   it.each([
     ['an alias', 'const alias = cfg\nconst y = [cfg.a]\nalias.a = 2'],
     [
@@ -3455,7 +3457,8 @@ describe('ordered evaluation and movable effects', () => {
         })
       `)
     const r = await split(code)
-    expect(r.env).toContain('const y = [cfg.a]')
+    expect(r.env).not.toContain('cfg')
+    expect(r.chunks.component).toContain(`const cfg = { a: 1 }\n${decls}`)
   })
 
   // its first effect is the call after the unknown one: the pure write
@@ -4736,46 +4739,6 @@ describe('one mutation model: eager reads of state something writes', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
-  // design 2 step 2 review, finding 1: the plan a module is compiled with
-  // can keep a fallback nobody acted on (the router's dev HMR hoist never
-  // asks), and its placement is checked like any other
-  it("reports a placement its planner did not keep in place, in users' runs", async () => {
-    vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
-    vi.resetModules()
-    try {
-      const h = await import('./helpers')
-      const code = h.dedent(`
-        import { createFileRoute } from 'toy-router'
-        import { makeComp } from './state'
-        let n = 0
-        export function inc() { n++ }
-        export const Route = createFileRoute('/')({
-          loader: () => inc(),
-          component: makeComp(n),
-        })
-      `)
-      const host = new h.MemoryHost({
-        files: {
-          '/app/route.tsx': code,
-          '/app/state.ts': 'export const makeComp = (v: number) => () => v\n',
-        },
-      })
-      const out = await host.compile(
-        '/app/route.tsx',
-        [h.toySplitPlanner({ ignoreFallbacks: true })],
-        { env: h.envInfo({ mode: 'build' }) },
-      )
-      // the value moved although it reads state a function writes
-      expect(out!.code).not.toContain('makeComp(n)')
-      expect(out!.diagnostics).toMatchObject([
-        { severity: 'warning', code: 'internal-invariant' },
-      ])
-    } finally {
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
-  })
-
   it('declares the route unit benign only when its option values are pure', async () => {
     const state =
       'export const createStore = () => ({ get: () => 1 })\nexport const makeSchema = () => ({})\n'
@@ -5363,26 +5326,6 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  // The single-writer rule declares an assigned binding in its writer's
-  // output: another chunk reading it imports it from there, so it evaluates
-  // after the value (as written) and the value splits.
-  it('splits an option value assigning a binding another chunk reads, which imports it from the value', async () => {
-    const r = await split(
-      route(
-        'let n = 0',
-        'component: f((n = 1, () => null)),\nerrorComponent: () => snap,',
-        'const snap = [n]',
-      ),
-      { files: lib, keys: ['component', 'errorComponent'] },
-    )
-    expect(r.env).not.toContain('n = 1')
-    expect(r.chunks.component).toContain('f((n = 1, () => null))')
-    expect(r.chunks.errorComponent).toContain(
-      "import { n } from '/app/route.tsx?tsr-split=component'",
-    )
-    expect(r.main?.diagnostics).toEqual([])
-  })
-
   // A member write of an import (finding 3): the specifier has an instance
   // per output, the object one. The value stays unless no other output
   // names the import and nothing in its own output reads it at load.
@@ -5411,6 +5354,36 @@ describe('readers and writers of state written at load', () => {
         reasons: { component: 'ordered-effect' },
       })
       expect(r.env).toContain('component: f((open.page = 1')
+    },
+  )
+
+  // REVIEW-design2-final finding 2: the single-writer rule homes the
+  // binding the value writes with it, whoever reads it; a reader in a
+  // module two chunks share would import it from the value's chunk, which
+  // imports that module. A reader anywhere else keeps the value in place.
+  it.each([
+    [
+      'a module two chunks share',
+      'loader: () => flags,\ncomponent: (n = 5, () => flags),',
+      ['loader', 'component'],
+    ],
+    [
+      'another chunk',
+      'component: (n = 5, () => null),\nerrorComponent: () => flags,',
+      ['component', 'errorComponent'],
+    ],
+  ])(
+    'keeps an option value in place whose `let` %s reads',
+    async (_, options, keys) => {
+      const r = await split(route('let n = 1', options, 'const flags = [n]'), {
+        keys,
+      })
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+      expect(r.env).toContain('let n = 1')
+      expect(r.env).toContain('component: (n = 5, () => ')
     },
   )
 
@@ -5494,6 +5467,38 @@ describe('readers and writers of state written at load', () => {
         | undefined
       expect(facts?.notSplittable).toBeUndefined()
       expect(r.chunks.component).toContain('function Page()')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  // REVIEW-design2-final finding 5 (architect: one rule): the same holds
+  // for a declaration. A binding only its own callback writes, which
+  // nothing else touches when the module loads, does not pin it: the
+  // `const` spelling moves as the option value splits.
+  it.each([
+    [
+      'an assignment',
+      'let didInit = false\nconst C = f(function Page() { if (!didInit) { didInit = true } return null })',
+      'C',
+    ],
+    [
+      'a member write',
+      'const seen = { n: 0 }\nconst C = f(function Page() { seen.n++; return null })',
+      'C',
+    ],
+    [
+      'a member write in an arrow',
+      'const cache = {}\nconst getIt = f(() => { cache.v = 1 })',
+      'getIt',
+    ],
+  ])(
+    'moves a declaration whose call runs its own function writing a binding nothing else touches (%s)',
+    async (_, decls, name) => {
+      const r = await split(route(decls, `component: () => ${name},`), {
+        files: lib,
+      })
+      expect(r.env).not.toContain(`const ${name} =`)
+      expect(r.chunks.component).toContain(`const ${name} = f(`)
       expect(r.main?.diagnostics).toEqual([])
     },
   )
@@ -5679,6 +5684,337 @@ describe('state reached through another name', () => {
       expect(eager(r)).toEqual([])
     },
   )
+})
+
+// REVIEW-design2-final finding 1: a write through another name of an
+// object (an alias, a holder, a destructured name) writes that object, so
+// a read of it through any of its names is ordered against the write (O)
+// or pinned by it (V), as a write through its first name is.
+describe('state written through another name', () => {
+  const route = (decls: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { snap, on, base, extra } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+  const PURE = 'const y = /* @__PURE__ */ snap(cfg)'
+
+  it.each([
+    [
+      'a destructuring before a write through an alias',
+      'const { v: y } = cfg',
+      'const alias = cfg\nalias.v = 11',
+    ],
+    [
+      'a pure call before a write through a holder',
+      PURE,
+      'const holder = { c: cfg }\nholder.c.v = 3',
+    ],
+    [
+      'a pure call before a `delete` through a `let` alias',
+      PURE,
+      'let alias = cfg\ndelete alias.v',
+    ],
+    [
+      'a pure call before an `Object.assign` through an alias',
+      PURE,
+      'const alias = cfg\nObject.assign(alias, { v: 5 })',
+    ],
+    [
+      'a pure call before a write through a conditional alias',
+      PURE,
+      "const alias = on ? cfg : null\nalias['v'] = 23",
+    ],
+    [
+      'a pure call before a write through an array holding it',
+      PURE,
+      'const all = [cfg]\nall[0].v = 4',
+    ],
+    [
+      'a pure call before a write through a destructured name',
+      PURE,
+      'const holder = { c: cfg }\nconst { c } = holder\nc.v = 4',
+    ],
+    [
+      'a pure call before a function called at load writing through a holder',
+      PURE,
+      'const holder = { c: cfg }\nconst bump = () => { holder.c.v = 14 }\nbump()',
+    ],
+    [
+      'a pure call through one alias before a write through another',
+      'const y = /* @__PURE__ */ snap(a1)',
+      'Object.assign(a2, { v: 5 })',
+      'const a1 = cfg\nconst a2 = cfg',
+    ],
+  ])('keeps %s', async (_, reader, writer, aliases = '') => {
+    const r = await split(
+      route(
+        ['const cfg = { v: 1 }', aliases, reader, writer]
+          .filter(Boolean)
+          .join('\n'),
+        'loader: () => cfg,\ncomponent: () => y,',
+      ),
+    )
+    expect(r.env).toContain(reader)
+    expect(r.chunks.component).not.toContain(reader)
+    expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+  })
+
+  it.each([
+    [
+      'a pure reader',
+      PURE,
+      'const holder = [cfg]\nfunction bump() { holder[0].v = 4 }',
+    ],
+    [
+      'a member reader',
+      'const y = cfg.v',
+      'const holder = [cfg]\nfunction bump() { holder[0].v = 4 }',
+    ],
+    [
+      'a reader through another holder',
+      'const y = h1.c.v',
+      'const h1 = { c: cfg }\nconst h2 = { c: cfg }\nconst bump = () => { h2.c.v = 15 }',
+    ],
+  ])(
+    'keeps %s of an object a function writes through a holder (V)',
+    async (_, reader, writer) => {
+      const r = await split(
+        route(
+          `const cfg = { v: 1 }\n${writer}\n${reader}`,
+          'beforeLoad: () => bump(),\ncomponent: () => y,',
+        ),
+      )
+      expect(r.env).toContain(reader)
+      expect(eager(r).map((d) => d.code)).toContain('eager-split:state')
+    },
+  )
+
+  it('keeps a mutating method called through an alias with the object it writes', async () => {
+    const r = await split(
+      route(
+        'export const columns = [base]\nconst cols = columns\ncols.push(extra)',
+        'component: () => cols,',
+      ),
+    )
+    expect(r.env).toContain('cols.push(extra)')
+    expect(r.chunks.component).not.toContain('cols.push(extra)')
+  })
+
+  it.each([
+    [
+      'through an array holding it, read after the route',
+      'const cfg = { v: 2 }\nconst holder = [cfg]',
+      'beforeLoad: () => y,\ncomponent: (holder[0].v = 3, () => null),',
+      'const y = snap(cfg)',
+      'holder[0].v = 3',
+      ['component'],
+    ],
+    [
+      'through an alias, read by another chunk',
+      'const cfg = { v: 1 }\nconst holder = { c: cfg }\nconst alias = cfg\nconst y = { ...holder.c }',
+      'loader: () => y,\ncomponent: (alias.v = 6, () => null),',
+      '',
+      'alias.v = 6',
+      ['loader', 'component'],
+    ],
+    [
+      'through an alias of an array, read by another chunk',
+      'const a1 = [2]\nconst y = a1.join()\nconst alias = a1',
+      'loader: (alias[0] = 26, () => null),\ncomponent: () => y,',
+      '',
+      'alias[0] = 26',
+      ['loader', 'component'],
+    ],
+  ])(
+    'keeps an option value writing state %s in place',
+    async (_, before, options, after, write, keys) => {
+      const r = await split(
+        route(before, options) + (after === '' ? '' : `${after}\n`),
+        { keys },
+      )
+      expect(r.env).toContain(write)
+      for (const key of keys) {
+        expect(r.chunks[key] ?? '').not.toContain(write)
+      }
+    },
+  )
+})
+
+// REVIEW-design2-final finding 4 (R100): every fix a kept declaration's
+// warning offers frees what it names when applied.
+describe('the fixes a kept declaration is offered work when applied', () => {
+  const route = (decls: string, options: string, after = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { box, snap } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+      ${after}
+    `)
+  const lib = {
+    '/app/lib.ts':
+      'export const box = (x: unknown) => ({ x })\nexport const snap = (x: unknown) => x\n',
+  }
+  async function run(
+    code: string,
+    opts: {
+      keys?: Array<string>
+      extractExports?: boolean
+      files?: Record<string, string>
+    } = {},
+  ) {
+    const r = await split(code, { ...opts, files: { ...lib, ...opts.files } })
+    return {
+      ...r,
+      eager: (r.main?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      ),
+    }
+  }
+
+  // (a) the call keeps `columns` and `helper`, which it reads: each fix
+  // names both
+  it('names the declarations the same effect keeps that the kept one reads', async () => {
+    const decls = 'const helper = box(1)\nconst columns = [snap(helper)]'
+    const options = 'validateSearch: box(9),\ncomponent: () => columns,'
+    const r = await run(route(decls, options))
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(r.eager[0]!.message).toContain(
+      'runs after it and `helper`, which it reads, and stays; declare `helper`, `columns` after `Route`, create that value in a `const` before `helper`, or mark the call `/* @__PURE__ */` if it has no side effects',
+    )
+    for (const fixed of [
+      route('', options, decls),
+      route(
+        `const schema = box(9)\n${decls}`,
+        options.replace('box(9)', 'schema'),
+      ),
+      route(decls, options.replace('box(9)', '/* @__PURE__ */ box(9)')),
+    ]) {
+      const f = await run(fixed)
+      expect(f.eager).toEqual([])
+      expect(f.chunks.component).toContain('const columns = [snap(helper)]')
+    }
+  })
+
+  // (b) two effectful declarations two chunks need: declaring one after
+  // the other only swaps which one stays
+  it('offers a module or the annotation for an effect another chunk loads', async () => {
+    const options = 'loader: () => b,\ncomponent: () => a,'
+    const keys = ['loader', 'component']
+    const r = await run(route('const a = box(1)\nconst b = box(2)', options), {
+      keys,
+    })
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(r.eager[0]!.message).toContain(
+      'but loads with another split option, which may load before or after it; move `a` to its own module, or mark the call `/* @__PURE__ */` if it has no side effects',
+    )
+    for (const [code, files] of [
+      [
+        route("import { a } from './a'\nconst b = box(2)", options),
+        {
+          '/app/a.ts': "import { box } from './lib'\nexport const a = box(1)\n",
+        },
+      ],
+      [
+        route('const a = box(1)\nconst b = /* @__PURE__ */ box(2)', options),
+        {},
+      ],
+    ] as const) {
+      const f = await run(code, { keys, files })
+      expect(f.eager).toEqual([])
+      expect(f.chunks.loader).toContain('const b = ')
+    }
+  })
+
+  // (c) and (d): an object an extracted export and split code both read
+  it.each([
+    [
+      'a function',
+      'export const a = () => [reg]',
+      'eager-split:shared',
+      'move `reg` to its own module, which both import',
+    ],
+    [
+      'a value',
+      'export const a = [reg]',
+      'eager-export:reads',
+      'it reads `reg` when it loads, which the route module keeps',
+    ],
+  ])(
+    'names the object an export and split code share and moves it out (%s)',
+    async (_, exported, code, words) => {
+      const options = 'component: () => [reg, a],'
+      const r = await run(route(`const reg = { v: 1 }\n${exported}`, options), {
+        extractExports: true,
+      })
+      expect(r.eager.map((d) => d.code)).toEqual([code])
+      expect(r.eager[0]!.message).toContain(words)
+      // the fix: `reg` (and, for the export reading it at load, the export
+      // too) in a module of its own
+      const moved =
+        code === 'eager-split:shared'
+          ? [
+              route(`import { reg } from './reg'\n${exported}`, options),
+              { '/app/reg.ts': 'export const reg = { v: 1 }\n' },
+            ]
+          : [
+              route("import { reg, a } from './state'", options),
+              { '/app/state.ts': `export const reg = { v: 1 }\n${exported}\n` },
+            ]
+      const f = await run(moved[0] as string, {
+        extractExports: true,
+        files: moved[1] as Record<string, string>,
+      })
+      expect(f.eager).toEqual([])
+    },
+  )
+
+  // (f) two registries written with each other: the use is the write
+  it('offers only the move for two registries written with each other', async () => {
+    const options = 'loader: () => a,\ncomponent: () => b,'
+    const keys = ['loader', 'component']
+    const decls = 'const a = []\nconst b = []\na.push(b)\nb.push(a)'
+    const r = await run(route(decls, options), { keys })
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:state'])
+    expect(r.eager[0]!.message).toContain(
+      'move `a`, `b` and the statements writing them to their own module, so',
+    )
+    const f = await run(route("import { a, b } from './registries'", options), {
+      keys,
+      files: { '/app/registries.ts': decls.replace(/const/g, 'export const') },
+    })
+    expect(f.eager).toEqual([])
+  })
+
+  // (h) a `let` nothing assigns is read from the route module as a `const`
+  it('offers `const` for a `let` nothing assigns (R67)', async () => {
+    const options = 'loader: () => h,\ncomponent: () => c,'
+    const r = await run(route('let h = box(1)\nconst c = [snap(h)]', options))
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:reads'])
+    expect(r.eager[0]!.message).toContain(
+      "declare `h` with `const`, move `c` and `h` to their own module, or mark `h`'s initialiser `/* @__PURE__ */` if it has no side effects",
+    )
+    const f = await run(route('const h = box(1)\nconst c = [snap(h)]', options))
+    expect(f.eager).toEqual([])
+    expect(f.chunks.component).toContain('const c = [snap(h)]')
+    // assigned, it is no `const`: the offer goes
+    const g = await run(
+      route(
+        'let h = box(1)\nconst c = [snap(h)]',
+        options,
+        'export function reset() { h = box(2) }',
+      ),
+    )
+    expect(g.eager[0]?.message ?? '').not.toContain('with `const`')
+  })
 })
 
 describe('effectful declarations reading each other (R138)', () => {
@@ -6792,6 +7128,62 @@ describe('builder chains in a compile', () => {
     expect(main?.diagnostics).toEqual([])
   })
 
+  // REVIEW-design2-final finding 3: a middleware's link writes its builder
+  // wherever it stands, not only where the purity check meets it: in a
+  // function (a write at an unknown time, V) and in a split option value
+  // (the value's own write at load).
+  describe('a link on a const middleware builder outside a statement', () => {
+    const linked = (decls: string, options: string) =>
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { createMiddleware } from 'toy-start'
+        import { auth } from './auth'
+        const mw = createMiddleware()
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          ${options.split('\n').join('\n          ')}
+        })
+      `)
+    async function compileKeys(code: string, keys: Array<string>) {
+      const host = new MemoryHost({
+        files: { '/app/route.tsx': code },
+        recognizer,
+      })
+      const planners = [toySplitPlanner({ keys })]
+      const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+      return host.compile('/app/route.tsx', planners, { env })
+    }
+
+    it('keeps a reader of the builder a function links on in the route module', async () => {
+      const main = await compileKeys(
+        linked(
+          'const before = { ...mw.options }\nfunction setup() { mw.middleware([auth]) }',
+          'beforeLoad: () => setup(),\ncomponent: () => before,',
+        ),
+        ['component'],
+      )
+      expect(main?.code).toContain('const before = { ...mw.options }')
+      expect(main?.diagnostics.map((d) => d.code)).toContain(
+        'eager-split:state',
+      )
+    })
+
+    it('keeps an option value linking on a builder another chunk reads in place', async () => {
+      const main = await compileKeys(
+        linked(
+          'const before = { ...mw.options }',
+          'loader: () => before,\ncomponent: (mw.middleware([auth]), () => null),',
+        ),
+        ['loader', 'component'],
+      )
+      expect(main?.code).toContain('component: (mw.middleware([auth])')
+      expect(main?.facts.planners['toy-split']).toMatchObject({
+        notSplittable: 'component',
+        reasons: { component: 'ordered-effect' },
+      })
+    })
+  })
+
   // Two exported server fns on one shared base read it, each from its own
   // extracted module: the base, a call result, exists once (R77), so the
   // route module keeps it and both, which read it when they load (T).
@@ -7132,12 +7524,20 @@ function evaluatedNames(
       // value: it evaluates with a subject, and with a name a call reaches
       walk(d, {
         enter: (n) => {
+          // (and a mutating method's receiver: `a.push(b)`)
           let target =
             n.type === 'AssignmentExpression'
               ? n.left
               : n.type === 'UpdateExpression'
                 ? n.argument
-                : null
+                : n.type === 'CallExpression' &&
+                    n.callee.type === 'MemberExpression' &&
+                    n.callee.property.type === 'Identifier' &&
+                    /^(push|unshift|splice|set|add|delete|clear)$/.test(
+                      n.callee.property.name,
+                    )
+                  ? n.callee.object
+                  : null
           while (target?.type === 'MemberExpression') {
             target = target.object
           }

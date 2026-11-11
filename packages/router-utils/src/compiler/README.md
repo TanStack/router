@@ -126,8 +126,10 @@ extends Z`, directly or through what they carry) share the module of the first i
   chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
   merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
   bundled and the static re-export would only load the extracted module one request level deeper: the same
-  clusters stay in the route module as written, and chunks copy or import them exactly as in a build, so state and
-  identity agree between dev and a build. An exported declaration a chunk needs that stays in the route module
+  clusters stay in the route module as written, and chunks import them where a build's chunks import them from the
+  extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
+  is imported from the route module in dev. Every decision but these homes is the same, so state and identity
+  agree between dev and a build. An exported declaration a chunk needs that stays in the route module
   (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
@@ -189,7 +191,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
   reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`) reads what that name's
   value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
-  it reads `cfg`), so it is ordered against a write of the original. A method nested in an object argument
+  it reads `cfg`), so it is ordered against a write of the original. A member write through a name whose
+  declaration does not create its value (`const alias = cfg; alias.v = 1`, `let cur = cfg`) or through a nested
+  member (`holder.c.v = 1`, `holder[0].push(x)`) writes whatever that value may hold: it is a write of each of
+  those bindings too (`cfg`), ordered against every read of them and joining their cluster when it runs at load.
+  One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
   option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
@@ -199,9 +205,12 @@ extends Z`, directly or through what they carry) share the module of the first i
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
   (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
-  one is kept in place (`ordered-effect`), unless that write is only its output's code (its own text, or a function
-  only that output holds: `memo(function Page() { didInit = true })`) and the binding is confined there, the rule
-  for an option value's writes at load (it evaluates in that output, and nothing else there touches it). An effectful,
+  one is kept in place (`ordered-effect`), unless that write is only its output's code (a function only that
+  output holds) and the binding is confined there, the rule for an option value's writes at load (it evaluates in
+  that output, and nothing else anywhere touches it). A write only an evaluation's own text makes (a function it
+  passes to a call: `memo(function Page() { didInit = true })`, in an option value or a declaration alike), of a
+  binding nothing else touches when the module loads, pins neither: it runs only through what that evaluation
+  returns, never before it (`ownLate`). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
   preserved) when nothing outside it writes it eagerly, it observes no mutable state, what it reads at load of
   another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
@@ -227,10 +236,9 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   of mutable state that stay and that some output needs to env roots, then cancels extraction candidates the env
   module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
   observe mutable state. Each round that goes on demotes a cluster, so the rounds end within the cluster count;
-  past it the compile fails naming the file. Nothing is rooted after homes are assigned: `checkPlacement` checks
-  the final homes against the same time model (effects in source order, no read outside the route module seeing
-  a write at another time than in the source, no extracted module reading the route module at load), with the
-  other invariants (`self-checks.ts`). When a split would break single-writer or evaluation-order
+  past it the compile fails naming the file. Nothing is rooted after homes are assigned. The time model is checked
+  by running modules: the executing placement property (`tests/placement-exec`, router-plugin's with the router
+  planner) runs random modules and their outputs as ES modules and compares what they do. When a split would break single-writer or evaluation-order
   rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
   planners with that region kept in place, until no new region is reported (a kept region can free the next one;
   every round keeps one more, so the rounds end within the module's region count). Past that bound every

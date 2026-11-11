@@ -74,13 +74,6 @@ export interface BuilderPurity {
   locals: Map<string, string>
   /** The arguments the environment's compile erases, as the checks met them (their reads are erased with them). */
   erased: Array<{ start: number; end: number }>
-  /**
-   * The receivers of the links on a `const` holding a builder of a kind
-   * whose links write it (`writes`: a middleware's assign its options) the
-   * checks took as no effect (`b.server(f)`): a write of pure values, not
-   * an effect (R139; placement's write table).
-   */
-  linked: Array<Node>
 }
 
 /** A builder chain's call that is no effect (`builderCall`): its kind, and whether links may follow (`.handler()` ends a server fn's). */
@@ -441,9 +434,6 @@ export function builderCall(
       if (keep === undefined || !keptPure(keep)) {
         return null
       }
-      if (object.type === 'Identifier' && b.writes.has(receiver!)) {
-        b.linked.push(object)
-      }
       return {
         kind: receiver!,
         open: !(
@@ -463,6 +453,46 @@ export function builderCall(
   // (an env-only fn is a function, no builder)
   return keptPure(only ?? 'both')
     ? { kind: factory, open: only === undefined }
+    : null
+}
+
+/**
+ * The receiver of call `call` when it is a link (`b.server(f)`) on a
+ * module-level `const` holding a builder of a kind whose links write the
+ * builder they are called on (`BuilderPurity.writes`: a middleware's
+ * assign its options; R139): the identifier naming the builder, else null.
+ * It writes that builder wherever it stands, whatever its arguments (a
+ * member write of it: the reference's classification).
+ */
+export function linkedBuilder(
+  file: SourceFile,
+  b: BuilderPurity,
+  call: Node,
+): Node | null {
+  if (call.type !== 'CallExpression') {
+    return null
+  }
+  const callee = unwrapExpression(call.callee)
+  if (
+    callee.type !== 'MemberExpression' ||
+    callee.computed ||
+    callee.property.type !== 'Identifier'
+  ) {
+    return null
+  }
+  const object = unwrapExpression(callee.object as Node)
+  if (object.type !== 'Identifier') {
+    return null
+  }
+  // (`locals` holds module-level names: a function's own binding of the
+  // name is another one)
+  const kind = b.locals.get(object.name)
+  const binding = file.referenceOf(object)?.binding
+  return kind !== undefined &&
+    b.writes.has(kind) &&
+    binding?.scope === file.rootScope &&
+    ownEntry(b.links[kind] ?? {}, callee.property.name) !== undefined
+    ? object
     : null
 }
 

@@ -464,8 +464,9 @@ export function settleRoots(
     if (liveEnv.has(c)) {
       return { reason: 'live' }
     }
-    if (readsKept(c)) {
-      return { reason: 'reads' }
+    const kept = readsKept(c)
+    if (kept !== undefined) {
+      return { reason: 'reads', binding: kept }
     }
     if (needed.has(c)) {
       return events.volatile(c) ?? events.writeConflict(c, to, slotOf)
@@ -579,7 +580,7 @@ export function settleRoots(
       ) {
         continue
       }
-      if (readsKept(cl.id)) {
+      if (readsKept(cl.id) !== undefined) {
         envRoots.add(cl.id)
       } else if (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2) {
         continue

@@ -250,7 +250,38 @@ export function keptDeclarations(
       range: declaringRange(cl, syms[0]),
       needers,
       ...pairOf(pin),
+      ...(pin.reason === 'order' && sameEffect(c, pin)),
     })
   }
   return kept
+
+  /**
+   * `order`: the causes `c` reads that the same effect keeps, reported with
+   * it (a fix moving `c` alone past that effect leaves them kept).
+   */
+  function sameEffect(c: ClusterId, pin: Pin): Partial<KeptDeclaration> {
+    const effect =
+      pin.other !== undefined && 'unit' in pin.other ? pin.other.unit : null
+    const out: Array<{ sym: SymbolId; at: number }> = []
+    for (const d of effect === null ? [] : reachOf.get(c)!) {
+      const p = causes.get(d)
+      if (
+        d === c ||
+        p?.reason !== 'order' ||
+        p.other === undefined ||
+        !('unit' in p.other) ||
+        p.other.unit !== effect
+      ) {
+        continue
+      }
+      for (const s of clusters[d]!.declares) {
+        if (symbols.isModuleLevel(s)) {
+          out.push({ sym: s, at: declaringRange(clusters[d]!, s).start })
+        }
+      }
+    }
+    return out.length === 0
+      ? {}
+      : { with: out.sort((a, b) => a.at - b.at).map((x) => x.sym) }
+  }
 }

@@ -6,6 +6,9 @@
  * design 2 step 4, finding 1). A call of a method named like an array's
  * mutator (`push`, `set`, `add`) on an object the module defines runs that
  * object's code: it keeps its order with the effects after it (finding 2).
+ * A write through another name (an alias, a holder) writes the object that
+ * name holds: a read of it through its first name keeps the value the
+ * source reads (REVIEW design 2 final, finding 1).
  */
 import { describe, expect, test } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
@@ -16,7 +19,12 @@ const entry = `${clientMountEntry}
 export const effects = () => (globalThis as any).__effects
 `
 
-async function mounted(bundler: 'vite' | 'rspack', route: string) {
+async function mounted(
+  bundler: 'vite' | 'rspack',
+  route: string,
+  /** Call `beforeLoad` first, as a navigation does. */
+  load = false,
+) {
   const app = await build({
     bundler,
     env: 'client',
@@ -34,7 +42,7 @@ async function mounted(bundler: 'vite' | 'rspack', route: string) {
   })
   try {
     const run = await app.run(`const atLoad = [...(entry.effects() ?? [])]
-await entry.mount(entry.Route.options.component)
+${load ? 'entry.Route.options.beforeLoad()\n' : ''}await entry.mount(entry.Route.options.component)
 return { atLoad, after: entry.effects() ?? [] }`)
     return {
       text: (run.html as string).replace(/<[^>]*>/g, ''),
@@ -74,6 +82,46 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
         ),
       )
       expect(r.text).toBe('OLD')
+    },
+    timeout,
+  )
+
+  test.each([
+    [
+      'a destructuring before a write through an alias',
+      'const { v: y } = cfg\nconst alias = cfg\nalias.v = 11',
+    ],
+    [
+      'a pure call before a write through a holder',
+      'const y = /* @__PURE__ */ snap(cfg)\nconst holder = { c: cfg }\nholder.c.v = 11',
+    ],
+  ])(
+    'a read of %s keeps the value the source reads',
+    async (_, decls) => {
+      const r = await mounted(
+        bundler,
+        route(
+          `const snap = (o: { v: number }) => String(o.v)\nconst cfg = { v: 1 }\n${decls}`,
+          '  beforeLoad: () => cfg,\n  component: () => <p>{y}</p>,',
+        ),
+      )
+      expect(r.text).toBe('1')
+    },
+    timeout,
+  )
+
+  test(
+    'a read of an object a function writes through a holder keeps the value the source reads',
+    async () => {
+      const r = await mounted(
+        bundler,
+        route(
+          'const cfg = { v: 1 }\nconst holder = [cfg]\nfunction bump() { holder[0].v = 4 }\nconst y = cfg.v',
+          '  beforeLoad: () => bump(),\n  component: () => <p>{y}</p>,',
+        ),
+        true,
+      )
+      expect(r.text).toBe('1')
     },
     timeout,
   )

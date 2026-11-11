@@ -88,6 +88,9 @@ const config = defineConfig({
       Math.max(1, Math.floor(os.availableParallelism() / 2)),
     ),
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    // the executing placement property runs outputs as ES modules
+    // (`node:vm` `SourceTextModule`)
+    execArgv: ['--experimental-vm-modules'],
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: [
       '@tanstack/compiler-test-utils/test-scope-setup',

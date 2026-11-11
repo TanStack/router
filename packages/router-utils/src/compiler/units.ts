@@ -23,6 +23,7 @@ import {
   isPureClass,
   isPureDeclarator,
   isPureExpression,
+  linkedBuilder,
   noteBuilderConsts,
   statementHasEffects,
 } from './purity'
@@ -328,10 +329,10 @@ function writeTargetOf(file: SourceFile, m: Node): boolean {
  * class, a literal, a function or class expression, a call's result. Not
  * another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
- * only what it names (R139), while nothing reassigns it. The write side of
- * "the object a binding names"; the read side is `memberUse` and
- * `visitRuns`: a read through a binding reads what its value holds, its
- * own object or not (`const holder = { cfg }` owns its object and holds
+ * only what it names (R139), while nothing reassigns it
+ * (`MutationModel.ownsObject`); a write through another one may write
+ * whatever its value holds (`objectsWrittenBy`), as a read through a
+ * binding reads it (`const holder = { cfg }` owns its object and holds
  * `cfg`'s).
  */
 export function ownsItsValue(u: Unit): boolean {
@@ -369,19 +370,24 @@ export function ownsItsValue(u: Unit): boolean {
  * of its parents: `'write'` when it is the root object of a member
  * expression some code writes (`writeTargets`: `x.p = …`, `x.push(…)`), or
  * the first argument of an `Object.assign`-style call (the object it names
- * is mutated); `'through'` when it reads that object's contents where it
- * evaluates (the object of a member read `alias.v`, `all[0]`, a spread's
- * argument `{ ...alias }`, the source of a destructuring or a for-in/of
- * loop): what it reads is what that object holds, which may be another
- * binding's object (`const alias = cfg`, `const holder = { cfg }`), and
- * `visitRuns` follows its value; else null.
+ * is mutated); `'write-through'` when what is written is an object the
+ * one it names holds (`x.c.p = …`, `x.c.push(…)`, `Object.assign(x.c, …)`:
+ * it reads `x.c` first); `'through'` when it reads that object's contents
+ * where it evaluates (the object of a member read `alias.v`, `all[0]`, a
+ * spread's argument `{ ...alias }`, the source of a destructuring or a
+ * for-in/of loop): what it reads is what that object holds, which may be
+ * another binding's object (`const alias = cfg`, `const holder = { cfg }`),
+ * and the mutation model follows its value (`MutationModel.visitValues`);
+ * else null.
  */
 export function memberUse(
   file: SourceFile,
   node: Node,
-): 'write' | 'through' | null {
+): 'write' | 'write-through' | 'through' | null {
   // climb the member chain (and wrappers) grown on `node`
   let member = false
+  /** The member expressions of the chain. */
+  let depth = 0
   let n = node
   let parent = file.parentOf(n)
   /** The first parent that is no wrapper, and its child. */
@@ -395,12 +401,16 @@ export function memberUse(
     }
     if (parent.type === 'MemberExpression' && parent.object === n) {
       member = true
+      depth++
     } else if (!wrapper) {
       break
     }
   }
   if (parent !== null && writesAt(file, parent, n, member)) {
-    return 'write'
+    // the written object: the chain's own value for an `Object.assign`-style
+    // argument, else the object of its last member (`x.p = …`, `x.push`)
+    const own = parent.type === 'CallExpression' && parent.callee !== n ? 0 : 1
+    return depth > own ? 'write-through' : 'write'
   }
   if (first === null) {
     return null
@@ -750,12 +760,20 @@ export function buildUnits(
         break
       case 'ExpressionStatement': {
         const u = base(node, 'effect', itemRange)
-        const linked = purity.builders?.linked.length ?? 0
         u.effectful = !isPureExpression(purity, node.expression)
         u.augments = augmentationsOf(node.expression)
-        // a link on a `const` holding a builder writes it (R139)
-        for (const n of purity.builders?.linked.slice(linked) ?? []) {
-          const s = moduleSymOf(n)
+        // a link on a `const` holding a writing builder writes it (R139),
+        // also under the links chained on it (`b.middleware([a]).server(f)`)
+        for (
+          let call = unwrapExpression(node.expression);
+          purity.builders !== undefined && call.type === 'CallExpression';
+          call = unwrapExpression(
+            (unwrapExpression(call.callee) as { object?: Node }).object ??
+              call.callee,
+          )
+        ) {
+          const receiver = linkedBuilder(purity.file, purity.builders, call)
+          const s = receiver === null ? null : moduleSymOf(receiver)
           if (s !== null && !u.augments.includes(s)) {
             u.augments.push(s)
           }

@@ -8,7 +8,7 @@
  * what earlier stages produced, in place (see there).
  */
 import { buildClusters } from './placement/clusters'
-import { checkPlacement, eventTable } from './placement/events'
+import { eventTable } from './placement/events'
 import { readIndex } from './placement/reads'
 import { seedRoots } from './placement/roots'
 import {
@@ -72,8 +72,8 @@ export interface Fallback {
   region: RegionId
   /** `shared-writer`, `multi-writer`: the module binding the region writes; `ordered-effect`: the one it writes or reads. */
   binding?: SymbolId
-  /** `ordered-effect`: the value writes `binding` (when it loads, or in a function its call runs) and other code uses it, rather than reading what other code writes. */
-  writes?: true
+  /** `ordered-effect`: the value writes `binding` (when it loads, or in a function its call runs) rather than reading what other code writes, and other code uses it (`used`) or it stays where the value does not evaluate (`kept`). */
+  writes?: 'used' | 'kept'
   reason:
     | 'shared-writer'
     | 'multi-writer'
@@ -147,6 +147,8 @@ export interface KeptDeclaration {
   at?: number
   /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
   read?: SymbolId
+  /** `order`: the declarations it reads that the same effect keeps too (not reported on their own), in source order. */
+  with?: Array<SymbolId>
 }
 
 export interface ExtractedExport {
@@ -196,8 +198,7 @@ export interface Placement {
  *   an identity an extracted module and another output share) `settleRoots`
  *   rooted, inside its fixed point, so that a candidate reading it at load
  *   was cancelled;
- * - `includeAndImport` reads the final `roots` and homes, and
- *   `checkPlacement` (`Placement.check`) what it includes.
+ * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
   // 1. clusters (a binding with its writers at load), the write table
@@ -244,16 +245,6 @@ export function computePlacement(input: PlacementInput): Placement {
     extracted,
     kept,
     droppedTypeUnits: inclusion.droppedTypeUnits,
-    // 8. P2 and P3 over the final homes
-    check: () =>
-      inclusion.violation ??
-      checkPlacement(
-        input,
-        graph,
-        events,
-        homes.home,
-        inclusion.included,
-        roots.liveEnv,
-      ),
+    check: () => inclusion.violation,
   }
 }

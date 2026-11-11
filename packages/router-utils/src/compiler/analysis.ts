@@ -10,17 +10,22 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { namespaceName, patternIdentifiers } from './source'
+import {
+  isExpressionWrapper,
+  namespaceName,
+  patternIdentifiers,
+} from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, memberUse } from './units'
-import { MutationModel } from './mutation'
+import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
+  linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
   statementHasEffects,
 } from './purity'
 import { ownEntry } from './strings'
-import type { PurityContext } from './purity'
+import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
@@ -147,7 +152,7 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`: `memberUse`), which may be another binding's object; always present. */
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
 }
 
@@ -284,14 +289,6 @@ export interface Tier1 {
    * happened where they are written (the write table, placement).
    */
   runsLaterAt: (offset: number) => boolean
-  /**
-   * The starts of the receivers of links on a `const` holding a builder
-   * whose links write it (`RecognizerTable.builderLinksWrite`: a
-   * middleware's) that the module's purity took as no effect
-   * (`b.server(f)`): each one writes that builder (R139), a member write in
-   * placement's write table.
-   */
-  builderLinks: ReadonlySet<number>
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -323,8 +320,9 @@ interface ModuleAnalysisOptions {
    * `const` holding a builder is no effect either; for a kind whose links
    * write the builder they are called on (a middleware's assign its
    * options, which another link of it then reads; `builderLinksWrite`) it
-   * is a write of that builder (R139): `builderLinks`. Another kind's link
-   * (a server fn's copies the options) only reads it.
+   * is a write of that builder (R139) wherever it stands: its receiver is
+   * a member write (`linkedBuilder`). Another kind's link (a server fn's
+   * copies the options) only reads it.
    * Raw reads give none (`effects()` derives each one's).
    */
   env?: 'client' | 'server'
@@ -1209,6 +1207,9 @@ export class ModuleAnalysis {
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
+    const builders = this.purity.builders
+    /** Each write reference's expression or statement (`MutationModel.visitValues` reads what it writes). */
+    const constructs = new Map<ClassifiedRef, Range>()
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1227,17 +1228,26 @@ export class ModuleAnalysis {
         continue
       }
       const c = classify(file, ref)
-      const use = c.kind === 'value' ? memberUse(file, node) : null
-      refs.push({
+      const use =
+        c.kind !== 'value'
+          ? null
+          : builders !== undefined && linksOn(file, builders, node)
+            ? 'write'
+            : memberUse(file, node)
+      const r: ClassifiedRef = {
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
         kind: c.kind,
         ctx: c.ctx,
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
-        memberWrite: use === 'write',
-        readsThrough: use === 'through',
-      })
+        memberWrite: use === 'write' || use === 'write-through',
+        readsThrough: use === 'through' || use === 'write-through',
+      }
+      refs.push(r)
+      if (writeKind(r) !== null) {
+        constructs.set(r, writeConstruct(file, node))
+      }
     }
 
     // a `var` declared again: what that declaration gives it is a write, like
@@ -1264,14 +1274,16 @@ export class ModuleAnalysis {
           (i > 0 || !own || id.start < own.range.start) &&
           declarationAssigns(file, id)
         ) {
-          refs.push({
+          const r: ClassifiedRef = {
             sym,
             range: { start: id.start, end: id.end },
             ...classify(file, { node: id, isWrite: true }),
             eager: !isLazyAt(id.start),
             memberWrite: false,
             readsThrough: false,
-          })
+          }
+          refs.push(r)
+          constructs.set(r, writeConstruct(file, id))
         }
       })
     }
@@ -1337,7 +1349,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refIndex)
+    const mutation = new MutationModel(refIndex, constructs, () => tier1)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -1377,11 +1389,6 @@ export class ModuleAnalysis {
       },
       isLazyAt,
       runsLaterAt,
-      builderLinks:
-        this.purity.builders === undefined ||
-        this.purity.builders.linked.length === 0
-          ? NO_LINKS
-          : new Set(this.purity.builders.linked.map((n) => n.start)),
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1656,8 +1663,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   return true
 }
 
-const NO_UNITS: ReadonlyArray<UnitId> = []
-
 /**
  * What an evaluation runs: the one definition of "runs at load" (README,
  * "effects and mutable state"), asked of one evaluation at a time. `text`
@@ -1679,7 +1684,8 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * (`defineComponent({ setup() {} })`).
  *
  * The object a binding names is its value: its declaration and those
- * statements. A reference reading that object's contents (`readsThrough`:
+ * statements (the mutation model's `visitValues`, which also walks the
+ * bodies). A reference reading that object's contents (`readsThrough`:
  * `alias.v`, `{ ...alias }`, `const { v } = alias`) reads what the value
  * holds when the module loads, which may be another binding's object
  * (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`): it
@@ -1693,18 +1699,14 @@ const NO_UNITS: ReadonlyArray<UnitId> = []
  * from `visit` ends the walk; the result says whether it did.
  */
 export function visitRuns(
-  t1: Pick<
-    Tier1,
-    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
-  >,
+  t1: Pick<Tier1, 'mutation'>,
   text: ReadonlyArray<ClassifiedRef>,
   calls: EvaluatedCalls | null,
   bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
   visit: (ref: ClassifiedRef, at: number) => boolean,
 ): boolean {
+  /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
   const roots: Array<ClassifiedRef> = []
-  /** Without a call: the references reading through their binding (only their values' eager references run). */
-  const through: Array<ClassifiedRef> = []
   for (const ref of text) {
     if (
       !ref.eager &&
@@ -1718,129 +1720,38 @@ export function visitRuns(
     if (visit(ref, ref.range.start)) {
       return true
     }
-    if (calls !== null && !ref.memberWrite) {
+    if (calls !== null ? !ref.memberWrite : ref.readsThrough) {
       roots.push(ref)
-    } else if (calls === null && ref.readsThrough) {
-      through.push(ref)
     }
   }
-  if (through.length > 0) {
-    return visitValues(t1, through, bodyOf, visit)
-  }
-  if (roots.length === 0) {
-    return false
-  }
-  roots.sort((a, b) => a.range.start - b.range.start)
-  const seen = new Set<UnitId>()
-  /** The names whose declarations and writing statements were entered (once per evaluation: `seen` would skip them anyway). */
-  const followed = new Set<SymbolId>()
-  const work: Array<ClassifiedRef> = []
-  /** Runs the text of unit `u` at `at` (once per evaluation); true ends the walk. */
-  const enter = (u: UnitId, at: number): boolean => {
-    if (seen.has(u)) {
-      return false
-    }
-    seen.add(u)
-    for (const inner of bodyOf(u)) {
-      if (visit(inner, at)) {
-        return true
-      }
-      if (!inner.memberWrite) {
-        work.push(inner)
-      }
-    }
-    return false
-  }
-  for (const root of roots) {
-    const at = root.range.start
-    work.push(root)
-    while (work.length > 0) {
-      const r = work.pop()!
-      if (followed.has(r.sym)) {
-        continue
-      }
-      followed.add(r.sym)
-      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
-        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
-          return true
-        }
-      }
-      for (const site of t1.mutation.sitesOf(r.sym)) {
-        if (!site.eager || t1.runsLaterAt(site.range.start)) {
-          continue
-        }
-        const u = t1.unitAt(site.range)
-        if (u !== null && enter(u, at)) {
-          return true
-        }
-      }
-    }
-  }
-  return false
+  return (
+    roots.length > 0 &&
+    t1.mutation.visitValues(roots, calls === null, bodyOf, visit)
+  )
 }
 
-/**
- * `visitRuns` for an evaluation that calls nothing: what the references
- * reading through their binding (`through`) read, the eager references of
- * each one's value (its declarations and the statements writing it when the
- * module loads), and of what those hold, at the reference's position.
- */
-function visitValues(
-  t1: Pick<
-    Tier1,
-    'units' | 'declaringUnits' | 'mutation' | 'runsLaterAt' | 'unitAt'
-  >,
-  through: ReadonlyArray<ClassifiedRef>,
-  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
-  visit: (ref: ClassifiedRef, at: number) => boolean,
-): boolean {
-  const seen = new Set<UnitId>()
-  const followed = new Set<SymbolId>()
-  const work: Array<ClassifiedRef> = []
-  const enter = (u: UnitId, at: number): boolean => {
-    if (seen.has(u)) {
-      return false
+/** Whether identifier `node` is the receiver of a link on a writing builder (`linkedBuilder`: `b.server(f)`), parentheses and casts aside. */
+function linksOn(file: SourceFile, b: BuilderPurity, node: Node): boolean {
+  const outer = (n: Node): Node => {
+    let parent = file.parentOf(n)
+    while (parent !== null && isExpressionWrapper(parent)) {
+      n = parent
+      parent = file.parentOf(n)
     }
-    seen.add(u)
-    for (const inner of bodyOf(u)) {
-      if (!inner.eager || t1.runsLaterAt(inner.range.start)) {
-        continue
-      }
-      if (visit(inner, at)) {
-        return true
-      }
-      if (!inner.memberWrite) {
-        work.push(inner)
-      }
-    }
+    return n
+  }
+  const object = outer(node)
+  const member = file.parentOf(object)
+  if (member?.type !== 'MemberExpression' || member.object !== object) {
     return false
   }
-  for (const root of through) {
-    const at = root.range.start
-    work.push(root)
-    while (work.length > 0) {
-      const r = work.pop()!
-      if (followed.has(r.sym)) {
-        continue
-      }
-      followed.add(r.sym)
-      for (const u of t1.declaringUnits.get(r.sym) ?? NO_UNITS) {
-        if (t1.units[u]!.kind === 'declaration' && enter(u, at)) {
-          return true
-        }
-      }
-      for (const site of t1.mutation.sitesOf(r.sym)) {
-        if (!site.eager || t1.runsLaterAt(site.range.start)) {
-          continue
-        }
-        const u = t1.unitAt(site.range)
-        if (u !== null && enter(u, at)) {
-          return true
-        }
-      }
-    }
-  }
-  return false
+  const callee = outer(member)
+  const call = file.parentOf(callee)
+  return (
+    call?.type === 'CallExpression' &&
+    call.callee === callee &&
+    linkedBuilder(file, b, call) === node
+  )
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
@@ -2231,7 +2142,6 @@ interface BuilderImports {
 }
 
 const ENV_TYPES = ['client', 'server'] as const
-const NO_LINKS: ReadonlySet<number> = new Set()
 const NO_KINDS: ReadonlySet<string> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
@@ -2255,7 +2165,6 @@ function builderPurityOf(
         terminal: table.terminal,
         locals: new Map<string, string>(),
         erased: [],
-        linked: [],
       },
     } satisfies PurityContext,
     /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */

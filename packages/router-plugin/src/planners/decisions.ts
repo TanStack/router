@@ -82,8 +82,10 @@ interface NotSplit {
   range: Range
   /** The module binding a writer fallback writes (`ordered-effect`: writes or reads). */
   binding?: string
-  /** `ordered-effect`: the option writes `binding` and other code uses it. */
-  writes?: true
+  /** `ordered-effect`: the option writes `binding`, which other code uses (`used`) or which stays in the route module (`kept`). */
+  writes?: 'used' | 'kept'
+  /** `writes: 'kept'`: marking `binding`'s initialiser `/* @__PURE__ *\/` frees the option. */
+  annotate?: true
 }
 
 export interface SplitPlan {
@@ -520,7 +522,8 @@ export function splitPlanOf(
           reason: fallback.reason,
           range: target.region,
           ...(fallback.binding !== undefined && { binding: fallback.binding }),
-          ...(fallback.writes && { writes: true }),
+          ...(fallback.writes !== undefined && { writes: fallback.writes }),
+          ...(fallback.annotate && { annotate: true }),
         })
         continue
       }
@@ -548,7 +551,7 @@ export function splitPlanOf(
       severity: 'warning',
       code: `not-split:${n.reason}`,
       by: ROUTER_PLANNER,
-      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding, n.writes)}`,
+      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding, n.writes, n.annotate)}`,
       range: n.range,
     })
   }
@@ -565,7 +568,8 @@ function describeReason(
   reason: NotSplitReason,
   key: string,
   binding?: string,
-  writes?: true,
+  writes?: 'used' | 'kept',
+  annotate?: true,
 ): string {
   const written = binding === undefined ? 'a module binding' : `\`${binding}\``
   const inObject = `\`state.${binding ?? 'count'}\``
@@ -575,11 +579,19 @@ function describeReason(
     case 'multi-writer':
       return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
     case 'ordered-effect':
-      if (writes) {
+      if (writes === 'used') {
         // (when it loads, or in a function its call runs, which may run at
         // any time: other code of the module would see the write at another
         // time)
         return `it writes ${written}, which other code also uses, so a split would change when that code sees the write. Use ${written} only inside the option's functions.`
+      }
+      if (writes === 'kept') {
+        // the binding stays in the route module (its initialiser's effects,
+        // or code there needs it): the chunk would write it after that
+        // module's code ran
+        return annotate
+          ? `it writes ${written}, which stays in the route module because its initialiser has side effects, so a split would run the write later than written. Mark that initialiser \`/* @__PURE__ */\` if it has none.`
+          : `it writes ${written}, which stays in the route module, so a split would run the write later than written. Declare and use ${written} only inside the option's functions.`
       }
       return `it uses ${written} when the module loads, and other code of the module changes it later or reads it after the option, so a split would change what one of them sees. Use ${written} only inside the option's functions, or move what writes it out of the option, before the route.`
     case 'hydrate-writer':
