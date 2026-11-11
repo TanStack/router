@@ -7102,6 +7102,130 @@ describe('statements follow what they touch', () => {
   })
 })
 
+// R146 amendment (the user's rule): what keeps a bare statement in the route
+// module is what it changes (the objects it writes or calls a method on,
+// directly or in the local functions it calls), not what it names. It stays
+// when it changes something the rest of the app can see: another module's
+// object, a global, `import.meta`, a dynamically imported module; else it
+// follows the bindings it changes. Calling or passing an import changes
+// nothing. One rule for statements and a declaration's own writes.
+describe('statements: what they change (R146 amendment)', () => {
+  const route = (decls: string, options: string, imports = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createTable, createStore, createClient, sentryPlugin, persistPlugin } from './lib'
+      import * as Sentry from '@sentry/react'
+      import PropTypes from 'prop-types'
+      ${imports}
+      const on = true
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  /** `decls` in the route module, in order, and none of it in the component chunk. */
+  const stays = (r: Awaited<ReturnType<typeof split>>, decls: string) => {
+    expect(r.env).toContain(decls)
+    for (const line of decls.split('\n')) {
+      expect(r.chunks.component).not.toContain(line)
+    }
+  }
+  /** `decls` in the component chunk, in order, and none of it in the route module. */
+  const moves = (r: Awaited<ReturnType<typeof split>>, decls: string) => {
+    expect(r.chunks.component).toContain(decls)
+    for (const line of decls.split('\n')) {
+      expect(r.env).not.toContain(line)
+    }
+  }
+
+  describe('stays when it changes what the rest of the app sees, and keeps what it touches', () => {
+    it.each([
+      ["another module's object", "const cfg = { dsn: 'x' }\nSentry.init(cfg)"],
+      ['a global', "const cfg = { dsn: 'x' }\nwindow.appConfig = cfg"],
+      [
+        "the module's `import.meta.hot`",
+        "const cfg = { dsn: 'x' }\nif (import.meta.hot) { import.meta.hot.data.cfg = cfg }",
+      ],
+      [
+        'a dynamically imported module',
+        "const cfg = { dsn: 'x' }\nimport('./a').then((m) => m.track(cfg))",
+      ],
+      [
+        "another module's object through a local function it calls",
+        "const cfg = { dsn: 'x' }\nfunction start() { Sentry.init(cfg) }\nstart()",
+      ],
+    ])('%s', async (_, decls) => {
+      const r = await split(route(decls, 'component: () => cfg,'))
+      stays(r, decls)
+    })
+
+    // finding 5: the binding a local function it calls changes stays
+    it('a binding the route module keeps, through a local function it calls', async () => {
+      const decls =
+        "const table = createTable()\nfunction setup() { table.addColumn('x') }\nsetup()"
+      const r = await split(
+        route(decls, 'validateSearch: table.schema,\ncomponent: () => setup,'),
+      )
+      stays(r, decls)
+    })
+
+    // a declaration's own write that changes another module's object is
+    // judged the same way
+    it("a declaration's own write calling a method of another module's object", async () => {
+      const decls = 'const reg = {}\nreg.client = Sentry.getClient()'
+      const r = await split(route(decls, 'component: () => reg,'))
+      stays(r, decls)
+    })
+  })
+
+  describe('moves with the bindings it changes: calling or passing an import changes nothing', () => {
+    it.each([
+      [
+        'an array the component reads',
+        'const plugins = []\nplugins.push(sentryPlugin())',
+        'plugins',
+      ],
+      [
+        'a store handed an import',
+        'const store = createStore()\nstore.add(persistPlugin)',
+        'store',
+      ],
+      [
+        'a member assigned an imported call',
+        'const reg = {}\nreg.client = createClient()',
+        'reg',
+      ],
+      [
+        'the same in an `if`',
+        'const reg = {}\nif (on) { reg.client = createClient() }',
+        'reg',
+      ],
+      [
+        "a component's static props",
+        "function Page() { return 'page' }\nPage.propTypes = { x: PropTypes.string }",
+        'Page',
+      ],
+    ])('%s', async (_, decls, name) => {
+      const r = await split(route(decls, `component: () => ${name},`))
+      moves(r, decls)
+    })
+
+    // what it only reads may stay: the chunk imports it
+    it('a table it changes, reading a binding the route module keeps', async () => {
+      const decls =
+        "const LABELS = { a: 'A' }\nconst table = createTable()\ntable.addColumn(LABELS)"
+      const r = await split(
+        route(decls, 'loader: () => LABELS,\ncomponent: () => table,'),
+      )
+      expect(r.env).toContain("const LABELS = { a: 'A' }")
+      moves(r, 'const table = createTable()\ntable.addColumn(LABELS)')
+      expect(r.chunks.component).toContain(
+        "import { LABELS } from '/app/route.tsx'",
+      )
+    })
+  })
+})
+
 // Rule L reads objects through language operations: a write of the object
 // through another name after the read is one of that object, ordered
 // against the read (the mutation model's owner of "the object a binding
