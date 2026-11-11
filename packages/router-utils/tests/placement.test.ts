@@ -6564,16 +6564,25 @@ describe('generated imports', () => {
 describe('builder chains in a compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
-    factories: { 'toy-start': { createServerFn: 'serverFn' } },
-    builderKinds: new Set(['serverFn']),
-    terminal: { serverFn: 'serverFn' },
+    factories: {
+      'toy-start': {
+        createServerFn: 'serverFn',
+        createMiddleware: 'middleware',
+      },
+    },
+    builderKinds: new Set(['serverFn', 'middleware']),
+    terminal: { serverFn: 'serverFn', middleware: 'middleware' },
     builderLinks: {
       serverFn: {
         middleware: 'both',
         validator: 'server',
         handler: 'server',
       },
+      middleware: { middleware: 'both', server: 'server' },
     },
+    // a middleware's links assign the options of the builder they are
+    // called on; a server fn's copy them into a new one
+    builderLinksWrite: new Set(['middleware']),
   }
   async function compile(code: string, type: 'client' | 'server') {
     const host = new MemoryHost({
@@ -6650,6 +6659,66 @@ describe('builder chains in a compile', () => {
       expect(r.env, type).not.toContain('createServerFn()')
       expect(r.kept, type).toEqual([])
     }
+  })
+
+  // REVIEW-design2-step4 finding 4: whether a link writes its builder is a
+  // fact of the builder's kind. A server fn's links copy the options, so
+  // two server fns on one shared base are independent readers of it; a
+  // middleware's write it, so its links and the base are one cluster.
+  it('moves a page-only server fn on a shared const base, the other one staying', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createServerFn } from 'toy-start'
+      const base = createServerFn().middleware([])
+      const getA = base.handler(async () => 1)
+      const getB = base.handler(async () => 2)
+      export const Route = createFileRoute('/')({
+        loader: () => getB,
+        component: () => getA,
+      })
+    `)
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+      recognizer,
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      { env },
+    )
+    expect(main?.code).toContain('const base = createServerFn()')
+    expect(main?.code).toContain('const getB = base.handler(')
+    expect(main?.code).not.toContain('const getA')
+    expect(chunk?.code).toContain('const getA = base.handler(')
+    expect(chunk?.code).toContain("import { base } from '/app/route.tsx'")
+    expect(main?.diagnostics).toEqual([])
+  })
+
+  it('keeps the links of a middleware on a shared const base with it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createMiddleware } from 'toy-start'
+      const base = createMiddleware().middleware([])
+      const forPage = base.server(async () => 1)
+      const forLoader = base.server(async () => 2)
+      export const Route = createFileRoute('/')({
+        loader: () => forLoader,
+        component: () => forPage,
+      })
+    `)
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+      recognizer,
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).toContain(
+      'const base = createMiddleware().middleware([])\nconst forPage = base.server(',
+    )
   })
 
   // Two links on one builder: each writes it, so the builder and both
