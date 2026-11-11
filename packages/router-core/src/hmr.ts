@@ -11,7 +11,7 @@ import type { AnyRouter } from './router'
 export interface RouteHmrMeta {
   /** The module is a lazy route file: its `Route` holds the options the route of its id loads with its chunk. */
   lazy?: true
-  /** Refresh identities of the component options left in the route module (a binding's name, `<specifier>#<export>` for an import); an option without one is swapped. */
+  /** Solid and Vue: refresh identities of the component options left in the route module (a binding's name, `<specifier>#<export>` for an import); an option without one is swapped. */
   unsplit?: Record<string, string>
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, every module-level binding name the user does not export). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }

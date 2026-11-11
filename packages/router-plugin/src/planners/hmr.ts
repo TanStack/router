@@ -3,15 +3,17 @@
  * `hmr.ts` of router-core and the framework routers), in a development
  * client only.
  *
- * Before the split part (`planHmrHoists`): records the refresh identity of
- * each component option that stays in the route module (`unsplit`, every
- * framework: a binding's name, an import's module and export); for React,
- * every such option React Refresh can register becomes a registrable
- * binding — inline functions and higher-order calls are hoisted into
- * `const Tsr<Key> = …` before the statement holding the options (a claim,
- * so the original body is relocated, not reprinted), lowercase
- * module-level components are renamed module-wide. Any other value (a
- * conditional, a member) has no identity: an edit swaps it.
+ * Before the split part (`planHmrHoists`): for React, every component option
+ * that stays in the route module and that React Refresh can register
+ * becomes a registrable binding — inline functions and higher-order calls
+ * are hoisted into `const Tsr<Key> = …` before the statement holding the
+ * options (a claim, so the original body is relocated, not reprinted),
+ * lowercase module-level components are renamed module-wide (the runtime
+ * takes the new component after React Refresh's pass; a family is what
+ * keeps its state). For Solid and Vue, it records the refresh identity of
+ * each such option (`unsplit`: a binding's name, an import's module and
+ * export); any other value (a conditional, a member) has none: an edit
+ * swaps it.
  * A lazy route file (`createLazyFileRoute`, never split) gets both; its
  * options are the ones the route loads with its chunk (`lazy: true` in the
  * block's meta).
@@ -22,7 +24,6 @@
  * the chunk blocks (`chunkHmr`, `keptReaderHmr`).
  */
 import {
-  derivedIdOf,
   stringLiteral,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
@@ -36,7 +37,7 @@ import {
   routerRouteId,
 } from './route'
 import { COMPONENT_KEYS, methodPrefixOf } from './decisions'
-import { ROUTER_PLANNER, routeRefreshMarkers } from './config'
+import { ROUTER_PLANNER } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
 import type {
@@ -58,9 +59,9 @@ function isCapitalised(name: string): boolean {
 }
 
 /**
- * Before the split part: makes every component option that stays in the
- * route module a binding React Refresh registers where it can, and records
- * its refresh identity (`round.unsplit`, every framework).
+ * Before the split part: React, makes every component option that stays in
+ * the route module a binding React Refresh registers where it can; Solid
+ * and Vue, records its refresh identity (`round.unsplit`).
  */
 export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
   const { cfg, route, plan } = round
@@ -103,40 +104,33 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     }
     const sym = option.kind === 'method' ? null : identifierSymbol(ctx, value)
     if (sym !== null) {
+      if (cfg.framework !== 'react') {
+        if (!isSplit) {
+          round.unsplit[key] = bindingIdentity(ctx, sym)
+        }
+        continue
+      }
       // a module binding: registrable by its own declaration when
       // capitalised; a lowercase local one is renamed module-wide, split
       // or not (React Refresh registers it wherever it is declared); an
       // import is registered by its module, under its export's name
       const name = symbols.name(sym)
-      const record = (registered: string) => {
-        if (!isSplit) {
-          round.unsplit[key] = registered
-        }
-      }
       if (
         isCapitalised(name) ||
-        cfg.framework !== 'react' ||
-        symbols.isImport(sym)
+        symbols.isImport(sym) ||
+        ctx.nameOf(sym) !== name
       ) {
-        record(bindingIdentity(ctx, sym))
-        continue
-      }
-      const renamed = ctx.nameOf(sym)
-      if (renamed !== name) {
-        record(renamed)
         continue
       }
       const units = ctx.t1.declaringUnits.get(sym) ?? []
       const local = units.some((u) => ctx.t1.units[u]!.kind === 'declaration')
       if (!local) {
-        record(name)
         continue
       }
       const next = names.alloc(`Tsr${pascal(key)}`)
       // the occurrences that are split option values are the splitter's
       // (its edit replaces them; the chunk reads the renamed symbol)
       ctx.renameRefs(sym, { sym: next.sym }, ROUTER_PLANNER, splitRegions)
-      record(next.name)
       continue
     }
     if (
@@ -144,8 +138,8 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       isSplit ||
       (option.kind !== 'method' && !refreshRegisters(value))
     ) {
-      // (a value React Refresh registers no family for stays inline and
-      // unrecorded: an edit swaps it)
+      // (a value React Refresh registers no family for stays inline: an
+      // edit remounts it)
       continue
     }
     // inline value or method: hoist into a registrable binding before the options
@@ -191,7 +185,6 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
       by: ROUTER_PLANNER,
     })
-    round.unsplit[key] = hoisted.name
   }
 }
 
@@ -312,68 +305,9 @@ export function planHmrBlock(
       },
     ],
   })
-  if (routeRefreshMarkers(cfg)) {
-    markSplitComponents(ctx, round)
-  }
   if (!vite) {
     chunkHmr(ctx, round, route.routeId)
     keptReaderHmr(ctx, round, route.routeId)
-  }
-}
-
-/**
- * React: each component a split chunk exports carries the route-HMR identity
- * marker (`$$tsrRefreshId`), compared by the runtime when the re-imported
- * chunk arrives: the same identity is kept for React Refresh to patch in
- * place, another one is swapped in. Start's Hydrate planner marks its chunks'
- * components in the same format (`<chunk id> <name>`).
- */
-function markSplitComponents(ctx: PlanContext, round: RouterRound): void {
-  for (const c of round.splitComponents) {
-    if (
-      !c.registers ||
-      (c.valueSym !== null && ctx.symbols.isImport(c.valueSym))
-    ) {
-      // no family React Refresh would patch (`cond ? A : B`, `views.Main`:
-      // swapped on every update); a foreign module's export is not this
-      // module's to mark: React Refresh registers it where it is declared
-      // (a member of an import, `C.NotFound`, isn't listed for the same
-      // reason)
-      continue
-    }
-    // identity = the module React Refresh registers the binding in (where
-    // placement puts the user's component: this chunk or the route module,
-    // nothing is extracted in dev; a move is a new family) + the binding:
-    // the user's component when the value names one (a rename is a new
-    // family), else the chunk's own declaration. (A value that can't hold
-    // the marker, e.g. frozen, is swapped.)
-    ctx.rewrites.addGenerated({
-      body: [
-        {
-          k: 'text',
-          parts: [
-            'if (Object.isExtensible(',
-            c.exported,
-            ')) ',
-            c.exported,
-            ...(c.valueSym !== null
-              ? [
-                  '.$$tsrRefreshId = ',
-                  { sym: c.valueSym, ctx: 'homeId' } as const,
-                  ` + ${stringLiteral(` ${ctx.nameOf(c.valueSym)}`, '"')}\n`,
-                ]
-              : [
-                  `.$$tsrRefreshId = ${stringLiteral(`${derivedIdOf(c.output)} ${ctx.nameOf(c.exported.sym)}`, '"')}\n`,
-                ]),
-          ],
-        },
-      ],
-      declares: [],
-      effectful: true,
-      anchor: { k: 'end' },
-      home: c.output,
-      by: ROUTER_PLANNER,
-    })
   }
 }
 

@@ -91,14 +91,3 @@ export function routerPlannerConfigDigest(cfg: RouterPlannerConfig): string {
 export function routerPlannerApplies(cfg: RouterPlannerConfig): boolean {
   return cfg.split || cfg.deleteNodes.length > 0 || cfg.hmr !== null
 }
-
-/**
- * Whether React route HMR is on: components React Refresh may keep in place
- * then carry the route-HMR identity marker (`$$tsrRefreshId`, compared by the
- * runtime when a re-imported chunk arrives). The router planner marks the
- * components of its split chunks, Start's Hydrate planner those of its
- * boundary chunks.
- */
-export function routeRefreshMarkers(cfg: RouterPlannerConfig | null): boolean {
-  return cfg?.hmr != null && cfg.framework === 'react'
-}

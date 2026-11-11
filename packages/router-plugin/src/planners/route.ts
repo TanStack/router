@@ -778,9 +778,10 @@ export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
  * `init` (casts and parentheses dropped) as a component family, as its
  * transform decides (`findInnerComponents` of react-refresh/babel; oxc and
  * SWC follow it): a function (not one returning a function), or a call of
- * a higher-order component (`memo(() => …)`, `withAuth(Page)`). A
- * conditional, a member or another call is no family: refresh patches
- * nothing the router keeps, so route HMR swaps it.
+ * a higher-order component (`memo(() => …)`, `withAuth(Page)`). Route HMR
+ * hoists an inline component option into such a `const` when it registers
+ * (a family keeps its state across edits); a conditional, a member or
+ * another call is no family and stays inline (an edit remounts it).
  */
 export function refreshRegisters(init: Node): boolean {
   const v = unwrapExpression(init)
@@ -813,10 +814,11 @@ export function refreshRegisters(init: Node): boolean {
 }
 
 /**
- * What a component option's identity is for the refresh runtimes, recorded
- * per evaluation for the route HMR runtime (`unsplit`): an import is the
- * module's export (`<specifier>#<imported name>`, a same-named import from
- * another module is another component), a module binding its name.
+ * What a component option's identity is for Solid's and Vue's refresh
+ * runtimes, recorded per evaluation for the route HMR runtime (`unsplit`):
+ * an import is the module's export (`<specifier>#<imported name>`, a
+ * same-named import from another module is another component), a module
+ * binding its name.
  */
 export function bindingIdentity(ctx: PlanContext, sym: SymbolId): string {
   if (ctx.symbols.isImport(sym)) {
@@ -828,19 +830,6 @@ export function bindingIdentity(ctx: PlanContext, sym: SymbolId): string {
     }
   }
   return ctx.symbols.name(sym)
-}
-
-/** Whether a value is a member of an imported binding (`C.NotFound` of `import * as C`). */
-export function isMemberOfImport(ctx: PlanContext, value: Node): boolean {
-  let v = unwrapExpression(value)
-  if (v.type !== 'MemberExpression') {
-    return false
-  }
-  while (v.type === 'MemberExpression') {
-    v = unwrapExpression(v.object)
-  }
-  const sym = identifierSymbol(ctx, v)
-  return sym !== null && ctx.symbols.isImport(sym)
 }
 
 /** The module-level symbol an identifier value denotes, or null. */

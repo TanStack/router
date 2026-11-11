@@ -13,32 +13,15 @@ import { ROUTER_PLANNER, routerPlannerApplies } from './config'
 import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
 import type { RouterPlannerConfig } from './config'
-import type {
-  OutputId,
-  Planner,
-  SymRef,
-  SymbolId,
-} from '@tanstack/router-utils/compiler'
+import type { Planner } from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
 export interface RouterRound {
   cfg: RouterPlannerConfig
   route: RouteModuleInfo
   plan: SplitPlan
-  /** Compile-time binding names of the component options left in the route module (route HMR). */
+  /** Solid and Vue: the refresh identities of the component options left in the route module (route HMR). */
   unsplit: Record<string, string>
-  /**
-   * The components the split chunks export (route HMR marks them): the
-   * user's binding or the chunk's own declaration, and the module binding
-   * the option's value names, if any.
-   */
-  splitComponents: Array<{
-    output: OutputId
-    exported: SymRef
-    valueSym: SymbolId | null
-    /** Whether React Refresh registers the exported value as a component family (`refreshRegisters`). */
-    registers: boolean
-  }>
 }
 
 declare module '@tanstack/router-utils/compiler' {
@@ -87,7 +70,6 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
         route,
         plan: splitPlanOf(ctx, cfg, route),
         unsplit: {},
-        splitComponents: [],
       }
       for (const w of round.plan.warnings) {
         ctx.diagnostic(w)

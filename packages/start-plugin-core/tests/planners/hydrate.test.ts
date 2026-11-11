@@ -1611,29 +1611,6 @@ function Tree({ n }) {
     )
   })
 
-  // React development with route HMR: the chunk component carries the
-  // identity marker the route-HMR runtime compares, as split
-  // component chunks do, so an update of the chunk is kept, not swapped.
-  it('marks the chunk component with its refresh identity when the host asks for markers', async () => {
-    const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }
-`
-    const marked = await compile(code, { config: { refreshMarkers: true } })
-    const [b] = marked.extracted
-    const chunk = marked.chunks[b!.id]!
-    const component = chunkComponent(chunk).name
-    // the identity: the chunk id and the binding React Refresh registers
-    expect(chunk).toContain(
-      `${component}.$$tsrRefreshId = ${JSON.stringify(`${b!.chunk} ${component}`)}`,
-    )
-    const plain = await compile(code)
-    expect(plain.chunks[b!.id]).not.toContain('$$tsrRefreshId')
-    const solid = await compile(code.replace(REACT, SOLID), {
-      env: clientEnv,
-      config: { refreshMarkers: true },
-    })
-    expect(solid.chunks[b!.id]).not.toContain('$$tsrRefreshId')
-  })
-
   // Solid passes a bare identifier prop by value: a binding `ref={el}`
   // assigns later (or a let the parent reassigns) is read through a getter,
   // so the chunk reads its current value (`props.el?.focus()` saw

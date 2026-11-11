@@ -74,13 +74,6 @@ type HydrateFramework = 'react' | 'solid'
 export interface HydratePlannerConfig {
   /** Project root: boundary ids hash the path relative to it. */
   root: string
-  /**
-   * React development: the chunk component carries the route-HMR identity
-   * marker (`$$tsrRefreshId`: chunk id + name, compared by the route-HMR runtime
-   * when the reloaded chunk arrives), so an update of a boundary's chunk is
-   * kept by React Refresh instead of swapped. Default false.
-   */
-  refreshMarkers?: boolean
 }
 
 export const HYDRATE_PLANNER = 'hydrate'
@@ -558,15 +551,7 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
     const n = names.get(b)
     const result =
       n && live(b)
-        ? extract(
-            ctx,
-            b,
-            n,
-            nestedRegions(boundaries, b),
-            extracted,
-            shared,
-            cfg,
-          )
+        ? extract(ctx, b, n, nestedRegions(boundaries, b), extracted, shared)
         : null
     if (result) {
       planned.set(b, result)
@@ -1033,7 +1018,6 @@ function extract(
   nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
-  cfg: HydratePlannerConfig,
 ): { sym: SymbolId; chunk: string } | null {
   const { t1, symbols } = ctx
   const shape = b.children!
@@ -1268,15 +1252,6 @@ function extract(
     head.push('(')
   }
   const tail: Array<string | SymRef> = [shape.wrap ? '</> }\n' : ') }\n']
-  if (cfg.refreshMarkers && b.framework === 'react') {
-    // identity = chunk id + the binding React Refresh registers (the identity
-    // the route-HMR runtime compares to keep or swap, as the
-    // route splitter marks its component chunks)
-    tail.push(
-      { sym: comp.sym },
-      `.$$tsrRefreshId = ${JSON.stringify(`${chunkId} ${comp.name}`)}\n`,
-    )
-  }
   tail.push('export { ', { sym: comp.sym }, ` as ${chunkExportName(b)} }\n`)
   const regionId = ctx.region(region, 'hydrate-children')
   const owner = ctx.rewrites.addGenerated({

@@ -12,7 +12,7 @@
 import { walk } from 'yuku'
 import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
-import { specifierLiteral, specifierName, stringLiteral } from './strings'
+import { specifierLiteral, specifierName } from './strings'
 import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
@@ -1344,20 +1344,6 @@ class Renderer {
     return false
   }
 
-  /** The id of the module the current output takes `sym` from: the home it imports it from, else its own. */
-  private homeIdOf(sym: SymbolId): string {
-    for (const [home, syms] of this.plan.placement?.imports.get(this.output) ??
-      []) {
-      if (syms.has(sym)) {
-        return (
-          this.plan.outputs.get(home)?.derivedId ??
-          this.plan.identity.canonicalId
-        )
-      }
-    }
-    return this.importerId
-  }
-
   private targetText(to: RefTarget, env: SubstEnv | null): string {
     if ('sym' in to) {
       const sub = env?.get(to.sym)
@@ -1374,9 +1360,6 @@ class Renderer {
     ctx: SymRefContext,
     env: SubstEnv | null,
   ): string {
-    if (ctx === 'homeId') {
-      return stringLiteral(this.homeIdOf(sym), '"')
-    }
     const t = this.targetText({ sym }, env)
     if (ctx === 'callee' && t.includes('.')) {
       return `(0, ${t})`

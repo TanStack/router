@@ -479,7 +479,8 @@ dir)` is not a conflict by itself.
   `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
   has not loaded them yet.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
-  component and lazy-wrapper identity (React, and Solid and Vue split components too) and shows the new code. Where
+  lazy-wrapper identity and lets the framework's refresh decide the component's (React; Solid and Vue keep a
+  component their refresh patches in place), and shows the new code. Where
   the framework's refresh can keep the mounted component and its state, the compiler and router must not cause a
   remount or state reset. Compatibility is the real framework's refresh contract, not an unchanged name (React
   Refresh remounts class components, changed hook signatures and forced resets). Framework-required replacement is
