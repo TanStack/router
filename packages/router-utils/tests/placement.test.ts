@@ -7047,9 +7047,9 @@ describe('statements follow what they touch', () => {
       })
     })
 
-    // the order warning is gone: what head kept with `eager-split:order`
-    // moves unreported
-    it('reports no order warning for a value before a bare call', async () => {
+    // a value only the component reads moves past a bare call after it, and
+    // nothing is reported (it is no kept declaration)
+    it('moves a value past a bare call after it, unreported', async () => {
       const r = await split(
         route(
           'const table = createTable()\nconnectAuthEmulator()',
