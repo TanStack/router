@@ -220,6 +220,7 @@ export function seedRoots(
         reason: 'written',
         other: { at: u.range.start },
         outside,
+        ...(events.statementChanges(c).syms.length === 0 && { uses: true }),
       })
     }
     return outside !== null

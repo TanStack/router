@@ -165,21 +165,21 @@ export function keptDeclarations(
     statements.add(c)
     const blocker =
       pin.binding === undefined ? undefined : clusterOfSym.get(pin.binding)
-    const changes = events.statementChanges(c)
-    const followed = changes.clusters
+    // (what the env module evaluates with it: a binding whose value holds
+    // a claimed option value does not keep that value there)
+    const kept = reads.reach('env', [c])
+    const followed = events.statementChanges(c).clusters
     for (const d of clusters[c]!.declares.size > 0
       ? [c, ...followed]
       : followed) {
       if (
         d !== blocker &&
         !causes.has(d) &&
+        kept.has(d) &&
         clusters[d]!.kind !== 'import' &&
         derivedNeeds(input, derivedReach, d)
       ) {
-        causes.set(
-          d,
-          d !== c && changes.syms.length === 0 ? { ...pin, uses: true } : pin,
-        )
+        causes.set(d, pin)
       }
     }
   }

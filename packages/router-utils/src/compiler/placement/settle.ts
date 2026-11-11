@@ -223,6 +223,7 @@ export function settleRoots(
       ...(at !== undefined && { other: { at } }),
       ...(sym !== undefined && { binding: sym }),
       ...(other !== undefined && { in: other }),
+      ...(changes.syms.length === 0 && { uses: true }),
     }
   }
   /** `c` and the clusters it follows (`Events.statementChanges`). */
