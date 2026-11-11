@@ -4,9 +4,10 @@
  * loader compiles route modules, env and derived ids, and passes the rest
  * through), the `sideEffects: false` rule for extracted-export outputs, the
  * one invalidation operation on `watchRun` and on registry changes, whose
- * stale set the compiler takes at `finishMake` (`StaleSetDrain`), and the
- * mode from the compiler's options (never `process.env.NODE_ENV`). HMR style
- * is always `'webpack'`.
+ * stale set the compiler takes at `finishMake` (`StaleSetDrain`), the plans
+ * of the route modules a persistent cache restores (checked at the first
+ * `finishMake`), and the mode from the compiler's options (never
+ * `process.env.NODE_ENV`). HMR style is always `'webpack'`.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -20,7 +21,9 @@ import {
   initialChunkResources,
   locateDiagnostics,
   normalizePath,
+  pathsOf,
   reportingFailure,
+  restorePlans,
   warnEagerExports,
   webpackImporters,
   webpackResourceId,
@@ -34,13 +37,15 @@ import { RouterCompiler } from './session'
 import {
   LOADER_REGISTRY,
   LOCATED_DIAGNOSTICS,
+  PLAN_BUILD_INFO_FIELD,
   createLoaderImpl,
 } from './loader'
-import type { LoaderImpl } from './loader'
+import type { LoaderImpl, PersistedModules } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type {
   EmittedMapsCompilerLike,
+  PersistedPlan,
   IdleCompilerLike,
   InitialChunksLike,
   RebuildCompilationLike,
@@ -60,6 +65,7 @@ export interface CompilerLike extends IdleCompilerLike {
     mode?: 'development' | 'production' | 'none'
     target?: unknown
     module: { rules: Array<unknown> }
+    cache?: unknown
   }
   webpack?: { WebpackError?: new (message: string) => Error }
   hooks: {
@@ -79,6 +85,7 @@ export interface CompilerLike extends IdleCompilerLike {
         fn: (compilation: {
           compiler?: unknown
           errors: Array<Error>
+          modules: Iterable<ModuleLike>
         }) => Promise<void>,
       ) => void
     }
@@ -97,10 +104,11 @@ export interface CompilerLike extends IdleCompilerLike {
   }
 }
 
-/** The parts of a module the stale-set drain uses. */
+/** The parts of a module the stale-set drain and the plan restore use. */
 interface ModuleLike {
   identifier: () => string
   resource?: string
+  buildInfo?: Record<string, unknown>
 }
 
 /** The parts of a compilation the host uses (webpack and Rspack). */
@@ -215,6 +223,13 @@ export function createRouterCompilerWebpackPlugin(
       const isRouteFile = (resource: string) =>
         JS_FILE_RE.test(resource) &&
         session.routeEntry(normalizePath(resource)) !== null
+      // the bundler's cache outlives the process: route modules carry their
+      // plan, which the first compilation checks for the modules restored
+      const cache = compiler.options.cache as { type?: string } | undefined
+      const persisted: PersistedModules | null =
+        typeof cache === 'object' && cache.type !== 'memory'
+          ? { compiled: new Set() }
+          : null
       registry.set(
         instance,
         createLoaderImpl(
@@ -225,6 +240,7 @@ export function createRouterCompilerWebpackPlugin(
             mode,
             isRouteFile,
           ),
+          persisted,
         ),
       )
       // the rule reads no mutable state: a module stays one module when its
@@ -285,6 +301,7 @@ export function createRouterCompilerWebpackPlugin(
       const failure = (what: string) => ({ tag: '[tanstack-router]', what })
       compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
         compilation.errors.push(...failedBeforeCompilation.splice(0))
+        persisted?.compiled.clear()
         // the loader's diagnostics at their positions: the bundlers keep
         // none of a loader's warning or error
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
@@ -364,22 +381,54 @@ export function createRouterCompilerWebpackPlugin(
           )
         }
       })
+      // a compiler's first compilation restores the modules of an earlier
+      // process from the bundler's cache (built under the route list of
+      // then): their plans are checked, a stale one's modules are built
+      // again with the others of the set, and the environment has plans the
+      // registry's changes reach from then on
+      let restoring = persisted !== null
       compiler.hooks.finishMake.tapPromise(PLUGIN_NAME, async (compilation) => {
         if (compilation.compiler === compiler) {
           await reportingFailure(
             compiler,
             compilation.errors,
             failure('Building the out-of-date route modules again'),
-            () =>
-              drain.rebuild(
+            async () => {
+              if (restoring) {
+                restoring = false
+                await restoreRoutePlans(compilation.modules)
+              }
+              await drain.rebuild(
                 envName,
                 compilation as unknown as RebuildCompilationLike<ModuleLike>,
                 (resource) =>
                   normalizePath(identify(webpackResourceId(resource)).path),
-              ),
+              )
+            },
           )
         }
       })
+      const restoreRoutePlans = async (modules: Iterable<ModuleLike>) => {
+        const plans = new Map<string, PersistedPlan>()
+        for (const m of modules) {
+          const plan = m.buildInfo?.[PLAN_BUILD_INFO_FIELD]
+          if (
+            typeof plan === 'string' &&
+            m.resource &&
+            !persisted!.compiled.has(m.resource)
+          ) {
+            plans.set(plan, JSON.parse(plan) as PersistedPlan)
+          }
+        }
+        const stale = await restorePlans(
+          session.caches,
+          plans.values(),
+          session.host,
+        )
+        for (const file of pathsOf(stale, envName)) {
+          session.caches.stale.add(envName, file)
+        }
+      }
       // what became stale after a compilation's drain (a registry change
       // published meanwhile, a compile overtaken) gets another one
       compiler.hooks.afterDone.tap(PLUGIN_NAME, () => {

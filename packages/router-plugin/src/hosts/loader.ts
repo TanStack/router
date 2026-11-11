@@ -50,6 +50,23 @@ export type LoaderImpl = (
 export const LOADER_REGISTRY = '__tanstackRouterCompilers'
 
 /**
+ * The `buildInfo` field holding the key and dependencies of a route
+ * module's plan, as JSON, when the bundler's cache outlives the process
+ * (checked at a compiler's first `finishMake`: `restorePlans`).
+ */
+export const PLAN_BUILD_INFO_FIELD = 'tanstack.router.plan'
+
+/**
+ * A compiler whose cache outlives the process (webpack's `filesystem`,
+ * Rspack's `persistent` cache): the loader persists each route module's
+ * plan with the module, and records the resources it compiled in the
+ * current compilation (`compiled`: the others the bundler restored).
+ */
+export interface PersistedModules {
+  compiled: Set<string>
+}
+
+/**
  * How the loader reports its diagnostics, and where it records them with
  * their positions: the host locates them after the seal
  * (`locateDiagnostics`).
@@ -73,6 +90,7 @@ export function createLoaderImpl(
   compiler: RouterCompiler,
   env: { name: string; type: 'client' | 'server' },
   recordMapText: RecordMapText | null,
+  persisted: PersistedModules | null,
 ): LoaderImpl {
   return async (ctx, bytes, inputMap) => {
     const id = webpackResourceId(ctx.resource)
@@ -98,6 +116,13 @@ export function createLoaderImpl(
     if (!out) {
       return { code: bytes, map: inputMap }
     }
+    const buildInfo = ctx._module?.buildInfo
+    if (persisted) {
+      persisted.compiled.add(ctx.resource)
+      if (buildInfo && out.persisted) {
+        buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
+      }
+    }
     for (const dep of out.dependencies) {
       if (dep !== file) {
         ctx.addDependency(dep)
@@ -114,7 +139,6 @@ export function createLoaderImpl(
       warn: (d, at) =>
         ctx.emitWarning(locate(locatedDiagnostic('warning', d.message, at))),
     })
-    const buildInfo = ctx._module?.buildInfo
     if (located.length > 0 && buildInfo) {
       buildInfo[LOCATED_DIAGNOSTICS.field] = located
     }
