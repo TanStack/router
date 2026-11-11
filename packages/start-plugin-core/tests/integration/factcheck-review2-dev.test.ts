@@ -1,6 +1,7 @@
 /**
  * Fact-check of external review 2 (claims 6 and 7), on running dev servers.
- * Each pin asserts the correct behaviour and fails on the current compiler.
+ * Each pin asserts the correct behaviour and fails on the current compiler
+ * (a test without `.fails` is a pin the compiler has since fixed).
  */
 import { utimes, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -144,8 +145,9 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
 
   // Rspack bundles the new target, but reports no event for that package.json
   // when the old target imports nothing (so nothing tells the compiler its
-  // resolutions moved), until a file appears or disappears. Main follows.
-  test.fails(
+  // resolutions moved). The importer's own save is a file event, and every
+  // file event moves the file set: its compile asks `acme-lib` again.
+  test(
     'Rsbuild `exports` of a linked package, plain to builder: the handler leaves the client',
     async () => {
       const { before, after } = await editLinkedExports(
