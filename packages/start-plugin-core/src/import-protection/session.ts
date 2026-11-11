@@ -8,7 +8,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
-import { identify, normalizePath } from '@tanstack/router-utils/compiler'
+import {
+  identify,
+  invariantDiagnostic,
+  invariantViolated,
+  normalizePath,
+} from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { importEdgesPlanner } from '../planners/edges'
 import { resolveImportProtectionConfig } from './config'
@@ -1317,6 +1322,10 @@ class ImportProtectionEnv {
     }
     // the mocked modules that are their own violation whose every importer is not checked (R89), with those importers
     const unchecked = new Map<string, [EdgeViolation, Array<string>]>()
+    // those nothing in the graph imports: no supported configuration has one
+    // (one entry per environment; a dev server reports the file when it
+    // compiles it), so no report accounts for it (design 4, I5)
+    const unaccounted: Array<EdgeViolation> = []
     const live = new Map<string, EdgeViolation>()
     const add = (v: EdgeViolation) => {
       const key = dedupeKey(v)
@@ -1341,6 +1350,8 @@ class ImportProtectionEnv {
         const others = importers.filter((id) => this.ip.ids.parse(id) === null)
         if (!checked.length && others.length) {
           unchecked.set(v.edgeKey, [v, [...new Set(others.map(traceFile))]])
+        } else if (!checked.length) {
+          unaccounted.push(v)
         }
       }
     }
@@ -1369,6 +1380,24 @@ class ImportProtectionEnv {
         severity: 'warning' as const,
         message,
         info: info as ViolationInfo,
+      })
+    }
+    for (const v of unaccounted) {
+      const iv = invariantViolated({
+        effect: 'a denied file was replaced by its mock, which nothing reports',
+        detail: `import protection: the mock of ${v.importerId} survived with no importer in the build's graph`,
+      })
+      reports.push({
+        severity: 'warning' as const,
+        message: invariantDiagnostic(
+          '[tanstack-start] ',
+          relativizePath(v.importer, this.ip.config.root),
+          iv,
+        ).message,
+        info: violationInfo(v, this.ip.config, () => ({
+          steps: [],
+          fromEntry: false,
+        })) as ViolationInfo,
       })
     }
     // not violations either, but the build shipped what no importer asked for
