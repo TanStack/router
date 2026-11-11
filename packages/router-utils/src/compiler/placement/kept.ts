@@ -7,7 +7,6 @@
  * only when the env module does not need them anyway, worded from the
  * violated pair (`Pin`: the other event, the binding).
  */
-import { READ_KINDS } from './clusters'
 import { derivedNeeds } from './settle'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
@@ -151,10 +150,7 @@ export function keptDeclarations(
     }
   }
   const kept: Array<KeptDeclaration> = []
-  /** The clusters reported below. */
-  const reported = new Set<ClusterId>()
   if (causes.size === 0) {
-    readersInWrittenClusters(input, graph, roots, reported, kept)
     return kept
   }
   // reported once, at the cause: a cluster kept because another kept one
@@ -214,7 +210,6 @@ export function keptDeclarations(
           ...pairOf(own),
         })
       }
-      reported.add(c)
       continue
     }
     // split code only: a chunk or a Hydrate chunk (an extracted export's
@@ -245,116 +240,6 @@ export function keptDeclarations(
       needers,
       ...pairOf(pin),
     })
-    reported.add(c)
   }
-  readersInWrittenClusters(input, graph, roots, reported, kept)
   return kept
-}
-
-/**
- * A declaration that reads, when it loads, a binding of its cluster the
- * module writes at load joins that binding's cluster (ordered evaluation),
- * which the env module keeps when it reads the binding too (`loader: () =>
- * n`): the declaration stays with it although only split code reads it,
- * reported `state` at one declaration of the cluster (design 2 step 3
- * deletes the union and this with it).
- */
-function readersInWrittenClusters(
-  input: PlacementInput,
-  graph: ClusterGraph,
-  roots: Roots,
-  reported: ReadonlySet<ClusterId>,
-  kept: Array<KeptDeclaration>,
-): void {
-  const { t1, outputs } = input
-  const { units, refs, symbols } = t1
-  const { regions } = input.rewrites
-  const { clusterOfRegion, clusterOfSym } = graph
-  const { liveEnv, derivedReach } = roots
-  const mutated = new Set<SymbolId>()
-  const mutatedClusters = new Set<ClusterId>()
-  for (const w of graph.writes) {
-    const c = w.live && w.eager ? clusterOfSym.get(w.sym) : undefined
-    if (c !== undefined && liveEnv.has(c) && !reported.has(c)) {
-      mutated.add(w.sym)
-      mutatedClusters.add(c)
-    }
-  }
-  if (mutated.size === 0) {
-    return
-  }
-  const liveInEnv = (ref: ClassifiedRef) => graph.isLive(ref, 'env')
-  const clusterOf = (ref: ClassifiedRef) =>
-    clusterOfRegion.get(regions.ownerOf(ref))
-  for (const u of units) {
-    const c = clusterOfRegion.get(u.region)
-    if (
-      u.kind !== 'declaration' ||
-      u.exported.length > 0 ||
-      u.declares.length === 0 ||
-      c === undefined ||
-      !mutatedClusters.has(c)
-    ) {
-      continue
-    }
-    // the read ordered evaluation merged it for (clusters.ts)
-    const read = refs
-      .refsIn(u.range)
-      .find(
-        (ref) =>
-          ref.eager &&
-          READ_KINDS.has(ref.kind) &&
-          mutated.has(ref.sym) &&
-          clusterOfSym.get(ref.sym) === c &&
-          !u.declares.includes(ref.sym) &&
-          liveInEnv(ref) &&
-          regions.ownerOf(ref) === u.region,
-      )
-    if (read === undefined) {
-      continue
-    }
-    // only split code (a chunk, a Hydrate chunk) reads or writes what it
-    // declares: a use by a cluster the env module evaluates keeps it there
-    const needers = new Set<OutputId>()
-    /** Records a use by cluster `d`; whether the env module evaluates it. */
-    const usedInEnv = (d: ClusterId | undefined, live: boolean): boolean => {
-      if (d === undefined) {
-        return false
-      }
-      if (liveEnv.has(d) && live) {
-        return true
-      }
-      for (const [id, set] of derivedReach) {
-        const kind = outputs.get(id)?.kind
-        if (set.has(d) && (kind === 'split' || kind === 'hydrate')) {
-          needers.add(id)
-        }
-      }
-      return false
-    }
-    let envReads = false
-    for (const s of u.declares) {
-      for (const ref of refs.valueRefsOf(s)) {
-        if (READ_KINDS.has(ref.kind)) {
-          envReads ||= usedInEnv(clusterOf(ref), liveInEnv(ref))
-        }
-      }
-      for (const w of graph.writesOfSym.get(s) ?? []) {
-        if (w.owner !== null && w.owner !== u.region) {
-          envReads ||= usedInEnv(clusterOfRegion.get(w.owner), w.live)
-        }
-      }
-    }
-    if (envReads || needers.size === 0) {
-      continue
-    }
-    kept.push({
-      syms: u.declares.filter((s) => symbols.isModuleLevel(s)),
-      exported: false,
-      reason: 'state',
-      range: { start: u.range.start, end: u.range.end },
-      needers: [...needers],
-      read: read.sym,
-    })
-  }
 }

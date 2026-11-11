@@ -4513,12 +4513,24 @@ describe('one mutation model: eager reads of state something writes', () => {
     },
   )
 
+  // what the statement's evaluation runs keeps it in the route module, and
+  // with it, a later write (`seen = n` in the callback) keeps its readers
+  // (design 2 step 3: a reader of `seen` after its last write at load, the
+  // assignment's, moves; the row asserted that it travelled with `seen`)
   it.each([
-    ['an if statement', "if (cond) { ['x'].forEach(() => { seen = n }) }"],
-    ['an assignment of a call', 'seen = wrap(() => n)()'],
+    [
+      'an if statement',
+      "if (cond) { ['x'].forEach(() => { seen = n }) }",
+      'const initial = [seen]',
+    ],
+    [
+      'an assignment of a call',
+      'seen = wrap(() => n)()',
+      'seen = wrap(() => n)()',
+    ],
   ])(
     'counts a callback passed in %s at the top level as run at load',
-    async (_, statement) => {
+    async (_, statement, stays) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
         import { wrap } from './state'
@@ -4537,7 +4549,7 @@ describe('one mutation model: eager reads of state something writes', () => {
           '/app/state.ts': 'export const wrap = (f: () => number) => f\n',
         },
       })
-      expect(r.env).toContain('const initial = [seen]')
+      expect(r.env).toContain(stays)
     },
   )
 
@@ -4866,8 +4878,10 @@ describe('what an evaluation runs: one walk for every rule', () => {
       'assigned to a `let`, the call pure',
       'let g\ng = () => n\nconst call = () => g()\nconst x = /* @__PURE__ */ call()',
       'g',
-      'reads',
-      'g',
+      // (design 2 step 3: R29's rule (c) is a rule of effectful clusters;
+      // the pure `x` was reported for reading the `let` `g` first)
+      'state',
+      'n',
     ],
   ])(
     'keeps a declaration whose load calls a function %s in the route module',
@@ -4896,8 +4910,8 @@ describe('what an evaluation runs: one walk for every rule', () => {
     },
   )
 
-  // the direct spelling: `x` joins the cluster of what it reads, which an
-  // augmentation writes (step 4 makes that a plain write: the walk decides)
+  // the direct spelling: `x` reads `handlers` after its last write, and the
+  // function that write attaches reads `n`, which `inc` writes (V)
   it('keeps a declaration whose load calls a method a later statement attaches in the route module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -5145,7 +5159,9 @@ describe('readers and writers of state written at load', () => {
   })
 
   // a member write in an initialiser is a writer of the binding: it stays
-  // in the binding's cluster, so the route module's reader sees it
+  // in the binding's cluster, so the route module's reader sees it (it was
+  // reported `eager-split:state` as a reader the union merged, which an
+  // assignment writer, `const y = (n = 1, 5)`, never was: unreported now)
   it.each([
     [
       'an effectful call',
@@ -5174,8 +5190,7 @@ describe('readers and writers of state written at load', () => {
       )
       expect(r.env).toContain(writer)
       expect(r.chunks.component).toContain("import { y } from '/app/route.tsx'")
-      expect(eager(r)).toMatchObject([{ code: 'eager-split:state' }])
-      expect(eager(r)[0]!.message).toContain('`cfg`')
+      expect(eager(r)).toEqual([])
     },
   )
 
@@ -5455,16 +5470,19 @@ describe('declarations only split code needs that stay in the route module', () 
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       const homeUrl = new URL('https://example.com/')
-      homeUrl.search = '?ref=x'
-      const HOME = homeUrl.toString()
+      const docsUrl = new URL('https://example.com/docs')
+      homeUrl.search = docsUrl.search = '?ref=x'
       export const Route = createFileRoute('/')({
-        component: () => HOME,
+        component: () => [homeUrl, docsUrl],
       })
     `)
+    // (design 2 step 3: one statement writes both, so they are one cluster;
+    // `const HOME = homeUrl.toString()` after `homeUrl.search = …` was one
+    // with `homeUrl` through ordered evaluation, and now moves)
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `HOME` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 3); move `homeUrl`, `HOME` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
+        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the module changes them outside their declarations when it loads (line 4); move `homeUrl`, `docsUrl` and what writes them to their own module, or mark their initialisers `/* @__PURE__ */` if they have no side effects',
       ),
     ])
   })
@@ -5594,80 +5612,6 @@ describe('declarations only split code needs that stay in the route module', () 
     expect(kept_!.message).not.toContain('@__PURE__')
     expect(kept_!.message).toContain('declare `first` after it')
   })
-
-  // R101 (R3): the reader stays because the route module keeps the state it
-  // reads (the loader reads `n`), reported as one the module writes
-  it('reports a reader of state the module writes at load and the route module keeps', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      let n = 0
-      n++
-      const label = 'n=' + n
-      function Page() { return label }
-      export const Route = createFileRoute('/')({
-        loader: () => n,
-        component: Page,
-      })
-    `)
-    const r = await kept(code)
-    expect(r.env).toContain("const label = 'n=' + n")
-    expect(r.diagnostics).toMatchObject([
-      {
-        severity: 'warning',
-        code: 'eager-split:state',
-        range: { start: code.indexOf('label = ') },
-      },
-    ])
-  })
-
-  it('does not report a reader of written state the route module also writes', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      let n = 0
-      n++
-      let label = 'n=' + n
-      function reset() { label = '' }
-      function Page() { return label }
-      export const Route = createFileRoute('/')({
-        loader: () => { reset(); return n },
-        component: Page,
-      })
-    `)
-    const r = await kept(code)
-    expect(r.diagnostics).toEqual([])
-  })
-
-  it.each([
-    [
-      'the state is exported',
-      "export let n = 0\nn++\nconst label = 'n=' + n\nfunction Page() { return label }",
-      'component: Page,',
-    ],
-    [
-      'the reader is inline',
-      "let n = 0\nn++\nconst label = 'n=' + n",
-      'component: () => label,',
-    ],
-  ])(
-    'reports a reader of state the module writes at load and keeps when %s',
-    async (_, decls, option) => {
-      const code = dedent(`
-        import { createFileRoute } from 'toy-router'
-        ${decls.split('\n').join('\n        ')}
-        export const Route = createFileRoute('/')({
-          loader: () => n,
-          ${option}
-        })
-      `)
-      const r = await kept(code)
-      expect(r.diagnostics).toMatchObject([
-        {
-          code: 'eager-split:state',
-          range: { start: code.indexOf('label = ') },
-        },
-      ])
-    },
-  )
 
   it('moves a reader of state the module writes at load with that state when only split code reads both', async () => {
     const code = dedent(`

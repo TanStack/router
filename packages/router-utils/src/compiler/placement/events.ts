@@ -9,20 +9,32 @@
  * violated pair (`Pin`): the kind, the other event, the binding.
  *
  * - **V** (volatile): an evaluation that touches a binding something
- *   outside its cluster writes later, or at an unknown time (inside a
- *   function), stays in the env module (`volatile`), whatever its slot.
- * - **O** (order): two effects keep their order (`orderConflict`). A lazy
- *   output (a chunk) evaluates after the env module's body; an extracted
- *   export's module before it, the extracted modules in source order among
- *   themselves (for effects; design 2 step 4 revisits that time).
+ *   outside its cluster writes at an unknown time (inside a function, or in
+ *   code that runs later) stays in the env module (`volatile`), whatever its
+ *   slot: that write may run before or after it anywhere.
+ * - **O** (order): two effects keep their order (`orderConflict`), and so do
+ *   a read and a write of a binding when the module loads (`writeConflict`),
+ *   judged on the slots of both sides: a binding's writers at load are its
+ *   cluster, so the write evaluates where the binding does, and a reader is
+ *   a cluster of its own (`ordered`: one that a write after it orders has
+ *   one slot, N). A lazy output (a chunk) evaluates after the env module's
+ *   body: a write after the read in another slot would run before it. An
+ *   extracted export's module evaluates before the route module's body when
+ *   something imports it through the route file, else with the first chunk
+ *   importing it: unordered with the route module and the chunks, so a
+ *   write in any of those conflicts with its read, before or after it; only
+ *   another extracted module it imports runs before it (its writes before
+ *   the read keep their order). For effects, the extracted modules evaluate
+ *   before the body in source order among themselves (design 2 step 4
+ *   revisits that time).
  * - **T** (initialised): an extracted module reading, at its evaluation, a
  *   binding the env module keeps would read it before it exists
  *   (`readsKept`).
  * - the lazy-slot pair rules (`lazyConflict`): written outside its
  *   declarations at load (`written`), V, and rule (c) of R29/R67 (it reads
  *   an effectful or `let` binding the env module keeps, `reads`), in the
- *   order the walk meets them. A binding conflict is judged as if the other
- *   side stays (design 2 step 5 judges both slots).
+ *   order the walk meets them. Rule (c) is judged as if the other side
+ *   stays (design 2 step 5 judges both slots).
  *
  * What an evaluation runs is the env module's rendering of its text, for
  * every slot: a planner's edit renders in every output, its scoped inserts
@@ -32,8 +44,8 @@
  * The table is lazy and holds verdicts, not touches: a rule walks what an
  * evaluation touches when it asks, stopping at the first violation (the
  * touches of every declaration of a call chain would be most of the module
- * each: quadratic memory), and V, which no round changes, is walked once
- * per cluster. A module that writes no module binding asks only of
+ * each: quadratic memory), and V and `ordered`, which no round changes,
+ * are walked once per cluster. A module that writes no module binding asks only of
  * effectful clusters and candidates.
  */
 import { invariantViolated } from '../self-checks'
@@ -70,8 +82,10 @@ export interface Pin {
 export interface Events {
   /** Walks what cluster `c`'s evaluation touches, in the order the walk meets it; true from `visit` ends the walk (the result). */
   touches: (c: ClusterId, visit: (t: Touch) => boolean) => boolean
-  /** V: the pair of `c`'s first touch of a binding something outside it writes then. */
+  /** V: the pair of `c`'s first touch of a binding something outside it writes at an unknown time. */
   volatile: (c: ClusterId) => Pin | undefined
+  /** When V holds nothing: the pair of `c`'s first touch of a binding something outside it writes after it when the module loads (O orders `c` against a write: its slot matters). */
+  ordered: (c: ClusterId) => Pin | undefined
   /** The pair rules of a lazy slot after N: `written`, then V and rule (c) as the walk meets them (`liveEnv`: what the env module keeps). */
   lazyConflict: (
     c: ClusterId,
@@ -85,6 +99,12 @@ export interface Events {
     to: OutputId,
     target: ReadonlyMap<ClusterId, OutputId>,
   ) => Unit | undefined
+  /** O: the pair of a write at load that changes order with `c`'s read when `c` evaluates in `to`, the writer's cluster in `slot`. */
+  writeConflict: (
+    c: ClusterId,
+    to: OutputId,
+    slot: (d: ClusterId) => OutputId,
+  ) => Pin | undefined
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins. */
   fallbacks: () => Array<Fallback>
   /** The effects O orders, in source order: surviving effect units, benign framework calls aside. */
@@ -145,33 +165,55 @@ export function eventTable(
     return false
   }
 
-  /** The write `t`, run by cluster `by`, observes (V's pair), if any. */
-  const observed = (t: Touch, by: ClusterId): Write | undefined =>
-    writesOfSym.has(t.sym) ? graph.observedWrite(t.sym, t.at, by) : undefined
+  /** A write at an unknown time of what `t`, run by cluster `by`, touches (V's pair), if any. */
+  const late = (t: Touch, by: ClusterId): Write | undefined =>
+    writesOfSym.has(t.sym) ? graph.lateWrite(t.sym, by) : undefined
   const statePin = (t: Touch, w: Write): Pin => ({
     reason: 'state',
     other: { at: w.at },
     binding: t.sym,
   })
 
-  const volatileOf: Array<Pin | null | undefined> = []
-  function volatile(c: ClusterId): Pin | undefined {
-    let hit = volatileOf[c]
+  /*
+   * What `c` reads of state written outside it, walked once per cluster (no
+   * round changes it): the first touch of a binding written at an unknown
+   * time (V, which ends the walk), else the first one a write at load after
+   * it orders (O's reader).
+   */
+  const stateOf: Array<{ late: Pin | null; later: Pin | null } | undefined> = []
+  function state(c: ClusterId): { late: Pin | null; later: Pin | null } {
+    let hit = stateOf[c]
     if (hit === undefined) {
-      let pin: Pin | null = null
+      const found: { late: Pin | null; later: Pin | null } = {
+        late: null,
+        later: null,
+      }
       if (graph.writes.length > 0) {
         touches(c, (t) => {
-          const w = observed(t, c)
-          if (w !== undefined) {
-            pin = statePin(t, w)
+          if (!writesOfSym.has(t.sym)) {
+            return false
           }
-          return pin !== null
+          const w = graph.lateWrite(t.sym, c)
+          if (w !== undefined) {
+            found.late = statePin(t, w)
+            return true
+          }
+          if (found.later === null) {
+            const l = graph.laterWrite(t.sym, t.at, c)
+            if (l !== undefined) {
+              found.later = statePin(t, l)
+            }
+          }
+          return false
         })
       }
-      volatileOf[c] = hit = pin
+      stateOf[c] = hit = found
     }
-    return hit ?? undefined
+    return hit
   }
+  const volatile = (c: ClusterId): Pin | undefined => state(c).late ?? undefined
+  const ordered = (c: ClusterId): Pin | undefined =>
+    state(c).late === null ? (state(c).later ?? undefined) : undefined
 
   function lazyConflict(
     c: ClusterId,
@@ -207,20 +249,23 @@ export function eventTable(
       }
       return { reason: 'written', other: { at: unit.range.start } }
     }
-    // what it touches when it evaluates: V, then rule (c): imports (read
-    // lazily: the chunk loads after the route module, whoever else reads
-    // them), pure module clusters, or a `const` the env module keeps
-    // (evaluated before the chunk loads, which imports that one instance; a
-    // `let` still pins, however unwritten)
+    // what it touches when it evaluates: V, then rule (c) for an effectful
+    // one (R29: a pure reader keeps its value wherever it evaluates, unless
+    // a write orders it, V or O): imports (read lazily: the chunk loads
+    // after the route module, whoever else reads them), pure module
+    // clusters, or a `const` the env module keeps (evaluated before the
+    // chunk loads, which imports that one instance; a `let` still pins,
+    // however unwritten)
     let pin: Pin | undefined
     touches(c, (t) => {
-      const w = observed(t, c)
+      const w = late(t, c)
       if (w !== undefined) {
         pin = statePin(t, w)
         return true
       }
       const d = clusters[t.cluster]!
       if (
+        cl.effectful &&
         d.kind !== 'import' &&
         d.effectful &&
         !(liveEnv.has(d.id) && symbols.isConst(t.sym))
@@ -302,6 +347,52 @@ export function eventTable(
     return undefined
   }
 
+  function writeConflict(
+    c: ClusterId,
+    to: OutputId,
+    slot: (d: ClusterId) => OutputId,
+  ): Pin | undefined {
+    if (graph.writes.length === 0) {
+      return undefined
+    }
+    const staticOutput = isStatic(to)
+    // per written binding, its first and last touch decide every comparison
+    // with a write (one scan of its writes per binding, not per touch)
+    const span = new Map<SymbolId, { first: number; last: number }>()
+    touches(c, (t) => {
+      const s = span.get(t.sym)
+      if (s !== undefined) {
+        s.first = Math.min(s.first, t.at)
+        s.last = Math.max(s.last, t.at)
+      } else if (writesOfSym.has(t.sym)) {
+        span.set(t.sym, { first: t.at, last: t.at })
+      }
+      return false
+    })
+    for (const [sym, { first, last }] of span) {
+      if (!staticOutput && graph.laterWrite(sym, first, c) === undefined) {
+        continue
+      }
+      for (const w of writesOfSym.get(sym)!) {
+        if (!w.live || !w.eager) {
+          continue
+        }
+        const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
+        if (wc === c) {
+          continue
+        }
+        const ws = wc === undefined ? 'env' : slot(wc)
+        if (ws === to) {
+          continue
+        }
+        if (first < w.at || (staticOutput && last >= w.at && !isStatic(ws))) {
+          return { reason: 'state', other: { at: w.at }, binding: sym }
+        }
+      }
+    }
+    return undefined
+  }
+
   function fallbacks(): Array<Fallback> {
     const out: Array<Fallback> = []
     if (graph.writes.length === 0) {
@@ -312,8 +403,13 @@ export function eventTable(
         continue
       }
       const c = clusterOfRegion.get(r.id)!
+      // (as if what it touches stays: the planner decides its slot)
       touchesOfRegion(r.id, c, (t) => {
-        if (observed(t, c) === undefined) {
+        if (
+          late(t, c) === undefined &&
+          (!writesOfSym.has(t.sym) ||
+            graph.laterWrite(t.sym, t.at, c) === undefined)
+        ) {
           return false
         }
         out.push({ region: r.id, reason: 'ordered-effect', binding: t.sym })
@@ -326,9 +422,11 @@ export function eventTable(
   return {
     touches,
     volatile,
+    ordered,
     lazyConflict,
     readsKept,
     orderConflict,
+    writeConflict,
     fallbacks,
     effects,
   }
@@ -340,8 +438,10 @@ export function eventTable(
  * elsewhere): the effects evaluate in source order; an evaluation outside
  * the env module observes no write it did not observe in the source (a
  * write outside its cluster at an unknown time, P3, or an eager one now on
- * the other side of it); an extracted module reads, at its evaluation,
- * nothing the env module keeps (T); an effect the env module holds is one
+ * the other side of it); a write at load evaluates where the binding it
+ * writes does (the reader side cannot see a writer that left: a reader the
+ * env module keeps is not asked); an extracted module reads, at its
+ * evaluation, nothing the env module keeps (T); an effect the env module holds is one
  * it evaluates (an env root, so that what it reads stayed). It exists to
  * catch compiler bugs and can go once we trust the compiler's
  * exhaustiveness.
@@ -355,7 +455,7 @@ export function checkPlacement(
   liveEnv: ReadonlySet<ClusterId>,
 ): InvariantViolation | undefined {
   const { outputs } = input
-  const { clusters, clusterOfRegion, writesOfSym } = graph
+  const { clusters, clusterOfRegion, clusterOfSym, writesOfSym } = graph
   const kindOf = (o: OutputId) => outputs.get(o)?.kind
   /** Where cluster `c` evaluates: 0 before the env module's body (an extracted module), 1 in it, 2 after it (a chunk); null when outside this model (removed, copied, another instance). */
   const timeOf = (c: ClusterId): 0 | 1 | 2 | null => {
@@ -481,6 +581,31 @@ export function checkPlacement(
         }
       }
     }
+  }
+  // a write at load evaluates with the binding it writes (a binding with an
+  // instance per output, an import, has no home of its own to compare)
+  for (const w of graph.writes) {
+    if (!w.live || !w.eager || w.owner === null) {
+      continue
+    }
+    const wc = clusterOfRegion.get(w.owner)
+    const bc = clusterOfSym.get(w.sym)
+    if (
+      wc === undefined ||
+      bc === undefined ||
+      wc === bc ||
+      timeOf(wc) === null ||
+      timeOf(bc) === null ||
+      home.get(wc) === home.get(bc)
+    ) {
+      continue
+    }
+    return fail(
+      `a write of \`${input.t1.symbols.name(w.sym)}\` when the module loads may run at another time than written`,
+      `writes ${input.t1.symbols.name(w.sym)} (at ${w.at}) in ${String(home.get(wc))}, which evaluates in ${String(home.get(bc))}`,
+      wc,
+      w.at,
+    )
   }
   // T: an extracted module reads nothing of the env module at its evaluation
   for (const [o, set] of included) {

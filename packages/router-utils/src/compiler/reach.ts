@@ -1,6 +1,6 @@
 /**
- * Placement: clusters, reachability, provenance-based orphans, the
- * movable-effect test, ordered evaluation and needers/homes (see README.md,
+ * Placement: clusters, reachability, provenance-based orphans, the event
+ * table's order rules and needers/homes (see README.md,
  * "Reachability = splitting = dead-code removal"). A generic service:
  * planners supply roots and derived outputs; the core decides what each
  * output contains and what it imports. `computePlacement` composes the
@@ -198,7 +198,7 @@ export interface Placement {
  *   `checkPlacement` (`Placement.check`) what it includes.
  */
 export function computePlacement(input: PlacementInput): Placement {
-  // 1. clusters, the write table, ordered evaluation
+  // 1. clusters (a binding with its writers at load), the write table
   const graph = buildClusters(input)
   // 2. what each cluster reads, per output, and what each evaluation runs;
   // the event table and its rules, asked lazily
