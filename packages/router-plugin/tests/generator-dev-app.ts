@@ -1,11 +1,14 @@
 /**
  * The route generator on a running dev server, as an app sees it: a real
- * dev server (Vite with the router plugin and `@vitejs/plugin-react`, or
- * Rsbuild with the router plugin's Rspack entry and `@rsbuild/plugin-react`)
- * serves a React app with file-based routes in `routes/` and the real
- * `@tanstack/react-router`, a real browser page (headless Chromium) runs it,
+ * dev server (Vite with the router plugin and `@vitejs/plugin-react`,
+ * Rsbuild with the router plugin's Rspack entry and `@rsbuild/plugin-react`,
+ * or `webpack-dev-server` with the router plugin's webpack entry, the setup
+ * of `docs/router/installation/with-webpack.md`) serves a React app with
+ * file-based routes in `routes/` and the real `@tanstack/react-router`, a
+ * real browser page (headless Chromium) runs it,
  * and the test creates, edits, renames and deletes files on disk, which the
- * dev server's own watchers report (and the generator's, on Rspack).
+ * dev server's own watchers report (and the generator's, on Rspack and
+ * webpack).
  *
  * The test reads what an app shows: the live router's routes (the app's
  * own router, which its entry publishes as `window.__APP_ROUTER__`), what a
@@ -18,30 +21,45 @@
  */
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { readFile } from 'node:fs/promises'
+import {
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  utimes,
+  writeFile,
+} from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
 import { parseSync } from 'vite'
+import webpack from 'webpack'
+import WebpackDevServer from 'webpack-dev-server'
 import { expect } from 'vitest'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import {
+  createApp,
+  oxcLoader,
+} from '@tanstack/compiler-test-utils/build-harness'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
+import { tanstackRouter as tanstackRouterWebpack } from '../src/webpack'
 import { holdsMarker } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import type { AddressInfo } from 'node:net'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-export type Bundler = 'vite' | 'rsbuild'
+export type Bundler = 'vite' | 'rsbuild' | 'webpack'
 
 /** A root route that renders `MARK_ROOT` around its child routes. */
 export const rootRoute = `import { Outlet, createRootRoute } from '@tanstack/react-router'
@@ -217,9 +235,11 @@ export async function generatorDevApp(
   const app =
     bundler === 'vite'
       ? await viteApp(files, symlinks, options.pluginOptions)
-      : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
-          printed().map((diagnostic) => diagnostic.text),
-        )
+      : bundler === 'webpack'
+        ? await webpackApp(files, symlinks, options.pluginOptions)
+        : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
+            printed().map((diagnostic) => diagnostic.text),
+          )
   await app.settle()
 
   let page: BrowserPage
@@ -564,6 +584,163 @@ async function rsbuildApp(
     // runs print (console, streams), which reaches the server's capture
     diagnostics: () =>
       server.diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
+  }
+}
+
+/**
+ * `webpack-dev-server` (`hot: true`) on the app, its TypeScript and JSX
+ * compiled by the harness's loader (webpack has no transform of its own).
+ * `settle()` waits until a compile started after the last write and webpack
+ * has nothing compiling or pending, checked twice in a row
+ * (`waitForOutcome`).
+ */
+async function webpackApp(
+  files: Record<string, string>,
+  symlinks: Record<string, string>,
+  pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
+): Promise<AppServer> {
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.generator-dev-webpack-',
+    registerCleanup: onTestFinished,
+    symlinks,
+    files: {
+      'public/index.html': `<!doctype html>
+<html>
+  <body>
+    <div id="app"></div>
+    <script src="/main.js"></script>
+  </body>
+</html>
+`,
+      ...files,
+    },
+  })
+  const root = app.root
+  // Files older than the watcher's start: webpack's watcher reports a file
+  // modified right before it started as changed
+  const past = new Date(Date.now() - 60_000)
+  for (const file of Object.keys(files)) {
+    await utimes(path.join(root, file), past, past)
+  }
+  const compiler = webpack({
+    mode: 'development',
+    context: root,
+    entry: { main: './main.tsx' },
+    output: { path: path.join(root, 'dist'), publicPath: '/' },
+    resolve: { extensions: ['.ts', '.tsx', '.js'] },
+    module: {
+      rules: [
+        {
+          test: /\.tsx?$/,
+          include: root,
+          loader: oxcLoader,
+          options: { development: true },
+        },
+      ],
+    },
+    plugins: [
+      tanstackRouterWebpack({
+        target: 'react',
+        routesDirectory: path.join(root, 'routes'),
+        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+        autoCodeSplitting: true,
+        ...(typeof pluginOptions === 'function'
+          ? pluginOptions(root)
+          : pluginOptions),
+      }),
+    ],
+    infrastructureLogging: { level: 'none' },
+    stats: 'none',
+  })
+  /** Compiles started, whether one runs or is pending, and the last one's errors. */
+  let started = 0
+  let compiling = false
+  let invalidated = false
+  let errors: Array<string> = []
+  const diagnostics: Array<Diagnostic> = []
+  const name = 'generator-dev-app'
+  compiler.hooks.invalid.tap(name, () => {
+    invalidated = true
+  })
+  compiler.hooks.watchRun.tap(name, () => {
+    started++
+    compiling = true
+    invalidated = false
+  })
+  compiler.hooks.done.tap(name, (stats) => {
+    compiling = false
+    const json = stats.toJson({ all: false, errors: true, warnings: true })
+    errors = (json.errors ?? []).map((error) => error.message)
+    for (const [severity, list] of [
+      ['error', json.errors ?? []],
+      ['warning', json.warnings ?? []],
+    ] as const) {
+      for (const entry of list) {
+        diagnostics.push({ severity, text: entry.message, raw: entry })
+      }
+    }
+  })
+  compiler.hooks.failed.tap(name, (error) => {
+    compiling = false
+    errors = [error.stack ?? error.message]
+  })
+  const server = new WebpackDevServer(
+    {
+      host: '127.0.0.1',
+      port: 0,
+      hot: true,
+      static: { directory: path.join(root, 'public'), watch: false },
+      historyApiFallback: true,
+      setupExitSignals: false,
+      client: { overlay: false, logging: 'warn' },
+    },
+    compiler,
+  )
+  await server.start()
+  let stopped = false
+  const stop = async () => {
+    if (!stopped) {
+      stopped = true
+      await server.stop()
+    }
+  }
+  onTestFinished(stop)
+  const port = (server.server!.address() as AddressInfo).port
+  /** `started` at the last write; `-1`: the first compile is owed. */
+  let writtenAt = -1
+  const write = async (written: Record<string, string | null>) => {
+    writtenAt = started
+    for (const [file, code] of Object.entries(written)) {
+      const absolute = path.join(root, file)
+      if (code === null) {
+        await rm(absolute, { force: true })
+      } else {
+        await mkdir(path.dirname(absolute), { recursive: true })
+        await writeFile(absolute, code)
+      }
+    }
+  }
+  return {
+    root,
+    url: `http://127.0.0.1:${port}/`,
+    write,
+    rename: async (from, to) => {
+      writtenAt = started
+      await rename(path.join(root, from), path.join(root, to))
+    },
+    settle: (settleOptions = {}) =>
+      waitForOutcome({
+        timeout: settleOptions.timeout ?? 20_000,
+        applied: () => started > writtenAt,
+        quiet: () => !compiling && !invalidated,
+        describe: () =>
+          `webpack did not compile the app after the last write (${started} compiles started)`,
+      }),
+    errors: () => [...errors],
+    close: stop,
+    stop,
+    diagnostics: () => [...diagnostics],
   }
 }
 

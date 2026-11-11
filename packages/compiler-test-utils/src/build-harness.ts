@@ -281,7 +281,12 @@ export type BundleOptions = AppOptions & Omit<BundleTarget, 'plugin'>
 export type BundlerPlugins = Partial<Record<Bundler, (app: AppInfo) => unknown>>
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-const oxcLoader = path.join(harnessDir, 'build-harness-oxc-loader.mjs')
+/**
+ * The harness's webpack loader of an app's TypeScript and JSX (webpack has
+ * no transform of its own): Vite's Oxc transformer, React's automatic
+ * runtime. Options: `{ development: boolean }`.
+ */
+export const oxcLoader = path.join(harnessDir, 'build-harness-oxc-loader.mjs')
 
 const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 
