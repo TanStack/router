@@ -83,11 +83,14 @@ export function keptDiagnostic(
             'Move it and the statements setting its properties to their own module and import it from there.'
         }
         break
-      case 'reassigned':
-        why = 'it is reassigned'
-        fix =
-          'Move it and the code assigning it to their own module and import it from there, or stop exporting it if no other file imports it.'
+      case 'reassigned': {
+        // the binding the export names is what is assigned (`export default
+        // items` after `var items` is declared again)
+        const binding = `\`${symbols.name(k.read ?? k.syms[0]!)}\``
+        why = `${binding} is reassigned${k.at === undefined ? '' : ` (${line(k.at)})`}`
+        fix = `Move ${binding} and the code assigning it to their own module and import it from there, or stop exporting it if no other file imports it.`
         break
+      }
       case 'reads':
         why = `it reads, when it loads, a binding the ${module} keeps`
         fix =
