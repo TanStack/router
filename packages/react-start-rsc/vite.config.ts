@@ -58,6 +58,9 @@ const config = defineConfig({
           // would be baked into the served client code (e.g. the RSC HMR
           // client is set up under `development` only).
           env: { NODE_ENV: 'development' },
+          // (after the root's: each file ends with the compilers' stale
+          // check, and the process environment it started with)
+          setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
           testTimeout: 60_000,
           hookTimeout: 60_000,
         },
