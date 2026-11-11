@@ -1014,7 +1014,13 @@ async function buildWithVite(
         target.viteConfig ?? {},
       ),
     )
-    await (target.viteBuild ? target.viteBuild(builder) : builder.buildApp())
+    try {
+      await (target.viteBuild ? target.viteBuild(builder) : builder.buildApp())
+    } catch (error) {
+      // (a watch build's watchers that started before the failure close too)
+      await watch?.close()
+      throw error
+    }
     if (watch && target.watchEdits) {
       try {
         for (const error of await watch.first(watchTimeout)) {
