@@ -227,24 +227,33 @@ export function eventTable(
       reads: [],
     }
     const read = new Set<SymbolId>()
+    // (a walk meets one binding many times in a row: the last span is kept)
+    let lastSym: SymbolId | -1 = -1
+    let lastSpan: { first: number; last: number } | undefined
     touches(c, (t) => {
-      if (effectful && !read.has(t.sym)) {
+      if (effectful) {
         const d = clusters[t.cluster]!
-        if (d.kind !== 'import' && d.effectful) {
+        if (d.effectful && d.kind !== 'import' && !read.has(t.sym)) {
           read.add(t.sym)
           found.reads.push(t)
         }
       }
-      if (!written || !writesOfSym.has(t.sym)) {
+      if (!written) {
         return false
       }
-      const span = found.spans.get(t.sym)
-      if (span !== undefined) {
-        span.first = Math.min(span.first, t.at)
-        span.last = Math.max(span.last, t.at)
-      } else {
-        found.spans.set(t.sym, { first: t.at, last: t.at })
+      if (t.sym !== lastSym) {
+        if (!writesOfSym.has(t.sym)) {
+          return false
+        }
+        lastSym = t.sym
+        lastSpan = found.spans.get(t.sym)
+        if (lastSpan === undefined) {
+          lastSpan = { first: t.at, last: t.at }
+          found.spans.set(t.sym, lastSpan)
+        }
       }
+      lastSpan!.first = Math.min(lastSpan!.first, t.at)
+      lastSpan!.last = Math.max(lastSpan!.last, t.at)
       const w = graph.lateWrite(t.sym, c)
       if (w !== undefined) {
         // V ends the walk: such a cluster takes no slot, so nothing asks
