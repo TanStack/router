@@ -133,8 +133,8 @@ export class MutationModel {
 
   /**
    * Whether the object `sym` names is its own: its declarations create its
-   * value (`ownsItsValue`: a function or class, a literal, a call's result)
-   * and nothing reassigns it. A write of one of its members writes that
+   * value (`ownsItsValue`: a function, class, enum or namespace, a literal,
+   * a call's result) and nothing reassigns it. A write of one of its members writes that
    * object only (R139).
    */
   ownsObject(sym: SymbolId): boolean {

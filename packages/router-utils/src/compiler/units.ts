@@ -326,9 +326,9 @@ function writeTargetOf(file: SourceFile, m: Node): boolean {
 }
 
 /**
- * Whether a declaration gives its binding a value of its own: a function or
- * class, a literal, a function or class expression, a call's result. Not
- * another binding's (`const alias = E`, `import F = E`), whose members a
+ * Whether a declaration gives its binding a value of its own: a function,
+ * class, enum or namespace, a literal, a function or class expression, a
+ * call's result. Not another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
  * only what it names (R139), while nothing reassigns it
  * (`MutationModel.ownsObject`); a write through another one may write
@@ -341,6 +341,8 @@ export function ownsItsValue(u: Unit): boolean {
   switch (n.type) {
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
+    case 'TSEnumDeclaration':
+    case 'TSModuleDeclaration':
       return true
     case 'VariableDeclarator': {
       if (n.id.type !== 'Identifier' || n.init === null) {
