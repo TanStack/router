@@ -6913,6 +6913,59 @@ describe('statements follow what they touch', () => {
       )
     })
 
+    // the executing property (real planner, builders off: seeds 1302,
+    // 1141, 1055): an unknown method of an object the route module or
+    // another chunk keeps writes nothing it is handed, so a member read of
+    // the object (rule L) moves past or away from it
+    describe('an unknown method call around a member read of its object', () => {
+      const mwRoute = (decls: string, options: string) =>
+        dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { mw, run } from './lib'
+          ${decls.split('\n').join('\n          ')}
+          export const Route = createFileRoute('/x')({
+            ${options.split('\n').join('\n            ')}
+          })
+        `)
+      it('moves the read past a later call that stays (seed 1302)', async () => {
+        const r = await split(
+          mwRoute(
+            'const b4 = mw()\nrun(() => { b4.server(() => 24) })\nconst r12 = b4.o.n\nb4.server(() => 25)',
+            'component: () => ({ r12 }),',
+          ),
+        )
+        expect(r.env).toContain('b4.server(() => 25)')
+        expect(r.env).not.toContain('const r12')
+        expect(r.chunks.component).toContain('const r12 = b4.o.n')
+      })
+
+      it('moves the read and the earlier call to two chunks (seed 1141)', async () => {
+        const r = await split(
+          mwRoute(
+            'const b9 = mw()\nconst b12 = b9.client(() => 7)\nconst r14 = b9.o.n',
+            'component: () => ({ b12 }),\nerrorComponent: () => ({ r14 }),',
+          ),
+          { keys: ['component', 'errorComponent'] },
+        )
+        expect(r.env).toContain('const b9 = mw()')
+        expect(r.chunks.component).toContain('const b12 = b9.client(() => 7)')
+        expect(r.chunks.errorComponent).toContain('const r14 = b9.o.n')
+      })
+
+      it('moves the copy away from a call in a split option value (seed 1055)', async () => {
+        const r = await split(
+          mwRoute(
+            'const b4 = mw()\nconst r6 = { ...b4.o }',
+            'loader: (b4.server(() => 16), () => ({})),\ncomponent: () => ({ r6 }),',
+          ),
+          { keys: ['loader', 'component'] },
+        )
+        expect(r.env).toContain('const b4 = mw()')
+        expect(r.chunks.loader).toContain('b4.server(() => 16)')
+        expect(r.chunks.component).toContain('const r6 = { ...b4.o }')
+      })
+    })
+
     // the order warning is gone: what head kept with `eager-split:order`
     // moves unreported
     it('reports no order warning for a value before a bare call', async () => {
