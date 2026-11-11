@@ -13,7 +13,7 @@
  *   interleaved; once the stale sets are taken and built, every output
  *   equals a cold compile of the final files.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { invalidate } from '../src/compiler'
 import {
   MemoryHost,
@@ -237,10 +237,22 @@ const snapshot = (out: CompileOutput | null): Snapshot =>
 
 /**
  * One run: a memory host, its two environments' bundlers (the latest build
- * of each module they hold) and their hooks.
+ * of each module they hold) and their hooks, on the virtual clock (`drive`).
+ * `seed` decides the edits, the event deliveries and the read delays;
+ * `stretch` adds 0 to `jitter - 1` ms to each of the run's sleeps from a
+ * generator of its own, as load does on a real clock: (seed, stretch,
+ * jitter) replays one schedule exactly.
  */
-async function run(seed: number): Promise<void> {
+async function run(
+  seed: number,
+  { stretch = 0, jitter = 0 }: { stretch?: number; jitter?: number } = {},
+): Promise<void> {
   const pick = prng(seed)
+  const stretched = prng(stretch)
+  const sleep = (ms: number) =>
+    new Promise<void>((r) =>
+      setTimeout(r, ms + (jitter > 0 ? stretched(jitter) : 0)),
+    )
   const files: Record<string, string> = {}
   for (let i = 0; i < MODULES; i++) {
     files[pathOf(i)] = textOf(i, pick)
@@ -346,12 +358,12 @@ async function run(seed: number): Promise<void> {
           }
         })
       }
-    } else if ((action === 1 || action === 6) && host.files[path] !== '') {
+    } else if (action === 1 || action === 6) {
       // saved in place: truncated, reported, then written (no event of
       // its own: the watcher drops a change within a moment of the last).
-      // The caches know the module it held (an importer read it): a file
-      // nothing read is read empty by a compile that finds it truncated,
-      // with no event left to tell
+      // The caches know the text it held, empty or not (an importer read
+      // it): a file nothing read is read empty by a compile that finds it
+      // truncated, with no event left to tell
       let text = textOf(i, pick)
       while (text === '') {
         text = textOf(i, pick)
@@ -415,20 +427,58 @@ async function run(seed: number): Promise<void> {
   }
 
   const fresh = memoryHost(host.files)
+  const row = `seed ${seed}, stretch ${stretch}, jitter ${jitter}`
   for (const env of ENVS) {
     const held = outputs.get(env.name)!
     const final = Object.keys(host.files).sort()
-    expect([...held.keys()].sort(), `seed ${seed}, ${env.name}`).toEqual(final)
+    expect([...held.keys()].sort(), `${row}, ${env.name}`).toEqual(final)
     for (const path of final) {
       expect(
         held.get(path),
-        `seed ${seed}, ${env.name}, ${path}:\n${host.files[path]}`,
+        `${row}, ${env.name}, ${path}:\n${host.files[path]}`,
       ).toEqual(snapshot(await fresh.compile(path, planners(), { env })))
     }
   }
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+const realImmediate = setImmediate
+
+/**
+ * Runs `p` on the virtual clock: every microtask settles, then the next
+ * timer fires, one at a time, until `p` ends. The order of a run's timers
+ * and reads is then a function of its row alone.
+ */
+async function drive(p: Promise<void>): Promise<void> {
+  let done = false
+  let error: unknown
+  p.then(
+    () => {
+      done = true
+    },
+    (e: unknown) => {
+      done = true
+      error = e ?? new Error('rejected')
+    },
+  )
+  for (let idle = 0; !done; ) {
+    await new Promise<void>((r) => realImmediate(r))
+    if (done) {
+      break
+    }
+    if (vi.getTimerCount() === 0) {
+      // nothing left to fire, and the run waits on something that never settles
+      if (++idle > 5) {
+        throw new Error('the run waits with no timer left')
+      }
+      continue
+    }
+    idle = 0
+    vi.advanceTimersToNextTimer()
+  }
+  if (error) {
+    throw error
+  }
+}
 
 async function settle(tasks: Set<Promise<unknown>>): Promise<void> {
   while (tasks.size > 0) {
@@ -436,12 +486,54 @@ async function settle(tasks: Set<Promise<unknown>>): Promise<void> {
   }
 }
 
+const SEEDS = Array.from({ length: 48 }, (_, i) => 0x5eed + i)
+
+/**
+ * Rows that found defects (seed, stretch, jitter): a file back reported as
+ * a change, the first in-place save of an empty file, a removed file read
+ * again before its return was reported.
+ */
+const FOUND: Array<[number, { stretch: number; jitter: number }]> = [
+  [24309, { stretch: 16, jitter: 12 }],
+  [24335, { stretch: 86, jitter: 12 }],
+  [24301, { stretch: 93, jitter: 12 }],
+  [24316, { stretch: 115, jitter: 16 }],
+  [24317, { stretch: 126, jitter: 16 }],
+  [24310, { stretch: 241, jitter: 16 }],
+  [24303, { stretch: 46, jitter: 6 }],
+  [24329, { stretch: 96, jitter: 16 }],
+  [24341, { stretch: 139, jitter: 16 }],
+]
+
 describe('after any edits', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('every output equals a cold compile of the final files', async () => {
-    const seeds = Array.from({ length: 48 }, (_, i) => 0x5eed + i)
-    // a few runs at once: their timers interleave
-    for (let at = 0; at < seeds.length; at += 8) {
-      await Promise.all(seeds.slice(at, at + 8).map(run))
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setImmediate',
+        'clearImmediate',
+        'Date',
+        'performance',
+      ],
+    })
+    // each seed as scheduled, then stretched: a few stretch generators per
+    // jitter, and the rows that found defects
+    const rows: Array<[number, { stretch?: number; jitter?: number }]> = [
+      ...SEEDS.map((seed) => [seed, {}] as [number, object]),
+      ...[4, 8, 12].flatMap((jitter) =>
+        [1, 2].flatMap((stretch) =>
+          SEEDS.map((seed) => [seed, { stretch, jitter }] as [number, object]),
+        ),
+      ),
+      ...FOUND,
+    ]
+    for (const [seed, stretch] of rows) {
+      await drive(run(seed, stretch))
     }
   }, 30_000)
 
@@ -504,6 +596,68 @@ describe('events that move the file set', () => {
     },
   )
 
+  // `a.ts` is removed, and its removal is applied while it is gone; a module
+  // that imports it is compiled meanwhile (again, or for the first time);
+  // the file comes back reported as modified (Rsbuild: another environment's
+  // last compilation still lists it; the router's webpack-family host
+  // reports every created file so). The caches hold nothing of the path by
+  // then: a change of a path nothing knows that reads as a file is a
+  // creation, and the importer's failed resolution is asked again.
+  // Source: CI failure of property (b), seed 24344.
+  it.for([
+    { name: 'compiled before the removal too', before: true },
+    { name: 'compiled for the first time meanwhile', before: false },
+  ])(
+    'a file removed and back as a change re-plans what looked for it meanwhile (importer $name)',
+    async ({ before }) => {
+      const host = memoryHost({ '/app/a.ts': SERVER_ONLY })
+      await host.compile('/app/a.ts', planners())
+      host.write('/app/c.ts', IMPORTER)
+      if (before) {
+        await host.compile('/app/c.ts', planners())
+      }
+      delete host.files['/app/a.ts']
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'unlink' }, host)
+      host.caches.stale.take(CLIENT.name, { held: true })
+      await host.compile('/app/c.ts', planners())
+      host.write('/app/a.ts', SERVER_ONLY)
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+      expect(host.caches.stale.take(CLIENT.name, { held: true })).toContain(
+        '/app/c.ts',
+      )
+      expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
+        factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+      )
+    },
+  )
+
+  // `a.ts` is removed and created again with the same text within the
+  // watcher's moment: one change reaches the caches, no removal (chokidar
+  // folds the two into a change; Rspack lists a file back in its batch as
+  // modified). A module compiled meanwhile found nothing at `./a`. The
+  // change repeats the text the caches read, and still asks the failed
+  // resolutions again: any file event may hide a creation.
+  // Source: design 3 steps 0-1 review, finding 4a.
+  it('a file removed and created again within one change re-plans what was compiled meanwhile', async () => {
+    const host = memoryHost({
+      '/app/a.ts': SERVER_ONLY,
+      '/app/b.ts': IMPORTER,
+    })
+    await host.compile('/app/b.ts', planners())
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    delete host.files['/app/a.ts']
+    host.write('/app/c.ts', IMPORTER)
+    await host.compile('/app/c.ts', planners())
+    host.write('/app/a.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([
+      '/app/c.ts',
+    ])
+    expect(factsOf(await host.compile('/app/c.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/c.ts', planners())),
+    )
+  })
+
   // A created file reaches each environment's hook at its own time (Rspack:
   // each compiler's `make`). The first one's invalidation asks every
   // environment's failed resolutions again, each with its own resolver, and
@@ -541,6 +695,93 @@ describe('events that move the file set', () => {
       ),
     )
   })
+})
+
+describe('a file saved in place', () => {
+  const IMPORTER = "import { make } from './a'\nexport const use = make\n"
+
+  // A file is created empty (its event read it empty) and its importer
+  // compiled; the first save is in place, and its one event is read
+  // between the truncation and the write. An empty read waits for the text
+  // as for any other in-place save: the file was empty before, but it was
+  // written since, so this event is no repeat of the one that read it so.
+  // Source: design 3 steps 0-1 review, finding 4b (a route file starts so:
+  // created, typed, saved).
+  it('the first save of a file created empty re-plans its importer', async () => {
+    const host = memoryHost({ '/app/b.ts': IMPORTER })
+    host.write('/app/a.ts', '')
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'add' }, host)
+    await host.compile('/app/b.ts', planners())
+    // the save truncates the file (its modification time moves), the event
+    // is read, the text is written
+    host.write('/app/a.ts', '')
+    const event = invalidate(
+      host.caches,
+      { path: '/app/a.ts', kind: 'change' },
+      host,
+    )
+    setTimeout(() => host.write('/app/a.ts', SERVER_ONLY), 5)
+    await event
+    expect(host.caches.stale.take(CLIENT.name, { held: true })).toEqual([
+      '/app/b.ts',
+    ])
+    expect(
+      (await host.compile('/app/b.ts', planners()))?.facts.planners,
+    ).toEqual(
+      (await memoryHost(host.files).compile('/app/b.ts', planners()))?.facts
+        .planners,
+    )
+  })
+
+  // A file that held a module is saved empty on purpose; the save reaches
+  // two hooks. The first call reads it again for a moment (an in-place save
+  // may be on its way); the second finds the file as the first left it (not
+  // written since), and reads once.
+  it.for([
+    { name: 'at once (Rsbuild compilers)', together: true },
+    { name: 'one after the other (Vite environments)', together: false },
+  ])(
+    'a repeat of an event that waited for an empty file reads it once (hooks $name)',
+    async ({ together }) => {
+      /** Reads of `a.ts` by the events of a save to empty that reach `hooks` hooks. */
+      const readsOf = async (hooks: number) => {
+        let reads = 0
+        const host = new MemoryHost({
+          files: {
+            '/app/a.ts': 'export const make = 1\n',
+            '/app/b.ts': IMPORTER,
+          },
+          recognizer: RECOGNIZER,
+          onRead: (path) => {
+            if (path === '/app/a.ts') {
+              reads++
+            }
+          },
+        })
+        await host.compile('/app/b.ts', planners())
+        await invalidate(
+          host.caches,
+          { path: '/app/a.ts', kind: 'change' },
+          host,
+        )
+        host.write('/app/a.ts', '')
+        reads = 0
+        const event = () =>
+          invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+        if (together) {
+          await Promise.all(Array.from({ length: hooks }, event))
+        } else {
+          for (let n = 0; n < hooks; n++) {
+            await event()
+          }
+        }
+        return reads
+      }
+      const one = await readsOf(1)
+      expect(one).toBeGreaterThan(1)
+      expect(await readsOf(2)).toBe(one + 1)
+    },
+  )
 })
 
 describe('a text without a plan', () => {
