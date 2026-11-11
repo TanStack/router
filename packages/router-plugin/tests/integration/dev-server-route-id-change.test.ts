@@ -16,3 +16,14 @@ test.each(['webpack', 'rsbuild', 'vite'] as const)(
   },
   45_000,
 )
+
+// webpack with content hashes in its module snapshots
+// (`snapshot.module.hash`) reports a file written again with the same text
+// as modified and does not build it: a route whose id changed in that edit
+// is built all the same.
+test('a route id change rebuilds the route module written again unchanged (webpack dev, hash snapshots)', async () => {
+  await expectRouteIdChangeRebuildsRoute('webpack', {
+    rewritten: true,
+    webpack: { snapshot: { module: { hash: true } } },
+  })
+}, 45_000)

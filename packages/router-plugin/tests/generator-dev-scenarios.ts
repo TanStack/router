@@ -690,12 +690,20 @@ export const Route = createFileRoute('/')({
  * compiles the route module again with the groupings of its new id (its
  * component in its own chunk, loaded on navigation).
  */
-export async function expectRouteIdChangeRebuildsRoute(bundler: Bundler) {
+export async function expectRouteIdChangeRebuildsRoute(
+  bundler: Bundler,
+  options: {
+    /** The route file is written again with the same text in the same edit. */
+    rewritten?: boolean
+    webpack?: GeneratorDevAppOptions['webpack']
+  } = {},
+) {
   const config = (contact: string) =>
     virtualRouteConfig(`index('index.tsx'), route('${contact}', 'contact.tsx')`)
   const app = await generatorDevApp({
     bundler,
     links: ['@tanstack/virtual-file-routes'],
+    webpack: options.webpack,
     pluginOptions: (root) => ({
       virtualRouteConfig:
         bundler === 'vite'
@@ -729,7 +737,10 @@ function Page() {
   // unsplit: the route module, loaded with the route tree, holds the component
   expect(await holdingContact()).not.toEqual([])
 
-  await app.edit({ 'routes.ts': config('/about') })
+  await app.edit({
+    'routes.ts': config('/about'),
+    ...(options.rewritten && { 'routes/contact.tsx': contact }),
+  })
   expect(await app.read('routes/contact.tsx')).toBe(contact)
   await app.visit('/', 'MARK_INDEX')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/about')])

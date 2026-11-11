@@ -203,6 +203,8 @@ export interface GeneratorDevAppOptions {
   links?: Array<string>
   /** Symbolic links in the app (link → target, both relative to its root). */
   symlinks?: Record<string, string>
+  /** webpack: the app's own configuration over the harness's (e.g. `snapshot`). */
+  webpack?: Record<string, unknown>
 }
 
 /**
@@ -236,7 +238,12 @@ export async function generatorDevApp(
     bundler === 'vite'
       ? await viteApp(files, symlinks, options.pluginOptions)
       : bundler === 'webpack'
-        ? await webpackApp(files, symlinks, options.pluginOptions)
+        ? await webpackApp(
+            files,
+            symlinks,
+            options.pluginOptions,
+            options.webpack,
+          )
         : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
             printed().map((diagnostic) => diagnostic.text),
           )
@@ -598,6 +605,7 @@ async function webpackApp(
   files: Record<string, string>,
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
+  config: GeneratorDevAppOptions['webpack'] = {},
 ): Promise<AppServer> {
   const app = await createApp({
     dir: harnessDir,
@@ -652,6 +660,7 @@ async function webpackApp(
     ],
     infrastructureLogging: { level: 'none' },
     stats: 'none',
+    ...config,
   })
   /** Compiles started, whether one runs or is pending, and the last one's errors. */
   let started = 0
