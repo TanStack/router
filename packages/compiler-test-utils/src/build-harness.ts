@@ -29,7 +29,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createAppDirectory } from './app-directory'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runDirectoryVariable } from './run-directory'
-import { runNodeProgram } from './run-node'
+import { runNodeProgram, runNodeStep } from './run-node'
 import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from './browser'
@@ -1687,10 +1687,10 @@ const logs = []
 for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
   console[level] = (...args) => { logs.push(format(...args)) }
 }
-const entryModule = await import(${JSON.stringify(pathToFileURL(input.entryFile).href)})
+${runNodeStep('importing the entry')}const entryModule = await import(${JSON.stringify(pathToFileURL(input.entryFile).href)})
 const entry = ${input.entryGlobal ? `globalThis[${JSON.stringify(input.entryGlobal)}]` : 'entryModule'}
-const result = await (async () => { ${input.script} })()
-process.stdout.write(JSON.stringify({ result, logs }))
+${runNodeStep('running the script')}const result = await (async () => { ${input.script} })()
+${runNodeStep('writing the result')}process.stdout.write(JSON.stringify({ result, logs }))
 process.exit(0)
 `
   try {
@@ -1702,8 +1702,10 @@ process.exit(0)
     return JSON.parse(stdout) as RunResult
   } catch (error) {
     const failure = error as { stderr?: string }
+    // (the reason first: a timeout's names the step the program was in,
+    // and a program that printed warnings has stderr too)
     throw new Error(
-      `Running ${input.entryFile} failed:\n${failure.stderr || errorMessage(error)}`,
+      `Running ${input.entryFile} failed: ${errorMessage(error)}${failure.stderr ? `\n${failure.stderr}` : ''}`,
     )
   }
 }

@@ -55,6 +55,7 @@ import {
   workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
+import { runNodeStep } from '@tanstack/compiler-test-utils/run-node'
 import {
   BuildError,
   bundlerReports,
@@ -156,15 +157,15 @@ export function linkStartRuntime(root: string) {
  */
 const inAppRequest = (serverEntryFile: string, script: string) =>
   `const inProbeRequest = ${inProbeRequest.toString()}
-const serverModule = await import(${JSON.stringify(pathToFileURL(serverEntryFile).href)})
+${runNodeStep('importing the server entry')}const serverModule = await import(${JSON.stringify(pathToFileURL(serverEntryFile).href)})
 const serverEntry = typeof serverModule.default?.fetch === 'function' ? serverModule.default : serverModule.default?.default
 if (typeof serverEntry?.fetch !== 'function') {
   throw new Error(${JSON.stringify(`${serverEntryFile} does not export a server entry`)})
 }
-return await inProbeRequest(
+${runNodeStep('sending the probe request')}return await inProbeRequest(
   (path) => serverEntry.fetch(new Request(new URL(path, 'http://localhost'))),
   async () => {
-${script}
+${runNodeStep('running the script in the request')}${script}
   },
 )`
 
