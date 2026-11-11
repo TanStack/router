@@ -5,7 +5,15 @@
  * with the state of its environments' hooks.
  */
 import { createHash } from 'node:crypto'
-import { promises as fs, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  promises as fs,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
   SCRIPT_ASSET_QUERY_RE,
@@ -189,6 +197,77 @@ export function inputMapOf(
   return map
 }
 
+/**
+ * `build --watch`: the file a server build's modules that embed the client
+ * build watch (`ViteCompilerState.embedClientBuild`), rewritten when a
+ * client build moves what they embedded: one per app's cache directory, in
+ * the system's temporary directory. Outside the app, so that no
+ * `build.watch.exclude` of the app's directories hides it from the server's
+ * watcher (Rolldown applies the filter to the files a `load` adds); a
+ * `build.watch.include` takes it in (`watchesSentinel`). A run's write
+ * rebuilds another run's server of the same app at most.
+ */
+function sentinelPathOf(cacheDir: string): string {
+  const digest = createHash('sha1')
+    .update(normalizePath(cacheDir))
+    .digest('hex')
+    .slice(0, 16)
+  // (the real path: the watcher reports it so, e.g. macOS's `/private/var`)
+  return normalizePath(
+    path.join(
+      realpathSync(tmpdir()),
+      `tanstack-start-${digest}`,
+      'client-build',
+    ),
+  )
+}
+
+/** The sentinel's path, whatever the app (`sentinelPathOf`). */
+const SENTINEL_RE = /[\\/]tanstack-start-[0-9a-f]{16}[\\/]client-build$/
+
+/**
+ * The build options a server environment of `build --watch` adds to the
+ * app's: an app's `build.watch.include` also takes in the sentinel (an
+ * empty one watches everything already).
+ */
+export function watchesSentinel(
+  watch:
+    | {
+        include?: unknown
+      }
+    | null
+    | undefined,
+): { build: { watch: { include: Array<RegExp> } } } | null {
+  const include = watch?.include
+  if (
+    include === undefined ||
+    include === null ||
+    (Array.isArray(include) && include.length === 0)
+  ) {
+    return null
+  }
+  return { build: { watch: { include: [SENTINEL_RE] } } }
+}
+
+/** What the server embeds of a client build, as a digest (the manifest's maps by their entries). */
+function clientBuildDigest(
+  manifest: ClientManifest,
+  functionIds: ReadonlyArray<string>,
+): string {
+  const { clientBuild, cssCodeSplitDisabledFileName } = manifest
+  return createHash('sha1')
+    .update(
+      JSON.stringify([
+        clientBuild.entryChunkFileName,
+        [...clientBuild.chunksByFileName],
+        [...(clientBuild.cssContentByFileName ?? [])],
+        cssCodeSplitDisabledFileName ?? null,
+        functionIds,
+      ]),
+    )
+    .digest('base64url')
+}
+
 /** What the start manifest reads of the client's build (its capture, `start-manifest-plugin`). */
 export interface ClientManifest {
   clientBuild: NormalizedClientBuild
@@ -264,7 +343,7 @@ export interface Session {
    * modules watch, and the server environment's own watcher rebuilds it.
    */
   readonly embedded: Map<string, Set<string>>
-  /** `build --watch`: the sentinel's path, once a server module watches it. */
+  /** `build --watch`: the sentinel's path (`sentinelPathOf`), once a server module watches it. */
   sentinel: string | null
   /**
    * `build --watch`: the client's build running now (its watcher's
@@ -547,31 +626,47 @@ export class ViteCompilerState implements ClientBuilds {
       .filter((e) => e.clientReferenced)
       .map((e) => e.id)
       .sort()
-    const digest = createHash('sha1')
-      .update(JSON.stringify([manifest, functionIds]))
-      .digest('base64url')
+    const digest = clientBuildDigest(manifest, functionIds)
     s.clientBuild = { digest, manifest, functionIds: new Set(functionIds) }
+    this.followClientBuild(s, environment)
+  }
+
+  /**
+   * `build --watch`: a server build that embedded another client build than
+   * the last one is built again (the sentinel is written). At a client
+   * build's bundle, and at the end of each server build: Rolldown watches a
+   * build's files once it ended, so a write while a server's first build
+   * ran went unseen.
+   */
+  private followClientBuild(s: Session, environment: Environment): void {
+    const digest = s.clientBuild?.digest ?? ''
     if (
       s.sentinel !== null &&
       [...s.embedded.values()].some((digests) =>
         [...digests].some((embedded) => embedded !== digest),
       )
     ) {
-      writeFileSync(s.sentinel, digest)
+      writeSentinel(s.sentinel, digest, environment)
     }
   }
 
   /**
-   * `build --watch`: follows the client environment's watcher (Start's
-   * `buildApp`): the client build running now (`Session.clientBuilding`).
+   * `build --watch`: follows an environment's watcher (Start's `buildApp`):
+   * the client's build running now (`Session.clientBuilding`); the end of
+   * a server environment's build (`followClientBuild`).
    */
-  followClientWatcher(
+  followWatcher(
     environment: Environment,
     watcher: Rolldown.RolldownWatcher,
   ): void {
     const s = this.sessionOf(environment)
+    const client = this.envOf(environment.name)?.type === 'client'
     watcher.on('event', (event) => {
-      if (event.code === 'BUNDLE_START' && !s.clientBuilding) {
+      if (!client) {
+        if (event.code === 'END') {
+          this.followClientBuild(s, environment)
+        }
+      } else if (event.code === 'BUNDLE_START' && !s.clientBuilding) {
         let end!: () => void
         const ended = new Promise<void>((resolve) => (end = resolve))
         s.clientBuilding = { ended, end }
@@ -600,17 +695,10 @@ export class ViteCompilerState implements ClientBuilds {
     const record = s.clientBuild
     if (ctx.meta.watchMode) {
       const digest = record?.digest ?? ''
-      if (s.sentinel === null) {
-        // one file per app's cache directory, rewritten by each run (a
-        // run's write rebuilds another run's server at most)
-        const sentinel = path.join(
-          ctx.environment.config.cacheDir,
-          'tanstack-start',
-          'client-build',
-        )
-        mkdirSync(path.dirname(sentinel), { recursive: true })
-        writeFileSync(sentinel, digest)
-        s.sentinel = normalizePath(sentinel)
+      s.sentinel ??= sentinelPathOf(ctx.environment.config.cacheDir)
+      if (!existsSync(s.sentinel)) {
+        // (also when something removed it: a file the watcher can report)
+        writeSentinel(s.sentinel, digest, ctx.environment)
       }
       ctx.addWatchFile(s.sentinel)
       let digests = s.embedded.get(ctx.environment.name)
@@ -706,5 +794,25 @@ export class ViteCompilerState implements ClientBuilds {
     }
     const outcome = s.start.afterCompile(env, id, out)
     return outcome instanceof Promise ? outcome.then(finish) : finish(outcome)
+  }
+}
+
+/**
+ * Writes the sentinel (its directory again, if something removed it). A
+ * failed write leaves the server's build as it is: it is the environment's
+ * logger's to print, not the client build's to fail.
+ */
+function writeSentinel(
+  sentinel: string,
+  digest: string,
+  environment: Environment,
+): void {
+  try {
+    mkdirSync(path.dirname(sentinel), { recursive: true })
+    writeFileSync(sentinel, digest)
+  } catch (error) {
+    environment.logger.warn(
+      `[tanstack-start] the server build may embed an older client build: writing ${sentinel} failed (${String(error)}). Save a file the server bundles to rebuild it.`,
+    )
   }
 }

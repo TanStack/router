@@ -434,13 +434,14 @@ export { label } from './client-only'
   // Source: design 3 step 5 review, finding 1 (the server followed the
   // client through a file under `node_modules/.vite`, which the filter
   // hid: the document named files the client had deleted).
-  test.for([
+  test.for<[string, { include?: Array<string>; exclude?: Array<string> }]>([
     ['exclude', { exclude: ['**/node_modules/**'] }],
     ['include', { include: ['src/**'] }],
-  ] as const)(
+  ])(
     'an app whose build.watch has an %s: a client-only save rebuilds the server',
+    { timeout },
     async ([, filter]) => {
-      const watch = { build: { watch: filter } } satisfies UserConfig
+      const watch: UserConfig = { build: { watch: filter } }
       const build = await buildStart({
         bundler: 'vite',
         files: pageApp,
@@ -451,7 +452,6 @@ export { label } from './client-only'
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       await expectLastClientBuild(build)
     },
-    timeout,
   )
 
   // File names without hashes: a client-only save that adds a stylesheet

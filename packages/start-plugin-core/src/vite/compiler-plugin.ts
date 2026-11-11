@@ -46,7 +46,11 @@ import {
   readRolldownWitness,
   rolldownGraphView,
 } from '../import-protection/witness'
-import { inputMapOf, optimizedDependency } from './compiler-state'
+import {
+  inputMapOf,
+  optimizedDependency,
+  watchesSentinel,
+} from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
 import {
   buildInvalidationHosts,
@@ -95,6 +99,12 @@ export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
 function runPlugin(state: ViteCompilerState): Plugin {
   return {
     name: 'tanstack-start:compiler:run',
+    // `build --watch`: a server environment watches the sentinel
+    configEnvironment(name, config) {
+      return state.envOf(name)?.type === 'server'
+        ? (watchesSentinel(config.build?.watch) ?? undefined)
+        : undefined
+    },
     configResolved(config) {
       state.configure(config)
     },
