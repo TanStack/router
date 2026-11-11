@@ -809,6 +809,23 @@ export class StaleSets {
     return this.byEnv.has(env)
   }
 
+  /**
+   * Paths an environment's bundler is building again now on its own (their
+   * files' events): its stale set lets them go.
+   */
+  drop(env: string, paths: Iterable<string>): void {
+    const set = this.byEnv.get(env)
+    if (!set) {
+      return
+    }
+    for (const path of paths) {
+      set.delete(path)
+    }
+    if (set.size === 0) {
+      this.byEnv.delete(env)
+    }
+  }
+
   /** A removed file: no environment builds its modules again. */
   remove(path: string): void {
     for (const [env, set] of this.byEnv) {

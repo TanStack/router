@@ -410,8 +410,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // Rspack reports no event for a file created while nothing depended on it (a
         // target deleted and recreated between edits): missing-file facts are read again
         session.forgetMisses()
+        const modified = [...(compiler.modifiedFiles ?? [])]
         await session.invalidateFileEvents(
-          [...(compiler.modifiedFiles ?? [])]
+          modified
             .filter(
               (file) => eventOf(file) === 'add' || isPackageManifest(file),
             )
@@ -421,6 +422,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 ? ('change' as const)
                 : ('add' as const),
             })),
+        )
+        // this compilation builds the modules of its changed files from their text now,
+        // once every invalidation of its events ended: the drain needn't build them again
+        // (what makes them stale from here on enters the set again)
+        session.start.caches.stale.drop(
+          environment.name,
+          modified.map(normalizePath),
         )
       })
       // a registry change (the generator published new route ids): its files
