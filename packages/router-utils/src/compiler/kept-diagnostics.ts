@@ -92,9 +92,15 @@ export function keptDiagnostic(
         break
       }
       case 'reads':
-        why = `it reads, when it loads, a binding the ${module} keeps`
-        fix =
-          'Move it, with the bindings it reads when it loads, to their own module and import it from there.'
+        if (k.read === undefined) {
+          why = `it reads, when it loads, a binding the ${module} keeps`
+          fix =
+            'Move it, with the bindings it reads when it loads, to their own module and import it from there.'
+        } else {
+          const read = `\`${symbols.name(k.read)}\``
+          why = `it reads ${read} when it loads, which the ${module} keeps`
+          fix = `Move it and ${read} to their own module and import them from there.`
+        }
         break
       case 'state': {
         // its module may evaluate later than the route module, after code
@@ -144,17 +150,31 @@ export function keptDiagnostic(
     case 'order': {
       // the least effort first: move the declaration below the effect
       // (it then follows it, wherever it loads), or the effect's value
-      // above it; an annotation only where the effect is a call
+      // above it; an annotation only where the effect is a call. Each fix
+      // names the declarations it reads that the same effect keeps (moving
+      // one alone leaves the other kept). An effect another split option
+      // loads has no order with this one's chunk: declaring one after the
+      // other only swaps which one stays.
       const effect = effectAt(plan, k.effect!)
-      because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them} and ${k.effectStays ? 'stays' : 'does not move with it'}`
-      const unit = plan.t1.units[k.effect!]!
-      const after =
-        unit.declares.length > 0
-          ? unit.declares.map((s) => `\`${symbols.name(s)}\``).join(', ')
-          : 'it'
-      const fixes = [`declare ${subject} after ${after}`]
-      if (plan.benignEffects.has(k.effect!)) {
-        fixes.push(`create that value in a \`const\` before ${subject}`)
+      const withNames = (k.with ?? []).map((s) => `\`${symbols.name(s)}\``)
+      const all = [...withNames, ...names].join(', ')
+      const fixes: Array<string> = []
+      if (k.effectStays === false) {
+        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them} but loads with another split option, which may load before or after ${them}`
+        fixes.push(`move ${subject} to ${own} own module`)
+      } else {
+        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them}${withNames.length === 0 ? '' : ` and ${withNames.join(', ')}, which ${it} read${it === 'it' ? 's' : ''},`} and stays`
+        const unit = plan.t1.units[k.effect!]!
+        const after =
+          unit.declares.length > 0
+            ? unit.declares.map((s) => `\`${symbols.name(s)}\``).join(', ')
+            : 'it'
+        fixes.push(`declare ${all} after ${after}`)
+        if (plan.benignEffects.has(k.effect!)) {
+          fixes.push(
+            `create that value in a \`const\` before ${withNames[0] ?? subject}`,
+          )
+        }
       }
       if (
         (effect.node.type === 'CallExpression' ||
@@ -187,19 +207,40 @@ export function keptDiagnostic(
       // an exported binding's extracted module and other split code both
       // read a value with an identity (or state): one instance, in the module
       because = `an exported binding's split module and other split options (${split}) read ${them}, and ${it} ${names.length === 1 ? 'has' : 'have'} an identity or state (an object, array, class, call result or written binding), which exists once`
-      fix = `declare ${subject} in the module that uses ${them}, or read ${them} through a function`
+      fix = `move ${subject} to ${own} own module, which both import`
       break
     case 'state':
       because =
         k.read === undefined
           ? `${it} use${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
           : `${it} use${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
-      fix = `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
+      // a statement writing it that uses the binding (`a.push(b)`) cannot
+      // defer that use: only the move keeps both in order
+      fix =
+        k.read !== undefined && writtenWith(plan, k.syms, k.read)
+          ? `move ${subject}, ${read} and the statements writing them to their own module`
+          : `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
       break
-    default:
-      because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${symbols.isConst(k.read!) ? 'has side effects' : 'is a `let`'}`
-      fix = `move ${subject} and ${read} to their own module${annotatable(plan, [k.read!]) ? `, or mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects` : ''}`
+    default: {
+      // a `let` nothing assigns may be a `const`: one the route module
+      // keeps is read from it (R67)
+      const isLet = !symbols.isConst(k.read!)
+      because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${isLet ? 'is a `let`' : 'has side effects'}`
+      const fixes = [
+        ...(isLet && !plan.t1.mutation.isReassigned(k.read!)
+          ? [`declare ${read} with \`const\``]
+          : []),
+        `move ${subject} and ${read} to their own module`,
+        ...(annotatable(plan, [k.read!])
+          ? [
+              `mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects`,
+            ]
+          : []),
+      ]
+      const last = fixes.pop()!
+      fix = fixes.length === 0 ? last : `${fixes.join(', ')}, or ${last}`
       break
+    }
   }
   return {
     severity: 'warning',
@@ -210,6 +251,25 @@ export function keptDiagnostic(
   }
 }
 
+/** Whether a statement writing one of `syms` (not its declaration) uses `read` (`a.push(b)`). */
+function writtenWith(
+  plan: AnalysisPlan,
+  syms: ReadonlyArray<SymbolId>,
+  read: SymbolId,
+): boolean {
+  const { t1 } = plan
+  return syms.some((s) =>
+    t1.mutation.sitesOf(s).some((site) => {
+      const u = t1.unitAt(site.range)
+      return (
+        u !== null &&
+        !t1.units[u]!.declares.includes(s) &&
+        t1.refs.refsIn(t1.units[u]!.range).some((r) => r.sym === read)
+      )
+    }),
+  )
+}
+
 /**
  * Whether `/* @__PURE__ *\/` (or `#__NO_SIDE_EFFECTS__` on its callee) frees
  * an effect: it is a call or `new` whose arguments are pure. The purity
@@ -217,7 +277,10 @@ export function keptDiagnostic(
  * object, a call with an argument that has effects), so a hint to add it
  * would not work. The one gate of every annotation hint.
  */
-function annotationFrees(plan: AnalysisPlan, node: Node | null): boolean {
+function annotationFrees(
+  plan: Pick<AnalysisPlan, 'analysis'>,
+  node: Node | null,
+): boolean {
   const n = node === null ? null : unwrapExpression(node)
   return (
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
@@ -233,8 +296,8 @@ function annotationFrees(plan: AnalysisPlan, node: Node | null): boolean {
  * them: each one with effects is an initialiser `annotationFrees` (a `using`
  * declaration's own effect no annotation removes).
  */
-function annotatable(
-  plan: AnalysisPlan,
+export function annotatable(
+  plan: Pick<AnalysisPlan, 't1' | 'analysis'>,
   syms: ReadonlyArray<SymbolId>,
 ): boolean {
   const { t1, analysis } = plan

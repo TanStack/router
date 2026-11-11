@@ -127,6 +127,52 @@ const flags = [n]
     timeout,
   )
 
+  // REVIEW design 2 final, finding 4 (g): the binding stays only for its
+  // initialiser's effects; the offered annotation frees the option
+  test(
+    'names the effectful initialiser of a `let` the option assigns, and the annotation frees it',
+    async () => {
+      const options = '  component: (n = 5, () => <p>MARK_PAGE{n}</p>),'
+      const kept = await buildRoute(
+        bundler,
+        route('const box = (x: number) => [x][0]!\nlet n = box(0)', options),
+      )
+      expect(kept.where).toBe('eager')
+      expect(kept.warnings).toHaveLength(1)
+      expect(kept.warnings[0]).toContain(
+        'it writes `n`, which stays in the route module because its initialiser has side effects, so a split would run the write later than written. Mark that initialiser `/* @__PURE__ */` if it has none.',
+      )
+      const freed = await buildRoute(
+        bundler,
+        route(
+          'const box = (x: number) => [x][0]!\nlet n = /* @__PURE__ */ box(0)',
+          options,
+        ),
+      )
+      expect(freed.where).toBe('lazy')
+      expect(freed.text).toBe('MARK_PAGE5')
+      expect(freed.warnings).toEqual([])
+    },
+    timeout,
+  )
+
+  test(
+    'splits it when the state the route module reads is a member of an object (the fix offered below)',
+    async () => {
+      const r = await buildRoute(
+        bundler,
+        route(
+          'const state = { didInit: false }',
+          '  beforeLoad: () => state.didInit,\n  component: memo(function Page() { if (!state.didInit) { state.didInit = true } return <p>MARK_PAGE{String(state.didInit)}</p> }),',
+        ),
+      )
+      expect(r.where).toBe('lazy')
+      expect(r.text).toBe('MARK_PAGEtrue')
+      expect(r.warnings).toEqual([])
+    },
+    timeout,
+  )
+
   test(
     'keeps it in place when other code reads the state (control)',
     async () => {
@@ -141,7 +187,7 @@ const flags = [n]
       expect(r.text).toBe('MARK_PAGEtrue')
       expect(r.warnings).toHaveLength(1)
       expect(r.warnings[0]).toContain(
-        "The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which other code also uses, so a split would change when that code sees the write. Use `didInit` only inside the option's functions.",
+        'The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.didInit`) or in its own module.',
       )
     },
     timeout,

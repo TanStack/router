@@ -72,8 +72,8 @@ export interface Fallback {
   region: RegionId
   /** `shared-writer`, `multi-writer`: the module binding the region writes; `ordered-effect`: the one it writes or reads. */
   binding?: SymbolId
-  /** `ordered-effect`: the value writes `binding` (when it loads, or in a function its call runs) and other code uses it, rather than reading what other code writes. */
-  writes?: true
+  /** `ordered-effect`: the value writes `binding` (when it loads, or in a function its call runs) rather than reading what other code writes, and other code uses it (`used`) or it stays where the value does not evaluate (`kept`). */
+  writes?: 'used' | 'kept'
   reason:
     | 'shared-writer'
     | 'multi-writer'
@@ -147,6 +147,8 @@ export interface KeptDeclaration {
   at?: number
   /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
   read?: SymbolId
+  /** `order`: the declarations it reads that the same effect keeps too (not reported on their own), in source order. */
+  with?: Array<SymbolId>
 }
 
 export interface ExtractedExport {

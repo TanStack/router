@@ -5886,6 +5886,177 @@ describe('state written through another name', () => {
   )
 })
 
+// REVIEW-design2-final finding 4 (R100): every fix a kept declaration's
+// warning offers frees what it names when applied.
+describe('the fixes a kept declaration is offered work when applied', () => {
+  const route = (decls: string, options: string, after = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { box, snap } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+      ${after}
+    `)
+  const lib = {
+    '/app/lib.ts':
+      'export const box = (x: unknown) => ({ x })\nexport const snap = (x: unknown) => x\n',
+  }
+  async function run(
+    code: string,
+    opts: {
+      keys?: Array<string>
+      extractExports?: boolean
+      files?: Record<string, string>
+    } = {},
+  ) {
+    const r = await split(code, { ...opts, files: { ...lib, ...opts.files } })
+    return {
+      ...r,
+      eager: (r.main?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      ),
+    }
+  }
+
+  // (a) the call keeps `columns` and `helper`, which it reads: each fix
+  // names both
+  it('names the declarations the same effect keeps that the kept one reads', async () => {
+    const decls = 'const helper = box(1)\nconst columns = [snap(helper)]'
+    const options = 'validateSearch: box(9),\ncomponent: () => columns,'
+    const r = await run(route(decls, options))
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(r.eager[0]!.message).toContain(
+      'runs after it and `helper`, which it reads, and stays; declare `helper`, `columns` after `Route`, create that value in a `const` before `helper`, or mark the call `/* @__PURE__ */` if it has no side effects',
+    )
+    for (const fixed of [
+      route('', options, decls),
+      route(
+        `const schema = box(9)\n${decls}`,
+        options.replace('box(9)', 'schema'),
+      ),
+      route(decls, options.replace('box(9)', '/* @__PURE__ */ box(9)')),
+    ]) {
+      const f = await run(fixed)
+      expect(f.eager).toEqual([])
+      expect(f.chunks.component).toContain('const columns = [snap(helper)]')
+    }
+  })
+
+  // (b) two effectful declarations two chunks need: declaring one after
+  // the other only swaps which one stays
+  it('offers a module or the annotation for an effect another chunk loads', async () => {
+    const options = 'loader: () => b,\ncomponent: () => a,'
+    const keys = ['loader', 'component']
+    const r = await run(route('const a = box(1)\nconst b = box(2)', options), {
+      keys,
+    })
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:order'])
+    expect(r.eager[0]!.message).toContain(
+      'but loads with another split option, which may load before or after it; move `a` to its own module, or mark the call `/* @__PURE__ */` if it has no side effects',
+    )
+    for (const [code, files] of [
+      [
+        route("import { a } from './a'\nconst b = box(2)", options),
+        {
+          '/app/a.ts': "import { box } from './lib'\nexport const a = box(1)\n",
+        },
+      ],
+      [
+        route('const a = box(1)\nconst b = /* @__PURE__ */ box(2)', options),
+        {},
+      ],
+    ] as const) {
+      const f = await run(code, { keys, files })
+      expect(f.eager).toEqual([])
+      expect(f.chunks.loader).toContain('const b = ')
+    }
+  })
+
+  // (c) and (d): an object an extracted export and split code both read
+  it.each([
+    [
+      'a function',
+      'export const a = () => [reg]',
+      'eager-split:shared',
+      'move `reg` to its own module, which both import',
+    ],
+    [
+      'a value',
+      'export const a = [reg]',
+      'eager-export:reads',
+      'it reads `reg` when it loads, which the route module keeps',
+    ],
+  ])(
+    'names the object an export and split code share and moves it out (%s)',
+    async (_, exported, code, words) => {
+      const options = 'component: () => [reg, a],'
+      const r = await run(route(`const reg = { v: 1 }\n${exported}`, options), {
+        extractExports: true,
+      })
+      expect(r.eager.map((d) => d.code)).toEqual([code])
+      expect(r.eager[0]!.message).toContain(words)
+      // the fix: `reg` (and, for the export reading it at load, the export
+      // too) in a module of its own
+      const moved =
+        code === 'eager-split:shared'
+          ? [
+              route(`import { reg } from './reg'\n${exported}`, options),
+              { '/app/reg.ts': 'export const reg = { v: 1 }\n' },
+            ]
+          : [
+              route("import { reg, a } from './state'", options),
+              { '/app/state.ts': `export const reg = { v: 1 }\n${exported}\n` },
+            ]
+      const f = await run(moved[0] as string, {
+        extractExports: true,
+        files: moved[1] as Record<string, string>,
+      })
+      expect(f.eager).toEqual([])
+    },
+  )
+
+  // (f) two registries written with each other: the use is the write
+  it('offers only the move for two registries written with each other', async () => {
+    const options = 'loader: () => a,\ncomponent: () => b,'
+    const keys = ['loader', 'component']
+    const decls = 'const a = []\nconst b = []\na.push(b)\nb.push(a)'
+    const r = await run(route(decls, options), { keys })
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:state'])
+    expect(r.eager[0]!.message).toContain(
+      'move `a`, `b` and the statements writing them to their own module, so',
+    )
+    const f = await run(route("import { a, b } from './registries'", options), {
+      keys,
+      files: { '/app/registries.ts': decls.replace(/const/g, 'export const') },
+    })
+    expect(f.eager).toEqual([])
+  })
+
+  // (h) a `let` nothing assigns is read from the route module as a `const`
+  it('offers `const` for a `let` nothing assigns (R67)', async () => {
+    const options = 'loader: () => h,\ncomponent: () => c,'
+    const r = await run(route('let h = box(1)\nconst c = [snap(h)]', options))
+    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:reads'])
+    expect(r.eager[0]!.message).toContain(
+      "declare `h` with `const`, move `c` and `h` to their own module, or mark `h`'s initialiser `/* @__PURE__ */` if it has no side effects",
+    )
+    const f = await run(route('const h = box(1)\nconst c = [snap(h)]', options))
+    expect(f.eager).toEqual([])
+    expect(f.chunks.component).toContain('const c = [snap(h)]')
+    // assigned, it is no `const`: the offer goes
+    const g = await run(
+      route(
+        'let h = box(1)\nconst c = [snap(h)]',
+        options,
+        'export function reset() { h = box(2) }',
+      ),
+    )
+    expect(g.eager[0]?.message ?? '').not.toContain('with `const`')
+  })
+})
+
 describe('effectful declarations reading each other (R138)', () => {
   const route = (decls: string, options: string) =>
     dedent(`

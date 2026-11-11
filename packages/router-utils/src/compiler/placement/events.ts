@@ -97,8 +97,11 @@ export interface Events {
   lazyConflict: (c: ClusterId) => Pin | undefined
   /** Per written binding `c`'s evaluation touches, its first and last touch. */
   spans: (c: ClusterId) => Spans
-  /** T: whether `c` reads, at its evaluation, a non-copyable binding of a cluster `kept` says the env module keeps. */
-  readsKept: (c: ClusterId, kept: (d: ClusterId) => boolean) => boolean
+  /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any. */
+  readsKept: (
+    c: ClusterId,
+    kept: (d: ClusterId) => boolean,
+  ) => SymbolId | undefined
   /** O: the effect that changes order with `c`'s when `c` evaluates in `to`, the clusters of `target` in theirs. */
   orderConflict: (
     c: ClusterId,
@@ -371,8 +374,19 @@ export function eventTable(
     return undefined
   }
 
-  function readsKept(c: ClusterId, kept: (d: ClusterId) => boolean): boolean {
-    return touches(c, (t) => !clusters[t.cluster]!.copyable && kept(t.cluster))
+  function readsKept(
+    c: ClusterId,
+    kept: (d: ClusterId) => boolean,
+  ): SymbolId | undefined {
+    let found: SymbolId | undefined
+    touches(c, (t) => {
+      if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
+        found = t.sym
+        return true
+      }
+      return false
+    })
+    return found
   }
 
   // the effects of the env module's evaluation an event is ordered against
@@ -484,27 +498,27 @@ export function eventTable(
     // reads it at load, as `const y = f(registry.page = 1)` stays with its
     // import.
     /**
-     * Whether binding `sym`, written by the value of cluster `rc` (homed in
-     * `hr`), is confined to that output: it evaluates there (an import: no
-     * other output includes it), and no other evaluation anywhere touches
-     * it. A binding with no home of its own (removed, duplicated) is.
+     * Why binding `sym`, written by the value of cluster `rc` (homed in
+     * `hr`), is not confined to that output: another evaluation anywhere
+     * touches it (`used`), or it evaluates elsewhere (`kept`; an import:
+     * another output includes it); null when it is confined. A binding with
+     * no home of its own (removed, duplicated) is.
      */
-    const confined = (rc: ClusterId, hr: Home, sym: SymbolId): boolean => {
+    const unconfined = (
+      rc: ClusterId,
+      hr: Home,
+      sym: SymbolId,
+    ): 'used' | 'kept' | null => {
       const bc = clusterOfSym.get(sym)
       if (bc === undefined) {
-        return false
+        return 'kept'
       }
       const hb = home.get(bc)
-      if (clusters[bc]!.kind === 'import') {
-        for (const [o, set] of included) {
-          if (o !== hr && set.has(bc)) {
-            return false
-          }
-        }
-      } else if (hb === undefined || hb === 'duplicate' || hb === 'removed') {
-        return true
-      } else if (hb !== hr) {
-        return false
+      if (
+        clusters[bc]!.kind !== 'import' &&
+        (hb === undefined || hb === 'duplicate' || hb === 'removed')
+      ) {
+        return null
       }
       for (const d of clusters) {
         const hd = home.get(d.id)
@@ -514,12 +528,23 @@ export function eventTable(
           hd !== 'removed' &&
           touches(d.id, (t) => t.sym === sym)
         ) {
-          return false
+          return 'used'
         }
       }
-      return true
+      if (clusters[bc]!.kind === 'import') {
+        for (const [o, set] of included) {
+          if (o !== hr && set.has(bc)) {
+            return 'kept'
+          }
+        }
+        return null
+      }
+      return hb === hr ? null : 'kept'
     }
-    const writtenAt = new Map<RegionId, SymbolId>()
+    const writtenAt = new Map<
+      RegionId,
+      { sym: SymbolId; why: 'used' | 'kept' }
+    >()
     for (const w of graph.writes) {
       const r = w.owner
       if (!w.live || !w.eager || r === null || !claimed.has(r)) {
@@ -533,8 +558,9 @@ export function eventTable(
       if (hr === 'env' || hr === undefined) {
         continue // in place: everything evaluates in source order
       }
-      if (!confined(rc, hr, w.sym)) {
-        writtenAt.set(r, w.sym)
+      const why = unconfined(rc, hr, w.sym)
+      if (why !== null) {
+        writtenAt.set(r, { sym: w.sym, why })
       }
     }
     for (const r of regions.regions) {
@@ -546,8 +572,8 @@ export function eventTable(
         out.push({
           region: r.id,
           reason: 'ordered-effect',
-          binding: written,
-          writes: true,
+          binding: written.sym,
+          writes: written.why,
         })
         continue
       }
@@ -592,19 +618,18 @@ export function eventTable(
         }
         const late = lateOf(t.sym)
         const later = graph.laterWrite(t.sym, t.at, c) !== undefined
-        if (
-          (late === null ||
-            (late === 'inside' &&
-              (ownLate(c, t.sym) || confined(c, hr!, t.sym)))) &&
-          !later
-        ) {
+        const why =
+          late === 'inside' && !ownLate(c, t.sym)
+            ? unconfined(c, hr!, t.sym)
+            : null
+        if ((late === null || (late === 'inside' && why === null)) && !later) {
           return false
         }
         out.push({
           region: r.id,
           reason: 'ordered-effect',
           binding: t.sym,
-          ...(late === 'inside' && !later && { writes: true as const }),
+          ...(why !== null && !later && { writes: why }),
         })
         return true
       })
