@@ -78,8 +78,9 @@ export function settleRoots(
   const movable = new Set<ClusterId>()
   /** The slots of the last round: where each cluster leaving the env module evaluates (`solveSlots`). */
   const slots = new Map<ClusterId, OutputId>()
-  /** Where a cluster evaluates for O: its slot, else in the env module (it stays there or is not ordered). */
-  const slotOf = (d: ClusterId): OutputId => slots.get(d) ?? 'env'
+  /** Where a cluster evaluates for O: its slot, an extracted candidate's module, else in the env module (it stays there, or homes place it: judged as staying). */
+  const slotOf = (d: ClusterId): OutputId =>
+    slots.get(d) ?? remaining.get(d)?.output ?? 'env'
   const pins = new Map<ClusterId, Pin>()
   const needs = (c: ClusterId) => derivedNeeds(input, derivedReach, c)
   /** T against the current roots: `c` reads at its evaluation what the env module keeps. */
@@ -122,18 +123,25 @@ export function settleRoots(
   /**
    * Whether `cl`'s slot is decided by the rules: an unexported declaration
    * the env module does not keep (yet) whose evaluation time matters (an
-   * effect, or it reads state something else writes). It takes its only
-   * lazy needer's slot, or is orphaned, or is demoted to an env root.
+   * effect, it reads state something else writes, or it writes, at load,
+   * a binding it declares). It takes its only lazy needer's slot, or is
+   * orphaned, or is demoted to an env root.
    */
   const timed = (cl: Cluster): boolean =>
     !liveEnv.has(cl.id) &&
     cl.kind === 'declaration' &&
     !cl.exported &&
     !envRoots.has(cl.id) &&
-    (cl.effectful || readsState(cl.id) !== undefined)
+    (cl.effectful || cl.writer || readsState(cl.id) !== undefined)
 
-  /** The slot of a timed cluster: its only needer (N), unless a pair rule of that slot pins it. */
-  function slotFor(cl: Cluster): OutputId | Pin {
+  /**
+   * The slot of a timed cluster: its only needer (N), unless a pair rule of
+   * that slot pins it. A writer that is neither (pure, reading no state)
+   * several outputs need has none: homes place it (a shared module), and
+   * its readers import it, so they evaluate after its writes; one reading
+   * it before a write is judged as if it stayed (`slotOf`), and keeps it.
+   */
+  function slotFor(cl: Cluster): OutputId | Pin | null {
     const needers: Array<OutputId> = []
     for (const [id, set] of derivedReach) {
       if (set.has(cl.id)) {
@@ -141,26 +149,27 @@ export function settleRoots(
       }
     }
     if (needers.length !== 1) {
-      // a pure cluster is timed only as a reader of state, with its pair
-      return cl.effectful ? { reason: 'needers' } : readsState(cl.id)!
+      return cl.effectful
+        ? { reason: 'needers' }
+        : (readsState(cl.id) ??
+            (needers.length > 1 ? null : { reason: 'needers' }))
     }
     // an extracted export's module is side-effect free (every bundler may
-    // skip it while nothing imports what it exports): an effect observable
-    // on its own never moves there, it would run late or never
-    if (cl.sideEffects && outputs.get(needers[0]!)?.kind === 'export') {
+    // skip it while nothing imports what it exports): an effect never
+    // moves there, it would run late or never
+    if (cl.effectful && outputs.get(needers[0]!)?.kind === 'export') {
       return { reason: 'effects' }
     }
     return events.lazyConflict(cl.id, liveEnv) ?? needers[0]!
   }
 
   /**
-   * The slots of this round: each timed cluster's (`slotFor`), and an
-   * effectful candidate's extracted module; then O as a greatest fixed
-   * point over the clusters leaving the env module: one an effect, or a
-   * write when the module loads, that stays (or goes elsewhere) would
-   * change order with is demoted, which can demote others (a reader and the
-   * writer after it evaluate in one slot, or both stay). The pairs of the
-   * demoted go to `pins`.
+   * The slots of this round: each timed cluster's (`slotFor`); then O as a
+   * greatest fixed point over the clusters leaving the env module: one an
+   * effect, or a write when the module loads, that stays (or goes
+   * elsewhere) would change order with is demoted, which can demote others
+   * (a reader and the writer after it evaluate in one slot, or both stay).
+   * The pairs of the demoted go to `pins`.
    */
   function solveSlots(): void {
     const target = slots
@@ -173,13 +182,8 @@ export function settleRoots(
       const to = slotFor(cl)
       if (typeof to === 'string') {
         target.set(cl.id, to)
-      } else {
+      } else if (to !== null) {
         pins.set(cl.id, to)
-      }
-    }
-    for (const [c, e] of remaining) {
-      if (clusters[c]!.effectful) {
-        target.set(c, e.output)
       }
     }
     for (let dropped = true; dropped; ) {
@@ -265,9 +269,10 @@ export function settleRoots(
   /**
    * The clusters a copy never carries, so the walk stops at them: every
    * output keeps them once by construction. Another candidate is imported
-   * from its module or copied under its own decision; an effectful cluster
-   * and an eager reader of state stay in the env module or move with one
-   * needer (several needers root them); a cluster the env module's seeds
+   * from its module or copied under its own decision; an effectful cluster,
+   * a writer and an eager reader of state stay in the env module or move
+   * with one needer (several needers root them or give a writer a shared
+   * module: one instance); a cluster the env module's seeds
    * keep alive stays there (roots only grow); a type unit stays. Computed
    * once: it reads nothing the fixed point changes (V is asked of the
    * clusters a copy reaches only).
@@ -277,7 +282,7 @@ export function settleRoots(
     if (carriedStop === null) {
       carriedStop = new Set(candidates.keys())
       for (const cl of clusters) {
-        if (cl.effectful || cl.envPinned) {
+        if (cl.effectful || cl.writer || cl.envPinned) {
           carriedStop.add(cl.id)
         }
       }
@@ -445,8 +450,8 @@ export function settleRoots(
    * Why a candidate is demoted, if it is: the env module keeps it (`live`),
    * T (`reads`), no derived output needs it, V (`state`: its module may
    * evaluate after a write it did not see, with the first chunk importing
-   * it), O (`state`: a write at load outside its module, `order`: its
-   * effects would change order; an effectful one is judged with the slots).
+   * it), O (`state`: a write at load outside its module; a candidate has
+   * no effect, its pure writes travel with it).
    */
   const candidatePin = (c: ClusterId, to: OutputId): Pin | undefined => {
     if (liveEnv.has(c)) {
@@ -456,18 +461,9 @@ export function settleRoots(
       return { reason: 'reads' }
     }
     if (needed.has(c)) {
-      const v = events.volatile(c)
-      if (v !== undefined) {
-        return v
-      }
-      if (!clusters[c]!.effectful) {
-        return events.writeConflict(c, to, slotOf)
-      }
-      if (movable.has(c)) {
-        return undefined
-      }
+      return events.volatile(c) ?? events.writeConflict(c, to, slotOf)
     }
-    return pins.get(c) ?? { reason: 'order' }
+    return { reason: 'order' }
   }
 
   // ---- the solver: env roots, slots and extraction, one fixed point -------
@@ -537,17 +533,14 @@ export function settleRoots(
     liveEnv = reach('env', envRoots)
     solveSlots()
     let changed = false
-    for (const cl of clusters) {
-      if (!timed(cl) || movable.has(cl.id)) {
-        continue
-      }
-      const neededHere = needs(cl.id)
-      if (seeds.fromErased.has(cl.id) && !neededHere) {
+    for (const [c, pin] of pins) {
+      const neededHere = needs(c)
+      if (seeds.fromErased.has(c) && !neededHere) {
         continue // orphaned by us: removable with its initialiser effects
       }
-      envRoots.add(cl.id)
+      envRoots.add(c)
       if (neededHere) {
-        pinnedNeeded.set(cl.id, pins.get(cl.id)!)
+        pinnedNeeded.set(c, pin)
       }
       derivedStale ||= neededHere
       changed = true

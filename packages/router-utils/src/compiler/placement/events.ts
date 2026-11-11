@@ -24,9 +24,9 @@
  *   importing it: unordered with the route module and the chunks, so a
  *   write in any of those conflicts with its read, before or after it; only
  *   another extracted module it imports runs before it (its writes before
- *   the read keep their order). For effects, the extracted modules evaluate
- *   before the body in source order among themselves (design 2 step 4
- *   revisits that time).
+ *   the read keep their order). An effect never evaluates there (that
+ *   module may never evaluate); a write of pure values to a binding is no
+ *   effect but a write (R139), ordered against what touches the binding.
  * - **T** (initialised): an extracted module reading, at its evaluation, a
  *   binding the env module keeps would read it before it exists
  *   (`readsKept`).
@@ -299,7 +299,7 @@ export function eventTable(
   const effects = (): Array<Unit> =>
     (effectList ??= units.filter(
       (u) =>
-        u.effectful &&
+        graph.effectUnits.has(u.id) &&
         u.kind !== 'type' &&
         u.kind !== 'import-effect' &&
         u.kind !== 'reexport' &&
@@ -312,11 +312,8 @@ export function eventTable(
   /*
    * O. A lazily imported output (a chunk) evaluates after the env module's
    * body: an effect after `c`'s first in the source would then run before
-   * it. A static output (an extracted export's module, re-exported by the
-   * env module) evaluates before the env module's body: an effect before
-   * `c`'s last would then run after it. The static outputs evaluate in
-   * source order among themselves (the env module re-exports them in that
-   * order), so an effect moving to another static output keeps its order.
+   * it. An effect never moves to an extracted export's module (`slotFor`:
+   * that module may never evaluate).
    *
    * Kept on purpose (a maintainers' decision): without this guarantee a
    * declaration only split code reads whose initialiser calls a function
@@ -333,21 +330,12 @@ export function eventTable(
     target: ReadonlyMap<ClusterId, OutputId>,
   ): Unit | undefined {
     const cl = clusters[c]!
-    const staticOutput = isStatic(to)
     for (const u of effects()) {
-      if (
-        staticOutput
-          ? u.range.start >= cl.lastEffect
-          : u.range.start <= cl.firstEffect
-      ) {
+      if (u.range.start <= cl.firstEffect) {
         continue
       }
       const uc = clusterOfRegion.get(u.region)
-      if (uc === c) {
-        continue
-      }
-      const ut = uc === undefined ? undefined : target.get(uc)
-      if (ut === to || (staticOutput && isStatic(ut))) {
+      if (uc === c || (uc !== undefined && target.get(uc) === to)) {
         continue
       }
       return u
@@ -575,10 +563,10 @@ export function checkPlacement(
     // (an effectful generated unit is compiler code, not an effect O orders)
     moved ||= t !== 1 && t !== null && cl.firstEffect !== Infinity
   }
-  // the effects in source order: an extracted module's before the body's,
-  // the body's before a chunk's, one chunk's at most
+  // the effects in source order: the body's before a chunk's, one chunk's
+  // at most, none in an extracted module (it may never evaluate)
   if (moved) {
-    let latest = 0
+    let latest = 1
     let lazy: OutputId | null = null
     for (const u of events.effects()) {
       const c = clusterOfRegion.get(u.region)!
@@ -590,7 +578,7 @@ export function checkPlacement(
       if (t < latest || (t === 2 && lazy !== null && lazy !== h)) {
         return fail(
           'side effects may run in another order than written',
-          `has an effect (at ${u.range.start}) that evaluates in ${h}, after an effect written after it`,
+          `has an effect (at ${u.range.start}) that evaluates in ${h}, ${t === 0 ? 'an extracted module' : 'after an effect written after it'}`,
           c,
           u.range.start,
         )

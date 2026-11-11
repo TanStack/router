@@ -53,9 +53,9 @@ export function seedRoots(
 
   // ---- extracted exports: candidates and their export companions -------
   // Planners allow every local value export out; a candidate is one whose
-  // cluster is an unassigned declaration without observable effects (its
-  // augmentations, `Page.p = …`, travel with it under the effect-order rule
-  // of every move, O in `events.ts`). Its companions are the export-specifier /
+  // cluster is an unassigned declaration without effects (its pure
+  // augmentations, `Page.p = …`, are writes that travel with it: the
+  // binding's writers at load are its cluster). Its companions are the export-specifier /
   // `export default x` clusters that only read it. Neither is an env root
   // for now: the decision (extract, or keep in the env module) is taken once
   // env liveness is known.
@@ -68,7 +68,7 @@ export function seedRoots(
     const cl = clusters[c]!
     if (
       cl.kind !== 'declaration' ||
-      cl.sideEffects ||
+      cl.effectful ||
       cl.gens.length > 0 ||
       // a reassigned export stays: its writers would assign an import
       t1.mutation.isReassigned(sym, liveInEnv) ||

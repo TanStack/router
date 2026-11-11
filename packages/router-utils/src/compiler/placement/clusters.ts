@@ -33,24 +33,20 @@ export interface Cluster {
   gens: Array<GenUnitId>
   units: Array<UnitId>
   declares: Set<SymbolId>
-  effectful: boolean
   /**
-   * An effect observable without the cluster's declarations: an effectful
-   * initialiser, an effect statement other than an augmentation of its own
-   * declarations, an augmentation doing more than its writes
-   * (`Page.x = track()`), an effectful generated unit. Such a cluster is
-   * never an extracted export (its module could never be dropped as unused)
-   * and clears an output's side-effect-free flag; a cluster whose effects
-   * only write what it declares (`Page.displayName = …`) is unobservable
-   * while nothing imports it.
+   * It has an effect (`effectUnits`) or an effectful generated unit. A write
+   * of pure values to a binding it declares (`Page.displayName = …`) is no
+   * effect (R139): such a cluster may be an extracted export, and its
+   * output stays side-effect free.
    */
-  sideEffects: boolean
+  effectful: boolean
+  /** It writes, when the module loads, a binding it declares (an augmentation, a link on its builder, a unit's member write): its readers before the write need its slot. */
+  writer: boolean
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Source positions of the cluster's first and last effectful units (its effects keep their order with the surviving effects on either side); Infinity/-Infinity when none (generated units are compiler code). */
+  /** Source position of the cluster's first effect unit (its effects keep their order with the surviving effects after it); Infinity when none (generated units are compiler code). */
   firstEffect: number
-  lastEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -121,6 +117,8 @@ export interface ClusterGraph {
   viewOf: (o: OutputId) => OutputView
   /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
+  /** The units with an effect O orders: effectful, surviving, not a write of pure values to their own cluster's binding (R139). */
+  effectUnits: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
@@ -452,7 +450,10 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     return r
   }
   for (const ref of refs.all) {
-    const kind = writeKind(ref)
+    // (a link on a `const` holding a builder writes the builder: R139)
+    const kind =
+      writeKind(ref) ??
+      (t1.builderLinks.has(ref.range.start) ? ('member' as const) : null)
     if (kind === null || !declMember.has(ref.sym)) {
       continue
     }
@@ -559,11 +560,10 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         units: [],
         declares: new Set(),
         effectful: false,
-        sideEffects: false,
+        writer: false,
         exported: false,
         start: Infinity,
         firstEffect: Infinity,
-        lastEffect: -Infinity,
         kind: 'region',
         copyable: false,
         identityFree: false,
@@ -574,6 +574,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
+  const effectUnits = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
     clusterOfRegion.set(r.id, c)
@@ -585,11 +586,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       cl.units.push(u.id)
       for (const s of u.declares) {
         cl.declares.add(s)
-      }
-      if (u.effectful && statementSurvives(items[u.item]!.nodeRange)) {
-        cl.effectful = true
-        cl.firstEffect = Math.min(cl.firstEffect, u.range.start)
-        cl.lastEffect = Math.max(cl.lastEffect, u.range.start)
       }
       cl.exported ||= u.exported.length > 0
     }
@@ -654,15 +650,28 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
-    cl.sideEffects =
-      cl.effectful &&
-      (cl.kind !== 'declaration' ||
-        cl.gens.some((g) => gens[g]!.effectful) ||
-        cl.units.some((u) =>
-          units[u]!.kind === 'effect'
-            ? units[u]!.augmentEffects
-            : units[u]!.effectful,
-        ))
+    // its effects: what purity calls one, but for a write of pure values
+    // to a binding it declares (R139: `Page.displayName = …`, a link on a
+    // `const` builder), which is a write (the write table), ordered against
+    // what reads the binding
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (
+        unit.effectful &&
+        statementSurvives(items[unit.item]!.nodeRange) &&
+        !(!unit.augmentEffects && ownAugmentation(units, unit, cl))
+      ) {
+        cl.effectful = true
+        cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
+        effectUnits.add(u)
+      }
+    }
+  }
+  for (const w of writes) {
+    if (w.live && w.eager && w.owner !== null) {
+      const c = clusterOfRegion.get(w.owner)!
+      clusters[c]!.writer ||= clusters[c]!.declares.has(w.sym)
+    }
   }
   const clusterOfSym = new Map<SymbolId, ClusterId>()
   for (const [s, m] of declMember) {
@@ -715,6 +724,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     regionWrittenSyms,
     viewOf,
     isLive,
+    effectUnits,
     unitSurvives,
     callsOf,
     lateWrite,

@@ -2394,11 +2394,9 @@ describe('extracted-export outputs', () => {
     })
   })
 
-  // An exported binding's augmentations (`Page.displayName = …`, static
-  // props) and an effectful initialiser leave with it under the order rule
-  // of every move: the extracted module evaluates before the env module's
-  // body, so a surviving effect before the cluster's last one pins it, and
-  // one after keeps its order.
+  // An exported binding's pure augmentations (`Page.displayName = …`,
+  // static props) are writes of it (R139): they leave with it, whatever
+  // effects surround them. An effect never leaves for its module.
   it('extracts an exported component with its augmentations', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2474,9 +2472,11 @@ describe('extracted-export outputs', () => {
     expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
   })
 
-  // The same cluster before the augmented export: the augmentation would run
-  // before that effect, which stays (the order rule below).
-  it('keeps an augmented export after an unexported cluster with an effect of its own that it reads', async () => {
+  // The same cluster before the augmented export, which reads it only when
+  // called: the augmentation writes only `Page` (R139), so the export
+  // leaves, and its module imports the effectful cluster from the env
+  // module (it asserted that the export stayed, `eager-export:order`).
+  it('extracts an augmented export after an unexported cluster with an effect of its own that it reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { track } from './track'
@@ -2489,13 +2489,18 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain("Card.x = track('card')")
-    expect(r.env).toContain('export function Page()')
-    expect(r.env).not.toContain('export---')
-    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
-    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
+    expect(r.env).toContain(
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain("import { Card } from '/app/route.tsx'")
+    expect(e?.code).toContain("Page.displayName = 'Page'")
+    expect(r.diagnostics).toEqual([])
   })
 
-  it('keeps an augmented export a surviving effect precedes (the augmentation would run before it)', async () => {
+  // The augmentation writes only `Page`: no effect to order against
+  // `see()` (R139; it asserted that the export stayed, `eager-export:order`)
+  it('extracts an augmented export a surviving effect precedes', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { see } from './see'
@@ -2506,11 +2511,14 @@ describe('extracted-export outputs', () => {
     `)
     const r = await extract(code)
     expect(r.env).toContain("see('before')")
-    expect(r.env).toContain('export function Page()')
-    expect(r.env).toContain("Page.displayName = 'PageDisplay'")
-    expect(r.env).not.toContain('export---')
-    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
-    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:order' }])
+    expect(r.env).not.toContain('displayName')
+    expect(r.env).toContain(
+      "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
+    )
+    expect((await r.extracted('Page'))?.code).toContain(
+      "Page.displayName = 'PageDisplay'",
+    )
+    expect(r.diagnostics).toEqual([])
   })
 
   it('extracts an augmented export a surviving effect follows (the effect keeps its order)', async () => {
@@ -3172,7 +3180,10 @@ describe('provenance-based orphans', () => {
 })
 
 describe('ordered evaluation and movable effects', () => {
-  it('co-locates an eager reader between two augmentations with the route module', async () => {
+  // the pushes write `plugins` with pure values (R139): no effect, so the
+  // initialiser reading it between them moves with them, in source order
+  // (it asserted that both stayed in the route module)
+  it('moves an eager reader between two pure augmentations with them', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { init, a, b } from './store'
@@ -3185,12 +3196,10 @@ describe('ordered evaluation and movable effects', () => {
       })
     `)
     const r = await split(code)
-    expect(r.env).toContain('const store = init({ plugins: [...plugins] })')
-    expect(r.env).toContain('export { store }')
+    expect(r.env).not.toContain('plugins')
     expect(r.chunks.component).toContain(
-      "import { store } from '/app/route.tsx'",
+      'const plugins = []\nplugins.push(a)\nconst store = init({ plugins: [...plugins] })\nplugins.push(b)',
     )
-    expect(r.chunks.component).not.toContain('init(')
   })
 
   it('moves an effectful initialiser followed only by the route factory chain', async () => {
@@ -6284,7 +6293,7 @@ describe('builder chains in a compile', () => {
       import { createServerFn } from 'toy-start'
       import { type } from 'arktype'
       import { track } from './track'
-      ${declarations}
+      ${declarations.split('\n').join('\n      ')}
       export const Route = createFileRoute('/')({
         validateSearch: type({ 'a?': 'string' }),
         component: () => fn,

@@ -15,7 +15,7 @@ import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
 import {
-  builderCall,
+  noteBuilderConsts,
   seedNoSideEffectDeclarations,
   statementHasEffects,
 } from './purity'
@@ -282,6 +282,12 @@ export interface Tier1 {
    * happened where they are written (the write table, placement).
    */
   runsLaterAt: (offset: number) => boolean
+  /**
+   * The starts of the receivers of links on a `const` holding a builder
+   * that the module's purity took as no effect (`b.handler(h)`): each one
+   * writes that builder (R139), a member write in placement's write table.
+   */
+  builderLinks: ReadonlySet<number>
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -310,9 +316,10 @@ interface ModuleAnalysisOptions {
    * is one instance in every output of an environment: a call result is
    * never copied (the server-fn provider, the module's instance in another
    * layer, copies what it reaches whatever its purity). A link called on a
-   * `const` holding a builder stays an effect: a middleware's links write
-   * the options of the builder they are called on, which another link of it
-   * then reads. Raw reads give none (`effects()` derives each one's).
+   * `const` holding a builder is no effect either but a write of that
+   * builder (a middleware's links write the options of the builder they are
+   * called on, which another link of it then reads; R139): `builderLinks`.
+   * Raw reads give none (`effects()` derives each one's).
    */
   env?: 'client' | 'server'
 }
@@ -819,7 +826,9 @@ export class ModuleAnalysis {
         }
       }
       if (envPurity && declaration?.type === 'VariableDeclaration') {
-        noteBuilderConsts(envPurity, declaration)
+        for (const { ctx } of envPurity) {
+          noteBuilderConsts(ctx, ctx.builders, declaration)
+        }
       }
     }
     // per environment: the bindings only the arguments its compile erases
@@ -1356,6 +1365,11 @@ export class ModuleAnalysis {
       },
       isLazyAt,
       runsLaterAt,
+      builderLinks:
+        this.purity.builders === undefined ||
+        this.purity.builders.linked.length === 0
+          ? NO_LINKS
+          : new Set(this.purity.builders.linked.map((n) => n.start)),
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1925,38 +1939,6 @@ function classify(
 }
 
 /**
- * Records the module-level `const`s of `declaration` whose value is a
- * builder chain's builder in an environment's purity (its later links read
- * them as receivers): after its statement is classified, so a read before
- * the declaration (a TDZ error) is no such receiver.
- */
-function noteBuilderConsts(
-  envPurity: ReadonlyArray<{
-    ctx: PurityContext & { builders: BuilderPurity }
-  }>,
-  declaration: Extract<Node, { type: 'VariableDeclaration' }>,
-): void {
-  if (declaration.kind !== 'const') {
-    return
-  }
-  for (const d of declaration.declarations) {
-    if (d.id.type !== 'Identifier' || d.init === null) {
-      continue
-    }
-    const init = unwrapExpression(d.init)
-    if (init.type !== 'CallExpression') {
-      continue
-    }
-    for (const { ctx } of envPurity) {
-      const call = builderCall(ctx, ctx.builders, init)
-      if (call?.open) {
-        ctx.builders.locals.set(d.id.name, call.kind)
-      }
-    }
-  }
-}
-
-/**
  * The names a statement declares when only erased code may read them: a
  * module-level `const` of plain identifiers (an exported one is read by its
  * importers). Not one with `await` in its text: an async module delays its
@@ -2158,6 +2140,7 @@ interface BuilderImports {
 }
 
 const ENV_TYPES = ['client', 'server'] as const
+const NO_LINKS: ReadonlySet<number> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
 function builderPurityOf(
@@ -2179,6 +2162,7 @@ function builderPurityOf(
         terminal: table.terminal,
         locals: new Map<string, string>(),
         erased: [],
+        linked: [],
       },
     } satisfies PurityContext,
     /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */

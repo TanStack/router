@@ -43,7 +43,7 @@ export interface PurityContext {
    * (`RecognizerTable.builderLinks`): on the contexts of the
    * per-environment code effects of raw facts (`ModuleAnalysis.effects()`)
    * and on the planners' of a compile, for its environment type
-   * (`ModuleAnalysisOptions.env`, where no `locals` are noted).
+   * (`ModuleAnalysisOptions.env`).
    */
   builders?: BuilderPurity
 }
@@ -72,6 +72,13 @@ export interface BuilderPurity {
   locals: Map<string, string>
   /** The arguments the environment's compile erases, as the checks met them (their reads are erased with them). */
   erased: Array<{ start: number; end: number }>
+  /**
+   * The receivers of the links on a `const` holding a builder the checks
+   * took as no effect (`b.handler(h)`): each link writes the builder (a
+   * middleware's links assign its options), a write of pure values, not an
+   * effect (R139; placement's write table).
+   */
+  linked: Array<Node>
 }
 
 /** A builder chain's call that is no effect (`builderCall`): its kind, and whether links may follow (`.handler()` ends a server fn's). */
@@ -429,15 +436,18 @@ export function builderCall(
       const method = callee.property.name
       const methods = receiver === null ? undefined : b.links[receiver]
       const keep = methods && ownEntry(methods, method)
-      return keep !== undefined && keptPure(keep)
-        ? {
-            kind: receiver!,
-            open: !(
-              ownEntry(b.terminal, receiver!) === 'serverFn' &&
-              method === 'handler'
-            ),
-          }
-        : null
+      if (keep === undefined || !keptPure(keep)) {
+        return null
+      }
+      if (object.type === 'Identifier') {
+        b.linked.push(object)
+      }
+      return {
+        kind: receiver!,
+        open: !(
+          ownEntry(b.terminal, receiver!) === 'serverFn' && method === 'handler'
+        ),
+      }
     }
   }
   if (factory === undefined) {
@@ -780,5 +790,34 @@ function isExpressionNode(n: Node): boolean {
       return true
     default:
       return false
+  }
+}
+
+/**
+ * Records the module-level `const`s of `declaration` whose value is a
+ * builder chain's builder (`b.locals`: its later links read them as
+ * receivers): after its statement is classified, so a read before the
+ * declaration (a TDZ error) is no such receiver.
+ */
+export function noteBuilderConsts(
+  ctx: PurityContext,
+  b: BuilderPurity,
+  declaration: Extract<Node, { type: 'VariableDeclaration' }>,
+): void {
+  if (declaration.kind !== 'const') {
+    return
+  }
+  for (const d of declaration.declarations) {
+    if (d.id.type !== 'Identifier' || d.init === null) {
+      continue
+    }
+    const init = unwrapExpression(d.init)
+    if (init.type !== 'CallExpression') {
+      continue
+    }
+    const call = builderCall(ctx, b, init)
+    if (call?.open) {
+      b.locals.set(d.id.name, call.kind)
+    }
   }
 }

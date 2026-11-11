@@ -133,7 +133,7 @@ export function keptDeclarations(
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    const cause: Pin = cl.sideEffects
+    const cause: Pin = cl.effectful
       ? { reason: 'effects' }
       : t1.mutation.isReassigned(sym, liveInEnv) ||
           graph.regionWrittenSyms.has(sym)
