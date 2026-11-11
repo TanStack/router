@@ -259,6 +259,35 @@ export const read = () => secret()
     timeout,
   )
 
+  test(
+    'a rebuild after a failed one shows the fix',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: [
+          { edits: { 'greeting.ts': `export const greeting = \n` } },
+          {
+            edits: {
+              'greeting.ts': `export const greeting = 'MARK_AFTER'
+`,
+            },
+          },
+        ],
+      })
+      expect((await client.run(`return entry.greeting`)).result).toBe(
+        'MARK_AFTER',
+      )
+      const url = (await client.run(`return entry.greet.url`)).result
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_AFTER')
+    },
+    timeout,
+  )
+
   // Source: review round 3 (R3-G5-4: the Rsbuild host reported the
   // allocator's error once per watch session).
   test(
