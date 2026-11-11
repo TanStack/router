@@ -208,6 +208,92 @@ export function formatUncheckedImporters(
   ].join('\n')
 }
 
+/**
+ * A build's report of a denied file served otherwise than its importers ask
+ * for, by a bundler that compiles each module once (a Vite build; design 4's
+ * I3): its mock, compiled for the importers the compiler does not read
+ * (`others`: a pattern import) before it read the plain import that needs
+ * the file as it is (`needers`, exempt or outside the scope; none: an import
+ * `allowImport` allowed); or the file as it is, compiled by a watch rebuild
+ * while such an import still existed, though none does now.
+ */
+export function formatServedMismatch(
+  info: ViolationInfo,
+  served: 'mock' | 'real',
+  needers: Array<string>,
+  others: Array<string>,
+  ctx: ReportContext,
+): string {
+  const root = ctx.config.root
+  const rel = (p: string) => relativizePath(p, root)
+  const denied = identify(info.resolved ?? info.importer).path
+  const list = (files: Array<string>) => files.map((f) => `    - ${rel(f)}`)
+  const lines = [``]
+  if (served === 'mock') {
+    lines.push(
+      `[import-protection] Denied file mocked in ${info.envType} environment, for an importer that needs it as it is`,
+      ``,
+      deniedBy(info, ctx),
+      `  Denied file: ${rel(denied)}`,
+      ...(needers.length > 0
+        ? [
+            `  Needed as it is by (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
+            ...list(needers),
+          ]
+        : [`  Needed as it is by: an import that allowImport allowed`]),
+      ...(others.length > 0 ? [`  Also reached by:`, ...list(others)] : []),
+      ``,
+      `  The build compiles each module once. It compiled this file for an import it does not read (a pattern import) before it read the import that needs the file as it is, so every importer got the mock.`,
+    )
+  } else {
+    lines.push(
+      `[import-protection] Denied file kept as it is in ${info.envType} environment, though no importer needs it any more`,
+      ``,
+      deniedBy(info, ctx),
+      `  Denied file: ${rel(denied)}`,
+      ...(others.length > 0 ? [`  Reached by:`, ...list(others)] : []),
+      ``,
+      `  The watch rebuild compiled this file while an import that needed it as it is still existed: it ships to the ${info.envType} as it is.`,
+    )
+  }
+  lines.push(``, `  Suggestions:`)
+  if (served === 'real') {
+    lines.push(
+      `    - Save any file this build bundles: the next rebuild compiles the file again, as its mock`,
+    )
+  } else {
+    // the fix of the first importer whose pattern import matches the file
+    let site: PatternSite | null = null
+    for (const importer of others) {
+      const hit = locateIn(ctx.readSource, importer, (text) => {
+        const found = findPatternImport(text, importer, denied, root)
+        return found && { offset: found.offset, value: found }
+      })
+      if (hit) {
+        site = {
+          importer,
+          found: hit.value,
+          cause: 'pattern',
+          loc: hit.loc,
+          frame: hit.frame,
+        }
+        break
+      }
+    }
+    for (const s of patternSuggestions(
+      denied,
+      site,
+      'build',
+      info.envType,
+      root,
+    )) {
+      lines.push(`    - ${s}`)
+    }
+  }
+  lines.push(``)
+  return lines.join('\n')
+}
+
 /** Where a pattern import matched the denied file (`formatViolation`). */
 interface PatternSite {
   importer: string

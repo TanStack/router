@@ -336,7 +336,7 @@ describe('vite build', () => {
   // denied file was compiled (served the mock) for the exempt pattern
   // importer. A Vite build cannot build the file again: `error` fails,
   // naming the file; `mock` warns, naming it
-  test.fails(
+  test(
     'two exempt importers, the plain one compiled after the denied file: the error build fails, naming the file',
     async () => {
       const outcome = await outcomeOf(() =>
@@ -388,7 +388,7 @@ describe('vite build', () => {
   )
 
   // the same order with the plain import allowed by `allowImport`
-  test.fails(
+  test(
     'an exempt pattern importer, then a plain import allowImport allows: the error build fails, naming the file',
     async () => {
       const outcome = await outcomeOf(() =>
@@ -414,7 +414,7 @@ describe('vite build', () => {
   // every module again, here the denied file before its exempt importer,
   // whose edit removed the plain import: the file is served as it is to the
   // checked pattern importer, and the rebuild says so
-  test.fails(
+  test(
     'vite build --watch: the exempt import removed, the denied file compiled before its importer: served as it is and reported',
     async () => {
       const build = await buildStart({
@@ -485,7 +485,7 @@ return { plain: plain(), glob: await glob() }`
 // exempt pattern importer before the exempt plain importer three modules
 // deep; the dev server builds it again once it read the plain import (the
 // page reloads), so both get the real module
-test.fails(
+test(
   'vite dev: two exempt importers, the plain one compiled after the denied file: both get the real module',
   async () => {
     const server = await startDevServer({
@@ -508,7 +508,7 @@ test.fails(
 
 // The same order with a checked plain importer whose import `allowImport`
 // allows (asked when the bundler requests it, after the importer's compile)
-test.fails(
+test(
   'vite dev: a checked pattern importer, then a plain import allowImport allows: both get the real module',
   async () => {
     const server = await startDevServer({
@@ -537,7 +537,7 @@ describe('dev: the exempt import removed by an edit', () => {
     'src/generated/reg.ts': `export const viaPlain = () => 'none'\n`,
   }
 
-  test.fails(
+  test(
     'vite dev: the checked pattern importer gets the mock',
     async () => {
       const recorder = violationRecorder(options('mock'))

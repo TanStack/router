@@ -529,6 +529,9 @@ function envCompilerPlugins(
       const reports = await ipEnv.surviving(
         live,
         rolldownGraphView((id) => this.getModuleInfo(id)),
+        // (a module served otherwise than its importers now ask for is
+        // reported: a build compiles it once)
+        (id) => this.getModuleInfo(id) !== null,
       )
       // every report first: the build fails once, with all of its errors
       const errors: Array<string> = []

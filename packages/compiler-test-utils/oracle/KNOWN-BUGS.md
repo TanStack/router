@@ -103,8 +103,9 @@ code.test.ts`: "a root route's %s loads lazily".
 
 ## Known incorrect rejections (accepted, R89)
 
-Reason, for both: a denied file is judged at its own compile, from the imports the compiler indexed; the bundler's graph
-is not consulted there in dev, so these imports are not visible. A dev server serves the mock and reports the denied
+Reason, for both: a denied file is judged from the plain imports of it the compiler indexed (at its own compile, and
+again when they change: design 4); the bundler's graph is not consulted there in dev, so these imports are not
+visible. A dev server serves the mock and reports the denied
 file; a build serves the mock and prints one warning per denied file whose every importer is exempt or outside the
 scope, naming the file, its importers and the fix (not a violation: no `onViolation` call, no failure with the `error`
 behaviour; "a build warns once about each denied file…"). Tests in
@@ -119,6 +120,12 @@ bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' p
   `new URL` gets the mock**, with the same warning (the scope is about importers: a denied file is judged wherever it
   lives). A plain import from there gets the real module. `known-bugs-rejections.test.ts`: "an importer outside the
   source directory reaching a denied file outside it only through a pattern gets the real module".
+- **A Vite build that compiled a denied file for a pattern import before it read the exempt plain import of it serves
+  the mock to both** (a build compiles a module once; Rsbuild and the dev servers compile the file again), and says
+  so under `behavior` (R142 (2)): the build fails with `error`, warns with `mock`, naming the file, the importer that
+  needs it and the fix (leave it out of the pattern). `start-plugin-core/tests/integration/importProtection/served-
+verdict.test.ts`: "two exempt importers, the plain one compiled after the denied file: the %s build …" (a user plugin
+  holds the plain importer's `load`). Not a pin: the outcome is the ruled one.
 - **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
   SPEC J6.7, J6.1. "an importer outside srcDirectory gets the real module of an in-scope denied file it imports, and is
   not reported". Workaround: import the file from a module inside the scope.

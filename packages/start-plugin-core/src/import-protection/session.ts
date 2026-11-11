@@ -41,7 +41,11 @@ import {
   violationsOf,
 } from './violations'
 import { witnessLookup } from './witness'
-import { formatUncheckedImporters, formatViolation } from './trace'
+import {
+  formatServedMismatch,
+  formatUncheckedImporters,
+  formatViolation,
+} from './trace'
 import type { Planner, StaleSets } from '@tanstack/router-utils/compiler'
 import type {
   ImportProtectionConfig,
@@ -753,18 +757,22 @@ class ImportProtectionEnv {
    * before the module, its imports are indexed).
    */
   private selfAllowed(self: EdgeViolation): boolean {
-    if (this.ip.targetAllowed(this.type, self.resolved!)) {
-      return true
-    }
+    return (
+      this.ip.targetAllowed(this.type, self.resolved!) ||
+      !this.demanders(self).next().done
+    )
+  }
+
+  /** The importers (files) that import a module that is its own violation and are not checked: each makes it real. */
+  private *demanders(self: EdgeViolation): Generator<string> {
     // (an importer merely outside the scope: only of a file outside it too, R89)
     const inside = this.ip.inScope(traceFile(self.resolved!))
     for (const importerId of this.edges.importers(self.resolved!)) {
       const importer = traceFile(importerId)
       if (!this.ip.inScope(importer) && (!inside || this.ip.exempt(importer))) {
-        return true
+        yield importer
       }
     }
-    return false
   }
 
   /**
@@ -844,6 +852,11 @@ class ImportProtectionEnv {
         this.edges.set(importerId, record.edges, record.revision ?? null)
       }
     }
+  }
+
+  /** Whether anything was served under the ledger (`mismatches` finds nothing otherwise; most sessions). */
+  get serving(): boolean {
+    return this.served.size > 0
   }
 
   /**
@@ -1275,11 +1288,16 @@ class ImportProtectionEnv {
    * `readRolldownWitness`/`readRspackWitness`) tell which violations stayed;
    * `onViolation` hears about each with its trace in `graph`, and the reports
    * are returned, formatted (`error` behaviour: the build fails with them;
-   * `mock`: warnings).
+   * `mock`: warnings). `holds`: the module ids of the build, from a host that
+   * cannot build a module again (a Vite build): a denied file it holds that
+   * was served otherwise than its importers now ask for (`mismatches`) is
+   * reported as such under `behavior`, instead of its other reports (design
+   * 4's I3; the Rspack host builds it again before this runs).
    */
   async surviving(
     liveKeys: ReadonlyArray<string>,
-    graph: ImportGraphView | null,
+    graph: ImportGraphView,
+    holds?: (id: string) => boolean,
   ): Promise<
     Array<{
       severity: 'error' | 'warning'
@@ -1288,6 +1306,15 @@ class ImportProtectionEnv {
     }>
   > {
     this.graph = graph
+    const unsettled = new Map<string, Served>()
+    if (holds) {
+      for (const id of await this.mismatches()) {
+        const entry = this.served.get(id)
+        if (entry?.self && holds(id)) {
+          unsettled.set(id, entry)
+        }
+      }
+    }
     // the mocked modules that are their own violation whose every importer is not checked (R89), with those importers
     const unchecked = new Map<string, [EdgeViolation, Array<string>]>()
     const live = new Map<string, EdgeViolation>()
@@ -1303,11 +1330,12 @@ class ImportProtectionEnv {
           add(v)
           continue
         }
+        const id = normalizePath(v.importerId)
         // (the witness finds a served mock; the key may stand for other ids too)
-        if (this.served.get(normalizePath(v.importerId))?.verdict !== 'mock') {
+        if (this.served.get(id)?.verdict !== 'mock' || unsettled.has(id)) {
           continue
         }
-        const importers = [...(graph?.importers(v.importerId) ?? [])]
+        const importers = [...graph.importers(v.importerId)]
         const checked = this.importsOf(v, importers)
         checked.forEach(add)
         const others = importers.filter((id) => this.ip.ids.parse(id) === null)
@@ -1340,6 +1368,31 @@ class ImportProtectionEnv {
       reports.push({
         severity: 'warning' as const,
         message,
+        info: info as ViolationInfo,
+      })
+    }
+    // not violations either, but the build shipped what no importer asked for
+    for (const { verdict, self } of unsettled.values()) {
+      const v = self!
+      const info = violationInfo(v, this.ip.config, () => ({
+        steps: [],
+        fromEntry: false,
+      }))
+      const needers = verdict === 'mock' ? [...this.demanders(v)] : []
+      const others = [...graph.importers(v.importerId)]
+        .filter((i) => this.ip.ids.parse(i) === null)
+        .map(traceFile)
+        .filter((file) => !needers.includes(file))
+      reports.push({
+        severity:
+          v.behavior === 'error' ? ('error' as const) : ('warning' as const),
+        message: formatServedMismatch(
+          info,
+          verdict,
+          needers,
+          [...new Set(others)],
+          this.ip.report,
+        ),
         info: info as ViolationInfo,
       })
     }
