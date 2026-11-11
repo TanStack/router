@@ -286,8 +286,10 @@ export interface Tier1 {
   runsLaterAt: (offset: number) => boolean
   /**
    * The starts of the receivers of links on a `const` holding a builder
-   * that the module's purity took as no effect (`b.handler(h)`): each one
-   * writes that builder (R139), a member write in placement's write table.
+   * whose links write it (`RecognizerTable.builderLinksWrite`: a
+   * middleware's) that the module's purity took as no effect
+   * (`b.server(f)`): each one writes that builder (R139), a member write in
+   * placement's write table.
    */
   builderLinks: ReadonlySet<number>
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
@@ -318,9 +320,11 @@ interface ModuleAnalysisOptions {
    * is one instance in every output of an environment: a call result is
    * never copied (the server-fn provider, the module's instance in another
    * layer, copies what it reaches whatever its purity). A link called on a
-   * `const` holding a builder is no effect either but a write of that
-   * builder (a middleware's links write the options of the builder they are
-   * called on, which another link of it then reads; R139): `builderLinks`.
+   * `const` holding a builder is no effect either; for a kind whose links
+   * write the builder they are called on (a middleware's assign its
+   * options, which another link of it then reads; `builderLinksWrite`) it
+   * is a write of that builder (R139): `builderLinks`. Another kind's link
+   * (a server fn's copies the options) only reads it.
    * Raw reads give none (`effects()` derives each one's).
    */
   env?: 'client' | 'server'
@@ -2227,6 +2231,7 @@ interface BuilderImports {
 
 const ENV_TYPES = ['client', 'server'] as const
 const NO_LINKS: ReadonlySet<number> = new Set()
+const NO_KINDS: ReadonlySet<string> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
 function builderPurityOf(
@@ -2243,6 +2248,7 @@ function builderPurityOf(
         env,
         links: table.builderLinks!,
         envOnly: table.envOnlyKinds,
+        writes: table.builderLinksWrite ?? NO_KINDS,
         factories: imports.factories,
         namespaces: imports.namespaces,
         terminal: table.terminal,

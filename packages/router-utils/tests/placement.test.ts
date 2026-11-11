@@ -6721,9 +6721,50 @@ describe('builder chains in a compile', () => {
     )
   })
 
-  // Two links on one builder: each writes it, so the builder and both
-  // exports are one cluster and leave together, to the first one's module.
+  // Two links on one middleware builder: each writes it, so the builder
+  // and both exports are one cluster and leave together, to the first
+  // one's module. (Finding 4: a server fn's links write nothing, so this
+  // row moved to the middleware kind; the server fn spelling follows.)
   it('extracts two exports linked on one const builder together', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { createMiddleware } from 'toy-start'
+          const base = createMiddleware()
+          export const one = base.server(async () => 1)
+          export const two = base.server(async () => 2)
+          export const Route = createFileRoute('/')({
+            component: () => [one, two],
+          })
+        `),
+      },
+      recognizer,
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).not.toContain('createMiddleware()')
+    expect(main?.code).toContain(
+      "export { one, two } from '/app/route.tsx?tsr-split=export---one'",
+    )
+    const extracted = await host.compile(
+      '/app/route.tsx?tsr-split=export---one',
+      planners,
+      { env },
+    )
+    expect(extracted?.code).toContain(
+      'const base = createMiddleware()\nconst one = base.server(',
+    )
+    expect(main?.diagnostics).toEqual([])
+  })
+
+  // Two exported server fns on one shared base read it, each from its own
+  // extracted module: the base, a call result, exists once (R77), so the
+  // route module keeps it and both, which read it when they load (T).
+  it('keeps two exported server fns on one shared const base in the route module', async () => {
     const host = new MemoryHost({
       files: {
         '/app/route.tsx': dedent(`
@@ -6744,19 +6785,13 @@ describe('builder chains in a compile', () => {
     ]
     const env = envInfo({ mode: 'build', type: 'client', name: 'client' })
     const main = await host.compile('/app/route.tsx', planners, { env })
-    expect(main?.code).not.toContain('createServerFn()')
     expect(main?.code).toContain(
-      "export { one, two } from '/app/route.tsx?tsr-split=export---one'",
+      'const base = createServerFn()\nexport const one = base.handler(',
     )
-    const extracted = await host.compile(
-      '/app/route.tsx?tsr-split=export---one',
-      planners,
-      { env },
-    )
-    expect(extracted?.code).toContain(
-      'const base = createServerFn()\nconst one = base.handler(',
-    )
-    expect(main?.diagnostics).toEqual([])
+    expect(main?.diagnostics.map((d) => d.code)).toEqual([
+      'eager-export:reads',
+      'eager-export:reads',
+    ])
   })
 
   // A builder in a `const` and its one link is the inline chain spelled in

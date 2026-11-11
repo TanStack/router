@@ -165,8 +165,9 @@ extends Z`, directly or through what they carry) share the module of the first i
   (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
   cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding
   its cluster declares (`Page.displayName = …`, `plugins.push(a)` on an array literal or a `new Map`/`Set`: a
-  method of that name on another object is its own code, a call, R65; a link on a `const` holding a builder, which
-  writes the builder: R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
+  method of that name on another object is its own code, a call, R65; a link on a `const` holding a builder of a kind
+  whose links write it, `RecognizerTable.builderLinksWrite`: a middleware's assign its options, a server fn's copy
+  them and only read the builder; R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
   write's owner is the evaluation holding it (its unit, or a claimed option value); one in a function that
   evaluation passes to a call (`track(() => { cfg.x = 1 })`) is also that evaluation's write at an unknown time,
   as when the function is named. The writes have two halves, each

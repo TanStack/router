@@ -105,6 +105,15 @@ export interface RecognizerTable {
    * (there, a link called on a `const` is an effect: `ModuleAnalysisOptions.env`).
    */
   builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
+  /**
+   * The builder kinds whose links write the builder they are called on
+   * (`createMiddleware`'s assign its options, which the next link of it
+   * reads): a link on a `const` holding one is a write of that `const`
+   * (R139). A link of another kind copies the options into a new builder
+   * (`createServerFn`) and writes nothing: two chains on one shared base
+   * only read it.
+   */
+  builderLinksWrite?: ReadonlySet<Kind>
 }
 
 export const EMPTY_RECOGNIZER: RecognizerTable = {
