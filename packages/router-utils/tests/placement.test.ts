@@ -6428,11 +6428,9 @@ describe('language operations are no effect (rule L)', () => {
   // under rule L, and the write through the holder of `o0`'s first object
   // is no write of `o0` (it is reassigned: no object of its own), so
   // nothing orders them; the order rule ordered the two effects before
-  it.fails(
-    'keeps a read of a reassigned binding before a write through a holder of its object',
-    async () => {
-      const r = await split(
-        dedent(`
+  it('keeps a read of a reassigned binding before a write through a holder of its object', async () => {
+    const r = await split(
+      dedent(`
         import { createFileRoute } from 'toy-router'
         let o0 = { v: 1 }
         const h3 = { c: o0 }
@@ -6443,20 +6441,17 @@ describe('language operations are no effect (rule L)', () => {
           component: () => ({ r7 }),
         })
       `),
-      )
-      expect(r.env).toContain('const r7 = [o0.v, o0.p]')
-    },
-  )
+    )
+    expect(r.env).toContain('const r7 = [o0.v, o0.p]')
+  })
 
   // the executing property (seed 309): `'p' in l8` reads what `l8` holds
   // (`o0`, through a conditional alias), but `in` is no read through a
   // name for the alias model, so the write through the holder after it
   // orders nothing
-  it.fails(
-    'keeps an `in` through an alias before a write through a holder of the object',
-    async () => {
-      const r = await split(
-        dedent(`
+  it('keeps an `in` through an alias before a write through a holder of the object', async () => {
+    const r = await split(
+      dedent(`
         import { createFileRoute } from 'toy-router'
         const on = true
         const o0 = { v: 1 }
@@ -6468,20 +6463,17 @@ describe('language operations are no effect (rule L)', () => {
           component: () => ({ r9 }),
         })
       `),
-      )
-      expect(r.env).toContain("const r9 = 'p' in l8")
-    },
-  )
+    )
+    expect(r.env).toContain("const r9 = 'p' in l8")
+  })
 
   // the executing property (seeds 555, 1880): a spread of a builder's
   // options is no effect under rule L, and a call of its method inside a
   // route option's function is no recorded write (at an unknown time), so
   // nothing keeps the copy before the call that changes them
-  it.fails(
-    'keeps a copy of an object before a method call on it in a route option function',
-    async () => {
-      const r = await split(
-        dedent(`
+  it('keeps a copy of an object before a method call on it in a route option function', async () => {
+    const r = await split(
+      dedent(`
         import { createFileRoute } from 'toy-router'
         import { mw, hoc } from './lib'
         const b5 = mw()
@@ -6491,11 +6483,10 @@ describe('language operations are no effect (rule L)', () => {
           component: () => ({ r6 }),
         })
       `),
-        { keys: ['component'] },
-      )
-      expect(r.env).toContain('const r6 = { ...b5.o }')
-    },
-  )
+      { keys: ['component'] },
+    )
+    expect(r.env).toContain('const r6 = { ...b5.o }')
+  })
 
   // what is no language operation stays an effect: an exported declaration
   // a chunk needs is then kept for its effects, not extracted
@@ -6708,6 +6699,275 @@ describe('no order rule: bindings decide', () => {
       expect(r.chunks.component).toContain('const a = track(1)')
       expect(r.chunks.errorComponent).toContain('const b = track(2)')
     })
+  })
+})
+
+// A bare statement (it declares nothing: a call, an assignment, an
+// `if`/`try`/loop block) moves into a chunk when every module binding it
+// touches goes to that chunk (its bindings and the objects their values
+// hold), in source order there; one touching an import, or bindings that
+// stay or go elsewhere, stays in the route module.
+describe('statements follow what they touch', () => {
+  const route = (decls: string, options: string, imports = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { z } from 'zod'
+      import { createTable, snapshot, fetchSettings, createRegistry, observer, initializeApp, connectAuthEmulator, getAuth } from './lib'
+      ${imports}
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+    `)
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  // the user's examples (1) to (5)
+  it('keeps keys `validateSearch` reads and moves the schema only the component reads (1)', async () => {
+    const r = await split(
+      route(
+        "const ENTITY_KEYS = ['user', 'team'] as const\nconst entitySchema = z.enum(ENTITY_KEYS)",
+        'validateSearch: z.object({ entity: z.enum(ENTITY_KEYS) }),\ncomponent: () => entitySchema,',
+      ),
+    )
+    expect(r.env).toContain("const ENTITY_KEYS = ['user', 'team'] as const")
+    expect(r.env).not.toContain('const entitySchema')
+    expect(r.chunks.component).toContain(
+      'const entitySchema = z.enum(ENTITY_KEYS)',
+    )
+    expect(r.chunks.component).toContain(
+      "import { ENTITY_KEYS } from '/app/route.tsx'",
+    )
+    expect(eager(r)).toEqual([])
+  })
+
+  it('keeps the base schema `validateSearch` reads and moves its extension (2)', async () => {
+    const r = await split(
+      route(
+        'const Base = z.object({ page: z.number() })\nconst Full = Base.extend({ q: z.string() })',
+        'validateSearch: Base,\ncomponent: () => Full,',
+      ),
+    )
+    expect(r.env).toContain('const Base = z.object(')
+    expect(r.env).not.toContain('Base.extend(')
+    expect(r.chunks.component).toContain(
+      'const Full = Base.extend({ q: z.string() })',
+    )
+    expect(eager(r)).toEqual([])
+  })
+
+  it('keeps a config `head` reads and moves the component value handed it (3)', async () => {
+    const r = await split(
+      route(
+        "const cfg = { name: 'Settings' }\nconst title = cfg.name\nfunction Page() { return 'page' }",
+        'head: () => ({ meta: [{ title }] }),\ncomponent: observer(Page, cfg),',
+      ),
+    )
+    expect(r.env).toContain("const cfg = { name: 'Settings' }")
+    expect(r.env).toContain('const title = cfg.name')
+    expect(r.env).not.toContain('function Page')
+    expect(r.chunks.component).toContain(
+      "function Page() { return 'page' }\nconst TsrSplitComponent = observer(Page, cfg)",
+    )
+    expect(r.chunks.component).toContain("import { cfg } from '/app/route.tsx'")
+  })
+
+  it('moves a table, its snapshot and the call changing it to the component chunk, in source order (4)', async () => {
+    const decls =
+      "const table = createTable()\nconst columns = snapshot(table)\ntable.addColumn('x')"
+    const r = await split(route(decls, 'component: () => columns,'))
+    expect(r.env).not.toContain('createTable()')
+    expect(r.env).not.toContain('addColumn')
+    expect(r.chunks.component).toContain(decls)
+    expect(eager(r)).toEqual([])
+  })
+
+  it('moves an awaited value only the component reads (5)', async () => {
+    const r = await split(
+      route('const data = await fetchSettings()', 'component: () => data,'),
+    )
+    expect(r.env).not.toContain('fetchSettings()')
+    expect(r.chunks.component).toContain('const data = await fetchSettings()')
+  })
+
+  it('keeps a statement touching an import the component uses (Sentry)', async () => {
+    const r = await split(
+      route(
+        "Sentry.init({ dsn: 'https://x' })",
+        'component: () => Sentry.lastEventId(),',
+        "import * as Sentry from '@sentry/react'",
+      ),
+    )
+    expect(r.env).toContain("Sentry.init({ dsn: 'https://x' })")
+    expect(r.chunks.component).not.toContain('Sentry.init(')
+  })
+
+  it('keeps a statement touching imports (i18n.use)', async () => {
+    const r = await split(
+      route(
+        'i18n.use(backend)',
+        "component: () => i18n.t('x'),",
+        "import i18n from 'i18next'\nimport backend from 'i18next-http-backend'",
+      ),
+    )
+    expect(r.env).toContain('i18n.use(backend)')
+    expect(r.chunks.component).not.toContain('i18n.use(')
+  })
+
+  it('moves a block statement with the binding it touches', async () => {
+    const decls =
+      "const table = createTable()\nconst columns = snapshot(table)\nif (columns.length === 0) { table.addColumn('x') }"
+    const r = await split(route(decls, 'component: () => table,'))
+    expect(r.env).not.toContain('createTable()')
+    expect(r.chunks.component).toContain(decls)
+  })
+
+  it('moves statements between the declarations they change, in source order', async () => {
+    const decls =
+      "const table = createTable()\ntable.addColumn('x')\nconst columns = snapshot(table)\ntable.addColumn('y')"
+    const r = await split(route(decls, 'component: () => columns,'))
+    expect(r.env).not.toContain('addColumn')
+    expect(r.chunks.component).toContain(decls)
+  })
+
+  it('keeps a statement touching bindings two chunks need, and them', async () => {
+    const r = await split(
+      route(
+        'const a = createTable()\nconst b = createTable()\na.link(b)',
+        'component: () => a,\nerrorComponent: () => b,',
+      ),
+      { keys: ['component', 'errorComponent'] },
+    )
+    expect(r.env).toContain(
+      'const a = createTable()\nconst b = createTable()\na.link(b)',
+    )
+  })
+
+  it('keeps a statement touching through an alias an object the route module keeps', async () => {
+    const r = await split(
+      route(
+        "const table = createTable()\nconst alias = table\nalias.addColumn('x')",
+        'validateSearch: table.schema,\ncomponent: () => alias,',
+      ),
+    )
+    expect(r.env).toContain(
+      "const table = createTable()\nconst alias = table\nalias.addColumn('x')",
+    )
+  })
+
+  // what the rule changes (reported): an effect outside the bindings the
+  // compiler sees runs when the chunk loads
+  describe('what it moves later', () => {
+    it('moves an install call patching a global with the registry only the component reads', async () => {
+      const decls = 'const registry = createRegistry()\nregistry.install()'
+      const r = await split(route(decls, 'component: () => registry,'))
+      expect(r.env).not.toContain('registry.install()')
+      expect(r.chunks.component).toContain(decls)
+    })
+
+    it('moves a call of a function only the component reads, whatever it touches when called', async () => {
+      const decls =
+        "const table = createTable()\nfunction setup() { table.addColumn('x') }\nsetup()"
+      const r = await split(
+        route(decls, 'validateSearch: table.schema,\ncomponent: () => setup,'),
+      )
+      expect(r.env).toContain('const table = createTable()')
+      expect(r.env).not.toContain('setup()')
+      expect(r.chunks.component).toContain(
+        "function setup() { table.addColumn('x') }\nsetup()",
+      )
+    })
+
+    // Firebase: the app only the component reads moves; a bare call
+    // handing it to an import stays and keeps it
+    it('moves an app only the component reads past `getAuth()`, and keeps one an emulator call touches', async () => {
+      const r = await split(
+        route(
+          "const app = initializeApp({ projectId: 'p' })\nconst auth = getAuth()",
+          'loader: () => auth,\ncomponent: () => app,',
+        ),
+      )
+      expect(r.env).not.toContain('initializeApp(')
+      expect(r.chunks.component).toContain('const app = initializeApp(')
+      const k = await split(
+        route(
+          "const app = initializeApp({ projectId: 'p' })\nconnectAuthEmulator(getAuth(app), 'http://localhost')",
+          'component: () => app,',
+        ),
+      )
+      expect(k.env).toContain(
+        "const app = initializeApp({ projectId: 'p' })\nconnectAuthEmulator(",
+      )
+      expect(k.chunks.component).toContain(
+        "import { app } from '/app/route.tsx'",
+      )
+    })
+
+    // the order warning is gone: what head kept with `eager-split:order`
+    // moves unreported
+    it('reports no order warning for a value before a bare call', async () => {
+      const r = await split(
+        route(
+          'const table = createTable()\nconnectAuthEmulator()',
+          'component: () => table,',
+        ),
+      )
+      expect(r.env).not.toContain('createTable()')
+      expect(r.env).toContain('connectAuthEmulator()')
+      expect(eager(r)).toEqual([])
+    })
+  })
+})
+
+// Rule L reads objects through language operations: a write of the object
+// through another name after the read is one of that object, ordered
+// against the read (the mutation model's owner of "the object a binding
+// names").
+describe('rule L: an object written through another name', () => {
+  const run = (decls: string) =>
+    split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({ component: () => y })
+      `),
+    )
+  // the read and the write stay in one module, in source order
+  const inOrder = (
+    r: Awaited<ReturnType<typeof split>>,
+    read: string,
+    write: string,
+  ) => {
+    const where = [r.env, r.chunks.component!].find((t) => t.includes(read))!
+    expect(where.indexOf(write)).toBeGreaterThan(where.indexOf(read))
+  }
+
+  it('orders an enum member read before a write through an alias', async () => {
+    const r = await run(
+      "enum E { A = 'OLD' }\nconst alias: any = E\nconst y = E.A\nalias.A = 'NEW'",
+    )
+    inOrder(r, 'const y = E.A', "alias.A = 'NEW'")
+  })
+
+  it('orders an enum member read before a write through an import alias', async () => {
+    const r = await run(
+      "enum E { A = 'OLD' }\nimport F = E\nconst y = E.A\n;(F as any).A = 'NEW'",
+    )
+    inOrder(r, 'const y = E.A', "(F as any).A = 'NEW'")
+  })
+
+  it('orders an enum member read before a write through a holder', async () => {
+    const r = await run(
+      "enum E { A = 'OLD' }\nconst holder = { e: E as any }\nconst y = E.A\nholder.e.A = 'NEW'",
+    )
+    inOrder(r, 'const y = E.A', "holder.e.A = 'NEW'")
+  })
+
+  it('orders a merged namespace member read before a write through an alias', async () => {
+    const r = await run(
+      "namespace N { export const A = 'OLD' }\nconst alias: any = N\nconst y = N.A\nalias.A = 'NEW'",
+    )
+    inOrder(r, 'const y = N.A', "alias.A = 'NEW'")
   })
 })
 
