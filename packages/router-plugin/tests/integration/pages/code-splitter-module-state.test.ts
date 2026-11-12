@@ -1017,6 +1017,9 @@ export {
 `,
   }
   const recorders = `import { recordFirst, recordSecond, recordThird, recordMiddle, recordShared } from './state'\n`
+  /** `const <name> = record<Name>('MARK_<name>')`. */
+  const record = (name: string) =>
+    `const ${name} = record${name[0]!.toUpperCase()}${name.slice(1)}('MARK_${name}')`
 
   /**
    * Loads `body` (after the route's imports), then returns what ran once
@@ -1074,6 +1077,29 @@ function Page() {
       })
     },
   )
+
+  // (R138, design 2 step 5: both evaluate in the component's chunk, in
+  // source order; the row asserted that both stayed in the route module)
+  it('moves one another one reads with it, in source order', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+${record('first')}
+const second = [first, recordSecond('MARK_second')]
+function Page() {
+  return <p>{second.join(' ')}</p>
+}
+`,
+        ['component'],
+        ['first', 'second'],
+      ),
+    ).toEqual({
+      loaded: [],
+      rendered: ['MARK_first', 'MARK_second'],
+      html: ['<p>MARK_first MARK_second</p>'],
+      eagerHolds: [],
+    })
+  })
 
   // A const the route module keeps (the loader reads it) is evaluated
   // before the chunk loads; the chunk imports that one instance

@@ -143,6 +143,15 @@ return globalThis.__fired ?? 0`,
   },
 ]
 
+/** How the split component compares an exported function sentinel. */
+const sentinelUses: Array<[string, string]> = [
+  ['compared by `===`', 'return cb === DEFAULT'],
+  [
+    'used as a case label',
+    'switch (cb) {\n    case DEFAULT:\n      return true\n    default:\n      return false\n  }',
+  ],
+]
+
 // ---- identity of exported classes, contexts and objects the chunk imports -----
 // A class, an annotated call and a literal have an identity: the chunk
 // imports them from the extracted module, which also serves importers of
@@ -268,6 +277,24 @@ export const Route = createFileRoute('/')({ component: Page })
 return [html, entry.isDefault(entry.DEFAULT)]`,
     expected: ['<p>true</p>', true],
   },
+  ...sentinelUses.map(
+    ([how, body]): Case => ({
+      // the component compares what an importer of the route file passes
+      name: `an exported function sentinel ${how} in the split component matches the instance an importer of the route file passes`,
+      route: `export const DEFAULT = () => {}
+function isDefault(cb: unknown) {
+  ${body}
+}
+function Page({ cb }: { cb: unknown }) {
+  return <p>{String(isDefault(cb))}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      reexports: 'DEFAULT',
+      script: `return await entry.render(entry.Route.options.component, { cb: entry.DEFAULT })`,
+      expected: '<p>true</p>',
+    }),
+  ),
   {
     // a copied function another export of the route file holds is the
     // importer's instance of it

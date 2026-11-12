@@ -17,6 +17,9 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
   on a copy (router-generator `copyFixture`).
 - Diagnostics are checked by severity, file and position only, never by wording.
 - Edits settle on their outcome within one bound, never on counts of events, compiles or updates.
+- No generated or seeded tests in the repository, not even behind a local target: every input is written out in the
+  test. A generator (random modules, seeded schedules, fuzzing) is a development tool kept outside the repository;
+  each case it finds becomes a static test that names its source.
 
 ## Helpers
 
@@ -65,7 +68,8 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
   (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for budget measurements.
 - Slow tier: at most two `test:integration` runs on the machine at once:
-  `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`.
+  `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`. A whole-oracle run takes the
+  machine: start it when none runs (`-lt 1`).
 - Tiers: `test:unit` (in process, the inner loop); `test:integration` (`tests/integration/`: real builds, dev servers,
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
   across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads

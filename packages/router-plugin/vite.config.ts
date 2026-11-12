@@ -1,5 +1,6 @@
 import os from 'node:os'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
+import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 
@@ -25,11 +26,27 @@ const pagesProject = {
   },
 } as const
 
+/** The slow tier (`test:integration`): real builds, Rsbuild dev servers, child Node runs and browsers. */
+const integrationProject = {
+  extends: true,
+  test: {
+    name: 'integration',
+    // A test process keeps its modules (and its browser) across test
+    // files; the setup file gives each file the environment it
+    // started with (see `test-scope-setup`)
+    isolate: false,
+    include: ['integration/**/*.test.ts'],
+    exclude: [...configDefaults.exclude, 'integration/pages/**'],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+  },
+} satisfies TestProjectInlineConfiguration
+
 /**
  * Main's own tests that the tests above do not replace yet (output
  * snapshots of the Babel-based compiler, in-process runs of
- * `handleRouteUpdate`, the production-warning and source-map builds of
- * webpack and Rspack). They run as they always did: one test at a time,
+ * `handleRouteUpdate`, the production-warning builds of webpack and
+ * Rspack). They run as they always did: one test at a time,
  * each file in its own module graph, with the generator's temporary files
  * next to the apps they write into the package.
  */
@@ -42,7 +59,6 @@ const mainFiles = [
   'production-warnings.test.ts',
   'react-refresh-route-components.test.ts',
   'router-plugin-context.test.ts',
-  'source-maps.test.ts',
 ]
 
 const config = defineConfig({
@@ -89,22 +105,7 @@ const config = defineConfig({
           env: { TSR_TMP_DIR: '' },
         },
       },
-      {
-        // Slow tier (`test:integration`): real builds, Rsbuild dev servers,
-        // child Node runs and browsers.
-        extends: true,
-        test: {
-          name: 'integration',
-          // A test process keeps its modules (and its browser) across test
-          // files; the setup file gives each file the environment it
-          // started with (see `test-scope-setup`)
-          isolate: false,
-          include: ['integration/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, 'integration/pages/**'],
-          testTimeout: 30_000,
-          hookTimeout: 30_000,
-        },
-      },
+      integrationProject,
       {
         // Slow tier too (`test:integration` runs both projects): route apps
         // checked in pages of a real browser (`route-app.ts`), as the fast

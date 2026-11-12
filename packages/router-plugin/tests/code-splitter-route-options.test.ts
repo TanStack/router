@@ -238,7 +238,7 @@ export const fallback = () => 'fallback'
       code: `import Page, { ErrorView, Pending, loadData } from './page'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
-  loader: loadData,
+  loader: () => loadData(),
   component: Page,
   errorComponent: ErrorView,
   pendingComponent: Pending,
@@ -265,12 +265,12 @@ export const Route = createFileRoute('/')({
       loaded: 'data',
     },
     {
-      name: 'a conditional loader',
+      name: 'a loader calling a conditional',
       code: `import { isEnabled } from './flags'
 import Page, { loadData, fallback } from './page'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
-  loader: isEnabled ? loadData : fallback,
+  loader: () => (isEnabled ? loadData : fallback)(),
   component: Page,
 })`,
       expected: { component: 'page' },
@@ -300,7 +300,7 @@ return { rendered, loaded: await options.loader() }`),
       `${head}import { loadData } from './loader'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
-  loader: loadData,
+  loader: () => loadData(),
   component: () => <p>page</p>,
 })
 `,

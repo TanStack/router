@@ -1,8 +1,9 @@
 /**
  * Control tests of run-node.ts: a program run in a child Node process gives
- * its output, fails fast past its timeout, and never outlives the process
- * that started it (a test worker killed on a timeout must not leave it
- * spinning).
+ * its output, fails fast past its timeout naming how far it got, never
+ * outlives the process that started it (a test worker killed on a timeout
+ * must not leave it spinning), and runs with one watchdog thread, however
+ * long it runs.
  */
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -10,7 +11,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
-import { runNodeProgram } from '../../src/run-node'
+import { runNodeProgram, runNodeStep } from '../../src/run-node'
 
 const runNodeModule = pathToFileURL(
   path.join(
@@ -59,6 +60,28 @@ test('a program that runs past its timeout is killed, and the run says so', asyn
     runNodeProgram(`while (true) {}`, { timeout: 500 }),
   ).rejects.toThrow('the program did not finish within 500 ms')
   expect(Date.now() - started).toBeLessThan(10_000)
+}, 20_000)
+
+test('a program stuck on a promise is killed past its timeout, and the run names the step it was in', async () => {
+  await expect(
+    runNodeProgram(
+      `${runNodeStep('waiting for the reply')}await new Promise(() => setInterval(() => {}, 1000))`,
+      { timeout: 500 },
+    ),
+  ).rejects.toThrow(
+    /did not finish within 500 ms \(killed\); steps: node started at \d+ ms, waiting for the reply at \d+ ms; no stdout/,
+  )
+}, 20_000)
+
+test('a program runs with one thread of the harness, however long it runs', async () => {
+  // Worker threads nest when each one starts another (Node runs the
+  // `--import` modules in every worker thread)
+  const { stdout } =
+    await runNodeProgram(`await new Promise((resolve) => setTimeout(resolve, 500))
+const depth = (report) => Math.max(0, ...(report.workers ?? []).map((worker) => 1 + depth(worker)))
+process.stdout.write(String(depth(process.report.getReport())))
+`)
+  expect(Number(stdout)).toBe(1)
 }, 20_000)
 
 test('a program stuck in a synchronous loop dies with the process that started it', async () => {

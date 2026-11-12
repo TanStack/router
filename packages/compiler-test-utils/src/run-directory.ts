@@ -25,10 +25,11 @@
  * (`runDirectoryVariable`). Without this setup, the apps go to the system's
  * temporary directory itself.
  *
- * The compiler's invariant checker (`TSR_COMPILER_VERIFY`, see
- * `router-utils/src/compiler/verify.ts`) is on for every test run unless
- * the environment says otherwise: every compile of the suite re-parses its
- * outputs and fails loudly on a broken one.
+ * The compiler's self-checks (`TSR_COMPILER_VERIFY`, see
+ * `router-utils/src/compiler/self-checks.ts`) are on for every test run
+ * unless the environment says otherwise: every compile of the suite
+ * re-parses its outputs, and a broken output or a violated compiler
+ * invariant fails it loudly (users' runs only get a warning).
  */
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -36,6 +37,14 @@ import path from 'node:path'
 
 /** The environment variable that names this run's directory. */
 export const runDirectoryVariable = 'TANSTACK_COMPILER_TESTS_RUN_DIR'
+
+/**
+ * Where a test puts its temporary directories: this run's directory, or
+ * without this setup the system's temporary directory.
+ */
+export function runDirectory(): string {
+  return process.env[runDirectoryVariable] ?? os.tmpdir()
+}
 
 export default function setup() {
   const dir = mkdtempSync(

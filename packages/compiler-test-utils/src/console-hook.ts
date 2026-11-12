@@ -35,7 +35,7 @@ const activeSinks = new AsyncLocalStorage<ReadonlySet<Sink>>()
 
 export type ConsoleMethod = 'error' | 'warn' | 'log' | 'info' | 'debug'
 
-export const consoleMethods: ReadonlyArray<ConsoleMethod> = [
+const consoleMethods: ReadonlyArray<ConsoleMethod> = [
   'error',
   'warn',
   'log',

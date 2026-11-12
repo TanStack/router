@@ -26,8 +26,8 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
   // applied, before Rspack fills in its default (`production`): a
   // configuration without `mode` built in the plugin's dev mode.
   // Source: src/hosts/webpack.ts (`compiler.options.mode === 'production'`).
-  // Impact: the production bundle ships route HMR code (`$$tsrRefreshId`
-  // strings with the build machine's absolute paths).
+  // Impact: the production bundle ships route HMR code (`__tsrRouteHmr`
+  // calls, the lazy wrappers' hot slots).
   if (bundler === 'rspack') {
     test(
       'a production react client bundle of a configuration without mode has no dev-only code',

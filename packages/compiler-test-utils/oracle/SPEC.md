@@ -98,7 +98,9 @@ on Vue, or environments Start did not create.
   `@jsxImportSource`), CRLF line endings, BOM-free UTF-8, file names with any character the OS allows (e.g.
   `what's-new.tsx`). `.js`/`.jsx` modules compile like `.ts`/`.tsx`. Non-JS modules that compile to JS before our
   transforms (`.vue`, `.mdx`) are inputs of J6. Other non-JS modules (CSS, JSON, Markdown, `?raw` text) are never
-  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1).
+  transformed by the JS compilers, even when their text contains an API name such as `createServerFn(` (G1). A
+  webpack-family request that disables the configured loaders (`!!./fns.ts`, `-!./fns.ts`) is a deliberate bypass
+  like `?raw`: its module is not compiled (ruling of review round 3, F1); import protection judges what it loads.
 - **Routing setups**: flat, directory and mixed file-based routing; virtual file routes (`virtualRouteConfig` as path
   or object, `physical()`, `__virtual.ts` subtrees); code-based routing (J4 only). One route per file route module,
   exported as `Route`. The file naming conventions of `routing/file-naming-conventions.md` with configurable
@@ -204,8 +206,10 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   import-protection reports resolve to the user's original line and column, through composed maps when other plugins
   transformed the file first. Purely generated support code (registries, mock helpers) needs no mapping. The emitted
   map holds the user's file as written (`sourcesContent`), so a debugger shows it, unless the configuration leaves
-  sources out (`nosources-*`). Map layout is free. This holds in dev as in build: the dev server serves maps for the
-  route module and every derived module (split chunk, shared module, Start client and provider module). (R6)
+  sources out (`nosources-*`). Every output of a file names it by its path, without the compiler's query (R135), so a
+  debugger and an error tracker see one file; map layout is otherwise free. This holds in dev as in build: the dev
+  server serves maps for the route module and every derived module (split chunk, shared module, Start client and
+  provider module). (R6)
 - **G7 Nothing dev-only in production.** Production artifacts contain no additions whose purpose is only
   development: HMR accept/dispose code, hot-data wrappers, dev-only warnings, development mock modules, `console`
   diagnostics gated for development. Configured production behaviour stays: a production `importProtection.behavior:
@@ -410,7 +414,11 @@ dir)` is not a conflict by itself.
   and the run warns once naming the file, in every mode. If our analysis is the obstacle, that is a bug (a goal pin).
   Options the compiler cannot read statically (an options object imported from another module, factory-built
   options, a cast it does not unwrap) fall under this clause: split correctly or report once naming the file (the dev
-  full-reload allowance for factory-built options stands). Under Start, the client build never ships their
+  full-reload allowance for factory-built options stands). A `loader` value it cannot read (an import, a call, a
+  conditional) may be an object-form loader whose options (`staleReloadMode`) the router reads from the route module
+  before a chunk could load: it stays there and the run warns (fix: write the loader in the route options, or call the
+  function from one written there), as does a loader object with a spread or computed key after its `handler` (fix:
+  the spread before `handler`). Under Start, the client build never ships their
   `ssr`/`server`/`headers` silently: a spread, options from a call or an import or written to after their declaration,
   and a computed key build and warn once, saying what isn't split or removed, that server code in it ships, and what
   to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
@@ -423,9 +431,7 @@ dir)` is not a conflict by itself.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
-  compiler warns or errors naming the file. Under `deleteNodes`, a call other than the route's own (a second, wrapped
-  or stored one, also through another name) with a deleted option written in its options fails the build at the call;
-  one with options the compiler can't read warns (J2.8).
+  compiler warns or errors naming the file.
 - **J2.12 Bindings the route module still reads stay declared.** Moving an option's declaration never removes an
   import or declaration another surviving statement (an exported wrapper, `head()`, an unsplit option, a top-level
   call) reads; the route module stays valid (G1, G8).
@@ -471,9 +477,12 @@ dir)` is not a conflict by itself.
   navigation use the new options (stale derived route state is invalidated); generated options (`id`, `path`,
   `getParentRoute`) stay on the live route; the active match re-renders. A hot edit runs each changed loader at
   least once and the page shows its new data; an obsolete loader the edit replaced or removed does not run again.
-  Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue.
+  Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. A lazy route file (`createLazyFileRoute`,
+  `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
+  has not loaded them yet.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
-  component and lazy-wrapper identity (React, and Solid and Vue split components too) and shows the new code. Where
+  lazy-wrapper identity and lets the framework's refresh decide the component's (React; Solid and Vue keep a
+  component their refresh patches in place), and shows the new code. Where
   the framework's refresh can keep the mounted component and its state, the compiler and router must not cause a
   remount or state reset. Compatibility is the real framework's refresh contract, not an unchanged name (React
   Refresh remounts class components, changed hook signatures and forced resets). Framework-required replacement is
@@ -702,7 +711,12 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. Vite and Rsbuild; every Start env
   (client-type and server-type). A specifier rule matches the specifier **the user wrote**: a bundler rewrite of the
   import (e.g. Rsbuild `source.transformImport` turning `ui-lib` into `ui-lib/button`) does not bypass a denial of the
-  original; file and marker checks apply to the rewritten edge's resolved target.
+  original; file and marker checks apply to the rewritten edge's resolved target. A resolved id whose path holds a `#` is
+  judged as itself and as the path cut at its last `#` (a Vite id keeps a `#fragment`, which no id tells from a `#` of a
+  path): either denies. An import the env's resolver
+  cannot resolve (it fails, e.g. a package with only a `node` export on the client) has no resolved target: file and
+  marker checks skip it, specifier rules apply, and the bundler decides on it (it fails the build if it keeps the
+  import; nothing of it ships if it drops it). A denied file the bundler still loads through it is denied itself.
 - **J6.2 Type-only edges are ignored**; mixed imports count.
 - **J6.3 Behaviour.** Default dev `mock` (warn once, replace with a recursive-Proxy mock), default build `error`
   (fail the build); overridable globally or per mode, including `mock` in production builds; `enabled: false`
@@ -710,7 +724,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   dev-time warning), and calling a mock gives a runtime diagnostic at the severity `mockAccess` sets (default
   `error`; `warn`; `off` silences), wherever a mock is served: dev and production, client and server. `mockAccess`
   changes nothing else. Which uses of a mock beyond a call it reports is free (§5.18). A test that expects silence
-  sets `mockAccess: 'off'`.
+  sets `mockAccess: 'off'`. Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) gets
+  no mock: its violation fails the build at the import, whatever the behaviour, and `allowImport` is not asked
+  (ruling of review round 3, F1).
 - **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking.
   Dev: an edge the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
   server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,
@@ -746,7 +762,11 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J6.10 Dependencies.** Files under `node_modules` skip file-pattern and marker checks by default, including a
   dependency marking itself server-only; `excludeFiles: []` turns them on again.
 - **J6.11 Determinism.** The set of reported violations for a source tree and config does not depend on request
-  order, caching, or which env transformed a module first (G4).
+  order, caching, or which env transformed a module first (G4). A denied file whose importers disagree (one needs it
+  as it is: an exempt plain importer or an import `allowImport` allows; a checked one reaches the file itself: a
+  pattern import or an import another plugin added) fails every build, under both behaviours, whatever the order the
+  bundler compiled them in (R147). With an exempt pattern importer instead, a Vite build reports the shape under
+  `behavior` whatever it served; Rsbuild serves it as it is to both and reports nothing.
 - **J6.12 Wording is free.** The docs' report displays are examples: sections, header text, numbering, quotes,
   spacing, code frames and suggestions are free. What a violation is (environment, importer and location, specifier,
   resolved file, chain) is read from `onViolation` (J6.6); the printed report is checked only for naming the
@@ -850,7 +870,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
   (the docs recommend `createLazyFileRoute` instead): once the router preloaded the route, rendering it requests no
   new module and shows no pending fallback. Leaving already-lazy values in the route module and chaining the inner
   `preload()` both pass.
-- **OQ14: a chunk for `component: Outlet`.** No requirement (emit a chunk, skip it or drop the property). No test.
+- **OQ14: a chunk for `component: Outlet`.** Resolved: a chunk is emitted that forwards the imported binding (J2.8), as on main. `integration/vite-versions.test.ts` ("outlet" route) pins it. Dropping the property is not equivalent (the router falls back to `defaultComponent`).
 - **OQ15: the release-candidate `.inputValidator()`.** Type-invalid input (§8, §2.2). No requirement, no test.
 - **OQ16: third-party transforms on split chunks.** An app's own `enforce: 'pre'` plugin filtering `/\.tsx$/` does not
   see split-chunk ids. Out of scope, no test. The documented integrations (framework plugins, the React Compiler
@@ -938,7 +958,11 @@ A compiler may do any of these and still be correct; tests must not fail on them
   splitter's chunk and shared compiles read state the route-module compile fills; a divergence on a cached rebuild is
   plausible but not shown. A regression test covers it, not a pin.
 - G12 for printer edge cases not yet listed.
-- J6.11 in full generality (pins cover warm-up, pre-transform and entry order).
+- J6.11 in full generality (pins cover warm-up, pre-transform and entry order). A Vite build whose importers of a
+  denied file are an exempt plain one and an exempt pattern one serves the file as it compiled it first, and reports
+  the shape under `behavior` whichever it served, so the reports do not depend on the order (R142 (2), design 4
+  closing follow-up); what a pattern importer reads does. A `vite build --watch` rebuild reports a file it compiled
+  real before the edited importer, and the next rebuild mocks it.
 - J3.4 webpack stale hot-data id: no reachable scenario shown yet.
 - J1.10 equal-mtime double save: plausible with format-on-save, not reproduced with a real editor.
 - J1.6/J1.10 within one run: a save that lands between the generator's read of a route file and its rename over it

@@ -5,6 +5,7 @@
  * side-effect hints reach the bundler.
  */
 import { existsSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -357,6 +358,48 @@ test.each(['webpack', 'rspack'] as const)(
       rebuildAfter: { 'entry.ts': `export const value = 'v2'\n` },
     })
     expect((await app.run('return entry.value')).result).toBe('v2')
+  },
+  timeout,
+)
+
+// An edit can land while a build runs that already read the file: that
+// build ends with the old text, and the one the edit causes comes after it.
+// Here every build takes 800 ms after reading its modules, and the first
+// build's end changes a file the entry imports, so the second build runs
+// when the harness writes the edit.
+test.each(['webpack', 'rspack'] as const)(
+  '%s: rebuildAfter describes the rebuild of the edit when it lands during a build',
+  async (bundler) => {
+    const slowBuilds = ({ root }: { root: string }) => ({
+      apply(compiler: any) {
+        let touched = false
+        compiler.hooks.afterCompile.tapPromise(
+          'slow-builds',
+          () => new Promise((resolve) => setTimeout(resolve, 800)),
+        )
+        compiler.hooks.done.tapPromise('slow-builds', async () => {
+          if (!touched) {
+            touched = true
+            await writeFile(
+              path.join(root, 'touched.ts'),
+              `export const touched = 2\n`,
+            )
+          }
+        })
+      },
+    })
+    const app = await bundleApp({
+      bundler,
+      files: {
+        'entry.ts': `import { touched } from './touched'\nexport const value = 'v1' + touched\n`,
+        'touched.ts': `export const touched = 1\n`,
+      },
+      plugins: { [bundler]: slowBuilds },
+      rebuildAfter: {
+        'entry.ts': `import { touched } from './touched'\nexport const value = 'v2' + touched\n`,
+      },
+    })
+    expect((await app.run('return entry.value')).result).toBe('v22')
   },
   timeout,
 )
