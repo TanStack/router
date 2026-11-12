@@ -7,7 +7,7 @@
  */
 import { describe, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '../src/utils'
-import { lazyRouteComponentHot } from '../src/hmr'
+import { applyRouteChunkHmr, lazyRouteComponentHot } from '../src/hmr'
 import type { RouteHmrAdapter } from '../src/hmr'
 
 type Module = Record<string, unknown>
@@ -54,6 +54,16 @@ function wrapper(held?: unknown, error?: unknown) {
 /** An adapter that keeps nothing: the loaded export is taken. */
 const swap: RouteHmrAdapter = {}
 const v = (label: string) => ({ label })
+
+/** `module`, handed over by an evaluation of its split chunk (`applyRouteChunkHmr`). */
+function handOver<T extends Module>(module: T): T {
+  applyRouteChunkHmr('/handed', 'component', {
+    exports: module,
+    refresh: false,
+    adapter: swap,
+  })
+  return module
+}
 
 describe('lazyRouteComponentHot', () => {
   test('a wrapper that never loaded only takes the new importer for its first load', () => {
@@ -299,15 +309,41 @@ describe('lazyRouteComponentHot', () => {
     const keepPatched = vi.fn(() => true)
     const keep = vi.fn(() => false)
     const handed = v('v2')
-    hot.take({ component: handed }, { keep, keepPatched })
+    const module = handOver({ component: handed })
+    hot.take(module, { keep, keepPatched })
     expect(await state.pending).toBe(held)
     expect(keepPatched).toHaveBeenCalledWith(handed, held)
     expect(keep).not.toHaveBeenCalled()
     expect(state).toMatchObject({ comp: held, renders: 1, importer })
 
-    hot.take({ component: handed }, swap)
+    hot.take(module, swap)
     expect(await state.pending).toBe(handed)
     expect(state).toMatchObject({ comp: handed, renders: 2, importer })
+  })
+
+  test('an import answering a module its chunk handed over is kept or taken by keepPatched, any other by keep', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    const keepPatched = vi.fn(() => true)
+    const keep = vi.fn(() => false)
+    const handed = v('v2')
+    const module = handOver({ component: handed })
+    hot.update(() => Promise.resolve(module), 'component', {
+      keep,
+      keepPatched,
+    })
+    expect(await state.pending).toBe(held)
+    expect(keepPatched).toHaveBeenCalledWith(handed, held)
+    expect(keep).not.toHaveBeenCalled()
+
+    const imported = v('v3')
+    hot.update(() => Promise.resolve({ component: imported }), 'component', {
+      keep,
+      keepPatched,
+    })
+    expect(await state.pending).toBe(imported)
+    expect(keep).toHaveBeenCalledWith(imported, held)
+    expect(keepPatched).toHaveBeenCalledOnce()
   })
 
   test('take: a wrapper that holds nothing, or a module without its export, is left alone', async () => {

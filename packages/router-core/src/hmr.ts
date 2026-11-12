@@ -21,7 +21,11 @@ export interface RouteHmrMeta {
  * the new one is taken), or when the new one can be taken. Not a public API.
  */
 export interface RouteHmrAdapter {
-  /** Split component: decided when the chunk re-imported after a route update resolves, from the loaded export. */
+  /**
+   * Split component: decided when the chunk re-imported after a route update
+   * resolves, from the loaded export (a module the chunk handed over:
+   * `keepPatched`).
+   */
   keep?: (next: any, held: any) => boolean
   /**
    * `held` and `next` are the same option of two evaluations of one module
@@ -96,15 +100,16 @@ export interface LazyRouteComponentPort {
  * has loaded (or is loading), then, once the adapter's refresh settled
  * (`settled`), keeps the held component if `keep(loaded, held)` says so (the
  * framework's refresh runtime patches it in place) or swaps to the loaded
- * one, and re-renders the wrapper either way (a failure it held is over).
+ * one, and re-renders the wrapper either way (a failure it held is over). A
+ * module its chunk handed over (`applyRouteChunkHmr`) evaluated again on its
+ * own: its framework's refresh patched it as it patches a route module, so
+ * `keepPatched` decides instead.
  * The newest import is the only one whose completion counts: an older one
  * that completes while a newer one is pending settles with the newer one. A
  * wrapper that never loaded only takes the new importer for its first load.
- * `take` settles the same way with a module its chunk handed over (the chunk
- * evaluated again on its own: its framework's refresh patched it as it
- * patches a route module, so `keepPatched` decides), keeping the importer;
- * a wrapper that holds nothing, or a module without its export, is left
- * alone.
+ * `take` settles the same way with a module its chunk handed over, keeping
+ * the importer; a wrapper that holds nothing, or a module without its
+ * export, is left alone.
  *
  * Dev-only, called by the framework packages' `lazyRouteComponent` on the
  * client; not a public API.
@@ -119,7 +124,6 @@ export function lazyRouteComponentHot<TExtra extends object>(
   const settleWith = (
     loading: Promise<any>,
     name: string,
-    keep: RouteHmrAdapter['keep'],
     adapter: RouteHmrAdapter,
   ) => {
     const promise: Promise<any> = loading.then(
@@ -128,6 +132,7 @@ export function lazyRouteComponentHot<TExtra extends object>(
           return port.pending()
         }
         const next = res[name]
+        const keep = handedOver.has(res) ? adapter.keepPatched : adapter.keep
         const take = () => {
           if (port.pending() !== promise) {
             return port.pending()
@@ -171,18 +176,13 @@ export function lazyRouteComponentHot<TExtra extends object>(
       if (!port.retarget(nextImporter, nextExportName)) {
         return
       }
-      settleWith(nextImporter(), currentExport, adapter.keep, adapter)
+      settleWith(nextImporter(), currentExport, adapter)
     },
     take: (module, adapter) => {
       if (port.held() == null || !(currentExport in module)) {
         return
       }
-      settleWith(
-        Promise.resolve(module),
-        currentExport,
-        adapter.keepPatched,
-        adapter,
-      )
+      settleWith(Promise.resolve(module), currentExport, adapter)
     },
   }
 }
@@ -220,6 +220,10 @@ const hotRoutes = new Map<
 // Per route id, the split chunks that evaluated since its route module last
 // did (`applyRouteChunkHmr`). Bounded by the number of split chunks.
 const hotChunks = new Map<string, Set<string>>()
+
+// The exports of every evaluation a split chunk handed over
+// (`applyRouteChunkHmr`): the framework's refresh patched each of them.
+const handedOver = new WeakSet<object>()
 
 /**
  * What the route HMR runtime uses of a webpack-style module's hot handle
@@ -670,6 +674,9 @@ export function applyRouteChunkHmr(
   if (process.env.NODE_ENV !== 'production') {
     if (isServer ?? typeof window === 'undefined') {
       return
+    }
+    if (handOver) {
+      handedOver.add(handOver.exports)
     }
     let chunks = hotChunks.get(routeId)
     if (!chunks) {
