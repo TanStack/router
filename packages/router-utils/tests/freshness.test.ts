@@ -940,3 +940,67 @@ describe('a plan hit that fails validation', () => {
     expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
   })
 })
+
+describe('a request of an older text', () => {
+  const OLD = "import { make as inner } from './l'\nexport const make = inner\n"
+  const NEW = "import { make as inner } from './m'\nexport const make = inner\n"
+  const factsOf = (out: CompileOutput | null) => out?.facts.planners
+
+  // A bundler requests `a.ts` again (a page reload) while its text still
+  // imports `l.ts`: the plan hit asks its resolutions again (a touch moved
+  // the file set), and the answer takes a moment. Meanwhile `a.ts` is saved
+  // to import `m.ts`, and the request of that text compiles it. The older
+  // request then answers its own text, and the newer text's plan keeps its
+  // dependencies: an edit of `m.ts` re-plans `a.ts`.
+  // Source: phase-end gates F-PEG-2 (property (b) rows seed 169216 with
+  // stretch 1, jitter 8, where the SSR `m2.ts` kept `./m0` as a server
+  // function, and seed 167651 with stretch 1, jitter 12, SSR `m5.ts`).
+  it("an older text's request answered after the newer text's compile leaves the newer plan's dependencies", async () => {
+    let holding = false
+    let release!: () => void
+    let held!: () => void
+    const asked = new Promise<void>((r) => (held = r))
+    const host = new MemoryHost({
+      files: {
+        '/app/l.ts': 'export const make = 1\n',
+        '/app/m.ts': 'export const make = 2\n',
+        '/app/a.ts': OLD,
+      },
+      recognizer: RECOGNIZER,
+      onResolve: (specifier) => {
+        if (holding && specifier === './l') {
+          holding = false
+          held()
+          return new Promise<void>((r) => (release = r))
+        }
+        return undefined
+      },
+    })
+    await host.compile('/app/a.ts', planners())
+    await invalidate(host.caches, { path: '/app/l.ts', kind: 'change' }, host)
+    holding = true
+    const older = host.compile('/app/a.ts', planners())
+    await asked
+    host.write('/app/a.ts', NEW)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    const newer = await host.compile('/app/a.ts', planners())
+    release()
+    expect(factsOf(await older)).toEqual(
+      factsOf(
+        await memoryHost({ ...host.files, '/app/a.ts': OLD }).compile(
+          '/app/a.ts',
+          planners(),
+        ),
+      ),
+    )
+    expect(factsOf(newer)).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/a.ts', planners())),
+    )
+    host.write('/app/m.ts', SERVER_ONLY)
+    await invalidate(host.caches, { path: '/app/m.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
+    expect(factsOf(await host.compile('/app/a.ts', planners()))).toEqual(
+      factsOf(await memoryHost(host.files).compile('/app/a.ts', planners())),
+    )
+  })
+})
