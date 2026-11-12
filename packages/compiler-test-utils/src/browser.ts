@@ -338,6 +338,22 @@ export async function openPage(
     return closed
   }
   options.registerCleanup?.(close)
+  // What follows can fail (a refused navigation, a closed browser): the
+  // page is then closed and its slot freed, as no caller holds `close` yet
+  try {
+    return await preparePage(context, close, url, options)
+  } catch (error) {
+    await close()
+    throw error
+  }
+}
+
+async function preparePage(
+  context: BrowserContext,
+  close: () => Promise<void>,
+  url: string,
+  options: { initScript?: string; html?: string },
+): Promise<BrowserPage> {
   if (options.initScript !== undefined) {
     await context.addInitScript(options.initScript)
   }

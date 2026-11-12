@@ -612,3 +612,19 @@ test.each(['webpack', 'rspack'] as const)(
   },
   timeout,
 )
+
+test(
+  'a client run whose script never settles fails within its bound, and the next run works',
+  async () => {
+    const app = await bundleApp({
+      bundler: 'vite',
+      env: 'client',
+      files: { 'entry.ts': `export const value = 1\n` },
+    })
+    await expect(
+      app.run('await new Promise(() => {})', { timeout: 1_000 }),
+    ).rejects.toThrow(/did not settle within 1000 ms/)
+    expect((await app.run('return entry.value')).result).toBe(1)
+  },
+  timeout,
+)

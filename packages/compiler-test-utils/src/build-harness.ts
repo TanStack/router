@@ -224,9 +224,11 @@ export interface BuildResult {
    * an async function body with the entry's exports in scope as `entry`.
    * SSR builds run in a separate Node process; client builds in a page of
    * headless Chromium that serves the output directory over HTTP (the page
-   * is `/`, with a `<div id="root">`).
+   * is `/`, with a `<div id="root">`). A client run's load and script are
+   * bounded by `timeout` (default 25 000 ms, below the tiers' 30 s test
+   * timeout); Node runs by the child's own timeout.
    */
-  run: (script?: string) => Promise<RunResult>
+  run: (script?: string, options?: { timeout?: number }) => Promise<RunResult>
   /** Removes the app directory. */
   dispose: () => Promise<void>
 }
@@ -1226,9 +1228,10 @@ export async function describeBuild(
       }
       return found.lazy.length ? 'lazy' : 'nowhere'
     },
-    run: (script = '') =>
+    run: (script = '', runOptions = {}) =>
       input.env === 'client'
         ? runInBrowser({
+            timeout: runOptions.timeout,
             outDir: input.outDir,
             entry,
             // A classic script entry needs the chunks of its group loaded
@@ -1789,12 +1792,14 @@ async function runInBrowser(input: {
   esModules: boolean
   script: string
   entryGlobal?: string
+  timeout?: number
 }): Promise<RunResult> {
   const { openPage } = await import('./browser')
   const server = await serveOutput(input.outDir)
   const urlOf = (fileName: string) =>
     new URL(fileName.split(path.sep).join('/'), server.url).href
   let page: BrowserPage | undefined
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
     page = await openPage(server.url)
     const logs: Array<string> = []
@@ -1818,13 +1823,32 @@ async function runInBrowser(input: {
 }
 const entryModule = undefined`
     let outcome: string
+    const timeout = input.timeout ?? 25_000
     try {
-      outcome = await page.page.evaluate(`(async () => {
+      const evaluated = page.page.evaluate<string>(`(async () => {
 ${load}
 const entry = ${input.entryGlobal ? `globalThis[${JSON.stringify(input.entryGlobal)}]` : 'entryModule'}
 const result = await (async () => { ${input.script} })()
 return JSON.stringify({ result, html: document.body.innerHTML })
 })()`)
+      // A load or script that never settles must not hold the page (and its
+      // slot) past the test: the run fails after `timeout`, and closing the
+      // page ends the script.
+      evaluated.catch(() => {})
+      outcome = await Promise.race([
+        evaluated,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `the load and script did not settle within ${timeout} ms`,
+                ),
+              ),
+            timeout,
+          )
+        }),
+      ])
     } catch (error) {
       throw new Error(
         `Running ${input.entry.fileName} in Chromium failed:\n${[errorMessage(error), ...uncaught].join('\n')}`,
@@ -1837,6 +1861,7 @@ return JSON.stringify({ result, html: document.body.innerHTML })
     }
     return { ...(JSON.parse(outcome) as Omit<RunResult, 'logs'>), logs }
   } finally {
+    clearTimeout(timer)
     await page?.close()
     await server.close()
   }

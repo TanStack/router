@@ -310,3 +310,14 @@ test('openPage keeps at most openPageLimit pages open: one more waits until one 
   await next
   expect(opened).toBe(true)
 })
+
+test('a page that fails to open frees its slot: more failed opens than openPageLimit all fail', async () => {
+  // a port nothing listens on: the navigation is refused
+  const server = createServer()
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address() as AddressInfo
+  await new Promise<void>((resolve) => server.close(() => resolve()))
+  for (let attempt = 0; attempt <= openPageLimit; attempt++) {
+    await expect(openPage(`http://127.0.0.1:${port}/`)).rejects.toThrow()
+  }
+})
