@@ -610,8 +610,10 @@ export function eventTable(
       // touches a write after it in the source would run before it
       // (`component: wrap(Page)`, then `Page.displayName = 'P'`). A write
       // at an unknown time that only the value's output runs
-      // (`memo(function Page() { didInit = true })`) pins it only when the
-      // binding is not confined there, as a write at load by the value.
+      // (`wrap(flag ? render : Fallback)`, `render` writing `seen`) pins it
+      // only when another evaluation touches the binding at load (`used`):
+      // one the route module keeps for a later reader is written later
+      // wherever that function runs (small item 2b, R149 answer D).
       touchesOfRegion(r.id, c, (t) => {
         if (!writesOfSym.has(t.sym)) {
           return false
@@ -619,8 +621,10 @@ export function eventTable(
         const late = lateOf(t.sym)
         const later = graph.laterWrite(t.sym, t.at, c) !== undefined
         const why =
-          late === 'inside' && !ownLate(c, t.sym)
-            ? unconfined(c, hr!, t.sym)
+          late === 'inside' &&
+          !ownLate(c, t.sym) &&
+          unconfined(c, hr!, t.sym) === 'used'
+            ? 'used'
             : null
         if ((late === null || (late === 'inside' && why === null)) && !later) {
           return false
