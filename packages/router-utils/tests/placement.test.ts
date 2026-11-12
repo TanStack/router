@@ -7696,6 +7696,29 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
   })
 
+  // two statements, each changing a binding of its chunk and using the
+  // other's (review probe e04): each binding named by the statement
+  // changing it
+  it('two statements, each changing its binding and using the other', async () => {
+    const options = 'loader: () => b.y, component: () => a.x'
+    const keys = ['loader', 'component']
+    const code = route(
+      'const a = make()\nconst b = make()\na.link(b)\nb.link(a)',
+      options,
+    )
+    const r = await report(code, keys)
+    const at = (name: string) =>
+      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
+        ?.message
+    expect(r.diagnostics).toHaveLength(2)
+    expect(at('a')).toContain(
+      `the statement on line ${lineOf(code, 'a.link(b)')}, which changes it, stays there: it also uses \`b\``,
+    )
+    expect(at('b')).toContain(
+      `the statement on line ${lineOf(code, 'b.link(a)')}, which changes it, stays there: it also uses \`a\``,
+    )
+  })
+
   // R148, R149 answers E: unused code reading bindings of two chunks
   // stays; the warning names it and offers to delete it
   it('an unused function reading it and a binding another split option uses', async () => {
