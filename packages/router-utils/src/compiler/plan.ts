@@ -107,7 +107,6 @@ export interface EmitPlan {
   facts: PlanFacts
   dependencies: Array<DependencyFingerprint>
   diagnostics: Array<Diagnostic>
-  sideEffects: Record<string, boolean>
 }
 
 export interface FallbackRecord {
@@ -129,7 +128,6 @@ interface OutputSpec {
   derived: DerivedQuery
   roots?: Array<RootRef>
   header?: HeaderPolicy
-  sideEffectFree?: boolean
   /** How the core's diagnostics name the output (default: its key, `` `component` ``). */
   describe?: string
 }
@@ -329,7 +327,6 @@ export class AnalysisPlan implements PlanContext {
       derivedId,
       roots: [...(spec.roots ?? [])],
       header: spec.header,
-      sideEffectFree: spec.sideEffectFree,
       describe: spec.describe,
     })
     return id
@@ -353,7 +350,6 @@ export class AnalysisPlan implements PlanContext {
         kind: 'export',
         key: `export~${exportName}`,
         derived: { kind: 'export', value: exportName },
-        sideEffectFree: true,
       }),
     )
   }

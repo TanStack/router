@@ -52,7 +52,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   const code = analysis.source.code
   const outputs: Record<string, OutputRecipe> = {}
   const edges: Record<string, Array<EdgeRecord>> = {}
-  const sideEffects: Record<string, boolean> = {}
 
   // export names for symbols other outputs import from their home
   const exportNameOf = new Map<OutputId, Map<SymbolId, string>>()
@@ -147,12 +146,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
       segments,
     }
     edges[id] = dedupeEdges(recipeEdges)
-    // the flag is a property of the content: placement moves no cluster
-    // with effects into an extracted export's module (the only opted-in
-    // outputs); a pure write of what the output exports is no effect
-    sideEffects[id] =
-      decl.sideEffectFree === true &&
-      ![...included].some((c) => placement.clusters[c]!.effectful)
   }
 
   return {
@@ -170,7 +163,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
         range: d.range ? { ...d.range } : undefined,
       })),
     ],
-    sideEffects,
   }
 }
 

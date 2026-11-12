@@ -722,7 +722,6 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain('function Card() { return heavy() }')
     expect(e?.code).not.toContain('export function Card')
     expect(e?.code).toContain('export { Card }')
-    expect(e?.sideEffectFree).toBe(true)
   })
 
   // The env module re-exports the extracted module (`export { Page } from
@@ -1415,7 +1414,6 @@ describe('extracted-export outputs', () => {
     const e = await r.extracted('Card')
     expect(e?.code).toContain("import { theme } from '/app/route.tsx'")
     expect(e?.code).toContain('function Card() { return theme.card }')
-    expect(e?.sideEffectFree).toBe(true)
   })
 
   it('copies a pure helper an extracted module and a chunk both read into each (no shared module)', async () => {
@@ -2504,8 +2502,6 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
     expect(e?.code).toContain("Page.preload = () => import('./heavy')")
     expect(e?.code).toContain('export { Page }')
-    // its effects only augment `Page`: unobservable while nothing imports it
-    expect(e?.sideEffectFree).toBe(true)
   })
 
   // An extracted module is side-effect free: a bundler may skip it while
@@ -2536,7 +2532,6 @@ describe('extracted-export outputs', () => {
       const e = await r.extracted('Page')
       expect(e?.code).toContain(`import { ${binding} } from '/app/route.tsx'`)
       expect(e?.code).not.toContain('track')
-      expect(e?.sideEffectFree).toBe(true)
       // the extracted module is no split code: nothing to report
       expect(r.diagnostics).toEqual([])
     },

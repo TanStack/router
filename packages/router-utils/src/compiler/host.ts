@@ -155,7 +155,6 @@ export interface CompileInput {
 export interface CompileOutput {
   code: string
   map: RawSourceMap | null
-  sideEffectFree: boolean
   /** This output's surviving edges after policy. */
   edges: Array<EdgeRecord>
   facts: PlanFacts

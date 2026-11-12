@@ -384,7 +384,6 @@ function emitSettled(
     return {
       code: input.code,
       map: null,
-      sideEffectFree: false,
       edges: [],
       facts: { marker: null, planners: {} },
       diagnostics: settled.diagnostics,
@@ -419,7 +418,6 @@ function emitFrom(
   return {
     code: emitted.code,
     map: emitted.map,
-    sideEffectFree: recipe ? plan.sideEffects[requested] === true : true,
     edges: plan.edges[requested] ?? [],
     facts: plan.facts,
     diagnostics: plan.diagnostics,
@@ -785,7 +783,6 @@ function tier0Plan(
     facts: { marker: t0.markers, planners: {} },
     dependencies: [],
     diagnostics: [],
-    sideEffects: { env: false },
   }
 }
 

@@ -55,13 +55,6 @@ export interface OutputDecl {
   derivedId: string | null
   roots: Array<RootRef>
   header?: HeaderPolicy
-  /**
-   * Whether the output may be flagged side-effect free to the bundler
-   * (`moduleSideEffects: false`). The plan flags it only when no effectful
-   * cluster is placed in it: the flag is computed from the content, the
-   * declaration opts the output in. Default false.
-   */
-  sideEffectFree?: boolean
   /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
   describe?: string
 }

@@ -240,7 +240,8 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
-  nothing imports what it exports; the webpack-family hosts mark each one so), so an effect stays in the route
+  nothing imports what it exports; every host flags it by its kind, the webpack family by its query, and a test pins
+  that it holds nothing with effects of its own), so an effect stays in the route
   module, which the extracted module imports it from. An exported binding whose writes at load are pure
   (`Page.displayName = …`, static props; `Page.x = track()` is an effect and keeps it in the route module) leaves
   for its extracted module with them, whatever effects surround it (chunks import an augmented export: its

@@ -387,7 +387,11 @@ export function createRouterCompilerVitePlugin(
         return {
           code: out.code,
           map: out.map,
-          moduleSideEffects: out.sideEffectFree ? false : undefined,
+          // an extracted export's module runs nothing of its own: a bundler
+          // may skip it while nothing imports what it exports (the
+          // webpack-family hosts' rule on the query)
+          moduleSideEffects:
+            identity.derived?.kind === 'export' ? false : undefined,
         }
       },
     },
