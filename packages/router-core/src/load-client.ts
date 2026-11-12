@@ -243,6 +243,11 @@ export type LoadTransaction = [
   startedAt: number,
   done: Promise<void>,
   /**
+   * Set once loader planning has decided which same-ID work to reuse. Until
+   * then, same-ID work losing its last lease stays discoverable for it.
+   */
+  planned?: true,
+  /**
    * Dev-only HMR refresh mode. Presence forces successor rematerialization
    * until this publication is acknowledged. The optional hydration handoff is
    * retired when the refresh publishes.
@@ -505,15 +510,15 @@ function releaseOwnedFlight(
     const current = router._tx
     if (
       current &&
-      !current[0 /* controller */].signal.aborted &&
-      !current[3 /* matches */].includes(match) &&
-      current[3 /* matches */].some((candidate) => candidate.id === match.id) &&
+      !current[6 /* planned */] &&
       current[3 /* matches */].some(
-        (candidate) => candidate.isFetching === 'beforeLoad',
+        (candidate) => candidate.id === match.id && candidate !== match,
       )
     ) {
-      // Keep work discoverable only while the current lane is still running
-      // beforeLoad. Loader planning performs the matching zero-owner sweep.
+      // The current navigation has not decided whether to reuse this same-ID
+      // work, released by another owner (its own matches decide for
+      // themselves). Its loader planning adopts it or sweeps every zero-lease
+      // flight.
       return
     }
     router._flights.delete(match.id)
@@ -534,31 +539,23 @@ function transferMatchResources(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   next?: Array<AnyRouteMatch>,
-  deferSameIdFlight?: true,
+  deferred?: Array<AbortController>,
 ): void {
-  const abort: Array<AbortController> = []
+  const abort = deferred ?? []
   for (const match of previous as Array<WorkMatch>) {
     if (!next?.includes(match)) {
       const flight = match._flight
       match._flight = undefined
-      if (
-        deferSameIdFlight &&
-        flight?.[2 /* leases */] === 1 &&
-        router._flights?.get(match.id) === flight &&
-        next?.some((candidate) => candidate.id === match.id)
-      ) {
-        // The successor has not made its same-ID reload decision yet.
-        flight[2 /* leases */] = 0
-      } else {
-        const controller = releaseOwnedFlight(router, match, flight)
-        if (controller) {
-          abort.push(controller)
-        }
+      const controller = releaseOwnedFlight(router, match, flight)
+      if (controller) {
+        abort.push(controller)
       }
     }
   }
-  for (const controller of abort) {
-    controller.abort()
+  if (!deferred) {
+    for (const controller of abort) {
+      controller.abort()
+    }
   }
 }
 
@@ -840,7 +837,7 @@ function createLoaderTask(
   let donor =
     preloadable &&
     routeLoader &&
-    !(process.env.NODE_ENV !== 'production' && router._tx?.[6 /* refresh */])
+    !(process.env.NODE_ENV !== 'production' && router._tx?.[7 /* refresh */])
       ? router._flights?.get(match.id)
       : undefined
   if (donor === match._flight || reloadFailure) {
@@ -1411,6 +1408,8 @@ async function executeClientLane(
       planSuccessfulLane()
     }
     if (!signal.aborted && !options[3 /* preload */]) {
+      // This lane belongs to the live navigation, which has now planned.
+      router._tx![6 /* planned */] = true
       const abort: Array<AbortController> = []
       for (const [id, flight] of router._flights ?? []) {
         if (!flight[2 /* leases */]) {
@@ -1638,7 +1637,7 @@ export function commitMatches(
   }
   const cut = _getRenderedMatches(matches).length
   const cached = new Map<string, AnyRouteMatch>()
-  if (process.env.NODE_ENV === 'production' || !tx[6 /* refresh */]) {
+  if (process.env.NODE_ENV === 'production' || !tx[7 /* refresh */]) {
     const now = Date.now()
     // The rendered prefix and settled descendants supersede older generations.
     // Unsettled matches beyond a fallback must not evict a newer preload.
@@ -1682,20 +1681,31 @@ export function commitMatches(
   // The lane becomes committed before publication can synchronously reenter.
   tx[3 /* matches */] = []
   router._cache = cached
+  // Retained cache objects keep their leases; only departing owners need
+  // handoff. They detach before publication so a navigation started by an
+  // observer cannot adopt their settled work, and again after it because
+  // observers may evict retained cache entries. Aborts wait for publication.
+  const owners = [...previousCached.values(), ...previous]
+  const abort: Array<AbortController> = []
+  const release = () =>
+    transferMatchResources(
+      router,
+      owners.filter(
+        (match: WorkMatch) => match._flight && cached.get(match.id) !== match,
+      ),
+      matches,
+      abort,
+    )
+  release()
   // Publish lifecycle membership with its branch before observers can reenter.
   const nextEnd = (router._lifecycleEnd = lifecycleEnd(matches))
   publishMatches(router, matches)
-  // Retained cache objects keep their leases; only departing owners need handoff.
-  const previousMatches = [...previousCached.values(), ...previous]
-  transferMatchResources(
-    router,
-    previousMatches.filter(
-      (match: WorkMatch) => match._flight && cached.get(match.id) !== match,
-    ),
-    matches,
-  )
+  release()
+  for (const controller of abort) {
+    controller.abort()
+  }
   if (process.env.NODE_ENV !== 'production') {
-    const handoff = tx[6 /* refresh */]?.[0 /* handoff */]
+    const handoff = tx[7 /* refresh */]?.[0 /* handoff */]
     if (handoff && router._handoff === handoff) {
       handoff[1 /* finish */]()
     }
@@ -1855,7 +1865,7 @@ async function runClientTransaction(
       finishPending(router, tx)
       return
     }
-    if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
+    if (process.env.NODE_ENV !== 'production' && tx[7 /* refresh */]) {
       router._refreshNextLoad = true
     }
     await followRedirect(router, tx, result)
@@ -1901,8 +1911,8 @@ async function runClientTransaction(
       }
     }
     const rendered = await router.startTransition(commit, matches)
-    if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
-      tx[6 /* refresh */] = undefined
+    if (process.env.NODE_ENV !== 'production' && tx[7 /* refresh */]) {
+      tx[7 /* refresh */] = undefined
     }
     if (router._tx !== tx) {
       discardBackground(router, result)
@@ -1944,7 +1954,7 @@ export async function loadClientRoute(
 ): Promise<void> {
   let rematerialize = false
   if (process.env.NODE_ENV !== 'production') {
-    rematerialize = !!router._refreshNextLoad || !!router._tx?.[6 /* refresh */]
+    rematerialize = !!router._refreshNextLoad || !!router._tx?.[7 /* refresh */]
   }
   const previousOwner = router._tx
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -2028,7 +2038,7 @@ export async function loadClientRoute(
     done.then(() => awaitCurrent(router, tx)),
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
-    tx[6 /* refresh */] = [handoff]
+    tx[7 /* refresh */] = [handoff]
     router._refreshNextLoad = undefined
   }
   router._tx = tx
@@ -2046,7 +2056,6 @@ export async function loadClientRoute(
       router,
       previousOwner[3 /* matches */],
       tx[3 /* matches */],
-      true,
     )
   }
   if (router._tx !== tx) {
@@ -2081,7 +2090,7 @@ export async function refreshClientRoute(
   const pending = router._tx
   if (
     pending &&
-    !pending[6 /* refresh */] &&
+    !pending[7 /* refresh */] &&
     router.stores.status.get() === 'pending'
   ) {
     await pending[5 /* done */]
@@ -2131,7 +2140,7 @@ export async function preloadClientRoute<
   if (
     process.env.NODE_ENV !== 'production' &&
     ((router as CoordinatorRouter)._refreshNextLoad ||
-      router._tx?.[6 /* refresh */])
+      router._tx?.[7 /* refresh */])
   ) {
     return
   }
@@ -2175,7 +2184,7 @@ export async function preloadClientRoute<
         result.length < 3 ||
         (process.env.NODE_ENV !== 'production' &&
           ((router as CoordinatorRouter)._refreshNextLoad ||
-            router._tx?.[6 /* refresh */]))
+            router._tx?.[7 /* refresh */]))
       ) {
         return
       }
