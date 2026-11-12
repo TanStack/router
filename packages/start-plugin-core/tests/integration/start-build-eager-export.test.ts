@@ -11,11 +11,10 @@
  * Vite and on Rsbuild (SPEC J2.8; the router plugin's hosts do the same);
  * the class is one instance the entry needs, which is no news (R101).
  *
- * An unexported declaration only the split component reads that a later
- * effect pins in the route module (an inline
- * `validateSearch: makeSchema({…})` call stays and runs after it) loads
- * with the entry, and the build warns once for the client and server
- * environments together, naming the declaration and the call (every
+ * An unexported declaration only the split component reads that a staying
+ * statement changes (it also uses what `validateSearch` keeps) loads with
+ * the entry, and the build warns once for the client and server
+ * environments together, naming the declaration and the statement (every
  * host and reason: router-plugin
  * tests/integration/code-splitter-split-only-eager.test.ts).
  *
@@ -126,12 +125,17 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
   )
 })
 
+// (no order rule: a `validateSearch` call after the declaration pins
+// nothing, and two split options reading it share a lazy module, R151; a
+// statement changing it that uses what the route module keeps keeps it,
+// `written`)
 const pinned = `import { createFileRoute } from '@tanstack/react-router'
 import { Marker } from '../marker'
-import { makeSchema } from '../schema'
+const settings = { tab: 'string' }
 const confetti = new Marker('MARK_CONFETTI')
+confetti.attach(settings)
 export const Route = createFileRoute('/account')({
-  validateSearch: makeSchema({ tab: 'string' }),
+  validateSearch: () => settings,
   component: () => <p>{confetti.name}</p>,
 })
 `
@@ -143,6 +147,9 @@ const pinnedFiles = {
   constructor(public name: string) {
     ;((globalThis as any).marks ??= []).push(name)
   }
+  attach(settings: object) {
+    ;(this as any).settings = settings
+  }
 }
 `,
   'src/schema.ts': 'export function makeSchema<T>(shape: T) { return shape }\n',
@@ -150,7 +157,7 @@ const pinnedFiles = {
 
 describe.each(startBundlers)('a %s build', (bundler) => {
   test(
-    'keeps a declaration a later effect pins in the route module and warns once for every environment',
+    'keeps a declaration a staying statement changes in the route module and warns once for every environment',
     async () => {
       const build = await buildStart({ bundler, files: pinnedFiles })
       expect(build.client.where('MARK_CONFETTI')).toBe('eager')
@@ -215,28 +222,20 @@ describe.each(startBundlers)(
   'a %s build of routes reading their API',
   (bundler) => {
     test(
-      'loads the API and a memo component with the chunk and warns of the effect before the API only',
+      'loads the API, the effect before it and a memo component with the chunk, unreported',
       async () => {
         const build = await buildStart({ bundler, files: routeApiFiles })
         const reported = [...build.client.warnings, ...build.ssr.warnings]
+        // (no order rule: the effect before the API moves with it)
         for (const path of ['direct']) {
           expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
-          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe(
-            'eager',
-          )
-          // one warning, at the pinned declaration
-          expectDiagnostic(reported, {
-            severity: 'warning',
-            file: `src/routes/${path}.tsx`,
-            root: build.root,
-            position: diagnosticPosition(
-              routeApiFiles[
-                `src/routes/${path}.tsx` as keyof typeof routeApiFiles
-              ],
-              'confetti = new',
-            ),
-            times: 1,
-          })
+          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe('lazy')
+          expect(
+            findDiagnostics(reported, {
+              file: `src/routes/${path}.tsx`,
+              root: build.root,
+            }),
+          ).toEqual([])
         }
         expect(build.client.where('MARK_MEMO')).toBe('lazy')
         expect(

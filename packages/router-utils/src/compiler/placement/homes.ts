@@ -170,13 +170,10 @@ export function assignHomes(
     }
     if (derived.length === 0) {
       // nobody needs it: a gen unit disappears; an import stays or leaves
-      // by `importStays`; a pure unexported declaration that was not
-      // rooted (dead code that would pull a chunk's dependency) is dropped;
-      // other source stays in the env module (harmless)
+      // by `importStays`; source stays in the env module (dead code is
+      // never deleted, R148: settle roots it where it follows)
       const dead =
-        cl.kind === 'gen' ||
-        (cl.kind === 'import' && !importStays(cl)) ||
-        (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
+        cl.kind === 'gen' || (cl.kind === 'import' && !importStays(cl))
       home.set(cl.id, dead ? 'removed' : 'env')
       continue
     }
@@ -197,10 +194,6 @@ export function assignHomes(
       home.set(cl.id, 'duplicate')
       continue
     }
-    if (!pure(cl.id)) {
-      home.set(cl.id, 'env')
-      continue
-    }
     if (derived.some((o) => outputs.get(o)?.kind === 'export')) {
       // a pure cluster an extracted module and another output both need is
       // copied into each when a copy is indistinguishable (a function, a
@@ -208,9 +201,15 @@ export function assignHomes(
       // imported would be a static dependency of the route module, which no
       // chunk may import. One with an identity, or written, is one instance
       // in the env module (an env root since the roots settled)
-      home.set(cl.id, isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env')
+      // (an effect, one instance: `slotFor` keeps it in the env module)
+      home.set(
+        cl.id,
+        pure(cl.id) && isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env',
+      )
       continue
     }
+    // several split outputs: one lazy shared module they import, effects
+    // too, evaluated once when the first of them loads (R151)
     const key = derived.map(keyOf).sort().join('+')
     let shared = sharedByKey.get(key)
     if (!shared) {
@@ -282,6 +281,34 @@ export function assignHomes(
       }
     } else {
       home.set(c, g)
+    }
+  }
+
+  // a joined follower is one cluster with what it follows (R151): a binding
+  // of it the single-writer rule gave to one of its chunks takes it there
+  // (its shared module may not import a chunk that imports it)
+  const sharedIds = new Set(created.map((o) => o.id))
+  for (const [f, follows] of roots.joinedWith) {
+    const h = home.get(f)
+    if (h === undefined || h === 'duplicate' || h === 'removed') {
+      continue
+    }
+    if (!sharedIds.has(h)) {
+      continue
+    }
+    for (const d of follows) {
+      const dh = home.get(d)
+      if (
+        dh !== undefined &&
+        dh !== h &&
+        dh !== 'env' &&
+        dh !== 'duplicate' &&
+        dh !== 'removed' &&
+        derivedNeeders[f]!.includes(dh)
+      ) {
+        home.set(f, dh)
+        break
+      }
     }
   }
 

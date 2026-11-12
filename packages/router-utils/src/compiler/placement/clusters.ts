@@ -34,7 +34,7 @@ export interface Cluster {
   units: Array<UnitId>
   declares: Set<SymbolId>
   /**
-   * It has an effect (`effectUnits`) or an effectful generated unit. A write
+   * It has an effect (a surviving effectful unit) or an effectful generated unit. A write
    * of pure values to a binding it declares (`Page.displayName = …`) is no
    * effect (R139): such a cluster may be an extracted export, and its
    * output stays side-effect free.
@@ -45,8 +45,6 @@ export interface Cluster {
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Source position of the cluster's first effect unit (its effects keep their order with the surviving effects after it); Infinity when none (generated units are compiler code). */
-  firstEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -119,8 +117,6 @@ export interface ClusterGraph {
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
   /** The effect units that only augment bindings their cluster's pure declarations declare: decided with that cluster. */
   ownAugmentations: ReadonlySet<UnitId>
-  /** The units with an effect O orders: effectful, surviving, not a write of pure values to their own cluster's binding (R139). */
-  effectUnits: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
   /**
@@ -139,6 +135,8 @@ export interface ClusterGraph {
    * or after any evaluation, wherever that evaluation is.
    */
   lateWrite: (sym: SymbolId, by: ClusterId) => Write | undefined
+  /** Every write `lateWrite` would answer for `sym` and `by` (recheck ruling C asks where each runs). */
+  lateWrites: (sym: SymbolId, by: ClusterId) => Array<Write>
   /**
    * The eager half (O): a live write of `sym` by another cluster than `by`
    * when the module loads, after a read evaluated at `readAt`. Whether it
@@ -506,11 +504,20 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   // writes in source order. A unit that writes a member only inside a
   // function (`function set() { cfg.v = 1 }`) is a late writer, not joined
   // (V orders it); a sub-region assigning it is the single-writer rule's.
+  // A write of an import (a member, an augmentation) joins nothing: it is no
+  // declaration of the module (another module evaluates it; every output
+  // imports it itself), and the write table still orders it (R149: a
+  // statement writing one follows the module bindings it uses).
   const writersOfMember = new Map<number, Set<RegionId>>() // declaring member → writer sub-regions
   const regionWrittenSyms = new Set<SymbolId>()
   for (const w of writes) {
     const d = declMember.get(w.sym)
-    if (!w.live || d === undefined || w.owner === null) {
+    if (
+      !w.live ||
+      d === undefined ||
+      w.owner === null ||
+      t1.symbols.isImport(w.sym)
+    ) {
       continue
     }
     const unitOwner = regions.get(w.owner).kind === 'unit'
@@ -551,14 +558,34 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       set.add(w.sym)
     }
   }
-  const pureWrite = (unit: Unit, own: boolean): boolean =>
-    !unit.augmentEffects &&
+  const pureWrite = (
+    unit: Unit,
+    own: boolean,
+    augmentEffects = unit.augmentEffects,
+  ): boolean =>
+    !augmentEffects &&
     own &&
     unit.augments.every(
       (sym) =>
         !(memberWritesOf.get(unit.region)?.has(sym) ?? false) ||
         t1.mutation.ownsObject(sym),
     )
+
+  /**
+   * Whether cluster `cl` has an effect: what placement's purity calls one, but for a write of pure values to a binding it
+   * declares (R139: `Page.displayName = …`, a link on a `const` builder),
+   * which is a write (the write table), ordered against what reads the
+   * binding.
+   */
+  const hasEffects = (cl: Cluster): boolean =>
+    cl.units.some((u) => {
+      const unit = units[u]!
+      return (
+        unit.effectful &&
+        statementSurvives(items[unit.item]!.nodeRange) &&
+        !pureWrite(unit, ownAugmentations.has(u), unit.augmentEffects)
+      )
+    })
 
   // ---- materialise clusters ------------------------------------------------
   const clusters: Array<Cluster> = []
@@ -579,7 +606,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         writer: false,
         exported: false,
         start: Infinity,
-        firstEffect: Infinity,
         kind: 'region',
         copyable: false,
         identityFree: false,
@@ -590,7 +616,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   }
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
-  const effectUnits = new Set<UnitId>()
   const ownAugmentations = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
@@ -694,22 +719,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
-    // its effects: what purity calls one, but for a write of pure values
-    // to a binding it declares (R139: `Page.displayName = …`, a link on a
-    // `const` builder), which is a write (the write table), ordered against
-    // what reads the binding
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (
-        unit.effectful &&
-        statementSurvives(items[unit.item]!.nodeRange) &&
-        !pureWrite(unit, own(unit))
-      ) {
-        cl.effectful = true
-        cl.firstEffect = Math.min(cl.firstEffect, unit.range.start)
-        effectUnits.add(u)
-      }
-    }
+    cl.effectful ||= hasEffects(cl)
   }
   for (const w of writes) {
     if (w.live && w.eager && w.owner !== null) {
@@ -741,6 +751,12 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return undefined
   }
+  const lateWrites = (sym: SymbolId, by: ClusterId): Array<Write> =>
+    lateWritten.has(sym)
+      ? writesOfSym
+          .get(sym)!
+          .filter((w) => w.live && !w.eager && (w.passed || byOther(w, by)))
+      : []
   const laterWrite = (
     sym: SymbolId,
     readAt: number,
@@ -768,11 +784,11 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     regionWrittenSyms,
     viewOf,
     isLive,
-    effectUnits,
     ownAugmentations,
     unitSurvives,
     callsOf,
     lateWrite,
+    lateWrites,
     laterWrite,
   }
 }

@@ -90,8 +90,10 @@ code.test.ts`: "a root route's %s loads lazily".
 - **Rolldown: a `var` declared again in a for-in/of head or a pattern, read by a split chunk, reads its first value.**
   The compiler's output is correct: the route module holds both declarations and exports the binding, and Rolldown
   inlines the first value in the importing module (see "Upstream issues"; webpack and Rspack read the last one). SPEC
-  J2.5. `router-plugin/tests/integration/code-splitter-module-state.test.ts`: "gives the split component the value a
-  `var` declared again takes in a head or a pattern (Rolldown)". Fix: upstream.
+  J2.5. Fix: upstream. Reached only when the route module keeps the `var` and its loop or block: the statement that
+  declares it again now follows `x` into the chunk when only the chunk reads it, so
+  `router-plugin/tests/integration/code-splitter-module-state.test.ts` ("gives the split component the value a `var`
+  declared again takes in a head or a pattern (Rolldown)") no longer reaches it.
 
 - **A Vue `<script setup>` block that hands a Start builder or factory to its template is a compile error on the dev
   servers and in builds with Vue's devtools**: Vite and Rsbuild dev; Vite builds with `features.prodDevtools`, a true

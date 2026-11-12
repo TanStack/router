@@ -55,13 +55,6 @@ export interface OutputDecl {
   derivedId: string | null
   roots: Array<RootRef>
   header?: HeaderPolicy
-  /**
-   * Whether the output may be flagged side-effect free to the bundler
-   * (`moduleSideEffects: false`). The plan flags it only when no effectful
-   * cluster is placed in it: the flag is computed from the content, the
-   * declaration opts the output in. Default false.
-   */
-  sideEffectFree?: boolean
   /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
   describe?: string
 }
@@ -92,8 +85,6 @@ export interface PlacementInput {
   /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
   routeModule: boolean
-  /** Whether an effect unit is a recognised framework call known not to touch user state (asked only when a cluster could move past it). */
-  isBenign: (unit: UnitId) => boolean
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
   /**
@@ -109,8 +100,9 @@ export interface PlacementInput {
  * (`Placement.kept`). An exported one (an extraction candidate a chunk
  * reaches): `effects` (an observable initialiser effect), `reassigned`,
  * `live` (the env module reads it), `reads` (it reads, at its evaluation,
- * a binding the env module keeps), `order` (an effect keeps its order). An
- * unexported effectful one, or an eager reader of state: `order` (a surviving effect after its first one, `effect`),
+ * a binding the env module keeps), `unneeded` (no derived output needs it
+ * once extraction is decided). An
+ * unexported effectful one, or an eager reader of state:
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
  * (it reads, at its evaluation, `read`, which something writes), `reads`
@@ -120,15 +112,16 @@ export interface PlacementInput {
  * (one instance, in the env module).
  */
 export type KeptReason =
-  | 'effects'
   | 'reassigned'
   | 'live'
   | 'reads'
-  | 'order'
+  | 'unneeded'
   | 'needers'
   | 'written'
   | 'state'
   | 'shared'
+  /** Unused code (R148) keeping bindings in the env module, or putting bindings of several split outputs in one shared module (`shared`). */
+  | 'unused'
 
 export interface KeptDeclaration {
   /** The declared symbols (one, an export's, for an exported declaration). */
@@ -139,16 +132,28 @@ export interface KeptDeclaration {
   range: { start: number; end: number }
   /** The lazy outputs that need it. */
   needers: Array<OutputId>
-  /** `order`: the surviving effect that keeps it in place. */
-  effect?: UnitId
-  /** Whether that effect still evaluates in the env module (else it moves to another output). */
-  effectStays?: boolean
   /** `written`, `reassigned`: where it is written. */
   at?: number
-  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned. */
+  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned; `written`: the binding the statement also changes, which keeps it. */
   read?: SymbolId
-  /** `order`: the declarations it reads that the same effect keeps too (not reported on their own), in source order. */
-  with?: Array<SymbolId>
+  /** `written`: the split output using `read`, or the subject's second one. */
+  in?: OutputId
+  /** `written`: the statement only uses it (it changes none of its bindings). */
+  uses?: boolean
+  /** `written`: the statement changes `read` (else it uses it). */
+  readChanged?: boolean
+  /** `written`: the statement can change `read` in a statement of its own. */
+  split?: boolean
+  /** `unused`: the unused declaration (R148), positioned at by `range`. */
+  unused?: SymbolId
+  /** `unused`: the other unused declarations joining the same bindings (each with its position): deleting all of them separates them. */
+  moreUnused?: Array<{ sym: SymbolId; at: number }>
+  /** `unused`: it puts `syms` in one lazy shared module its `needers` import (R151), not in the env module. */
+  shared?: boolean
+  /** `written`: code that runs later changes it, there. */
+  later?: number
+  /** `written`: the binding of the code using `read` when the module loads, which the statement changes later. */
+  reader?: SymbolId
 }
 
 export interface ExtractedExport {
@@ -212,7 +217,7 @@ export function computePlacement(input: PlacementInput): Placement {
   // 4. the solver: env roots, slots and extracted exports, one fixed point
   const roots = settleRoots(input, graph, reads, events, seeds)
   // 5. what only split code needs that stays, and why
-  const kept = keptDeclarations(input, graph, reads, seeds, roots)
+  const kept = keptDeclarations(input, graph, reads, events, seeds, roots)
   if (!input.extractedOutputs) {
     foldExtractions(reads, roots)
   }

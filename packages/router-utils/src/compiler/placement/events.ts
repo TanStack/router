@@ -12,8 +12,10 @@
  *   outside its cluster writes at an unknown time (inside a function, or in
  *   code that runs later) stays in the env module (`volatile`), whatever its
  *   slot: that write may run before or after it anywhere.
- * - **O** (order): two effects keep their order (`orderConflict`), and so do
- *   a read and a write of a binding when the module loads (`writeConflict`),
+ * - **O** (order): a read and a write of a binding when the module loads
+ *   keep their order (`writeConflict`); effects have no order of their own
+ *   beyond the bindings they read and write (no order rule): what moves keeps
+ *   its source order in its output, what stays in the route module,
  *   judged on the slots of both sides: a binding's writers at load are its
  *   cluster, so the write evaluates where the binding does, and a reader is
  *   a cluster of its own (`ordered`: one that a write after it orders has
@@ -52,11 +54,15 @@
  * (`factsOf`). A module that writes no module binding asks only of
  * effectful clusters and candidates.
  */
+import { changesAsArgument, changesObject } from '../units'
+import { callChangesNothing } from '../purity'
 import { NEED_KINDS } from './clusters'
 import type { ClusterGraph, ClusterId, Write } from './clusters'
 import type { ReadIndex } from './reads'
+import type { Node } from 'yuku'
+import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
-import type { RegionId, Unit, UnitId } from '../units'
+import type { RegionId, UnitId } from '../units'
 import type { OutputId } from '../rewrite'
 import type { Fallback, Home, KeptReason, PlacementInput } from '../reach'
 
@@ -67,21 +73,46 @@ export interface Touch {
   cluster: ClusterId
 }
 
+/** What statements change (`Events.unitChanges`, `Events.statementChanges`). */
+export interface StatementChanges {
+  /** The module bindings they change (assign, write a member of, call a method on, hand to a function of the module that changes it), in source order; what the warnings word as `changes` (else `uses`). */
+  syms: ReadonlyArray<SymbolId>
+  /** The module bindings they use (read or change, not imports), and the objects those may hold, in source order: what they follow (R149). */
+  reads: ReadonlyArray<SymbolId>
+  /** The imports they read: where none of `clusters` decides, their users' one chunk does (imports go wherever their users go; every output imports one itself, so none keeps a statement). */
+  imports: ReadonlyArray<SymbolId>
+  /** What they follow, the statement's own cluster aside: the clusters of `reads` (R149; R148: dead code follows what it reads, like a statement). */
+  clusters: ReadonlyArray<ClusterId>
+}
+
 /** Per written binding an evaluation touches, its first and last touch: they decide every comparison with a write. */
 type Spans = ReadonlyMap<SymbolId, { first: number; last: number }>
 
 /**
  * Why a cluster stays in the env module: the violated pair. `reason` is the
- * kind as `Placement.kept` words it; `other` the second event, an effect
- * (`order`) or a write (`written`, `state`: the write the read observes;
- * the first effect or write of the pair); `binding` what the pair shares
+ * kind as `Placement.kept` words it; `other` the second event, a write
+ * (`written`, `state`: the write the read observes); `binding` what the pair shares
  * (`state`, `reads`). A one-event cause (`needers`, `effects`, `live`,
  * `shared`) has neither.
  */
 export interface Pin {
   reason: KeptReason
-  other?: { unit: UnitId } | { at: number }
+  other?: { at: number }
   binding?: SymbolId
+  /** `written`: the split output using `binding` (another than the subject's), or the subject's second one. */
+  in?: OutputId
+  /** `written`: the statement only uses the subject (it changes none of its bindings). */
+  uses?: boolean
+  /** `written`: the statement changes `binding` (else it uses it). */
+  bindingChanged?: boolean
+  /** `written`: the statement is several statements, one of which can change `binding` on its own. */
+  split?: boolean
+  /** `written`: the follower is unused code (R148), this declaration. */
+  unused?: SymbolId
+  /** `written`: code that runs later changes what the statement uses, there (V). */
+  later?: number
+  /** `written`: the binding of the code that uses `binding` when the module loads, which the statement's own code changes later (V). */
+  reader?: SymbolId
 }
 
 export interface Events {
@@ -89,20 +120,19 @@ export interface Events {
   volatile: (c: ClusterId) => Pin | undefined
   /** When V holds nothing: the pair of `c`'s first touch of a binding something outside it writes after it when the module loads (O orders `c` against a write: its slot matters). */
   ordered: (c: ClusterId) => Pin | undefined
-  /** The rules of a lazy slot after N: `written`, then V. */
-  lazyConflict: (c: ClusterId) => Pin | undefined
+  /** The rules of a lazy slot after N: `written`, then V; V holds unless every write it meets runs where `inside` says (in the slot itself: recheck ruling C). */
+  lazyConflict: (
+    c: ClusterId,
+    inside?: (w: Write) => boolean,
+  ) => Pin | undefined
+  /** Another cluster than `c` whose evaluation touches `sym` when the module loads, the first one, if any (who reads what `c`'s own code writes later). */
+  loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
   /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any. */
   readsKept: (
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ) => SymbolId | undefined
-  /** O: the effect that changes order with `c`'s when `c` evaluates in `to`, the clusters of `target` in theirs. */
-  orderConflict: (
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-  ) => Unit | undefined
-  /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (in `target`) nor is a `const` `kept` says the env module keeps. */
+  /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (in `target`) nor is a `const` `kept` says evaluates in a module `c`'s imports first (the env module, an extracted module). */
   readConflict: (
     c: ClusterId,
     to: OutputId,
@@ -115,6 +145,19 @@ export interface Events {
     to: OutputId,
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
+  /**
+   * The module bindings statement `u` (an effect unit, or a declaration
+   * followed as dead code) uses (R149): those its text names and those it
+   * runs (`ReadIndex.runs`, when it calls something), and the objects their
+   * values may hold (`MutationModel.heldBy`, the one owner of "the object a
+   * binding names": `alias.add()` uses `table` through `const alias =
+   * table`); imports apart (none keeps a statement). Which of them it
+   * changes (`changesObject`, `changesAsArgument`; a call the purity model
+   * knows changes nothing) only words the warnings. Once per unit.
+   */
+  unitChanges: (u: UnitId) => StatementChanges
+  /** `unitChanges` of the statements and declarations of cluster `c`, together: what a follower (a statement, or dead code: R148) follows (`settle.ts`). */
+  statementChanges: (c: ClusterId) => StatementChanges
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
   fallbacks: (
     home: ReadonlyMap<ClusterId, Home>,
@@ -127,8 +170,8 @@ export function eventTable(
   graph: ClusterGraph,
   reads: ReadIndex,
 ): Events {
-  const { t1, outputs, isBenign } = input
-  const { units, symbols } = t1
+  const { t1, outputs } = input
+  const { symbols } = t1
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion, clusterOfSym, writesOfSym } = graph
   /** The regions a claim relocates (an option value a chunk owns). */
@@ -203,6 +246,9 @@ export function eventTable(
         return false
       }
     }
+    return touchersOf(sym).every((d) => d === c)
+  }
+  function touchersOf(sym: SymbolId): Array<ClusterId> {
     let touchers = touchersOfSym.get(sym)
     if (touchers === undefined) {
       touchers = []
@@ -213,7 +259,7 @@ export function eventTable(
       }
       touchersOfSym.set(sym, touchers)
     }
-    return touchers.every((d) => d === c)
+    return touchers
   }
 
   const statePin = (t: Touch, w: Write): Pin => ({
@@ -307,7 +353,26 @@ export function eventTable(
     facts(c).late === null ? (facts(c).later ?? undefined) : undefined
   const spans = (c: ClusterId): Spans => facts(c).spans
 
-  function lazyConflict(c: ClusterId): Pin | undefined {
+  /** Every late write (V) of what cluster `c` touches, its own aside. */
+  const lateWritesOf = (c: ClusterId): Array<Write> => {
+    const out: Array<Write> = []
+    const seen = new Set<SymbolId>()
+    touches(c, (t) => {
+      if (!seen.has(t.sym)) {
+        seen.add(t.sym)
+        if (!ownLate(c, t.sym)) {
+          out.push(...graph.lateWrites(t.sym, c))
+        }
+      }
+      return false
+    })
+    return out
+  }
+
+  function lazyConflict(
+    c: ClusterId,
+    inside?: (w: Write) => boolean,
+  ): Pin | undefined {
     const cl = clusters[c]!
     // written: nothing outside the cluster writes it eagerly (its own
     // top-level augmentations, `X.p = …`, travel with it: a binding and its
@@ -327,7 +392,24 @@ export function eventTable(
     }
     // (a unit that is no declaration and no own augmentation makes its
     // cluster an effect, which the lazy slot rules are not asked of)
-    return volatile(c)
+    const late = volatile(c)
+    // (every later writer another cluster's, in the slot: the slot
+    // evaluates the reader before any of its functions run, so V does not
+    // hold, ruling C; a write of `c`'s own text is `c` writing what code
+    // elsewhere reads, which moving it reorders)
+    if (late !== undefined && inside !== undefined) {
+      const writes = lateWritesOf(c)
+      if (
+        writes.length > 0 &&
+        writes.every(
+          (w) =>
+            w.owner !== null && clusterOfRegion.get(w.owner) !== c && inside(w),
+        )
+      ) {
+        return undefined
+      }
+    }
+    return late
   }
 
   function readConflict(
@@ -341,8 +423,10 @@ export function eventTable(
     }
     // the other side is effectful too, so its slot is exact: in `target`
     // (by N its only needer, which then is `c`'s), or demoted, or kept by
-    // the env module already; never a shared module homes pick later (a
-    // chunk and the shared module it imports are two modules)
+    // the env module already, or extracted (its module, which `c`'s
+    // imports and so evaluates first, like the env module); never a shared
+    // module homes pick later (a chunk and the shared module it imports
+    // are two modules)
     for (const t of facts(c).reads) {
       const there = target.get(t.cluster)
       if (
@@ -370,58 +454,8 @@ export function eventTable(
     return found
   }
 
-  // the effects of the env module's evaluation an event is ordered against
-  // (asked only when one could move: most modules never need the benign
-  // check). Module loading is hoisted: a bare import or a re-export
-  // evaluates before the module body wherever it is written, so it is never
-  // an effect before or after one.
-  let effectList: Array<Unit> | null = null
-  const effects = (): Array<Unit> =>
-    (effectList ??= units.filter(
-      (u) =>
-        graph.effectUnits.has(u.id) &&
-        u.kind !== 'type' &&
-        u.kind !== 'import-effect' &&
-        u.kind !== 'reexport' &&
-        graph.unitSurvives(u.id) &&
-        !isBenign(u.id),
-    ))
   const isStatic = (o: OutputId | undefined) =>
     o !== undefined && outputs.get(o)?.kind === 'export'
-
-  /*
-   * O. A lazily imported output (a chunk) evaluates after the env module's
-   * body: an effect after `c`'s first in the source would then run before
-   * it. An effect never moves to an extracted export's module (`slotFor`:
-   * that module may never evaluate).
-   *
-   * Kept on purpose (a maintainers' decision): without this guarantee a
-   * declaration only split code reads whose initialiser calls a function
-   * the compiler does not know would move to the chunk as the previous
-   * splitter moved it, which saves the initial load such calls keep (four
-   * real apps load about 175 KB more than before, mostly generated data
-   * and zod schemas), but two effects sharing state the compiler cannot see
-   * (a library's store, registry or configuration) would silently run in
-   * another order. Calls known to be pure are no effect (`pureCalls`).
-   */
-  function orderConflict(
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-  ): Unit | undefined {
-    const cl = clusters[c]!
-    for (const u of effects()) {
-      if (u.range.start <= cl.firstEffect) {
-        continue
-      }
-      const uc = clusterOfRegion.get(u.region)
-      if (uc === c || (uc !== undefined && target.get(uc) === to)) {
-        continue
-      }
-      return u
-    }
-    return undefined
-  }
 
   function writeConflict(
     c: ClusterId,
@@ -618,13 +652,179 @@ export function eventTable(
     return out
   }
 
+  const known = (call: Node) => callChangesNothing(t1.purity, call)
+  const NO_CHANGES: StatementChanges = {
+    syms: [],
+    reads: [],
+    imports: [],
+    clusters: [],
+  }
+  /** The clusters `c` follows: of every module binding it uses. */
+  const followed = (
+    own: ClusterId | undefined,
+    used: Iterable<SymbolId>,
+  ): Array<ClusterId> => {
+    const out: Array<ClusterId> = []
+    for (const s of used) {
+      const d = clusterOfSym.get(s)
+      if (d !== undefined && d !== own && !out.includes(d)) {
+        out.push(d)
+      }
+    }
+    return out
+  }
+  const changesOfUnit = new Map<UnitId, StatementChanges>()
+  function unitChanges(u: UnitId): StatementChanges {
+    let hit = changesOfUnit.get(u)
+    if (hit !== undefined) {
+      return hit
+    }
+    const unit = t1.units[u]!
+    const file = t1.purity.file
+    const syms = new Set<SymbolId>()
+    const read = new Set<SymbolId>()
+    const imported = new Set<SymbolId>()
+    // what its text names (a function's body too: dead code follows what
+    // it reads, R148) and what it runs, with the objects those may hold
+    const noteRead = (ref: ClassifiedRef) => {
+      if (
+        !NEED_KINDS.has(ref.kind) ||
+        !symbols.isModuleLevel(ref.sym) ||
+        !graph.isLive(ref, 'env')
+      ) {
+        return
+      }
+      if (symbols.isImport(ref.sym)) {
+        imported.add(ref.sym)
+        return
+      }
+      read.add(ref.sym)
+      for (const h of t1.mutation.heldBy(ref)) {
+        if (!symbols.isImport(h)) {
+          read.add(h)
+        }
+      }
+    }
+    for (const ref of t1.refs.refsIn(unit.range)) {
+      noteRead(ref)
+    }
+    const calls = graph.callsOf(unit.region) !== null
+    reads.runs(unit.region, (ref) => {
+      if (
+        !symbols.isModuleLevel(ref.sym) ||
+        !graph.isLive(ref, 'env') ||
+        (!calls &&
+          (ref.range.start < unit.range.start ||
+            ref.range.end > unit.range.end))
+      ) {
+        return false
+      }
+      noteRead(ref)
+      // what it changes (the warnings word it: `changes` or `uses`): in
+      // its text or a function body it runs, not a writer of a name it
+      // reads (`cfg.n = 1` after `table.setup(cfg)`)
+      if (
+        (ref.range.start < unit.range.start ||
+          ref.range.end > unit.range.end) &&
+        !t1.isLazyAt(ref.range.start)
+      ) {
+        return false
+      }
+      let changed: ReadonlyArray<SymbolId> = []
+      if (ref.kind === 'write') {
+        changed = [ref.sym]
+      } else if (ref.kind === 'value') {
+        const node = t1.nodeAt(ref.range.start)
+        if (
+          node !== null &&
+          (changesObject(file, node, known) ||
+            changesAsArgument(file, node, known))
+        ) {
+          changed =
+            ref.memberWrite &&
+            !ref.readsThrough &&
+            t1.mutation.ownsObject(ref.sym)
+              ? [ref.sym]
+              : [ref.sym, ...t1.mutation.heldBy(ref)]
+        }
+      }
+      for (const s of changed) {
+        if (!symbols.isImport(s)) {
+          syms.add(s)
+        }
+      }
+      return false
+    })
+    const own = clusterOfRegion.get(unit.region)
+    hit =
+      read.size === 0 && imported.size === 0
+        ? NO_CHANGES
+        : {
+            syms: [...syms],
+            reads: [...read],
+            imports: [...imported],
+            clusters: followed(own, read),
+          }
+    changesOfUnit.set(u, hit)
+    return hit
+  }
+
+  const changesOfCluster = new Map<ClusterId, StatementChanges>()
+  function statementChanges(c: ClusterId): StatementChanges {
+    let hit = changesOfCluster.get(c)
+    if (hit !== undefined) {
+      return hit
+    }
+    const syms: Array<SymbolId> = []
+    const read: Array<SymbolId> = []
+    const imported: Array<SymbolId> = []
+    for (const u of clusters[c]!.units) {
+      const kind = t1.units[u]!.kind
+      if (
+        (kind !== 'effect' && kind !== 'declaration') ||
+        !graph.unitSurvives(u)
+      ) {
+        continue
+      }
+      const one = unitChanges(u)
+      for (const s of one.syms) {
+        if (!syms.includes(s)) {
+          syms.push(s)
+        }
+      }
+      for (const s of one.reads) {
+        if (!read.includes(s)) {
+          read.push(s)
+        }
+      }
+      for (const s of one.imports) {
+        if (!imported.includes(s)) {
+          imported.push(s)
+        }
+      }
+    }
+    hit =
+      read.length === 0 && imported.length === 0
+        ? NO_CHANGES
+        : {
+            syms,
+            reads: read,
+            imports: imported,
+            clusters: followed(c, read),
+          }
+    changesOfCluster.set(c, hit)
+    return hit
+  }
+
   return {
     volatile,
     ordered,
+    unitChanges,
+    statementChanges,
     lazyConflict,
+    loadToucher: (sym, c) => touchersOf(sym).find((d) => d !== c),
     readsKept,
     readConflict,
-    orderConflict,
     writeConflict,
     fallbacks,
   }

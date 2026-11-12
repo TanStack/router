@@ -19,6 +19,7 @@ import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, memberUse } from './units'
 import { MutationModel, writeConstruct, writeKind } from './mutation'
 import {
+  languagePurity,
   linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
@@ -152,7 +153,7 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
+  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, `(a ?? {}).p`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
   readsThrough: boolean
 }
 
@@ -260,6 +261,8 @@ export interface Tier1 {
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
+  /** The planners' purity (`ModuleAnalysis.purity`): what extraction and the statement rule's "what it changes" ask. */
+  purity: PurityContext
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
@@ -375,6 +378,8 @@ export class ModuleAnalysis {
   readonly hasImportOrExport: boolean
   /** The planners' purity (with a compile's builder chains: `env`). */
   readonly purity: PurityContext
+  /** The purity the unit model judges top-level effects with, for placement: the planners', where language operations are no effect (rule L, `languagePurity`). */
+  readonly effectPurity: PurityContext
   /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
   private readonly ownPurity: PurityContext
   /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
@@ -515,6 +520,7 @@ export class ModuleAnalysis {
       opts.env && builderImports
         ? builderPurityOf(ownPurity, builderImports, opts.env).ctx
         : ownPurity
+    this.effectPurity = languagePurity(this.purity)
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -1140,7 +1146,7 @@ export class ModuleAnalysis {
       file,
       items,
       symbols,
-      this.purity,
+      this.effectPurity,
       (s) => this.importIndexOfStatement(s),
     )
 
@@ -1358,6 +1364,7 @@ export class ModuleAnalysis {
       }
     }
 
+    const purity = this.purity
     const tier1: Tier1 = {
       items,
       units,
@@ -1369,6 +1376,7 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
+      purity,
       snapshotDiffers: (sym, at, live) => {
         if (mutation.isReassigned(sym, live)) {
           return true

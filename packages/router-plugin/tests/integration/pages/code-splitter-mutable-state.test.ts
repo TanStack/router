@@ -100,9 +100,10 @@ return await render('component')`),
     },
   )
 
-  // The route's option values run at route creation, after every
-  // declaration before them in the source, whoever reads those declarations.
-  it('runs a declaration only the component reads before an impure option value', async () => {
+  // The route's option values run at route creation; a declaration only
+  // the component reads has no order with them (no order rule): it runs
+  // when the chunk loads.
+  it('runs a declaration only the component reads after an impure option value', async () => {
     const route = await loadRoute(
       `${head}import { createStore, makeSchema } from './state'
 const store = createStore()
@@ -131,6 +132,6 @@ export const makeSchema = () => {
     expect(
       await route.run(`const html = await render('component')
 return [html, (await app('state.ts')).calls]`),
-    ).toEqual(['<p>2</p>', ['createStore', 'makeSchema']])
+    ).toEqual(['<p>2</p>', ['makeSchema', 'createStore']])
   })
 })

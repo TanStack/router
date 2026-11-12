@@ -251,9 +251,11 @@ export function includeAndImport(
         wanted.push(s)
       }
     }
-    // a root homed elsewhere is imported by the output that rooted it
+    // a root homed elsewhere is imported by the output that rooted it (a
+    // joined follower is rooted in each output only to be placed: each
+    // imports what it reads, recheck finding 8)
     for (const c of derivedRoots.get(o) ?? []) {
-      if (!inc.has(c)) {
+      if (!inc.has(c) && !roots.joined.has(c)) {
         for (const s of clusters[c]!.declares) {
           wanted.push(s)
         }

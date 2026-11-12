@@ -82,9 +82,9 @@ For automatic code splitting to work, there are some rules in place to make sure
 
 A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a function or component that uses only functions and constants, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle. A class, an object, or a value a call returns exists once: the chunk and other modules importing it from the route file share that small module.
 
-An exported binding stays in the main bundle in these cases, and the build warns once, naming the file and what to do (the dev server warns for the first):
+An exported binding that only split code uses moves to a small module of its own that the chunk imports, side effects and the statements changing it included (`store.subscribe(log)` goes with `store`). It stays in the main bundle in these cases, and the build warns once, naming the file and what to do:
 
-- only split code uses it, but it has state or effects (an initialiser with side effects, a `let` the module reassigns, a value read from mutable state when the module loads, a component the file augments with `Page.displayName = …`), so one instance must exist and the route module keeps it. Move it to its own module and import it from there, or mark a call that has no side effects `/* @__PURE__ */`;
+- it reads, when the module loads, a binding the route module keeps or changes, or the module reassigns it (a `let`): its own module would load at another time than the route module. Move it and what it reads to their own module and import it from there;
 - a module loaded with the entry imports a function or constant through the route file while the chunk carries its own copy, so the build ships it twice. Move it to its own module and import it from there in both;
 - another route's split code imports it through the route file, and webpack or Rspack keep the route file's re-export with the entry. Import it from its own module, or declare `"sideEffects": false` in package.json;
 - it is a class, an object or a call result only split code imports, and the bundler's chunk configuration (a `manualChunks` or `cacheGroups` group that lands in the entry, Rolldown < 1.1.5) placed its module with the entry. Keep the routes directory out of such groups.
@@ -101,68 +101,142 @@ export const Route = createRoute('/posts')({
 export function PostsNotFoundComponent() {
   // ...
 }
-
-// ⚠️ warns and stays in the main bundle: its initialiser has side effects
-export const store = createStore()
 ```
 
-#### Top-level side effects keep their order
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createStore, log } from '../store'
 
-A top-level declaration with side effects that only split code reads (for example `const confetti = new JSConfetti()`, used only by the component) moves into the split chunk and runs when the chunk loads. It stays in the main bundle, and runs when the route file loads, if a side effect written after it stays in the route file, such as an inline call in an option that is not split (`validateSearch: z.object({ … })`). Moving the declaration would run it after that call, and the route file's side effects keep the order they are written in. The same declaration also stays when several split properties read it (its side effects run once), when the route file changes it at the top level (`registry.add(…)`), or when it reads, as the file loads, a value that has side effects and stays, or that the file changes later. The build (and the dev server) warns once for each such declaration, naming it, what keeps it and the line, for example:
+// ✅ split: a module of its own, which the chunk imports
+export const store = createStore('cart-store')
+store.subscribe(log)
+
+export const Route = createFileRoute('/cart')({
+  component: () => <p>{store.count}</p>,
+})
+```
+
+#### Top-level code moves with the code that uses it
+
+Top-level code that only split code uses moves into that split chunk, side effects included: a declaration moves with the code that reads it, a statement with the bindings it uses, and unused code with what it reads. Side effects keep no order between them: a call that stays in the route file, such as `validateSearch: z.object({ … })`, does not hold back a declaration written before it.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+import { Confetti } from '../confetti'
+import { registry } from '../registry'
+
+// ✅ both move into the component's chunk and run when it loads
+const confetti = new Confetti({ colors: ['gold'] })
+registry.add(confetti, 'account-confetti')
+
+export const Route = createFileRoute('/account')({
+  validateSearch: z.object({ success: z.boolean().optional() }),
+  component: () => <button onClick={() => confetti.fire()} />,
+})
+```
+
+Code that several split chunks use goes to one shared module they all import. It runs once, when the first of them loads:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createAnalytics } from '../analytics'
+
+// ✅ one shared module for the component and the error component
+const analytics = createAnalytics('posts-analytics')
+
+export const Route = createFileRoute('/posts')({
+  component: () => <button onClick={() => analytics.track('post-opened')} />,
+  errorComponent: () => (
+    <button onClick={() => analytics.track('post-retried')} />
+  ),
+})
+```
+
+#### Code that moves runs later
+
+What moves runs when its chunk loads, no longer when the route file loads. Keep startup work that must run when the app starts in a module the app's entry imports, or use it from code the route module keeps (its `loader`, `beforeLoad`). For example:
+
+- `Sentry.init(sentryConfig)`, where only the component reads `sentryConfig`, runs when the component's chunk loads;
+- a callback registered when the module loads moves with the binding it writes: with `let flags = {}` read only by the component, `loadFlags().then((f) => { flags = f })` starts when the component's chunk loads;
+- in a TanStack Start app, startup work only a server function's handler uses (`queue.process(worker)` with `queue` read by the handler) moves with the handler and runs on the first call of a server function of the file;
+- a read of an object moves past a write made through what a function returned for it: after `const store = reactive(settings)` and `Object.assign(store, { dark: true })`, a `const keys = Object.keys(settings)` only the component uses moves into its chunk and sees `dark`, because the compiler does not know that `store` is `settings`.
+
+#### What stays in the route file
+
+Code stays in the route file when the route module uses it, or when a statement that stays changes or uses it. The build warns once for each binding only split code needs that stays this way, naming it, why it stays and a fix. For example, a statement writing two bindings stays with the one the route module keeps:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createSession, createTheme } from '../app'
+
+const theme = createTheme()
+const session = createSession()
+if (import.meta.env.PROD) {
+  theme.mode = 'dark'
+  session.secure = true
+}
+
+export const Route = createFileRoute('/settings')({
+  beforeLoad: () => session.check(),
+  component: () => <p>{theme.mode}</p>,
+})
+```
 
 ```
-[tanstack-router] `confetti` in src/routes/account.tsx stays in the route module because the call
-`type(…)` in `validateSearch` (line 14) runs after it and stays; declare `confetti` after `Route`,
-create that value in a `const` before `confetti`, or mark the call `/* @__PURE__ */` if it has no side
-effects, so `confetti` can load with the split `component`. (src/routes/account.tsx:12:7)
+[tanstack-router] `theme` in src/routes/settings.tsx stays in the route module because the statement on line 6, which changes it, stays there: it also changes `session`, which the route module keeps; change `session` in a statement of its own, so `theme` can load with the split `component`.
 ```
 
-A call the compiler knows to have no side effects is no side effect here: it neither stays for this reason nor keeps a declaration before it. These are TanStack Router's `getRouteApi`, `linkOptions`, `createLink`, `createRouteMask`, `lazyRouteComponent`, `lazyFn`, `retainSearchParams`, `stripSearchParams`, `parseSearchWith`, `stringifySearchWith` and `createRouterConfig` (React and Vue), React's `memo`, `forwardRef` and `lazy`, Solid's `lazy`, and Vue's `defineComponent` and `defineAsyncComponent`, called with arguments that have no side effects and imported from the package itself: a renamed import, a namespace member (`React.memo` after `import * as React from 'react'`) and a member of React's default import (`import React from 'react'`) count, a re-export through one of the app's modules does not. So `const Page = memo(Inner)` or `const Panel = defineComponent({ … })` above `validateSearch: z.object({ … })` loads with the split `component`.
+A value read when the module loads from state the module changes later stays too, since moving it would read the state at another time:
 
-In a TanStack Start app's client and server builds, the builder chains of server functions, middleware, isomorphic functions and server-only or client-only functions (`createServerFn(…)…handler(…)`, `createMiddleware(…).client(…)`, `createIsomorphicFn()…`, `createServerOnlyFn(…)`) have no side effects either when their arguments have none; the arguments a build removes (on the client a handler, a validator, a middleware's `server`) do not count. A link called on a `const` that holds a builder (`const base = createMiddleware(…)`, then `base.client(…)`) is a side effect: a middleware's links change the builder they are called on. Each builder still exists once per environment: two split chunks reading one share the module that holds it.
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { loadPrefs, readTheme } from '../prefs'
 
-Every host prints the file and one position: a Vite build at the end of the message, as above (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
+const prefs = loadPrefs()
+const initialTheme = prefs.theme
+window.addEventListener('storage', () => {
+  prefs.theme = readTheme()
+})
 
-Any of these lets the declaration load with the split chunk, from the least to the most effort:
+export const Route = createFileRoute('/theme')({
+  component: () => <p>{initialTheme}</p>,
+})
+```
 
-- **Declare it after the route.** A declaration written after `createFileRoute(…)({ … })` comes after the call in the file, so loading it later with the chunk keeps the order:
+```
+[tanstack-router] `initialTheme` in src/routes/theme.tsx stays in the route module because it uses `prefs` when the module loads, and the module writes `prefs`; use `prefs` inside the code that needs it, or move both to their own module, so `initialTheme` can load with the split `component`.
+```
 
-  ```tsx
-  export const Route = createFileRoute('/account')({
-    validateSearch: type({ 'success?': 'boolean' }),
-    component: AccountPage,
-  })
+Unused code is never deleted: it moves with what it reads. When it reads bindings of two chunks, it puts them in one shared module, and the build says so:
 
-  // ✅ split: nothing that stays in the route file runs after it
-  const confetti = new JSConfetti()
-  ```
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createCache, createClient } from '../app'
 
-- **Create the value the option uses before it**, in the same file or in a module of its own (`validateSearch: searchSchema`, imported or declared above):
+const cache = createCache()
+const client = createClient()
+function debugDump() {
+  return [cache, client]
+}
 
-  ```tsx
-  const searchSchema = type({ 'success?': 'boolean' })
-  // ✅ split: no side effect after it stays in the route file
-  const confetti = new JSConfetti()
+export const Route = createFileRoute('/dashboard')({
+  component: () => <p>{cache.size}</p>,
+  errorComponent: () => <p>{client.status}</p>,
+})
+```
 
-  export const Route = createFileRoute('/account')({
-    validateSearch: searchSchema,
-    component: AccountPage,
-  })
-  ```
+```
+[tanstack-router] In src/routes/dashboard.tsx, unused `debugDump` (line 6) puts `cache` and `client` in one shared module the split `component` and `errorComponent` import; delete `debugDump`, so each loads with the split code that needs it.
+```
 
-- **Move the declaration to a module of its own** that only the component imports (`import { confetti } from '../-confetti'`): the import moves into the chunk with the component, so the module loads with it.
-- **Create it on first use**, for example `let instance; const getConfetti = () => (instance ??= new JSConfetti())`: a function has no side effects when it is declared.
-- **Tell the compiler that the call has no side effects**, with one of these annotations:
-  - `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
-  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself, where Rollup and esbuild accept it: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }`, `/* #__NO_SIDE_EFFECTS__ */ const makeSchema = (…) => …` (a `const`, the first function it declares) or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not (before or after `export`), declared before or after the call.
+Every host prints the file and one position: a Vite build at the end of the message (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
 
-  The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter. An annotation frees only a call or `new` whose arguments have no side effects. A value that is not a call, such as a template literal (`` `${config.url}/mcp` ``) or an object, has nothing to annotate, so for those the warning offers only the other fixes.
+#### Calls without side effects
 
-These do not change what the route file keeps, because the route file is split without reading the modules it imports or the bundler's options:
+A value without side effects can be copied into each chunk that uses it, and a declaration reading one when the module loads does not stay for it. The compiler knows these calls have none when their arguments have none: TanStack Router's `getRouteApi`, `linkOptions`, `createLink`, `createRouteMask`, `lazyRouteComponent`, `lazyFn`, `retainSearchParams`, `stripSearchParams`, `parseSearchWith`, `stringifySearchWith` and `createRouterConfig` (React and Vue), React's `memo`, `forwardRef` and `lazy`, Solid's `lazy`, and Vue's `defineComponent` and `defineAsyncComponent`, imported from the package itself (a renamed import, a namespace member such as `React.memo` and a member of React's default import count; a re-export through one of the app's modules does not). In a TanStack Start app's client and server builds, the builder chains of server functions, middleware, isomorphic functions and server-only or client-only functions have none either; the arguments a build removes do not count, and a link called on a `const` that holds a builder (`base.client(…)`) changes that builder.
 
-- `/* #__NO_SIDE_EFFECTS__ */` on a function imported from another module, one of the app's or a package's (for example valibot's functions): annotate the call with `/* @__PURE__ */` instead;
-- `"sideEffects": false` in the package.json of the function's package: it says that importing the package's modules has no side effects, not that calling their functions has none;
-- the bundler's list of pure functions (`treeshake.manualPureFunctions` of Rolldown and Rollup, esbuild's `pure`, Terser's `pure_funcs`).
+Mark other calls that have no side effects with `/* @__PURE__ */` before the call, or with `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself. An annotation frees only a call or `new` whose arguments have no side effects. These do not change what the route file keeps, because the route file is split without reading the modules it imports or the bundler's options: `/* #__NO_SIDE_EFFECTS__ */` on a function imported from another module, `"sideEffects": false` in a package's package.json, and the bundler's list of pure functions.
 
 #### Route callbacks that read `this` are not split
 

@@ -227,13 +227,14 @@ return { before, log: globalThis.log }`)
     timeout,
   )
 
-  // The augmentation calls an imported function: its module is not the
-  // route module's, so nothing else ties the declaration to the route
-  // module's evaluation. The effect is observable on its own, so the
-  // declaration never leaves for a side-effect-free module only the chunk
-  // imports (where `track('page')` would run when the chunk loads).
+  // The augmentation calls an imported function: nothing ties the
+  // declaration to the route module's evaluation, so it leaves with the
+  // component for its extracted module, a destination like a chunk (R149,
+  // extended): `track('page')` runs once, when the chunk imports the
+  // component, after the route module's own `track('after')` (effects have
+  // no order of their own, R146).
   it.each(['vite', 'rspack', 'webpack'] as const)(
-    'runs an augmentation calling an imported function once, in source order, when no other module imports the component (%s)',
+    'runs an augmentation calling an imported function once, when the chunk imports the component, when no other module imports it (%s)',
     async (bundler) => {
       const app = await buildRoute(
         `${head}import { track } from '../tracker'
@@ -261,8 +262,8 @@ await entry.mount(entry.Route.options.component)
 return { before, log: globalThis.log }`)
       expect({ html: run.html, ...(run.result as object) }).toEqual({
         html: '<div id="root"><p>MARK_PAGE</p></div>',
-        before: ['page', 'after'],
-        log: ['page', 'after'],
+        before: ['after'],
+        log: ['after', 'page'],
       })
     },
     timeout,
@@ -271,11 +272,11 @@ return { before, log: globalThis.log }`)
 
 describe('an unexported helper with an effectful augmentation that only an exported component renders', () => {
   // `Card.x = track('card')`: `Card` is only read by `Page`, an exported
-  // component the split component is. Its effect is observable on its own,
-  // so it runs once, as the route module loads and before its later
-  // top-level code, whether or not another module imports `Page`.
+  // component the split component is: it leaves with `Page` for its
+  // extracted module (R149, extended) and runs once, when the chunk
+  // imports `Page`, after the route module's own `track('after')`.
   it.each(['vite', 'rspack', 'webpack'] as const)(
-    'runs the augmentation once, in source order, when no other module imports the component (%s)',
+    'runs the augmentation once, when the chunk imports the component, when no other module imports it (%s)',
     async (bundler) => {
       const app = await buildRoute(
         `${head}import { track } from '../tracker'
@@ -307,8 +308,8 @@ await entry.mount(entry.Route.options.component)
 return { before, log: globalThis.log }`)
       expect({ html: run.html, ...(run.result as object) }).toEqual({
         html: '<div id="root"><p>MARK_CARD</p></div>',
-        before: ['card', 'after'],
-        log: ['card', 'after'],
+        before: ['after'],
+        log: ['after', 'card'],
       })
     },
     timeout,

@@ -1,14 +1,17 @@
 /**
  * Placement, stage 3: the roots before any decision. The env module's own
- * roots (effect statements, exports, effectful generated units, the roots
- * planners named), each derived output's roots, the clusters pinned to an
+ * roots (effect statements touching an import or nothing of the module,
+ * exports, effectful generated units, the roots planners named), the
+ * followers (the other statements: `settle.ts` roots each in a chunk or
+ * the env module), each derived output's roots, the clusters pinned to an
  * output by a fixed-home generated unit, the extracted-export candidates
  * (decided later, with the env roots), and provenance: what erased text
  * read, from which "orphaned by us" is decided once env liveness is final.
  */
 import { NEED_KINDS, describeCluster } from './clusters'
-import type { ClusterGraph, ClusterId } from './clusters'
+import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
+import type { Pin } from './events'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -32,8 +35,21 @@ export interface Seeds {
   /** Clusters a fixed-home generated unit pins to its output. */
   pinned: Map<ClusterId, OutputId>
   envRoots: Set<ClusterId>
-  /** Unexported declaration clusters an augmentation keeps as effect roots (their initialiser has effects), with its position (`kept`, `written`). */
-  augmentedRoots: Map<ClusterId, number>
+  /**
+   * The unexported clusters holding a bare statement (a call, an
+   * assignment, an `if`/`try`/loop block): not env roots yet; with the
+   * dead declarations (R148) each follows the module bindings it uses into
+   * their one chunk or becomes an env root, all judged in one place
+   * (`settle.ts`, round 0; R149).
+   */
+  followers: Set<ClusterId>
+  /**
+   * Statements kept in the env module, and why (`written`: a binding they
+   * use stays or goes elsewhere): the declarations they use that only split
+   * code needs are reported with that cause (`kept.ts`). Filled when roots
+   * settle.
+   */
+  stayPins: Map<ClusterId, Pin>
   derivedRoots: Map<OutputId, Set<ClusterId>>
   /** The clusters reachable in the env module's source from what its erased text reads. */
   fromErased: Set<ClusterId>
@@ -53,12 +69,44 @@ export function seedRoots(
 
   // ---- extracted exports: candidates and their export companions -------
   // Planners allow every local value export out; a candidate is one whose
-  // cluster is an unassigned declaration without effects (its pure
-  // augmentations, `Page.p = …`, are writes that travel with it: the
-  // binding's writers at load are its cluster). Its companions are the export-specifier /
+  // cluster is an unassigned declaration, effects or not: its module is a
+  // destination like a chunk (R149, extended), flagged side-effect free, so
+  // what it holds runs when something uses the export (a bundler drops it
+  // while nothing imports what it exports). Its augmentations, `Page.p =
+  // …`, are writes that travel with it (the binding's writers at load are
+  // its cluster). Its companions are the export-specifier /
   // `export default x` clusters that only read it. Neither is an env root
   // for now: the decision (extract, or keep in the env module) is taken once
   // env liveness is known.
+  // an extracted declaration is one identity every output imports: one
+  // that some output renders otherwise (a placeholder or claim scoped away
+  // from it: a server function's handler where its provider holds it)
+  // stays
+  const scopedAway = [
+    ...rewrites.places.flatMap((p) =>
+      p.scope === 'all-outputs' ? [] : [p.range],
+    ),
+    ...[...rewrites.claims.values()].flatMap((c) =>
+      c.scope === undefined ? [] : [rewrites.regions.get(c.region).range],
+    ),
+  ]
+  const rendersOtherwise = (cl: Cluster): boolean =>
+    scopedAway.length > 0 &&
+    cl.units.some((u) => {
+      const { start, end } = units[u]!.range
+      return scopedAway.some((r) => r.start < end && start < r.end)
+    })
+  // an export the planners keep (the route: its chunks import it) stays,
+  // and with it whatever cluster it joins (a route option value writing
+  // another export at load)
+  const holdsKept = (cl: Cluster): boolean =>
+    cl.units.some((u) => {
+      const unit = units[u]!
+      return (
+        unit.exported.length > 0 &&
+        unit.declares.some((s) => !extractions.has(s))
+      )
+    })
   const candidates = new Map<ClusterId, Candidate>()
   for (const [sym, output] of extractions) {
     const c = clusterOfSym.get(sym)
@@ -67,9 +115,12 @@ export function seedRoots(
     }
     const cl = clusters[c]!
     if (
-      cl.kind !== 'declaration' ||
-      cl.effectful ||
+      // (a declaration, also one an effect of its own writes: its cluster
+      // is then an effect's, and leaves with it, R150 ruling B)
+      (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
       cl.gens.length > 0 ||
+      rendersOtherwise(cl) ||
+      holdsKept(cl) ||
       // a reassigned export stays: its writers would assign an import
       t1.mutation.isReassigned(sym, liveInEnv) ||
       // a binding a sub-region writes (Hydrate children, a split option
@@ -189,7 +240,8 @@ export function seedRoots(
     }
   }
   const envRoots = new Set<ClusterId>()
-  const augmentedRoots = new Map<ClusterId, number>()
+  const followers = new Set<ClusterId>()
+  const stayPins = new Map<ClusterId, Pin>()
   for (const u of units) {
     if (!graph.unitSurvives(u.id)) {
       continue
@@ -197,17 +249,25 @@ export function seedRoots(
     const c = clusterOfRegion.get(u.region)!
     if (u.kind === 'effect' || u.kind === 'import-effect') {
       // an augmentation of its own declaration cluster is decided with the
-      // cluster (movable, else an effect root when roots settle)
+      // cluster (movable, else an effect root when roots settle); a bare
+      // statement of an unexported cluster may follow what it uses
       if (!graph.ownAugmentations.has(u.id)) {
-        envRoots.add(c)
         if (
-          u.augments.length > 0 &&
-          !clusters[c]!.exported &&
-          !augmentedRoots.has(c) &&
-          u.augments.every((s) => clusters[c]!.declares.has(s))
+          u.kind === 'effect' &&
+          u.node.type !== 'TSExportAssignment' &&
+          !clusters[c]!.exported
         ) {
-          augmentedRoots.set(c, u.range.start)
+          followers.add(c)
+        } else if (
+          u.kind !== 'effect' ||
+          u.node.type === 'TSExportAssignment' ||
+          !candidates.has(c)
+        ) {
+          envRoots.add(c)
         }
+        // (an extraction candidate's own statement is decided with it: it
+        // leaves for its module, or is an env root once cancelled, R150
+        // ruling B)
       }
     } else if (
       u.kind === 'export-specifier' ||
@@ -230,6 +290,11 @@ export function seedRoots(
     const c = rootCluster(r)
     if (c !== undefined) {
       envRoots.add(c)
+    }
+  }
+  for (const c of followers) {
+    if (envRoots.has(c)) {
+      followers.delete(c)
     }
   }
   const derivedRoots = new Map<OutputId, Set<ClusterId>>()
@@ -294,7 +359,8 @@ export function seedRoots(
     deadClusters,
     pinned,
     envRoots,
-    augmentedRoots,
+    followers,
+    stayPins,
     derivedRoots,
     fromErased,
   }

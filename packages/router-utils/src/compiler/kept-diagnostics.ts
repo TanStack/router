@@ -1,17 +1,17 @@
 /**
  * The user-facing warning for a declaration only split code needs that
- * stays in the env module (`Placement.kept`), and the benign-call judgement
- * it shares with placement (`firstImpure`). The planners supply the words:
+ * stays in the env module (`Placement.kept`). The planners supply the words:
  * how their outputs are named (`OutputSpec.describe`) and what the module
  * is (`PlanContext.describeModule`).
  */
 import { isPureExpression } from './purity'
 import { unwrapExpression } from './source'
+import type { PurityContext } from './purity'
 import type { AnalysisPlan } from './plan'
 import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
-import type { Unit, UnitId } from './units'
 import type { SymbolId } from './symbols'
+import type { OutputId } from './rewrite'
 import type { Node } from 'yuku'
 
 /**
@@ -30,37 +30,43 @@ export function keptDiagnostic(
   const tag = plan.moduleWords === null ? '' : `${plan.moduleWords.tag} `
   const module = plan.moduleWords?.name ?? 'module'
   const file = plan.displayPath
-  const code = analysis.source.code
-  const text = (n: Node) => {
-    const t = code.slice(n.start, n.end)
-    return t.length > 40 || t.includes('\n')
-      ? `${t.slice(0, 37).split('\n')[0]}…`
-      : t
+  const output = (o: OutputId) => {
+    const decl = plan.outputs.get(o)!
+    if (decl.kind === 'export') {
+      return `the module of the export \`${decl.key.slice('export~'.length)}\``
+    }
+    return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
   }
-  // `the call \`f(…)\` in \`validateSearch\``
-  const describe = ({ node, key }: { node: Node; key: string | null }) => {
-    const where = key === null ? '' : ` in \`${key}\``
-    switch (node.type) {
-      case 'CallExpression':
-        return `the call \`${text(node.callee)}(…)\`${where}`
-      case 'NewExpression':
-        return `\`new ${text(node.callee)}(…)\`${where}`
-      case 'AssignmentExpression':
-        return `the assignment to \`${text(node.left)}\`${where}`
-      default:
-        return `\`${text(node)}\`${where}`
+  const split = k.needers.map(output).join(', ')
+  const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
+  const and = (items: ReadonlyArray<string>) =>
+    items.length === 1
+      ? items[0]!
+      : `${items.slice(0, -1).join(', ')} and ${items.at(-1)!}`
+  if (k.reason === 'unused') {
+    // unused code (R148): what it keeps in the env module, or puts in one
+    // shared module several split outputs import (R151)
+    const unused = `\`${symbols.name(k.unused!)}\``
+    const names = k.syms.map((s) => `\`${symbols.name(s)}\``)
+    const more = k.moreUnused ?? []
+    // (several unused declarations joining the same bindings: deleting all
+    // of them separates them)
+    const at = and([
+      `${unused} (${line(k.range.start)})`,
+      ...more.map((m) => `\`${symbols.name(m.sym)}\` (${line(m.at)})`),
+    ])
+    const one = names.length === 1
+    return {
+      severity: 'warning',
+      message:
+        k.shared === true
+          ? `${tag}In ${file}, unused ${at} ${more.length === 0 ? 'puts' : 'put'} ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${more.length === 0 ? unused : 'them'}, so each loads with the split code that needs it.`
+          : `${tag}In ${file}, unused ${at} keeps ${and(names)} in the ${module}; delete ${unused}, so ${one ? 'it' : 'they'} can load with the split code that needs ${one ? 'it' : 'them'}.`,
+      range: k.range,
+      by: 'core',
+      code: k.shared === true ? 'shared-split:unused' : 'eager-split:unused',
     }
   }
-  const split = k.needers
-    .map((o) => {
-      const decl = plan.outputs.get(o)!
-      if (decl.kind === 'export') {
-        return `the module of the export \`${decl.key.slice('export~'.length)}\``
-      }
-      return decl.describe ?? `\`${decl.key.split('~').join('`, `')}\``
-    })
-    .join(', ')
-  const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
   if (k.exported) {
     const names = analysis.exports.flatMap((e) =>
       e.kind === 'local' && e.local === k.syms[0] && !e.typeOnly
@@ -68,21 +74,9 @@ export function keptDiagnostic(
         : [],
     )
     const one = names.length === 1
-    const declaring = (plan.t1.declaringUnits.get(k.syms[0]!) ?? [])[0]
-    const unit = declaring === undefined ? null : plan.t1.units[declaring]!
     let why: string
     let fix: string
     switch (k.reason) {
-      case 'effects':
-        if (unit?.effectful) {
-          why = 'its initialiser has side effects'
-          fix = `Move it to its own module and import it from there${annotatable(plan, k.syms) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
-        } else {
-          why = 'a statement setting a property of it has side effects'
-          fix =
-            'Move it and the statements setting its properties to their own module and import it from there.'
-        }
-        break
       case 'reassigned': {
         // the binding the export names is what is assigned (`export default
         // items` after `var items` is declared again)
@@ -110,17 +104,11 @@ export function keptDiagnostic(
         fix = `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
         break
       }
-      default: {
-        // `order`: its extracted module would evaluate before the module's body
-        const effect = k.effect === undefined ? null : effectAt(plan, k.effect)
-        why =
-          effect === null
-            ? 'an effect of the module keeps it in place'
-            : `${describe(effect)} (${line(effect.node.start)}) runs before it and ${k.effectStays ? 'stays' : 'does not move with it'}`
-        fix =
-          'Move it and the statements setting its properties to their own module and import it from there.'
+      default:
+        // `unneeded`: no split output needed it once extraction was decided
+        why = 'no split code needs its extracted module'
+        fix = 'Stop exporting it if no other file imports it.'
         break
-      }
     }
     return {
       severity: 'warning',
@@ -136,73 +124,41 @@ export function keptDiagnostic(
   const it = names.length === 1 ? 'it' : 'they'
   const them = names.length === 1 ? 'it' : 'them'
   const own = names.length === 1 ? 'its' : 'their'
-  // one declaration (a destructuring too) or several: their initialisers
-  const declarations = new Set(
-    k.syms.flatMap((s) => plan.t1.declaringUnits.get(s) ?? []),
-  ).size
-  const several = declarations > 1
-  const initialiser = several ? `${own} initialisers` : `${own} initialiser`
-  const itHas = several ? 'they have' : 'it has'
   const read = k.read === undefined ? '' : `\`${symbols.name(k.read)}\``
   let because: string
   let fix: string
   switch (k.reason) {
-    case 'order': {
-      // the least effort first: move the declaration below the effect
-      // (it then follows it, wherever it loads), or the effect's value
-      // above it; an annotation only where the effect is a call. Each fix
-      // names the declarations it reads that the same effect keeps (moving
-      // one alone leaves the other kept). An effect another split option
-      // loads has no order with this one's chunk: declaring one after the
-      // other only swaps which one stays.
-      const effect = effectAt(plan, k.effect!)
-      const withNames = (k.with ?? []).map((s) => `\`${symbols.name(s)}\``)
-      const all = [...withNames, ...names].join(', ')
-      const fixes: Array<string> = []
-      if (k.effectStays === false) {
-        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them} but loads with another split option, which may load before or after ${them}`
-        fixes.push(`move ${subject} to ${own} own module`)
-      } else {
-        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${them}${withNames.length === 0 ? '' : ` and ${withNames.join(', ')}, which ${it} read${it === 'it' ? 's' : ''},`} and stays`
-        const unit = plan.t1.units[k.effect!]!
-        const after =
-          unit.declares.length > 0
-            ? unit.declares.map((s) => `\`${symbols.name(s)}\``).join(', ')
-            : 'it'
-        fixes.push(`declare ${all} after ${after}`)
-        if (plan.benignEffects.has(k.effect!)) {
-          fixes.push(
-            `create that value in a \`const\` before ${withNames[0] ?? subject}`,
-          )
-        }
-      }
-      if (
-        (effect.node.type === 'CallExpression' ||
-          effect.node.type === 'NewExpression') &&
-        annotationFrees(plan, effect.node)
-      ) {
-        const local = localFunctionName(plan, effect.node.callee)
-        const annotations = [
-          ...(local === null
-            ? []
-            : [`mark \`${local}\` \`/* #__NO_SIDE_EFFECTS__ */\``]),
-          'mark the call `/* @__PURE__ */`',
-        ]
-        annotations[annotations.length - 1] += ' if it has no side effects'
-        fixes.push(...annotations)
-      }
-      const last = fixes.pop()!
-      fix = fixes.length === 0 ? last : `${fixes.join(', ')}, or ${last}`
+    case 'written': {
+      // a statement using it stays (R149): another binding it uses stays
+      // or goes to an output no module shares with it (an extracted
+      // export's module, R151), or code that runs later changes it
+      const stays = `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
+      const reader =
+        k.reader === undefined ? '' : `\`${symbols.name(k.reader)}\``
+      because =
+        k.later !== undefined
+          ? `${stays}: code that runs later changes ${them} too (${line(k.later)})`
+          : k.reader !== undefined
+            ? `${stays}: it changes ${read} later, which ${reader} uses when the module loads`
+            : k.read !== undefined
+              ? `${stays}: it also ${k.readChanged === true ? 'changes' : 'uses'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
+              : stays
+      fix =
+        // (the later writer may be a line of a component: what moves is
+        // what uses it when the module loads, recheck finding 6)
+        k.later !== undefined
+          ? `move ${subject} and the statements using ${them} when the module loads to their own module`
+          : k.reader !== undefined
+            ? `use ${read} inside the code that needs ${reader} instead of when the module loads`
+            : k.read === undefined
+              ? `move ${subject} and that statement to their own module`
+              : k.split === true
+                ? `change ${read} in a statement of its own`
+                : k.in === undefined
+                  ? `run that statement in the code that needs ${them}`
+                  : `move ${subject}, ${read} and that statement to their own module`
       break
     }
-    case 'needers':
-      because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
-      fix = `move ${subject} to ${own} own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none` : ''}`
-      break
-    case 'written':
-      because = `the module changes ${them} outside ${own} declaration${several ? 's' : ''} when it loads (${line(k.at!)})`
-      fix = `move ${subject} and what writes ${them} to their own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} no side effects` : ''}`
-      break
     case 'shared':
       // an exported binding's extracted module and other split code both
       // read a value with an identity (or state): one instance, in the module
@@ -280,13 +236,13 @@ function writtenWith(
 function annotationFrees(
   plan: Pick<AnalysisPlan, 'analysis'>,
   node: Node | null,
+  purity: PurityContext,
 ): boolean {
   const n = node === null ? null : unwrapExpression(node)
   return (
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
     n.arguments.every(
-      (a) =>
-        a.type !== 'SpreadElement' && isPureExpression(plan.analysis.purity, a),
+      (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
     )
   )
 }
@@ -301,6 +257,7 @@ export function annotatable(
   syms: ReadonlyArray<SymbolId>,
 ): boolean {
   const { t1, analysis } = plan
+  const purity = analysis.effectPurity
   let any = false
   for (const u of new Set(
     syms.flatMap((s) => t1.declaringUnits.get(s) ?? []),
@@ -317,159 +274,11 @@ export function annotatable(
       unit.node.type !== 'VariableDeclarator' ||
       (decl?.type === 'VariableDeclaration' &&
         (decl.kind === 'using' || decl.kind === 'await using')) ||
-      !annotationFrees(plan, unit.node.init)
+      !annotationFrees(plan, unit.node.init, purity)
     ) {
       return false
     }
     any = true
   }
   return any
-}
-
-/** The name of a callee that is a function declared in this module (`function f`, `const f = () => …`), which `#__NO_SIDE_EFFECTS__` can mark. */
-function localFunctionName(plan: AnalysisPlan, callee: Node): string | null {
-  const id = unwrapExpression(callee)
-  if (id.type !== 'Identifier') {
-    return null
-  }
-  const file = plan.analysis.file
-  const b = file.referenceOf(id)?.binding
-  const decl = b?.scope === file.rootScope ? b.declarations[0] : undefined
-  const parent = decl ? file.parentOf(decl) : null
-  const fn =
-    parent?.type === 'FunctionDeclaration' ||
-    (parent?.type === 'VariableDeclarator' &&
-      parent.init !== null &&
-      (unwrapExpression(parent.init).type === 'ArrowFunctionExpression' ||
-        unwrapExpression(parent.init).type === 'FunctionExpression'))
-  return fn ? id.name : null
-}
-
-/** The expression that makes a unit an effect: for a recognised call a planner named, the option value or argument that is not pure (`firstImpure`). */
-function effectAt(
-  plan: AnalysisPlan,
-  u: UnitId,
-): { node: Node; key: string | null } {
-  const unit = plan.t1.units[u]!
-  const option = plan.benignEffects.has(u) ? firstImpure(plan, unit) : null
-  const node =
-    option?.node ??
-    (unit.node.type === 'ExpressionStatement'
-      ? unit.node.expression
-      : unit.node.type === 'VariableDeclarator' && unit.node.init
-        ? unit.node.init
-        : unit.node)
-  return { node: unwrapExpression(node), key: option?.key ?? null }
-}
-
-/**
- * The value that makes a unit no benign call chain: the first impure
- * argument, or option value with its property key; the unit's own
- * expression when it is no call chain; null when benign. A unit a planner
- * named benign is when its expression is a call chain (`f(a)(b)`,
- * `f(a).g(b)`) whose every argument is a pure value. An object literal
- * argument is judged per property; a value that is a claimed region
- * evaluates in another output through a pure wrapper, and one the env
- * output erases not at all.
- */
-export function firstImpure(
-  plan: AnalysisPlan,
-  unit: Unit,
-): { node: Node; key: string | null } | null {
-  const { analysis, rewrites } = plan
-  const node = unit.node
-  const expr =
-    node.type === 'VariableDeclarator'
-      ? node.init
-      : node.type === 'ExpressionStatement'
-        ? node.expression
-        : node.type === 'ExportDefaultDeclaration'
-          ? node.declaration
-          : null
-  if (expr === null) {
-    return { node, key: null }
-  }
-  const env = rewrites.view('env')
-  const claimed = (v: Node): boolean => {
-    for (const claim of rewrites.claims.values()) {
-      const r = plan.regions.get(claim.region).range
-      if (r.start === v.start && r.end === v.end) {
-        return true
-      }
-    }
-    return false
-  }
-  const impureIn = (
-    v: Node,
-    key: string | null,
-  ): { node: Node; key: string | null } | null => {
-    const n = unwrapExpression(v)
-    // the common values: a function, an identifier, a literal
-    if (
-      n.type === 'ArrowFunctionExpression' ||
-      n.type === 'FunctionExpression' ||
-      n.type === 'Identifier' ||
-      n.type === 'Literal'
-    ) {
-      return null
-    }
-    if (claimed(v) || env.isErasedAt(v.start)) {
-      return null
-    }
-    if (n.type === 'ObjectExpression') {
-      for (const p of n.properties) {
-        if (p.type === 'SpreadElement') {
-          if (!isPureExpression(analysis.purity, p)) {
-            return { node: p, key }
-          }
-          continue
-        }
-        if (p.computed && !isPureExpression(analysis.purity, p.key as Node)) {
-          return { node: p.key as Node, key }
-        }
-        if (p.kind !== 'init' || env.isErasedAt(p.start)) {
-          continue
-        }
-        const found = impureIn(
-          p.value as Node,
-          p.computed ? key : propertyName(p.key as Node),
-        )
-        if (found !== null) {
-          return found
-        }
-      }
-      return null
-    }
-    return isPureExpression(analysis.purity, v) ? null : { node: v, key }
-  }
-  let n: Node = unwrapExpression(expr)
-  let calls = 0
-  for (;;) {
-    if (n.type === 'CallExpression') {
-      calls++
-      for (const a of n.arguments) {
-        const found =
-          a.type === 'SpreadElement'
-            ? { node: a, key: null }
-            : impureIn(a, null)
-        if (found !== null) {
-          return found
-        }
-      }
-      n = unwrapExpression(n.callee)
-    } else if (n.type === 'MemberExpression' && !n.computed) {
-      n = unwrapExpression(n.object)
-    } else {
-      return calls > 0 ? null : { node: expr, key: null }
-    }
-  }
-}
-
-/** The name of a non-computed property key (`validateSearch`, `'a-b'`), for diagnostics. */
-function propertyName(key: Node): string | null {
-  return key.type === 'Identifier'
-    ? key.name
-    : key.type === 'Literal'
-      ? String(key.value)
-      : null
 }

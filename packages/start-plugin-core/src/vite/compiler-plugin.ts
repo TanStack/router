@@ -180,7 +180,10 @@ function envCompilerPlugins(
     return {
       code: out.code,
       map: out.map as never,
-      moduleSideEffects: out.sideEffectFree ? false : undefined,
+      // an extracted export's module runs nothing of its own (the router
+      // plugin's hosts' rule)
+      moduleSideEffects:
+        identity.derived?.kind === 'export' ? false : undefined,
     }
   }
   const plugin: Plugin = {

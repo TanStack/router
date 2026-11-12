@@ -10,9 +10,12 @@
  * its chunk. A declaration reading state the module writes at load, after
  * its last write, loads with its chunk as written (design 2 step 3: it
  * stayed with the state the loader keeps, reported). Options of one split group writing one binding
- * are not reported: the binding goes to their chunk. Template-literal
- * initialisers (openstory) are reported and their fix, their own module,
- * works. Vite, Rspack, webpack and Rsbuild client builds.
+ * are not reported: the binding goes to their chunk. A template-literal
+ * initialiser two split options read (openstory) goes to their shared
+ * module (R151): silent, and lazy. An exported `queryOptions(…)` or `new URL(text)` the split
+ * component alone reads leaves for its extracted module, a destination
+ * like a chunk (R149, extended): silent, and lazy. Vite, Rspack, webpack
+ * and Rsbuild client builds.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -52,7 +55,8 @@ function Layout() {
   return <p>{modulesQueryOptions.queryKey[0]}{modules[0]}</p>
 }
 `,
-  // only the split component reads it: it stays eager, reported
+  // only the split component reads it: it leaves with its effects for its
+  // extracted module, which the chunk imports
   'routes/eager-export.tsx': `${head}import { queryOptions } from '../query'
 export const postOptions = queryOptions({ queryKey: ['MARK_eager-export_END'] })
 export const Route = createFileRoute('/eager-export')({
@@ -60,23 +64,13 @@ export const Route = createFileRoute('/eager-export')({
   component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
 })
 `,
-  // its fix: the call marked pure
-  'routes/eager-export-pure.tsx': `${head}import { queryOptions } from '../query'
-export const postOptions = /* @__PURE__ */ queryOptions({ queryKey: ['MARK_eager-export-pure_END'] })
-export const Route = createFileRoute('/eager-export-pure')({
+  // a standard global that may throw (`new URL(text)`): extracted too
+  'routes/url-export.tsx': `${head}const text = 'https://x/?MARK_url-export_END'
+export const url = new URL(text)
+export const Route = createFileRoute('/url-export')({
   loader: () => 'data',
-  component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
+  component: () => <p>{String(url)}{Route.useLoaderData()}</p>,
 })
-`,
-  // its other fix: its own module
-  'routes/eager-export-module.tsx': `${head}import { postOptions } from '../post-options'
-export const Route = createFileRoute('/eager-export-module')({
-  loader: () => 'data',
-  component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
-})
-`,
-  'post-options.ts': `import { queryOptions } from './query'
-export const postOptions = queryOptions({ queryKey: ['MARK_eager-export-module_END'] })
 `,
   // a declared component writing what the loader reads (shared-writer)
   'routes/writer.tsx': `${head}let count = 0
@@ -95,10 +89,12 @@ export const Route = createFileRoute('/writer-fixed')({
 })
 `,
   'counter.ts': 'export const counter = { n: 0 }\n',
-  // openstory's connect links: template-literal initialisers, which no
-  // annotation frees (R101: only the move is offered)
+  // openstory's connect links: template-literal initialisers two split
+  // options read go to their shared module (R151; openstory reads
+  // `CONFIG.url`, a member read, which rule L takes as no effect: a call
+  // keeps the shape)
   'routes/template.tsx': `${head}import { CONFIG } from '../config'
-const BASE = \`\${CONFIG.url}/mcp\`
+const BASE = \`\${CONFIG.url()}/mcp\`
 const LINK = \`https://y/?u=\${BASE}&MARK_template_END\`
 export const Route = createFileRoute('/template')({
   loader: () => 'data',
@@ -106,19 +102,7 @@ export const Route = createFileRoute('/template')({
   errorComponent: () => <p>{BASE}</p>,
 })
 `,
-  // its fix: their own module
-  'routes/template-module.tsx': `${head}import { BASE, LINK } from '../template-links'
-export const Route = createFileRoute('/template-module')({
-  loader: () => 'data',
-  component: () => <a href={LINK}>{BASE}{Route.useLoaderData()}</a>,
-  errorComponent: () => <p>{BASE}</p>,
-})
-`,
-  'template-links.ts': `import { CONFIG } from './config'
-export const BASE = \`\${CONFIG.url}/mcp\`
-export const LINK = \`https://y/?u=\${BASE}&MARK_template-module_END\`
-`,
-  'config.ts': "export const CONFIG = { url: 'https://x' }\n",
+  'config.ts': "export const CONFIG = { url: () => 'https://x' }\n",
   // two options of one split group writing one binding: it goes with them
   'routes/group-writers.tsx': `${head}let renders = 0
 export const Route = createFileRoute('/group-writers')({
@@ -167,19 +151,17 @@ export { routeTree }
 }
 
 const reported: Array<[file: string, needle: string]> = [
-  ['routes/eager-export.tsx', 'postOptions = queryOptions'],
   ['routes/writer.tsx', 'Counter,'],
-  ['routes/template.tsx', 'BASE = '],
 ]
 const silent = [
   'routes/course.tsx',
-  'routes/eager-export-pure.tsx',
-  'routes/eager-export-module.tsx',
+  'routes/eager-export.tsx',
+  'routes/url-export.tsx',
   'routes/writer-fixed.tsx',
   'routes/state.tsx',
   'routes/state-fixed.tsx',
   'routes/group-writers.tsx',
-  'routes/template-module.tsx',
+  'routes/template.tsx',
 ]
 
 const builds: Array<[string, () => Promise<BuildResult>]> = [
@@ -215,18 +197,17 @@ describe.each(builds)('a %s client build', (_name, create) => {
       }
       // the fixes load the code with the route's chunk
       for (const lazy of [
-        'eager-export-pure',
-        'eager-export-module',
+        'eager-export',
+        'url-export',
         'writer-fixed',
         'state',
         'state-fixed',
         'group-writers',
         'group-writers-pending',
-        'template-module',
+        'template',
       ]) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
       }
-      expect(app.where('MARK_eager-export_END')).toBe('eager')
     },
     timeout,
   )

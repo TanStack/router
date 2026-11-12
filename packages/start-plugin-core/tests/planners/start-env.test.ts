@@ -355,6 +355,35 @@ export const register = (name: string) => name
     expect(provider).toContain('db.q()')
   })
 
+  // Recheck ruling E (R149 on the server): a top-level write to a binding
+  // only a handler reads goes with that binding, into the provider module
+  // only; the env module, where the handler is a stub, holds neither.
+  it.each([
+    ['a method call', `cache.set('warm', 1)`],
+    ['an assignment', `cache.warm = 1`],
+    ['the server fn stored', `cache.set('warm', fn)`],
+  ])(
+    'writes state only a handler reads with %s in the provider module only',
+    async (_name, write) => {
+      const r = await compile(
+        `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const cache = new Map() as any
+export const fn = createServerFn().handler(() => cache.get('a') ?? db.q())
+${write}
+`,
+        { env: rsc, config, files },
+      )
+      expectValid(r.code)
+      expect(r.out.diagnostics).toEqual([])
+      expect(r.code).not.toContain('cache')
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).toContain('const cache = new Map()')
+      expect(provider).toContain(write)
+    },
+  )
+
   // J4.9, J4.10: a handler that is itself an env-only or isomorphic call is
   // compiled for the server in the provider module, as every other env-only
   // or isomorphic call there: the client-only fn throws, the isomorphic one
@@ -589,7 +618,7 @@ export const outer = createServerFn().handler(async () => {
 describe('lazy handler module of the in-place provider', () => {
   const FNS = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`
   const files = {
-    '/app/src/db.server.ts': `export const db = { get: (x: unknown) => x }\n`,
+    '/app/src/db.server.ts': `export const db = { get: (x: unknown) => x }\nexport const load = (x: unknown) => x\n`,
   }
   const HANDLER_ID = `${FILE}?tss-serverfn-handler`
 
@@ -676,12 +705,13 @@ export function makeFns() {
   })
 
   // the declaration and its effect leave the defining module's evaluation
-  // for the handler module's, once (a lazy initialisation, as in a split chunk)
+  // for the handler module's, once (a lazy initialisation, as in a split
+  // chunk): nothing outside the module keeps it (R149, answer A)
   it('moves module state and its effect only a hoisted handler reads', async () => {
     const r = await compile(
-      `${FNS}import { db } from './db.server'
+      `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
-label = db.get(label)
+label = load(label)
 export function makeFn() {
   return createServerFn().handler(async () => label)
 }
@@ -689,10 +719,10 @@ export function makeFn() {
       { env: ssrEnv, files },
     )
     expectValid(r.code)
-    expect(r.code).not.toContain('db.get(label)')
+    expect(r.code).not.toContain('load(label)')
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
-    expect(h.match(/label = db\.get\(label\)/g)).toHaveLength(1)
+    expect(h.match(/label = load\(label\)/g)).toHaveLength(1)
   })
 
   it('derives the handler module of an SFC block before its language key', async () => {

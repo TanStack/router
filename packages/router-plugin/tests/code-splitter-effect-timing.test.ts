@@ -12,10 +12,13 @@ import { describe, expect, it } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { head, loadRoute } from './route-app'
 
+// (a global function the setup defines: a method of `globalThis` would be
+// a change of a global, which keeps a statement in the route module and not
+// a declaration: R146 amendment)
 const shapes = {
-  initialiser: `let calls = globalThis.seed()`,
-  assignment: `let calls = 0\ncalls = globalThis.seed()`,
-  'compound assignment': `let calls = 0\ncalls += globalThis.seed()`,
+  initialiser: `let calls = seed()`,
+  assignment: `let calls = 0\ncalls = seed()`,
+  'compound assignment': `let calls = 0\ncalls += seed()`,
   'pure value (control)': `let calls = 0\ncalls = 5`,
 }
 
@@ -61,8 +64,9 @@ describe('on the Vite dev server, an effect setting state only the split compone
 
 // A decorator runs user code when its class is defined (TypeScript
 // `experimentalDecorators`, as dependency injection libraries use them, on a
-// parameter as on the class): a class carrying one is an effect, which keeps
-// its order with the effects after it.
+// parameter as on the class): a class carrying one is an effect, which has no
+// order with the effects after it (no order rule): it runs when the split
+// component loads.
 describe.each([
   [
     'a constructor parameter',
@@ -79,7 +83,7 @@ describe.each([
 ])(
   'on the Vite dev server, a class only the split component uses with a decorator on %s',
   (_name, declaration) => {
-    it('runs its decorator before the effects written after it', async () => {
+    it('runs its decorator when the component loads, after the effects written after it', async () => {
       const route = await loadRoute(
         `${head}import { Inject, Register } from './di'
 ${declaration}
@@ -101,15 +105,23 @@ export const Register = () => (_target: unknown) => {
           },
         },
       )
-      const run = await route.run<{ atLoad: Array<string>; html: string }>(
+      const run = await route.run<{
+        atLoad: Array<string>
+        html: string
+        after: Array<string>
+      }>(
         `const atLoad = [...globalThis.seeded]
 const html = await render('component')
-return { atLoad, html }`,
+return { atLoad, html, after: [...globalThis.seeded] }`,
         {
           before: `globalThis.seeded = []; globalThis.seed = (name) => globalThis.seeded.push(name)`,
         },
       )
-      expect(run).toEqual({ atLoad: ['decorator', 'after'], html: '<p>1</p>' })
+      expect(run).toEqual({
+        atLoad: ['after'],
+        html: '<p>1</p>',
+        after: ['after', 'decorator'],
+      })
     })
   },
 )
@@ -243,7 +255,8 @@ return { loader, html }`,
 
 // A destructuring default or computed key runs user code when the
 // declaration evaluates, like an initialiser does (`const beta = flags.beta
-// ?? track()`): it keeps its order with the effects after it.
+// ?? track()`): it has no order with the effects after it (no order rule),
+// it runs when the split component loads.
 describe.each([
   [
     'an object pattern default',
@@ -260,7 +273,7 @@ describe.each([
 ])(
   'on the Vite dev server, %s only the split component reads',
   (_name, declaration) => {
-    it('runs before the effects written after it', async () => {
+    it('runs when the component loads, after the effects written after it', async () => {
       const route = await loadRoute(
         `${head}import { track } from './analytics'
 ${declaration}
@@ -279,15 +292,23 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      const run = await route.run<{ atLoad: Array<string>; html: string }>(
+      const run = await route.run<{
+        atLoad: Array<string>
+        html: string
+        after: Array<string>
+      }>(
         `const atLoad = [...globalThis.seeded]
 const html = await render('component')
-return { atLoad, html }`,
+return { atLoad, html, after: [...globalThis.seeded] }`,
         {
           before: `globalThis.seeded = []; globalThis.seed = (name) => globalThis.seeded.push(name)`,
         },
       )
-      expect(run).toEqual({ atLoad: ['beta', 'after'], html: '<p>beta</p>' })
+      expect(run).toEqual({
+        atLoad: ['after'],
+        html: '<p>beta</p>',
+        after: ['after', 'beta'],
+      })
     })
   },
 )

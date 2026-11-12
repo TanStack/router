@@ -1,7 +1,6 @@
 /**
  * A read of an enum member runs no code: the enum's object holds plain data.
- * Real builds, both directions, with a `const` object's member read (which may
- * be a getter) as the control.
+ * Real builds, both directions.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -27,6 +26,33 @@ async function buildRoute(route: string, files: Record<string, string> = {}) {
     severity: 'warning',
   }).filter(({ text }) => text.includes('routes/index.tsx'))
   return { app, warnings: warnings.map(({ text }) => text) }
+}
+
+/** Builds the route and renders its component after loading its chunk. */
+async function render(route: string, files: Record<string, string> = {}) {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: routeApp(route, {
+      env: 'client',
+      files: {
+        'entry.ts': `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+export { Route } from './routes/index'
+export async function render(component: any) {
+  await component.preload?.()
+  return renderToString(createElement(component))
+}
+`,
+        ...files,
+      },
+    }),
+  })
+  const { result } = await app.run(
+    'return entry.render(entry.Route.options.component)',
+  )
+  return result
 }
 
 const component = (read: string) =>
@@ -88,92 +114,59 @@ describe('an enum initialised from a read of an enum member', () => {
     timeout,
   )
 
+  // recheck ruling C: `fx`, the only later writer of `effects`, goes to
+  // the component's chunk, so the member reading it there at load does too,
+  // and the statements calling `fx` follow it (R149): all run in their
+  // order when the chunk loads, none when the route module does
   test(
-    'a member a call computes keeps its evaluation order',
+    'a member a call computes moves with the effects around it, in their order',
     async () => {
       const { app } = await buildRoute(`${head}${effect}fx('before')
 enum E { A = fx('enum') }
 fx('after')
 ${component('E.A')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual(['before', 'enum', 'after'])
+      const { result } = await app.run(
+        'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
+      )
+      expect(result).toEqual([null, ['before', 'enum', 'after']])
     },
     timeout,
   )
 
   test(
-    'a member a call computes keeps its order when another enum reads it',
+    'a member a call computes moves with the effects around it, in their order, when another enum reads it',
     async () => {
       const { app } = await buildRoute(`${head}${effect}fx('before')
 enum A { Y = fx('enum') }
 enum B { X = A.Y }
 fx('after')
 ${component('B.X')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual(['before', 'enum', 'after'])
+      const { result } = await app.run(
+        'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
+      )
+      expect(result).toEqual([null, ['before', 'enum', 'after']])
     },
     timeout,
   )
 
+  // (rendered: a statement probing `B.X` into a global would follow `B`,
+  // the only binding it touches, into the chunk)
   test(
     'a member written after the read keeps the value the source reads',
     async () => {
-      const { app } = await buildRoute(`${head}enum A { Y = 1 }
+      const result = await render(`${head}enum A { Y = 1 }
 enum B { X = A.Y }
 ;(A as any).Y = 2
-;(globalThis as any).__effects = [B.X]
 ${component('B.X')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual([1])
+      expect(result).toBe('<p>1</p>')
     },
     timeout,
   )
 })
 
-describe('member reads that stay effects', () => {
-  test(
-    "control: a const object's member may be a getter, so the enum stays and the build says so",
-    async () => {
-      const { app, warnings } = await buildRoute(
-        `${head}const O = { get y() { return 'MARK_READ' } }
-export enum B { X = O.y as any }
-${component('B.X')}`,
-      )
-      expect(app.where('MARK_READ')).toBe('eager')
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-
-  test(
-    'an imported enum is opaque to one module: its member read stays an effect',
-    async () => {
-      const { warnings } = await buildRoute(
-        `${head}import { A } from '../a'
-export enum B { X = A.Y }
-${component('B.X')}`,
-        { 'a.ts': `export enum A { Y = 'MARK_A' }\n` },
-      )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-
-  test(
-    'a declared enum is whatever the global is: its member read stays an effect',
-    async () => {
-      const { warnings } = await buildRoute(
-        `${head};(globalThis as any).A = { Y: 'y' }
-declare enum A { Y = 'y' }
-export enum B { X = A.Y as any }
-${component('B.X')}`,
-      )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-})
-
+// Rule L only times code: what may move into an extracted export's module is
+// judged as deletion is (a host may flag that module side-effect free), so
+// these exported enums stay, reported, as before rule L
 // What can write the enum without the mutation model seeing it: the read keeps
 // the value the source gives it, so it stays before the write.
 describe('an enum something can write out of sight', () => {
@@ -182,10 +175,6 @@ describe('an enum something can write out of sight', () => {
     [
       'an argument',
       `function w(o: any) { o.A = 'NEW' }\nconst y = E.A\nw(E)\n`,
-    ],
-    [
-      'an imported function',
-      `import { write } from '../write'\nconst y = E.A\nwrite(E)\n`,
     ],
     ['a built-in', `const y = E.A\nReflect.set(E, 'A', 'NEW')\n`],
     [
@@ -212,31 +201,28 @@ describe('an enum something can write out of sight', () => {
   ])(
     '%s: a read before the write keeps the first value',
     async (_, source) => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        minify: false,
-        files: routeApp(
-          `${head}enum E { A = 'MARK_OLD' }
+      const result = await render(
+        `${head}enum E { A = 'MARK_OLD' }
 ${source}${component('y')}`,
-          {
-            env: 'client',
-            files: {
-              'entry.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export { Route } from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-              'write.ts': `export const write = (o: any) => { o.A = 'NEW' }\n`,
-            },
-          },
-        ),
-      })
-      const { result } = await app.run(
-        'return entry.render(entry.Route.options.component)',
+      )
+      expect(result).toBe('<p>MARK_OLD</p>')
+    },
+    timeout,
+  )
+
+  // the call of an imported function changes nothing the compiler sees
+  // (R146 amendment) and follows the enum it reads into the chunk, after the
+  // read: the read keeps the first value
+  test(
+    'an imported function: a read before the write keeps the first value',
+    async () => {
+      const result = await render(
+        `${head}enum E { A = 'MARK_OLD' }
+import { write } from '../write'
+const y = E.A
+write(E)
+${component('y')}`,
+        { 'write.ts': `export const write = (o: any) => { o.A = 'NEW' }\n` },
       )
       expect(result).toBe('<p>MARK_OLD</p>')
     },

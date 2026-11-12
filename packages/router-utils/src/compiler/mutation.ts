@@ -81,6 +81,8 @@ const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 export class MutationModel {
   private sites: Map<SymbolId, ReadonlyArray<ClassifiedRef>> | null = null
   private owns: Map<SymbolId, boolean> | null = null
+  /** Per binding, what its value may hold (`heldBy`). */
+  private held: Map<SymbolId, ReadonlyArray<SymbolId>> | null = null
   /** Per member write through another name, the other bindings whose objects it may write; per binding, those writes (built at the first ask, once). */
   private through: {
     objects: Map<ClassifiedRef, ReadonlyArray<SymbolId>>
@@ -131,8 +133,8 @@ export class MutationModel {
 
   /**
    * Whether the object `sym` names is its own: its declarations create its
-   * value (`ownsItsValue`: a function or class, a literal, a call's result)
-   * and nothing reassigns it. A write of one of its members writes that
+   * value (`ownsItsValue`: a function, class, enum or namespace, a literal,
+   * a call's result) and nothing reassigns it. A write of one of its members writes that
    * object only (R139).
    */
   ownsObject(sym: SymbolId): boolean {
@@ -150,13 +152,20 @@ export class MutationModel {
     return hit
   }
 
-  /** Whether `sym` names an object of its own (`ownsObject`), or one no declaration here gives it (an import, a parameter-like binding): not another binding's alias. */
+  /**
+   * Whether `sym` names an object of its own (`ownsObject`), one a
+   * declaration of it creates although it is reassigned (`let o = { v: 1 }`:
+   * that object, and what is assigned to it, which the walk follows), or
+   * one no declaration here gives it (an import, a parameter-like binding):
+   * not only another binding's alias.
+   */
   private namesObject(sym: SymbolId): boolean {
     const { units, declaringUnits } = this.module()
     const declaring = declaringUnits.get(sym)
     return (
       declaring !== undefined &&
       (this.ownsObject(sym) ||
+        declaring.some((u) => ownsItsValue(units[u]!)) ||
         !declaring.some((u) => units[u]!.kind === 'declaration'))
     )
   }
@@ -171,6 +180,53 @@ export class MutationModel {
     return this.throughWrites().writes.get(sym) ?? NO_REFS
   }
 
+  /**
+   * The other bindings whose objects the value `ref`'s name holds may hold: the
+   * bindings naming an object of their own (or another module's) that its
+   * declarations and its writes at load name, through the names they name
+   * (`visitValues`); a call's result is not its callee (`const [a, b] =
+   * make()`). Per name, once: a name already walked is not followed again
+   * (a chain of aliases walks each link once).
+   */
+  heldBy(ref: ClassifiedRef): ReadonlyArray<SymbolId> {
+    const sym = ref.sym
+    this.held ??= new Map()
+    let held = this.held.get(sym)
+    if (held !== undefined) {
+      return held
+    }
+    const { units } = this.module()
+    const set = new Set<SymbolId>()
+    const heldMap = this.held
+    this.visitValues(
+      [ref],
+      true,
+      (u) => this.refs.refsIn(units[u]!.range),
+      (r) => {
+        if (
+          r.sym === sym ||
+          r.kind !== 'value' ||
+          r.ctx === 'callee' ||
+          r.ctx === 'newCallee'
+        ) {
+          return false
+        }
+        if (this.namesObject(r.sym)) {
+          set.add(r.sym)
+        }
+        for (const t of heldMap.get(r.sym) ?? NO_SYMS) {
+          set.add(t)
+        }
+        return false
+      },
+      (r) => heldMap.has(r.sym),
+    )
+    set.delete(sym)
+    held = set.size === 0 ? NO_SYMS : [...set]
+    heldMap.set(sym, held)
+    return held
+  }
+
   private throughWrites(): NonNullable<MutationModel['through']> {
     if (this.through !== null) {
       return this.through
@@ -178,10 +234,7 @@ export class MutationModel {
     const objects = new Map<ClassifiedRef, ReadonlyArray<SymbolId>>()
     const writes = new Map<SymbolId, Array<ClassifiedRef>>()
     this.through = { objects, writes }
-    const { units, declaringUnits } = this.module()
-    const textOf = (u: UnitId) => this.refs.refsIn(units[u]!.range)
-    /** Per name written through, what its value may hold (`held` below). */
-    const heldBy = new Map<SymbolId, ReadonlyArray<SymbolId>>()
+    const { declaringUnits } = this.module()
     for (const ref of this.refs.all) {
       if (
         writeKind(ref) !== 'member' ||
@@ -190,42 +243,7 @@ export class MutationModel {
       ) {
         continue
       }
-      // the bindings naming an object of their own (or another module's):
-      // a read through any other name walks to them (`visitValues`); a
-      // call's result is not its callee (`const [a, b] = make()`). Per
-      // name, once: a name already walked is not followed again (a chain of
-      // aliases, each written through, walks each link once).
-      let held = heldBy.get(ref.sym)
-      if (held === undefined) {
-        const set = new Set<SymbolId>()
-        const known = (r: ClassifiedRef) => heldBy.has(r.sym)
-        this.visitValues(
-          [ref],
-          true,
-          textOf,
-          (r) => {
-            if (
-              r.sym === ref.sym ||
-              r.kind !== 'value' ||
-              r.ctx === 'callee' ||
-              r.ctx === 'newCallee'
-            ) {
-              return false
-            }
-            if (this.namesObject(r.sym)) {
-              set.add(r.sym)
-            }
-            for (const t of heldBy.get(r.sym) ?? NO_SYMS) {
-              set.add(t)
-            }
-            return false
-          },
-          known,
-        )
-        set.delete(ref.sym)
-        held = [...set]
-        heldBy.set(ref.sym, held)
-      }
+      const held = this.heldBy(ref)
       if (held.length === 0) {
         continue
       }

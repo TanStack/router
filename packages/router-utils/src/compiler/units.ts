@@ -73,10 +73,11 @@ export interface Unit {
   declares: Array<SymbolId>
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
+  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L). */
   effectful: boolean
   /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
   augments: Array<SymbolId>
-  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it. */
+  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it (placement's purity, as `effectful`). */
   augmentEffects: boolean
   /** Single unexported unwritten `const` with a primitive initialiser: may be duplicated. */
   copyable: boolean
@@ -113,21 +114,23 @@ const MUTATORS = new Set([
   'copyWithin',
 ])
 
-/** `Object.assign`, `Object.defineProperty`, … (they mutate their first argument). */
+/** `Object.assign`, `Object.defineProperty`, `Reflect.set`, … (they mutate their first argument). */
 function isObjectMutator(callee: Node): boolean {
   const c = unwrapExpression(callee)
   if (c.type !== 'MemberExpression' || c.computed) {
     return false
   }
   const obj = unwrapExpression(c.object)
-  return (
-    obj.type === 'Identifier' &&
-    obj.name === 'Object' &&
-    c.property.type === 'Identifier' &&
-    /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
-      c.property.name,
-    )
-  )
+  if (obj.type !== 'Identifier' || c.property.type !== 'Identifier') {
+    return false
+  }
+  const name = c.property.name
+  return obj.name === 'Object'
+    ? /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
+        name,
+      )
+    : obj.name === 'Reflect' &&
+        /^(set|defineProperty|deleteProperty|setPrototypeOf)$/.test(name)
 }
 
 /**
@@ -325,9 +328,9 @@ function writeTargetOf(file: SourceFile, m: Node): boolean {
 }
 
 /**
- * Whether a declaration gives its binding a value of its own: a function or
- * class, a literal, a function or class expression, a call's result. Not
- * another binding's (`const alias = E`, `import F = E`), whose members a
+ * Whether a declaration gives its binding a value of its own: a function,
+ * class, enum or namespace, a literal, a function or class expression, a
+ * call's result. Not another binding's (`const alias = E`, `import F = E`), whose members a
  * write of it would write too. A write of a member of such a binding writes
  * only what it names (R139), while nothing reassigns it
  * (`MutationModel.ownsObject`); a write through another one may write
@@ -340,6 +343,8 @@ export function ownsItsValue(u: Unit): boolean {
   switch (n.type) {
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
+    case 'TSEnumDeclaration':
+    case 'TSModuleDeclaration':
       return true
     case 'VariableDeclarator': {
       if (n.id.type !== 'Identifier' || n.init === null) {
@@ -375,66 +380,117 @@ export function ownsItsValue(u: Unit): boolean {
  * it reads `x.c` first); `'through'` when it reads that object's contents
  * where it evaluates (the object of a member read `alias.v`, `all[0]`, a
  * spread's argument `{ ...alias }`, the source of a destructuring or a
- * for-in/of loop): what it reads is what that object holds, which may be
- * another binding's object (`const alias = cfg`, `const holder = { cfg }`),
- * and the mutation model follows its value (`MutationModel.visitValues`);
- * else null.
+ * for-in/of loop, the object `in` asks): what it reads is what that object
+ * holds, which may be another binding's object (`const alias = cfg`,
+ * `const holder = { cfg }`), and the mutation model follows its value
+ * (`MutationModel.visitValues`); else null. The climb goes through every
+ * expression that hands its operand's value on (`forwards`: `(alias ??
+ * {}).b`, `[alias][0].b`) before asking what reads or writes it.
  */
 export function memberUse(
   file: SourceFile,
   node: Node,
 ): 'write' | 'write-through' | 'through' | null {
-  // climb the member chain (and wrappers) grown on `node`
-  let member = false
-  /** The member expressions of the chain. */
+  /** The member expressions of the chain grown on the value. */
   let depth = 0
+  /** The chain ends in a member of the value (not of a literal holding it). */
+  let member = false
+  /** The array and object literals holding the value that no member read has read back yet. */
+  let held = 0
   let n = node
   let parent = file.parentOf(n)
-  /** The first parent that is no wrapper, and its child. */
-  let first: Node | null = null
-  let firstChild = node
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
-    const wrapper = isExpressionWrapper(parent)
-    if (first === null && !wrapper) {
-      first = parent
-      firstChild = n
-    }
     if (parent.type === 'MemberExpression' && parent.object === n) {
-      member = true
-      depth++
-    } else if (!wrapper) {
+      // a member of a literal holding it reads it back (`[alias][0]`)
+      member = held === 0
+      if (member) {
+        depth++
+      } else {
+        held--
+      }
+    } else if (
+      parent.type === 'ArrayExpression' ||
+      (parent.type === 'ObjectExpression' && n.type === 'Property')
+    ) {
+      held++
+      member = false
+    } else if (
+      !isExpressionWrapper(parent) &&
+      !forwards(parent, n) &&
+      !(
+        parent.type === 'Property' &&
+        parent.value === n &&
+        file.parentOf(parent)?.type === 'ObjectExpression'
+      )
+    ) {
       break
     }
   }
-  if (parent !== null && writesAt(file, parent, n, member)) {
+  if (parent === null || held > 0) {
+    // a literal holding it is what it gives (`const holder = { cfg }`)
+    return depth > 0 ? 'through' : null
+  }
+  if (writesAt(file, parent, n, member)) {
     // the written object: the chain's own value for an `Object.assign`-style
     // argument, else the object of its last member (`x.p = …`, `x.push`)
     const own = parent.type === 'CallExpression' && parent.callee !== n ? 0 : 1
     return depth > own ? 'write-through' : 'write'
   }
-  if (first === null) {
-    return null
+  if (depth > 0) {
+    return 'through'
   }
-  switch (first.type) {
-    case 'MemberExpression':
-      return first.object === firstChild ? 'through' : null
+  switch (parent.type) {
     case 'SpreadElement':
       return 'through'
     case 'VariableDeclarator':
-      return first.init === firstChild && first.id.type !== 'Identifier'
+      return parent.init === n && parent.id.type !== 'Identifier'
         ? 'through'
         : null
     case 'AssignmentExpression':
-      return first.right === firstChild &&
-        first.left.type !== 'Identifier' &&
-        first.left.type !== 'MemberExpression'
+      // the source of a destructuring
+      return parent.right === n &&
+        parent.left.type !== 'Identifier' &&
+        parent.left.type !== 'MemberExpression'
         ? 'through'
         : null
     case 'ForOfStatement':
     case 'ForInStatement':
-      return first.right === firstChild ? 'through' : null
+      return parent.right === n ? 'through' : null
+    case 'BinaryExpression':
+      return parent.operator === 'in' && parent.right === n ? 'through' : null
     default:
       return null
+  }
+}
+
+/**
+ * Whether expression `parent` evaluates to the value of its operand `n`:
+ * a conditional's branch, an operand of `??`, `||` or `&&`, a sequence's
+ * last expression, `await`'s operand, the value of an assignment to a
+ * binding or a member (`(tmp = alias)`; a destructuring's source is read
+ * through instead).
+ */
+function forwards(parent: Node, n: Node): boolean {
+  switch (parent.type) {
+    case 'ConditionalExpression':
+      return parent.test !== n
+    case 'LogicalExpression':
+    case 'AwaitExpression':
+      return true
+    case 'SequenceExpression':
+      return parent.expressions.at(-1) === n
+    case 'AssignmentExpression':
+      return (
+        parent.right === n &&
+        (parent.left.type === 'Identifier' ||
+          parent.left.type === 'MemberExpression') &&
+        (parent.operator === '=' ||
+          parent.operator === '??=' ||
+          parent.operator === '||=' ||
+          parent.operator === '&&=')
+      )
+    default:
+      return false
   }
 }
 
@@ -446,9 +502,10 @@ function writesAt(
   member: boolean,
 ): boolean {
   if (parent.type === 'CallExpression') {
-    // the receiver of a mutating method, or the first argument of an
-    // `Object.assign`-style call (the common argument position is neither)
-    if (parent.callee !== n && parent.arguments[0] !== n) {
+    // the receiver of a mutating method (the chain is a member of the
+    // value: `x.push`, not a literal's `[x].push`), or the first argument of
+    // an `Object.assign`-style call (the common argument position is neither)
+    if (parent.callee === n ? !member : parent.arguments[0] !== n) {
       return false
     }
   } else if (!member) {
@@ -560,6 +617,39 @@ interface UnitBuildResult {
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
 
+/**
+ * Whether evaluating `node`, the code of a unit of its own, has an effect
+ * under `purity`: a declarator's initialiser, a class (its heritage,
+ * computed keys and static parts), an enum's or a namespace's body, an
+ * expression statement, an `export default` expression; nothing else a
+ * unit holds evaluates code. The one judge of a unit's code: `buildUnits`
+ * asks it with placement's purity (`Unit.effectful`).
+ */
+function evaluationHasEffects(purity: PurityContext, node: Node): boolean {
+  switch (node.type) {
+    case 'VariableDeclarator':
+      return !isPureDeclarator(purity, node)
+    case 'ClassDeclaration':
+      return !node.declare && !isPureClass(purity, node)
+    case 'TSEnumDeclaration':
+    case 'TSModuleDeclaration':
+      return statementHasEffects(purity, node)
+    case 'ExpressionStatement':
+      return !isPureExpression(purity, node.expression)
+    case 'ExportDefaultDeclaration': {
+      const d = node.declaration
+      return d.type === 'ClassDeclaration'
+        ? !isPureClass(purity, d)
+        : d.type !== 'FunctionDeclaration' &&
+            d.type !== 'TSInterfaceDeclaration' &&
+            !isPureExpression(purity, d)
+    }
+    default:
+      return false
+  }
+}
+
+/** The unit model; `purity` judges effects (`ModuleAnalysis.effectPurity`). */
 export function buildUnits(
   file: SourceFile,
   items: Array<TopLevelItem>,
@@ -729,12 +819,7 @@ export function buildUnits(
         const u = base(node, 'export-default', itemRange)
         u.declares.push(symbols.declare('default', 'synthetic'))
         u.exported.push('default')
-        u.effectful =
-          d.type === 'FunctionDeclaration' ||
-          d.type === 'ClassDeclaration' ||
-          d.type === 'TSInterfaceDeclaration'
-            ? d.type === 'ClassDeclaration' && !isPureClass(purity, d)
-            : !isPureExpression(purity, d)
+        u.effectful = evaluationHasEffects(purity, node)
         add(item, u)
         break
       }
@@ -760,7 +845,7 @@ export function buildUnits(
         break
       case 'ExpressionStatement': {
         const u = base(node, 'effect', itemRange)
-        u.effectful = !isPureExpression(purity, node.expression)
+        u.effectful = evaluationHasEffects(purity, node)
         u.augments = augmentationsOf(node.expression)
         // a link on a `const` holding a writing builder writes it (R139),
         // also under the links chained on it (`b.middleware([a]).server(f)`)
@@ -831,9 +916,9 @@ export function buildUnits(
             u.declNameRanges.push(bindingNameRange(file.source, id))
           }
           u.effectful =
-            decl.kind === 'using' || decl.kind === 'await using'
-              ? true
-              : !isPureDeclarator(purity, d)
+            decl.kind === 'using' ||
+            decl.kind === 'await using' ||
+            evaluationHasEffects(purity, d)
           u.identityFree =
             d.id.type === 'Identifier' &&
             decl.kind !== 'using' &&
@@ -886,13 +971,13 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
         }
-        u.effectful = !decl.declare && !isPureClass(purity, decl)
+        u.effectful = evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }
       case 'TSEnumDeclaration': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
-        u.effectful = statementHasEffects(purity, decl)
+        u.effectful = evaluationHasEffects(purity, decl)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
@@ -917,7 +1002,7 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: id!.start, end: id!.end })
         }
-        u.effectful = runtime && statementHasEffects(purity, decl)
+        u.effectful = runtime && evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }
@@ -1232,4 +1317,135 @@ export function callsWhenEvaluated(node: Node): EvaluatedCalls {
     },
   })
   return { calls, callbacks }
+}
+
+/** How many expression statements `node` holds, function bodies aside (a block of several can be split; one call cannot). */
+export function statementsIn(node: Node): number {
+  let n = 0
+  walk(node, {
+    enter: (x, wctx) => {
+      if (
+        x.type === 'FunctionExpression' ||
+        x.type === 'ArrowFunctionExpression' ||
+        x.type === 'FunctionDeclaration'
+      ) {
+        wctx.skip()
+      } else if (x.type === 'ExpressionStatement') {
+        n++
+      }
+    },
+  })
+  return n
+}
+
+/**
+ * Whether the reference `node` (an identifier) changes the object it names
+ * where it evaluates: the root of a member write
+ * (`memberUse`: `x.p = …`, `x.push(…)`, `Object.assign(x, …)`, `x.a.p = …`)
+ * or of a method call's callee (`x.m()`, `x.a.m()`: a method may change
+ * what it is called on), unless `known` says that call changes nothing (a
+ * language operation, a pure export of a known package).
+ */
+export function changesObject(
+  file: SourceFile,
+  node: Node,
+  known: (call: Node) => boolean,
+): boolean {
+  const use = memberUse(file, node)
+  if (use === 'write' || use === 'write-through') {
+    return true
+  }
+  let member = false
+  let n = node
+  let parent = file.parentOf(n)
+  for (; parent !== null; n = parent, parent = file.parentOf(n)) {
+    if (parent.type === 'MemberExpression' && parent.object === n) {
+      member = true
+    } else if (!isExpressionWrapper(parent) && !forwards(parent, n)) {
+      break
+    }
+  }
+  // (an `Object.assign`-style call changes its first argument, which
+  // `memberUse` answers for, not `Object`)
+  return (
+    member &&
+    parent?.type === 'CallExpression' &&
+    parent.callee === n &&
+    !isObjectMutator(unwrapExpression(parent.callee)) &&
+    !known(parent)
+  )
+}
+
+/**
+ * Whether reference `node` is an argument a call of a function the module
+ * declares (a function declaration, a `const` holding a function) may
+ * change: its parameter there is changed in the body (`changesObject`), or
+ * handed on to a call, or is no plain name (a pattern, a rest element), or
+ * a spread before it hides which parameter it is. A function the module
+ * declares shows what it does with what it is handed; any other function
+ * writes nothing it is handed (R146).
+ */
+export function changesAsArgument(
+  file: SourceFile,
+  node: Node,
+  known: (call: Node) => boolean,
+): boolean {
+  /** The call `n` (wrappers aside) is an argument of, and that argument. */
+  const argumentOf = (from: Node) => {
+    let n = from
+    let parent = file.parentOf(n)
+    while (parent !== null && isExpressionWrapper(parent)) {
+      n = parent
+      parent = file.parentOf(n)
+    }
+    return parent?.type === 'CallExpression' && parent.callee !== n
+      ? { call: parent, arg: n }
+      : null
+  }
+  const at = argumentOf(node)
+  if (at === null) {
+    return false
+  }
+  const { call, arg } = at
+  const index = call.arguments.indexOf(arg as never)
+  if (index < 0) {
+    return false
+  }
+  const callee = unwrapExpression(call.callee)
+  const declared =
+    callee.type === 'Identifier'
+      ? file.referenceOf(callee)?.binding?.declarations[0]
+      : undefined
+  const holder = declared === undefined ? null : file.parentOf(declared)
+  const fn =
+    holder?.type === 'FunctionDeclaration'
+      ? holder
+      : holder?.type === 'VariableDeclarator' && holder.init !== null
+        ? unwrapExpression(holder.init)
+        : null
+  if (
+    fn === null ||
+    (fn.type !== 'FunctionDeclaration' &&
+      fn.type !== 'FunctionExpression' &&
+      fn.type !== 'ArrowFunctionExpression')
+  ) {
+    return false
+  }
+  if (call.arguments.some((a, i) => i < index && a.type === 'SpreadElement')) {
+    return true
+  }
+  const param = fn.params[index] as Node | undefined
+  if (param === undefined) {
+    return fn.params.some((p) => p.type === 'RestElement')
+  }
+  const id = param.type === 'AssignmentPattern' ? (param.left as Node) : param
+  const own = id.type === 'Identifier' ? file.bindingOf(id) : null
+  if (own === null) {
+    return true
+  }
+  return own.references.some(
+    (r) =>
+      !r.isWrite &&
+      (changesObject(file, r.node, known) || argumentOf(r.node) !== null),
+  )
 }

@@ -171,7 +171,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       }
       ctx.setRouteModule()
       ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
-      ctx.markBenignEffect(found.unit.id)
       if (opts.glueTag !== undefined) {
         ctx.tagGlueExports(opts.glueTag)
       }

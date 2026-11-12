@@ -22,7 +22,6 @@ const exportOutput = (ctx: PlanContext, name: string): OutputId =>
     kind: 'export',
     key: `export~${name}`,
     derived: { kind: 'export', value: name },
-    sideEffectFree: true,
   })
 
 /** The id an output of this file is imported by. */

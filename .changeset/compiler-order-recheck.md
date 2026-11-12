@@ -1,0 +1,7 @@
+---
+'@tanstack/router-utils': patch
+'@tanstack/router-plugin': patch
+'@tanstack/start-plugin-core': patch
+---
+
+Route code splitting: an exported binding with side effects that the file also changes (`export const client = createClient(); client.v = 9`) moves to its own module with those statements, and so does what only it and the split code use (`const extra = make(); flags.extra = extra` beside `export const flags = {}`). An unused function calling another unused function follows what that one reads. A declaration read when the module loads moves into its chunk when every function that changes what it reads later is in that chunk too (`const cache = new Map(); register(cache)` with only the page calling `cache.set`). A server function's provider module holds the top-level writes to state only its handlers read (TanStack Start RSC). Warnings: a statement writing two bindings that keeps one of them eagerly is reported with "change `k` in a statement of its own"; a statement whose own callback changes a binding names the declaration reading that binding when the module loads; an export's warning names the statement that uses the kept binding; the unused-code warning appears only when deleting the code separates the bindings, naming every unused declaration that puts them together; the fix for code that changes a binding later moves only what uses it when the module loads. Split chunks import from a shared module only the bindings they use.
