@@ -360,8 +360,8 @@ text compiles waits for it and emits its own output from the result.
 ## Caches and invalidation (`cache.ts`, `host.ts`)
 
 - `PlanCache`: one plan per (env, canonical id, config key; the late pass is a second config key of a file), the latest revision only. A hit is _validated_ (same canonical identity,
-  input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
-  attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
+  input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with a
+  request in progress) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read and a
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
   module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans. A row holds two facts: the
