@@ -130,7 +130,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
-    "@babel/preset-typescript": "^7.28.5",
+    "@babel/preset-typescript": "7.27.1",
     "@emotion/react": "^11.14.0",
     "@rolldown/plugin-babel": "^0.2.0",
     "@rsbuild/core": "catalog:",

@@ -59,7 +59,7 @@
     "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "catalog:",
     "@rsbuild/core": "catalog:",
-    "esbuild": "^0.28.2",
+    "esbuild": "^0.28.1",
     "globals": "^16.2.0",
     "vite": "catalog:",
     "vitest": "catalog:",
