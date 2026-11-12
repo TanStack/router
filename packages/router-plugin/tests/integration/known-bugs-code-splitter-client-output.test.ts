@@ -1,9 +1,7 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/known-bugs-code-splitter.test.ts.
 /**
- * Known code-splitter bugs. Each test asserts the correct behaviour for a bug
- * main had, which today's compiler fixes (a regression test,
- * oracle/KNOWN-BUGS.md).
+ * Known code-splitter bugs. Each test asserts the correct behaviour for a shape a code-splitter bug broke (a regression test).
  */
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'

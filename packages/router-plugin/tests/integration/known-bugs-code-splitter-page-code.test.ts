@@ -1,9 +1,8 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/known-bugs-code-splitter.test.ts.
 /**
- * Known code-splitter bugs. Each test asserts the correct behaviour for a bug
- * main had; the ones today's compiler still fails are marked .fails
- * (oracle/KNOWN-BUGS.md, "Remaining pins").
+ * Code-splitter cases in real client builds: page code that loads with its
+ * chunk, per bundler and side-effect hint.
  */
 
 import { afterAll, describe, expect, test } from 'vitest'

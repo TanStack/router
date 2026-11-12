@@ -1,7 +1,6 @@
 # Compiler test harness
 
-Shared by the compiler test suites of router-generator, router-plugin, start-plugin-core, react-start-rsc and this
-package. What the suite is and how to read it: [oracle/README.md](oracle/README.md). The contract the tests cite:
+Shared by the compiler test suites (so far router-plugin's) and this package. What the suite is and how to read it: [oracle/README.md](oracle/README.md). The contract the tests cite:
 [oracle/SPEC.md](oracle/SPEC.md).
 
 ## Hard rules
@@ -10,11 +9,10 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
   real HMR client and renderer. Never copy a tool's logic into a test.
 - Reach a compiler only through public entry points: the plugins and options a user configures. No compiler
   internals, module ids, queries, generated names, printed code or chunk layout.
-- Client code runs in a real browser (`runClient`, `runInPage`, `openPage`); server code in Node, inside real requests
-  through Start's server entry. No jsdom, no fake `window` or `import.meta.hot`.
+- Client code runs in a real browser (`runClient`, `runInPage`, `openPage`); server code in Node. No jsdom, no fake
+  `window` or `import.meta.hot`.
 - No tests of the helpers' internals; this package's own tests are controls of the harness.
-- Tests never write into the repository. Apps live in the run's temp dir (`./app-directory`); checked-in fixtures run
-  on a copy (router-generator `copyFixture`).
+- Tests never write into the repository. Apps live in the run's temp dir (`./app-directory`).
 - Diagnostics are checked by severity, file and position only, never by wording.
 - Edits settle on their outcome within one bound, never on counts of events, compiles or updates.
 - No generated or seeded tests in the repository, not even behind a local target: every input is written out in the
@@ -47,9 +45,7 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
   ordinary test; the shared reporter lists the pins that passed.
 - `./run-node`: run built output in a child Node.
 
-Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`), start-plugin-core
-`tests/start-host.ts` (`useStartHost`). Start apps use `tanstackStart()` of the built framework package
-(`tests/start-plugins.ts`), entries only through `client.entry`/`server.entry`.
+Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`).
 
 ## Running
 
@@ -63,7 +59,7 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 - 4 workers by default (`maxWorkers` in each `vite.config.ts`).
 - No `|` inside `-t`; run one command per filter.
 - `--skip-nx-cache` only for measurements.
-- In router-plugin and start-plugin-core, Nx's `test:integration` runs the tier as shards
+- In router-plugin, Nx's `test:integration` runs the tier as shards
   (`test:integration--shard-<i>-of-<n>`, Vitest `--shard`), one after another on a machine and spread over CI's agents;
   each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
   (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for budget measurements.
@@ -72,9 +68,8 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   machine: start it when none runs (`-lt 1`).
 - Tiers: `test:unit` (in process, the inner loop); `test:integration` (`tests/integration/`: real builds, dev servers,
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
-  across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads
-  process-global state (`compilerStats()`) runs in a process of its own (start-plugin-core `integration-alone`):
-  Vite 8 keeps the plugins of every finished build and closed server alive.
+  across files (`isolate: false`): a file leaves nothing behind but what the harness owns. Vite 8 keeps the plugins of
+  every finished build and closed server alive.
 - Those files share one heap, and it only grows: everything a Vite plugin reaches stays for the rest of the process, and
   native bundler callbacks keep the async contexts they were created in. So what a harness scope or plugin holds is
   released when its work ends (a stopped sink, a closed channel, a finished test, a checked recording), however the
@@ -101,7 +96,6 @@ and never count as a measurement.
 
 - Framework packages and tools are test-only devDependencies (`solid-js`, `vite-plugin-solid`, `@rsbuild/plugin-react`,
   `@rsbuild/plugin-solid` ≥ 1.2.2, `@vitejs/plugin-react`, `@vitejs/plugin-vue`, …).
-- The integration targets build `@tanstack/react-start` first (linked at test time).
 - `@tanstack/compiler-vite-versions` (private, test-only) holds the other Vite majors the router plugin supports as
   aliased packages (`vite6`, `vite7`) for router-plugin's `integration/vite-versions.test.ts`. They live in their own
   package because each ships a `vite` binary that would shadow the workspace's in a package that builds with Vite.
