@@ -68,12 +68,7 @@ export interface ReadIndex {
    * sees each reference with where it runs; true ends the walk (the
    * result).
    */
-  runs: (
-    r: RegionId,
-    visit: RunVisitor,
-    /** Sees each unit whose text the walk enters (a declaration a running reference names, a statement writing it). */
-    enter?: (u: UnitId) => void,
-  ) => boolean
+  runs: (r: RegionId, visit: RunVisitor) => boolean
   /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
   clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
   /**
@@ -654,23 +649,8 @@ export function readIndex(
     return text
   }
   const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
-  function runs(
-    id: RegionId,
-    visit: RunVisitor,
-    enter?: (u: UnitId) => void,
-  ): boolean {
-    return visitRuns(
-      t1,
-      regionText(id),
-      graph.callsOf(id),
-      enter === undefined
-        ? bodyOf
-        : (u) => {
-            enter(u)
-            return bodyOf(u)
-          },
-      visit,
-    )
+  function runs(id: RegionId, visit: RunVisitor): boolean {
+    return visitRuns(t1, regionText(id), graph.callsOf(id), bodyOf, visit)
   }
   function clusterRuns(c: ClusterId, visit: RunVisitor): boolean {
     for (const r of clusters[c]!.regions) {

@@ -11,7 +11,7 @@
 import { NEED_KINDS, describeCluster } from './clusters'
 import type { ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
-import type { Events, Pin } from './events'
+import type { Pin } from './events'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
@@ -37,18 +37,17 @@ export interface Seeds {
   envRoots: Set<ClusterId>
   /**
    * The unexported clusters holding a bare statement (a call, an
-   * assignment, an `if`/`try`/loop block) whose touches are all module
-   * bindings of this module (`Events.statementTouches`, no import): not
-   * env roots yet; each follows what it touches into its one chunk or
-   * becomes one (`settle.ts`). One touching an import, or no binding
-   * (none it declares either), is an env root here.
+   * assignment, an `if`/`try`/loop block): not env roots yet; with the
+   * dead declarations (R148) each follows the module bindings it uses into
+   * their one chunk or becomes an env root, all judged in one place
+   * (`settle.ts`, round 0; R149).
    */
   followers: Set<ClusterId>
   /**
-   * Statements kept in the env module, and why (`written`: what they change
-   * that stays or goes elsewhere, or outside the module's bindings): the
-   * declarations they change that only split code needs are reported with
-   * that cause (`kept.ts`). Seeded here, added to when roots settle.
+   * Statements kept in the env module, and why (`written`: a binding they
+   * use stays or goes elsewhere): the declarations they use that only split
+   * code needs are reported with that cause (`kept.ts`). Filled when roots
+   * settle.
    */
   stayPins: Map<ClusterId, Pin>
   derivedRoots: Map<OutputId, Set<ClusterId>>
@@ -60,7 +59,6 @@ export function seedRoots(
   input: PlacementInput,
   graph: ClusterGraph,
   reads: ReadIndex,
-  events: Events,
 ): Seeds {
   const { t1, rewrites, outputs } = input
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
@@ -212,19 +210,6 @@ export function seedRoots(
   const envRoots = new Set<ClusterId>()
   const followers = new Set<ClusterId>()
   const stayPins = new Map<ClusterId, Pin>()
-  /** `written` on what statement `u` of `c` changes outside the module. */
-  const outsidePin = (c: ClusterId, u: (typeof units)[number]) => {
-    const outside = events.unitChanges(u.id).outside
-    if (outside !== null && !stayPins.has(c)) {
-      stayPins.set(c, {
-        reason: 'written',
-        other: { at: u.range.start },
-        outside,
-        ...(events.statementChanges(c).syms.length === 0 && { uses: true }),
-      })
-    }
-    return outside !== null
-  }
   for (const u of units) {
     if (!graph.unitSurvives(u.id)) {
       continue
@@ -232,15 +217,9 @@ export function seedRoots(
     const c = clusterOfRegion.get(u.region)!
     if (u.kind === 'effect' || u.kind === 'import-effect') {
       // an augmentation of its own declaration cluster is decided with the
-      // cluster (movable, else an effect root when roots settle), unless it
-      // changes what the rest of the app sees, as a statement (R146
-      // amendment); a bare statement of an unexported cluster may follow
-      // what it changes
-      if (graph.ownAugmentations.has(u.id)) {
-        if (outsidePin(c, u)) {
-          envRoots.add(c)
-        }
-      } else {
+      // cluster (movable, else an effect root when roots settle); a bare
+      // statement of an unexported cluster may follow what it uses
+      if (!graph.ownAugmentations.has(u.id)) {
         if (
           u.kind === 'effect' &&
           u.node.type !== 'TSExportAssignment' &&
@@ -274,28 +253,9 @@ export function seedRoots(
       envRoots.add(c)
     }
   }
-  // a statement that changes what the rest of the app sees (`outside`),
-  // or follows no binding of the module, stays (R146 amendment)
   for (const c of followers) {
-    const changes = envRoots.has(c) ? null : events.statementChanges(c)
-    if (
-      changes === null ||
-      changes.outside !== null ||
-      (changes.clusters.length === 0 && clusters[c]!.declares.size === 0)
-    ) {
+    if (envRoots.has(c)) {
       followers.delete(c)
-      envRoots.add(c)
-      if (changes?.outside != null) {
-        for (const u of clusters[c]!.units) {
-          const unit = units[u]!
-          if (
-            (unit.kind === 'effect' || unit.kind === 'declaration') &&
-            outsidePin(c, unit)
-          ) {
-            break
-          }
-        }
-      }
     }
   }
   const derivedRoots = new Map<OutputId, Set<ClusterId>>()

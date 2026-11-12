@@ -62,7 +62,6 @@ export function keptDeclarations(
           at: other.at,
         }),
       ...(pin.binding !== undefined && { read: pin.binding }),
-      ...(pin.outside !== undefined && { outside: pin.outside }),
       ...(pin.in !== undefined && { in: pin.in }),
       ...(pin.uses === true && { uses: true }),
     }

@@ -1298,59 +1298,6 @@ export interface EvaluatedCalls {
 }
 
 /**
- * Walks what evaluating `node` runs of its own text: everything but the
- * bodies of the functions it holds, except the functions its calls receive
- * directly as arguments or as callee (they may run then too). `node` itself
- * may be a function: its body is walked (a function a call reaches runs).
- * `onCall` sees each call, `new` and tagged template, before its operands.
- */
-function walkEvaluated(
-  node: Node,
-  visit: (n: Node) => void,
-  onCall?: (call: Range) => void,
-  onCallback?: (fn: Range, call: Range) => void,
-): void {
-  const runs = new Set<Node>()
-  const passed = (n: Node, call: Range) => {
-    const f = unwrapExpression(n)
-    if (
-      f.type === 'FunctionExpression' ||
-      f.type === 'ArrowFunctionExpression'
-    ) {
-      runs.add(f)
-      onCallback?.({ start: f.start, end: f.end }, call)
-    }
-  }
-  walk(node, {
-    enter: (n, wctx) => {
-      switch (n.type) {
-        case 'CallExpression':
-        case 'NewExpression': {
-          const call = { start: n.start, end: n.end }
-          onCall?.(call)
-          passed(n.callee, call)
-          for (const a of n.arguments) {
-            passed(a.type === 'SpreadElement' ? a.argument : a, call)
-          }
-          break
-        }
-        case 'TaggedTemplateExpression':
-          onCall?.({ start: n.start, end: n.end })
-          break
-        case 'FunctionExpression':
-        case 'ArrowFunctionExpression':
-        case 'FunctionDeclaration':
-          if (n !== node && !runs.has(n)) {
-            wctx.skip()
-            return
-          }
-      }
-      visit(n)
-    },
-  })
-}
-
-/**
  * What evaluating `node` calls (a call, a `new`, a tagged template), and
  * the functions those calls receive directly as arguments or as callee
  * (they may run then too, with what they call in turn). Other function
@@ -1361,22 +1308,48 @@ function walkEvaluated(
 export function callsWhenEvaluated(node: Node): EvaluatedCalls {
   const calls: Array<Range> = []
   const callbacks: EvaluatedCalls['callbacks'] = []
-  // (a function declaration evaluates nothing: its body is not walked)
-  if (node.type === 'FunctionDeclaration') {
-    return { calls, callbacks }
+  const runs = new Set<Node>()
+  const passed = (n: Node, call: Range) => {
+    const f = unwrapExpression(n)
+    if (
+      f.type === 'FunctionExpression' ||
+      f.type === 'ArrowFunctionExpression'
+    ) {
+      runs.add(f)
+      callbacks.push({ start: f.start, end: f.end, call })
+    }
   }
-  walkEvaluated(
-    node,
-    () => {},
-    (call) => calls.push(call),
-    (fn, call) => callbacks.push({ ...fn, call }),
-  )
+  walk(node, {
+    enter: (n, wctx) => {
+      switch (n.type) {
+        case 'CallExpression':
+        case 'NewExpression': {
+          const call = { start: n.start, end: n.end }
+          calls.push(call)
+          passed(n.callee, call)
+          for (const a of n.arguments) {
+            passed(a.type === 'SpreadElement' ? a.argument : a, call)
+          }
+          return
+        }
+        case 'TaggedTemplateExpression':
+          calls.push({ start: n.start, end: n.end })
+          return
+        case 'FunctionExpression':
+        case 'ArrowFunctionExpression':
+        case 'FunctionDeclaration':
+          if (!runs.has(n)) {
+            wctx.skip()
+          }
+      }
+    },
+  })
   return { calls, callbacks }
 }
 
 /**
- * Whether the reference `node` (an identifier, `import.meta`) changes the
- * object it names where it evaluates: the root of a member write
+ * Whether the reference `node` (an identifier) changes the object it names
+ * where it evaluates: the root of a member write
  * (`memberUse`: `x.p = …`, `x.push(…)`, `Object.assign(x, …)`, `x.a.p = …`)
  * or of a method call's callee (`x.m()`, `x.a.m()`: a method may change
  * what it is called on), unless `known` says that call changes nothing (a
@@ -1484,62 +1457,4 @@ export function changesAsArgument(
       !r.isWrite &&
       (changesObject(file, r.node, known) || argumentOf(r.node) !== null),
   )
-}
-
-/** Something a statement changes outside the module's own bindings (R146 amendment): what the rest of the app sees. */
-export interface OutsideChange {
-  at: number
-  /** As written: the import's or global's name, `import.meta`, `import()`. */
-  name: string
-  kind: 'import' | 'global' | 'import.meta' | 'import()'
-}
-
-/**
- * The first thing evaluating `node` (`walkEvaluated`; `whole`: all of its
- * text, function bodies included, as `ReadIndex.runs` takes a unit it
- * enters) changes that is no binding of the module, written there: a
- * global it assigns or changes (`window.x = …`, `console.log(…)`;
- * `changesObject`), `import.meta` (`import.meta.hot.accept()`), a module it
- * imports dynamically (an `import()`: loading it runs that module). An
- * import's object is a binding of the module: its references say
- * (`Events.unitChanges`).
- */
-export function outsideChangeIn(
-  file: SourceFile,
-  node: Node,
-  known: (call: Node) => boolean,
-  whole: boolean,
-): OutsideChange | null {
-  let found: OutsideChange | null = null
-  const visit = (n: Node) => {
-    if (found !== null) {
-      return
-    }
-    switch (n.type) {
-      case 'ImportExpression':
-        found = { at: n.start, name: 'import()', kind: 'import()' }
-        return
-      case 'MetaProperty':
-        if (n.meta.name === 'import' && changesObject(file, n, known)) {
-          found = { at: n.start, name: 'import.meta', kind: 'import.meta' }
-        }
-        return
-      case 'Identifier': {
-        const ref = file.referenceOf(n)
-        if (
-          ref !== null &&
-          ref.binding === null &&
-          (ref.isWrite || changesObject(file, n, known))
-        ) {
-          found = { at: n.start, name: n.name, kind: 'global' }
-        }
-      }
-    }
-  }
-  if (whole) {
-    walk(node, { enter: visit })
-  } else {
-    walkEvaluated(node, visit)
-  }
-  return found
 }

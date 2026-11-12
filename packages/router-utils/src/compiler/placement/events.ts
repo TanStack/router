@@ -54,7 +54,7 @@
  * (`factsOf`). A module that writes no module binding asks only of
  * effectful clusters and candidates.
  */
-import { changesAsArgument, changesObject, outsideChangeIn } from '../units'
+import { changesAsArgument, changesObject } from '../units'
 import { callChangesNothing } from '../purity'
 import { NEED_KINDS } from './clusters'
 import type { ClusterGraph, ClusterId, Write } from './clusters'
@@ -62,7 +62,7 @@ import type { ReadIndex } from './reads'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
-import type { OutsideChange, RegionId, UnitId } from '../units'
+import type { RegionId, UnitId } from '../units'
 import type { OutputId } from '../rewrite'
 import type { Fallback, Home, KeptReason, PlacementInput } from '../reach'
 
@@ -75,16 +75,14 @@ export interface Touch {
 
 /** What statements change (`Events.unitChanges`, `Events.statementChanges`). */
 export interface StatementChanges {
-  /** The module bindings they change (assign, write a member of, call a method on), in source order; a statement's own cluster's included. */
+  /** The module bindings they change (assign, write a member of, call a method on, hand to a function of the module that changes it), in source order; what the warnings word as `changes` (else `uses`). */
   syms: ReadonlyArray<SymbolId>
-  /** The module bindings they read (not imports), and the objects those may hold, in source order. */
+  /** The module bindings they use (read or change, not imports), and the objects those may hold, in source order: what they follow (R149). */
   reads: ReadonlyArray<SymbolId>
   /** The imports they read: where none of `clusters` decides, their users' one chunk does (imports go wherever their users go; every output imports one itself, so none keeps a statement). */
   imports: ReadonlyArray<SymbolId>
-  /** What they follow, the statement's own cluster aside: the clusters of `syms`, or of `reads` when they change no binding (R148: dead code follows what it reads, like a statement). */
+  /** What they follow, the statement's own cluster aside: the clusters of `reads` (R149; R148: dead code follows what it reads, like a statement). */
   clusters: ReadonlyArray<ClusterId>
-  /** The first thing outside the module's own bindings they change, if any: an import's object, a global, `import.meta`, a dynamically imported module. */
-  outside: OutsideChange | null
 }
 
 /** Per written binding an evaluation touches, its first and last touch: they decide every comparison with a write. */
@@ -101,8 +99,6 @@ export interface Pin {
   reason: KeptReason
   other?: { at: number }
   binding?: SymbolId
-  /** `written`: what the statement at `other` changes outside the module's bindings, which keeps it (R146 amendment). */
-  outside?: OutsideChange
   /** `written`: the split output using `binding` (another than the subject's), or the subject's second one. */
   in?: OutputId
   /** `written`: the statement only uses the subject (it changes no binding of the module). */
@@ -135,19 +131,17 @@ export interface Events {
     slot: (d: ClusterId) => OutputId,
   ) => Pin | undefined
   /**
-   * What statement `u` (an effect unit) changes when it runs (R146
-   * amendment): the objects it writes or calls a method on (`changesObject`;
-   * a call the purity model knows changes nothing is none), directly or in
-   * what it runs (`ReadIndex.runs`, when it calls something), and the
-   * objects those bindings' values may hold (`MutationModel.heldBy`, the one
-   * owner of "the object a binding names": `alias.add()` changes `table`
-   * through `const alias = table`); a binding it assigns. Calling, reading
-   * or passing a binding changes nothing (an unknown call writes nothing it
-   * is handed). An import's object, a global, `import.meta` or a module it
-   * imports dynamically is `outside`. Once per unit.
+   * The module bindings statement `u` (an effect unit, or a declaration
+   * followed as dead code) uses (R149): those its text names and those it
+   * runs (`ReadIndex.runs`, when it calls something), and the objects their
+   * values may hold (`MutationModel.heldBy`, the one owner of "the object a
+   * binding names": `alias.add()` uses `table` through `const alias =
+   * table`); imports apart (none keeps a statement). Which of them it
+   * changes (`changesObject`, `changesAsArgument`; a call the purity model
+   * knows changes nothing) only words the warnings. Once per unit.
    */
   unitChanges: (u: UnitId) => StatementChanges
-  /** `unitChanges` of the statements and declarations of cluster `c`, together: what a follower (a statement, or dead code: R148) follows (`settle.ts`) or keeps it (`roots.ts`). */
+  /** `unitChanges` of the statements and declarations of cluster `c`, together: what a follower (a statement, or dead code: R148) follows (`settle.ts`). */
   statementChanges: (c: ClusterId) => StatementChanges
   /** `ordered-effect`: the regions nested in a unit (a claimed option value) whose evaluation V pins, or whose write at load O orders against what it writes (`home`: the final homes). */
   fallbacks: (
@@ -608,17 +602,14 @@ export function eventTable(
     reads: [],
     imports: [],
     clusters: [],
-    outside: null,
   }
-  /** The clusters `c` follows: of what it changes, else of what it reads. */
+  /** The clusters `c` follows: of every module binding it uses. */
   const followed = (
     own: ClusterId | undefined,
-    changed: Iterable<SymbolId>,
-    read: Iterable<SymbolId>,
-    changes: boolean,
+    used: Iterable<SymbolId>,
   ): Array<ClusterId> => {
     const out: Array<ClusterId> = []
-    for (const s of changes ? changed : read) {
+    for (const s of used) {
       const d = clusterOfSym.get(s)
       if (d !== undefined && d !== own && !out.includes(d)) {
         out.push(d)
@@ -637,109 +628,77 @@ export function eventTable(
     const syms = new Set<SymbolId>()
     const read = new Set<SymbolId>()
     const imported = new Set<SymbolId>()
-    // (declaring a function runs nothing)
-    let outside =
-      unit.node.type === 'FunctionDeclaration'
-        ? null
-        : outsideChangeIn(file, unit.node, known, false)
     // what its text names (a function's body too: dead code follows what
-    // it reads, R148), with the objects those may hold
+    // it reads, R148) and what it runs, with the objects those may hold
     const noteRead = (ref: ClassifiedRef) => {
       if (
-        NEED_KINDS.has(ref.kind) &&
-        symbols.isModuleLevel(ref.sym) &&
-        symbols.isImport(ref.sym) &&
-        graph.isLive(ref, 'env')
+        !NEED_KINDS.has(ref.kind) ||
+        !symbols.isModuleLevel(ref.sym) ||
+        !graph.isLive(ref, 'env')
       ) {
+        return
+      }
+      if (symbols.isImport(ref.sym)) {
         imported.add(ref.sym)
-      } else if (
-        NEED_KINDS.has(ref.kind) &&
-        symbols.isModuleLevel(ref.sym) &&
-        graph.isLive(ref, 'env')
-      ) {
-        read.add(ref.sym)
-        for (const h of t1.mutation.heldBy(ref)) {
-          if (!symbols.isImport(h)) {
-            read.add(h)
-          }
+        return
+      }
+      read.add(ref.sym)
+      for (const h of t1.mutation.heldBy(ref)) {
+        if (!symbols.isImport(h)) {
+          read.add(h)
         }
       }
     }
     for (const ref of t1.refs.refsIn(unit.range)) {
       noteRead(ref)
     }
-    // what it runs beyond its text when it calls something: the units
-    // `runs` enters (functions it calls, values whose methods it calls),
-    // whole, as `runs` takes them
     const calls = graph.callsOf(unit.region) !== null
-    const entered: Array<UnitId> = []
-    reads.runs(
-      unit.region,
-      (ref) => {
-        if (
-          !symbols.isModuleLevel(ref.sym) ||
-          !graph.isLive(ref, 'env') ||
-          (!calls &&
-            (ref.range.start < unit.range.start ||
-              ref.range.end > unit.range.end))
-        ) {
-          return false
-        }
-        noteRead(ref)
-        let changed: ReadonlyArray<SymbolId> = []
-        if (ref.kind === 'write') {
-          changed = [ref.sym]
-        } else if (ref.kind === 'value') {
-          const node = t1.nodeAt(ref.range.start)
-          if (
-            node !== null &&
-            (changesObject(file, node, known) ||
-              changesAsArgument(file, node, known))
-          ) {
-            changed =
-              ref.memberWrite &&
-              !ref.readsThrough &&
-              t1.mutation.ownsObject(ref.sym)
-                ? [ref.sym]
-                : [ref.sym, ...t1.mutation.heldBy(ref)]
-          }
-        }
-        for (const s of changed) {
-          if (symbols.isImport(s)) {
-            outside ??= {
-              at: ref.range.start,
-              name: symbols.name(s),
-              kind: 'import',
-            }
-          } else {
-            syms.add(s)
-          }
-        }
+    reads.runs(unit.region, (ref) => {
+      if (
+        !symbols.isModuleLevel(ref.sym) ||
+        !graph.isLive(ref, 'env') ||
+        (!calls &&
+          (ref.range.start < unit.range.start ||
+            ref.range.end > unit.range.end))
+      ) {
         return false
-      },
-      calls ? (e) => entered.push(e) : undefined,
-    )
-    for (const e of entered) {
-      if (outside !== null) {
-        break
       }
-      if (e !== u) {
-        outside = outsideChangeIn(file, t1.units[e]!.node, known, true)
+      noteRead(ref)
+      // what it changes (the warnings word it: `changes` or `uses`)
+      let changed: ReadonlyArray<SymbolId> = []
+      if (ref.kind === 'write') {
+        changed = [ref.sym]
+      } else if (ref.kind === 'value') {
+        const node = t1.nodeAt(ref.range.start)
+        if (
+          node !== null &&
+          (changesObject(file, node, known) ||
+            changesAsArgument(file, node, known))
+        ) {
+          changed =
+            ref.memberWrite &&
+            !ref.readsThrough &&
+            t1.mutation.ownsObject(ref.sym)
+              ? [ref.sym]
+              : [ref.sym, ...t1.mutation.heldBy(ref)]
+        }
       }
-    }
+      for (const s of changed) {
+        if (!symbols.isImport(s)) {
+          syms.add(s)
+        }
+      }
+      return false
+    })
     const own = clusterOfRegion.get(unit.region)
     hit =
-      syms.size === 0 &&
-      read.size === 0 &&
-      imported.size === 0 &&
-      outside === null
+      read.size === 0 && imported.size === 0
         ? NO_CHANGES
         : {
             syms: [...syms],
             reads: [...read],
             imports: [...imported],
-            clusters: followed(own, syms, read, syms.size > 0),
-            outside,
+            clusters: followed(own, read),
           }
     changesOfUnit.set(u, hit)
     return hit
@@ -754,7 +713,6 @@ export function eventTable(
     const syms: Array<SymbolId> = []
     const read: Array<SymbolId> = []
     const imported: Array<SymbolId> = []
-    let outside: OutsideChange | null = null
     for (const u of clusters[c]!.units) {
       const kind = t1.units[u]!.kind
       if (
@@ -764,7 +722,6 @@ export function eventTable(
         continue
       }
       const one = unitChanges(u)
-      outside ??= one.outside
       for (const s of one.syms) {
         if (!syms.includes(s)) {
           syms.push(s)
@@ -782,17 +739,13 @@ export function eventTable(
       }
     }
     hit =
-      syms.length === 0 &&
-      read.length === 0 &&
-      imported.length === 0 &&
-      outside === null
+      read.length === 0 && imported.length === 0
         ? NO_CHANGES
         : {
             syms,
             reads: read,
             imports: imported,
-            clusters: followed(c, syms, read, syms.length > 0),
-            outside,
+            clusters: followed(c, read),
           }
     changesOfCluster.set(c, hit)
     return hit

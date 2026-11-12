@@ -12,7 +12,6 @@ import type { KeptDeclaration } from './reach'
 import type { Diagnostic } from './diagnostics'
 import type { SymbolId } from './symbols'
 import type { OutputId } from './rewrite'
-import type { OutsideChange } from './units'
 import type { Node } from 'yuku'
 
 /**
@@ -136,13 +135,11 @@ export function keptDiagnostic(
         ...new Set([...k.needers, ...(k.in === undefined ? [] : [k.in])]),
       ]
       because =
-        k.outside !== undefined
-          ? `${statement}: it also ${outsideWords(k.outside)}`
-          : k.read !== undefined
-            ? `${statement}: it also ${k.uses === true ? 'uses' : 'changes'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
-            : `${statement}: several split options use what it changes (${users.map(output).join(', ')})`
+        k.read !== undefined
+          ? `${statement}: it also ${k.uses === true ? 'uses' : 'changes'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
+          : `${statement}: several split options use what it changes (${users.map(output).join(', ')})`
       fix =
-        k.outside === undefined && k.read !== undefined
+        k.read !== undefined
           ? `change ${read} in a statement of its own`
           : `move ${subject} and that statement to their own module`
       break
@@ -192,20 +189,6 @@ export function keptDiagnostic(
     range: k.range,
     by: 'core',
     code: `eager-split:${k.reason}`,
-  }
-}
-
-/** What a statement changes outside the module's bindings, as the `written` warning words it. */
-function outsideWords(o: OutsideChange): string {
-  switch (o.kind) {
-    case 'import':
-      return `changes \`${o.name}\`, another module's object`
-    case 'global':
-      return `changes the global \`${o.name}\``
-    case 'import.meta':
-      return 'changes `import.meta`'
-    case 'import()':
-      return 'imports a module dynamically'
   }
 }
 
