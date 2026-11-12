@@ -2622,6 +2622,25 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  // the executing property (toy planner, seeds 2578, 7394, 9413, 9430): a
+  // route option value writing an export at load joins the route to the
+  // export's cluster; an export the planner keeps (the route) is never
+  // extracted, so neither is that cluster
+  it('keeps an export a route option value writes in the route module with the route', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const o0 = { v: 1 }
+      export const Route = createFileRoute('/')({
+        loader: (Object.assign(o0, { v: 15 }), () => ({})),
+        component: () => o0,
+      })
+    `)
+    const r = await extract(code, ['component', 'loader'])
+    expect(r.env).toContain('export const Route = createFileRoute(')
+    expect(r.env).toContain('export const o0 = { v: 1 }')
+    expect(r.env).not.toContain('export---')
+  })
+
   it('extracts an exported effectful initialiser only a chunk needs, which the chunk imports', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
