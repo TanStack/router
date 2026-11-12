@@ -37,6 +37,18 @@ export function createColumnHelper(mark: string) {
   }
 }
 `,
+  // what an exported store's effects record, in order
+  'log.ts': `export const log: Array<string> = []
+;(globalThis as any).__log = log
+export function createStore(mark: string) {
+  log.push('create')
+  return { value: mark }
+}
+export function register(store: { value: string }, mark: string) {
+  log.push('register')
+  store.value += mark
+}
+`,
   'snap.ts': `export function snap(o: { v: number }) {
   return String(o.v)
 }
@@ -245,6 +257,46 @@ export const Route = createFileRoute('/')({
           )
           // (the source patches it when the route module loads)
           expect(result).toEqual(['unpatched', 'patched'])
+        } finally {
+          await app.dispose()
+        }
+      },
+      timeout,
+    )
+
+    // R149, extended: an extracted export's module is a destination. An
+    // export with effects only the component reads is extracted, the
+    // statement using only it follows it there, and both run when the
+    // component's chunk imports the export (the module is flagged
+    // side-effect free: nothing runs while nothing uses it)
+    test(
+      'an exported store with effects and the statement registering it run when the component uses the export',
+      async () => {
+        const app = await build({
+          bundler,
+          env: 'client',
+          minify: false,
+          files: routeApp(
+            `${head}import { createStore, register } from '../log'
+export const store = createStore('MARK_STORE')
+register(store, '+MARK_REGISTER')
+export const Route = createFileRoute('/')({
+  component: () => <p>{store.value}</p>,
+})
+`,
+            { env: 'client', files: libs },
+          ),
+        })
+        try {
+          expect(app.where('MARK_STORE')).toBe('lazy')
+          expect(app.where('MARK_REGISTER')).toBe('lazy')
+          const run = await app.run(
+            'const before = [...(globalThis.__log ?? [])]\nawait entry.mount(entry.Route.options.component)\nreturn [before, [...globalThis.__log]]',
+          )
+          expect(run.result).toEqual([[], ['create', 'register']])
+          expect((run.html as string).replace(/<[^>]*>/g, '')).toBe(
+            'MARK_STORE+MARK_REGISTER',
+          )
         } finally {
           await app.dispose()
         }

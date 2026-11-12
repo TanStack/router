@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { walk } from 'yuku'
 import {
   EMPTY_RECOGNIZER,
-  ModuleAnalysis,
   parseModule,
   unwrapExpression,
 } from '../src/compiler'
@@ -543,124 +542,82 @@ describe('glue and renames (lane router)', () => {
   })
 })
 
-// The hosts flag every extracted export's module side-effect free (a bundler
-// may skip it while nothing imports what it exports): what placement moves
-// there runs nothing of its own as the deletion purity judges it (a call, a
-// `new`, a member read), whatever the export's shape
-describe('extracted modules hold nothing with effects', () => {
-  /**
-   * The module's own effects (`ModuleAnalysis.effects`, the deletion
-   * purity), its writes of pure values to a function or class it declares
-   * aside (R139: such a write is a write of the binding, no effect)
-   */
-  const ownEffects = (code: string, id: string) => {
-    const parse = (text: string) => {
-      const parsed = parseModule(text, { lang: 'tsx', path: '/app/x.tsx' })
-      if (!parsed.ok) {
-        throw new Error(`${id} does not parse`)
-      }
-      return parsed
-    }
-    const parsed = parse(code)
-    const declared = new Set<string>()
-    for (const st of parsed.file.program.body) {
-      if (
-        (st.type === 'FunctionDeclaration' || st.type === 'ClassDeclaration') &&
-        st.id
-      ) {
-        declared.add(st.id.name)
-      }
-    }
-    let text = code
-    for (const st of parsed.file.program.body) {
-      const e = st.type === 'ExpressionStatement' ? st.expression : null
-      if (
-        e?.type === 'AssignmentExpression' &&
-        e.left.type === 'MemberExpression' &&
-        e.left.object.type === 'Identifier' &&
-        declared.has(e.left.object.name) &&
-        ['Literal', 'ArrowFunctionExpression', 'FunctionExpression'].includes(
-          e.right.type,
-        )
-      ) {
-        text =
-          text.slice(0, st.start) +
-          ' '.repeat(st.end - st.start) +
-          text.slice(st.end)
-      }
-    }
-    const blanked = parse(text)
-    return new ModuleAnalysis(blanked.file, blanked.source, {
-      path: '/app/x.tsx',
-    }).effects()
-  }
-  it.each([
-    ['a function', 'export function Page() { return heavy() }', true],
-    ['a class', 'export class Store { get() { return heavy() } }', true],
-    [
-      'a function with static props',
-      "export function Page() { return 'p' }\nPage.displayName = 'Page'\nPage.preload = () => import('./heavy')",
-      true,
-    ],
-    [
-      'an object literal',
-      'export const config = { name: "x", load: () => heavy() }',
-      true,
-    ],
-    [
-      'a function reading a call result',
-      'const client = heavy()\nexport function Page() { return client }',
-      true,
-    ],
-    ['a call', 'export const value = heavy()', false],
-    [
-      'a language operation',
-      'export const keys = Object.keys({ a: 1 })',
-      false,
-    ],
-    [
-      'a standard constructor',
-      "export const url = new URL('https://x')",
-      false,
-    ],
-    ['a member read', 'export const name = LABELS.admin', false],
-    ['an annotated call', 'export const value = /* @__PURE__ */ heavy()', true],
-  ] as const)('%s', async (_, decls, extracted) => {
-    const code = dedent(`
+// R149, extended (user + architect): an extracted export's module is a
+// destination like a chunk. A statement whose bindings all go there follows
+// into it, and an exported declaration with effects is extracted like any
+// other; the module stays flagged side-effect free, so it runs when a chunk
+// (or another importer) uses the export. In dev nothing is extracted: all of
+// it stays in the route module as written.
+describe("an extracted export's module is a destination", () => {
+  const route = (decls: string) =>
+    dedent(`
       import { createFileRoute } from 'toy-router'
-      import { heavy } from './heavy'
-      const LABELS = { admin: 'Admin' }
+      import { createStore, applyOverrides, plugin } from './lib'
       ${decls.split('\n').join('\n      ')}
       export const Route = createFileRoute('/')({
-        component: () => [typeof Page, typeof Store, typeof config, typeof value, typeof keys, typeof url, typeof name],
+        component: () => [flags.beta, store.value, list.length],
       })
     `)
-    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+  const decls =
+    'export const flags = { beta: false }\napplyOverrides(flags)\nexport const store = createStore()\nexport const list = []\nlist.push(plugin())'
+  async function compile(mode: 'build' | 'dev', type: 'client' | 'server') {
+    const host = new MemoryHost({ files: { '/app/route.tsx': route(decls) } })
     const planners = [
       toySplitPlanner({ keys: ['component'], extractExports: true }),
     ]
-    for (const env of [
-      envInfo({ mode: 'build' }),
-      envInfo({ name: 'ssr', type: 'server', mode: 'build' }),
-    ]) {
-      const out = await host.compile('/app/route.tsx', planners, { env })
-      const ids = [
-        ...new Set(
-          [
-            ...(out?.code ?? '').matchAll(/'([^']*\?tsr-split=export---\w+)'/g),
-          ].map((m) => m[1]!),
-        ),
-      ]
-      expect(ids.length > 0, decls).toBe(extracted)
-      for (const id of ids) {
-        const e = await host.compile(id, planners, { env })
-        const effects = ownEffects(e!.code, id)
-        expect(effects.code, `${id}\n${e!.code}`).toEqual({
-          client: false,
-          server: false,
-        })
-      }
+    const env = {
+      env: envInfo(
+        type === 'server' ? { name: 'ssr', type: 'server', mode } : { mode },
+      ),
     }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    const at = async (id: string) =>
+      (await host.compile(id, planners, env))?.code ?? ''
+    return {
+      env: out?.code ?? '',
+      diagnostics: (out?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      ),
+      chunk: await at('/app/route.tsx?tsr-split=component'),
+      module: (name: string) => at(`/app/route.tsx?tsr-split=export---${name}`),
+    }
+  }
+
+  it.each(['client', 'server'] as const)(
+    'moves a statement using only an export, and an export with effects, into their modules (%s build)',
+    async (type) => {
+      const r = await compile('build', type)
+      expect(r.diagnostics).toEqual([])
+      for (const line of [
+        'applyOverrides(flags)',
+        'createStore()',
+        'list.push(plugin())',
+      ]) {
+        expect(r.env).not.toContain(line)
+        expect(r.chunk).not.toContain(line)
+      }
+      expect(await r.module('flags')).toContain(
+        'export const flags = { beta: false }\napplyOverrides(flags)',
+      )
+      expect(await r.module('store')).toContain(
+        'export const store = createStore()',
+      )
+      expect(await r.module('list')).toContain(
+        'export const list = []\nlist.push(plugin())',
+      )
+      // the chunk imports them (one instance of each effect)
+      for (const name of ['flags', 'store', 'list']) {
+        expect(r.chunk).toContain(`?tsr-split=export---${name}`)
+      }
+    },
+  )
+
+  it('keeps all of it in the route module as written in dev', async () => {
+    const r = await compile('dev', 'client')
+    expect(r.diagnostics).toEqual([])
+    expect(r.env).toContain(decls)
+    expect(r.chunk).not.toContain('applyOverrides(flags)')
+    expect(r.chunk).not.toContain('list.push(plugin())')
   })
 })
 
