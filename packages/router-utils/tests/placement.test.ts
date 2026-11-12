@@ -7502,6 +7502,73 @@ describe('statements follow the bindings they use (R149)', () => {
   })
 })
 
+// R149 rulings (architect): an export that would be extracted but stays
+// because a statement using it stays is reported in the kept-export family,
+// naming that statement and its line; a statement changing an export says
+// so, whatever the operation (`list.push(…)`, `list.x = …`); each offered
+// fix, applied, lets the export load with its chunk (R100)
+describe('eager-export: an export a staying statement keeps', () => {
+  const route = (body: string, imports = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { sentryPlugin, analytics, later } from './lib'
+      ${imports}
+      ${body.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({ component: () => [flags, list] })
+    `)
+  const lineOf = (code: string, needle: string) =>
+    code.slice(0, code.indexOf(needle)).split('\n').length
+  const lib = "import { sentryPlugin, analytics, later } from './lib'\n"
+  /** The fix applied: `body` in `./own.ts`, the route module importing it. */
+  const fixed = async (body: string) => {
+    const r = await split(route('', "import { flags, list } from './own'"), {
+      extractExports: true,
+      files: { '/app/own.ts': `${lib}${body}\n` },
+    })
+    expect(r.main?.diagnostics ?? []).toEqual([])
+    expect(r.env).not.toContain('own')
+    expect(r.chunks.component).toContain("from './own'")
+  }
+
+  it.each([
+    ['uses', 'analytics.track(flags)'],
+    ['changes', 'later(() => { flags.beta = true })'],
+  ])('a statement that %s it', async (verb, statement) => {
+    const body = `export const flags = { beta: false }\n${statement}\nexport const list = []`
+    const code = route(body)
+    const r = await split(code, { extractExports: true })
+    expect(r.env).toContain(statement)
+    expect(r.main?.diagnostics).toMatchObject([
+      {
+        code: 'eager-export:written',
+        range: { start: code.indexOf('flags = ') },
+      },
+    ])
+    expect(r.main!.diagnostics![0]!.message).toContain(
+      `The export \`flags\` of /app/route.tsx is used only by the split \`component\`, but stays in the route module because the statement on line ${lineOf(code, statement)}, which ${verb} it, runs with the route module that exports it, so it loads with the route module instead of with that code. Move it and that statement to their own module and import it from there.`,
+    )
+    await fixed(body)
+  })
+
+  it('a statement with side effects that changes it by a method call', async () => {
+    const statement = 'list.push(sentryPlugin())'
+    const body = `export const flags = { beta: false }\nexport const list = []\n${statement}`
+    const code = route(body)
+    const r = await split(code, { extractExports: true })
+    expect(r.env).toContain(statement)
+    expect(r.main?.diagnostics).toMatchObject([
+      {
+        code: 'eager-export:effects',
+        range: { start: code.indexOf('list = ') },
+      },
+    ])
+    expect(r.main!.diagnostics![0]!.message).toContain(
+      `stays in the route module because a statement that changes it (line ${lineOf(code, statement)}) has side effects, so it loads with the route module instead of with that code. Move it and the statements changing it to their own module and import it from there.`,
+    )
+    await fixed(body)
+  })
+})
+
 // Finding 3 (part B) and the fresh review's finding 5: a declaration a
 // statement uses stays with that statement, and the warning says why the
 // statement stays (a binding it also uses that the route module keeps or
