@@ -65,9 +65,8 @@ export interface PurityContext {
  * of the module is judged so, an imported one is an effect. Getters,
  * proxies, iterators and `toString` stay outside the model, as for reads
  * (R97): the language defines what these operations do, a library does not.
- * Only placement's timing takes it: what may move into an extracted
- * export's module (`Tier1.extractionEffects`) and `effects()` still count
- * every operation that may run code.
+ * Only placement's timing takes it: `effects()` (a module's effects as a
+ * target) still counts every operation that may run code.
  */
 export function languagePurity(ctx: PurityContext): PurityContext {
   return { ...ctx, language: true }

@@ -144,12 +144,10 @@ export class DevReporter {
  * reports, without the frames of the code that made it (the reports say all
  * there is). `id`: the importer's file. No `loc`: the report names the
  * first one's position, 1-based, with its code frame (Vite prints a Rollup
- * `loc`'s 0-based column as given); `at` is that position for a host that
- * records it (Rsbuild's located diagnostics).
+ * `loc`'s 0-based column as given).
  */
 export interface DevViolationError extends Error {
   id?: string
-  at?: { line: number; column: number }
   /** Each report and its position (a host recording one diagnostic per report). */
   reports: Array<{ message: string; at?: { line: number; column: number } }>
 }
@@ -172,11 +170,7 @@ export function devViolationError(
   error.stack = message
   const [first] = reports
   if (first) {
-    const loc = first.info.importerLoc
-    error.id = loc?.file ?? first.info.importer
-    if (loc) {
-      error.at = { line: loc.line, column: loc.column }
-    }
+    error.id = first.info.importerLoc?.file ?? first.info.importer
   }
   return error
 }

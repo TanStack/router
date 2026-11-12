@@ -425,7 +425,7 @@ describe('dev decisions', () => {
     expect(outcome.error?.message).toContain('src/a.ts:1:24')
     expect(outcome.error).toMatchObject({
       id: `${ROOT}/src/a.ts`,
-      at: { line: 1, column: 24 },
+      reports: [{ at: { line: 1, column: 24 } }],
     })
     // a cached plan fails the module again
     const again = await a.compile('src/a.ts', 'client')
@@ -626,8 +626,14 @@ describe('forwarded glue and markers', () => {
       const imp = ctx.analysis.imports.find(
         (i) => i.specifier === './secret.server',
       )!
+      // the import statement
+      const stmt = ctx.analysis.file.program.body.find(
+        (s) =>
+          s.start <= imp.specifierRange.start &&
+          imp.specifierRange.end <= s.end,
+      )!
       ctx.rewrites.edit({
-        range: imp.declRange,
+        range: { start: stmt.start, end: stmt.end },
         body: [],
         by: 'toy-forward',
       })

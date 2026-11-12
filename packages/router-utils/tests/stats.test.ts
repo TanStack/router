@@ -26,20 +26,20 @@ const files = {
   '/app/route.tsx': ROUTE,
   '/app/helper.ts': 'export const helper = (n: number) => n\n',
 }
-/** Reads the target facts of every relative import (J6's acquisition path). */
+/** Reads the target facts of every edge's target in its policy (J6's acquisition path). */
 const toyTargetsPlanner: Planner = {
   name: 'toy-targets',
   tier: 1,
   gate: () => true,
-  async prefetch(t0, ctx) {
-    for (const imp of t0.imports) {
-      const target = await ctx.resolve(imp.specifier)
+  plan() {},
+  async policy(_plan, _output, edges, ctx) {
+    for (const e of edges) {
+      const target = await ctx.resolve(e.specifier)
       if (target) {
         await ctx.targetFacts(target)
       }
     }
   },
-  plan() {},
 }
 const planners = () => [
   toySplitPlanner(),

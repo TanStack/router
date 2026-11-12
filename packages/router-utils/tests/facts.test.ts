@@ -229,7 +229,7 @@ describe('facts of a module that is not JavaScript', () => {
       expect(facts.targetFacts).toMatchObject({
         exists: true,
         esm: false,
-        effectful: true,
+        codeEffects: { client: true, server: true },
         exportNames: [],
       })
     }
@@ -245,7 +245,7 @@ describe('facts of a module that is not JavaScript', () => {
 })
 
 describe('target facts of a marked module', () => {
-  it('counts a marker import neither as an evaluation edge nor as an effect', async () => {
+  it('does not count a marker import as an evaluation edge', async () => {
     const files: Record<string, string> = {
       '/app/marked.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
       '/app/effects.ts': `import './side-effect'\nexport const x = 1\n`,
@@ -261,11 +261,9 @@ describe('target facts of a marked module', () => {
     const marked = await cache.get('/app/marked.ts', 'client')
     expect(marked.targetFacts.marker).toBe('server-only')
     expect(marked.targetFacts.imports).toEqual([])
-    expect(marked.targetFacts.effectful).toBe(false)
     // a bare import of anything else still is
     const effects = await cache.get('/app/effects.ts', 'client')
     expect(effects.targetFacts.imports).toEqual(['./side-effect'])
-    expect(effects.targetFacts.effectful).toBe(true)
   })
 })
 
@@ -311,19 +309,16 @@ describe('target facts: own effects', () => {
     expect(
       (await cache.get('/app/before.ts', 'client')).targetFacts,
     ).toMatchObject({
-      effectful: false,
       codeEffects: { client: false, server: false },
     })
     expect(
       (await cache.get('/app/after.ts', 'client')).targetFacts,
     ).toMatchObject({
-      effectful: false,
       codeEffects: { client: false, server: false },
     })
     expect(
       (await cache.get('/app/plain.ts', 'client')).targetFacts,
     ).toMatchObject({
-      effectful: true,
       codeEffects: { client: true, server: true },
     })
   })
@@ -342,7 +337,7 @@ describe('target facts: what stays an effect', () => {
       loadVirtual: () => Promise.resolve(null),
       recognizer,
     })
-    return (await cache.get(path, 'client')).targetFacts.effectful
+    return (await cache.get(path, 'client')).targetFacts.codeEffects.client
   }
   // a known package's pure call with an impure argument, a call of
   // another export, of a default import that is no namespace, of a

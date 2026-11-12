@@ -107,7 +107,7 @@ async function compile(
   const seen = new Set<string>()
   const ownOutput = `${path}?`
   const visit = async (output: CompileOutput): Promise<void> => {
-    for (const e of output.edges) {
+    for (const e of host.edgesOf(output, env)) {
       if (!e.specifier.startsWith(ownOutput) || seen.has(e.specifier)) {
         continue
       }
@@ -466,7 +466,9 @@ export const Page = () => <Hydrate><Chart /></Hydrate>
 `
     const client = await compile(code)
     const [b] = client.extracted
-    const env = client.out.edges.map((e) => [e.specifier, e.provenance.origin])
+    const env = client.host
+      .edgesOf(client.out)
+      .map((e) => [e.specifier, e.provenance.origin])
     expect(env).toContainEqual(['@tanstack/react-router', 'runtime'])
     expect(env).toContainEqual([
       `/app/src/page.tsx?tss-hydrate=${b!.id}`,
@@ -474,11 +476,9 @@ export const Page = () => <Hydrate><Chart /></Hydrate>
     ])
     expect(env).not.toContainEqual(['./chart', 'source'])
     expect(
-      client.chunkOutputs[b!.id]!.edges.map((e) => [
-        e.specifier,
-        e.provenance.origin,
-        e.importerId,
-      ]),
+      client.host
+        .edgesOf(client.chunkOutputs[b!.id]!)
+        .map((e) => [e.specifier, e.provenance.origin, e.importerId]),
     ).toEqual([['./chart', 'source', b!.chunk]])
   })
 })
@@ -1075,9 +1075,9 @@ describe('the server output (J5.3)', () => {
       const server = await compile(`${REACT}${code}`, { env: ssrEnv })
       expect(server.code).not.toContain('client-spinner')
       expect(server.code).not.toContain('Spinner')
-      expect(server.out.edges.map((e) => e.specifier)).not.toContain(
-        './client-spinner',
-      )
+      expect(
+        server.host.edgesOf(server.out, ssrEnv).map((e) => e.specifier),
+      ).not.toContain('./client-spinner')
     },
   )
 
@@ -1249,7 +1249,9 @@ export const Page = () => <div><Hydrate><p>b</p></Hydrate></div>
     expect(client.code).not.toContain(removed)
     expect(client.code).not.toContain('./heavy')
     expect(client.code).not.toContain('H0')
-    expect(client.out.edges.map((e) => e.specifier)).not.toContain('./heavy')
+    expect(
+      client.host.edgesOf(client.out).map((e) => e.specifier),
+    ).not.toContain('./heavy')
     const dead = await client.host.compile(
       `${FILE}?tss-hydrate=${removed}`,
       planners,
@@ -1259,7 +1261,7 @@ export const Page = () => <div><Hydrate><p>b</p></Hydrate></div>
       },
     )
     expect(dead!.code).toBe('export {}\n')
-    expect(dead!.edges).toEqual([])
+    expect(client.host.edgesOf(dead!)).toEqual([])
     // the later boundary keeps its id on both sides; the server rejects the hook it keeps
     expect(prefixes(client.code)).toEqual([later])
     expect(prefixes(server.code)).toEqual([removed, later])

@@ -77,14 +77,6 @@ export function keptDiagnostic(
     let why: string
     let fix: string
     switch (k.reason) {
-      case 'reassigned': {
-        // the binding the export names is what is assigned (`export default
-        // items` after `var items` is declared again)
-        const binding = `\`${symbols.name(k.read ?? k.syms[0]!)}\``
-        why = `${binding} is reassigned${k.at === undefined ? '' : ` (${line(k.at)})`}`
-        fix = `Move ${binding} and the code assigning it to their own module and import it from there, or stop exporting it if no other file imports it.`
-        break
-      }
       case 'reads':
         // (a binding the compiler generated, a server fn it moved out of a
         // function the export calls, has no name in the source)
@@ -236,11 +228,7 @@ function writtenWith(
  * object, a call with an argument that has effects), so a hint to add it
  * would not work. The one gate of every annotation hint.
  */
-function annotationFrees(
-  plan: Pick<AnalysisPlan, 'analysis'>,
-  node: Node | null,
-  purity: PurityContext,
-): boolean {
+function annotationFrees(node: Node | null, purity: PurityContext): boolean {
   const n = node === null ? null : unwrapExpression(node)
   return (
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
@@ -277,7 +265,7 @@ export function annotatable(
       unit.node.type !== 'VariableDeclarator' ||
       (decl?.type === 'VariableDeclaration' &&
         (decl.kind === 'using' || decl.kind === 'await using')) ||
-      !annotationFrees(plan, unit.node.init, purity)
+      !annotationFrees(unit.node.init, purity)
     ) {
       return false
     }

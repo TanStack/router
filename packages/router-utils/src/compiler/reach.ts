@@ -19,7 +19,7 @@ import {
 import { keptDeclarations } from './placement/kept'
 import { assignHomes } from './placement/homes'
 import { includeAndImport } from './placement/inclusion'
-import type { Cluster, ClusterId } from './placement/clusters'
+import type { ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
@@ -101,10 +101,9 @@ export interface PlacementInput {
 /**
  * Why a declaration only split code needs stays in the env module
  * (`Placement.kept`). An exported one (an extraction candidate a chunk
- * reaches): `effects` (an observable initialiser effect), `reassigned`,
- * `live` (the env module reads it), `reads` (it reads, at its evaluation,
- * a binding the env module keeps), `unneeded` (no derived output needs it
- * once extraction is decided). An
+ * reaches): `live` (the env module reads it), `reads` (it reads, at its
+ * evaluation, a binding the env module keeps), `unneeded` (no derived
+ * output needs it once extraction is decided). An
  * unexported effectful one, or an eager reader of state:
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
@@ -114,7 +113,6 @@ export interface PlacementInput {
  * (one instance, in the env module).
  */
 export type KeptReason =
-  | 'reassigned'
   | 'live'
   | 'reads'
   | 'unneeded'
@@ -134,9 +132,9 @@ export interface KeptDeclaration {
   range: { start: number; end: number }
   /** The lazy outputs that need it. */
   needers: Array<OutputId>
-  /** `written`, `reassigned`: where it is written. */
+  /** `written`: where it is written. */
   at?: number
-  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned; `written`: the binding the statement also changes, which keeps it. */
+  /** `state`, `reads`: the binding it reads; `written`: the binding the statement also changes, which keeps it. */
   read?: SymbolId
   /** `written`: the split output using `read`, or the subject's second one. */
   in?: OutputId
@@ -167,7 +165,6 @@ export interface ExtractedExport {
 }
 
 export interface Placement {
-  clusters: Array<Cluster>
   clusterOfRegion: Map<RegionId, ClusterId>
   clusterOfGen: Map<GenUnitId, ClusterId>
   home: Map<ClusterId, Home>
@@ -242,7 +239,6 @@ export function computePlacement(input: PlacementInput): Placement {
     ...homes.fallbacks,
   ]
   return {
-    clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,
     clusterOfGen: graph.clusterOfGen,
     home: homes.home,

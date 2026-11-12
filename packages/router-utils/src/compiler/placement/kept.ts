@@ -70,7 +70,7 @@ export function keptDeclarations(
     const other = pin.other
     return {
       ...(other !== undefined &&
-        (pin.reason === 'written' || pin.reason === 'reassigned') && {
+        pin.reason === 'written' && {
           at: other.at,
         }),
       ...(pin.binding !== undefined && { read: pin.binding }),
@@ -81,15 +81,6 @@ export function keptDeclarations(
       ...(pin.later !== undefined && { later: pin.later }),
       ...(pin.reader !== undefined && { reader: pin.reader }),
       ...(pin.handedTo !== undefined && { handedTo: pin.handedTo }),
-    }
-  }
-  /** `reassigned`: the binding and its first live assignment (the declaration aside). */
-  const reassignment = (sym: SymbolId): Pin => {
-    const w = graph.writesOfSym.get(sym)?.find((x) => x.live && !x.member)
-    return {
-      reason: 'reassigned',
-      binding: sym,
-      ...(w !== undefined && { other: { at: w.at } }),
     }
   }
   /**
@@ -150,9 +141,7 @@ export function keptDeclarations(
     ) {
       continue
     }
-    const cause: Pin = graph.regionWrittenSyms.has(sym)
-      ? reassignment(sym)
-      : (cancelled.get(c) ?? { reason: 'live' })
+    const cause: Pin = cancelled.get(c) ?? { reason: 'live' }
     // (not reported: one no split code reaches, and one kept by a binding a
     // planner generated, which exists in this build only, like a candidate
     // some output renders otherwise: a server fn Start moves out of a
