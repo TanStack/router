@@ -2641,6 +2641,27 @@ describe('extracted-export outputs', () => {
     expect(r.env).not.toContain('export---')
   })
 
+  // the corpus (edunomatseye `blog.tsx`: a server-fn chain reading an
+  // exported middleware): an effectful declaration only a chunk reads may
+  // read an extracted `const` at load, as it may a kept one (R29 (c)): the
+  // chunk imports the extracted module, which evaluates first
+  it('moves an effectful declaration reading an extracted const at load into the chunk that reads it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make, use } from './lib'
+      export const logger = make()
+      const fn = use(logger)
+      export const Route = createFileRoute('/')({ component: () => fn })
+    `)
+    const r = await extract(code)
+    expect(r.env).not.toContain('use(logger)')
+    expect(r.chunk).toContain('const fn = use(logger)')
+    expect(r.chunk).toContain(
+      "import { logger } from '/app/route.tsx?tsr-split=export---logger'",
+    )
+    expect(r.diagnostics).toEqual([])
+  })
+
   it('extracts an exported effectful initialiser only a chunk needs, which the chunk imports', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
