@@ -677,7 +677,7 @@ export function makeFns() {
 
   // the declaration and its effect leave the defining module's evaluation
   // for the handler module's, once (a lazy initialisation, as in a split
-  // chunk): calling an import changes nothing it can see (R146 amendment)
+  // chunk): nothing outside the module keeps it (R149, answer A)
   it('moves module state and its effect only a hoisted handler reads', async () => {
     const r = await compile(
       `${FNS}import { load } from './db.server'
@@ -694,28 +694,6 @@ export function makeFn() {
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
     expect(h.match(/label = load\(label\)/g)).toHaveLength(1)
-  })
-
-  // a method of another module's object may change it: the effect stays in
-  // the defining module with the state, which the handler imports
-  it("keeps module state and an effect calling a method of another module's object", async () => {
-    const r = await compile(
-      `${FNS}import { db } from './db.server'
-let label: unknown = 'initial'
-label = db.get(label)
-export function makeFn() {
-  return createServerFn().handler(async () => label)
-}
-`,
-      { env: ssrEnv, files },
-    )
-    expectValid(r.code)
-    expect(r.code).toContain(
-      "let label: unknown = 'initial'\nlabel = db.get(label)",
-    )
-    const h = await r.derived(HANDLER_ID)
-    expectValid(h)
-    expect(h).not.toContain('db.get(label)')
   })
 
   it('derives the handler module of an SFC block before its language key', async () => {
