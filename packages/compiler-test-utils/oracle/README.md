@@ -27,6 +27,10 @@ today's compiler passes. The other jobs' tests join it job by job.
 
 Not the oracle: the tests of `@tanstack/compiler-test-utils` (the shared harness). They are controls of the harness.
 
+The harness judges emitted modules' free names with Yuku (`src/free-names.ts`), a parser a compiler may be built on
+too, so a scope bug they share would go unseen there. The checks that run the code in a real browser or Node, and the
+Oxc parse in `route-app.ts`, do not share it.
+
 ## Running
 
 The whole oracle, one task at a time:
