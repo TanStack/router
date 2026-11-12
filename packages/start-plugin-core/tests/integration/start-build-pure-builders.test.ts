@@ -12,7 +12,8 @@
  * split code read runs once per call. A link called on a `const` holding a
  * builder is a write of that builder (a middleware's links write the
  * options of the builder they are called on), which moves with it (R139). A
- * chain with an impure argument stays an effect.
+ * chain with an impure argument stays an effect (target facts), which two
+ * split options reading it share in one lazy module too (R151).
  * Both environments agree, so a server fn nested in a function may take a
  * builder chain in its options (the server compile hoists it).
  *
@@ -25,11 +26,7 @@
  * client build failed the compiler's self-checks.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -123,8 +120,8 @@ const linked = base.client(({ next }) => next({ sendContext: { tag: 'MARK_const-
 const run = createServerFn().middleware([linked]).handler(async () => 1)`,
     '<button onClick={() => run()}>go</button>',
   ),
-  // an impure argument keeps the chain an effect: two split options read it
-  // (no order rule: the `validateSearch` call after it would pin nothing)
+  // an impure argument keeps the chain an effect (target facts); two split
+  // options reading it share one lazy module with it, R151
   'src/routes/impure.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { makeMiddleware } from '../middleware'
@@ -138,13 +135,14 @@ export const Route = createFileRoute('/impure')({
 `,
 }
 
-const pure = [
+const lazyPaths = [
   'server-fn',
   'exported',
   'middleware',
   'isomorphic',
   'shared',
   'const-receiver',
+  'impure',
 ]
 
 describe.each(startBundlers)('a %s client build', (bundler) => {
@@ -162,7 +160,7 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
       // server implementation loads with the SSR chunk of the component
       expect(
         Object.fromEntries(
-          pure.map((path) => [
+          lazyPaths.map((path) => [
             path,
             findDiagnostics(build.ssr.warnings, {
               file: `src/routes/${path}.tsx`,
@@ -170,7 +168,7 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
             }),
           ]),
         ),
-      ).toEqual(Object.fromEntries(pure.map((path) => [path, []])))
+      ).toEqual(Object.fromEntries(lazyPaths.map((path) => [path, []])))
       expect(build.ssr.where('SERVER_isomorphic')).toBe('lazy')
       // one module: Rolldown emits a module two chunks import as a chunk of
       // its own (Rspack copies a small one into both chunks under one module
@@ -181,7 +179,7 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
           : 1
       expect(
         Object.fromEntries(
-          pure.map((path) => [
+          lazyPaths.map((path) => [
             path,
             {
               where: build.client.where(`MARK_${path}`),
@@ -192,21 +190,12 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
         ),
       ).toEqual(
         Object.fromEntries(
-          pure.map((path) => [
+          lazyPaths.map((path) => [
             path,
             { where: 'lazy', chunks: 1, warnings: [] },
           ]),
         ),
       )
-      expect(build.client.where('MARK_impure')).toBe('eager')
-      expect(warnings('impure').length).toBeGreaterThan(0)
-      expectDiagnostic(reported, {
-        severity: 'warning',
-        file: 'src/routes/impure.tsx',
-        root: build.root,
-        position: diagnosticPosition(files['src/routes/impure.tsx'], 'run ='),
-        times: 1,
-      })
     },
     timeout,
   )

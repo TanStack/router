@@ -1,7 +1,7 @@
 /**
- * Start's Vite dev server reports a declaration the split component
- * and the error component read, an effect two split options need, which
- * stays in the route module
+ * Start's Vite dev server reports a declaration only the split component
+ * reads that a staying statement changes (it also uses what
+ * `validateSearch` keeps), which stays in the route module
  * once for the client and server environments together, positioned at the
  * declaration, and not again after an edit that keeps the finding (the
  * builds: start-build-eager-export.test.ts).
@@ -17,14 +17,17 @@ import { reactApp } from './hydrate-dev-edits'
 
 const timeout = 90_000
 
-// (no order rule: a `validateSearch` call after the declaration pins
-// nothing; two split options reading its effect do, `needers`)
+// (two split options reading it would share a lazy module, R151; a
+// statement changing it that uses what the route module keeps keeps it,
+// `written`)
 const pinned = `import { createFileRoute } from '@tanstack/react-router'
 import { Marker } from '../marker'
+const settings = { tab: 'string' }
 const confetti = new Marker('MARK_CONFETTI')
+confetti.attach(settings)
 export const Route = createFileRoute('/')({
+  validateSearch: () => settings,
   component: () => <p>{confetti.name}</p>,
-  errorComponent: () => <p>{confetti.name}</p>,
 })
 `
 
@@ -38,6 +41,9 @@ test(
         'src/routes/index.tsx': pinned,
         'src/marker.ts': `export class Marker {
   constructor(public name: string) {}
+  attach(settings: object) {
+    ;(this as any).settings = settings
+  }
 }
 `,
         'src/schema.ts':
