@@ -138,7 +138,8 @@ function Page() {
 }
 export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
-  'client-entry.ts': `export * from './fns'
+  'client-entry.ts': `import './seed'
+export * from './fns'
 export * from './writers'
 export * from './seeded'
 export { callBroken } from './broken'
