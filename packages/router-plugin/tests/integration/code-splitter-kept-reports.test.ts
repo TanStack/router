@@ -12,9 +12,10 @@
  * stayed with the state the loader keeps, reported). Options of one split group writing one binding
  * are not reported: the binding goes to their chunk. Template-literal
  * initialisers (openstory) are reported and their fix, their own module,
- * works. An exported `new URL(text)` the split component alone reads is
- * reported too, and its annotated fix is not. Vite, Rspack, webpack and
- * Rsbuild client builds.
+ * works. An exported `queryOptions(…)` or `new URL(text)` the split
+ * component alone reads leaves for its extracted module, a destination
+ * like a chunk (R149, extended): silent, and lazy. Vite, Rspack, webpack
+ * and Rsbuild client builds.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -54,7 +55,8 @@ function Layout() {
   return <p>{modulesQueryOptions.queryKey[0]}{modules[0]}</p>
 }
 `,
-  // only the split component reads it: it stays eager, reported
+  // only the split component reads it: it leaves with its effects for its
+  // extracted module, which the chunk imports
   'routes/eager-export.tsx': `${head}import { queryOptions } from '../query'
 export const postOptions = queryOptions({ queryKey: ['MARK_eager-export_END'] })
 export const Route = createFileRoute('/eager-export')({
@@ -62,42 +64,13 @@ export const Route = createFileRoute('/eager-export')({
   component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
 })
 `,
-  // its fix: the call marked pure
-  'routes/eager-export-pure.tsx': `${head}import { queryOptions } from '../query'
-export const postOptions = /* @__PURE__ */ queryOptions({ queryKey: ['MARK_eager-export-pure_END'] })
-export const Route = createFileRoute('/eager-export-pure')({
-  loader: () => 'data',
-  component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
-})
-`,
-  // a standard global that may throw (`new URL(text)`): rule L only times
-  // code, so it is no candidate for an extracted module a host may flag
-  // side-effect free; it stays, reported (architect's ruling on the order
-  // rule v2 review, finding 2)
+  // a standard global that may throw (`new URL(text)`): extracted too
   'routes/url-export.tsx': `${head}const text = 'https://x/?MARK_url-export_END'
 export const url = new URL(text)
 export const Route = createFileRoute('/url-export')({
   loader: () => 'data',
   component: () => <p>{String(url)}{Route.useLoaderData()}</p>,
 })
-`,
-  // its fix: the `new` marked pure
-  'routes/url-export-pure.tsx': `${head}const text = 'https://x/?MARK_url-export-pure_END'
-export const url = /* @__PURE__ */ new URL(text)
-export const Route = createFileRoute('/url-export-pure')({
-  loader: () => 'data',
-  component: () => <p>{String(url)}{Route.useLoaderData()}</p>,
-})
-`,
-  // its other fix: its own module
-  'routes/eager-export-module.tsx': `${head}import { postOptions } from '../post-options'
-export const Route = createFileRoute('/eager-export-module')({
-  loader: () => 'data',
-  component: () => <p>{postOptions.queryKey[0]}{Route.useLoaderData()}</p>,
-})
-`,
-  'post-options.ts': `import { queryOptions } from './query'
-export const postOptions = queryOptions({ queryKey: ['MARK_eager-export-module_END'] })
 `,
   // a declared component writing what the loader reads (shared-writer)
   'routes/writer.tsx': `${head}let count = 0
@@ -190,16 +163,13 @@ export { routeTree }
 }
 
 const reported: Array<[file: string, needle: string]> = [
-  ['routes/eager-export.tsx', 'postOptions = queryOptions'],
-  ['routes/url-export.tsx', 'url = new URL'],
   ['routes/writer.tsx', 'Counter,'],
   ['routes/template.tsx', 'BASE = '],
 ]
 const silent = [
   'routes/course.tsx',
-  'routes/eager-export-pure.tsx',
-  'routes/url-export-pure.tsx',
-  'routes/eager-export-module.tsx',
+  'routes/eager-export.tsx',
+  'routes/url-export.tsx',
   'routes/writer-fixed.tsx',
   'routes/state.tsx',
   'routes/state-fixed.tsx',
@@ -240,8 +210,8 @@ describe.each(builds)('a %s client build', (_name, create) => {
       }
       // the fixes load the code with the route's chunk
       for (const lazy of [
-        'eager-export-pure',
-        'eager-export-module',
+        'eager-export',
+        'url-export',
         'writer-fixed',
         'state',
         'state-fixed',
@@ -251,7 +221,6 @@ describe.each(builds)('a %s client build', (_name, create) => {
       ]) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
       }
-      expect(app.where('MARK_eager-export_END')).toBe('eager')
     },
     timeout,
   )

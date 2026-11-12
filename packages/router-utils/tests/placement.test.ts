@@ -36,6 +36,7 @@ async function split(
     identifierEdits?: boolean
     extractExports?: boolean
     files?: Record<string, string>
+    mode?: 'build' | 'dev'
   } = {},
 ) {
   const host = new MemoryHost({
@@ -50,9 +51,10 @@ async function split(
       extractExports: opts.extractExports,
     }),
   ]
-  const env = envInfo(
-    opts.env === 'server' ? { name: 'ssr', type: 'server' } : {},
-  )
+  const env = envInfo({
+    ...(opts.env === 'server' && { name: 'ssr', type: 'server' }),
+    ...(opts.mode !== undefined && { mode: opts.mode }),
+  })
   const main = await host.compile('/app/route.tsx', planners, { env })
   const chunks: Record<string, string> = {}
   const chunkKeys = new Set(
@@ -552,14 +554,14 @@ describe("an extracted export's module is a destination", () => {
   const route = (decls: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
-      import { createStore, applyOverrides, plugin } from './lib'
+      import { createStore, register, applyOverrides, plugin } from './lib'
       ${decls.split('\n').join('\n      ')}
       export const Route = createFileRoute('/')({
         component: () => [flags.beta, store.value, list.length],
       })
     `)
   const decls =
-    'export const flags = { beta: false }\napplyOverrides(flags)\nexport const store = createStore()\nexport const list = []\nlist.push(plugin())'
+    'export const flags = { beta: false }\napplyOverrides(flags)\nexport const store = createStore()\nregister(store)\nexport const list = []\nlist.push(plugin())'
   async function compile(mode: 'build' | 'dev', type: 'client' | 'server') {
     const host = new MemoryHost({ files: { '/app/route.tsx': route(decls) } })
     const planners = [
@@ -591,19 +593,21 @@ describe("an extracted export's module is a destination", () => {
       for (const line of [
         'applyOverrides(flags)',
         'createStore()',
+        'register(store)',
         'list.push(plugin())',
       ]) {
         expect(r.env).not.toContain(line)
         expect(r.chunk).not.toContain(line)
       }
       expect(await r.module('flags')).toContain(
-        'export const flags = { beta: false }\napplyOverrides(flags)',
+        'const flags = { beta: false }\napplyOverrides(flags)',
       )
+      // (a follower of an export with effects of its own too)
       expect(await r.module('store')).toContain(
-        'export const store = createStore()',
+        'const store = createStore()\nregister(store)',
       )
       expect(await r.module('list')).toContain(
-        'export const list = []\nlist.push(plugin())',
+        'const list = []\nlist.push(plugin())',
       )
       // the chunk imports them (one instance of each effect)
       for (const name of ['flags', 'store', 'list']) {
@@ -802,21 +806,24 @@ describe('extracted-export outputs', () => {
     expect(
       out!.diagnostics.filter((d) => d.code?.startsWith('eager-')),
     ).toEqual([])
-    // the server keeps the write: the export stays, reported once
-    const server = await host.compile('/app/route.tsx', planners, {
-      env: envInfo({
-        name: 'ssr',
-        type: 'server',
-        mode: 'build',
-      }),
-    })
-    expect(server!.code).toContain('export let hits = 0')
-    expect(
-      server!.diagnostics.map((d) => [d.code, d.range?.start]),
-    ).toContainEqual([
-      expect.stringMatching(/^eager-export:/),
-      code.indexOf('hits = 0'),
-    ])
+    // the server keeps the write: `hits` leaves with its writer, one
+    // module holding both (every writer of `hits` is in its module)
+    const env = {
+      env: envInfo({ name: 'ssr', type: 'server', mode: 'build' }),
+    }
+    const server = await host.compile('/app/route.tsx', planners, env)
+    expect(server!.code).toContain(
+      "export { hits, bump } from '/app/route.tsx?tsr-split=export---bump'",
+    )
+    expect(server!.code).not.toContain('hits++')
+    expect(server!.diagnostics).toEqual([])
+    const module = await host.compile(
+      '/app/route.tsx?tsr-split=export---bump',
+      planners,
+      env,
+    )
+    expect(module!.code).toContain('let hits = 0')
+    expect(module!.code).toContain('hits++')
   })
 
   it('keeps an exported declaration the env module reads, and an unread one', async () => {
@@ -1830,7 +1837,7 @@ describe('extracted-export outputs', () => {
       expect(r.env).toContain('export---config')
     })
 
-    it('keeps an export that holds a function reading an effectful enum, read through a method at load', async () => {
+    it('extracts an export that holds a function reading an effectful enum, read through a method at load, with the enum', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
         import { track } from './rt'
@@ -1841,8 +1848,11 @@ describe('extracted-export outputs', () => {
         export const Route = createFileRoute('/')({ component: Page })
       `)
       const r = await extract(code)
-      expect(r.env).toContain('export const R')
-      expect(r.env).not.toContain('export---')
+      expect(r.env).not.toContain("track('T')")
+      expect(r.env).toContain('export---R')
+      const e = (await r.extracted('R'))?.code
+      expect(e).toContain("enum T { A = track('T') }")
+      expect(e).toContain('const R = /* @__PURE__ */ o.m()')
     })
 
     it.each([
@@ -2208,8 +2218,8 @@ describe('extracted-export outputs', () => {
   it('reports each exported cause with its own reason, also one another cause reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      import { make } from './lib'
-      export const base = make()
+      export let base = { n: 1 }
+      base = { n: 2 }
       export const options = { base }
       function Page() { return [options.base, base] }
       export const Route = createFileRoute('/')({ component: Page })
@@ -2217,31 +2227,10 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.diagnostics.map((d) => [d.code, d.range?.start]).sort()).toEqual(
       [
-        ['eager-export:effects', code.indexOf('base = make')],
+        ['eager-export:reassigned', code.indexOf('base = { n: 1 }')],
         ['eager-export:reads', code.indexOf('options = {')],
       ].sort(),
     )
-  })
-
-  it('reports an exported declaration with effects only split code reads, also next to `Route`', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { queryOptions } from './query'
-      export const postOpts = queryOptions({ queryKey: ['p'] })
-      function Page() { return [Route.useLoaderData(), postOpts.queryKey[0]] }
-      export const Route = createFileRoute('/')({
-        loader: () => 'data',
-        component: Page,
-      })
-    `)
-    const r = await extract(code)
-    expect(r.diagnostics).toMatchObject([
-      {
-        severity: 'warning',
-        code: 'eager-export:effects',
-        range: { start: code.indexOf('postOpts = queryOptions') },
-      },
-    ])
   })
 
   // J2.8: an exported declaration a chunk needs that stays in the route
@@ -2250,8 +2239,8 @@ describe('extracted-export outputs', () => {
   it('names the exports of one binding in the plural', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      import { make } from './lib'
-      export const value = make()
+      export let value = 1
+      value = 2
       export { value as alias }
       function Page() { return value }
       export const Route = createFileRoute('/')({ component: Page })
@@ -2265,27 +2254,6 @@ describe('extracted-export outputs', () => {
   })
 
   it('reports an exported declaration a chunk needs that stays in the route module, with the reason', async () => {
-    const effects = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { createStore } from './store'
-      export const store = createStore()
-      function Page() { return store.value }
-      export const Route = createFileRoute('/')({ component: Page })
-    `)
-    let r = await extract(effects)
-    expect(r.env).toContain('export const store = createStore()')
-    expect(r.chunk).toContain("import { store } from '/app/route.tsx'")
-    expect(r.diagnostics).toMatchObject([
-      {
-        severity: 'warning',
-        code: 'eager-export:effects',
-        by: 'core',
-        range: { start: effects.indexOf('store = createStore') },
-      },
-    ])
-    expect(r.diagnostics[0]!.message).toContain('`store`')
-    expect(r.diagnostics[0]!.message).toContain('/app/route.tsx')
-
     // (an exported writer would leave with its state: "moves an exported
     // function with the module state it writes"; an unexported one keeps
     // the cluster in the route module, and the chunk imports it)
@@ -2296,14 +2264,18 @@ describe('extracted-export outputs', () => {
       function Page() { bump(); return count }
       export const Route = createFileRoute('/')({ component: Page })
     `)
-    r = await extract(reassigned)
+    let r = await extract(reassigned)
     expect(r.chunk).toContain("import { count, bump } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([
       {
+        severity: 'warning',
         code: 'eager-export:reassigned',
+        by: 'core',
         range: { start: reassigned.indexOf('count = 0') },
       },
     ])
+    expect(r.diagnostics[0]!.message).toContain('`count`')
+    expect(r.diagnostics[0]!.message).toContain('/app/route.tsx')
 
     const onlyRoute = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2424,19 +2396,20 @@ describe('extracted-export outputs', () => {
     it('reports a kept export as in a build', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
-        import { createStore } from './store'
-        export const store = createStore()
-        function Page() { return store.value }
+        export let count = 0
+        function bump() { count++ }
+        function Page() { bump(); return count }
         export const Route = createFileRoute('/')({ component: Page })
       `)
       const r = await extract(code, ['component'], dev)
-      expect(r.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
+      expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reassigned' }])
     })
   })
 
-  // An exported binding's pure augmentations (`Page.displayName = …`,
-  // static props) are writes of it (R139): they leave with it, whatever
-  // effects surround them. An effect never leaves for its module.
+  // An exported binding's augmentations (`Page.displayName = …`, static
+  // props) are writes of it (R139): they leave with it, whatever effects
+  // surround them; its module is a destination like a chunk (R149,
+  // extended), so an effect that only it needs leaves too.
   it('extracts an exported component with its augmentations', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2461,16 +2434,14 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain('export { Page }')
   })
 
-  // An extracted module is side-effect free: a bundler may skip it while
-  // nothing imports what it exports (webpack and Rspack by the hosts' rule),
-  // so an effect observable on its own never moves there, even when only
-  // the extracted export needs its cluster and no effect would change order:
-  // it stays in the env module, which the extracted module imports it from.
+  // An extracted module is a destination like a chunk (R149, extended):
+  // an unexported cluster with an effect of its own that only the extracted
+  // export needs moves there, and runs when something uses the export
   it.each([
     ["function Card() { return 'card' }\n      Card.x = track('card')", 'Card'],
     ["const Card = track('card')", 'Card'],
   ])(
-    'keeps an unexported cluster with an effect of its own that only an extracted export reads in the env module (`%s`)',
+    'moves an unexported cluster with an effect of its own that only an extracted export reads into its module (`%s`)',
     async (declaration, binding) => {
       const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2482,19 +2453,20 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
       const r = await extract(code)
-      expect(r.env).toContain("track('card')")
+      expect(r.env).not.toContain("track('card')")
+      expect(r.env).toContain("track('after')")
       expect(r.env).toContain(
         "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
       )
       const e = await r.extracted('Page')
-      expect(e?.code).toContain(`import { ${binding} } from '/app/route.tsx'`)
-      expect(e?.code).not.toContain('track')
-      // the extracted module is no split code: nothing to report
+      expect(e?.code).toContain("track('card')")
+      expect(e?.code).not.toContain(`from '/app/route.tsx'`)
+      expect(e?.code).not.toContain("track('after')")
       expect(r.diagnostics).toEqual([])
     },
   )
 
-  it('keeps an export that reads, as it loads, an unexported cluster with an effect of its own', async () => {
+  it('moves an export that reads, as it loads, an unexported cluster with an effect of its own into its module, with that cluster', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -2503,16 +2475,19 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: () => options.base })
     `)
     const r = await extract(code)
-    expect(r.env).toContain('const base = make()')
-    expect(r.env).toContain('export const options = { base }')
-    expect(r.env).not.toContain('export---')
-    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
+    expect(r.env).not.toContain('make()')
+    expect(r.env).toContain(
+      "export { options } from '/app/route.tsx?tsr-split=export---options'",
+    )
+    expect((await r.extracted('options'))?.code).toContain(
+      'const base = make()\nconst options = { base }',
+    )
+    expect(r.diagnostics).toEqual([])
   })
 
   // The same cluster before the augmented export, which reads it only when
   // called: the augmentation writes only `Page` (R139), so the export
-  // leaves, and its module imports the effectful cluster from the env
-  // module (it asserted that the export stayed, `eager-export:order`).
+  // leaves, with the effectful cluster only it needs.
   it('extracts an augmented export after an unexported cluster with an effect of its own that it reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2525,12 +2500,13 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
-    expect(r.env).toContain("Card.x = track('card')")
+    expect(r.env).not.toContain("Card.x = track('card')")
+    expect(r.env).toContain("track('after')")
     expect(r.env).toContain(
       "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
     )
     const e = await r.extracted('Page')
-    expect(e?.code).toContain("import { Card } from '/app/route.tsx'")
+    expect(e?.code).toContain("Card.x = track('card')")
     expect(e?.code).toContain("Page.displayName = 'Page'")
     expect(r.diagnostics).toEqual([])
   })
@@ -2646,7 +2622,7 @@ describe('extracted-export outputs', () => {
     )
   })
 
-  it('keeps an exported effectful initialiser only a chunk needs (its module could never be dropped as unused)', async () => {
+  it('extracts an exported effectful initialiser only a chunk needs, which the chunk imports', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { createTheme } from './theme'
@@ -2655,9 +2631,13 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
-    expect(r.env).toContain('export const theme = createTheme()')
-    expect(r.env).not.toContain('export---')
-    expect(r.chunk).toContain("import { theme } from '/app/route.tsx'")
+    expect(r.env).not.toContain('createTheme()')
+    expect(r.chunk).toContain(
+      "import { theme } from '/app/route.tsx?tsr-split=export---theme'",
+    )
+    expect((await r.extracted('theme'))?.code).toContain(
+      'const theme = createTheme()',
+    )
   })
 
   it('keeps an augmented export whose augmentation reads what the env module keeps at its evaluation', async () => {
@@ -2676,33 +2656,25 @@ describe('extracted-export outputs', () => {
   })
 
   it.each([
-    ["Page.displayName = 'Page'", true],
-    ["Page.preload = () => import('./heavy')", true],
-    ['Page.count += 1', true],
-    // (it writes what `Page.meta` holds, which may be another binding's
-    // object: an effect since R139 made a pure write of the binding itself
-    // no effect; extracted before)
-    ['Page.meta.title = `x`', false],
-    ["Object.assign(Page, { title: 'x' })", true],
-    ["Page['k'] = 1", true],
-    ["Page.x = track('page')", false],
-    ["Page.x ??= track('page')", false],
-    ["Object.assign(Page, { x: track('page') })", false],
-    ["Page[track('k')] = 1", false],
-    ['Page.count++', false],
-    // a member of a namespace import reads that module's binding (no code
-    // runs, as for an imported identifier)
-    ['Page.icon = Icons.Home', true],
-    ["Page.icon = Icons['Home']", true],
-    ['Object.assign(Page, { Item: Icons.Item })', true],
-    // a property of an imported object may run a getter: what moves into an
-    // extracted export's module is judged as deletion is (rule L only
-    // times code)
-    ['Page.icon = Shapes.Home', false],
-    ['Page.icon = Icons.Home.small', false],
+    "Page.displayName = 'Page'",
+    "Page.preload = () => import('./heavy')",
+    'Page.count += 1',
+    'Page.meta.title = `x`',
+    "Object.assign(Page, { title: 'x' })",
+    "Page['k'] = 1",
+    "Page.x = track('page')",
+    "Page.x ??= track('page')",
+    "Object.assign(Page, { x: track('page') })",
+    "Page[track('k')] = 1",
+    'Page.count++',
+    'Page.icon = Icons.Home',
+    "Page.icon = Icons['Home']",
+    'Object.assign(Page, { Item: Icons.Item })',
+    'Page.icon = Shapes.Home',
+    'Page.icon = Icons.Home.small',
   ])(
-    'extracts an export augmented by `%s` only when the augmentation writes nothing but pure values (%s)',
-    async (augmentation, extracted) => {
+    'extracts an export augmented by `%s`, with its augmentation',
+    async (augmentation) => {
       const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { track } from './track'
@@ -2713,11 +2685,13 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
       const r = await extract(code)
-      expect(r.env.includes('export---Page')).toBe(extracted)
+      expect(r.env).toContain('export---Page')
+      expect(r.env).not.toContain(augmentation)
+      expect((await r.extracted('Page'))?.code).toContain(augmentation)
     },
   )
 
-  it('keeps an augmented export whose augmentation has an effect of its own (its module could never be dropped as unused)', async () => {
+  it('extracts an augmented export whose augmentation has an effect of its own, with it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { track } from './track'
@@ -2727,11 +2701,15 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
-    expect(r.env).toContain('export function Page()')
-    expect(r.env).toContain("Page.x = track('page')")
-    expect(r.env).not.toContain('export---')
-    expect(r.chunk).toContain("import { Page } from '/app/route.tsx'")
-    expect(r.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
+    expect(r.env).not.toContain("Page.x = track('page')")
+    expect(r.env).toContain("track('after')")
+    expect(r.chunk).toContain(
+      "import { Page } from '/app/route.tsx?tsr-split=export---Page'",
+    )
+    expect((await r.extracted('Page'))?.code).toContain(
+      "Page.x = track('page')",
+    )
+    expect(r.diagnostics).toEqual([])
   })
 })
 
@@ -3353,7 +3331,7 @@ describe('ordered evaluation and movable effects', () => {
     ['a method parameter', 'use(@inject() dep: unknown) { return dep }'],
     ['a method', '@inject() use() {}'],
   ])(
-    'keeps an exported class with a decorator on %s in the route module, an effect (the decorator runs when the class is defined)',
+    'moves an exported class with a decorator on %s into its module, with the decorator (it runs when that module loads)',
     async (_, member) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -3363,10 +3341,12 @@ describe('ordered evaluation and movable effects', () => {
           component: () => new Service(1),
         })
       `)
-      const r = await split(code, { extractExports: true })
-      expect(r.main?.diagnostics).toMatchObject([
-        { code: 'eager-export:effects' },
-      ])
+      const r = await split(code, { extractExports: true, mode: 'build' })
+      expect(r.main?.diagnostics).toEqual([])
+      expect(r.env).not.toContain('@inject()')
+      expect(r.env).toContain(
+        "export { Service } from '/app/route.tsx?tsr-split=export---Service'",
+      )
     },
   )
 
@@ -4454,7 +4434,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     ['a default', "const { beta = track('beta') } = {}"],
     ['a computed key', "const { [track('beta')]: beta } = { beta: 1 }"],
   ])(
-    'keeps an exported destructuring whose pattern has %s with a call in the route module, an effect',
+    'moves an exported destructuring whose pattern has %s with a call into its module, with the call',
     async (_, declaration) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -4464,10 +4444,12 @@ describe('one mutation model: eager reads of state something writes', () => {
           component: () => beta,
         })
       `)
-      const r = await split(code, { extractExports: true })
-      expect(r.main?.diagnostics).toMatchObject([
-        { code: 'eager-export:effects' },
-      ])
+      const r = await split(code, { extractExports: true, mode: 'build' })
+      expect(r.main?.diagnostics).toEqual([])
+      expect(r.env).not.toContain('track(')
+      expect(r.env).toContain(
+        "export { beta } from '/app/route.tsx?tsr-split=export---beta'",
+      )
     },
   )
 
@@ -6296,12 +6278,6 @@ describe('declarations only split code needs that stay in the route module', () 
         ],
         options: ['loader: () => BASE,', 'component: () => LINK,'],
       },
-      {
-        code: 'eager-export:effects',
-        name: 'BASE',
-        body: (init: string) => [`export const BASE = ${init}`],
-        options: ['component: () => BASE,'],
-      },
     ])('$code', async ({ code, name, body, options }) => {
       const at = (source: string) => (d: { range?: { start: number } }) =>
         d.range?.start === source.indexOf(`${name} = `)
@@ -6681,13 +6657,8 @@ describe('language operations are no effect (rule L)', () => {
       },
     )
 
-    // nor does it move into an extracted export's module: a host may flag
-    // that module side-effect free whatever it holds (the webpack family's
-    // rule on the query), and a bundler then drops it while nothing imports
-    // what it exports. An exported one stays, reported as at head; an
-    // unexported one only the extracted export reads stays in the route
-    // module, which the extracted module imports it from (architect's
-    // ruling on finding 2)
+    // and into an extracted export's module, a destination like a chunk
+    // (R149, extended): the module runs when something uses the export
     describe('in an extracted export', () => {
       const compile = async (code: string, extracted: string) => {
         const host = new MemoryHost({ files: { '/app/route.tsx': code } })
@@ -6704,8 +6675,8 @@ describe('language operations are no effect (rule L)', () => {
         return { r, e }
       }
 
-      it('keeps an exported `new URL(text)` in the route module', async () => {
-        const { r } = await compile(
+      it('moves an exported `new URL(text)` into its module', async () => {
+        const { r, e } = await compile(
           dedent(`
             import { createFileRoute } from 'toy-router'
             const text = '{'
@@ -6716,27 +6687,15 @@ describe('language operations are no effect (rule L)', () => {
           `),
           'url',
         )
-        expect(r?.code).toContain('export const url = new URL(text)')
-        expect(r?.code).not.toContain('export---url')
-        expect(r?.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
-        // its initialiser is the cause, and the offered annotation works
-        expect(r?.diagnostics[0]?.message).toContain('initialiser')
-        expect(r?.diagnostics[0]?.message).toContain('/* @__PURE__ */')
-        const { e } = await compile(
-          dedent(`
-            import { createFileRoute } from 'toy-router'
-            const text = '{'
-            export const url = /* @__PURE__ */ new URL(text)
-            export const Route = createFileRoute('/')({
-              component: () => String(url),
-            })
-          `),
-          'url',
+        expect(r?.code).not.toContain('new URL')
+        expect(r?.code).toContain(
+          "export { url } from '/app/route.tsx?tsr-split=export---url'",
         )
-        expect(e?.code).toContain('/* @__PURE__ */ new URL(text)')
+        expect(r?.diagnostics).toEqual([])
+        expect(e?.code).toContain("const text = '{'\nconst url = new URL(text)")
       })
 
-      it('keeps an unexported `new URL(text)` only an extracted export reads in the route module', async () => {
+      it('moves an unexported `new URL(text)` only an extracted export reads into its module', async () => {
         const { r, e } = await compile(
           dedent(`
             import { createFileRoute } from 'toy-router'
@@ -6747,62 +6706,41 @@ describe('language operations are no effect (rule L)', () => {
           `),
           'Page',
         )
-        expect(r?.code).toContain('const url = new URL(text)')
+        expect(r?.code).not.toContain('new URL')
         expect(r?.code).toContain(
           "export { Page } from '/app/route.tsx?tsr-split=export---Page'",
         )
-        expect(e?.code).toContain("import { url } from '/app/route.tsx'")
-        expect(e?.code).not.toContain('new URL')
+        expect(e?.code).toContain('const url = new URL(text)')
       })
     })
   })
 
-  // what is no language operation stays an effect: an exported declaration
-  // a chunk needs is then kept for its effects, not extracted
-  describe('what still is an effect', () => {
-    const build = (code: string) =>
-      new MemoryHost({ files: { '/app/route.tsx': code } }).compile(
-        '/app/route.tsx',
-        [toySplitPlanner({ keys: ['component'], extractExports: true })],
-        { env: envInfo({ mode: 'build' }) },
-      )
-    const exported = (decl: string) =>
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        import { format, register } from './lib'
-        const LABELS = { admin: 'Admin', user: 'User' }
-        const LIST = ['a', 'b']
-        export ${decl}
-        export const Route = createFileRoute('/')({
-          component: () => ${/const (\w+)/.exec(decl)![1]!},
-        })
-      `)
-    it.each([
-      [
-        'a callback calling an unknown function',
-        'const a = Object.keys(LABELS).map((k) => format(k))',
-      ],
-      [
-        'an imported function as the callback',
-        'const a = Object.keys(LABELS).map(register)',
-      ],
-      ['a method of a binding of the module', 'const a = LIST.map((x) => x)'],
-      ['a method of a member', 'const a = LABELS.admin.toUpperCase()'],
-      [
-        'a global the language does not define',
-        'const a = new Worker(LABELS.admin)',
-      ],
-      // rule L times code; what moves into an extracted export's module is
-      // judged as deletion is
-      [
-        'a language operation',
-        'const a = Object.keys(LABELS).map((k) => k.length)',
-      ],
-    ])('%s', async (_, decl) => {
-      const r = await build(exported(decl))
-      expect(r?.code).toContain(decl)
-      expect(r?.diagnostics).toMatchObject([{ code: 'eager-export:effects' }])
-    })
+  // a callback calling an unknown function runs in the export's module
+  // (the executing property agrees: its values are the source's)
+  it('moves an exported declaration whose callback calls an unknown function into its module', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { format } from './lib'
+      const LABELS = { admin: 'Admin', user: 'User' }
+      export const a = Object.keys(LABELS).map((k) => format(k))
+      export const Route = createFileRoute('/')({ component: () => a })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const r = await host.compile('/app/route.tsx', planners, env)
+    expect(r?.code).not.toContain('format(k)')
+    expect(r?.diagnostics).toEqual([])
+    const e = await host.compile(
+      '/app/route.tsx?tsr-split=export---a',
+      planners,
+      env,
+    )
+    expect(e?.code).toContain(
+      "const LABELS = { admin: 'Admin', user: 'User' }\nconst a = Object.keys(LABELS).map((k) => format(k))",
+    )
   })
 })
 
