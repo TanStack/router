@@ -5883,6 +5883,42 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
+  // small item 2b under R152: a write at an unknown time that only the
+  // value's chunk runs pins the value only when another evaluation touches
+  // the binding at load, not because the binding stays in the route module
+  // for a later reader: a function the value reaches other than as a name
+  // handed to its call splits as its inline spelling does
+  it.each([
+    [
+      'inline',
+      'component: f(flag ? function render() { seen.n++; return null } : Fallback),',
+      '',
+    ],
+    [
+      'named',
+      'component: f(flag ? render : Fallback),',
+      'function render() { seen.n++; return null }',
+    ],
+  ])(
+    'splits an option value reaching a function that writes a binding the route module reads later (%s)',
+    async (_, options, decls) => {
+      const r = await split(
+        route(
+          `const seen = { n: 0 }\nconst flag = true\nfunction Fallback() { return null }\n${decls}`,
+          `loader: () => seen,\n${options}`,
+        ),
+        { files: lib },
+      )
+      const facts = r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+      expect(facts?.notSplittable).toBeUndefined()
+      expect(r.chunks.component).toContain('seen.n++')
+      expect(r.env).toContain('const seen = { n: 0 }')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
   it('splits an option value whose call holds a function writing a binding another function writes later (R152)', async () => {
     const r = await split(
       route(
