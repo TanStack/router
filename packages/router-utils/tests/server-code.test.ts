@@ -118,7 +118,7 @@ const CASES: Array<{
             k: 'ref',
             range: ident,
             to: { sym: ctx.symbols.ofBinding(binding) },
-            ctx: 'expr',
+            ctx: 'plain',
           },
         ],
         by: 'toy-server-only',
@@ -164,7 +164,7 @@ describe('the server-code check', () => {
   )
 
   // Source: R132 (an error in users' builds, where self-checks are off).
-  it("fails the module in users' runs, naming the file, the place and the output", async () => {
+  it("fails the module in users' runs, naming the file (absolute: the host has no root), the place and the output", async () => {
     vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
     vi.resetModules()
     try {
@@ -183,7 +183,7 @@ describe('the server-code check', () => {
           by: 'core',
           range: secret(CODE),
           message:
-            'Internal compiler error in src/route.tsx: the toy handler would be included in the client output src/route.tsx?tsr-split=component, so the build stops. Please report it at https://github.com/TanStack/router/issues with this file.',
+            'Internal compiler error in /app/src/route.tsx: the toy handler would be included in the client output /app/src/route.tsx?tsr-split=component, so the build stops. Please report it at https://github.com/TanStack/router/issues with this file.',
         },
       ])
     } finally {
