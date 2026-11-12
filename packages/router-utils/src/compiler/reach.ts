@@ -25,6 +25,7 @@ import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
 import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
+import type { Range } from './header'
 
 export type RootRef =
   | { t: 'unit'; id: UnitId }
@@ -93,6 +94,8 @@ export interface PlacementInput {
    * leave, and which of them chunks copy, is the same either way.
    */
   extractedOutputs: boolean
+  /** The values planners say the framework calls later (`PlanContext.calledLater`, R152). */
+  calledLater: ReadonlyArray<Range>
 }
 
 /**
@@ -153,6 +156,8 @@ export interface KeptDeclaration {
   later?: number
   /** `written`: the binding of the code using `read` when the module loads, which the statement changes later. */
   reader?: SymbolId
+  /** `state`: it uses `read` only in what it hands to this call (`''`: too long to quote), which may or may not run it then. */
+  handedTo?: string
 }
 
 export interface ExtractedExport {

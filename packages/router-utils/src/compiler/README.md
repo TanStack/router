@@ -200,8 +200,17 @@ extends Z`, directly or through what they carry) share the module of the first i
   One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
-  option value is such an evaluation too: one that calls something (`withPrefix(Page)`) reads what that call
-  may run (`ordered-effect`). Outside the model (R97): a getter (`api.latest`, a destructured property),
+  option value is such an evaluation too. A call whose result the framework calls later holds what it is handed
+  (R152; the values a planner states with `PlanContext.calledLater`, the router planner's component and loader
+  options, split or not): such a value's call, the initialiser of a `const` every use of which is one (such a
+  value, another such `const`, a name handed to such a call), and a call handed directly to such a call
+  (`withAuth(observer(Page))`) run nothing in a function they are handed, and a name they are handed, directly or
+  inside an object or array argument (`define({ setup: render })`), is read as a value (`ClusterGraph.holds`).
+  Every other call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
+  only there, a wrapped sub-component used as a JSX tag among them, is reported as one that _may_ use the binding),
+  and so does every call for the extraction check (`readsKept`) and the verifier: an extracted module may load
+  before the route module. Accepted break (R146's family): a factory that runs its function at once
+  (`component: createIcon(() => …)`) reads state another output writes when its chunk loads. Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module

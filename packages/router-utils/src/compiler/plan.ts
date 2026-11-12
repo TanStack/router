@@ -157,6 +157,14 @@ export interface PlanContext<TName extends string = string> {
   /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
+  /**
+   * The value at `range` (wrappers aside: the call itself in
+   * `component: memo(Page) as any`) is called later by the framework,
+   * never when the module loads: a route option's value, split or not. A
+   * call there, or through `const`s and the calls it is handed to, holds
+   * the functions it is handed instead of running them (R152).
+   */
+  calledLater: (range: Range) => void
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
@@ -242,6 +250,8 @@ export class AnalysisPlan implements PlanContext {
   }> = []
   readonly facts: PlannerFactsByName = {}
   readonly extractions = new Map<SymbolId, OutputId>()
+  /** The values the framework calls later (`calledLater`). */
+  readonly laterValues: Array<Range> = []
   private readonly keptSyms = new Set<SymbolId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
   private starExports: boolean | undefined
@@ -308,6 +318,10 @@ export class AnalysisPlan implements PlanContext {
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
     return this.regions.register(range, kind)
+  }
+
+  calledLater(range: Range): void {
+    this.laterValues.push({ start: range.start, end: range.end })
   }
 
   declareOutput(spec: OutputSpec): OutputId {
@@ -525,6 +539,7 @@ export class AnalysisPlan implements PlanContext {
       routeModule: this.routeModule,
       extractions: this.extractions,
       extractedOutputs: this.env.mode === 'build',
+      calledLater: this.laterValues,
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)

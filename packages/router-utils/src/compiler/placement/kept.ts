@@ -80,6 +80,7 @@ export function keptDeclarations(
       ...(pin.split === true && { split: true }),
       ...(pin.later !== undefined && { later: pin.later }),
       ...(pin.reader !== undefined && { reader: pin.reader }),
+      ...(pin.handedTo !== undefined && { handedTo: pin.handedTo }),
     }
   }
   /** `reassigned`: the binding and its first live assignment (the declaration aside). */

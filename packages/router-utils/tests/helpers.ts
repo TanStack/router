@@ -9,6 +9,7 @@ import {
   createCompilerCaches,
   invalidate,
   sameFileSpecifier,
+  unwrapExpression,
 } from '../src/compiler'
 import type {
   CompileInput,
@@ -158,6 +159,15 @@ export interface ToySplitOptions {
  * `?tsr-split=component`, rooting the placeholder in the env module and the
  * option value in the chunk through a claim.
  */
+/** The options whose values the toy router calls later (the router planner's splittable ones). */
+const CALLED_LATER = [
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+  'loader',
+]
+
 export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
   const keys = opts.keys ?? ['component']
   return {
@@ -175,6 +185,15 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         ctx.tagGlueExports(opts.glueTag)
       }
       const { options, unit } = found
+      // the values the router calls later, split or not (R152), as the
+      // router planner states them
+      for (const key of CALLED_LATER) {
+        const p = propertyOf(options, key)
+        if (p) {
+          const v = unwrapExpression(p.value)
+          ctx.calledLater({ start: v.start, end: v.end })
+        }
+      }
       if (opts.extractExports) {
         for (const e of ctx.analysis.exports) {
           if (e.kind !== 'local' || e.local === null || e.typeOnly) {
