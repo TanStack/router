@@ -125,11 +125,11 @@ export interface Events {
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ) => SymbolId | undefined
-  /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (`slot`: this round's slot, or an extracted candidate's module) nor is a `const` `kept` says the env module keeps. */
+  /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (in `target`) nor is a `const` `kept` says evaluates in a module `c`'s imports first (the env module, an extracted module). */
   readConflict: (
     c: ClusterId,
     to: OutputId,
-    slot: (d: ClusterId) => OutputId | undefined,
+    target: ReadonlyMap<ClusterId, OutputId>,
     kept: (d: ClusterId) => boolean,
   ) => Pin | undefined
   /** O: the pair of a write at load that changes order with `c`'s read when `c` evaluates in `to`, the writer's cluster in `slot`. */
@@ -369,19 +369,20 @@ export function eventTable(
   function readConflict(
     c: ClusterId,
     to: OutputId,
-    slot: (d: ClusterId) => OutputId | undefined,
+    target: ReadonlyMap<ClusterId, OutputId>,
     kept: (d: ClusterId) => boolean,
   ): Pin | undefined {
     if (!clusters[c]!.effectful) {
       return undefined
     }
-    // the other side is effectful too, so its slot is exact: its slot (by
-    // N its only needer, which then is `c`'s; an extracted candidate's
-    // module), or demoted, or kept by the env module already; never a
-    // shared module homes pick later (a chunk and the shared module it
-    // imports are two modules)
+    // the other side is effectful too, so its slot is exact: in `target`
+    // (by N its only needer, which then is `c`'s), or demoted, or kept by
+    // the env module already, or extracted (its module, which `c`'s
+    // imports and so evaluates first, like the env module); never a shared
+    // module homes pick later (a chunk and the shared module it imports
+    // are two modules)
     for (const t of facts(c).reads) {
-      const there = slot(t.cluster)
+      const there = target.get(t.cluster)
       if (
         there !== to &&
         (there !== undefined || !kept(t.cluster) || !symbols.isConst(t.sym))

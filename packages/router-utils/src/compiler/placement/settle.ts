@@ -392,11 +392,13 @@ export function settleRoots(
       for (const [c, to] of target) {
         const pin =
           (follows.has(c) ? followConflict(c, to, target, stays) : undefined) ??
+          // (an extracted `const` is ordered like a kept one: the chunk
+          // imports its module, which evaluates first)
           events.readConflict(
             c,
             to,
-            (d) => target.get(d) ?? remaining.get(d)?.output,
-            stays,
+            target,
+            (d) => stays(d) || remaining.has(d),
           ) ??
           events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
