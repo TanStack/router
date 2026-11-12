@@ -32,4 +32,36 @@ describe('applyRouteChunkHmr (dev-only, webpack-style split chunks)', () => {
     applyRouteChunkHmr('/other', 'loader')
     expect(_refreshRoute).not.toHaveBeenCalled()
   })
+
+  it('takes the components a chunk hands over; only a chunk holding a non-component option refreshes the route', () => {
+    const _refreshRoute = vi.fn(() => Promise.resolve())
+    const take = vi.fn()
+    const exportsOf = { component: () => null }
+    const adapter = {}
+    ;(window as any).__TSR_ROUTER__ = {
+      routesById: {
+        '/hand': {
+          options: { component: { __tsrHot: { take } }, loader: () => null },
+        },
+      },
+      _refreshRoute,
+    }
+    const handOver = { exports: exportsOf, refresh: false, adapter }
+    applyRouteChunkHmr('/hand', 'component', handOver)
+    expect(take).not.toHaveBeenCalled()
+    applyRouteChunkHmr('/hand', 'component', handOver)
+    expect(take).toHaveBeenCalledExactlyOnceWith(exportsOf, adapter)
+    expect(_refreshRoute).not.toHaveBeenCalled()
+
+    applyRouteChunkHmr('/hand', 'component~loader', {
+      ...handOver,
+      refresh: true,
+    })
+    applyRouteChunkHmr('/hand', 'component~loader', {
+      ...handOver,
+      refresh: true,
+    })
+    expect(take).toHaveBeenCalledTimes(2)
+    expect(_refreshRoute).toHaveBeenCalledOnce()
+  })
 })

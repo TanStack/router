@@ -291,4 +291,37 @@ describe('lazyRouteComponentHot', () => {
     await stale
     expect(state).toMatchObject({ comp: v('v3'), error: undefined, renders: 1 })
   })
+
+  test('take: a module its chunk handed over is kept or taken by keepPatched; the importer stays', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    const importer = state.importer
+    const keepPatched = vi.fn(() => true)
+    const keep = vi.fn(() => false)
+    const handed = v('v2')
+    hot.take({ component: handed }, { keep, keepPatched })
+    expect(await state.pending).toBe(held)
+    expect(keepPatched).toHaveBeenCalledWith(handed, held)
+    expect(keep).not.toHaveBeenCalled()
+    expect(state).toMatchObject({ comp: held, renders: 1, importer })
+
+    hot.take({ component: handed }, swap)
+    expect(await state.pending).toBe(handed)
+    expect(state).toMatchObject({ comp: handed, renders: 2, importer })
+  })
+
+  test('take: a wrapper that holds nothing, or a module without its export, is left alone', async () => {
+    const { state, hot } = wrapper()
+    hot.take({ component: v('v2') }, swap)
+    expect(state).toMatchObject({ pending: undefined, renders: 0 })
+
+    const loaded = wrapper(v('v1'))
+    loaded.hot.take({ pendingComponent: v('v2') }, swap)
+    expect(loaded.state).toMatchObject({ pending: undefined, renders: 0 })
+    // the export the wrapper reads since a route update
+    loaded.hot.update(() => Promise.resolve({ page: v('v2') }), 'page', swap)
+    await loaded.state.pending
+    loaded.hot.take({ page: v('v3') }, swap)
+    expect(await loaded.state.pending).toEqual(v('v3'))
+  })
 })

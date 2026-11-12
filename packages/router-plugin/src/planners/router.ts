@@ -20,8 +20,6 @@ export interface RouterRound {
   cfg: RouterPlannerConfig
   route: RouteModuleInfo
   plan: SplitPlan
-  /** Solid and Vue: the refresh identities of the component options left in the route module (route HMR). */
-  unsplit: Record<string, string>
 }
 
 declare module '@tanstack/router-utils/compiler' {
@@ -82,7 +80,6 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
         cfg,
         route,
         plan: splitPlanOf(ctx, cfg, route),
-        unsplit: {},
       }
       for (const w of round.plan.warnings) {
         ctx.diagnostic(w)

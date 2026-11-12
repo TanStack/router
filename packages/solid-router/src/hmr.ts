@@ -10,22 +10,33 @@ import type {
   RouteHmrMeta,
 } from '@tanstack/router-core/hmr'
 
-const refreshName = (component: any): string | undefined => {
-  const name = typeof component === 'function' ? component.name : undefined
-  return name?.startsWith('[solid-refresh]') ? name : undefined
+/**
+ * The module file and name solid-refresh patches a component under (its
+ * proxy's `name`, `[solid-refresh]<Name>`, and the file of its `location`,
+ * `<file>:<line>:<column>`); `undefined` for any other value.
+ */
+const refreshSource = (component: any): string | undefined => {
+  if (
+    typeof component !== 'function' ||
+    !component.name.startsWith('[solid-refresh]')
+  ) {
+    return undefined
+  }
+  const location = component.location
+  return typeof location === 'string'
+    ? `${component.name}@${location.replace(/:\d+:\d+$/, '')}`
+    : undefined
 }
 
+// solid-refresh patches a module's first proxy of each name in place, per
+// module file: keeping it avoids remounting the route's subtree. A chunk
+// re-imported after a route update is kept only when it is the same object
+// (core's default): after a rename solid-refresh stops patching the chunk's
+// first proxy (an upstream bug).
 const adapter: RouteHmrAdapter = {
-  // After a rename solid-refresh stops patching the chunk's first proxy (an
-  // upstream bug), so a split component is kept only when the loaded export
-  // is the same object.
-  keep: (next, held) => next === held,
-  // solid-refresh patches the route module's first proxy of a binding in
-  // place; keeping it avoids remounting the route's subtree.
-  keepUnsplit: (next, held, sameName) =>
-    sameName &&
-    refreshName(held) !== undefined &&
-    refreshName(held) === refreshName(next),
+  keepPatched: (next, held) =>
+    refreshSource(held) !== undefined &&
+    refreshSource(held) === refreshSource(next),
 }
 
 /**
@@ -47,13 +58,21 @@ export function __tsrRouteHmr(
 /**
  * Dev-only entry point called by the router plugin's output at the top level
  * of every evaluation of a split chunk of a route module on webpack-style
- * hosts (`applyRouteChunkHmr`).
+ * hosts (`applyRouteChunkHmr`), with the chunk's exports and whether it
+ * holds a non-component option: solid-refresh makes a chunk holding
+ * components accept its own updates, so the chunk hands its components to
+ * the route's lazy wrappers itself.
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
+export function __tsrRouteChunkHmr(
+  routeId: string,
+  chunk: string,
+  exports: Record<string, any>,
+  refresh: boolean,
+): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyRouteChunkHmr(routeId, chunk)
+    applyRouteChunkHmr(routeId, chunk, { exports, refresh, adapter })
   }
 }
 
