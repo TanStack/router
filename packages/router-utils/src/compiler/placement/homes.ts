@@ -194,10 +194,6 @@ export function assignHomes(
       home.set(cl.id, 'duplicate')
       continue
     }
-    if (!pure(cl.id)) {
-      home.set(cl.id, 'env')
-      continue
-    }
     if (derived.some((o) => outputs.get(o)?.kind === 'export')) {
       // a pure cluster an extracted module and another output both need is
       // copied into each when a copy is indistinguishable (a function, a
@@ -205,9 +201,15 @@ export function assignHomes(
       // imported would be a static dependency of the route module, which no
       // chunk may import. One with an identity, or written, is one instance
       // in the env module (an env root since the roots settled)
-      home.set(cl.id, isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env')
+      // (an effect, one instance: `slotFor` keeps it in the env module)
+      home.set(
+        cl.id,
+        pure(cl.id) && isDuplicable(cl, t1, liveInEnv) ? 'duplicate' : 'env',
+      )
       continue
     }
+    // several split outputs: one lazy shared module they import, effects
+    // too, evaluated once when the first of them loads (R151)
     const key = derived.map(keyOf).sort().join('+')
     let shared = sharedByKey.get(key)
     if (!shared) {

@@ -101,7 +101,8 @@ roots, the slots and the extracted exports: one solver over the event table, `ev
 rule) and `inclusion` (what each output contains, imports and exports). The same computation decides:
 
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
-  chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
+  chunks import it; one several groups need goes to a lazy shared module, effects too (R151: evaluated once, when
+  the first of those chunks loads); copyable primitives and import specifiers
   are duplicated (a planner's generated import, such as a client stub's `createClientRpc`, is an import specifier
   too). An exported binding only split code needs leaves the route module for a side-effect-free extracted
   module (`?tsr-split=export---Name`) that the route module re-exports, so other modules importing it from the route
@@ -132,10 +133,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   agree between dev and a build. An exported declaration a chunk needs that stays in the route module
   (reassigned, read by the route module, reading what it keeps) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
-  needs that the movable rule below keeps (`eager-split:<reason>`: `needers`, several split outputs; `written`, changed
+  needs that the movable rule below keeps (`eager-split:<reason>`: `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
   binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
-  split code both read, one instance), once at the cause (a cluster kept only because another kept one reads it is not
+  split code both read, one instance; `unused`, what unused code keeps there, and `shared-split:unused`, what unused
+  code puts in one shared module), once at the cause (a cluster kept only because another kept one reads it is not
   reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
   modules, deduped per file and wording by the hosts' ledgers); every
   host also warns after a client build when an extracted module landed in an entry chunk (another module imports
@@ -225,15 +227,19 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   follows the module bindings it uses (R149, `Events.statementChanges`): those it names or runs (`ReadIndex.runs`)
   and the objects their values hold (`MutationModel.heldBy`, the owner of "the object a binding names"), into the
   one chunk they all go to, in source order there (`const table = createTable(); const columns = snapshot(table);
-  table.addColumn('x')`, only the component reading `columns`, all move); otherwise it stays, keeping what it uses:
-  a binding it uses stays (the route module needs it, it is exported) or goes to another output. Nothing outside the
+  table.addColumn('x')`, only the component reading `columns`, all move); bindings of several split outputs: it joins
+  them in their lazy shared module (R151: the follower is rooted in each of those outputs, so they all reach it and
+  what it uses, one cluster for them; a joined follower one of whose bindings comes to stay stays with it). It
+  stays, keeping what it uses, when a binding it uses stays (the route module needs it, it is exported and not
+  extracted) or goes to an extracted export's module beside a split output (no module serves both). Nothing outside the
   module keeps it (`Sentry.init(cfg)`, `window.x = cfg`, `console.log(cfg)`, `import()`, `import.meta.hot` move with
   `cfg`); a statement using no binding that moves stays (`Sentry.init({ dsn })`, `i18n.use(backend)`); a write of
   an import's member is no write of a declaration of the module (the import is not joined by it). Unused code that
   runs nothing and uses only imports goes with their users' one chunk. Followers are judged together in settle's
   round 0 (`placement/settle.ts`); the warning (`eager-split:written`) names the binding that keeps the statement
-  (or the unused code) with its line, `changes` or `uses` as the statement does each (`changesObject`,
-  `changesAsArgument`). Inside imported code the compiler sees nothing
+  with its line, `changes` or `uses` as the statement does each (`changesObject`, `changesAsArgument`); unused code
+  gets one warning at it naming everything it keeps in the route module (`eager-split:unused`) or puts in one shared
+  module (`shared-split:unused`), fix: delete it. Inside imported code the compiler sees nothing
   (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). An
   extracted export's module is a destination like a chunk (R149, extended): a binding being extracted gives its
@@ -268,8 +274,8 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   sub-region is kept in place, which is always correct, and a warning (`fallback-rounds-exhausted`) says so;
 - **pre-existing dead code** (R148): a declaration cluster nothing reads, or a dead cycle, is never removed: it
   follows what it changes or reads, like a statement (a follower), into that one chunk (`function Unused() { return
-<Page /> }` with `Page`, `const check = JSON.parse(cols.schema)` with `cols`), else stays in the env module; the
-  bundler decides. What erased code reaches is not dead: it goes with that code (orphaned by us).
+<Page /> }` with `Page`, `const check = JSON.parse(cols.schema)` with `cols`) or several split outputs' shared module
+  (R151), else stays in the env module; the bundler decides. What erased code reaches is not dead: it goes with that code (orphaned by us).
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 

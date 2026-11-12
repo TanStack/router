@@ -39,6 +39,28 @@ export function keptDiagnostic(
   }
   const split = k.needers.map(output).join(', ')
   const line = (at: number) => `line ${analysis.source.locate(at).line + 1}`
+  const and = (items: ReadonlyArray<string>) =>
+    items.length === 1
+      ? items[0]!
+      : `${items.slice(0, -1).join(', ')} and ${items.at(-1)!}`
+  if (k.reason === 'unused') {
+    // unused code (R148): what it keeps in the env module, or puts in one
+    // shared module several split outputs import (R151)
+    const unused = `\`${symbols.name(k.unused!)}\``
+    const names = k.syms.map((s) => `\`${symbols.name(s)}\``)
+    const at = `${unused} (${line(k.range.start)})`
+    const one = names.length === 1
+    return {
+      severity: 'warning',
+      message:
+        k.shared === true
+          ? `${tag}In ${file}, unused ${at} puts ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${unused}, so each loads with the split code that needs it.`
+          : `${tag}In ${file}, unused ${at} keeps ${and(names)} in the ${module}; delete ${unused}, so ${one ? 'it' : 'they'} can load with the split code that needs ${one ? 'it' : 'them'}.`,
+      range: k.range,
+      by: 'core',
+      code: k.shared === true ? 'shared-split:unused' : 'eager-split:unused',
+    }
+  }
   if (k.exported) {
     const names = analysis.exports.flatMap((e) =>
       e.kind === 'local' && e.local === k.syms[0] && !e.typeOnly
@@ -96,52 +118,31 @@ export function keptDiagnostic(
   const it = names.length === 1 ? 'it' : 'they'
   const them = names.length === 1 ? 'it' : 'them'
   const own = names.length === 1 ? 'its' : 'their'
-  // one declaration (a destructuring too) or several: their initialisers
-  const declarations = new Set(
-    k.syms.flatMap((s) => plan.t1.declaringUnits.get(s) ?? []),
-  ).size
-  const several = declarations > 1
-  const initialiser = several ? `${own} initialisers` : `${own} initialiser`
-  const itHas = several ? 'they have' : 'it has'
   const read = k.read === undefined ? '' : `\`${symbols.name(k.read)}\``
   let because: string
   let fix: string
   switch (k.reason) {
-    case 'needers':
-      because = `several split options read ${them} (${split}) and ${initialiser} ${several ? 'have' : 'has'} side effects, which run once`
-      fix = `move ${subject} to ${own} own module${annotatable(plan, k.syms) ? `, or mark ${initialiser} \`/* @__PURE__ */\` if ${itHas} none` : ''}`
-      break
     case 'written': {
       // a statement using it stays (R149): another binding it uses stays
-      // or goes elsewhere, several split options use what it changes, or
-      // code that runs later changes it; or it is unused code (R148)
-      const unused =
-        k.unused === undefined ? null : `\`${symbols.name(k.unused)}\``
-      const stays =
-        unused !== null
-          ? `${unused} (${line(k.at!)}), which nothing uses, stays there`
-          : `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
-      const users = [
-        ...new Set([...k.needers, ...(k.in === undefined ? [] : [k.in])]),
-      ]
+      // or goes to an output no module shares with it (an extracted
+      // export's module, R151), or code that runs later changes it
+      const stays = `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
       because =
         k.later !== undefined
           ? `${stays}: code that runs later changes ${them} too (${line(k.later)})`
           : k.read !== undefined
             ? `${stays}: it also ${k.readChanged === true ? 'changes' : 'uses'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
-            : `${stays}: several split options use what it changes (${users.map(output).join(', ')})`
+            : stays
       fix =
-        unused !== null
-          ? `delete ${unused}`
-          : k.later !== undefined
-            ? `move ${subject} and the statements changing ${them} to their own module`
-            : k.read === undefined
-              ? `move ${subject} and that statement to their own module`
-              : k.split === true
-                ? `change ${read} in a statement of its own`
-                : k.in === undefined
-                  ? `run that statement in the code that needs ${them}`
-                  : `move ${subject}, ${read} and that statement to their own module`
+        k.later !== undefined
+          ? `move ${subject} and the statements changing ${them} to their own module`
+          : k.read === undefined
+            ? `move ${subject} and that statement to their own module`
+            : k.split === true
+              ? `change ${read} in a statement of its own`
+              : k.in === undefined
+                ? `run that statement in the code that needs ${them}`
+                : `move ${subject}, ${read} and that statement to their own module`
       break
     }
     case 'shared':

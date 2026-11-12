@@ -44,6 +44,16 @@ export function keptDeclarations(
     }
     return out
   }
+  /** The derived outputs needing `c`, a provider's copy aside. */
+  const needersOf = (c: ClusterId): Array<OutputId> => {
+    const out: Array<OutputId> = []
+    for (const [id, set] of derivedReach) {
+      if (set.has(c) && outputs.get(id)?.kind !== 'provider') {
+        out.push(id)
+      }
+    }
+    return out
+  }
   const declaringRange = (cl: Cluster, sym: SymbolId | undefined) => {
     const declaring =
       sym === undefined ? undefined : (t1.declaringUnits.get(sym) ?? [])[0]
@@ -66,7 +76,6 @@ export function keptDeclarations(
       ...(pin.uses === true && { uses: true }),
       ...(pin.bindingChanged === true && { readChanged: true }),
       ...(pin.split === true && { split: true }),
-      ...(pin.unused !== undefined && { unused: pin.unused }),
       ...(pin.later !== undefined && { later: pin.later }),
     }
   }
@@ -159,6 +168,65 @@ export function keptDeclarations(
   // statement stays (`written`), the binding that keeps it aside (R146
   // amendment)
   const statements = new Set<ClusterId>()
+  /** What unused code keeps in the env module or puts in a shared module: one report at it, naming all of it. */
+  const unusedReports: Array<KeptDeclaration> = []
+  /** Unused code that stays, reported once the env module's own needs are known (`envOwn`). */
+  const unusedStays: Array<{ c: ClusterId; unused: SymbolId }> = []
+  const unusedReport = (
+    c: ClusterId,
+    unused: SymbolId,
+    shared: Array<OutputId> | null,
+    keeps: (d: ClusterId) => boolean,
+  ): void => {
+    const syms: Array<SymbolId> = []
+    const needers = new Set<OutputId>(shared ?? [])
+    for (const d of new Set(events.statementChanges(c).clusters)) {
+      const cl = clusters[d]!
+      if (cl.kind === 'import' || cl.copyable || !keeps(d)) {
+        continue
+      }
+      const lazy = lazyNeeders(d)
+      if (shared === null && lazy.length === 0) {
+        continue
+      }
+      for (const o of shared === null ? lazy : []) {
+        needers.add(o)
+      }
+      for (const s of cl.declares) {
+        if (symbols.isModuleLevel(s) && !symbols.isImport(s)) {
+          syms.push(s)
+        }
+      }
+    }
+    if (syms.length === 0) {
+      return
+    }
+    syms.sort(
+      (a, b) =>
+        declaringRange(clusters[clusterOfSym.get(a)!]!, a).start -
+        declaringRange(clusters[clusterOfSym.get(b)!]!, b).start,
+    )
+    unusedReports.push({
+      syms,
+      exported: false,
+      reason: 'unused',
+      range: declaringRange(clusters[c]!, unused),
+      needers: [...needers],
+      unused,
+      ...(shared !== null && { shared: true }),
+    })
+  }
+  // unused code joining bindings of several split outputs (R151)
+  for (const [c, to] of roots.joined) {
+    const cl = clusters[c]!
+    if (cl.units.some((u) => units[u]!.kind === 'effect')) {
+      continue
+    }
+    const unused = [...cl.declares].find((s) => symbols.isModuleLevel(s))
+    if (unused !== undefined) {
+      unusedReport(c, unused, to, () => true)
+    }
+  }
   /**
    * The binding of the other chunk a statement keeps, with the statement's
    * cluster (which reads it: reached from it is no cascade).
@@ -170,6 +238,11 @@ export function keptDeclarations(
       continue
     }
     statements.add(c)
+    // unused code that stays (R148): one report at it, naming what it keeps
+    if (pin.unused !== undefined) {
+      unusedStays.push({ c, unused: pin.unused })
+      continue
+    }
     const blocker =
       pin.binding === undefined ? undefined : clusterOfSym.get(pin.binding)
     // (what the env module evaluates with it: a binding whose value holds
@@ -193,8 +266,8 @@ export function keptDeclarations(
         causes.set(d, changed ? pin : { ...pin, uses: true })
       }
     }
-    // a statement (or unused code: R148, R149 answers E) using bindings of
-    // two chunks keeps both eager: the binding that keeps it is reported
+    // a statement using a binding of an extracted module or a provider and
+    // one of a split output (no module serves both) keeps both eager: the binding that keeps it is reported
     // too, named with another one it keeps (after every statement's own
     // reports: a statement changing it names it first)
     if (blocker !== undefined && reported(blocker)) {
@@ -202,8 +275,9 @@ export function keptDeclarations(
         const d = clusterOfSym.get(s)
         return d !== undefined && named.includes(d)
       })
+      // (its output: a split one, or an extracted export's module)
       const elsewhere =
-        another === undefined ? [] : lazyNeeders(clusterOfSym.get(another)!)
+        another === undefined ? [] : needersOf(clusterOfSym.get(another)!)
       if (another !== undefined && elsewhere.length > 0) {
         const changed = changes.syms.includes(another)
         others.push({
@@ -223,7 +297,6 @@ export function keptDeclarations(
             ) && {
               uses: true,
             }),
-            ...(pin.unused !== undefined && { unused: pin.unused }),
           },
         })
       }
@@ -235,7 +308,24 @@ export function keptDeclarations(
       causes.set(d, pin)
     }
   }
-  const kept: Array<KeptDeclaration> = []
+  // what unused code keeps that the env module needs through nothing else
+  // (an extraction cancelled because it reads it is reached through it)
+  if (unusedStays.length > 0) {
+    const own = reads.reach(
+      'env',
+      [...envRoots].filter(
+        (c) =>
+          !statements.has(c) &&
+          cancelled.get(c)?.reason !== 'live' &&
+          !gluesCauses(c),
+      ),
+    )
+    for (const { c, unused } of unusedStays) {
+      const reach = reads.reach('env', [c])
+      unusedReport(c, unused, null, (d) => reach.has(d) && !own.has(d))
+    }
+  }
+  const kept: Array<KeptDeclaration> = [...unusedReports]
   if (causes.size === 0) {
     return kept
   }
@@ -317,7 +407,9 @@ export function keptDeclarations(
         needers.push(id)
       }
     }
-    if (other || needers.length === 0) {
+    // (`needers`: an effect several outputs need stays only beside an
+    // extracted module or a provider, no split code alone, R151)
+    if (other || needers.length === 0 || pin.reason === 'needers') {
       continue
     }
     // (an import joined to the cluster is no declaration to report)

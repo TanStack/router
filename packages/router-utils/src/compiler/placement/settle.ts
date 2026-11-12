@@ -37,6 +37,8 @@ export interface Roots {
   movable: Set<ClusterId>
   /** The clusters a derived output needs that became env roots, with the violated pair. */
   pinnedNeeded: Map<ClusterId, Pin>
+  /** The followers whose bindings go to several split outputs, rooted in each: they join them in one lazy shared module (R151). */
+  joined: Map<ClusterId, Array<OutputId>>
 }
 
 /**
@@ -133,6 +135,8 @@ export function settleRoots(
     cl.kind === 'declaration' &&
     !cl.exported &&
     !envRoots.has(cl.id) &&
+    // (an extraction candidate's place is its module: R150)
+    !remaining.has(cl.id) &&
     (cl.effectful || cl.writer || readsState(cl.id) !== undefined)
 
   /**
@@ -150,7 +154,10 @@ export function settleRoots(
       }
     }
     if (needers.length !== 1) {
-      return cl.effectful
+      // several split outputs: one lazy shared module they import, effects
+      // too, evaluated once when the first of them loads (R151); beside an
+      // extracted module or a provider no module serves them both
+      return cl.effectful && !(needers.length > 1 && needers.every(lazy))
         ? { reason: 'needers' }
         : (readsState(cl.id) ??
             (needers.length > 1 ? null : { reason: 'needers' }))
@@ -158,6 +165,19 @@ export function settleRoots(
     return events.lazyConflict(cl.id) ?? needers[0]!
   }
 
+  /** A split chunk or a Hydrate chunk: what a lazy shared module serves. */
+  const lazy = (o: OutputId) => {
+    const kind = outputs.get(o)?.kind
+    return kind === 'split' || kind === 'hydrate'
+  }
+  /** Whether `d` goes to a lazy shared module `to` imports (R151): no slot of its own, several split needers, `to` one of them. */
+  const sharedWith = (d: ClusterId, to: OutputId): boolean => {
+    if (slots.has(d) || pins.has(d)) {
+      return false
+    }
+    const needers = needersOf(d)
+    return needers.length > 1 && needers.includes(to) && needers.every(lazy)
+  }
   /** The outputs reaching `d` (a provider's copy counts). */
   const needersOf = (d: ClusterId): Array<OutputId> => {
     const out: Array<OutputId> = []
@@ -178,6 +198,8 @@ export function settleRoots(
   }
   /** The chunk each follower (`Seeds.followers`) follows, rooted there until it is demoted. */
   const follows = new Map<ClusterId, OutputId>()
+  /** The followers joining their bindings in a shared module, rooted in each of their split outputs (R151). */
+  const joined = new Map<ClusterId, Array<OutputId>>()
   /**
    * Where follower `c` goes, judged once before it is rooted anywhere: the
    * one chunk the clusters its statements change (`Events.statementChanges`)
@@ -286,8 +308,9 @@ export function settleRoots(
   }
   /** `c` and the clusters it follows (`Events.statementChanges`). */
   const followed = (c: ClusterId) => [c, ...events.statementChanges(c).clusters]
-  function followSlot(c: ClusterId): OutputId | Pin {
+  function followSlot(c: ClusterId): OutputId | Array<OutputId> | Pin {
     let to: OutputId | null = null
+    const places: Array<OutputId> = []
     for (const d of followed(c)) {
       // (a primitive `const` is copied into every output that reads it)
       if (d !== c && clusters[d]!.copyable) {
@@ -297,11 +320,20 @@ export function settleRoots(
         return d === c ? { reason: 'needers' } : stayPin(c, d)
       }
       for (const n of placesOf(d)) {
-        if (to !== null && n !== to) {
+        if (places.includes(n)) {
+          continue
+        }
+        // several split outputs share a module (R151); an extracted
+        // module or a provider shares none
+        if (to !== null && !(lazy(n) && places.every(lazy))) {
           return stayPin(c, d === c ? null : d, n)
         }
-        to = n
+        to ??= n
+        places.push(n)
       }
+    }
+    if (places.length > 1) {
+      return events.lazyConflict(c) ?? places
     }
     // where none of its bindings decides, the imports it reads do: their
     // users' one chunk (an unused component rendering the page's UI), for
@@ -392,13 +424,14 @@ export function settleRoots(
       for (const [c, to] of target) {
         const pin =
           (follows.has(c) ? followConflict(c, to, target, stays) : undefined) ??
-          // (an extracted `const` is ordered like a kept one: the chunk
-          // imports its module, which evaluates first)
+          // (an extracted `const`, or one in the shared module `to`
+          // imports, is ordered like a kept one: that module evaluates
+          // first)
           events.readConflict(
             c,
             to,
             target,
-            (d) => stays(d) || remaining.has(d),
+            (d) => stays(d) || remaining.has(d) || sharedWith(d, to),
           ) ??
           events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
@@ -747,6 +780,13 @@ export function settleRoots(
         if (typeof to === 'string') {
           follows.set(c, to)
           derivedRoots.get(to)!.add(c)
+        } else if (Array.isArray(to)) {
+          // rooted in each: they all reach it and what it uses, one
+          // cluster for them (homes: their shared module)
+          joined.set(c, to)
+          for (const o of to) {
+            derivedRoots.get(o)!.add(c)
+          }
         } else {
           keepFollower(c, to)
         }
@@ -756,6 +796,25 @@ export function settleRoots(
     }
     solveSlots()
     let changed = false
+    // a joined follower one of whose bindings came to stay stays with it
+    for (const [c, to] of joined) {
+      const d = followed(c).find(
+        (x) =>
+          x !== c &&
+          !clusters[x]!.copyable &&
+          (liveEnv.has(x) || envRoots.has(x)),
+      )
+      if (d === undefined && !liveEnv.has(c)) {
+        continue
+      }
+      joined.delete(c)
+      for (const o of to) {
+        derivedRoots.get(o)!.delete(c)
+      }
+      keepFollower(c, d === undefined ? { reason: 'needers' } : stayPin(c, d))
+      derivedStale = true
+      changed = true
+    }
     // (in cluster order: the reports of the kept follow it)
     for (const { id: c } of clusters) {
       const pin = pins.get(c)
@@ -860,6 +919,7 @@ export function settleRoots(
     copied: new Set([...remaining.keys()].filter(copies)),
     movable,
     pinnedNeeded,
+    joined,
   }
 }
 

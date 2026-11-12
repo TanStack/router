@@ -120,6 +120,8 @@ export type KeptReason =
   | 'written'
   | 'state'
   | 'shared'
+  /** Unused code (R148) keeping bindings in the env module, or putting bindings of several split outputs in one shared module (`shared`). */
+  | 'unused'
 
 export interface KeptDeclaration {
   /** The declared symbols (one, an export's, for an exported declaration). */
@@ -142,8 +144,10 @@ export interface KeptDeclaration {
   readChanged?: boolean
   /** `written`: the statement can change `read` in a statement of its own. */
   split?: boolean
-  /** `written`: the statement is this unused declaration (R148). */
+  /** `unused`: the unused declaration (R148), positioned at by `range`. */
   unused?: SymbolId
+  /** `unused`: it puts `syms` in one lazy shared module its `needers` import (R151), not in the env module. */
+  shared?: boolean
   /** `written`: code that runs later changes it, there. */
   later?: number
 }
