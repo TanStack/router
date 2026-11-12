@@ -465,7 +465,7 @@ function reportUnrecognizedRoute(
       break
     case 'wrapped':
       cause =
-        'is not created by a route constructor call bound to its `Route` export (the call is wrapped or stored, or `Route` is declared more than once)'
+        'is not created by a route constructor call bound to its `Route` export (the call is wrapped, or `Route` is declared more than once)'
       fix = `${writeIt}${entry.kind === 'root' ? ' (or `createRootRouteWithContext<Ctx>()({ … })`)' : ''}.`
       break
   }

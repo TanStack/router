@@ -71,8 +71,9 @@ export type ForeignRoute =
     }
   /**
    * The initialiser uses a route constructor of the router package, but is
-   * not its call: wrapped, called through a stored call, or `Route`
-   * declared more than once.
+   * not its call: wrapped, or `Route` declared more than once. (A route
+   * stored in another const, or made by calling a stored constructor call,
+   * does not use it: `other`.)
    */
   | { kind: 'wrapped' }
 
@@ -268,7 +269,7 @@ export function routeCallOf(
     kind: 'foreign',
     reason,
   })
-  /** Not the constructor's call: wrapped or stored when the initialiser uses a constructor. */
+  /** Not the constructor's call: wrapped (or declared twice) when the initialiser uses a constructor, else not the router's. */
   const notTheCall = () =>
     foreign({
       kind: usesConstructorIn(file, declarators, expected.routerPackage)
