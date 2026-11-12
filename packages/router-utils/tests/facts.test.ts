@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { walk } from 'yuku'
-import { RawFactsCache, unwrapExpression } from '../src/compiler'
+import {
+  EMPTY_RECOGNIZER,
+  RawFactsCache,
+  unwrapExpression,
+} from '../src/compiler'
 import { summaryDigest } from '../src/compiler/summary'
 import { MemoryHost, envInfo } from './helpers'
 import type { Planner, RecognizerTable } from '../src/compiler'
@@ -323,6 +327,77 @@ describe('target facts: own effects', () => {
       codeEffects: { client: true, server: true },
     })
   })
+})
+
+// whether a call is an effect is a fact of the module (placement asked it
+// through two split options until R151 gave both cases one shared module)
+describe('target facts: what stays an effect', () => {
+  const recognizer = {
+    ...EMPTY_RECOGNIZER,
+    pureCalls: { 'toy-router': new Set(['getRouteApi']) },
+  }
+  const effectful = async (files: Record<string, string>, path: string) => {
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      recognizer,
+    })
+    return (await cache.get(path, 'client')).targetFacts.effectful
+  }
+  // a known package's pure call with an impure argument, a call of
+  // another export, of a default import that is no namespace, of a
+  // module's own function of that name: effects; the plain call is none
+  it.each([
+    [
+      'an impure argument',
+      "import { getRouteApi } from 'toy-router'\nimport { id } from './lib'\nexport const { useParams } = getRouteApi(id())",
+      true,
+    ],
+    [
+      'another export',
+      "import { useRouteApi } from 'toy-router'\nexport const { useParams } = useRouteApi('/x')",
+      true,
+    ],
+    [
+      'a default import of a package not listed',
+      "import R from 'toy-router'\nexport const { useParams } = R.getRouteApi('/x')",
+      true,
+    ],
+    [
+      "a module's own function",
+      "import { getRouteApi } from './lib'\nexport const { useParams } = getRouteApi('/x')",
+      true,
+    ],
+    [
+      'the pure call (control)',
+      "import { getRouteApi } from 'toy-router'\nexport const { useParams } = getRouteApi('/x')",
+      false,
+    ],
+  ])('a known pure call: %s', async (_, code, effect) => {
+    expect(await effectful({ '/app/m.ts': code }, '/app/m.ts')).toBe(effect)
+  })
+
+  // `#__NO_SIDE_EFFECTS__` before the statement annotates a `const`'s
+  // first function only (neither Rollup nor esbuild reads it otherwise)
+  it.each([
+    ['a `let`', '/* #__NO_SIDE_EFFECTS__ */ let type = (shape) => shape', true],
+    [
+      'a later declarator',
+      '/* #__NO_SIDE_EFFECTS__ */ const x = 1, type = (shape) => shape',
+      true,
+    ],
+    [
+      'a `const` (control)',
+      '/* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape',
+      false,
+    ],
+  ])(
+    'reads no #__NO_SIDE_EFFECTS__ before the statement for %s',
+    async (_, declaration, effect) => {
+      const code = `${declaration}\nexport const schema = type({ 'a?': 'string' })\n`
+      expect(await effectful({ '/app/m.ts': code }, '/app/m.ts')).toBe(effect)
+    },
+  )
 })
 
 describe('target facts: builder chains per environment', () => {

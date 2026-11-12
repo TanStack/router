@@ -10,9 +10,9 @@
  * its chunk. A declaration reading state the module writes at load, after
  * its last write, loads with its chunk as written (design 2 step 3: it
  * stayed with the state the loader keeps, reported). Options of one split group writing one binding
- * are not reported: the binding goes to their chunk. Template-literal
- * initialisers (openstory) are reported and their fix, their own module,
- * works. An exported `queryOptions(…)` or `new URL(text)` the split
+ * are not reported: the binding goes to their chunk. A template-literal
+ * initialiser two split options read (openstory) goes to their shared
+ * module (R151): silent, and lazy. An exported `queryOptions(…)` or `new URL(text)` the split
  * component alone reads leaves for its extracted module, a destination
  * like a chunk (R149, extended): silent, and lazy. Vite, Rspack, webpack
  * and Rsbuild client builds.
@@ -89,8 +89,8 @@ export const Route = createFileRoute('/writer-fixed')({
 })
 `,
   'counter.ts': 'export const counter = { n: 0 }\n',
-  // openstory's connect links: template-literal initialisers, which no
-  // annotation frees (R101: only the move is offered; openstory reads
+  // openstory's connect links: template-literal initialisers two split
+  // options read go to their shared module (R151; openstory reads
   // `CONFIG.url`, a member read, which rule L takes as no effect: a call
   // keeps the shape)
   'routes/template.tsx': `${head}import { CONFIG } from '../config'
@@ -101,18 +101,6 @@ export const Route = createFileRoute('/template')({
   component: () => <a href={LINK}>{BASE}{Route.useLoaderData()}</a>,
   errorComponent: () => <p>{BASE}</p>,
 })
-`,
-  // its fix: their own module
-  'routes/template-module.tsx': `${head}import { BASE, LINK } from '../template-links'
-export const Route = createFileRoute('/template-module')({
-  loader: () => 'data',
-  component: () => <a href={LINK}>{BASE}{Route.useLoaderData()}</a>,
-  errorComponent: () => <p>{BASE}</p>,
-})
-`,
-  'template-links.ts': `import { CONFIG } from './config'
-export const BASE = \`\${CONFIG.url()}/mcp\`
-export const LINK = \`https://y/?u=\${BASE}&MARK_template-module_END\`
 `,
   'config.ts': "export const CONFIG = { url: () => 'https://x' }\n",
   // two options of one split group writing one binding: it goes with them
@@ -164,7 +152,6 @@ export { routeTree }
 
 const reported: Array<[file: string, needle: string]> = [
   ['routes/writer.tsx', 'Counter,'],
-  ['routes/template.tsx', 'BASE = '],
 ]
 const silent = [
   'routes/course.tsx',
@@ -174,7 +161,7 @@ const silent = [
   'routes/state.tsx',
   'routes/state-fixed.tsx',
   'routes/group-writers.tsx',
-  'routes/template-module.tsx',
+  'routes/template.tsx',
 ]
 
 const builds: Array<[string, () => Promise<BuildResult>]> = [
@@ -217,7 +204,7 @@ describe.each(builds)('a %s client build', (_name, create) => {
         'state-fixed',
         'group-writers',
         'group-writers-pending',
-        'template-module',
+        'template',
       ]) {
         expect(app.where(`MARK_${lazy}_END`), lazy).toBe('lazy')
       }

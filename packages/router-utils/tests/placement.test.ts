@@ -3720,7 +3720,10 @@ describe('ordered evaluation and movable effects', () => {
     )
   })
 
-  it('reports a value declared by an effect the route module keeps (env-declared) instead of importing it', async () => {
+  // (two split options' values declared by one effect: their shared module
+  // holds it, R151, and both options split; `env-declared` is left for a
+  // value the env module keeps, below)
+  it('splits two options whose values one effect declares, from their shared module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -3731,13 +3734,11 @@ describe('ordered evaluation and movable effects', () => {
       })
     `)
     const r = await split(code, { keys: ['component', 'errorComponent'] })
-    expect(r.main?.facts.planners['toy-split']).toMatchObject({
-      reasons: { component: 'env-declared', errorComponent: 'env-declared' },
-    })
-    expect(r.env).toContain('const [Page, Other] = make()')
-    expect(r.env).toContain('component: Page,')
-    expect(r.env).toContain('errorComponent: Other,')
-    expect(r.env).not.toContain('export { Page')
+    expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+    expect(r.env).not.toContain('make()')
+    expect(r.chunks.component).toContain(
+      "from '/app/route.tsx?tsr-split=shared---component---errorComponent'",
+    )
   })
 
   it('imports an exported pure component the route module also reads (no env-declared report for the export itself)', async () => {
@@ -6080,6 +6081,8 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(eager(r)).toEqual([])
   })
 
+  // (`helper` goes to the two chunks' shared module, R151, which the
+  // component's chunk imports and so evaluates first)
   it('moves a declaration reading a `const` that two chunks need', async () => {
     const r = await split(
       route(
@@ -6088,10 +6091,13 @@ describe('effectful declarations reading each other (R138)', () => {
       ),
       { keys: ['component', 'errorComponent'] },
     )
-    expect(r.env).toContain('const helper = make()')
+    expect(r.env).not.toContain('make()')
     expect(r.env).not.toContain('const cols')
     expect(r.chunks.component).toContain('const cols = [helper.x()]')
-    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:needers'])
+    expect(r.chunks.component).toContain(
+      "import { helper } from '/app/route.tsx?tsr-split=shared---component---errorComponent'",
+    )
+    expect(eager(r)).toEqual([])
   })
 
   // control: a `let` the route module keeps still pins (R67)
@@ -6146,38 +6152,6 @@ describe('declarations only split code needs that stay in the route module', () 
     )
   })
 
-  it.each([
-    ['a `let`', '/* #__NO_SIDE_EFFECTS__ */ let type = (shape) => shape', true],
-    [
-      'a later declarator',
-      '/* #__NO_SIDE_EFFECTS__ */ const x = 1, type = (shape) => shape',
-      true,
-    ],
-    [
-      'a `const` (control)',
-      '/* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape',
-      false,
-    ],
-  ])(
-    'reads no #__NO_SIDE_EFFECTS__ before the statement for %s (neither Rollup nor esbuild does)',
-    async (_, declaration, effect) => {
-      const code = [
-        "import { createFileRoute } from 'toy-router'",
-        declaration,
-        "const schema = type({ 'a?': 'string' })",
-        "export const Route = createFileRoute('/')({",
-        '  component: () => schema,',
-        '  errorComponent: () => schema,',
-        '})',
-        '',
-      ].join('\n')
-      const r = await kept(code, ['component', 'errorComponent'])
-      expect(r.diagnostics.map((d) => d.code)).toEqual(
-        effect ? ['eager-split:needers'] : [],
-      )
-    },
-  )
-
   it('reports an effect several split options need, writes and reads of state', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -6205,13 +6179,13 @@ describe('declarations only split code needs that stay in the route module', () 
     // (R138: `client` and `api`, which reads it, move to the component's
     // chunk together; `api` was kept, reported `eager-split:reads`)
     // (no order rule: `first` moves past `log('ready')`; R146 amendment:
-    // `registry.add(log)` changes `registry` only and moves with it)
-    expect(Object.keys(byName).sort()).toEqual(['shared', 'snapshot'])
+    // `registry.add(log)` changes `registry` only and moves with it; R151:
+    // `shared`, two split options' effect, goes to their shared module)
+    expect(Object.keys(byName).sort()).toEqual(['snapshot'])
     expect(r.env).not.toContain('registry')
     expect(r.env).not.toContain('const api')
     expect(r.env).not.toContain('const first')
-    expect(byName.shared).toMatchObject({ code: 'eager-split:needers' })
-    expect(byName.shared!.message).toContain('`component`, `errorComponent`')
+    expect(r.env).not.toContain('const shared')
     expect(byName.snapshot).toMatchObject({ code: 'eager-split:state' })
     // ("uses": the pin also covers a load that assigns the binding, R3-G1-2)
     expect(byName.snapshot!.message).toContain('uses `n`')
@@ -6254,21 +6228,17 @@ describe('declarations only split code needs that stay in the route module', () 
       const k = make()
       const [registry, index] = make()
       if (k.ready) { registry.start() }
-      const [one, two] = make()
       export const Route = createFileRoute('/')({
         loader: () => k,
-        component: () => [registry, index, one, two],
-        errorComponent: () => [one, two],
+        component: () => [registry, index],
       })
     `)
-    const r = await kept(code, ['component', 'errorComponent'])
-    const byCode = Object.fromEntries(r.diagnostics.map((d) => [d.code, d]))
-    expect(byCode['eager-split:written']!.message).toContain(
-      '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 5, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
-    )
-    expect(byCode['eager-split:needers']!.message).toContain(
-      'because several split options read them (`component`, `errorComponent`) and their initialiser has side effects, which run once; move `one`, `two` to their own module, or mark their initialiser `/* @__PURE__ */` if it has none',
-    )
+    const r = await kept(code)
+    expect(r.diagnostics.map((d) => d.message)).toEqual([
+      expect.stringContaining(
+        '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 5, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
+      ),
+    ])
   })
 
   // R101: every suggested fix works. `/* @__PURE__ */` frees a call or
@@ -6302,12 +6272,6 @@ describe('declarations only split code needs that stay in the route module', () 
         '',
       ].join('\n')
     it.each([
-      {
-        code: 'eager-split:needers',
-        name: 'BASE',
-        body: (init: string) => [`const BASE = ${init}`],
-        options: ['component: () => BASE,', 'errorComponent: () => BASE,'],
-      },
       {
         // `BASE` is a `let` the route module keeps (the loader reads it)
         code: 'eager-split:reads',
@@ -6453,8 +6417,8 @@ describe('pure calls of known packages', () => {
         .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
     }
   }
-  // tamery's API, read by two split options (no order rule: whether it is
-  // an effect shows as `needers`, else it is a shared module's value)
+  // tamery's API, read by two split options (one shared module, effects
+  // too, R151: whether a call is an effect is a target fact, facts.test)
   const tamery = (imports: string, api: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -6502,28 +6466,6 @@ describe('pure calls of known packages', () => {
       expect(r.env, api).not.toContain('new JSConfetti')
       expect(r.chunk, api).toContain('const confetti = new JSConfetti()')
       expect(r.kept, api).toEqual([])
-    }
-  })
-
-  it('keeps a call with an impure argument or of another export an effect', async () => {
-    for (const [imports, api, files] of [
-      [
-        "import { getRouteApi } from 'toy-router'\nimport { id } from './lib'",
-        'getRouteApi(id())',
-        { '/app/lib.ts': "export const id = () => '/x'" },
-      ],
-      ["import { useRouteApi } from 'toy-router'", "useRouteApi('/x')", {}],
-      // a default import of a package not listed: not its namespace
-      ["import R from 'toy-router'", "R.getRouteApi('/x')", {}],
-      [
-        "import { getRouteApi } from './lib'",
-        "getRouteApi('/x')",
-        { '/app/lib.ts': 'export function getRouteApi(id) { return { id } }' },
-      ],
-    ] as const) {
-      const r = await compile(tamery(imports, api), files)
-      expect(r.env, api).toContain(`const { useParams } = ${api}`)
-      expect(r.kept, api).toEqual(['useParams'])
     }
   })
 })
@@ -7085,8 +7027,8 @@ describe('statements follow what they change', () => {
   })
 
   // what it only reads may stay: the chunk imports it
-  // R149: a binding it uses that two chunks need stays, and the statement
-  it('keeps a statement using a binding two chunks need, and them', async () => {
+  // R151: bindings of two chunks it uses go with it to their shared module
+  it('puts a statement using bindings of two chunks in their shared module, with them', async () => {
     const r = await split(
       route(
         'const a = createTable()\nconst b = createTable()\na.link(b)',
@@ -7094,9 +7036,10 @@ describe('statements follow what they change', () => {
       ),
       { keys: ['component', 'errorComponent'] },
     )
-    expect(r.env).toContain(
-      'const a = createTable()\nconst b = createTable()\na.link(b)',
-    )
+    expect(r.env).not.toContain('a.link(b)')
+    expect(r.chunks.component).not.toContain('a.link(b)')
+    expect(r.chunks.errorComponent).not.toContain('a.link(b)')
+    expect(r.chunks.component).toContain('?tsr-split=shared---')
   })
 
   it('keeps a statement touching through an alias an object the route module keeps', async () => {
@@ -7169,6 +7112,7 @@ describe('statements follow what they change', () => {
         expect(r.chunks.component).toContain(decls)
       })
 
+      // (`b9`, two chunks' effect, goes to their shared module: R151)
       it('moves the read and the earlier call to two chunks (seed 1141)', async () => {
         const r = await split(
           mwRoute(
@@ -7177,7 +7121,10 @@ describe('statements follow what they change', () => {
           ),
           { keys: ['component', 'errorComponent'] },
         )
-        expect(r.env).toContain('const b9 = mw()')
+        expect(r.env).not.toContain('const b9 = mw()')
+        expect(r.chunks.component).toContain(
+          "import { b9 } from '/app/route.tsx?tsr-split=shared---component---errorComponent'",
+        )
         expect(r.chunks.component).toContain('const b12 = b9.client(() => 7)')
         expect(r.chunks.errorComponent).toContain('const r14 = b9.o.n')
       })
@@ -7190,7 +7137,8 @@ describe('statements follow what they change', () => {
           ),
           { keys: ['loader', 'component'] },
         )
-        expect(r.env).toContain('const b4 = mw()')
+        // (`b4`, two chunks' effect, goes to their shared module: R151)
+        expect(r.env).not.toContain('const b4 = mw()')
         expect(r.chunks.loader).toContain('b4.server(() => 16)')
         expect(r.chunks.component).toContain('const r6 = { ...b4.o }')
       })
@@ -7420,7 +7368,7 @@ describe('statements follow the bindings they use (R149)', () => {
     })
 
     // review finding 7: reading bindings of two chunks, with or without a
-    // later write of one of them
+    // later write of one of them: one answer, their shared module (R151)
     it.each([
       ['', 'without a later write'],
       ['\ncfg.n = 1', 'with a later write'],
@@ -7430,9 +7378,10 @@ describe('statements follow the bindings they use (R149)', () => {
         route(decls, 'loader: () => cfg,\ncomponent: () => table.x,'),
         { keys: ['loader', 'component'] },
       )
-      expect(r.env).toContain('analytics.log(table, cfg)')
+      expect(r.env).not.toContain('analytics.log')
       expect(r.chunks.loader).not.toContain('analytics.log')
       expect(r.chunks.component).not.toContain('analytics.log')
+      expect(r.chunks.component).toContain('?tsr-split=shared---')
     })
   })
 })
@@ -7575,6 +7524,23 @@ describe('lazy shared modules hold effects (R151)', () => {
     expect(f.env).not.toContain('{ c: 1 }')
   })
 
+  // (the router-plugin pages: an effectful binding exported under another
+  // name or by default, which the component reads: extracted with its
+  // effect, R150; never judged as a split option's slot, which pinned it
+  // and listed one needer)
+  it.each(['export { store as appStore }', 'export default store'])(
+    'extracts an effectful binding exported as `%s` that the component reads',
+    async (tail) => {
+      const r = await compile(
+        route(`const store = make()\n${tail}`, 'component: () => store'),
+        { extractExports: true },
+      )
+      expect(r.diagnostics).toEqual([])
+      expect(r.env).not.toContain('make()')
+      expect(r.chunks.component).toContain('?tsr-split=export---')
+    },
+  )
+
   it('keeps a statement using a binding the route module keeps', async () => {
     const r = await compile(
       route(
@@ -7599,11 +7565,12 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     code: string,
     keys = ['component'],
     files: Record<string, string> = {},
+    extractExports = false,
   ) {
     const host = new MemoryHost({
       files: { '/app/route.tsx': code, ...files },
     })
-    const planners = [toySplitPlanner({ keys })]
+    const planners = [toySplitPlanner({ keys, extractExports })]
     const env = { env: envInfo({ mode: 'build' }) }
     const out = await host.compile('/app/route.tsx', planners, env)
     const chunks: Record<string, string> = {}
@@ -7714,122 +7681,65 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
   })
 
-  it('a binding another split option uses, in one call', async () => {
+  // an extracted export's module and a split chunk share no module
+  // (R151): the statement stays, and the split option's binding with it
+  it("a binding an extracted export's module uses, in one call", async () => {
     const statement = 'link(d, e)'
-    const options = 'component: () => d, errorComponent: () => e'
-    const keys = ['component', 'errorComponent']
+    const options = 'component: () => d'
     const code = route(
-      `const e = make()\nconst d = make()\n${statement}`,
+      `const e = make()\nconst d = make()\n${statement}\nexport function getE() { return e }`,
       options,
     ).replace(
       "import { make } from './lib'",
       "import { make, link } from './lib'",
     )
-    const r = await report(code, keys)
-    // both bindings it keeps eager, each naming the other
-    const at = (name: string) =>
-      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
-        ?.message
-    expect(r.diagnostics).toHaveLength(2)
-    expect(at('d')).toContain(
-      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also uses \`e\`, which the split \`errorComponent\` uses; move \`d\`, \`e\` and that statement to their own module`,
+    const r = await report(code, undefined, {}, true)
+    written(
+      r,
+      code,
+      'd',
+      statement,
+      'which uses it, stays there: it also uses `e`, which the module of the export `getE` uses',
     )
-    expect(at('e')).toContain(
-      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also uses \`d\`, which the split \`component\` uses; move \`e\`, \`d\` and that statement to their own module`,
+    expect(r.diagnostics[0]!.message).toContain(
+      'move `d`, `e` and that statement to their own module',
     )
-    // the fix: both and the call in a module only the two chunks import
+    // the fix: both and the call in a module of their own
     const f = await report(
-      route("import { d, e } from './own'", options),
-      keys,
+      route(
+        "import { d, e } from './own'\nexport function getE() { return e }",
+        options,
+      ),
+      undefined,
       {
         '/app/own.ts':
           "import { make, link } from './lib'\nexport const e = make()\nexport const d = make()\nlink(d, e)\n",
       },
+      true,
     )
     expect(f.diagnostics).toEqual([])
-    expect(f.env).not.toContain('own')
+    expect(f.env).not.toContain('link(')
   })
 
   // one statement changing a binding of one chunk and using one of
-  // another (review probe b33): both stay, each reported
-  it('a binding another split option uses, and one the statement changes', async () => {
-    const statement = 'a.connect(b)'
+  // another (review probe b33), two statements each changing one and using
+  // the other (e04), a statement of several statements (R151): one shared
+  // module for all of it, nothing reported
+  it.each([
+    ['one statement', 'a.connect(b)'],
+    ['two statements', 'a.link(b)\nb.link(a)'],
+    ['a statement of several', 'if (on) { a.init(); b.init() }'],
+  ])('%s using bindings of two split options', async (_, statements) => {
     const options = 'loader: () => b.y, component: () => a.x'
     const keys = ['loader', 'component']
-    const code = route(
-      `const a = make()\nconst b = make()\n${statement}`,
-      options,
-    )
-    const r = await report(code, keys)
-    const at = (name: string) =>
-      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
-        ?.message
-    expect(r.diagnostics).toHaveLength(2)
-    expect(at('a')).toContain(
-      `the statement on line ${lineOf(code, statement)}, which changes it, stays there: it also uses \`b\`, which the split \`loader\` uses; move \`a\`, \`b\` and that statement to their own module`,
-    )
-    expect(at('b')).toContain(
-      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also changes \`a\`, which the split \`component\` uses; move \`b\`, \`a\` and that statement to their own module`,
-    )
-    // the fix
-    await ownModule(
-      'const a = make()\nexport const b = make()',
-      statement,
-      'a, b',
-      options,
+    const r = await report(
+      route(`const a = make()\nconst b = make()\n${statements}`, options),
       keys,
     )
-  })
-
-  // two statements, each changing a binding of its chunk and using the
-  // other's (review probe e04): each binding named by the statement
-  // changing it
-  it('two statements, each changing its binding and using the other', async () => {
-    const options = 'loader: () => b.y, component: () => a.x'
-    const keys = ['loader', 'component']
-    const code = route(
-      'const a = make()\nconst b = make()\na.link(b)\nb.link(a)',
-      options,
-    )
-    const r = await report(code, keys)
-    const at = (name: string) =>
-      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
-        ?.message
-    expect(r.diagnostics).toHaveLength(2)
-    expect(at('a')).toContain(
-      `the statement on line ${lineOf(code, 'a.link(b)')}, which changes it, stays there: it also uses \`b\``,
-    )
-    expect(at('b')).toContain(
-      `the statement on line ${lineOf(code, 'b.link(a)')}, which changes it, stays there: it also uses \`a\``,
-    )
-  })
-
-  // R148, R149 answers E: unused code reading bindings of two chunks
-  // stays; the warning names it and offers to delete it
-  it('an unused function reading it and a binding another split option uses', async () => {
-    const options = 'loader: () => b, component: () => a.x'
-    const keys = ['loader', 'component']
-    const code = route(
-      'const a = { x: 1 }\nconst b = { y: 2 }\nfunction debugDump() { return [a, b] }',
-      options,
-    )
-    const r = await report(code, keys)
-    // both bindings it keeps eager, each naming it (R149 answers E)
-    expect(r.diagnostics).toMatchObject([
-      { code: 'eager-split:written', range: { start: code.indexOf('a = ') } },
-      { code: 'eager-split:written', range: { start: code.indexOf('b = ') } },
-    ])
-    expect(r.diagnostics[1]!.message).toContain(
-      'which nothing uses, stays there: it also uses `a`, which the split `component` uses; delete `debugDump`',
-    )
-    expect(r.diagnostics[0]!.message).toContain(
-      `\`debugDump\` (line ${lineOf(code, 'function debugDump')}), which nothing uses, stays there: it also uses \`b\`, which the split \`loader\` uses; delete \`debugDump\``,
-    )
-    const f = await report(
-      route('const a = { x: 1 }\nconst b = { y: 2 }', options),
-      keys,
-    )
-    expect(f.diagnostics).toEqual([])
+    expect(r.diagnostics).toEqual([])
+    for (const line of statements.split('\n')) {
+      expect(r.env).not.toContain(line)
+    }
   })
 
   // code that runs later changing it keeps a statement (V): f08, c15
@@ -7906,36 +7816,6 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
   })
 
-  it('a binding another split option uses it also changes', async () => {
-    const statement = 'if (on) { d.init(); e.init() }'
-    const options = 'component: () => d, errorComponent: () => e'
-    const keys = ['component', 'errorComponent']
-    const code = route(
-      `const e = make()\nconst d = make()\n${statement}`,
-      options,
-    )
-    const r = await report(code, keys)
-    // both bindings it keeps eager, each naming the other
-    const at = (name: string) =>
-      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
-        ?.message
-    expect(r.diagnostics).toHaveLength(2)
-    expect(at('d')).toContain(
-      'it also changes `e`, which the split `errorComponent` uses; change `e` in a statement of its own',
-    )
-    expect(at('e')).toContain(
-      'it also changes `d`, which the split `component` uses; change `d` in a statement of its own',
-    )
-    const fixed = route(
-      'const e = make()\nconst d = make()\nif (on) { d.init() }\nif (on) { e.init() }',
-      options,
-    )
-    const f = await report(fixed, keys)
-    expect(f.diagnostics).toEqual([])
-    expect(f.chunks.component).toContain('if (on) { d.init() }')
-    expect(f.chunks.errorComponent).toContain('if (on) { e.init() }')
-  })
-
   // (the spelling variants: a hoisted component the route's value holds
   // moves, so a staying statement handing the route to an import reports
   // nothing)
@@ -7954,19 +7834,18 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(r.diagnostics).toEqual([])
   })
 
+  // several split options using what it changes: their shared module
+  // (R151), nothing reported
   it('several split options using what it changes', async () => {
     const statement = 'd.add(1)'
     const options = 'component: () => d, errorComponent: () => d'
     const keys = ['component', 'errorComponent']
-    const code = route(`const d = make()\n${statement}`, options)
-    written(
-      await report(code, keys),
-      code,
-      'd',
-      statement,
-      'several split options use what it changes (`component`, `errorComponent`)',
+    const r = await report(
+      route(`const d = make()\n${statement}`, options),
+      keys,
     )
-    await ownModule('const d = make()', statement, 'd', options, keys)
+    expect(r.diagnostics).toEqual([])
+    expect(r.env).not.toContain(statement)
   })
 })
 
@@ -8338,25 +8217,17 @@ describe('builder chains in a compile', () => {
     }
   })
 
-  it('counts an argument where its environment keeps it', async () => {
+  // two split options alone: one shared module, the effect included
+  // (R151); which argument is an effect in which environment is a target
+  // fact (facts.test, "builder chains per environment")
+  it('puts a chain two split options read in their shared module, in both environments', async () => {
     const code = route(
-      'const fn = createServerFn().validator(track()).handler(async () => 1)',
+      'const fn = createServerFn().middleware([track()]).handler(async () => 1)',
     )
-    const client = await compile(code, 'client')
-    expect(client.env).not.toContain('createServerFn()')
-    expect(client.kept).toEqual([])
-    const server = await compile(code, 'server')
-    expect(server.env).toContain('createServerFn()')
-    expect(server.kept).toEqual(['fn'])
-  })
-
-  it('keeps an impure argument of a chain an effect', async () => {
-    const declarations =
-      'const fn = createServerFn().middleware([track()]).handler(async () => 1)'
     for (const type of ['client', 'server'] as const) {
-      const r = await compile(route(declarations), type)
-      expect(r.env, type).toContain('const fn =')
-      expect(r.kept, type).toContain('fn')
+      const r = await compile(code, type)
+      expect(r.env, type).not.toContain('const fn =')
+      expect(r.kept, type).toEqual([])
     }
   })
 
