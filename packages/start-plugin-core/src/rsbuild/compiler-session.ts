@@ -362,7 +362,8 @@ export class StartRsbuildCompilerSession {
    * After an environment's dev compilation (`files` recorded its
    * dependencies): forget what the session holds of
    * files the compilation no longer depends on (plans, raw facts, import
-   * protection's importer records). Rspack reports a deleted file only while a module depends on it,
+   * protection's scope cache; its importer records follow the modules each
+   * compilation holds, at `finishMake`). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
    * `unlink`; without this its state stayed for the session (every cache
    * must stay bounded by the live modules). Called only when the files
@@ -385,7 +386,6 @@ export class StartRsbuildCompilerSession {
         }
       }
     }
-    this.start.ip?.retain(keepEnv, envName)
     if (this.files.size === this.envs.size) {
       // shared state: kept while any environment depends on the file
       const anyEnv = keepIn((p) => this.files.known(p))

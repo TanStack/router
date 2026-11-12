@@ -42,6 +42,7 @@ import { TRANSFORM_ID_REGEX } from '../constants'
 import { isVueSfc } from '../compiler/vue'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
+import { heldIn } from '../import-protection/session'
 import {
   readRolldownWitness,
   rolldownGraphView,
@@ -279,6 +280,9 @@ function envCompilerPlugins(
         return
       }
       const s = state.sessionOf(this.environment)
+      // an importer this rebuild no longer holds asks for nothing (its
+      // module is not compiled again: its records would stay)
+      s.start.ip?.env(env.name, env.type).hold(heldIn(this.getModuleIds()))
       if (env.type === 'client') {
         // a rebuild keeps the registry (a new build cleared it): the
         // functions the client references are those of the modules this

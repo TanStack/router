@@ -9,6 +9,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
 import {
+  deriveId,
   identify,
   invariantDiagnostic,
   invariantViolated,
@@ -47,6 +48,7 @@ import {
 } from './violations'
 import { witnessLookup } from './witness'
 import {
+  formatServedConflict,
   formatServedMismatch,
   formatUncheckedImporters,
   formatViolation,
@@ -131,6 +133,37 @@ export function createImportProtection(
     : null
 }
 
+/**
+ * Whether a module id is one of `ids` (a compilation's modules): as given
+ * (most ids are already in the form the hosts record), else compared as the
+ * compiler keys an output, `key` (default: its canonical id with its owned
+ * query for a derived one; a host passes its own canonical form first)
+ * (`ImportProtectionEnv.hold`). The second form is built on the first miss
+ * only: an id that left the compilation is rare.
+ */
+export function heldIn(
+  ids: Iterable<string>,
+  key: (id: string) => string = outputKey,
+): (id: string) => boolean {
+  const held = new Set(ids)
+  let keys: Set<string> | null = null
+  return (id) => {
+    if (held.has(id)) {
+      return true
+    }
+    keys ??= new Set([...held].map(key))
+    return keys.has(key(id))
+  }
+}
+
+/** An output's key: its canonical id, with its owned query for a derived output. */
+export function outputKey(id: string): string {
+  const identity = identify(normalizePath(id))
+  return identity.derived
+    ? deriveId(identity.canonicalId, identity.derived)
+    : identity.canonicalId
+}
+
 async function readFileOrNull(file: string): Promise<string | null> {
   try {
     return await fs.readFile(file, 'utf8')
@@ -150,13 +183,16 @@ export class ImportProtection {
     Promise<boolean | Array<string>>
   >()
   /**
-   * Per environment type, the modules an allowed import brings into it. A
-   * session's record, not an environment's: the module also comes to
-   * environments of that type where nothing checked imports it (RSC: the
-   * `ssr` environment loads the `'use client'` module the `rsc` environment
-   * allowed, from plugin code), and the first environment may be released by then.
+   * Per environment type, the modules the allowed imports of a released
+   * environment brought into it. A live environment's are read from its
+   * ledger (`ImportProtectionEnv.allowedImporters`: they live as long as an
+   * import allowed for them); a released one's stay for the session: the
+   * module also comes to environments of that type where nothing checked
+   * imports it (RSC: the `ssr` environment loads the `'use client'` module
+   * the `rsc` environment allowed, from plugin code), and a build releases
+   * the first environment before the next one builds.
    */
-  private readonly allowedTargets: Record<EnvType, Set<string>> = {
+  private readonly releasedTargets: Record<EnvType, Set<string>> = {
     client: new Set(),
     server: new Set(),
   }
@@ -221,19 +257,26 @@ export class ImportProtection {
    * the environment starts over (`env(name, type)`).
    */
   release(name: string): void {
-    this.envs.delete(name)
-  }
-
-  /** An allowed import brings `resolved` into environments of this type. @internal */
-  allowTarget(type: EnvType, resolved: string | null): void {
-    if (resolved !== null) {
-      this.allowedTargets[type].add(resolved)
+    const env = this.envs.get(name)
+    if (env) {
+      for (const target of env.allowedTargets()) {
+        this.releasedTargets[env.type].add(target)
+      }
     }
+    this.envs.delete(name)
   }
 
   /** Whether an allowed import brought `resolved` into environments of this type. @internal */
   targetAllowed(type: EnvType, resolved: string): boolean {
-    return this.allowedTargets[type].has(resolved)
+    if (this.releasedTargets[type].has(resolved)) {
+      return true
+    }
+    for (const env of this.envs.values()) {
+      if (env.type === type && !env.allowedImporters(resolved).next().done) {
+        return true
+      }
+    }
+    return false
   }
 
   /** `onViolation` returned `false`, which meant "allow" once. @internal */
@@ -257,18 +300,15 @@ export class ImportProtection {
     }
   }
 
-  /** Keeps the importer records (and scope-cache entries) of the paths `keep` accepts (see `RawFactsCache.retain`). */
-  retain(keep: (path: string) => boolean, envName?: string): void {
-    if (envName === undefined) {
-      for (const path of [...this.scopeCache.keys()]) {
-        if (!keep(path)) {
-          this.scopeCache.delete(path)
-        }
-      }
-    }
-    for (const env of this.envs.values()) {
-      if (envName === undefined || env.name === envName) {
-        env.retain(keep)
+  /**
+   * Keeps the scope-cache entries of the paths `keep` accepts (see
+   * `RawFactsCache.retain`); an environment's importer records follow what
+   * its compilations hold (`ImportProtectionEnv.hold`).
+   */
+  retain(keep: (path: string) => boolean): void {
+    for (const path of [...this.scopeCache.keys()]) {
+      if (!keep(path)) {
+        this.scopeCache.delete(path)
       }
     }
   }
@@ -468,6 +508,21 @@ interface Served {
   self: EdgeViolation | null
 }
 
+/**
+ * R147: a denied file compiled under its own id whose importers disagree:
+ * one needs it as it is, a checked one reaches the file itself.
+ */
+interface Conflict {
+  self: EdgeViolation
+  verdict: 'mock' | 'real'
+  needers: Array<string>
+  allowed: Array<string>
+  /** An allowed import of another environment of this type brought it. */
+  elsewhere: boolean
+  /** The checked importers that reach the file itself (files). */
+  checked: Array<string>
+}
+
 interface RegisteredModule {
   content: EdgeModuleContent
   /** Violations importing it, by `${importerId}\0${edgeKey}`. */
@@ -489,6 +544,8 @@ export interface CompileOutcome {
   error: Error | null
   mock?: { code: string; id: string }
 }
+
+const NO_ERROR: CompileOutcome = { error: null }
 
 /** One Start environment's import protection. */
 class ImportProtectionEnv {
@@ -675,9 +732,7 @@ class ImportProtectionEnv {
       if (this.served.size > 0) {
         this.served.delete(normalizePath(importerId))
       }
-      return dev && violations.length > 0
-        ? this.reportDev(violations)
-        : { error: null }
+      return violations.length > 0 ? this.answer(violations) : NO_ERROR
     }
     const decided = async (): Promise<CompileOutcome> => {
       const real = await this.allowsSelf(self)
@@ -686,9 +741,7 @@ class ImportProtectionEnv {
         self,
       })
       if (real) {
-        return dev
-          ? this.reportDev(violations.filter((v) => v !== self))
-          : { error: null }
+        return this.answer(violations.filter((v) => v !== self))
       }
       const mock = this.mockOf(self)
       if (!dev || this.explainedByStaleImporter(self)) {
@@ -698,6 +751,30 @@ class ImportProtectionEnv {
       return { error: this.errorOf(this.report(self)), mock }
     }
     return decided()
+  }
+
+  /**
+   * `allowImport`'s answers on a compile's imports, asked at the compile (a
+   * denied file compiled before the bundler resolves the import then finds
+   * it allowed); in dev, the violations it does not allow are reported.
+   */
+  private answer(
+    violations: Array<EdgeViolation>,
+  ): CompileOutcome | Promise<CompileOutcome> {
+    if (this.ip.config.mode === 'dev') {
+      return this.reportDev(violations)
+    }
+    if (!this.ip.config.allowImport) {
+      return NO_ERROR
+    }
+    return (async () => {
+      for (const v of violations) {
+        if (v.env === this.name && !v.pending) {
+          await this.allows(v)
+        }
+      }
+      return NO_ERROR
+    })()
   }
 
   private async reportDev(
@@ -725,9 +802,10 @@ class ImportProtectionEnv {
   /**
    * `allowImport`'s answer on an import: the one owner of the decision, asked
    * once per import (`dedupeKey`) before anything depends on it. The answer
-   * is the state of its edge module (`served`); `true` also brings the module
-   * into environments of this type; `false` or nothing is the normal outcome
-   * under `behavior`.
+   * is the state of its edge module (`served`), which brings the module into
+   * environments of this type while the import is there
+   * (`allowedImporters`); `false` or nothing is the normal outcome under
+   * `behavior`.
    */
   private async allows(v: EdgeViolation): Promise<boolean> {
     const { allowImport } = this.ip.config
@@ -748,18 +826,15 @@ class ImportProtectionEnv {
         self: null,
       })
     }
-    if (allowed) {
-      this.ip.allowTarget(this.type, v.resolved)
-    }
     return allowed
   }
 
   /**
    * Whether a module that is its own violation has real demand, known
    * without asking: an allowed import brought it (one module, one identity, in
-   * every environment of this type; its own allowed import included), or an
-   * exempt importer imports it (SPEC J6.7: it gets the real module; compiled
-   * before the module, its imports are indexed).
+   * every environment of this type), or an exempt importer imports it (SPEC
+   * J6.7: it gets the real module; compiled before the module, its imports
+   * are indexed).
    */
   private selfAllowed(self: EdgeViolation): boolean {
     return (
@@ -802,9 +877,49 @@ class ImportProtectionEnv {
     return false
   }
 
-  /** `selfAllowed`, or `allowImport`'s answer on the module, which nothing the compiler read imports. */
+  /**
+   * `selfAllowed`, or `allowImport`'s answer on the module, which nothing the
+   * compiler read imports; read again after the answer (an importer
+   * compiled while `allowImport` answered may need the module).
+   */
   private async allowsSelf(self: EdgeViolation): Promise<boolean> {
-    return this.selfAllowed(self) || this.allows(self)
+    return (
+      this.selfAllowed(self) ||
+      (await this.allows(self)) ||
+      this.selfAllowed(self)
+    )
+  }
+
+  /**
+   * The importers (files) of this environment whose import of `resolved`
+   * `allowImport` allowed and is still there (its edge module served real,
+   * with a violation of the importer registered).
+   */
+  *allowedImporters(resolved: string): Generator<string> {
+    for (const [key, entry] of this.served) {
+      const m =
+        entry.self === null && entry.verdict === 'real'
+          ? this.modules.get(key)
+          : undefined
+      if (m?.content.resolved === resolved) {
+        for (const v of m.violations.values()) {
+          yield v.importer
+        }
+      }
+    }
+  }
+
+  /** The modules the allowed imports still there bring (`allowedImporters`), for `ImportProtection.release`. */
+  *allowedTargets(): Generator<string> {
+    for (const [key, entry] of this.served) {
+      const m =
+        entry.self === null && entry.verdict === 'real'
+          ? this.modules.get(key)
+          : undefined
+      if (m?.content.resolved && m.violations.size > 0) {
+        yield m.content.resolved
+      }
+    }
   }
 
   /** Tells `onViolation` about an import that stayed a violation: once with `log: 'once'` and in a build. */
@@ -872,7 +987,7 @@ class ImportProtectionEnv {
    * `allowImport` answer (asked once per import, now if not yet) differs. The
    * ids of the modules to build again (an edge module by its id among our
    * modules). Edge modules first: an allowed import brings the module it
-   * allows (`allowTarget`).
+   * allows (`allowedImporters`).
    */
   async mismatches(): Promise<Array<string>> {
     const out: Array<string> = []
@@ -1001,7 +1116,7 @@ class ImportProtectionEnv {
       this.importersByFile.add(importerId)
     }
     this.byImporter.set(importerId, keys)
-    if (previous && this.ip.config.mode === 'dev') {
+    if (previous) {
       for (const key of previous) {
         if (!keys.has(key)) {
           this.release(importerId, key)
@@ -1193,18 +1308,25 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Forgets the importer records of every path `keep` rejects. */
-  retain(keep: (path: string) => boolean): void {
-    const gone = new Set<string>()
-    for (const files of [this.importersByFile.files(), this.edges.files()]) {
-      for (const path of files) {
-        if (!keep(path)) {
-          gone.add(path)
-        }
+  /**
+   * Forgets the importer records (edges, violations, served verdict) of the
+   * module ids a compilation that just finished building does not hold
+   * (`holds`, by module id: one file has an id per output): an importer the
+   * app no longer imports, or a split-out part of a file that no longer
+   * exists, asks for nothing (real demand, an allowed import). A module
+   * that comes back is compiled or restored again, with its records.
+   */
+  hold(holds: (id: string) => boolean): void {
+    for (const importerId of [...this.edges.ids()]) {
+      if (!holds(importerId)) {
+        this.edges.delete(importerId)
       }
     }
-    for (const path of gone) {
-      this.forget(path)
+    for (const importerId of [...this.byImporter.keys()]) {
+      if (!holds(importerId)) {
+        this.importersByFile.delete(importerId)
+        this.forgetImporter(importerId)
+      }
     }
   }
 
@@ -1212,12 +1334,16 @@ class ImportProtectionEnv {
   forget(path: string): void {
     this.edges.forget(path)
     for (const importerId of this.importersByFile.take(path)) {
-      this.served.delete(normalizePath(importerId))
-      const keys = this.byImporter.get(importerId)
-      this.byImporter.delete(importerId)
-      for (const key of keys ?? []) {
-        this.release(importerId, key)
-      }
+      this.forgetImporter(importerId)
+    }
+  }
+
+  private forgetImporter(importerId: string): void {
+    this.served.delete(normalizePath(importerId))
+    const keys = this.byImporter.get(importerId)
+    this.byImporter.delete(importerId)
+    for (const key of keys ?? []) {
+      this.release(importerId, key)
     }
   }
 
@@ -1281,6 +1407,107 @@ class ImportProtectionEnv {
     }
   }
 
+  /**
+   * R147: the denied files compiled under their own id (`holds`: those the
+   * build holds) whose importers disagree in `graph`: one needs the file as
+   * it is (an exempt or unchecked importer, an import `allowImport` allowed),
+   * and a checked importer reaches the file itself (a pattern import, an
+   * import another plugin added: it cannot get a mock of its own). Read
+   * once the graph is complete, so the result does not depend on the order
+   * the bundler compiled them in.
+   */
+  conflicts(
+    graph: ImportGraphView,
+    holds?: (id: string) => boolean,
+  ): Map<string, Conflict> {
+    const out = new Map<string, Conflict>()
+    for (const [id, entry] of this.served) {
+      const self = entry.self
+      if (!self || (holds && !holds(id))) {
+        continue
+      }
+      const needers = [...new Set(this.demanders(self))]
+      const allowed = [...new Set(this.allowedImporters(self.resolved!))]
+      const elsewhere =
+        needers.length === 0 &&
+        allowed.length === 0 &&
+        this.ip.targetAllowed(this.type, self.resolved!)
+      if (needers.length === 0 && allowed.length === 0 && !elsewhere) {
+        continue
+      }
+      const checked = new Set<string>()
+      for (const importerId of graph.importers(self.importerId)) {
+        const importer = traceFile(importerId)
+        if (
+          this.ip.ids.parse(importerId) === null &&
+          this.ip.inScope(importer)
+        ) {
+          checked.add(importer)
+        }
+      }
+      if (checked.size > 0) {
+        out.set(id, {
+          self,
+          verdict: entry.verdict,
+          needers,
+          allowed,
+          elsewhere,
+          checked: [...checked],
+        })
+      }
+    }
+    return out
+  }
+
+  private formatConflict(c: Conflict): {
+    severity: 'error'
+    message: string
+    info: ViolationInfo
+  } {
+    const info = violationInfo(c.self, this.ip.config, () => ({
+      steps: [],
+      fromEntry: false,
+    }))
+    return {
+      severity: 'error',
+      message: formatServedConflict(
+        info,
+        c,
+        c.checked,
+        c.verdict,
+        this.ip.report,
+      ),
+      info: info as ViolationInfo,
+    }
+  }
+
+  /** The R147 messages printed by `newConflictReports` (dev), until the conflict changes or goes. */
+  private readonly shownConflicts = new Set<string>()
+
+  /**
+   * Dev: the R147 errors of the ledger's files in the dev server's graph as
+   * it is now (none until it has one): every one (`all`: a host whose
+   * compilations each hold their errors, Rspack), or those not printed yet
+   * (a host printing to its log, Vite). The ledger keeps serving as it says.
+   */
+  conflictReports(all: boolean): Array<string> {
+    if (!this.graph || this.served.size === 0) {
+      return []
+    }
+    const messages = [...this.conflicts(this.graph).values()].map(
+      (c) => this.formatConflict(c).message,
+    )
+    if (all) {
+      return messages
+    }
+    const fresh = messages.filter((m) => !this.shownConflicts.has(m))
+    this.shownConflicts.clear()
+    for (const m of messages) {
+      this.shownConflicts.add(m)
+    }
+    return fresh
+  }
+
   /** A rebuild of `build --watch`: `onViolation` hears about what survives it again. */
   beginBuild(): void {
     if (this.ip.config.mode === 'build') {
@@ -1311,11 +1538,20 @@ class ImportProtectionEnv {
     }>
   > {
     this.graph = graph
+    // R147 first: it replaces the file's other reports
+    const conflicts = this.served.size > 0 ? this.conflicts(graph, holds) : null
     const unsettled = new Map<string, Served>()
     if (holds) {
+      const survived = new Set(liveKeys)
       for (const id of await this.mismatches()) {
         const entry = this.served.get(id)
-        if (entry?.self && holds(id)) {
+        if (
+          entry?.self &&
+          holds(id) &&
+          !conflicts?.has(id) &&
+          // (a mock nothing of the build kept harms no importer)
+          (entry.verdict === 'real' || survived.has(entry.self.module!.key))
+        ) {
           unsettled.set(id, entry)
         }
       }
@@ -1341,7 +1577,11 @@ class ImportProtectionEnv {
         }
         const id = normalizePath(v.importerId)
         // (the witness finds a served mock; the key may stand for other ids too)
-        if (this.served.get(id)?.verdict !== 'mock' || unsettled.has(id)) {
+        if (
+          this.served.get(id)?.verdict !== 'mock' ||
+          unsettled.has(id) ||
+          conflicts?.has(id)
+        ) {
           continue
         }
         const importers = [...graph.importers(v.importerId)]
@@ -1356,6 +1596,10 @@ class ImportProtectionEnv {
       }
     }
     const reports = []
+    // not violations (no `onViolation`), and errors under both behaviors
+    for (const c of conflicts?.values() ?? []) {
+      reports.push(this.formatConflict(c))
+    }
     for (const key of [...live.keys()].sort()) {
       const v = live.get(key)!
       await this.notify(v)

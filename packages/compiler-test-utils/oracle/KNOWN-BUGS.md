@@ -120,12 +120,21 @@ bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' p
   `new URL` gets the mock**, with the same warning (the scope is about importers: a denied file is judged wherever it
   lives). A plain import from there gets the real module. `known-bugs-rejections.test.ts`: "an importer outside the
   source directory reaching a denied file outside it only through a pattern gets the real module".
-- **A Vite build that compiled a denied file for a pattern import before it read the exempt plain import of it serves
-  the mock to both** (a build compiles a module once; Rsbuild and the dev servers compile the file again), and says
-  so under `behavior` (R142 (2)): the build fails with `error`, warns with `mock`, naming the file, the importer that
-  needs it and the fix (leave it out of the pattern). `start-plugin-core/tests/integration/importProtection/served-
-verdict.test.ts`: "two exempt importers, the plain one compiled after the denied file: the %s build …" (a user plugin
-  holds the plain importer's `load`). Not a pin: the outcome is the ruled one.
+- **A Vite build that compiled a denied file for an exempt pattern import before it read the exempt plain import of
+  it serves the mock to both** (a build compiles a module once; Rsbuild and the dev servers compile the file again),
+  and says so under `behavior` (R142 (2)): the build fails with `error`, warns with `mock`, naming the file, the
+  importer that needs it, the pattern import and the fix (leave it out of the pattern); only when the mock survived.
+  `start-plugin-core/tests/integration/importProtection/served-verdict.test.ts`: "two exempt importers, the plain one
+  compiled after the denied file: the %s build …" (a user plugin holds the plain importer's `load`). Not a pin: the
+  outcome is the ruled one. With a checked pattern importer (or a checked module another plugin adds an import of the
+  file to), the importers disagree and every build fails on both hosts, whatever the order (R147; "… R147 > …" in the
+  same file).
+- **Vite dev: a denied file stays the real module after an edit removes the last import of the exempt importer that
+  needed it, or removes an import `allowImport` allowed**, until a restart: a pattern importer gets the real module.
+  The dev server keeps every module it served, records a dropped import only after the importer's whole transform,
+  and a module requested by URL has no importer, so no signal tells that the importer is gone (design 4 final review,
+  architect ruling: a documented limit, dev only as R142 (3)). Builds, `build --watch` and the Rsbuild dev server
+  forget an importer their compilation no longer holds (`served-demand.test.ts`). Not tested.
 - **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
   SPEC J6.7, J6.1. "an importer outside srcDirectory gets the real module of an in-scope denied file it imports, and is
   not reported". Workaround: import the file from a module inside the scope.

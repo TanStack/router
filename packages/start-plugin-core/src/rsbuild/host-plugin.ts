@@ -27,6 +27,7 @@ import {
   webpackImporters,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
+import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
   rspackGraphView,
@@ -565,6 +566,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 'Checking import protection',
                 async () => {
                   ipEnv.graph = graphView(compilation)
+                  // importers that disagree (R147): an error of each compilation holding them
+                  for (const message of ipEnv.conflictReports(true)) {
+                    compilation.errors.push(new WebpackError(message))
+                  }
                   if (session.start.ip!.config.log === 'always') {
                     // modules this compilation kept without compiling them report again: an
                     // importer its violations, an edge module the pending ones it witnesses
@@ -720,6 +725,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             session.start.caches.stale.add(environment.name, p)
           }
           await session.drain.rebuild(environment.name, compilation, pathOf)
+        }
+      }
+
+      /** The resources of a compilation's modules and of its child compilers' (built as this environment's). */
+      function* compilationResources(
+        compilation: Rspack.Compilation,
+      ): Generator<string> {
+        const compilations = [compilation]
+        for (const c of compilations) {
+          compilations.push(...c.children)
+          for (const m of c.modules) {
+            const resource = (m as unknown as ModuleLike).resource
+            if (resource) {
+              yield resource
+            }
+          }
         }
       }
 
@@ -886,6 +907,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 }
               }
               if (ipEnv) {
+                if (session.files.compiled(environment.name)) {
+                  // a later compilation: what it no longer holds asks for nothing (the first
+                  // one holds every module it restored or built)
+                  ipEnv.hold(
+                    heldIn(compilationResources(compilation), (r) =>
+                      outputKey(canonicalResource(r)),
+                    ),
+                  )
+                }
                 await serveAsDemanded(ipEnv, compilation)
               }
               // one read of each module's `buildInfo`: the server-fn snapshot and,
