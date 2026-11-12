@@ -7282,11 +7282,18 @@ describe('statements follow what they change', () => {
 // object, a global, `import.meta`, a dynamically imported module; else it
 // follows the bindings it changes. Calling or passing an import changes
 // nothing. One rule for statements and a declaration's own writes.
-describe('statements: what they change (R146 amendment)', () => {
+// R149 (the user's rule): a statement follows the module bindings it uses
+// (reads or changes, and what they hold, also in the local functions it
+// calls) into the one chunk they all go to; otherwise it stays. Nothing
+// outside the module (imports, globals, `import.meta`, `import()`) keeps
+// it; a statement using no binding that moves stays; a statement using a
+// binding that stays (exported, needed by the route module or another
+// chunk) stays. A declaration's own writes are judged the same way.
+describe('statements follow the bindings they use (R149)', () => {
   const route = (decls: string, options: string, imports = '') =>
     dedent(`
       import { createFileRoute } from 'toy-router'
-      import { createTable, createStore, createClient, sentryPlugin, persistPlugin } from './lib'
+      import { createTable, createStore, createClient, sentryPlugin, persistPlugin, analytics, later } from './lib'
       import * as Sentry from '@sentry/react'
       import PropTypes from 'prop-types'
       ${imports}
@@ -7311,13 +7318,18 @@ describe('statements: what they change (R146 amendment)', () => {
     }
   }
 
-  describe('stays when it changes what the rest of the app sees, and keeps what it touches', () => {
+  describe('moves with the bindings it uses, whatever outside the module it touches', () => {
     it.each([
       ["another module's object", "const cfg = { dsn: 'x' }\nSentry.init(cfg)"],
       ['a global', "const cfg = { dsn: 'x' }\nwindow.appConfig = cfg"],
+      ['`console`', "const cfg = { dsn: 'x' }\nconsole.log(cfg)"],
+      [
+        'an analytics call',
+        "const cfg = { dsn: 'x' }\nanalytics.track(cfg.dsn)",
+      ],
       [
         "the module's `import.meta.hot`",
-        "const cfg = { dsn: 'x' }\nif (import.meta.hot) { import.meta.hot.data.cfg = cfg }",
+        "const cfg = { dsn: 'x' }\nif (import.meta.hot) { import.meta.hot.dispose(() => cfg.reset()) }",
       ],
       [
         'a dynamically imported module',
@@ -7327,58 +7339,15 @@ describe('statements: what they change (R146 amendment)', () => {
         "another module's object through a local function it calls",
         "const cfg = { dsn: 'x' }\nfunction start() { Sentry.init(cfg) }\nstart()",
       ],
+      [
+        "a declaration's own write calling a method of another module's object",
+        'const cfg = {}\ncfg.client = Sentry.getClient()',
+      ],
     ])('%s', async (_, decls) => {
       const r = await split(route(decls, 'component: () => cfg,'))
-      stays(r, decls)
-    })
-
-    // finding 5: the binding a local function it calls changes stays
-    it('a binding the route module keeps, through a local function it calls', async () => {
-      const decls =
-        "const table = createTable()\nfunction setup() { table.addColumn('x') }\nsetup()"
-      const r = await split(
-        route(decls, 'validateSearch: table.schema,\ncomponent: () => setup,'),
-      )
-      stays(r, decls)
-    })
-
-    // a local function shows what it does with what it is handed: a
-    // binding whose object its parameter changes is changed by the call
-    it.each([
-      ['with a binding it changes', 'if (on) { d.init(); fill(k) }'],
-      ['alone', 'fill(k)'],
-    ])(
-      'a binding the route module keeps, changed through a parameter of a local function it calls (%s)',
-      async (_, statement) => {
-        const decls = `const k = createTable()\nconst d = createTable()\nfunction fill(o) { o.v = 3 }\n${statement}`
-        const r = await split(
-          route(decls, 'loader: () => k,\ncomponent: () => d,'),
-        )
-        expect(r.env).toContain(statement)
-        expect(r.chunks.component).not.toContain(statement)
-      },
-    )
-
-    // a built-in that changes its argument (`Reflect.set`, as
-    // `Object.assign`) changes that binding, not the global: the statement
-    // follows the enum after the read
-    it('a binding a built-in changes, after a read of it', async () => {
-      const decls =
-        "enum E { A = 'OLD' }\nconst y = E.A\nReflect.set(E, 'A', 'NEW')"
-      const r = await split(route(decls, 'component: () => y,'))
       moves(r, decls)
     })
 
-    // a declaration's own write that changes another module's object is
-    // judged the same way
-    it("a declaration's own write calling a method of another module's object", async () => {
-      const decls = 'const reg = {}\nreg.client = Sentry.getClient()'
-      const r = await split(route(decls, 'component: () => reg,'))
-      stays(r, decls)
-    })
-  })
-
-  describe('moves with the bindings it changes: calling or passing an import changes nothing', () => {
     it.each([
       [
         'an array the component reads',
@@ -7410,18 +7379,95 @@ describe('statements: what they change (R146 amendment)', () => {
       moves(r, decls)
     })
 
-    // what it only reads may stay: the chunk imports it
-    it('a table it changes, reading a binding the route module keeps', async () => {
+    // a built-in that changes its argument (`Reflect.set`, as
+    // `Object.assign`): the statement follows the enum after the read
+    it('a built-in changing a binding after a read of it', async () => {
+      const decls =
+        "enum E { A = 'OLD' }\nconst y = E.A\nReflect.set(E, 'A', 'NEW')"
+      const r = await split(route(decls, 'component: () => y,'))
+      moves(r, decls)
+    })
+  })
+
+  describe('stays when a binding it uses stays, or it uses none that moves', () => {
+    it.each([
+      ['`Sentry.init({ dsn })`', "Sentry.init({ dsn: 'x' })"],
+      ['`i18n.use(backend)`', 'i18n.use(backend)'],
+    ])('%s', async (_, statement) => {
+      const r = await split(
+        route(
+          statement,
+          "component: () => [Sentry.lastEventId(), i18n.t('x')],",
+          "import i18n from 'i18next'\nimport backend from 'i18next-http-backend'",
+        ),
+      )
+      stays(r, statement)
+    })
+
+    // finding 5: the binding a local function it calls changes stays
+    it('a binding the route module keeps, through a local function it calls', async () => {
+      const decls =
+        "const table = createTable()\nfunction setup() { table.addColumn('x') }\nsetup()"
+      const r = await split(
+        route(decls, 'validateSearch: table.schema,\ncomponent: () => setup,'),
+      )
+      stays(r, decls)
+    })
+
+    it.each([
+      ['with a binding it changes', 'if (on) { d.init(); fill(k) }'],
+      ['alone', 'fill(k)'],
+    ])(
+      'a binding the route module keeps, handed to a local function it calls (%s)',
+      async (_, statement) => {
+        const decls = `const k = createTable()\nconst d = createTable()\nfunction fill(o) { o.v = 3 }\n${statement}`
+        const r = await split(
+          route(decls, 'loader: () => k,\ncomponent: () => d,'),
+        )
+        expect(r.env).toContain(statement)
+        expect(r.chunks.component).not.toContain(statement)
+      },
+    )
+
+    it('a binding the route module keeps that it only reads', async () => {
       const decls =
         "const LABELS = { a: 'A' }\nconst table = createTable()\ntable.addColumn(LABELS)"
       const r = await split(
         route(decls, 'loader: () => LABELS,\ncomponent: () => table,'),
       )
-      expect(r.env).toContain("const LABELS = { a: 'A' }")
-      moves(r, 'const table = createTable()\ntable.addColumn(LABELS)')
-      expect(r.chunks.component).toContain(
-        "import { LABELS } from '/app/route.tsx'",
+      stays(r, decls)
+    })
+
+    // review finding 1: an export is used outside the route module
+    it.each([
+      ['it changes', 'later(() => { flags.beta = true })'],
+      ['it reads', 'analytics.track(flags)'],
+    ])('an exported binding %s', async (_, statement) => {
+      const r = await split(
+        route(
+          `export const flags = { beta: false }\n${statement}`,
+          'component: () => flags.beta,',
+        ),
+        { extractExports: true },
       )
+      expect(r.env).toContain(statement)
+      expect(r.chunks.component).not.toContain(statement)
+    })
+
+    // review finding 7: reading bindings of two chunks, with or without a
+    // later write of one of them
+    it.each([
+      ['', 'without a later write'],
+      ['\ncfg.n = 1', 'with a later write'],
+    ])('bindings of two chunks it reads%s (%s)', async (after) => {
+      const decls = `const cfg = { n: 0 }\nconst table = { x: 1 }\nanalytics.log(table, cfg)${after}`
+      const r = await split(
+        route(decls, 'loader: () => cfg,\ncomponent: () => table.x,'),
+        { keys: ['loader', 'component'] },
+      )
+      expect(r.env).toContain('analytics.log(table, cfg)')
+      expect(r.chunks.loader).not.toContain('analytics.log')
+      expect(r.chunks.component).not.toContain('analytics.log')
     })
   })
 })
