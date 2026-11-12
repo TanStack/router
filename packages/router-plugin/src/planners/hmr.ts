@@ -286,6 +286,7 @@ export function planHmrBlock(
     ],
   })
   const groups = splitGroups(round)
+  refreshPragmas(ctx, groups)
   if (!vite) {
     chunkHmr(ctx, round, groups)
     keptReaderHmr(ctx, round, route.routeId)
@@ -310,6 +311,43 @@ function splitGroups(round: RouterRound): SplitGroups {
     }
   }
   return groups
+}
+
+/** solid-refresh's `@refresh granular|skip|reload`, React Refresh's `@refresh reset`: a whole comment. */
+const REFRESH_PRAGMA_RE = /^\s*@refresh\s+\S+\s*$/
+
+/**
+ * The refresh plugins read a `@refresh` pragma per module: a split chunk
+ * holding components carries the route file's leading ones, as written
+ * (SPEC J2.16), so its components refresh as the file asks.
+ */
+function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
+  const { file, header } = ctx.analysis
+  const first = file.program.body[header.directiveCount]
+  const end = first ? first.start : file.source.length
+  const pragmas = file.comments
+    .filter((c) => c.end <= end && REFRESH_PRAGMA_RE.test(c.value))
+    .map((c) => `${file.source.slice(c.start, c.end)}\n`)
+  if (pragmas.length === 0) {
+    return
+  }
+  for (const [groupKey, g] of groups) {
+    if (!g.component) {
+      continue
+    }
+    ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: pragmas }],
+      declares: [],
+      effectful: false,
+      anchor: { k: 'after-header' },
+      home: ctx.declareOutput({
+        kind: 'split',
+        key: groupKey,
+        derived: { kind: 'split', value: groupKey },
+      }),
+      by: ROUTER_PLANNER,
+    })
+  }
 }
 
 /**
