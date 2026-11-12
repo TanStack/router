@@ -739,7 +739,10 @@ export function dedent(s: string): string {
  * Toy Hydrate planner (Solid flavour): every `<Hydrate>…</Hydrate>` element's
  * children become a fixed-home chunk `?tss-hydrate=h<n>` whose component takes
  * `props`; captures are forwarded through the substitution environment, inner
- * boundaries first (bottom-up).
+ * boundaries first (bottom-up). A boundary the core reports a fallback for
+ * (`hydrate-writer`: the children assign a binding the module keeps) stays
+ * in place, as Start's planner keeps it, with the reason in the facts
+ * (`kept`: by key).
  */
 export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
   return {
@@ -784,8 +787,15 @@ export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
       boundaries.sort((a, b) => b.children.start - a.children.start)
       const props = ctx.names.alloc('props')
       const placeholders = new Map<number, Array<SymbolId>>() // children.start → captures of that boundary
+      const kept: Record<string, string> = {}
       boundaries.forEach((b, i) => {
         const n = boundaries.length - 1 - i
+        const fallback = ctx.fallbackAt(b.children, 'hydrate-children')
+        if (fallback) {
+          kept[`h${n}`] = fallback.reason
+          ctx.setFacts('toy-hydrate', { kept })
+          return
+        }
         const region = ctx.region(b.children, 'hydrate-children')
         const out = ctx.declareOutput({
           kind: 'hydrate',
