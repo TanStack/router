@@ -10,7 +10,8 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
+import { describe, expect, it } from 'vitest'
 import { Generator, getConfig } from '@tanstack/router-generator'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { expectValidModules, loadRoute } from './route-app'
