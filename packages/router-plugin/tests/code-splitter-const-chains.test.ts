@@ -139,4 +139,31 @@ export const Route = createFileRoute('/')({
     expect(await route.run('return renderRoute()')).toContain('MARK_DATA')
     expectNoProblems(await route.diagnostics())
   })
+
+  // Source: REVIEW-design5-final finding 5 (the handler alone was split
+  // out: the route lost the option written later)
+  it('holding one property, keeps an option written to it later, reported', async () => {
+    const route = await loadRoute(
+      `${head}const a: any = { handler: () => 'MARK_DATA' }
+const l = a
+a.staleReloadMode = 'blocking'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: l,
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
+      { fresh: true },
+    )
+    await expectValidModules(route)
+    expect(await route.run('return options.loader.staleReloadMode')).toBe(
+      'blocking',
+    )
+    expect(await route.run('return renderRoute()')).toContain('MARK_DATA')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+  })
 })

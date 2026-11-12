@@ -16,6 +16,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   diagnosticsOf,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { createApp, generate, read, rootRoute } from './app'
@@ -492,6 +493,59 @@ export const Route = createLazyFileRoute('/__root')({
   )
 })
 
+// A constructor of the other kind whose id is not a string literal: the
+// generator gives the file the constructor of its kind (a route compiler
+// waits for that repair) and reports the id it cannot keep up. Source:
+// REVIEW-design5-final finding 1 (before: left with the wrong constructor
+// for ever, and Start builds shipped its `server` code).
+describe('a constructor of the other kind with an id that is not a string literal', () => {
+  test.each([
+    {
+      name: 'createLazyFileRoute in a route file',
+      fileName: 'new.tsx',
+      from: 'createLazyFileRoute',
+      to: 'createFileRoute',
+    },
+    {
+      name: 'createFileRoute in a lazy route file',
+      fileName: 'new.lazy.tsx',
+      from: 'createFileRoute',
+      to: 'createLazyFileRoute',
+    },
+  ] as const)(
+    '$name gets the constructor of its kind, and its id is reported',
+    async ({ fileName, from, to }) => {
+      const source = `import { ${from} } from ${router}
+
+const routeId = '/new'
+export const Route = ${from}(routeId)({ component: () => 'new page' })
+`
+      const { root, file, written, diagnostics, error } = await upkeep(
+        fileName,
+        source,
+      )
+
+      const { exports, router: routerExports } = await evaluateModule(
+        written,
+        fileName,
+      )
+      expect(exports.Route).toBeInstanceOf(
+        to === 'createLazyFileRoute'
+          ? routerExports.LazyRoute
+          : routerExports.Route,
+      )
+      expect(exports.Route.options.component()).toBe('new page')
+      expect(routeCallOf(written, fileName).constructor).toBe(to)
+      expectOnlyOwnedEdits(source, written, fileName)
+      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+        severity: ['warning', 'error'],
+        file,
+        root,
+      })
+    },
+  )
+})
+
 describe('missing route constructor imports', () => {
   test.each([
     {
@@ -913,6 +967,12 @@ export const Route = createFileRoute('/old')
 export const Route = createFileRoute('/old')({})
 `,
     },
+    {
+      name: 'an aliased createFileRoute call without the options call',
+      source: `import { createFileRoute as fileRoute } from ${router}
+export const Route = fileRoute('/old')
+`,
+    },
   ])('a route file with $name is reported by name', async ({ source }) => {
     const { root, file, diagnostics, error } = await upkeep('new.tsx', source)
 
@@ -921,6 +981,36 @@ export const Route = createFileRoute('/old')({})
       file,
       root,
     })
+  })
+
+  // R130: a route made by the app's own helper gets nothing, whatever the
+  // helper is named (REVIEW-design5-final finding 3: the generator decided
+  // "the router's constructor" by the callee's name).
+  test('an app helper named createFileRoute called without an options call is left alone, nothing reported', async () => {
+    const source = `import { createFileRoute } from './-route-helper'
+export const Route = createFileRoute('/old')
+`
+    const { root, file, written, diagnostics, error } = await upkeep(
+      'new.tsx',
+      source,
+      {},
+      {
+        'src/routes/-route-helper.ts': `import { createFileRoute as routerFileRoute } from ${router}
+export const createFileRoute = (id: any) =>
+  routerFileRoute(id)({ component: () => 'new page' })
+`,
+      },
+    )
+
+    expect(error).toBeUndefined()
+    expect(written).toBe(source)
+    expect(
+      findDiagnostics(diagnostics, {
+        severity: ['warning', 'error'],
+        file,
+        root,
+      }),
+    ).toEqual([])
   })
 
   // A malformed route call (a never-fail-silently control, not a supported
