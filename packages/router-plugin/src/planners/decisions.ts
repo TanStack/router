@@ -4,11 +4,7 @@
  * `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import {
-  isExpressionWrapper,
-  unwrapExpression,
-  walk,
-} from '@tanstack/router-utils/compiler'
+import { isExpressionWrapper, walk } from '@tanstack/router-utils/compiler'
 import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
@@ -75,6 +71,8 @@ type NotSplitReason =
   | 'this-reference'
   | 'reassigned'
   | 'loader-object'
+  | 'loader-unread'
+  | 'loader-handler-replaceable'
 
 interface NotSplit {
   key: string
@@ -154,19 +152,27 @@ export function methodPrefixOf(fn: Node): string {
 type ObjectExpression = Extract<Node, { type: 'ObjectExpression' }>
 type Property = Extract<Node, { type: 'Property' }>
 
-/** The `handler` property of an object-form loader. */
-function handlerPropertyOf(object: ObjectExpression): Property | null {
+/**
+ * The `handler` property of an object-form loader (the last one written;
+ * none when that is an accessor), or `'replaceable'` when what follows it
+ * (a spread, a computed key) may give the object another handler.
+ */
+function handlerPropertyOf(
+  object: ObjectExpression,
+): Property | 'replaceable' | null {
+  let handler: Property | 'replaceable' | null = null
   for (const p of object.properties) {
     if (
       p.type === 'Property' &&
       !p.computed &&
-      p.kind === 'init' &&
       propertyKeyName(p) === 'handler'
     ) {
-      return p
+      handler = p.kind === 'init' ? p : null
+    } else if (handler !== null && (p.type !== 'Property' || p.computed)) {
+      handler = 'replaceable'
     }
   }
-  return null
+  return handler
 }
 
 /** The `handler` property of an object-form loader as the option to split. */
@@ -179,6 +185,15 @@ function handlerOption(ctx: PlanContext, handler: Property): RouteOption {
     value: handler.value,
     keyText: code.slice(handler.key.start, handler.key.end),
   }
+}
+
+/** Whether `node` is a function the compiler reads (an arrow, a function expression or declaration). */
+function isFunction(node: Node): boolean {
+  return (
+    node.type === 'ArrowFunctionExpression' ||
+    node.type === 'FunctionExpression' ||
+    node.type === 'FunctionDeclaration'
+  )
 }
 
 /** The bare value inside the wrappers around `value`, or, for a sequence, its innermost parentheses. */
@@ -197,6 +212,7 @@ function claimedValueOf(value: Node): Node {
 /** The option of a splittable key, or the `handler` of an object-form loader. */
 function splitTarget(
   ctx: PlanContext,
+  routerPackage: string,
   option: RouteOption,
 ):
   | {
@@ -221,16 +237,35 @@ function splitTarget(
     option.key === 'loader' &&
     (option.kind === 'init' || option.kind === 'shorthand')
   ) {
-    // `loader: handlers` / `{ loader }` naming a module const `{ handler }`
-    // (through a chain of consts too): the chunk exports its handler (the
-    // router calls `loader.handler`; `lazyFn` calls what the chunk exports)
+    // what the value is through a chain of consts: a function splits; an
+    // object-form loader splits its handler
     const { node: init, syms } = boundValueOf(ctx, option.value)
-    const handler =
-      syms.length > 0 && init.type === 'ObjectExpression'
-        ? handlerPropertyOf(init)
-        : null
-    if (init.type === 'ObjectExpression' && handler) {
-      if (init.properties.length === 1 && !chainWritten(ctx, syms)) {
+    if (init.type !== 'ObjectExpression' && !isFunction(init)) {
+      // an import, a call, …: a function, or an object-form loader whose
+      // options (`staleReloadMode`) the router reads from the route module
+      // before a chunk could load. A value the router never calls (a lazy
+      // wrapper, `undefined`) stays, nothing reported
+      return isFallbackLiteral(init) || isAlreadyLazy(ctx, routerPackage, init)
+        ? null
+        : { refused: 'loader-unread' }
+    }
+    if (init.type === 'ObjectExpression') {
+      const handler = handlerPropertyOf(init)
+      if (handler === null) {
+        // no `handler` the text shows (`{ ...base }`): stays in the route
+        // module, nothing reported
+        return null
+      }
+      if (handler === 'replaceable') {
+        return { refused: 'loader-handler-replaceable' }
+      }
+      if (syms.length === 0) {
+        // `loader: { handler, … }`: the handler is split inside the object
+        prop = handlerOption(ctx, handler)
+      } else if (init.properties.length === 1 && !chainWritten(ctx, syms)) {
+        // a module const `{ handler }`: the chunk exports its handler (the
+        // router calls `loader.handler`; `lazyFn` calls what the chunk
+        // exports)
         member = 'handler'
       } else if (chainSoleUse(ctx, syms)) {
         // the object holds other options (`staleReloadMode`) the router
@@ -240,16 +275,6 @@ function splitTarget(
       } else {
         return { refused: 'loader-object' }
       }
-    }
-  }
-  if (option.key === 'loader' && option.kind === 'init') {
-    const v = unwrapExpression(option.value)
-    if (v.type === 'ObjectExpression') {
-      const handler = handlerPropertyOf(v)
-      if (!handler) {
-        return null
-      }
-      prop = handlerOption(ctx, handler)
     }
   }
   const value = prop.value!
@@ -455,7 +480,7 @@ export function splitPlanOf(
       if (!option || option.value === null) {
         continue
       }
-      const target = splitTarget(ctx, option)
+      const target = splitTarget(ctx, route.routerPackage, option)
       if (!target) {
         continue
       }
@@ -615,6 +640,10 @@ function describeReason(
       return `it reads \`this\`, which a split chunk cannot keep: the router calls it without one (\`this\` is \`undefined\`), and only code calling \`Route.options.${key}()\` passes the route options. Write it without \`this\`, for example as an arrow function.`
     case 'reassigned':
       return 'its value names a binding that is reassigned, and the route keeps the value it had when it was created; a split chunk would load the latest value. Assign the binding once.'
+    case 'loader-unread':
+      return 'the compiler cannot tell whether its value is a function or an object-form loader (`{ handler, staleReloadMode }`), whose options the router reads from the route module before a split chunk could load. Write the loader in the route options (`loader: { handler, … }` for an object), or call a function from one written there: `loader: (ctx) => myLoader(ctx)`.'
+    case 'loader-handler-replaceable':
+      return 'what is written after `handler` in its object (a spread, a computed key) may replace the handler, so the compiler cannot tell what the router calls. Put the spread before `handler`: `loader: { ...options, handler }`.'
     case 'loader-object':
       return 'its value names an object with options next to `handler` that other code also reads, and only the handler of an object-form loader nothing else reads is code-split. Write the object inline in the route options (`loader: { handler, … }`), or keep what other code reads out of it.'
   }
@@ -633,7 +662,9 @@ function calledFunctionOf(
     target.member !== null && value.type === 'ObjectExpression'
       ? handlerPropertyOf(value)
       : null
-  return handler ? boundValueOf(ctx, handler.value).node : value
+  return handler !== null && handler !== 'replaceable'
+    ? boundValueOf(ctx, handler.value).node
+    : value
 }
 
 /**
