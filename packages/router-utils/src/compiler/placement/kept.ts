@@ -133,6 +133,8 @@ export function keptDeclarations(
   // (`written`). An exported declaration the env module reads (`live`)
   // would stay there without split code: nothing to report.
   const causes = new Map<ClusterId, Pin>()
+  /** Exports cancelled `live` with a violation of their own (`Roots.liveOwn`). */
+  const liveOwn: Array<{ c: ClusterId; sym: SymbolId; pin: Pin }> = []
   /** The exported causes: each binding with its own reason. */
   const exported = new Map<ClusterId, Array<{ sym: SymbolId; pin: Pin }>>()
   for (const [sym] of extractions) {
@@ -152,7 +154,16 @@ export function keptDeclarations(
       graph.regionWrittenSyms.has(sym)
         ? reassignment(sym)
         : (cancelled.get(c) ?? { reason: 'live' })
-    if (cause.reason === 'live' || lazyNeeders(c).length === 0) {
+    if (lazyNeeders(c).length === 0) {
+      continue
+    }
+    if (cause.reason === 'live') {
+      // (its own violation, reported unless a statement report names it
+      // or the env module needs it of its own: below)
+      const own = roots.liveOwn.get(c)
+      if (own !== undefined) {
+        liveOwn.push({ c, sym, pin: own })
+      }
       continue
     }
     const syms = exported.get(c)
@@ -192,7 +203,13 @@ export function keptDeclarations(
         (x) => events.statementChanges(x).clusters,
       ),
     )) {
-      if (syms.some((s) => clusters[d]!.declares.has(s))) {
+      // (the unused code itself is named as such, not as what it puts
+      // together)
+      if (
+        d === c ||
+        more.some((m) => m.c === d) ||
+        syms.some((s) => clusters[d]!.declares.has(s))
+      ) {
         continue
       }
       const cl = clusters[d]!
@@ -299,12 +316,25 @@ export function keptDeclarations(
       if (freed.length === 0) {
         continue
       }
-      const more = byPosition.filter(
-        (x) =>
-          x !== c &&
-          !done.has(x) &&
-          events.statementChanges(x).clusters.some((d) => freed.includes(d)),
-      )
+      // (and the unused code using that code: deleting `inner` alone would
+      // leave `outer`, which calls it, naming nothing)
+      const group = new Set([c])
+      for (let grown = true; grown; ) {
+        grown = false
+        for (const x of byPosition) {
+          if (
+            !group.has(x) &&
+            !done.has(x) &&
+            events
+              .statementChanges(x)
+              .clusters.some((d) => freed.includes(d) || group.has(d))
+          ) {
+            group.add(x)
+            grown = true
+          }
+        }
+      }
+      const more = byPosition.filter((x) => x !== c && group.has(x))
       for (const x of [c, ...more]) {
         done.add(x)
       }
@@ -406,6 +436,12 @@ export function keptDeclarations(
     if (!causes.has(d)) {
       mirrored.set(d, c)
       causes.set(d, pin)
+    }
+  }
+  for (const { c, sym, pin } of liveOwn) {
+    if (!causes.has(c)) {
+      causes.set(c, pin)
+      exported.set(c, [...(exported.get(c) ?? []), { sym, pin }])
     }
   }
   // what unused code keeps that the env module needs through nothing else

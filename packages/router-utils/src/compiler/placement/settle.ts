@@ -31,6 +31,8 @@ export interface Roots {
   remaining: Map<ClusterId, Candidate>
   /** Why each cancelled candidate stays in the env module (`live`, `reads`, `state`, `unneeded`), taken when it was cancelled. */
   cancelled: Map<ClusterId, Pin>
+  /** Of a candidate cancelled `live`, its own violation (V, O), if any: reported when nothing else names it (the env module may evaluate it only for code kept because of it, placement-exec seed 10112). */
+  liveOwn: Map<ClusterId, Pin>
   /** The extracted candidates a chunk copies instead of importing their module. */
   copied: Set<ClusterId>
   /** The clusters whose evaluation time matters that leave the env module with their only needer. */
@@ -321,23 +323,37 @@ export function settleRoots(
     let at: number | undefined
     let split = false
     // the statement naming the binding: its own, else one of a cluster it
-    // follows (`track(flags)` reaches `base` through `flags.base = base`,
-    // which names it: recheck finding 3), else the first reaching it
+    // follows naming it when it evaluates (`track(flags)` reaches `base`
+    // through `flags.base = base`: recheck finding 3; not a function's body,
+    // which runs where it is called), else the first reaching it
     const statementsOf = (x: ClusterId) =>
       clusters[x]!.units.filter((u) => {
         const kind = t1.units[u]!.kind
-        return kind === 'effect' || kind === 'declaration'
+        // (of a cluster it follows, a statement: not a declaration)
+        return kind === 'effect' || (x === c && kind === 'declaration')
       })
     const names =
       sym === undefined
         ? undefined
-        : [c, ...changes.clusters]
+        : [
+            c,
+            // (not the binding's own cluster: its statements need not use
+            // what `c` changes)
+            ...changes.clusters.filter((x) => x !== d),
+          ]
             .flatMap(statementsOf)
             .find(
               (u) =>
                 (events.unitChanges(u).syms.includes(sym) ||
                   events.unitChanges(u).reads.includes(sym)) &&
-                t1.refs.refsIn(t1.units[u]!.range).some((r) => r.sym === sym),
+                t1.refs
+                  .refsIn(t1.units[u]!.range)
+                  .some(
+                    (r) =>
+                      r.sym === sym &&
+                      (r.eager ||
+                        graph.clusterOfRegion.get(t1.units[u]!.region) === c),
+                  ),
             )
     for (const u of names === undefined ? cl.units : [names]) {
       const unit = t1.units[u]!
@@ -844,6 +860,7 @@ export function settleRoots(
   // (P5), and every decision was taken over the final env roots.
   const pinnedNeeded = new Map<ClusterId, Pin>()
   const cancelled = new Map<ClusterId, Pin>()
+  const liveOwn = new Map<ClusterId, Pin>()
   // derived reach changes only with the candidates still extracted, or when
   // a cluster a derived output reaches becomes an env root (it then reads
   // what it evaluates in the env module)
@@ -937,6 +954,32 @@ export function settleRoots(
         judge(c)
       }
       rejudge.clear()
+      derivedStale = true
+      continue
+    }
+    // a member the env module came to evaluate (a reader of it pinned
+    // there: the module would run its later writes first, seed 12263), or
+    // reading, at load, what the env module came to keep (an export
+    // cancelled after it joined, seed 10112), leaves the module: judged
+    // again below, as any cluster
+    // (a follower is judged again: what it follows decides)
+    let left = false
+    for (const [m, to] of members) {
+      if (
+        liveEnv.has(m) ||
+        readsKept(m) !== undefined ||
+        (!followers.has(m) && events.volatile(m) !== undefined)
+      ) {
+        members.delete(m)
+        pinned.delete(m)
+        derivedRoots.get(to)?.delete(m)
+        if (followers.has(m)) {
+          rejudge.add(m)
+        }
+        left = true
+      }
+    }
+    if (left) {
       derivedStale = true
       continue
     }
@@ -1120,6 +1163,13 @@ export function settleRoots(
         continue
       }
       cancelled.set(c, pin)
+      if (pin.reason === 'live' && needed.has(c)) {
+        const own =
+          events.volatile(c) ?? events.writeConflict(c, e.output, slotOf)
+        if (own !== undefined) {
+          liveOwn.set(c, own)
+        }
+      }
       remaining.delete(c)
       envRoots.add(c)
       for (const k of e.companions) {
@@ -1158,6 +1208,7 @@ export function settleRoots(
     derivedReach,
     remaining,
     cancelled,
+    liveOwn,
     copied: new Set([...remaining.keys()].filter(copies)),
     movable,
     pinnedNeeded,
