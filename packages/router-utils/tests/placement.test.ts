@@ -2929,6 +2929,40 @@ describe('route-module specifics (lane router)', () => {
     }
   })
 
+  // (careflow-clinic-compass: an unused step component reading an
+  // extracted export and the page's helpers) an extracted export is read by
+  // importing its module, wherever the reader goes: it decides nothing
+  it('moves an unused function reading an extracted export with the chunk; the export stays extracted', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          export function Shell() { return 'shell' }
+          function Avatar() { return 'avatar' }
+          function Page() { return Shell() + Avatar() }
+          function Unused() { return Shell() + Avatar() }
+          export const Route = createFileRoute('/')({ component: Page })
+        `),
+      },
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const r = await host.compile('/app/route.tsx', planners, env)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      env,
+    )
+    expect(r?.code).toContain(
+      "export { Shell } from '/app/route.tsx?tsr-split=export---Shell'",
+    )
+    expect(r?.code).not.toContain('function Unused')
+    expect(chunk?.code).toContain('function Unused()')
+    expect(r?.diagnostics).toEqual([])
+  })
+
   it('treats a var declared in a for head as a binding of that statement', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
