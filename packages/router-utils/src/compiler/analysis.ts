@@ -1712,6 +1712,8 @@ export function visitRuns(
   calls: EvaluatedCalls | null,
   bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
   visit: (ref: ClassifiedRef, at: number) => boolean,
+  /** Sees each body or value text the walk enters (`MutationModel.visitValues`). */
+  entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
 ): boolean {
   /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
   const roots: Array<ClassifiedRef> = []
@@ -1734,7 +1736,7 @@ export function visitRuns(
   }
   return (
     roots.length > 0 &&
-    t1.mutation.visitValues(roots, calls === null, bodyOf, visit)
+    t1.mutation.visitValues(roots, calls === null, bodyOf, visit, null, entered)
   )
 }
 

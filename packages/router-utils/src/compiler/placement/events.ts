@@ -187,33 +187,20 @@ export function eventTable(
     c: ClusterId,
     visit: (t: Touch) => boolean,
   ): boolean => {
-    const stop = reads.runs(r, (ref, at) => {
-      if (NEED_KINDS.has(ref.kind) && symbols.isModuleLevel(ref.sym)) {
-        const d = clusterOfSym.get(ref.sym)
-        if (d !== undefined && d !== c) {
-          return visit({ sym: ref.sym, at, cluster: d })
-        }
-      }
-      return false
-    })
-    if (stop) {
-      return true
+    const touch = (sym: SymbolId, at: number): boolean => {
+      const d = clusterOfSym.get(sym)
+      return d !== undefined && d !== c && visit({ sym, at, cluster: d })
     }
-    // what its generated text names, where that text evaluates at load
-    for (const g of reads.generatedNames(r)) {
-      if (!symbols.isModuleLevel(g.sym) || t1.isLazyAt(g.at)) {
-        continue
-      }
-      const d = clusterOfSym.get(g.sym)
-      if (
-        d !== undefined &&
-        d !== c &&
-        visit({ sym: g.sym, at: g.at, cluster: d })
-      ) {
-        return true
-      }
-    }
-    return false
+    // (and what the generated text of what it runs names: a server fn a
+    // planner moved out of a body it calls)
+    return reads.runs(
+      r,
+      (ref, at) =>
+        NEED_KINDS.has(ref.kind) &&
+        symbols.isModuleLevel(ref.sym) &&
+        touch(ref.sym, at),
+      (g, at) => symbols.isModuleLevel(g.sym) && touch(g.sym, at),
+    )
   }
   function touches(c: ClusterId, visit: (t: Touch) => boolean): boolean {
     for (const r of clusters[c]!.regions) {
