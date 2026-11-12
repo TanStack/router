@@ -634,17 +634,25 @@ describe('Solid (J5.2)', () => {
 })
 
 describe('module-level code the children use', () => {
-  it('rejects children that assign a module binding the parent also uses', async () => {
-    const code = `${REACT}let clicks = 0
-export function bump() { clicks++ }
+  // (an exported `let`: the module keeps it for its importers)
+  it.each([
+    ['a function', 'let clicks = 0\nexport function bump() { clicks++ }'],
+    ['its importers', 'export let clicks = 0'],
+  ])(
+    'rejects children that assign a module binding the parent also uses (%s)',
+    async (_, decls) => {
+      const code = `${REACT}${decls}
 export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hydrate>
 `
-    const client = await compile(code)
-    expect(client.errors).toEqual([
-      { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
-    ])
-    expect(client.chunks).toEqual({})
-  })
+      for (const env of [clientEnv, buildClientEnv]) {
+        const client = await compile(code, { env })
+        expect(client.errors).toEqual([
+          { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
+        ])
+        expect(client.chunks).toEqual({})
+      }
+    },
+  )
 
   // (Adjusted: in a build the exported writer and its state are an extracted
   // export only the chunk needs, so the live binding's home is that output,

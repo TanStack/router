@@ -134,6 +134,32 @@ describe('clusters and the single-writer rule', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
+  // the same rule for a `<Hydrate>` boundary: its chunk cannot assign the
+  // exported `let` the module keeps for its importers, so the boundary
+  // stays in place, as Start's planner keeps it (and reports it) on the
+  // core's `hydrate-writer` fallback
+  it.each(['build', 'dev'] as const)(
+    'keeps a <Hydrate> boundary whose children assign an exported let in place (hydrate-writer, %s)',
+    async (mode) => {
+      const code = dedent(`
+        import { Hydrate } from 'toy-start'
+        export let count = 0
+        export function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }
+      `)
+      const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
+      const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
+        env: envInfo({ mode }),
+      })
+      expect(out!.facts.planners['toy-hydrate']).toEqual({
+        kept: { h0: 'hydrate-writer' },
+      })
+      expect(out!.code).toContain(
+        'export let count = 0\nexport function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }',
+      )
+      expect(out!.code).not.toContain('tss-hydrate')
+    },
+  )
+
   // the same rule for a component declared on its own: a top-level writer
   // joins the binding it writes, which the route module keeps for its
   // other reader, so the option would only re-export it from there
@@ -8463,6 +8489,21 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       "Sentry.setContext('flags', flags)",
       'move `flags` and the statements using it when the module loads to their own module',
     )
+    // that fix, applied: the route module re-exports `flags` from its own
+    // module, and nothing is reported
+    const own = await report(
+      route(
+        "import { flags } from './flags'\nconst base = make()\nexport { flags }",
+        'beforeLoad: () => base, component: () => { flags.base = base; return flags }',
+      ),
+      undefined,
+      {
+        '/app/flags.ts': `import * as Sentry from '@sentry/react'\nexport const flags = { beta: false }\nSentry.setContext('flags', flags)\n`,
+      },
+      true,
+    )
+    expect(own.diagnostics).toEqual([])
+    expect(own.chunks.component).toContain('flags.base = base')
   })
 
   // (the statement itself when only a function it calls names the binding,
