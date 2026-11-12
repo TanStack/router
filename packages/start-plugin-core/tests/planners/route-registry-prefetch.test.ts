@@ -53,7 +53,7 @@ function setup(
   const routes: NonNullable<HostServices['routes']> = {
     lookup: (path) =>
       path in entries
-        ? { routeId: path, routerConstructor: entries[path]! }
+        ? { routeId: path, kind: 'file', routerConstructor: entries[path]! }
         : null,
     digestFor: (path) =>
       path in entries

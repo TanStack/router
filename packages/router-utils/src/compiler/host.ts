@@ -189,9 +189,12 @@ export function fileModifiedAt(path: string): Promise<number | null> {
  * the file.
  */
 export interface RouteRegistry {
-  lookup: (
-    path: string,
-  ) => { routeId: string; routerConstructor?: boolean } | null
+  lookup: (path: string) => {
+    routeId: string
+    /** The file's kind in the route tree. */
+    kind: 'root' | 'file' | 'lazy'
+    routerConstructor?: boolean
+  } | null
   digestFor: (path: string) => string | null
 }
 

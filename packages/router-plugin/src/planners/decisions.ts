@@ -9,18 +9,17 @@ import {
   unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
+import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
 import {
   boundValueOf,
-  declaratorOf,
+  chainSoleUse,
   identifierSymbol,
   isAlreadyLazy,
-  isExportedSymbol,
   isFallbackLiteral,
   liveInEnv,
-  propertyKeyName,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
@@ -122,7 +121,7 @@ function effectiveGroupings(
   if (route.fileGroupings) {
     return route.fileGroupings
   }
-  if (cfg.splitBehavior && route.routeId !== null) {
+  if (cfg.splitBehavior) {
     const fromPlugin = cfg.splitBehavior({ routeId: route.routeId })
     if (fromPlugin) {
       const problem = groupingsProblem(fromPlugin)
@@ -221,18 +220,18 @@ function splitTarget(
     option.key === 'loader' &&
     (option.kind === 'init' || option.kind === 'shorthand')
   ) {
-    // `loader: handlers` / `{ loader }` naming a module const `{ handler }`:
-    // the chunk exports its handler (the router calls `loader.handler`;
-    // `lazyFn` calls what the chunk exports)
-    const sym = identifierSymbol(ctx, option.value)
-    const decl = sym !== null ? declaratorOf(ctx, sym) : null
-    const init = decl ? unwrapExpression(decl.init) : null
+    // `loader: handlers` / `{ loader }` naming a module const `{ handler }`
+    // (through a chain of consts too): the chunk exports its handler (the
+    // router calls `loader.handler`; `lazyFn` calls what the chunk exports)
+    const { node: init, syms } = boundValueOf(ctx, option.value)
     const handler =
-      init && init.type === 'ObjectExpression' ? handlerPropertyOf(init) : null
-    if (init?.type === 'ObjectExpression' && handler) {
+      syms.length > 0 && init.type === 'ObjectExpression'
+        ? handlerPropertyOf(init)
+        : null
+    if (init.type === 'ObjectExpression' && handler) {
       if (init.properties.length === 1) {
         member = 'handler'
-      } else if (ctx.t1.refs.refsOf(sym!).length === 1) {
+      } else if (chainSoleUse(ctx, syms)) {
         // the object holds other options (`staleReloadMode`) the router
         // reads from the route module: the handler is split inside the
         // object, which stays as the route's loader
@@ -318,12 +317,14 @@ function hidesNoDeletedOption(
     option.kind === 'spread'
       ? option.value
       : (option.prop as { key?: Node }).key
-  const sym = ref ? identifierSymbol(ctx, ref) : null
-  const decl = sym !== null ? declaratorOf(ctx, sym) : null
-  if (!decl) {
+  if (!ref) {
     return false
   }
-  const init = unwrapExpression(decl.init)
+  // a module const, or a chain of consts naming one (I4)
+  const { node: init, syms } = boundValueOf(ctx, ref)
+  if (syms.length === 0) {
+    return false
+  }
   if (option.kind !== 'spread') {
     return (
       init.type === 'Literal' &&
@@ -331,11 +332,7 @@ function hidesNoDeletedOption(
       !deleteNodes.has(init.value)
     )
   }
-  if (
-    init.type !== 'ObjectExpression' ||
-    ctx.t1.refs.refsOf(sym!).length !== 1 ||
-    isExportedSymbol(ctx, sym!)
-  ) {
+  if (init.type !== 'ObjectExpression' || !chainSoleUse(ctx, syms)) {
     return false
   }
   return (init.properties as Array<Node>).every((p) => {
@@ -459,7 +456,10 @@ export function splitPlanOf(
         })
         continue
       }
-      if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
+      if (
+        isFallbackLiteral(target.value) ||
+        isAlreadyLazy(ctx, route.routerPackage, target.value)
+      ) {
         continue
       }
       if (readsOwnThis(ctx, calledFunctionOf(ctx, target))) {
@@ -617,12 +617,12 @@ function calledFunctionOf(
   ctx: PlanContext,
   target: { value: Node; member: string | null },
 ): Node {
-  const value = boundValueOf(ctx, target.value)
+  const { node: value } = boundValueOf(ctx, target.value)
   const handler =
     target.member !== null && value.type === 'ObjectExpression'
       ? handlerPropertyOf(value)
       : null
-  return handler ? boundValueOf(ctx, handler.value) : value
+  return handler ? boundValueOf(ctx, handler.value).node : value
 }
 
 /**

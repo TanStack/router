@@ -396,6 +396,102 @@ export const Route = createFileRoute('/new')({})
   )
 })
 
+// R144: a route file holding the constructor of the other kind of route
+// file (a root constructor in a route file, a file route constructor in the
+// root route file) is repaired to the constructor of its kind, as
+// `createLazyFileRoute` in a route file is: the generator's verdict is the
+// one every compiler reads, and the file a normal route of its kind.
+describe('route constructors of the root and of file routes', () => {
+  test.each([
+    {
+      name: 'createRootRoute',
+      source: `import { createRootRoute } from ${router}
+
+export const Route = createRootRoute({ component: () => 'new page' })
+`,
+      call: 'createRootRoute(',
+    },
+    {
+      name: 'createRootRouteWithContext',
+      source: `import { createRootRouteWithContext } from ${router}
+
+interface RouterContext {
+  user?: string
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: () => 'new page',
+})
+`,
+      call: 'createRootRouteWithContext<RouterContext>()',
+    },
+  ])(
+    'a route file created with $name gets createFileRoute with its id',
+    async ({ source, call }) => {
+      const { written, routes, error } = await upkeep('new.tsx', source)
+
+      expect(error).toBeUndefined()
+      await expectRouteFile(written, {
+        id: '/new',
+        // (the same file with the file route's call, as far as the
+        // generator's edits go)
+        source: source.replace(
+          call,
+          call.endsWith('(')
+            ? `createFileRoute('/new')(`
+            : `createFileRoute('/new')`,
+        ),
+      })
+      const { exports } = await evaluateModule(written)
+      expect(exports.Route.options.component()).toBe('new page')
+      expect(routes).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/new': 'routes/new.tsx',
+      })
+    },
+  )
+
+  test.each([
+    {
+      name: 'createFileRoute',
+      source: `import { createFileRoute } from ${router}
+
+export const Route = createFileRoute('/')({ component: () => 'root page' })
+`,
+      call: `createFileRoute('/')`,
+    },
+    {
+      name: 'createLazyFileRoute',
+      source: `import { createLazyFileRoute } from ${router}
+
+export const Route = createLazyFileRoute('/__root')({
+  component: () => 'root page',
+})
+`,
+      call: `createLazyFileRoute('/__root')`,
+    },
+  ])(
+    'a root route file created with $name gets createRootRoute',
+    async ({ source, call }) => {
+      const root = await createApp({ 'src/routes/__root.tsx': source })
+      const { generatedRouteTree } = await generate(root)
+      const written = await read(root, 'src/routes/__root.tsx')
+
+      const { exports, router: routerExports } = await evaluateModule(written)
+      expect(exports.Route).toBeInstanceOf(routerExports.RootRoute)
+      expect(exports.Route.options.component()).toBe('root page')
+      expect(routeCallOf(written)).toEqual({
+        constructor: 'createRootRoute',
+        id: undefined,
+      })
+      expectOnlyOwnedEdits(source.replace(call, 'createRootRoute'), written)
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+      })
+    },
+  )
+})
+
 describe('missing route constructor imports', () => {
   test.each([
     {

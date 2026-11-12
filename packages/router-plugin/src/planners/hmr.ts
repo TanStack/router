@@ -98,7 +98,8 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     const isSplit = split.has(key)
     if (
       option.kind !== 'method' &&
-      (isFallbackLiteral(value) || isAlreadyLazy(ctx, value))
+      (isFallbackLiteral(value) ||
+        isAlreadyLazy(ctx, round.route.routerPackage, value))
     ) {
       continue
     }
@@ -201,7 +202,7 @@ export function planHmrBlock(
   // options the compiler can't read may be one object shared across
   // evaluations, which the route adopts: a second evaluation can't take it, so
   // an edit reloads the page (J2.8)
-  if (route.routeId === null || route.options.kind === 'opaque') {
+  if (route.options.kind === 'opaque') {
     return
   }
   const { names } = ctx

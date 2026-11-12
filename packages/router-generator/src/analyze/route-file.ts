@@ -1,16 +1,15 @@
 import { parse } from 'yuku'
 import { unwrap } from 'yuku/utils'
 import { lit } from '../print/style'
+import { propertyKeyName, routeCallOf } from './route-call'
+import type {
+  RouteCall,
+  RouteConstructorName,
+  RouteFileKind,
+} from './route-call'
 import type { CodeStyle } from '../print/style'
 import type { RouteProps } from '../types'
 import type { CallExpression, Expression, Node, SourceFile } from 'yuku'
-
-type RouteConstructorName = 'createFileRoute' | 'createLazyFileRoute'
-
-const routeConstructors: ReadonlyArray<string> = [
-  'createFileRoute',
-  'createLazyFileRoute',
-]
 
 /** A problem in a route file, at a position of its source. */
 export interface FileDiagnostic {
@@ -37,10 +36,10 @@ export type RouteFileAnalysis =
       props: RouteProps
       /**
        * Whether `Route` is made by something other than the router package's
-       * `createFileRoute`/`createLazyFileRoute` (checked by binding): the
-       * app's own constructor or factory, a re-export, an import. A compiler
-       * may take the router's own route as a value it knows (no Start value)
-       * without reading the file; a foreign one it must read.
+       * route constructor (`routeCallOf`): the app's own constructor or
+       * factory, a re-export, an import. A compiler may take the router's
+       * own route as a value it knows (no Start value) without reading the
+       * file; a foreign one it must read.
        */
       foreign: boolean
       diagnostics: Array<FileDiagnostic>
@@ -49,8 +48,8 @@ export type RouteFileAnalysis =
 interface RouteFileExpectation {
   /** The route id the file's location implies. */
   routeId: string
-  /** Whether the file is a `.lazy` route file (`createLazyFileRoute`). */
-  lazy: boolean
+  /** The file's kind (`createRootRoute`, `createFileRoute`, `createLazyFileRoute`). */
+  kind: RouteFileKind
   /** The router package the constructor comes from (`@tanstack/react-router`). */
   routerPackage: string
   /** The style of an import the file gets, when it has no import to copy it from. */
@@ -107,17 +106,6 @@ function errorsOf(file: SourceFile): Array<FileDiagnostic> {
     .map((d) => diagnosticAt(file, d.start, d.message))
 }
 
-/**
- * The errors of a route file the generator reads but never edits (the root
- * route): it parses when there are none.
- */
-export function routeFileErrors(
-  source: string,
-  filePath: string,
-): Array<FileDiagnostic> {
-  return errorsOf(parseRouteFile(source, filePath))
-}
-
 function diagnosticAt(
   file: SourceFile,
   offset: number,
@@ -139,103 +127,15 @@ function propsOf(options: Node | undefined): RouteProps {
   const known = new Set<string>()
   let unknown = false
   for (const property of object.properties) {
-    if (property.type !== 'Property') {
-      // A spread: any key
+    const key = propertyKeyName(property)
+    if (key === null) {
+      // a spread or a computed key: any key
       unknown = true
-      continue
-    }
-    const keyNode = property.key as Node
-    if (!property.computed && keyNode.type === 'Identifier') {
-      known.add((keyNode as { name: string }).name)
-    } else if (
-      keyNode.type === 'Literal' &&
-      typeof (keyNode as { value: unknown }).value === 'string'
-    ) {
-      known.add((keyNode as { value: string }).value)
-    } else if (
-      !property.computed &&
-      keyNode.type === 'Literal' &&
-      typeof (keyNode as { value: unknown }).value === 'number'
-    ) {
-      known.add(String((keyNode as { value: number }).value))
     } else {
-      unknown = true
+      known.add(key)
     }
   }
   return { known, unknown }
-}
-
-/**
- * How the file creates its Route, found through the binding of the
- * constructor (SPEC G15): the router package's constructor under any local
- * name or through a namespace import (`ours`), an unbound
- * `createFileRoute`/`createLazyFileRoute` (`repair`: the import is missing),
- * or anything else (`foreign`: the app's own constructor or factory).
- */
-type CalleeKind =
-  | { kind: 'ours'; name: RouteConstructorName; specifier?: Node }
-  | { kind: 'ours-namespace'; name: RouteConstructorName; property: Node }
-  | { kind: 'repair'; name: RouteConstructorName }
-  | { kind: 'foreign' }
-
-function classifyCallee(
-  file: SourceFile,
-  callee: Node,
-  routerPackage: string,
-): CalleeKind {
-  if (callee.type === 'Identifier') {
-    const name = (callee as { name: string }).name
-    const binding = file.referenceOf(callee)?.binding ?? null
-    if (!binding) {
-      return routeConstructors.includes(name)
-        ? { kind: 'repair', name: name as RouteConstructorName }
-        : { kind: 'foreign' }
-    }
-    const imported = binding.import
-    if (
-      imported &&
-      imported.kind === 'named' &&
-      !imported.typeOnly &&
-      imported.specifier === routerPackage &&
-      imported.name !== null &&
-      routeConstructors.includes(imported.name)
-    ) {
-      return {
-        kind: 'ours',
-        name: imported.name as RouteConstructorName,
-        specifier: imported.node,
-      }
-    }
-    return { kind: 'foreign' }
-  }
-  if (
-    callee.type === 'MemberExpression' &&
-    !(callee as { computed: boolean }).computed
-  ) {
-    const { object, property } = callee as unknown as {
-      object: Node
-      property: Node & { name: string }
-    }
-    if (
-      object.type === 'Identifier' &&
-      routeConstructors.includes(property.name)
-    ) {
-      const imported = file.referenceOf(object)?.binding?.import
-      if (
-        imported &&
-        imported.kind === 'namespace' &&
-        !imported.typeOnly &&
-        imported.specifier === routerPackage
-      ) {
-        return {
-          kind: 'ours-namespace',
-          name: property.name as RouteConstructorName,
-          property,
-        }
-      }
-    }
-  }
-  return { kind: 'foreign' }
 }
 
 /** A callee as written (`createFileRoute`, `R.createFileRoute`). */
@@ -328,101 +228,39 @@ export function analyzeRouteFile(
     return { kind: 'error', diagnostics: errors }
   }
 
-  const routeExport = file.exports.find(
-    (e) => e.name === 'Route' && !e.typeOnly,
-  )
-  if (!routeExport) {
+  const call = routeCallOf(file, expected)
+  if (call.kind === 'none') {
     return { kind: 'no-route' }
   }
-  // Not a route this file creates (re-exported, imported, destructured,
-  // a function...): left as it is.
-  const notOurs = (diagnostics: Array<FileDiagnostic> = []) =>
-    ({
+  if (call.kind === 'foreign') {
+    // Not a route this file creates (re-exported, imported, destructured,
+    // the app's own route helper...): left as it is.
+    return {
       kind: 'route',
       output: null,
       props: unknownProps,
       foreign: true,
-      diagnostics,
-    }) as const
-
-  const binding = routeExport.kind === 'named' ? routeExport.local : null
-  const declaredName = binding?.declarations[0]
-  const declarator = declaredName ? file.parentOf(declaredName) : null
-  if (
-    !declarator ||
-    declarator.type !== 'VariableDeclarator' ||
-    (declarator as { id: Node }).id !== declaredName
-  ) {
-    return notOurs()
-  }
-  const init = unwrap(
-    (declarator as { init: Expression | null }).init ?? undefined,
-  )
-  if (init?.type !== 'CallExpression') {
-    return notOurs()
-  }
-
-  // `createFileRoute('/id')(options)`, or the malformed
-  // `createFileRoute(options)`
-  const outer = init
-  const innerCallee = unwrap(outer.callee)
-  let callee: Node
-  let idCall: CallExpression | undefined
-  let options: Node | undefined
-  if (
-    innerCallee.type === 'CallExpression' &&
-    classifyCallee(file, unwrap(innerCallee.callee), expected.routerPackage)
-      .kind !== 'foreign'
-  ) {
-    idCall = innerCallee
-    callee = unwrap(idCall.callee)
-    options = outer.arguments[0]
-  } else if (
-    classifyCallee(file, innerCallee, expected.routerPackage).kind !==
-      'foreign' &&
-    !isStringLiteral(outer.arguments[0])
-  ) {
-    callee = innerCallee
-    options = outer.arguments[0]
-  } else {
-    // The app's own constructor or route factory: its route is left as the
-    // app makes it. Its id is not kept up, which the user is told when it
-    // visibly differs.
-    const inner = innerCallee.type === 'CallExpression' ? innerCallee : outer
-    const idArg = inner.arguments[0]
-    if (isStringLiteral(idArg) && idArg.value !== expected.routeId) {
-      const reason =
-        inner === outer
-          ? // `createFileRoute('/id')` without the options call
-            `calls ${calleeName(innerCallee)}(${JSON.stringify(idArg.value)}) without route options (\`${calleeName(innerCallee)}(${JSON.stringify(expected.routeId)})({ ... })\`)`
-          : isTypeOnlyImport(file, unwrap(inner.callee))
-            ? `uses ${calleeName(unwrap(inner.callee))}, imported as a type only`
-            : `is not created by createFileRoute/createLazyFileRoute of ${expected.routerPackage}`
-      return notOurs([
-        diagnosticAt(
-          file,
-          idArg.start,
-          `The \`Route\` export ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
-        ),
-      ])
+      diagnostics:
+        expected.kind === 'root'
+          ? []
+          : foreignCallDiagnostics(file, call.call, expected),
     }
-    return notOurs()
   }
 
-  const calleeKind = classifyCallee(file, callee, expected.routerPackage)
-  if (calleeKind.kind === 'foreign') {
-    return notOurs()
-  }
-  const props = propsOf(options)
+  const props = propsOf(call.options)
   const splices: Array<Splice> = []
   const quoteOf = (node: Node) => {
     const first = source[node.start]
     return first === '"' || first === "'" ? first : expected.style.quote
   }
+  const { callee, idCall } = call
 
   // The id argument
-  let idText = ''
-  if (idCall) {
+  if (
+    expected.kind !== 'root' &&
+    idCall &&
+    call.constructor !== 'createRootRouteWithContext'
+  ) {
     const idArg = idCall.arguments[0]
     if (!idArg) {
       // `createFileRoute()`: the id goes between the parentheses
@@ -470,33 +308,61 @@ export function analyzeRouteFile(
         ],
       }
     }
-  } else {
-    // Malformed `createFileRoute(options)`: repaired into the curried call
-    idText = `(${lit(expected.routeId, expected.style.quote)})`
   }
 
-  // The constructor of the file's kind
-  const wanted: RouteConstructorName = expected.lazy
-    ? 'createLazyFileRoute'
-    : 'createFileRoute'
+  // The constructor of the file's kind (R144: a root constructor in a route
+  // file and a file route constructor in the root route file too)
+  const wanted: RouteConstructorName =
+    expected.kind === 'root'
+      ? 'createRootRoute'
+      : expected.kind === 'lazy'
+        ? 'createLazyFileRoute'
+        : 'createFileRoute'
+  const keeps =
+    call.constructor === wanted ||
+    (expected.kind === 'root' &&
+      call.constructor === 'createRootRouteWithContext')
   let calleeText = source.slice(callee.start, callee.end)
-  if (calleeKind.kind === 'ours-namespace') {
-    if (calleeKind.name !== wanted) {
-      const { property } = calleeKind
+  if (!keeps || isUnbound(call)) {
+    if (call.property) {
+      const { property } = call
       calleeText =
         source.slice(callee.start, property.start) +
         wanted +
         source.slice(property.end, callee.end)
+    } else {
+      calleeText = bindConstructor(file, source, expected, wanted, call, {
+        splices,
+        callee,
+      })
     }
-  } else if (calleeKind.kind === 'repair' || calleeKind.name !== wanted) {
-    calleeText = bindConstructor(file, source, expected, wanted, calleeKind, {
-      splices,
-      callee,
-    })
   }
-  calleeText += idText
-  if (calleeText !== source.slice(callee.start, callee.end)) {
-    splices.push({ start: callee.start, end: callee.end, text: calleeText })
+  const idText = `(${lit(expected.routeId, expected.style.quote)})`
+  if (expected.kind === 'root') {
+    if (!keeps) {
+      // `createFileRoute('/x')(options)` and `createFileRoute(options)`:
+      // `createRootRoute(options)`
+      const replaced = idCall ?? callee
+      splices.push({
+        start: replaced.start,
+        end: replaced.end,
+        text: calleeText,
+      })
+    }
+  } else if (call.constructor === 'createRootRouteWithContext' && idCall) {
+    // `createRootRouteWithContext<C>()(options)`: `createFileRoute('/x')(options)`
+    splices.push({
+      start: idCall.start,
+      end: idCall.end,
+      text: calleeText + idText,
+    })
+  } else {
+    // (a call without an id call, `createFileRoute(options)` or
+    // `createRootRoute(options)`, is repaired into the curried call)
+    const text = idCall ? calleeText : calleeText + idText
+    if (text !== source.slice(callee.start, callee.end)) {
+      splices.push({ start: callee.start, end: callee.end, text })
+    }
   }
 
   return {
@@ -506,6 +372,63 @@ export function analyzeRouteFile(
     foreign: false,
     diagnostics: [],
   }
+}
+
+/**
+ * What the generator tells about a `Route` it does not keep up, when it is
+ * the router's own constructor misused (SPEC J1.1): called without the
+ * options call, or imported as a type only. A route made by the app's own
+ * helper gets nothing (R130).
+ */
+function foreignCallDiagnostics(
+  file: SourceFile,
+  outer: CallExpression | null,
+  expected: RouteFileExpectation,
+): Array<FileDiagnostic> {
+  if (!outer) {
+    return []
+  }
+  const innerCallee = unwrap(outer.callee)
+  const inner = innerCallee.type === 'CallExpression' ? innerCallee : outer
+  const idArg = inner.arguments[0]
+  if (!isStringLiteral(idArg) || idArg.value === expected.routeId) {
+    return []
+  }
+  const callee = unwrap(inner.callee)
+  let reason: string
+  if (inner === outer && isConstructorName(callee)) {
+    // `createFileRoute('/id')` without the options call
+    reason = `calls ${calleeName(innerCallee)}(${JSON.stringify(idArg.value)}) without route options (\`${calleeName(innerCallee)}(${JSON.stringify(expected.routeId)})({ ... })\`)`
+  } else if (inner !== outer && isTypeOnlyImport(file, callee)) {
+    reason = `uses ${calleeName(callee)}, imported as a type only`
+  } else {
+    return []
+  }
+  return [
+    diagnosticAt(
+      file,
+      idArg.start,
+      `The \`Route\` export ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
+    ),
+  ]
+}
+
+/** Whether the route's constructor is called without an import (the generator adds it). */
+function isUnbound(call: Extract<RouteCall, { kind: 'ours' }>) {
+  return call.specifier === null && call.property === null
+}
+
+/** Whether a callee is named like the router's file route constructors (`createFileRoute`, `R.createLazyFileRoute`). */
+function isConstructorName(callee: Node) {
+  const name =
+    callee.type === 'MemberExpression' && !callee.computed
+      ? callee.property.type === 'Identifier'
+        ? callee.property.name
+        : null
+      : callee.type === 'Identifier'
+        ? callee.name
+        : null
+  return name === 'createFileRoute' || name === 'createLazyFileRoute'
 }
 
 /**
@@ -520,7 +443,7 @@ function bindConstructor(
   source: string,
   expected: RouteFileExpectation,
   wanted: RouteConstructorName,
-  calleeKind: CalleeKind,
+  call: Extract<RouteCall, { kind: 'ours' }>,
   { splices, callee }: { splices: Array<Splice>; callee: Node },
 ): string {
   const existing = file.imports.find(
@@ -541,8 +464,8 @@ function bindConstructor(
       (reference) => reference.name === name && reference.node !== callee,
     )
 
-  if (calleeKind.kind === 'ours' && calleeKind.specifier) {
-    const specifier = calleeKind.specifier as Node & {
+  if (call.specifier) {
+    const specifier = call.specifier as Node & {
       imported: Node & { type: string }
       local: Node & { name: string }
     }
@@ -568,8 +491,8 @@ function bindConstructor(
 
   let local: string = wanted
   if (
-    calleeKind.kind !== 'repair' ||
-    calleeKind.name !== wanted ||
+    !isUnbound(call) ||
+    call.constructor !== wanted ||
     file.rootScope.lookup(wanted) !== null
   ) {
     for (let n = 2; !nameFree(local); n++) {

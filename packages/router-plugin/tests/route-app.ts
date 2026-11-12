@@ -82,6 +82,12 @@ export interface RouteAppOptions {
    */
   routeId?: string
   /**
+   * Whether the route file is the app's root route (default: whether it
+   * creates one, `createRootRoute(…)`); `false` registers a file holding a
+   * root constructor as a route at `routeId`.
+   */
+  root?: boolean
+  /**
    * Compile for route HMR (`codeSplittingOptions.addHmr`, default `false`
    * here: the dev server's own default is `true`).
    */
@@ -1062,7 +1068,7 @@ export async function loadRoute(
   options: RouteAppOptions = {},
 ): Promise<RouteApp> {
   const filename = options.filename ?? 'route.tsx'
-  const root = createsRootRoute(code)
+  const root = options.root ?? createsRootRoute(code)
   const files = { ...options.files, [filename]: code }
   const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
   own.add(appUrl(probeFile))

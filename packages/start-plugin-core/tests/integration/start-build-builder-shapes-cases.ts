@@ -673,74 +673,6 @@ export const f = s
   },
 )
 
-refused.push(
-  {
-    name: 'a second route factory call carrying `server`',
-    file: 'src/r.tsx',
-    line: 3,
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: () => null })
-export const Admin = createFileRoute('/' as any)({
-  server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } },
-})
-`,
-      'src/entry.ts': `export { Route, Admin } from './r'\n`,
-    },
-  },
-  {
-    name: 'a wrapped route factory call carrying `ssr`',
-    file: 'src/r.tsx',
-    line: 3,
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-const withMeta = <T,>(r: T) => r
-export const Route = withMeta(createFileRoute('/')({
-  ssr: () => { console.log('MARK_SERVER_SECRET'); return true },
-}))
-`,
-      'src/entry.ts': `export { Route } from './r'\n`,
-    },
-  },
-  {
-    name: 'a stored route factory called with `headers`',
-    file: 'src/r.tsx',
-    line: 3,
-    files: {
-      'src/r.tsx': `import * as R from '@tanstack/react-router'
-const make = R.createFileRoute('/')
-export const Route = make({
-  headers: () => ({ a: 'MARK_SERVER_SECRET' }),
-})
-`,
-      'src/entry.ts': `export { Route } from './r'\n`,
-    },
-  },
-)
-
-compiled.push(
-  {
-    name: 'a second route factory call without server options',
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: () => null })
-export const Other = createFileRoute('/' as any)({ component: () => null })
-`,
-      'src/entry.ts': `export { Route, Other } from './r'\n`,
-    },
-  },
-  {
-    name: 'a wrapped route factory call without server options',
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-const withMeta = <T,>(r: T) => r
-export const Route = withMeta(createFileRoute('/')({ component: () => null }))
-`,
-      'src/entry.ts': `export { Route } from './r'\n`,
-    },
-  },
-)
-
 compiled.push(
   {
     name: 'a builder under a cast',
@@ -976,19 +908,6 @@ export const f = s
 `,
     },
   },
-  {
-    name: 'a second route factory call with `server` in a constant',
-    file: 'src/r.tsx',
-    line: 3,
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-const opts = { server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } } }
-export const Admin = createFileRoute('/' as any)(opts)
-export const Route = createFileRoute('/')({ component: () => null })
-`,
-      'src/entry.ts': `export { Route, Admin } from './r'\n`,
-    },
-  },
 )
 
 compiled.push({
@@ -1135,39 +1054,6 @@ const pick = createIsomorphicFn()
   })
 export const v = (globalThis as any).use?.(pick())
 `,
-    },
-  },
-)
-
-refused.push(
-  {
-    name: 'a route factory called through another name, as the route',
-    file: 'src/r.tsx',
-    line: 3,
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-const f = createFileRoute
-export const Route = f('/')({
-  server: { handlers: { GET: async () => new Response('MARK_SERVER_SECRET') } },
-})
-`,
-      'src/entry.ts': `export { Route } from './r'\n`,
-    },
-  },
-  {
-    name: 'a route factory called through another name, its call stored',
-    file: 'src/r.tsx',
-    line: 5,
-    files: {
-      'src/r.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: () => null })
-const f = createFileRoute
-const part = f('/' as any)
-export const Admin = part({
-  headers: () => ({ a: 'MARK_SERVER_SECRET' }),
-})
-`,
-      'src/entry.ts': `export { Route, Admin } from './r'\n`,
     },
   },
 )

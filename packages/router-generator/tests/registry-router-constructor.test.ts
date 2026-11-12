@@ -67,7 +67,7 @@ test('a route made by the router package is listed with routerConstructor, a for
       ]),
     )
   expect(byRoute()).toEqual({
-    '/__root': false,
+    '/__root': true,
     '/about': true,
     '/foreign': false,
   })
@@ -89,3 +89,83 @@ test('a route made by the router package is listed with routerConstructor, a for
   await generator.run({ type: 'update', path: edited })
   expect(generator.getRoutesByFileMap()).toBe(same)
 })
+
+// The registry's verdict per spelling of the route call: the router
+// package's constructor of the file's kind, by binding, through any wrapper
+// (a cast around a namespace import too); another framework's router package
+// or a subpath of the router package is not the app's router.
+// The root route file is read like every route file (design 5 D2): a
+// compiler takes its `Route` from the registry too.
+test('a root route made by createRootRoute is listed with routerConstructor', async () => {
+  const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  const generator = new Generator({ config: configOf(root), root })
+  await generator.run({ type: 'build' })
+
+  expect(
+    [...generator.getRoutesByFileMap().values()].find(
+      (v) => v.routeId === '/__root',
+    )?.routerConstructor,
+  ).toBe(true)
+})
+
+const spellings = [
+  {
+    name: 'a namespace import in a cast',
+    source: `import * as R from '@tanstack/react-router'
+export const Route = (R as any).createFileRoute('/x')({})
+`,
+    routerConstructor: true,
+  },
+  {
+    name: 'an interface of the same name',
+    source: `import { createFileRoute } from '@tanstack/react-router'
+interface Route {
+  meta: string
+}
+export const Route = createFileRoute('/x')({})
+`,
+    routerConstructor: true,
+  },
+  {
+    // (no one call makes it)
+    name: 'two declarations',
+    source: `import { createFileRoute } from '@tanstack/react-router'
+export var Route = createFileRoute('/x')({})
+var Route
+`,
+    routerConstructor: false,
+  },
+  {
+    name: "another framework's router package",
+    source: `import { createFileRoute } from '@tanstack/solid-router'
+export const Route = createFileRoute('/x')({})
+`,
+    routerConstructor: false,
+  },
+  {
+    name: 'a subpath of the router package',
+    source: `import { createFileRoute } from '@tanstack/react-router/ssr/client'
+export const Route = createFileRoute('/x')({})
+`,
+    routerConstructor: false,
+  },
+]
+
+async function listedConstructor(source: string) {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    'src/routes/x.tsx': source,
+  })
+  const generator = new Generator({ config: configOf(root), root })
+  await generator.run({ type: 'build' })
+  return [...generator.getRoutesByFileMap().values()].find(
+    (v) => v.routeId === '/x',
+  )?.routerConstructor
+}
+
+test.for(spellings)(
+  'a route made with $name is listed with routerConstructor $routerConstructor',
+  async ({ source, routerConstructor }) => {
+    expect(await listedConstructor(source)).toBe(routerConstructor)
+  },
+)

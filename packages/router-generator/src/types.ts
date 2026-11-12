@@ -132,6 +132,8 @@ export interface TreeModel {
 
 export type GetRoutesByFileMapResultValue = {
   routeId: string
+  /** The file's kind in the tree: the root route, a route file, or a `.lazy` route file. */
+  kind: 'root' | 'file' | 'lazy'
   /**
    * The file's `Route` is the router package's `createFileRoute` /
    * `createLazyFileRoute` call, found by binding (not the app's own

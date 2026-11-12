@@ -97,18 +97,14 @@ export const Route = createFileRoute('/')({ component: () => 'MARK_PAGE' })
 `
 const severalCallsAt = at(severalCalls, "createFileRoute('/')({})")
 
-// A factory the router does not recognise, with server options to delete:
-// the compile fails at the factory
-const foreignFactory = `import { createFileRoute } from '../lib/router'
+// Groupings the router cannot honour: the compile fails at their value
+const invalidGroupings = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
+  codeSplitGroupings: 'all',
   component: () => 'MARK_PAGE',
-  server: { handlers: { GET: () => 'MARK_SECRET' } },
 })
 `
-const foreignFactoryAt = at(foreignFactory, 'createFileRoute(')
-const foreignFactoryFiles = {
-  'lib/router.ts': `export { createFileRoute } from '@tanstack/react-router'\n`,
-}
+const invalidGroupingsAt = at(invalidGroupings, "'all'")
 
 describe.each(['webpack', 'rspack'] as const)('%s build', (bundler) => {
   test(
@@ -136,17 +132,13 @@ describe.each(['webpack', 'rspack'] as const)('%s build', (bundler) => {
         build({
           bundler,
           env: 'client',
-          files: routeApp(foreignFactory, {
-            env: 'client',
-            files: foreignFactoryFiles,
-          }),
-          pluginOptions: { codeSplittingOptions: { deleteNodes: ['server'] } },
+          files: routeApp(invalidGroupings, { env: 'client' }),
           routerPlugins: (config) => [routers[bundler](config), plugin],
         }),
       ).rejects.toBeInstanceOf(BuildError)
       const located = locationsOf(seen, 'error')
       expect(located).not.toEqual([])
-      expect(located).toEqual(located.map(() => foreignFactoryAt))
+      expect(located).toEqual(located.map(() => invalidGroupingsAt))
     },
     timeout,
   )
@@ -165,7 +157,7 @@ describe('rsbuild dev server', () => {
           )
         },
       }
-      const serve = async (route: string, deleteNodes?: Array<'server'>) => {
+      const serve = async (route: string) => {
         const server = await createRsbuildDevServer({
           dir: appsDir,
           prefix: '.diagnostic-location-rsbuild-',
@@ -175,7 +167,6 @@ describe('rsbuild dev server', () => {
             'main.tsx': `import { Route } from './routes/index'\n;(globalThis as any).__route = Route\n`,
             'routes/__root.tsx': rootRoute,
             'routes/index.tsx': route,
-            ...foreignFactoryFiles,
           },
           plugins: ({ root }) => [
             pluginReact({ fastRefresh: false }),
@@ -190,7 +181,6 @@ describe('rsbuild dev server', () => {
                       autoCodeSplitting: true,
                       routesDirectory: path.join(root, 'routes'),
                       generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                      codeSplittingOptions: { deleteNodes },
                     }),
                   )
                 })
@@ -205,10 +195,10 @@ describe('rsbuild dev server', () => {
       expect(warnings).not.toEqual([])
       expect(warnings).toEqual(warnings.map(() => severalCallsAt))
       seen.length = 0
-      await serve(foreignFactory, ['server'])
+      await serve(invalidGroupings)
       const errors = locationsOf(seen, 'error')
       expect(errors).not.toEqual([])
-      expect(errors).toEqual(errors.map(() => foreignFactoryAt))
+      expect(errors).toEqual(errors.map(() => invalidGroupingsAt))
     },
     timeout,
   )

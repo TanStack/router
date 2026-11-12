@@ -7,7 +7,7 @@ import { rootPathId } from './filesystem/physical/rootPathId'
 import { scanRoutes } from './filesystem/scan'
 import { replaceBackslash } from './utils'
 import { RouteGenerationError, displayFile } from './errors'
-import { analyzeRouteFile, routeFileErrors } from './analyze/route-file'
+import { analyzeRouteFile } from './analyze/route-file'
 import { routerPackageOf, scaffoldRouteFile } from './scaffold/templates'
 import { buildTreeModel, checkRouteFullPathUniqueness } from './model/build'
 import { importedFiles, printTree } from './print/tree'
@@ -57,7 +57,7 @@ type FileFacts =
   | {
       included: true
       props: RouteProps | undefined
-      /** `Route` is the router package's `createFileRoute`/`createLazyFileRoute` call (`RouteFileAnalysis.foreign` false). */
+      /** `Route` is the router package's route constructor call of the file's kind (`RouteFileAnalysis.foreign` false). */
       routerConstructor: boolean
     }
 
@@ -790,29 +790,41 @@ export class Generator {
     const routeId = node.routePath ?? ''
 
     if (isRoot) {
-      if (content !== '') {
+      const source =
+        content === ''
+          ? scaffoldRouteFile({
+              target: this.config.target,
+              kind: 'root',
+              routeId: rootPathId,
+              noJsx: /\.[mc]?ts$/.test(file),
+              style: this.style,
+            })
+          : content
+      if (isVue) {
         // (a single-file component is never parsed: its script is not its text)
-        const errors = isVue ? [] : routeFileErrors(content, file)
-        return errors.length > 0
-          ? this.unparsableFacts(file, errors, previous)
-          : {
-              facts: {
-                included: true,
-                props: undefined,
-                routerConstructor: false,
-              },
-            }
+        return {
+          pending: source !== content ? source : undefined,
+          facts: { included: true, props: undefined, routerConstructor: false },
+        }
       }
-      const scaffold = scaffoldRouteFile({
-        target: this.config.target,
-        kind: 'root',
+      const analysis = analyzeRouteFile(source, file, {
         routeId: rootPathId,
-        noJsx: /\.[mc]?ts$/.test(file),
+        kind: 'root',
+        routerPackage: this.routerPackage,
         style: this.style,
       })
+      if (analysis.kind === 'error') {
+        return this.unparsableFacts(file, analysis.diagnostics, previous)
+      }
+      const output =
+        analysis.kind === 'route' ? (analysis.output ?? source) : source
       return {
-        pending: scaffold,
-        facts: { included: true, props: undefined, routerConstructor: false },
+        pending: output !== content ? output : undefined,
+        facts: {
+          included: true,
+          props: undefined,
+          routerConstructor: analysis.kind === 'route' && !analysis.foreign,
+        },
       }
     }
 
@@ -849,7 +861,7 @@ export class Generator {
 
     const analysis = analyzeRouteFile(source, file, {
       routeId,
-      lazy,
+      kind: lazy ? 'lazy' : 'file',
       routerPackage: this.routerPackage,
       style: this.style,
     })
@@ -940,6 +952,12 @@ export class Generator {
       }
       const value: GetRoutesByFileMapResultValue = {
         routeId: node.routePath ?? `/${rootPathId}`,
+        kind:
+          node === this.scan!.rootRouteNode
+            ? 'root'
+            : node._fsRouteType === 'lazy'
+              ? 'lazy'
+              : 'file',
         routerConstructor: state.facts.routerConstructor,
       }
       map.set(node.fullPath, value)

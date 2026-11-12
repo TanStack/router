@@ -27,8 +27,17 @@ import { routeCallSpansOf } from './route-id'
 /** The router packages route files import their constructors from. */
 const routerPackages = /^@tanstack\/(?:react|solid|vue)-router$/
 
-/** The route constructors the generator may add, switch or drop. */
-const constructors = new Set(['createFileRoute', 'createLazyFileRoute'])
+/**
+ * The route constructors the generator may add, switch or drop (R144: a
+ * root constructor in a route file and a file route constructor in the root
+ * route file are switched to the one of the file's kind).
+ */
+const constructors = new Set([
+  'createFileRoute',
+  'createLazyFileRoute',
+  'createRootRoute',
+  'createRootRouteWithContext',
+])
 
 type Node = Record<string, any>
 

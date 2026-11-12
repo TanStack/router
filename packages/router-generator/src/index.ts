@@ -26,6 +26,13 @@ export {
   removeExt,
 } from './utils'
 
+export { routeCallOf, propertyKeyName } from './analyze/route-call'
+export type {
+  RouteCall,
+  RouteConstructorName,
+  RouteFileKind,
+} from './analyze/route-call'
+
 export { routeOptionPieces } from './types'
 export type {
   RouteNode,
