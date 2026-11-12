@@ -248,8 +248,10 @@ export function settleRoots(
       }
     }
     // where none of its bindings decides, the imports it reads do: their
-    // users' one chunk (an unused component rendering the page's UI)
-    if (to === null) {
+    // users' one chunk (an unused component rendering the page's UI), for
+    // a follower that runs nothing of its own (an effect stays where it
+    // was written unless a binding takes it)
+    if (to === null && !clusters[c]!.effectful) {
       for (const s of events.statementChanges(c).imports) {
         const d = graph.clusterOfSym.get(s)
         for (const n of d === undefined ? [] : needersOf(d)) {

@@ -114,21 +114,23 @@ const MUTATORS = new Set([
   'copyWithin',
 ])
 
-/** `Object.assign`, `Object.defineProperty`, … (they mutate their first argument). */
+/** `Object.assign`, `Object.defineProperty`, `Reflect.set`, … (they mutate their first argument). */
 function isObjectMutator(callee: Node): boolean {
   const c = unwrapExpression(callee)
   if (c.type !== 'MemberExpression' || c.computed) {
     return false
   }
   const obj = unwrapExpression(c.object)
-  return (
-    obj.type === 'Identifier' &&
-    obj.name === 'Object' &&
-    c.property.type === 'Identifier' &&
-    /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
-      c.property.name,
-    )
-  )
+  if (obj.type !== 'Identifier' || c.property.type !== 'Identifier') {
+    return false
+  }
+  const name = c.property.name
+  return obj.name === 'Object'
+    ? /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
+        name,
+      )
+    : obj.name === 'Reflect' &&
+        /^(set|defineProperty|deleteProperty|setPrototypeOf)$/.test(name)
 }
 
 /**
