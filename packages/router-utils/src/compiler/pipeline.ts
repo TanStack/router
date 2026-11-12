@@ -134,6 +134,39 @@ export async function compileModule(
   }
   const rev = revision(input.code)
   const requested = outputOf(identity)
+  // the request's text is the key's latest from its arrival on: a request
+  // of another text arriving later supersedes it, whatever this one waits on
+  // (the key stays live until it ends, so its latest revision stays known)
+  cache.begin(key, rev)
+  try {
+    return await answer(
+      input,
+      identity,
+      tier0Only,
+      host,
+      caches,
+      key,
+      rev,
+      requested,
+    )
+  } finally {
+    cache.end(key)
+  }
+}
+
+/** The output of a request of `key` at revision `rev`, from a validated plan hit, a compile in flight or its own compile. */
+async function answer(
+  input: CompileInput,
+  identity: SourceIdentity,
+  tier0Only: boolean,
+  host: HostServices,
+  caches: CompilerCaches,
+  key: PlanKey,
+  rev: string,
+  requested: OutputId,
+): Promise<CompileOutput | null> {
+  const env = input.env
+  const cache = planCacheFor(caches, env.name)
   const note = await textDiffers(
     cache.get(key),
     rev,
@@ -146,7 +179,6 @@ export async function compileModule(
     note && out ? { ...out, diagnostics: [...out.diagnostics, note] } : out
 
   for (;;) {
-    cache.noteRevision(key, rev)
     const hit = cache.lookup(key, rev)
     if (hit) {
       const src = fingerprintSourceFor(caches, host, env.name)
@@ -284,88 +316,83 @@ async function settle(
   rev: string,
 ): Promise<Settled> {
   const cache = planCacheFor(caches, key.env)
-  // the key's generation and latest revision stay meaningful until the compile ends
-  cache.begin(key)
-  try {
-    let overtaken!: CacheEntry
-    // every attempt compiles the text this compile was given
-    const compiledAt = Date.now()
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const generation = cache.generation(key)
-      const fileSetVersion = caches.fileSetVersion
-      const factsVersion = caches.rawFacts.version
-      const ledger = new DependencyLedger(key, cache.dependents)
-      const result = await runAttempt(
-        input,
-        identity,
-        tier0Only,
-        host,
-        caches,
-        ledger,
-        rev,
-      )
-      if (result.kind !== 'plan') {
-        if (cache.latestRevision(key) === rev) {
-          // the file's text has no plan: the plan of its old text goes with
-          // its rows (a later event of what that text read reports nothing)
-          const old = cache.get(key)
-          if (old && old.revision !== rev) {
-            cache.delete(key)
-          }
+  // (the request that started it keeps the key live: `compileModule`)
+  let overtaken!: CacheEntry
+  // every attempt compiles the text this compile was given
+  const compiledAt = Date.now()
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const generation = cache.generation(key)
+    const fileSetVersion = caches.fileSetVersion
+    const factsVersion = caches.rawFacts.version
+    const ledger = new DependencyLedger(key, cache.dependents)
+    const result = await runAttempt(
+      input,
+      identity,
+      tier0Only,
+      host,
+      caches,
+      ledger,
+      rev,
+    )
+    if (result.kind !== 'plan') {
+      if (cache.latestRevision(key) === rev) {
+        // the file's text has no plan: the plan of its old text goes with
+        // its rows (a later event of what that text read reports nothing)
+        const old = cache.get(key)
+        if (old && old.revision !== rev) {
+          cache.delete(key)
         }
-        return result
       }
-      const entry: CacheEntry = {
-        key,
-        revision: rev,
-        generation,
-        plan: result.plan,
-        resolvedAt: fileSetVersion,
-        factsAt: factsVersion,
-        compiledFor: outputOf(identity),
-        compiledAt,
-      }
-      entry.plan.dependencies = ledger.published()
-      const src = fingerprintSourceFor(caches, host, key.env)
-      // the snapshot: whether every fact the attempt recorded is still
-      // current. Standing answers (no file event applied, no raw fact went
-      // stale since the attempt started) are not asked again; once a file
-      // event ran since, the resolutions are asked again (no event restarts
-      // the attempt for a failed one), until a check overlaps no event
-      let snapshotOk: boolean
-      for (let standingAt = fileSetVersion; ; ) {
-        const checkedAt = caches.fileSetVersion
-        snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
-          resolutions: checkedAt === standingAt,
-          facts: caches.rawFacts.version === factsVersion,
-        })
-        if (!snapshotOk || caches.fileSetVersion === checkedAt) {
-          break
-        }
-        standingAt = checkedAt
-      }
-      if (snapshotOk && cache.generation(key) === generation) {
-        if (cache.set(entry)) {
-          ledger.publish()
-        }
-        return { kind: 'plan', entry }
-      }
-      if (cache.latestRevision(key) !== rev) {
-        // superseded by a newer save: this text is stale; never publish, but answer its requests
-        return { kind: 'plan', entry }
-      }
-      overtaken = entry
+      return result
     }
-    // Every attempt was overtaken (a save storm, a checkout touching several
-    // dependencies): the last plan answers without being published, so the
-    // next request compiles afresh, and the file enters its stale set: the
-    // host has its modules built again (Rsbuild and webpack at once, Vite
-    // with the next file event's hot update)
-    caches.stale.add(key.env, identity.path)
-    return { kind: 'plan', entry: overtaken }
-  } finally {
-    cache.end(key)
+    const entry: CacheEntry = {
+      key,
+      revision: rev,
+      generation,
+      plan: result.plan,
+      resolvedAt: fileSetVersion,
+      factsAt: factsVersion,
+      compiledFor: outputOf(identity),
+      compiledAt,
+    }
+    entry.plan.dependencies = ledger.published()
+    const src = fingerprintSourceFor(caches, host, key.env)
+    // the snapshot: whether every fact the attempt recorded is still
+    // current. Standing answers (no file event applied, no raw fact went
+    // stale since the attempt started) are not asked again; once a file
+    // event ran since, the resolutions are asked again (no event restarts
+    // the attempt for a failed one), until a check overlaps no event
+    let snapshotOk: boolean
+    for (let standingAt = fileSetVersion; ; ) {
+      const checkedAt = caches.fileSetVersion
+      snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
+        resolutions: checkedAt === standingAt,
+        facts: caches.rawFacts.version === factsVersion,
+      })
+      if (!snapshotOk || caches.fileSetVersion === checkedAt) {
+        break
+      }
+      standingAt = checkedAt
+    }
+    if (snapshotOk && cache.generation(key) === generation) {
+      if (cache.set(entry)) {
+        ledger.publish()
+      }
+      return { kind: 'plan', entry }
+    }
+    if (cache.latestRevision(key) !== rev) {
+      // superseded by a newer save: this text is stale; never publish, but answer its requests
+      return { kind: 'plan', entry }
+    }
+    overtaken = entry
   }
+  // Every attempt was overtaken (a save storm, a checkout touching several
+  // dependencies): the last plan answers without being published, so the
+  // next request compiles afresh, and the file enters its stale set: the
+  // host has its modules built again (Rsbuild and webpack at once, Vite
+  // with the next file event's hot update)
+  caches.stale.add(key.env, identity.path)
+  return { kind: 'plan', entry: overtaken }
 }
 
 /** A request's output from what the compile of its text settled on. */

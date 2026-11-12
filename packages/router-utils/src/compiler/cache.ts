@@ -211,7 +211,7 @@ interface DependentEntry {
  * and evicting a plan touch its rows only. A row holds two facts: the key's
  * published plan depends on the path, and a compile of the key running now
  * asked for it. Compiles of one key overlap (two quick saves) and share
- * their asks, which live until the key's last compile ends (`PlanCache.end`).
+ * their asks, which live until the key's last request ends (`PlanCache.end`).
  * A row with neither fact is removed, and so is an empty bucket: the index
  * holds rows of live plans and compiles only.
  */
@@ -391,7 +391,7 @@ class DependentsIndex {
     }
   }
 
-  /** Drops a key's published rows (eviction) or its asks (its last compile ended). */
+  /** Drops a key's published rows (eviction) or its asks (its last request ended). */
   drop(key: PlanKey, fact: 'published' | 'asked'): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
@@ -633,10 +633,10 @@ export interface InFlight {
 }
 
 /**
- * What the cache keeps of one key while it is live: from a request's first
- * note of a revision, or a restored plan, until the key has no plan and no
- * compile running (then it is retired: no attempt holds its generation
- * number any more, and the next request starts over).
+ * What the cache keeps of one key while it is live: from a request's
+ * arrival, or a restored plan, until the key has no plan and no request in
+ * progress (then it is retired: no attempt holds its generation number and
+ * no request its revision any more, and the next request starts over).
  */
 interface PlanRecord {
   key: PlanKey
@@ -644,9 +644,9 @@ interface PlanRecord {
   path: string
   /** Moved by a newer revision or an invalidation: attempts begun before it are stale. */
   generation: number
-  /** The revision the key's last request arrived with. */
+  /** The revision the key's last request arrived with: only a compile of it publishes. */
   latest: string | undefined
-  /** Compiles running (two quick saves overlap). */
+  /** Requests in progress (two quick saves overlap; a plan hit may wait on its validation). */
   active: number
   /** The published plan. */
   entry: CacheEntry | null
@@ -756,25 +756,27 @@ export class PlanCache {
     }
   }
 
-  /** Notes the revision a request arrives with; a new revision bumps the generation. */
-  noteRevision(key: PlanKey, revision: string): void {
+  latestRevision(key: PlanKey): string | undefined {
+    return this.records.get(planKeyString(key))?.latest
+  }
+
+  /**
+   * A request of `key` arrives with the text at `revision`, once: its
+   * revision becomes the key's latest (a new one bumps the generation), and
+   * the key stays live until `end`. Noted again later (after a wait), an
+   * older text would take back the latest revision from a newer one that
+   * arrived meanwhile, and its compile would publish over the newer plan.
+   */
+  begin(key: PlanKey, revision: string): void {
     const r = this.recordOf(key)
+    r.active++
     if (r.latest !== revision) {
       r.latest = revision
       r.generation++
     }
   }
 
-  latestRevision(key: PlanKey): string | undefined {
-    return this.records.get(planKeyString(key))?.latest
-  }
-
-  /** A compile of `key` starts (its generation must stay meaningful until `end`). */
-  begin(key: PlanKey): void {
-    this.recordOf(key).active++
-  }
-
-  /** A compile of `key` ended (published or not); the last one takes the key's asks along. */
+  /** A request of `key` ended (its compile published or not); the last one takes the key's asks along. */
   end(key: PlanKey): void {
     const ks = planKeyString(key)
     const r = this.records.get(ks)
@@ -856,7 +858,7 @@ export class PlanCache {
 
   /**
    * Adds a plan known by its dependencies only (`restored`); a key with a
-   * published plan or a compile running keeps its own.
+   * published plan or a request in progress keeps its own.
    */
   restore(plan: PersistedPlan): void {
     const live = this.records.get(planKeyString(plan.key))
