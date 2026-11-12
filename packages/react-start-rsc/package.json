@@ -131,8 +131,8 @@
     "@rspack/core": "2.2.9",
     "@testing-library/react": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "@vitejs/plugin-rsc": "^0.5.37",
-    "react-server-dom-rspack": "^0.0.2",
+    "@vitejs/plugin-rsc": "^0.5.39",
+    "react-server-dom-rspack": "^0.1.1",
     "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
@@ -149,10 +149,10 @@
   },
   "peerDependencies": {
     "@rspack/core": ">=2.2.9",
-    "@vitejs/plugin-rsc": ">=0.5.30",
+    "@vitejs/plugin-rsc": ">=0.5.38",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0",
-    "react-server-dom-rspack": ">=0.0.2"
+    "react-server-dom-rspack": ">=0.1.1"
   },
   "peerDependenciesMeta": {
     "@rspack/core": {

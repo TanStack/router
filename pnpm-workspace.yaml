@@ -42,8 +42,8 @@ catalog:
   '@vitejs/plugin-react': ^6.0.1
   '@vitejs/plugin-vue-jsx': ^4.1.2
   '@vitest/ui': ^5.0.4
-  react: ^19.2.3
-  react-dom: ^19.2.3
+  react: ~19.2.9
+  react-dom: ~19.2.9
   '@types/react': ^19.2.8
   '@types/react-dom': ^19.2.3
   eslint: ^9.22.0
