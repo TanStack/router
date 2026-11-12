@@ -305,6 +305,47 @@ describe('vite build', () => {
     timeout,
   )
 
+  // the other order: the file is served as it is to both, and the build
+  // says so the same way, so the outcome does not depend on the order
+  test(
+    'two exempt importers, the plain one compiled first: the error build fails, naming the file, the importer that needs it and the pattern import',
+    async () => {
+      const files = app({
+        bundler: 'vite',
+        glob: 'generated',
+        first: 'pattern',
+      })
+      const error = await buildStart({
+        bundler: 'vite',
+        files,
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: holdUntilCompiled(`/${denied}`, '/src/generated/reg.ts'),
+        },
+        start: { importProtection: options('error') },
+      }).then(
+        () => null,
+        (e: unknown) => e,
+      )
+      expect(error).toBeInstanceOf(StartBuildError)
+      const { diagnostics } = error as StartBuildError
+      expectDiagnostic(diagnostics, { severity: 'error', file: denied })
+      expectDiagnostic(diagnostics, {
+        severity: 'error',
+        file: 'src/generated/reg.ts',
+      })
+      expectDiagnostic(diagnostics, {
+        severity: 'error',
+        file: 'src/generated/glob.ts',
+        position: diagnosticPosition(
+          files['src/generated/glob.ts']!,
+          'import.meta.glob',
+        ),
+      })
+    },
+    timeout,
+  )
+
   test(
     'two exempt importers, the plain one compiled after the denied file: the mock build warns, naming the file',
     async () => {
