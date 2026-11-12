@@ -7,6 +7,7 @@
  * each keeps its place in the object: one after it still wins over what it holds.
  */
 import { describe, expect, test } from 'vitest'
+import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
@@ -117,6 +118,64 @@ export const Route = createFileRoute('/x')(options)
         severity: 'warning',
         file: 'src/routes/x.tsx',
       })
+    },
+    timeout,
+  )
+
+  // Source: KNOWN-BUGS "A write to the route options through another name
+  // of the object is not seen" (the literal's `server` was removed, the
+  // write's stayed in the client, nothing reported)
+  test(
+    'options written through another name of their object warn',
+    async () => {
+      const result = await buildStart({
+        bundler,
+        files: {
+          ...root,
+          'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
+          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { readSecret } from '../admin-helper'
+const a: any = { ${component}, server: { handlers: { GET: () => new Response('none') } } }
+const z = a
+z.server = { handlers: { GET: () => new Response(readSecret()) } }
+export const Route = createFileRoute('/x')(a)
+`,
+          'src/entry.ts': `export { Route } from './routes/x'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expectDiagnostic(result.diagnostics, {
+        severity: 'warning',
+        file: 'src/routes/x.tsx',
+      })
+      expect(result.client.where('MARK_PAGE')).not.toBe('lazy')
+    },
+    timeout,
+  )
+
+  test(
+    'options named through a chain of consts used nowhere else are split, and their server options removed',
+    async () => {
+      const result = await buildStart({
+        bundler,
+        files: {
+          ...root,
+          'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
+          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { readSecret } from '../admin-helper'
+const a = { ${component}, ${serverOption} }
+const options = a
+export const Route = createFileRoute('/x')(options)
+`,
+          'src/entry.ts': `export { Route } from './routes/x'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect({
+        page: result.client.where('MARK_PAGE'),
+        server: result.client.where('MARK_WRITTEN_SERVER'),
+      }).toEqual({ page: 'lazy', server: 'nowhere' })
+      expectNoProblems(result.diagnostics)
     },
     timeout,
   )

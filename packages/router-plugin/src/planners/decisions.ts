@@ -399,17 +399,21 @@ export function splitPlanOf(
             ? 'returned by a call'
             : route.options.reason === 'written'
               ? 'written to after their declaration'
-              : route.options.reason === 'reassigned'
-                ? 'in a variable that is reassigned'
-                : 'not an object literal'
+              : route.options.reason === 'shared'
+                ? 'also used outside the route call'
+                : route.options.reason === 'reassigned'
+                  ? 'in a variable that is reassigned'
+                  : 'not an object literal'
       const call =
         route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'
       const fix =
         route.options.reason === 'reassigned'
           ? `Declare them with \`const\` and never reassign them (\`const options = { component${deleteNodes.size > 0 ? ', server' : ', …'} }\`).`
-          : deleteNodes.size > 0
-            ? `Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${call}({ component, server })\`).`
-            : `Write them as an object literal in the call (\`${call}({ component, … })\`).`
+          : route.options.reason === 'shared'
+            ? `Write them as an object literal in the call (\`${call}({ component${deleteNodes.size > 0 ? ', server' : ', …'} })\`), or use their object nowhere else.`
+            : deleteNodes.size > 0
+              ? `Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${call}({ component, server })\`).`
+              : `Write them as an object literal in the call (\`${call}({ component, … })\`).`
       warnings.push({
         severity: 'warning',
         code: 'options-opaque',

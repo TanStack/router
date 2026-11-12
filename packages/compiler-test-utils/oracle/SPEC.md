@@ -419,9 +419,9 @@ dir)` is not a conflict by itself.
   before a chunk could load: it stays there and the run warns (fix: write the loader in the route options, or call the
   function from one written there), as does a loader object with a spread or computed key after its `handler` (fix:
   the spread before `handler`). Under Start, the client build never ships their
-  `ssr`/`server`/`headers` silently: a spread, options from a call or an import or written to after their declaration,
-  and a computed key build and warn once, saying what isn't split or removed, that server code in it ships, and what
-  to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
+  `ssr`/`server`/`headers` silently: a spread, options from a call or an import, written to after their declaration or
+  whose object (or a `const` naming it) other code also names, and a computed key build and warn once, saying what
+  isn't split or removed, that server code in it ships, and what to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
   them doesn't warn: a spread of a module object literal of static keys that only it reads, a computed key naming a
   module string const (that option stays unsplit). Options that can't be read at all may be one object shared across
   evaluations, which the route adopts: an edit of the route file reloads the page.

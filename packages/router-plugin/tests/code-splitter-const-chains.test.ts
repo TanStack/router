@@ -8,10 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, loadRoute } from './route-app'
 import type { DeletableNodes } from '../src'
 
@@ -76,6 +73,90 @@ export const Route = createFileRoute('/x')(options)
       file: 'route.tsx',
       root: route.host.root,
     })
+  })
+
+  // Source: KNOWN-BUGS "A write to the route options through another name of
+  // the object is not seen" (the literal's `server` was removed, the write
+  // stayed in the client, nothing reported). The ruling: options whose
+  // object, or a const of its chain, is named anywhere besides the route call
+  // and the chain are not read: not split, nothing removed, reported.
+  it.for([
+    {
+      name: 'written through another name',
+      declarations: `const a: any = {
+  component: () => <p>MARK_PAGE</p>,
+  server: { handlers: { GET: () => 'none' } },
+}
+const z = a
+z.server = { handlers: { GET: () => readSecret() } }`,
+      options: 'a',
+    },
+    {
+      name: 'exported',
+      declarations: `const a = {\n  ${page}\n}\nexport const defaults = a`,
+      options: 'a',
+    },
+    {
+      name: 'a const of its chain named in a function',
+      declarations: `const a = {\n  ${page}\n}\nconst options = a\nexport const describe = () => Object.keys(options)`,
+      options: 'options',
+    },
+  ])(
+    'are not split and reported when the object is $name',
+    async ({ declarations, options }) => {
+      const route = await loadRoute(
+        `${head}import { readSecret } from './admin-helper'
+${declarations}
+export const Route = createFileRoute('/x')(${options})
+`,
+        { routeId: '/x', files, deleteNodes, fresh: true },
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(false)
+      expect(await route.run(`return renderRoute()`)).toContain('MARK_PAGE')
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: 'route.tsx',
+        root: route.host.root,
+      })
+    },
+  )
+
+  it("written through another name, with the warning's fix applied (the options in the call), are split and lose the options of deleteNodes, nothing reported", async () => {
+    const route = await loadRoute(
+      `${head}import { readSecret } from './admin-helper'
+export const Route = createFileRoute('/x')({
+  component: () => <p>MARK_PAGE</p>,
+  server: { handlers: { GET: () => readSecret() } },
+})
+`,
+      { routeId: '/x', files, deleteNodes, fresh: true },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.requested()).not.toContain('/admin-helper.ts')
+    const [server, html] = await route.run<[boolean, string]>(
+      `return ['server' in options, await renderRoute()]`,
+    )
+    expect(server).toBe(false)
+    expect(html).toContain('MARK_PAGE')
+    expectNoProblems(await route.diagnostics())
+  })
+
+  it('named in a type only, are split, nothing reported', async () => {
+    const route = await loadRoute(
+      `${head}import { readSecret } from './admin-helper'
+const a = {\n  ${page}\n}
+const options = a
+export type Options = typeof options
+export const Route = createFileRoute('/x')(options)
+`,
+      { routeId: '/x', files, deleteNodes, fresh: true },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.requested()).not.toContain('/admin-helper.ts')
+    expectNoProblems(await route.diagnostics())
   })
 })
 
@@ -202,39 +283,4 @@ export const Route = createFileRoute('/')({
       root: route.host.root,
     })
   })
-})
-
-// Known bugs (oracle/KNOWN-BUGS.md), source: REVIEW-design5-final finding 5
-describe('known bugs', () => {
-  // Bug: a write to the options object through another name of it
-  // (`const z = options; z.server = …`) is not seen (the mutation model
-  // follows no alias): the literal's `server` is removed, the write stays
-  // in the client, and nothing is reported.
-  // Impact: the server code the write holds ships to the client.
-  it.fails(
-    'route options written through another name ship no server code, or are reported',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { readSecret } from './admin-helper'
-const a: any = {
-  component: () => <p>MARK_PAGE</p>,
-  server: { handlers: { GET: () => 'none' } },
-}
-const z = a
-z.server = { handlers: { GET: () => readSecret() } }
-export const Route = createFileRoute('/x')(a)
-`,
-        { routeId: '/x', files, deleteNodes, fresh: true },
-      )
-      await expectValidModules(route)
-      const shipped = (await route.requested()).includes('/admin-helper.ts')
-      const reported =
-        findDiagnostics(await route.diagnostics(), {
-          severity: ['warning', 'error'],
-          file: 'route.tsx',
-          root: route.host.root,
-        }).length > 0
-      expect(!shipped || reported).toBe(true)
-    },
-  )
 })

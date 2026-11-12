@@ -48,7 +48,13 @@ type OptionsResolution =
   | { kind: 'object'; node: Node }
   | {
       kind: 'opaque'
-      reason: 'imported' | 'call' | 'written' | 'reassigned' | 'other'
+      reason:
+        | 'imported'
+        | 'call'
+        | 'written'
+        | 'shared'
+        | 'reassigned'
+        | 'other'
     }
   /** `createRootRoute()`: no options to split or remove */
   | { kind: 'none' }
@@ -336,7 +342,9 @@ export function recognizeRoute(
   if (!argument) {
     options = { kind: 'none' }
   } else {
-    // the object literal, or the one a chain of consts names (I4)
+    // the object literal, or the one a chain of consts names (I4) when no
+    // other code names the object or a const of the chain: a reference
+    // count, no alias analysis (`const z = a; z.server = …` writes it)
     const { node, syms } = boundValueOf(ctx, argument)
     const last = syms.at(-1)
     if (node.type === 'ObjectExpression') {
@@ -344,6 +352,8 @@ export function recognizeRoute(
         options = { kind: 'object', node }
       } else if (chainWritten(ctx, syms)) {
         options = { kind: 'opaque', reason: 'written' }
+      } else if (!chainSoleUse(ctx, syms)) {
+        options = { kind: 'opaque', reason: 'shared' }
       } else {
         options = { kind: 'object', node }
         optionsUnit = onlyValueUnit(ctx, last)!
