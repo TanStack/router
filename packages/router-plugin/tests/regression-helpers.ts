@@ -14,6 +14,7 @@ import {
 } from '../src/core/code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
@@ -145,6 +146,59 @@ function runTransform(plugin: UnpluginOptions, code: string, id: string) {
     return null
   }
   return typeof result === 'string' ? result : result.code
+}
+
+const referencePluginName =
+  'tanstack-router:code-splitter:compile-reference-file'
+const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
+const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
+
+/**
+ * Drives the three code-splitter transforms the way a bundler does, for the
+ * given route files (absolute path to route id). `configPlugins` are the
+ * plugins of the resolved Vite config; by default the code splitter itself,
+ * so its plugin-order check runs.
+ */
+export async function createCodeSplitterTransforms(
+  options: Partial<Config>,
+  routes: Record<string, string>,
+  configPlugins: Array<{ name: string }> = [{ name: referencePluginName }],
+) {
+  const context = createRouterPluginContext()
+  for (const [file, routeId] of Object.entries(routes)) {
+    context.routesByFile.set(file, { routeId })
+  }
+  const plugins = createRouterCodeSplitterPlugin(
+    { target: 'react', autoCodeSplitting: true, ...options },
+    context,
+  )
+  const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
+  const byName = (name: string) => {
+    const plugin = pluginArray.find((candidate) => candidate.name === name)
+    if (!plugin) {
+      throw new Error(`Code-splitter plugin "${name}" not found`)
+    }
+    return plugin
+  }
+  const hook = byName(referencePluginName).vite?.configResolved
+  const config = {
+    root: process.cwd(),
+    command: 'build',
+    plugins: configPlugins,
+  } as never
+  if (typeof hook === 'function') {
+    await hook.call({} as never, config)
+  } else if (hook) {
+    await hook.handler.call({} as never, config)
+  }
+  return {
+    reference: (code: string, id: string) =>
+      runTransform(byName(referencePluginName), code, id),
+    virtual: (code: string, id: string) =>
+      runTransform(byName(virtualPluginName), code, id),
+    shared: (code: string, id: string) =>
+      runTransform(byName(sharedPluginName), code, id),
+  }
 }
 
 /**
