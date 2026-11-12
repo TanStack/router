@@ -15,7 +15,8 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - No tests of the helpers' internals; this package's own tests are controls of the harness.
 - Tests never write into the repository. Apps live in the run's temp dir (`./app-directory`); checked-in fixtures run
   on a copy (router-generator `copyFixture`).
-- Diagnostics are checked by severity, file and position only, never by wording.
+- Diagnostics are checked by severity, file and position only, never by wording, except a test whose subject is text the
+  docs quote verbatim.
 - Edits settle on their outcome within one bound, never on counts of events, compiles or updates.
 - No generated or seeded tests in the repository, not even behind a local target: every input is written out in the
   test. A generator (random modules, seeded schedules, fuzzing) is a development tool kept outside the repository;
