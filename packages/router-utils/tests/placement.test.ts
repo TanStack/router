@@ -7274,6 +7274,34 @@ describe('statements follow what they change', () => {
       expect(r.env).toContain('connectAuthEmulator()')
       expect(eager(r)).toEqual([])
     })
+
+    // R149 answer F, accepted break: a call's result is not the object it
+    // was handed, so a write through it is no write of that object, and a
+    // read of the object moves past it (the executing property, toy
+    // planner: seeds 4289, 8800, 9610, 5241). The component's `keys` sees
+    // `'theme,dark'`, the source gives `'theme'`.
+    it('moves a read of an object past a write through an unknown call result (seed 4289)', async () => {
+      const decls =
+        "const settings = { theme: 'light' }\nconst keys = Object.keys(settings).join()\nconst store = reactive(settings)\nconst dark = store.dark\nObject.assign(store, { dark: true })"
+      const r = await split(
+        route(
+          decls,
+          'component: () => keys,\nerrorComponent: () => dark,',
+          "import { reactive } from './store'",
+        ),
+        { keys: ['component', 'errorComponent'] },
+      )
+      expect(r.env).toContain(
+        'const store = reactive(settings)\nconst dark = store.dark\nObject.assign(store, { dark: true })',
+      )
+      expect(r.env).not.toContain('Object.keys(settings)')
+      expect(r.chunks.component).toContain(
+        'const keys = Object.keys(settings).join()',
+      )
+      // (only `dark`, which reads `store` before its write, is reported)
+      expect(eager(r)).toMatchObject([{ code: 'eager-split:state' }])
+      expect(eager(r)[0]!.message).toContain('`dark` in /app/route.tsx')
+    })
   })
 })
 

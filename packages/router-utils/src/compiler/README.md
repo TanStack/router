@@ -218,7 +218,9 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
   (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
-  and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`). A
+  and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`), and its result is not
+  what it was handed (R149 answer F, accepted break): a write through `const store = reactive(settings)` is no write
+  of `settings`, so a read of `settings` only a chunk needs moves past it. A
   bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block), and dead code (R148),
   follows the module bindings it uses (R149, `Events.statementChanges`): those it names or runs (`ReadIndex.runs`)
   and the objects their values hold (`MutationModel.heldBy`, the owner of "the object a binding names"), into the
