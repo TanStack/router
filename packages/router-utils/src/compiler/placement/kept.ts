@@ -161,6 +161,11 @@ export function keptDeclarations(
   // statement stays (`written`), the binding that keeps it aside (R146
   // amendment)
   const statements = new Set<ClusterId>()
+  /**
+   * The binding of the other chunk a statement keeps, with the statement's
+   * cluster (which reads it: reached from it is no cascade).
+   */
+  const mirrored = new Map<ClusterId, ClusterId>()
   for (const [c, pin] of seeds.stayPins) {
     if (!envRoots.has(c)) {
       continue
@@ -189,25 +194,32 @@ export function keptDeclarations(
         causes.set(d, changed ? pin : { ...pin, uses: true })
       }
     }
-    // unused code (R148, R149 answers E) names everything it keeps eager:
-    // the binding that keeps it too, with another one it keeps
-    if (
-      pin.unused !== undefined &&
-      blocker !== undefined &&
-      reported(blocker)
-    ) {
+    // a statement (or unused code: R148, R149 answers E) using bindings of
+    // two chunks keeps both eager: the binding that keeps it is reported
+    // too, named with another one it keeps
+    if (blocker !== undefined && reported(blocker)) {
       const another = changes.reads.find((s) => {
         const d = clusterOfSym.get(s)
         return d !== undefined && named.includes(d)
       })
       const elsewhere =
         another === undefined ? [] : lazyNeeders(clusterOfSym.get(another)!)
-      if (another !== undefined) {
+      if (another !== undefined && elsewhere.length > 0) {
+        mirrored.set(blocker, c)
+        const changed = changes.syms.includes(another)
         causes.set(blocker, {
-          ...pin,
-          uses: true,
+          reason: pin.reason,
+          ...(pin.other !== undefined && { other: pin.other }),
           binding: another,
           in: elsewhere[0],
+          ...(changed && { bindingChanged: true }),
+          // (the statement can change it in one of its own when it could
+          // the binding keeping it)
+          ...(changed && pin.split === true && { split: true }),
+          ...(!changes.syms.some((s) => clusters[blocker]!.declares.has(s)) && {
+            uses: true,
+          }),
+          ...(pin.unused !== undefined && { unused: pin.unused }),
         })
       }
     }
@@ -251,7 +263,8 @@ export function keptDeclarations(
     // an exported cause stays for its own effects or writes, whoever reads it
     let cascade = false
     for (const d of exported.has(c) ? [] : (reachedFrom.get(c) ?? [])) {
-      if (!reachOf.get(c)!.has(d)) {
+      // (the statement's own cluster reads what it keeps: no cascade)
+      if (d !== mirrored.get(c) && !reachOf.get(c)!.has(d)) {
         cascade = true
         break
       }
