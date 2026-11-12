@@ -346,8 +346,10 @@ function holdImportsOf(importer: string, until: string): Plugin {
 // Fix list item 1 (both rulings): the answer for the plain import is
 // registered at its importer's compile, so the denied file compiled after
 // that compile and before the bundler resolves the import is served real
+// (with the exempt pattern importer, the build warns about the shape in
+// either order)
 test(
-  'vite build: the denied file compiled between the compile of a plain import allowImport allows and its resolution: both get the real module, nothing reported',
+  'vite build: the denied file compiled between the compile of a plain import allowImport allows and its resolution: both get the real module, with a warning',
   async () => {
     const outcome = await outcomeOf(() =>
       buildStart({
@@ -363,7 +365,10 @@ test(
         start: { importProtection: allowedPlain('mock') },
       }),
     )
-    expect(outcome).toEqual(realForBoth)
+    expect(outcome).toEqual({
+      ...realForBoth,
+      problems: [`warning ${denied}`],
+    })
   },
   timeout,
 )
