@@ -196,6 +196,12 @@ export interface RouteRegistry {
     routerConstructor?: boolean
   } | null
   digestFor: (path: string) => string | null
+  /**
+   * While the routes have never been generated (every run of the generator
+   * failed): its error. `lookup` lists no file then, which says nothing of
+   * whether a file is a route. Undefined once they have been.
+   */
+  failure?: () => unknown
 }
 
 export interface HostServices {

@@ -18,6 +18,7 @@ import type {
   Unit,
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
+import type { ForeignRoute } from '@tanstack/router-generator'
 import type { CodeSplitGroupings } from '../core/constants'
 import type { RouterPlannerConfig } from './config'
 
@@ -45,7 +46,10 @@ export interface RouteOption {
 
 type OptionsResolution =
   | { kind: 'object'; node: Node }
-  | { kind: 'opaque'; reason: 'imported' | 'call' | 'written' | 'other' }
+  | {
+      kind: 'opaque'
+      reason: 'imported' | 'call' | 'written' | 'reassigned' | 'other'
+    }
   /** `createRootRoute()`: no options to split or remove */
   | { kind: 'none' }
 
@@ -285,8 +289,8 @@ export function recognizeRoute(
   const call = routeCallOf(file, { routerPackage, kind: entry.kind })
   if (call.kind !== 'ours') {
     // (a route made by the app's own helper gets nothing: R130)
-    if (call.kind === 'foreign' && call.usesConstructor) {
-      reportUnrecognizedRoute(ctx)
+    if (call.kind === 'foreign' && call.reason.kind !== 'other') {
+      reportUnrecognizedRoute(ctx, entry, call.reason)
     }
     return null
   }
@@ -300,7 +304,7 @@ export function recognizeRoute(
   const routeUnit = routeSym !== null ? onlyValueUnit(ctx, routeSym) : undefined
   if (routeSym === null || routeUnit?.node !== call.declarator) {
     // (a namespace of values merged with `Route`: two units declare it)
-    reportUnrecognizedRoute(ctx)
+    reportUnrecognizedRoute(ctx, entry, { kind: 'wrapped' })
     return null
   }
   const outer = call.call
@@ -346,10 +350,18 @@ export function recognizeRoute(
       }
     } else if (node.type === 'Identifier') {
       const b = file.referenceOf(node)?.binding ?? null
+      const sym = b ? symbols.ofBinding(b) : null
       options = {
         kind: 'opaque',
         reason:
-          b && symbols.isImport(symbols.ofBinding(b)) ? 'imported' : 'other',
+          sym === null
+            ? 'other'
+            : symbols.isImport(sym)
+              ? 'imported'
+              : symbols.isModuleLevel(sym) &&
+                  t1.mutation.isReassigned(sym, liveInEnv(ctx))
+                ? 'reassigned'
+                : 'other',
       }
     } else if (node.type === 'CallExpression') {
       options = { kind: 'opaque', reason: 'call' }
@@ -399,12 +411,15 @@ export function recognizeRoute(
 }
 
 /**
- * J2.10: the route of a listed file importing a route constructor is not
- * the one call the compiler reads: it is not split or hot-updated, and
- * under `deleteNodes` its server options stay.
+ * J2.10: the route of a listed file misuses the router's route constructor
+ * (`ForeignRoute`), so it is not the one call the compiler reads: it is not
+ * split or hot-updated, and under `deleteNodes` its server options stay.
+ * One text per cause, with the call of the file's kind to write.
  */
 function reportUnrecognizedRoute(
   ctx: PlanContext<typeof ROUTER_PLANNER>,
+  entry: RouteEntryFacts,
+  reason: Exclude<ForeignRoute, { kind: 'other' }>,
 ): void {
   const { analysis } = ctx
   const routeExport = analysis.exports.find(
@@ -419,15 +434,71 @@ function reportUnrecognizedRoute(
     routeUnit.node.type === 'VariableDeclarator'
       ? routeUnit.node
       : null
+  const routerPackage = routerPackageOf(ctx.config)
+  const routeCall =
+    entry.kind === 'root'
+      ? 'createRootRoute({ … })'
+      : `${entry.kind === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}('${entry.routeId}')({ … })`
+  const writeIt = `Write it as \`export const Route = ${routeCall}\``
+  let cause: string
+  let fix: string
+  switch (reason.kind) {
+    case 'no-options':
+      cause = `calls \`${reason.constructor}\` without passing the route options to the function it returns`
+      fix = `${writeIt}.`
+      break
+    case 'type-only':
+      cause = `imports \`${reason.constructor}\` as a type only`
+      fix = `Import it as a value: \`import { ${reason.constructor} } from '${routerPackage}'\`.`
+      break
+    case 'root-call':
+      cause =
+        reason.constructor === 'createRootRoute'
+          ? 'calls `createRootRoute` the wrong way (it takes the route options as its one argument)'
+          : 'calls `createRootRouteWithContext` with the route options, but it takes the context type first'
+      fix =
+        entry.kind !== 'root'
+          ? `${writeIt}.`
+          : reason.constructor === 'createRootRoute'
+            ? 'Pass the route options to it: `createRootRoute({ … })`.'
+            : 'Call it with the context type, then with the route options: `createRootRouteWithContext<Ctx>()({ … })`.'
+      break
+    case 'wrapped':
+      cause =
+        'is not created by a route constructor call bound to its `Route` export (the call is wrapped, made in a function, or stored in another const, or `Route` is declared more than once)'
+      fix = `${writeIt}${entry.kind === 'root' ? ' (or `createRootRouteWithContext<Ctx>()({ … })`)' : ''}.`
+      break
+  }
   const deleted = ctx.config.deleteNodes.map((k) => `\`${k}\``).join(', ')
   ctx.diagnostic({
     severity: 'warning',
-    message: `[tanstack-router] The route of ${ctx.displayPath} is not created by a route factory call bound to its \`Route\` export, so it is not code-split or hot-updated${deleted ? `, and ${deleted} in its options are not removed, so any server code in them ships to the client` : ''}. Write it as \`export const Route = createFileRoute(path)({ … })\` (\`createRootRoute({ … })\` in the root route).`,
+    message: `[tanstack-router] The route of ${ctx.displayPath} ${cause}, so it is not code-split or hot-updated${deleted ? `, and ${deleted} in its options are not removed, so any server code in them ships to the client` : ''}. ${fix}`,
     range: declarator
       ? { start: declarator.start, end: declarator.end }
       : routeExport?.range,
     by: ROUTER_PLANNER,
     code: 'route-unrecognized',
+  })
+}
+
+/**
+ * A module exporting a `Route` while the routes have never been generated
+ * (each run of the generator failed): it fails with the generator's error,
+ * as the route tree does, instead of being served as written (`server`
+ * code included) or compiled as a route it may not be.
+ */
+export function reportNotGenerated(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  failure: unknown,
+): void {
+  const why = (
+    failure instanceof Error ? failure.message : String(failure)
+  ).replace(/^\[tanstack-router\] /, '')
+  ctx.diagnostic({
+    severity: 'error',
+    message: `[tanstack-router] ${ctx.displayPath} exports a \`Route\`, but the route tree could not be generated, so it is not compiled until it is: ${why}`,
+    by: ROUTER_PLANNER,
+    code: 'routes-not-generated',
   })
 }
 

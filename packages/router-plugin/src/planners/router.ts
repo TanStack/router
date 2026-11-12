@@ -5,7 +5,7 @@
  * part moves the others to their chunks and erases `deleteNodes`
  * (`split.ts`), then route HMR appends the dev block.
  */
-import { recognizeRoute, routeEntryDigest } from './route'
+import { recognizeRoute, reportNotGenerated, routeEntryDigest } from './route'
 import { splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'
@@ -26,9 +26,17 @@ export interface RouterRound {
 
 declare module '@tanstack/router-utils/compiler' {
   interface PlannerData {
-    /** The router planner's `PlannerData` (`ROUTER_PLANNER`): its config and its route-registry entry. */
-    router: { config: RouterPlannerConfig; prefetch: RouteEntryFacts | null }
+    /** The router planner's `PlannerData` (`ROUTER_PLANNER`): its config and its route-registry entry (or why there is none yet). */
+    router: {
+      config: RouterPlannerConfig
+      prefetch: RouteEntryFacts | RoutesNotGenerated | null
+    }
   }
+}
+
+/** The routes have never been generated: the generator's error. */
+interface RoutesNotGenerated {
+  failure: unknown
 }
 
 export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
@@ -40,13 +48,16 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       t0.exports.some((e) => e.kind === 'local' && e.name === 'Route'),
     prefetch(_t0, ctx) {
       // the route id comes from the generator's registry: a dependency
-      const entry = ctx.host.routes?.lookup(ctx.identity.path) ?? null
+      const routes = ctx.host.routes
+      const path = ctx.identity.path
+      const entry = routes?.lookup(path) ?? null
       ctx.ledger.record({
         kind: 'route-registry',
-        path: ctx.identity.path,
-        digest: routeEntryDigest(entry),
+        path,
+        digest: routes ? routes.digestFor(path) : routeEntryDigest(entry),
       })
-      ctx.set(entry)
+      const failure = routes?.failure?.()
+      ctx.set(failure !== undefined ? { failure } : entry)
       return Promise.resolve()
     },
     plan(ctx) {
@@ -55,6 +66,12 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       // list is no route: served as written (R145)
       const entry = ctx.prefetched.get(ROUTER_PLANNER) ?? null
       if (!entry) {
+        return
+      }
+      if ('failure' in entry) {
+        // no route is known yet: whether this file is one, and which, is
+        // not known either (as the route tree, it fails until it is)
+        reportNotGenerated(ctx, entry.failure)
         return
       }
       const route = recognizeRoute(ctx, entry)

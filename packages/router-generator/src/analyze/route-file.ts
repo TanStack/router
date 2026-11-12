@@ -3,13 +3,14 @@ import { unwrap } from 'yuku/utils'
 import { lit } from '../print/style'
 import { propertyKeyName, routeCallOf } from './route-call'
 import type {
+  ForeignRoute,
   RouteCall,
   RouteConstructorName,
   RouteFileKind,
 } from './route-call'
 import type { CodeStyle } from '../print/style'
 import type { RouteProps } from '../types'
-import type { CallExpression, Expression, Node, SourceFile } from 'yuku'
+import type { Expression, Node, SourceFile } from 'yuku'
 
 /** A problem in a route file, at a position of its source. */
 export interface FileDiagnostic {
@@ -153,18 +154,6 @@ function calleeName(callee: Node): string {
   return 'its constructor'
 }
 
-/** Whether `callee` is bound to an `import type` (or `import { type … }`). */
-function isTypeOnlyImport(file: SourceFile, callee: Node) {
-  const object =
-    callee.type === 'MemberExpression'
-      ? (callee as unknown as { object: Node }).object
-      : callee
-  return (
-    object.type === 'Identifier' &&
-    file.referenceOf(object)?.binding?.import?.typeOnly === true
-  )
-}
-
 /** A license or JSX pragma comment: it leads the file, above an added import. */
 const leadingCommentRe = /^\/\*!|@license|@preserve|@jsx/
 
@@ -243,12 +232,13 @@ export function analyzeRouteFile(
       diagnostics:
         expected.kind === 'root'
           ? []
-          : foreignCallDiagnostics(file, call.call, expected),
+          : foreignCallDiagnostics(file, call.reason, expected),
     }
   }
 
   const props = propsOf(call.options)
   const splices: Array<Splice> = []
+  const diagnostics: Array<FileDiagnostic> = []
   const quoteOf = (node: Node) => {
     const first = source[node.start]
     return first === '"' || first === "'" ? first : expected.style.quote
@@ -293,20 +283,16 @@ export function analyzeRouteFile(
         })
       }
     } else {
-      // An id computed at runtime: the file is left as it is
-      return {
-        kind: 'route',
-        output: null,
-        props,
-        foreign: false,
-        diagnostics: [
-          diagnosticAt(
-            file,
-            idArg.start,
-            `The route id is not a string literal, so the generator cannot keep it in sync with the file's path: write ${lit(expected.routeId)}.`,
-          ),
-        ],
-      }
+      // An id computed at runtime: left as it is, and reported (the
+      // constructor below is still the generator's to keep up: a route
+      // compiler waits for that repair)
+      diagnostics.push(
+        diagnosticAt(
+          file,
+          idArg.start,
+          `The route id is not a string literal, so the generator cannot keep it in sync with the file's path: write ${lit(expected.routeId)}.`,
+        ),
+      )
     }
   }
 
@@ -370,45 +356,38 @@ export function analyzeRouteFile(
     output: splices.length ? applySplices(source, splices) : null,
     props,
     foreign: false,
-    diagnostics: [],
+    diagnostics,
   }
 }
 
 /**
  * What the generator tells about a `Route` it does not keep up, when it is
- * the router's own constructor misused (SPEC J1.1): called without the
- * options call, or imported as a type only. A route made by the app's own
- * helper gets nothing (R130).
+ * the router's own constructor misused (SPEC J1.1) and its id is stale:
+ * called without the options call, or imported as a type only. A route
+ * made by the app's own helper gets nothing (R130).
  */
 function foreignCallDiagnostics(
   file: SourceFile,
-  outer: CallExpression | null,
+  reason: ForeignRoute,
   expected: RouteFileExpectation,
 ): Array<FileDiagnostic> {
-  if (!outer) {
+  if (reason.kind !== 'no-options' && reason.kind !== 'type-only') {
     return []
   }
-  const innerCallee = unwrap(outer.callee)
-  const inner = innerCallee.type === 'CallExpression' ? innerCallee : outer
-  const idArg = inner.arguments[0]
+  const idArg = reason.idCall?.arguments[0]
   if (!isStringLiteral(idArg) || idArg.value === expected.routeId) {
     return []
   }
-  const callee = unwrap(inner.callee)
-  let reason: string
-  if (inner === outer && isConstructorName(callee)) {
-    // `createFileRoute('/id')` without the options call
-    reason = `calls ${calleeName(innerCallee)}(${JSON.stringify(idArg.value)}) without route options (\`${calleeName(innerCallee)}(${JSON.stringify(expected.routeId)})({ ... })\`)`
-  } else if (inner !== outer && isTypeOnlyImport(file, callee)) {
-    reason = `uses ${calleeName(callee)}, imported as a type only`
-  } else {
-    return []
-  }
+  const name = calleeName(reason.callee)
+  const problem =
+    reason.kind === 'no-options'
+      ? `calls ${name}(${JSON.stringify(idArg.value)}) without route options (\`${name}(${JSON.stringify(expected.routeId)})({ ... })\`)`
+      : `uses ${name}, imported as a type only`
   return [
     diagnosticAt(
       file,
       idArg.start,
-      `The \`Route\` export ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
+      `The \`Route\` export ${problem}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
     ),
   ]
 }
@@ -416,19 +395,6 @@ function foreignCallDiagnostics(
 /** Whether the route's constructor is called without an import (the generator adds it). */
 function isUnbound(call: Extract<RouteCall, { kind: 'ours' }>) {
   return call.specifier === null && call.property === null
-}
-
-/** Whether a callee is named like the router's file route constructors (`createFileRoute`, `R.createLazyFileRoute`). */
-function isConstructorName(callee: Node) {
-  const name =
-    callee.type === 'MemberExpression' && !callee.computed
-      ? callee.property.type === 'Identifier'
-        ? callee.property.name
-        : null
-      : callee.type === 'Identifier'
-        ? callee.name
-        : null
-  return name === 'createFileRoute' || name === 'createLazyFileRoute'
 }
 
 /**
