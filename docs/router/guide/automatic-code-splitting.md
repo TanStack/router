@@ -78,47 +78,9 @@ This means that it creates three separate lazy-loaded chunks for each route. Res
 
 For automatic code splitting to work, there are some rules in place to make sure that this process can happen reliably and predictably.
 
-#### Exported route properties
+#### Top-level code: where it goes and when it runs
 
-A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a function or component that uses only functions and constants, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle. A class, an object, or a value a call returns exists once: the chunk and other modules importing it from the route file share that small module.
-
-An exported binding that only split code uses moves to a small module of its own that the chunk imports, side effects and the statements changing it included (`store.subscribe(log)` goes with `store`). An exported `let` goes there with the code assigning it (`mode = …` at the top level, or a `setMode` function), and other modules importing it from the route file still read its current value. It stays in the main bundle in these cases, and the build warns once, naming the file and what to do:
-
-- it reads, when the module loads, a binding the route module keeps or changes: its own module would load at another time than the route module. Move it and what it reads to their own module and import it from there;
-- a module loaded with the entry imports a function or constant through the route file while the chunk carries its own copy, so the build ships it twice. Move it to its own module and import it from there in both;
-- another route's split code imports it through the route file, and webpack or Rspack keep the route file's re-export with the entry. Import it from its own module, or declare `"sideEffects": false` in package.json;
-- it is a class, an object or a call result only split code imports, and the bundler's chunk configuration (a `manualChunks` or `cacheGroups` group that lands in the entry, Rolldown < 1.1.5) placed its module with the entry. Keep the routes directory out of such groups.
-
-A binding the route module needs anyway (its `loader` reads it, or a module loaded with the entry imports an object from the route file) stays there without a warning: it would load with the route even without the split code.
-
-```tsx
-export const Route = createRoute('/posts')({
-  // ...
-  notFoundComponent: PostsNotFoundComponent,
-})
-
-// ✅ split: the chunk carries its copy, importers share one instance
-export function PostsNotFoundComponent() {
-  // ...
-}
-```
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { createStore, log } from '../store'
-
-// ✅ split: a module of its own, which the chunk imports
-export const store = createStore('cart-store')
-store.subscribe(log)
-
-export const Route = createFileRoute('/cart')({
-  component: () => <p>{store.count}</p>,
-})
-```
-
-#### Top-level code moves with the code that uses it
-
-Top-level code that only split code uses moves into that split chunk, side effects included: a declaration moves with the code that reads it, a statement with the bindings it uses, and unused code with what it reads. Side effects keep no order between them: a call that stays in the route file, such as `validateSearch: z.object({ … })`, does not hold back a declaration written before it.
+Everything at the top level of a route file exists once and runs once. It lives with the code that uses it: one split option's chunk, the route file, or one shared module that several chunks import. A statement goes where the bindings it uses go. What moves runs when its chunk loads.
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -136,8 +98,6 @@ export const Route = createFileRoute('/account')({
 })
 ```
 
-Code that several split chunks use goes to one shared module they all import. It runs once, when the first of them loads:
-
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { createAnalytics } from '../analytics'
@@ -153,101 +113,145 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-#### Code that moves runs later
-
-What moves runs when its chunk loads, no longer when the route file loads. Keep startup work that must run when the app starts in a module the app's entry imports, or use it from code the route module keeps (its `loader`, `beforeLoad`). For example:
-
-- `Sentry.init(sentryConfig)`, where only the component reads `sentryConfig`, runs when the component's chunk loads;
-- a callback registered when the module loads moves with the binding it writes: with `let flags = {}` read only by the component, `loadFlags().then((f) => { flags = f })` starts when the component's chunk loads;
-- in a TanStack Start app, startup work only a server function's handler uses (`queue.process(worker)` with `queue` read by the handler) moves with the handler and runs on the first call of a server function of the file;
-- a read of an object moves past a write made through what a function returned for it: after `const store = reactive(settings)` and `Object.assign(store, { dark: true })`, a `const keys = Object.keys(settings)` only the component uses moves into its chunk and sees `dark`, because the compiler does not know that `store` is `settings`.
-- a call whose result is a component or loader option's value is read as keeping the function it is handed for the router to call later, as `memo`, `observer` or an app's `withAuth` do (directly, wrapped in several calls, or through `const`s): a factory that runs the function at once instead, such as `component: createIcon(() => { const n = seen.size; return () => <p>{n}</p> })`, runs it when the component's chunk loads and sees `seen` as the code that ran before left it.
-
-#### What stays in the route file
-
-Code stays in the route file when the route module uses it, or when a statement that stays changes or uses it. The build warns once for each binding only split code needs that stays this way, naming it, why it stays and a fix. For example, a statement writing two bindings stays with the one the route module keeps:
+Startup code moves too when only split code uses what it touches:
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { createSession, createTheme } from '../app'
+import { Sentry } from '../sentry'
 
-const theme = createTheme()
-const session = createSession()
-if (import.meta.env.PROD) {
-  theme.mode = 'dark'
-  session.secure = true
-}
+const sentryConfig = { dsn: 'https://sentry.example.com/1' }
+// runs when the component's chunk loads, not when the app starts
+Sentry.init(sentryConfig)
 
-export const Route = createFileRoute('/settings')({
-  beforeLoad: () => session.check(),
-  component: () => <p>{theme.mode}</p>,
+export const Route = createFileRoute('/about')({
+  component: () => <p>{sentryConfig.dsn}</p>,
 })
 ```
 
-```
-[tanstack-router] `theme` in src/routes/settings.tsx stays in the route module because the statement on line 6, which changes it, stays there: it also changes `session`, which the route module keeps; change `session` in a statement of its own, so `theme` can load with the split `component`.
-```
+Keep work that must run when the app starts in a module the app's entry imports. In a TanStack Start app, startup work only a server function's handler uses moves with the handler and runs on the first call of a server function of the file.
 
-A value read when the module loads from state the module changes later stays too, since moving it would read the state at another time:
+Exports follow the same rule. An exported binding only split code uses moves to a module of its own, which the chunk imports and other files importing it through the route file share; an exported `let` takes the code assigning it along, and importers still read its current value. An exported route option (`export function PostsNotFoundComponent`) is still split.
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { loadPrefs, readTheme } from '../prefs'
+import { createStore, log } from '../store'
+
+// ✅ split: a module of its own, which the chunk imports
+export const store = createStore('cart-store')
+store.subscribe(log)
+
+export const Route = createFileRoute('/cart')({
+  component: () => <p>{store.count}</p>,
+})
+```
+
+#### When code stays: the warnings
+
+Code the route file itself uses (its `loader`, `beforeLoad`, `validateSearch`…) stays there, silently. When only split code uses a binding and it stays anyway, because moving it would change what the file computes, the build warns once, at the binding:
+
+| Code                                                                                                                                                                     | The build says                                                                                                                                                                                                                                                                                                                                       | Fix                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| One statement changes `theme`, which only the component uses, and `session`, which `beforeLoad` reads: `if (…) { theme.banner = 'Local build'; session.secure = false }` | ``[tanstack-router] `theme` in src/routes/settings.tsx stays in the route module because the statement on line 6, which changes it, stays there: it also changes `session`, which the route module keeps; change `session` in a statement of its own, so `theme` can load with the split `component`.``                                              | Two statements: `if (…) { theme.banner = 'Local build' }` and `if (…) { session.secure = false }`          |
+| A value read at load from state the file changes later: `const initialTheme = prefs.theme`, and `prefs.theme = readTheme()` in a `storage` listener                      | ``[tanstack-router] `initialTheme` in src/routes/theme.tsx stays in the route module because it uses `prefs` when the module loads, and the module writes `prefs`; use `prefs` inside the code that needs it, or move both to their own module, so `initialTheme` can load with the split `component`.``                                             | Read it where it is used: `component: () => <p>{prefs.theme}</p>`                                          |
+| A function handed to a call reads such state: `const save = debounce(() => savePrefs(prefs))`                                                                            | ``[tanstack-router] `save` in src/routes/preferences.tsx stays in the route module because it may use `prefs` when the module loads (the function is handed to `debounce`), and the module writes `prefs`; move both to their own module, so `save` can load with the split `component`.``                                                           | Move `prefs`, its listener and `save` to their own module, and import `save` from there                    |
+| Unused code reads the bindings of two chunks: `function debugDump() { return [cache, client] }`                                                                          | ``[tanstack-router] In src/routes/dashboard.tsx, unused `debugDump` (line 6) puts `cache` and `client` in one shared module the split `component` and `errorComponent` import; delete `debugDump`, so each loads with the split code that needs it.``                                                                                                | Delete `debugDump`                                                                                         |
+| Unused code reads a binding the route file keeps: `function debugDump() { return [cache, session] }`, with `session` read by `beforeLoad`                                | ``[tanstack-router] In src/routes/inbox.tsx, unused `debugDump` (line 6) keeps `cache` in the route module; delete `debugDump`, so it can load with the split code that needs it.``                                                                                                                                                                  | Delete `debugDump`                                                                                         |
+| An export only split code uses reads, at load, what the route file keeps: `export const pageSize = settings.pageSize * 2`, with `settings` read by the `loader`          | ``[tanstack-router] The export `pageSize` of src/routes/list.tsx is used only by the split `component`, but stays in the route module because it reads `settings` when it loads, which the route module keeps, so it loads with the route module instead of with that code. Move it and `settings` to their own module and import them from there.`` | Don't export it if no other file imports it (it then moves), or move it and `settings` to their own module |
+| A split option assigns a `let` the route file uses: `let count = 0`, read by the `loader`, and `count++` in the component                                                | ``[tanstack-router] The `component` option of src/routes/counter.tsx is not code-split: it writes `count`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.count`) or in its own module.``                                                                        | Keep the state in an object: `const state = { count: 0 }`, then `state.count++`                            |
+
+#### What the compiler doesn't see
+
+In these cases code moves without a warning, and what moved can see other values than the file as written. The compiler reads the route file, not the modules it imports: it assumes an imported function changes nothing it is handed and returns a new value, and that a call making a route option's value keeps the function it is handed for later. Route files are rewritten heavily: keep such code in a module of its own.
+
+**Code inside imported functions.** Writing `prefs.theme = …` in the route file is seen (the second warning above); `mutate(prefs)` is not. Likewise, an imported call that names nothing of the file, such as `connectEmulator()`, stays and runs before an `initializeApp()` that moved.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { loadPrefs, mutate } from '../prefs'
 
 const prefs = loadPrefs()
-const initialTheme = prefs.theme
-window.addEventListener('storage', () => {
-  prefs.theme = readTheme()
-})
+const initialTheme = prefs.theme // moves: reads `prefs` after `mutate` ran
+mutate(prefs) // stays with `prefs`, which the loader reads
 
-export const Route = createFileRoute('/theme')({
+export const Route = createFileRoute('/look')({
+  loader: () => prefs.theme,
   component: () => <p>{initialTheme}</p>,
 })
 ```
 
-```
-[tanstack-router] `initialTheme` in src/routes/theme.tsx stays in the route module because it uses `prefs` when the module loads, and the module writes `prefs`; use `prefs` inside the code that needs it, or move both to their own module, so `initialTheme` can load with the split `component`.
-```
-
-A function handed to any other call may run when that call does, so a declaration such as `const save = debounce(() => prefs.theme)`, or a wrapped component used only as a JSX tag (`const Card = observer(function Card() { … })` rendered as `<Card />`), stays when that function reads such state. The warning then says it _may_ use the state, and the fix is to move both to their own module.
-
-Unused code is never deleted: it moves with what it reads. When it reads bindings of two chunks, it puts them in one shared module, and the build says so:
+**A call result that is the object it was handed:**
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { createCache, createClient } from '../app'
+import { reactive } from '../reactive'
 
-const cache = createCache()
-const client = createClient()
-function debugDump() {
-  return [cache, client]
-}
+const settings = { dark: false }
+const keys = Object.keys(settings) // moves: sees `compact`
+const store = reactive(settings) // the same object as `settings`
+Object.assign(store, { compact: true }) // stays with `store`
 
-export const Route = createFileRoute('/dashboard')({
-  component: () => <p>{cache.size}</p>,
-  errorComponent: () => <p>{client.status}</p>,
+export const Route = createFileRoute('/keys')({
+  loader: () => store,
+  component: () => <p>{keys.join()}</p>,
 })
 ```
 
+**A callback registered at load** moves with what it writes:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { loadFlags } from '../flags'
+
+let flags = {}
+// moves with `flags`: the request starts when the component's chunk loads
+loadFlags().then((f) => {
+  flags = f
+})
+
+export const Route = createFileRoute('/beta')({
+  component: () => <p>{JSON.stringify(flags)}</p>,
+})
 ```
-[tanstack-router] In src/routes/dashboard.tsx, unused `debugDump` (line 6) puts `cache` and `client` in one shared module the split `component` and `errorComponent` import; delete `debugDump`, so each loads with the split code that needs it.
+
+**A component factory that runs its function at once.** A call making a route option's value is read as keeping the function for the router to call later, as `memo`, `observer` or an app's `withAuth` do:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createIcon } from '../icon'
+
+const seen = new Set<string>()
+
+export const Route = createFileRoute('/icon')({
+  loader: () => {
+    seen.add('icon')
+  },
+  // createIcon calls its function at once: it runs when the chunk loads,
+  // after the loader added to `seen`
+  component: createIcon(() => {
+    const count = seen.size
+    return () => <p>{count}</p>
+  }),
+})
 ```
 
-Every host prints the file and one position: a Vite build at the end of the message (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
+**An export another module imports through the route file.** When it moved to a module of its own, that module runs before the route file's own code:
 
-#### Calls without side effects
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { formatCount, recordVisit, visits } from '../visits'
 
-A value without side effects can be copied into each chunk that uses it, and a declaration reading one when the module loads does not stay for it. The compiler knows these calls have none when their arguments have none: TanStack Router's `getRouteApi`, `linkOptions`, `createLink`, `createRouteMask`, `lazyRouteComponent`, `lazyFn`, `retainSearchParams`, `stripSearchParams`, `parseSearchWith`, `stringifySearchWith` and `createRouterConfig` (React and Vue), React's `memo`, `forwardRef` and `lazy`, Solid's `lazy`, and Vue's `defineComponent` and `defineAsyncComponent`, imported from the package itself (a renamed import, a namespace member such as `React.memo` and a member of React's default import count; a re-export through one of the app's modules does not). In a TanStack Start app's client and server builds, the builder chains of server functions, middleware, isomorphic functions and server-only or client-only functions have none either; the arguments a build removes do not count, and a link called on a `const` that holds a builder (`base.client(…)`) changes that builder.
+recordVisit()
+// moves to a module of its own; imported through this file, it runs first
+export const label = formatCount(visits)
 
-Mark other calls that have no side effects with `/* @__PURE__ */` before the call, or with `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself. An annotation frees only a call or `new` whose arguments have no side effects. These do not change what the route file keeps, because the route file is split without reading the modules it imports or the bundler's options: `/* #__NO_SIDE_EFFECTS__ */` on a function imported from another module, `"sideEffects": false` in a package's package.json, and the bundler's list of pure functions.
+export const Route = createFileRoute('/visits')({
+  component: () => <p>{label}</p>,
+})
+```
 
 #### Route callbacks that read `this` are not split
 
 A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. The router calls these callbacks without a `this` (it is `undefined`); only code calling `Route.options.loader()` itself passes the route options, which a split chunk would not. Write such callbacks as arrow functions (or without `this`) to have them split.
-
-#### Module state written by split code
-
-A split option cannot write a module binding the route module also uses (`let count = 0` read by the `loader` and incremented by the component, inline or declared as `function Page() { count++ }`), nor one another split option writes: a split chunk cannot assign another module's binding. Such an option stays in the route file, and the build warns once, naming the binding. Keep that state in an object (`const state = { count: 0 }`, then `state.count++`) or in a module of its own to have it split.
 
 #### A split loader the compiler cannot read
 
@@ -266,6 +270,13 @@ In a loader object, a spread or a computed key written after `handler` may repla
 #### A split loader written as a server function in place (TanStack Start)
 
 In a TanStack Start app, a server function written in place as the `handler` of a split object-form loader (`loader: { handler: createServerFn().handler(…) }`) fails the build, positioned at the server function: Start moves such a server function to the top of the module, and the split chunk cannot take the same code. Declare it as a module-level `const` before the route and pass it by name (`const loaderFn = createServerFn().handler(…)`, then `loader: { handler: loaderFn }`). Written as the `loader` itself, a server function is a call: it stays in the route file with the warning above (`loader: (ctx) => loaderFn(ctx)` splits it).
+
+#### Reference: copies, calls without side effects, bundlers
+
+- **Copies.** A function or a constant that has no side effects and that nothing writes may be copied into each chunk that uses it rather than shared: nothing can tell the copy from the original. An exported one is copied into the chunks, and other files importing it through the route file share one instance. A class, an object, or a value a call returns is never copied.
+- **Calls without side effects.** Such a value can be copied, and a declaration reading it at load does not stay for it. The compiler knows these calls have none when their arguments have none: TanStack Router's `getRouteApi`, `linkOptions`, `createLink`, `createRouteMask`, `lazyRouteComponent`, `lazyFn`, `retainSearchParams`, `stripSearchParams`, `parseSearchWith`, `stringifySearchWith` and `createRouterConfig` (React and Vue), React's `memo`, `forwardRef` and `lazy`, Solid's `lazy`, Vue's `defineComponent` and `defineAsyncComponent`, imported from the package itself (renamed, as a namespace member such as `React.memo`, or as a member of React's default import; not re-exported through one of the app's modules); in a TanStack Start app, the builder chains of server functions, middleware, isomorphic, server-only and client-only functions (the arguments a build removes do not count; a link called on a `const` holding a builder, `base.client(…)`, changes that builder). Mark other calls with `/* @__PURE__ */`, or a function declared in the route file with `/* #__NO_SIDE_EFFECTS__ */`; an annotation frees only a call or `new` whose arguments have no side effects. The route file is split without reading the modules it imports or the bundler's options, so `#__NO_SIDE_EFFECTS__` on an imported function, `"sideEffects": false` and the bundler's list of pure functions change nothing here.
+- **Exports and bundlers.** An exported binding that moved to a module of its own loads with the entry chunk, without a warning, when a module loaded with the entry imports it and the chunk shares that instance (it is needed at startup anyway). When it loads with the entry chunk otherwise, the build warns, naming the export: when a module loaded with the entry imports it through the route file while the chunk carries a copy (it ships twice: move it to its own module and import it from there in both); when another route's split code imports it through the route file and webpack or Rspack keep the route file's re-export with the entry (import it from its own module, or declare `"sideEffects": false` in package.json); when the bundler's chunk configuration (`manualChunks`, `advancedChunks`, `splitChunks`) groups its module with the entry (keep the routes directory out of such groups).
+- **Positions.** Every host prints the file and one position: a Vite build at the end of the message (line and column counted from 1); the Vite dev server in its own `File:` line and code frame, mapped to the file as written; Rsbuild, Rspack and webpack in their own header (`File: ./src/routes/account.tsx:12:7`, `WARNING in ./src/routes/account.tsx 12:7`).
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
