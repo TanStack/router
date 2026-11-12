@@ -122,12 +122,6 @@ code.test.ts`: "a root route's %s loads lazily".
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/known-bugs-start-compiler.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
-- **A write to the route options through another name of the object is not seen**
-  (`const a = { …, server }; const z = a; z.server = other; createFileRoute('/x')(a)`): the compiler's mutation model
-  follows no alias, so the literal's `server` is removed, the write stays in the client with what it holds, and nothing
-  is reported. A write through the options' own name (or a const of their chain) is seen and reported. SPEC J2.14.
-  `router-plugin/tests/code-splitter-const-chains.test.ts`: "route options written through another name ship no server
-  code, or are reported". Fix: no server code the write holds reaches the client, or the file is reported.
 
 ## Known incorrect rejections (accepted, R89)
 
