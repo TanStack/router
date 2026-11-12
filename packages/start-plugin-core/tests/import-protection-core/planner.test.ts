@@ -425,7 +425,7 @@ describe('dev decisions', () => {
     expect(outcome.error?.message).toContain('src/a.ts:1:24')
     expect(outcome.error).toMatchObject({
       id: `${ROOT}/src/a.ts`,
-      at: { line: 1, column: 24 },
+      reports: [{ at: { line: 1, column: 24 } }],
     })
     // a cached plan fails the module again
     const again = await a.compile('src/a.ts', 'client')
