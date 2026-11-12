@@ -1413,25 +1413,20 @@ export const see = (value: unknown) => seen.push(value)
 })
 
 // J2.8: an exported binding a split component needs that cannot leave the
-// route module (its initialiser has side effects) is reported once in dev,
-// naming the file; a route file exporting only `Route` is not.
+// route module (it is reassigned) is reported once in dev, naming the file;
+// a route file exporting only `Route` is not.
 describe('an exported binding kept in the route module', () => {
-  it('is reported once naming the file when it has side effects, and not when nothing keeps it', async () => {
+  it('is reported once naming the file when it is reassigned, and not when nothing keeps it', async () => {
     const kept = await loadRoute(
-      `${head}import { createStore } from './store'
-export const store = createStore()
+      `${head}export let count = 0
 function Page() {
-  return <p>{store.value}</p>
+  count++
+  return <p>{count}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
-      {
-        files: {
-          'store.ts': `export const createStore = () => ({ value: 'stored' })\n`,
-        },
-      },
     )
-    expect(await kept.run(`return render('component')`)).toBe('<p>stored</p>')
+    expect(await kept.run(`return render('component')`)).toBe('<p>1</p>')
     expectDiagnostic(await kept.diagnostics(), {
       severity: 'warning',
       file: kept.url.slice(1),

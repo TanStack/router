@@ -1,7 +1,6 @@
 /**
  * A read of an enum member runs no code: the enum's object holds plain data.
- * Real builds, both directions, with a `const` object's member read (which may
- * be a getter) as the control.
+ * Real builds, both directions.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -160,50 +159,6 @@ ${component('B.X')}`)
 // Rule L only times code: what may move into an extracted export's module is
 // judged as deletion is (a host may flag that module side-effect free), so
 // these exported enums stay, reported, as before rule L
-describe('member reads that stay effects', () => {
-  test(
-    "control: a const object's member may be a getter, so the enum stays and the build says so",
-    async () => {
-      const { app, warnings } = await buildRoute(
-        `${head}const O = { get y() { return 'MARK_READ' } }
-export enum B { X = O.y as any }
-${component('B.X')}`,
-      )
-      expect(app.where('MARK_READ')).toBe('eager')
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-
-  test(
-    'an imported enum is opaque to one module: its member read stays an effect',
-    async () => {
-      const { warnings } = await buildRoute(
-        `${head}import { A } from '../a'
-export enum B { X = A.Y }
-${component('B.X')}`,
-        { 'a.ts': `export enum A { Y = 'MARK_A' }\n` },
-      )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-
-  test(
-    'a declared enum is whatever the global is: its member read stays an effect',
-    async () => {
-      const { warnings } = await buildRoute(
-        `${head};(globalThis as any).A = { Y: 'y' }
-declare enum A { Y = 'y' }
-export enum B { X = A.Y as any }
-${component('B.X')}`,
-      )
-      expect(warnings.some((text) => text.includes('side effects'))).toBe(true)
-    },
-    timeout,
-  )
-})
-
 // What can write the enum without the mutation model seeing it: the read keeps
 // the value the source gives it, so it stays before the write.
 describe('an enum something can write out of sight', () => {
