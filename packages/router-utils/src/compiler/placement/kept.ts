@@ -154,7 +154,16 @@ export function keptDeclarations(
       graph.regionWrittenSyms.has(sym)
         ? reassignment(sym)
         : (cancelled.get(c) ?? { reason: 'live' })
-    if (lazyNeeders(c).length === 0) {
+    // (not reported: one no split code reaches, and one kept by a binding a
+    // planner generated, which exists in this build only, like a candidate
+    // some output renders otherwise: a server fn Start moves out of a
+    // function the export calls)
+    if (
+      lazyNeeders(c).length === 0 ||
+      (cause.reason === 'reads' &&
+        cause.binding !== undefined &&
+        symbols.kind(cause.binding) !== 'source')
+    ) {
       continue
     }
     if (cause.reason === 'live') {

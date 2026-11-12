@@ -124,7 +124,7 @@ export interface Events {
   ) => Pin | undefined
   /** Another cluster than `c` whose evaluation touches `sym` when the module loads, the first one, if any (who reads what `c`'s own code writes later). */
   loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
-  /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any. */
+  /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any (one of the source before a generated one). */
   readsKept: (
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
@@ -177,33 +177,20 @@ export function eventTable(
     c: ClusterId,
     visit: (t: Touch) => boolean,
   ): boolean => {
-    const stop = reads.runs(r, (ref, at) => {
-      if (NEED_KINDS.has(ref.kind) && symbols.isModuleLevel(ref.sym)) {
-        const d = clusterOfSym.get(ref.sym)
-        if (d !== undefined && d !== c) {
-          return visit({ sym: ref.sym, at, cluster: d })
-        }
-      }
-      return false
-    })
-    if (stop) {
-      return true
+    const touch = (sym: SymbolId, at: number): boolean => {
+      const d = clusterOfSym.get(sym)
+      return d !== undefined && d !== c && visit({ sym, at, cluster: d })
     }
-    // what its generated text names, where that text evaluates at load
-    for (const g of reads.generatedNames(r)) {
-      if (!symbols.isModuleLevel(g.sym) || t1.isLazyAt(g.at)) {
-        continue
-      }
-      const d = clusterOfSym.get(g.sym)
-      if (
-        d !== undefined &&
-        d !== c &&
-        visit({ sym: g.sym, at: g.at, cluster: d })
-      ) {
-        return true
-      }
-    }
-    return false
+    // (and what the generated text of what it runs names: a server fn a
+    // planner moved out of a body it calls)
+    return reads.runs(
+      r,
+      (ref, at) =>
+        NEED_KINDS.has(ref.kind) &&
+        symbols.isModuleLevel(ref.sym) &&
+        touch(ref.sym, at),
+      (g, at) => symbols.isModuleLevel(g.sym) && touch(g.sym, at),
+    )
   }
   function touches(c: ClusterId, visit: (t: Touch) => boolean): boolean {
     for (const r of clusters[c]!.regions) {
@@ -384,11 +371,16 @@ export function eventTable(
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ): SymbolId | undefined {
+    // (a binding of the source first: one a planner generated exists in
+    // this build only, and is not reported when it is the only one)
     let found: SymbolId | undefined
     touches(c, (t) => {
       if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
-        found = t.sym
-        return true
+        if (symbols.kind(t.sym) === 'source') {
+          found = t.sym
+          return true
+        }
+        found ??= t.sym
       }
       return false
     })

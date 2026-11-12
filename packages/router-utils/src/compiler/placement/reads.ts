@@ -13,6 +13,7 @@ import { RewriteSet } from '../rewrite'
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
+import type { Range } from '../header'
 import type { SymbolId } from '../symbols'
 import type { RegionId, UnitId } from '../units'
 import type {
@@ -65,19 +66,14 @@ export interface ReadIndex {
    * that the env module does not claim is its text, a claimed one
    * evaluates with its owner), the functions it passes to a call and the
    * bodies it may call. A function declaration evaluates nothing. `visit`
-   * sees each reference with where it runs; true ends the walk (the
-   * result).
+   * sees each reference with where it runs; `named`, each binding the
+   * generated text of what runs names (edits, placeholders, inserts: a
+   * server fn a planner moved out of a function body the evaluation
+   * calls), by the same rules; true ends the walk (the result).
    */
-  runs: (r: RegionId, visit: RunVisitor) => boolean
+  runs: (r: RegionId, visit: RunVisitor, named?: NameVisitor) => boolean
   /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
   clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
-  /**
-   * The bindings the generated text of region `r`'s rendering in the env
-   * module names (edits, placeholders, inserts; those of the regions nested
-   * in it that the env module does not claim with them), each with where it
-   * stands: what its evaluation may read besides its references.
-   */
-  generatedNames: (r: RegionId) => ReadonlyArray<GeneratedName>
 }
 
 /** A binding generated text names, and where that text stands. */
@@ -88,6 +84,9 @@ export interface GeneratedName {
 
 /** Sees a reference an evaluation runs, with where it runs; true ends the walk. */
 export type RunVisitor = (ref: ClassifiedRef, at: number) => boolean
+
+/** Sees a binding the generated text an evaluation runs names, with where it runs; true ends the walk. */
+export type NameVisitor = (name: GeneratedName, at: number) => boolean
 
 interface MemberReads {
   syms: Array<SymbolId>
@@ -649,8 +648,42 @@ export function readIndex(
     return text
   }
   const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
-  function runs(id: RegionId, visit: RunVisitor): boolean {
-    return visitRuns(t1, regionText(id), graph.callsOf(id), bodyOf, visit)
+  function runs(id: RegionId, visit: RunVisitor, named?: NameVisitor): boolean {
+    const calls = graph.callsOf(id)
+    // the generated names of a text the walk enters, filtered as its
+    // references are (`visitValues`: eager only without a call, within a
+    // write's expression)
+    const entered =
+      named === undefined
+        ? undefined
+        : (u: UnitId, at: number, within: Range | undefined): boolean =>
+            generatedNames(t1.units[u]!.region).some(
+              (g) =>
+                (within === undefined ||
+                  (within.start <= g.at && g.at < within.end)) &&
+                (calls !== null ||
+                  (!t1.isLazyAt(g.at) && !t1.runsLaterAt(g.at))) &&
+                named(g, at),
+            )
+    if (visitRuns(t1, regionText(id), calls, bodyOf, visit, entered)) {
+      return true
+    }
+    if (named === undefined) {
+      return false
+    }
+    // its own text's, as its references (`visitRuns`): those that evaluate
+    // when it does, or in a function it passes to a call
+    for (const g of generatedNames(id)) {
+      if (
+        (!t1.isLazyAt(g.at) ||
+          (calls !== null &&
+            calls.callbacks.some((f) => f.start <= g.at && g.at < f.end))) &&
+        named(g, g.at)
+      ) {
+        return true
+      }
+    }
+    return false
   }
   function clusterRuns(c: ClusterId, visit: RunVisitor): boolean {
     for (const r of clusters[c]!.regions) {
@@ -660,6 +693,12 @@ export function readIndex(
     }
     return false
   }
+  /**
+   * The bindings the generated text of region `r`'s rendering in the env
+   * module names (edits, placeholders, inserts; those of the regions nested
+   * in it that the env module does not claim with them), each with where it
+   * stands: what its evaluation may read besides its references.
+   */
   const generatedOfRegion: Array<ReadonlyArray<GeneratedName> | undefined> = []
   function generatedNames(id: RegionId): ReadonlyArray<GeneratedName> {
     const hit = generatedOfRegion[id]
@@ -684,6 +723,5 @@ export function readIndex(
     reach,
     runs,
     clusterRuns,
-    generatedNames,
   }
 }

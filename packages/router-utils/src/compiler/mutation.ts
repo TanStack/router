@@ -277,7 +277,9 @@ export class MutationModel {
     textOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
     visit: (ref: ClassifiedRef, at: number) => boolean,
     /** A name the caller knows the value of: seen, not followed. */
-    known?: (ref: ClassifiedRef) => boolean,
+    known?: ((ref: ClassifiedRef) => boolean) | null,
+    /** Sees each text the walk enters, before its references, with where it runs (what else that text reads: `ReadIndex.runs`); true ends the walk. */
+    entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
   ): boolean {
     const { units, declaringUnits, runsLaterAt, unitAt } = this.module()
     const ordered =
@@ -295,6 +297,9 @@ export class MutationModel {
       }
       if (within === undefined) {
         seen.add(u)
+      }
+      if (entered?.(u, at, within) === true) {
+        return true
       }
       for (const inner of textOf(u)) {
         if (

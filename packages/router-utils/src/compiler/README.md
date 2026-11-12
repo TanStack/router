@@ -189,7 +189,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   and the text of the module's declarations its running references name and of the statements writing those names
   when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
   `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
-  reading it). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`, `'v' in alias`, and the same through
+  reading it); and, by the same rules, the bindings the generated text of all of it names (a server fn a planner
+  moved to the module top level out of a function the evaluation calls). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`, `'v' in alias`, and the same through
   any expression handing the name's value on: `(alias ?? {}).v`, `(on ? alias : null)?.v`, `[alias][0].v`) reads what that name's
   value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
   it reads `cfg`), so it is ordered against a write of the original. A member write through a name whose

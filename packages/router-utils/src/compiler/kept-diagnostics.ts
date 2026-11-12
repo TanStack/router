@@ -86,7 +86,9 @@ export function keptDiagnostic(
         break
       }
       case 'reads':
-        if (k.read === undefined) {
+        // (a binding the compiler generated, a server fn it moved out of a
+        // function the export calls, has no name in the source)
+        if (k.read === undefined || symbols.kind(k.read) !== 'source') {
           why = `it reads, when it loads, a binding the ${module} keeps`
           fix =
             'Move it, with the bindings it reads when it loads, to their own module and import it from there.'
