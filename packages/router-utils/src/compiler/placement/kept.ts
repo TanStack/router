@@ -166,6 +166,7 @@ export function keptDeclarations(
    * cluster (which reads it: reached from it is no cascade).
    */
   const mirrored = new Map<ClusterId, ClusterId>()
+  const others: Array<{ d: ClusterId; c: ClusterId; pin: Pin }> = []
   for (const [c, pin] of seeds.stayPins) {
     if (!envRoots.has(c)) {
       continue
@@ -196,7 +197,8 @@ export function keptDeclarations(
     }
     // a statement (or unused code: R148, R149 answers E) using bindings of
     // two chunks keeps both eager: the binding that keeps it is reported
-    // too, named with another one it keeps
+    // too, named with another one it keeps (after every statement's own
+    // reports: a statement changing it names it first)
     if (blocker !== undefined && reported(blocker)) {
       const another = changes.reads.find((s) => {
         const d = clusterOfSym.get(s)
@@ -205,23 +207,34 @@ export function keptDeclarations(
       const elsewhere =
         another === undefined ? [] : lazyNeeders(clusterOfSym.get(another)!)
       if (another !== undefined && elsewhere.length > 0) {
-        mirrored.set(blocker, c)
         const changed = changes.syms.includes(another)
-        causes.set(blocker, {
-          reason: pin.reason,
-          ...(pin.other !== undefined && { other: pin.other }),
-          binding: another,
-          in: elsewhere[0],
-          ...(changed && { bindingChanged: true }),
-          // (the statement can change it in one of its own when it could
-          // the binding keeping it)
-          ...(changed && pin.split === true && { split: true }),
-          ...(!changes.syms.some((s) => clusters[blocker]!.declares.has(s)) && {
-            uses: true,
-          }),
-          ...(pin.unused !== undefined && { unused: pin.unused }),
+        others.push({
+          d: blocker,
+          c,
+          pin: {
+            reason: pin.reason,
+            ...(pin.other !== undefined && { other: pin.other }),
+            binding: another,
+            in: elsewhere[0],
+            ...(changed && { bindingChanged: true }),
+            // (the statement can change it in one of its own when it could
+            // the binding keeping it)
+            ...(changed && pin.split === true && { split: true }),
+            ...(!changes.syms.some((s) =>
+              clusters[blocker]!.declares.has(s),
+            ) && {
+              uses: true,
+            }),
+            ...(pin.unused !== undefined && { unused: pin.unused }),
+          },
         })
       }
+    }
+  }
+  for (const { d, c, pin } of others) {
+    if (!causes.has(d)) {
+      mirrored.set(d, c)
+      causes.set(d, pin)
     }
   }
   const kept: Array<KeptDeclaration> = []
