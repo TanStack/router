@@ -101,10 +101,9 @@ export interface PlacementInput {
 /**
  * Why a declaration only split code needs stays in the env module
  * (`Placement.kept`). An exported one (an extraction candidate a chunk
- * reaches): `effects` (an observable initialiser effect), `reassigned`,
- * `live` (the env module reads it), `reads` (it reads, at its evaluation,
- * a binding the env module keeps), `unneeded` (no derived output needs it
- * once extraction is decided). An
+ * reaches): `live` (the env module reads it), `reads` (it reads, at its
+ * evaluation, a binding the env module keeps), `unneeded` (no derived
+ * output needs it once extraction is decided). An
  * unexported effectful one, or an eager reader of state:
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
@@ -114,7 +113,6 @@ export interface PlacementInput {
  * (one instance, in the env module).
  */
 export type KeptReason =
-  | 'reassigned'
   | 'live'
   | 'reads'
   | 'unneeded'
@@ -134,9 +132,9 @@ export interface KeptDeclaration {
   range: { start: number; end: number }
   /** The lazy outputs that need it. */
   needers: Array<OutputId>
-  /** `written`, `reassigned`: where it is written. */
+  /** `written`: where it is written. */
   at?: number
-  /** `state`, `reads`: the binding it reads; `reassigned`: the binding assigned; `written`: the binding the statement also changes, which keeps it. */
+  /** `state`, `reads`: the binding it reads; `written`: the binding the statement also changes, which keeps it. */
   read?: SymbolId
   /** `written`: the split output using `read`, or the subject's second one. */
   in?: OutputId

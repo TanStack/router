@@ -77,14 +77,6 @@ export function keptDiagnostic(
     let why: string
     let fix: string
     switch (k.reason) {
-      case 'reassigned': {
-        // the binding the export names is what is assigned (`export default
-        // items` after `var items` is declared again)
-        const binding = `\`${symbols.name(k.read ?? k.syms[0]!)}\``
-        why = `${binding} is reassigned${k.at === undefined ? '' : ` (${line(k.at)})`}`
-        fix = `Move ${binding} and the code assigning it to their own module and import it from there, or stop exporting it if no other file imports it.`
-        break
-      }
       case 'reads':
         // (a binding the compiler generated, a server fn it moved out of a
         // function the export calls, has no name in the source)
