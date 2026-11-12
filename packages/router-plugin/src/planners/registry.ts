@@ -11,6 +11,9 @@ import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { RouteEntryFacts } from './route'
 import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 
+/** The digest of every file while the routes were never generated (no entry digest is empty). */
+const NOT_GENERATED = ''
+
 export class RouteRegistryView implements RouteRegistry {
   constructor(private readonly context: RouterPluginContext) {}
 
@@ -26,8 +29,15 @@ export class RouteRegistryView implements RouteRegistry {
       : null
   }
 
-  /** The route-registry fingerprint of a file (`HostServices.routes`). */
+  /** The route-registry fingerprint of a file (`HostServices.routes`); one for every file while the routes were never generated. */
   digestFor(path: string): string | null {
-    return routeEntryDigest(this.lookup(path))
+    return this.context.generationFailure !== undefined
+      ? NOT_GENERATED
+      : routeEntryDigest(this.lookup(path))
+  }
+
+  /** The generator's error while it has never generated the routes. */
+  failure(): unknown {
+    return this.context.generationFailure
   }
 }

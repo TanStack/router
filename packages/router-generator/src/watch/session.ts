@@ -40,29 +40,42 @@ export interface GeneratorSession {
  * runs and what it hands over. A run's failure is reported (`report`,
  * default `console.error`); `publish` gets the registry after every run (its
  * routes change only when a batch published its route tree: a failed one
- * leaves the previous routes, with the constructor facts it read).
+ * leaves the previous routes, with the constructor facts it read), and,
+ * while no run has generated the routes, the last run's error: the empty
+ * registry then lists no route because none is known yet.
  */
 export function createGeneratorSession(opts: {
   /** The current generator (a host replaces it when its config file changes). */
   generator: () => Generator
-  publish?: (routesByFile: GetRoutesByFileMapResult) => void
+  publish?: (routesByFile: GetRoutesByFileMapResult, failure?: unknown) => void
   report?: (error: unknown) => void
 }): GeneratorSession {
   const report = opts.report ?? ((error: unknown) => console.error(error))
   let watcher: Promise<RouteFileWatcher> | undefined
   let watching: Promise<void> | undefined
+  /** The error of the last run that failed. */
+  let failure: unknown
+
+  const publish = () => {
+    const generator = opts.generator()
+    opts.publish?.(
+      generator.getRoutesByFileMap(),
+      generator.hasGenerated() ? undefined : failure,
+    )
+  }
 
   /** After a run: what it found is handed over, and watched (the first run's `physical()` mounts too). */
   const settle = async (run: Promise<void>) => {
     try {
       await run
     } catch (error) {
+      failure = error
       report(error)
     }
     if (watcher) {
       ;(await watcher).refresh()
     }
-    opts.publish?.(opts.generator().getRoutesByFileMap())
+    publish()
   }
 
   const session: GeneratorSession = {
@@ -70,8 +83,11 @@ export function createGeneratorSession(opts: {
     async build() {
       try {
         await opts.generator().run({ type: 'build' })
+      } catch (error) {
+        failure = error
+        throw error
       } finally {
-        opts.publish?.(opts.generator().getRoutesByFileMap())
+        publish()
       }
     },
     watch() {

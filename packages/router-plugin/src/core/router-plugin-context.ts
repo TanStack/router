@@ -4,6 +4,12 @@ import type { GetRoutesByFileMapResult } from '@tanstack/router-generator'
 export type RouterPluginContext = {
   /** The generator's registry: route file path (scanned and real) → route id. */
   routesByFile: GetRoutesByFileMapResult
+  /**
+   * While the generator has never generated the routes (each run failed):
+   * its last error. `routesByFile` lists no route then because none is
+   * known yet. Set before `routesByFile` by each publication.
+   */
+  generationFailure?: unknown
 }
 
 type RoutesChangedListener = (
@@ -49,6 +55,20 @@ export function createRouterPluginContext(): RouterPluginContext {
   }
   internals.set(context, state)
   return context
+}
+
+/**
+ * Hands a generator session's publication to the context (`publish` of
+ * `createGeneratorSession`): the failure first, so a listener of the
+ * registry change reads both.
+ */
+export function publishRoutes(
+  context: RouterPluginContext,
+  routesByFile: GetRoutesByFileMapResult,
+  failure: unknown,
+): void {
+  context.generationFailure = failure
+  context.routesByFile = routesByFile
 }
 
 /** The internals of a context `createRouterPluginContext` made. */

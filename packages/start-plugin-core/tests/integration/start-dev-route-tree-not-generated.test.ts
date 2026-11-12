@@ -9,6 +9,7 @@
  * protection reported the route's server import as a violation).
  */
 import { expect, test } from 'vitest'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
 
@@ -57,18 +58,26 @@ export const routeTree = rootRouteImport.addChildren([XRoute] as any)
       },
     })
 
-    const served = await server.fetch('/src/routes/x.tsx')
-    expect(served.body).not.toContain('MARK_SERVER')
-    expect(served.status).not.toBe(200)
+    // (the request gets Vite's error page, which shows the module's source
+    // as for any compile error)
+    await expect(
+      server.transform('/src/routes/x.tsx', 'client'),
+    ).rejects.toThrow()
+    expect((await server.fetch('/src/routes/x.tsx')).status).not.toBe(200)
     await server.fetch('/src/nav.tsx')
     await server.idle()
+    // every problem reported is the generator's (nothing about the route's
+    // server import, which import protection reported when the route was
+    // served as written)
+    const reported = problems(server.diagnostics)
+    expect(reported.length).toBeGreaterThan(0)
     expect(
-      findDiagnostics(server.diagnostics, {
-        severity: ['warning', 'error'],
-        file: 'src/db.server.ts',
+      findDiagnostics(reported, {
+        severity: 'error',
+        file: 'src/routes/bad.tsx',
         root: server.root,
       }),
-    ).toEqual([])
+    ).toEqual(reported)
 
     await server.edit({ 'src/routes/bad.tsx': badRoute(true) })
     const fixed = await server.transform('/src/routes/x.tsx', 'client')

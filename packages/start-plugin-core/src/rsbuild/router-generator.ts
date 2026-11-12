@@ -13,6 +13,7 @@ import {
   changedRoutePaths,
   createRouterPluginContext,
   onRoutesChanged,
+  publishRoutes,
 } from '@tanstack/router-plugin/context'
 import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import { startGeneratorConfig } from '../start-router-plugin/generator-config'
@@ -81,8 +82,8 @@ export function createRsbuildRouteGenerator(opts: {
 
   const session = createGeneratorSession({
     generator: instance,
-    publish: (routesByFile) => {
-      context.routesByFile = routesByFile
+    publish: (routesByFile, failure) => {
+      publishRoutes(context, routesByFile, failure)
     },
   })
 

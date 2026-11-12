@@ -5,7 +5,10 @@ import {
   resolveConfigPath,
 } from '@tanstack/router-generator'
 import { getConfig } from './config'
-import { createRouterPluginContext } from './router-plugin-context'
+import {
+  createRouterPluginContext,
+  publishRoutes,
+} from './router-plugin-context'
 
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
@@ -26,8 +29,8 @@ export function createRouterGeneratorPlugin(
   let watching = false
   const session = createGeneratorSession({
     generator: () => generator,
-    publish: (routesByFile) => {
-      routerPluginContext.routesByFile = routesByFile
+    publish: (routesByFile, failure) => {
+      publishRoutes(routerPluginContext, routesByFile, failure)
     },
   })
 

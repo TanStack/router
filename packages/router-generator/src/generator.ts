@@ -301,6 +301,11 @@ export class Generator {
     return this.routesByFile
   }
 
+  /** Whether a run has generated the route tree (and its registry) yet. */
+  public hasGenerated(): boolean {
+    return this.model !== undefined
+  }
+
   /** The tree model of the last generation, after the queued events. */
   public async getTreeModel(): Promise<TreeModel | undefined> {
     await this.draining

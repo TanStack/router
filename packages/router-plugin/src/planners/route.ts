@@ -481,6 +481,27 @@ function reportUnrecognizedRoute(
   })
 }
 
+/**
+ * A module exporting a `Route` while the routes have never been generated
+ * (each run of the generator failed): it fails with the generator's error,
+ * as the route tree does, instead of being served as written (`server`
+ * code included) or compiled as a route it may not be.
+ */
+export function reportNotGenerated(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  failure: unknown,
+): void {
+  const why = (
+    failure instanceof Error ? failure.message : String(failure)
+  ).replace(/^\[tanstack-router\] /, '')
+  ctx.diagnostic({
+    severity: 'error',
+    message: `[tanstack-router] ${ctx.displayPath} exports a \`Route\`, but the route tree could not be generated, so it is not compiled until it is: ${why}`,
+    by: ROUTER_PLANNER,
+    code: 'routes-not-generated',
+  })
+}
+
 /** The router's id of a registry entry (`/__root` is `__root__` on the router). */
 export function routerRouteId(routeId: string): string {
   return routeId === '/__root' ? '__root__' : routeId
