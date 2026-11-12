@@ -603,13 +603,13 @@ describe('slice gates: edges and policy', () => {
       planners,
     )
     // the denied import lives only in the chunk
-    expect(vetoEnv!.edges.map((e) => e.specifier)).not.toContain(
+    expect(host.edgesOf(vetoEnv!).map((e) => e.specifier)).not.toContain(
       './secret.server',
     )
-    expect(allowEnv!.edges.map((e) => e.specifier)).not.toContain(
+    expect(host.edgesOf(allowEnv!).map((e) => e.specifier)).not.toContain(
       './secret.server',
     )
-    expect(vetoChunk!.edges.map((e) => e.specifier)).toContain(
+    expect(host.edgesOf(vetoChunk!).map((e) => e.specifier)).toContain(
       './secret.server',
     )
     expect(vetoChunk!.code).toContain("from './secret.server'")
@@ -1367,7 +1367,7 @@ describe('slice gates: claims and maps', () => {
     expect(env!.code).toBe('export const fn = tsrStub()\n')
     const chunk = await host.compile('/app/mod.tsx?tss-hydrate=h0', planners)
     expect(chunk!.code).toBe('export {}\n')
-    expect(chunk!.edges).toEqual([])
+    expect(host.edgesOf(chunk!)).toEqual([])
     expect(edges.calls).toEqual([])
     const server = await host.compile('/app/mod.tsx', planners, {
       env: envInfo({ name: 'ssr', type: 'server' }),

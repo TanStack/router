@@ -4337,10 +4337,9 @@ describe('needers and homes', () => {
     })
     const out = await host.compile('/app/lib.ts', [toyEnvPlanner()])
     expect(out?.code).toContain("import { Thing } from './thing'")
-    expect(out?.edges.map((e) => [e.specifier, e.kind])).toContainEqual([
-      './thing',
-      'evaluation',
-    ])
+    expect(host.edgesOf(out!).map((e) => [e.specifier, e.kind])).toContainEqual(
+      ['./thing', 'evaluation'],
+    )
   })
 
   it('keeps type units in the env module and out of derived outputs', async () => {
@@ -4415,7 +4414,7 @@ describe('needers and homes', () => {
     const out = await host.compile('/app/lib.ts', [toyEnvPlanner()])
     expect(out?.code).toContain("import type { Badge, Label } from './labels'")
     expect(out?.code).not.toContain('function Badge')
-    expect(out?.edges.map((e) => e.specifier)).not.toContain('./labels')
+    expect(host.edgesOf(out!).map((e) => e.specifier)).not.toContain('./labels')
   })
 })
 
@@ -8200,25 +8199,6 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(r.diagnostics[0]!.message).toContain(cause)
   }
-  // the fix: the declaration and the statement in a module of their own
-  const ownModule = async (
-    decl: string,
-    statement: string,
-    name: string,
-    options: string,
-    keys?: Array<string>,
-  ) => {
-    const r = await report(
-      route(`import { ${name} } from './own'`, options),
-      keys,
-      {
-        '/app/own.ts': `import * as Sentry from '@sentry/react'\nimport { make } from './lib'\nexport ${decl}\n${statement}\n`,
-      },
-    )
-    expect(r.diagnostics).toEqual([])
-    expect(r.env).not.toContain(name)
-  }
-
   it('a binding the route module keeps that one call also changes', async () => {
     const statement = 'k.link(d)'
     const options = 'loader: () => k, component: () => d'

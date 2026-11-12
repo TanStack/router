@@ -403,7 +403,10 @@ describe('known specifiers and planner withdrawal', () => {
       kind: 'local',
       value: { t: 'factory', kind: 'serverFn' },
     })
-    expect(facts.targetFacts.effectful).toBe(false)
+    expect(facts.targetFacts.codeEffects).toEqual({
+      client: false,
+      server: false,
+    })
   })
 
   it('a planner withdrawing in prefetch still records its dependencies (verbatim plan)', async () => {

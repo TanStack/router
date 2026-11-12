@@ -398,7 +398,6 @@ function emitSettled(
     return {
       code: input.code,
       map: null,
-      edges: [],
       facts: { marker: null, planners: {} },
       diagnostics: settled.diagnostics,
       dependencies: [],
@@ -432,7 +431,6 @@ function emitFrom(
   return {
     code: emitted.code,
     map: emitted.map,
-    edges: plan.edges[requested] ?? [],
     facts: plan.facts,
     diagnostics: plan.diagnostics,
     // only the webpack-family hosts read them, once per compile: computed on demand
@@ -605,7 +603,6 @@ async function runAttempt(
         resolver,
         resolve: (spec) => resolveFrom(spec, identity.canonicalId),
         resolveFrom,
-        targetFacts: targetFactsOf,
         set: (data) => prefetched.set(p.name, data),
       }
       if ((await p.prefetch(t0, ctx)) === false) {

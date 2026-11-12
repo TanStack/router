@@ -36,8 +36,6 @@ export interface TargetFacts {
   lazyImports: Array<string>
   /** An ES module (false: CommonJS, script or unparseable — exports unknown). */
   esm: boolean
-  /** Own top-level effects or a bare import (transitive classification is the consumer's). */
-  effectful: boolean
   /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.effects().code`). */
   codeEffects: CodeEffects
   /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.effects().erasedImports`; absent when none is). */
@@ -99,7 +97,6 @@ const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   imports: [],
   lazyImports: [],
   esm: false,
-  effectful: true,
   codeEffects: ALL_EFFECTS,
 }
 
@@ -111,7 +108,6 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   imports: [],
   lazyImports: [],
   esm: false,
-  effectful: true,
   codeEffects: ALL_EFFECTS,
 }
 
@@ -597,7 +593,6 @@ export class RawFactsCache {
       imports: [],
       lazyImports: [],
       esm: true,
-      effectful: false,
       codeEffects: { client: false, server: false },
     }
     return {
@@ -736,7 +731,6 @@ export class RawFactsCache {
         imports: [],
         lazyImports: [],
         esm: false,
-        effectful: true,
         codeEffects: ALL_EFFECTS,
       }
       return {
@@ -760,7 +754,7 @@ export class RawFactsCache {
     const exportNames = Object.keys(summary.exports).sort()
     const effects = analysis.effects()
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
-    // the module's environment: it evaluates nothing and is no effect
+    // the module's environment: it evaluates nothing
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
     const isMarker = (spec: string) => ownEntry(markers, spec) !== undefined
     const evaluated = new Set<string>()
@@ -775,9 +769,6 @@ export class RawFactsCache {
       }
     }
     const imports = [...evaluated].filter((spec) => !isMarker(spec))
-    const bareImportEffect = analysis.imports.some(
-      (i) => i.bare && !i.typeOnly && !isMarker(i.specifier),
-    )
     const lazyImports = [
       ...new Set(analysis.dynamicEdges.map((e) => e.specifier)),
     ].filter((spec) => !isMarker(spec))
@@ -789,7 +780,6 @@ export class RawFactsCache {
       imports,
       lazyImports,
       esm: analysis.sourceType === 'module',
-      effectful: effects.own || bareImportEffect,
       codeEffects: effects.code,
       ...(effects.erasedImports && {
         erasedImports: {

@@ -557,12 +557,12 @@ describe('target facts', () => {
       stars: ['./star'],
       imports: ['./dep', './effect', './star', './named'],
       esm: true,
-      effectful: true,
     })
-    // module loading is an own effect, not an effect of the module's own code
+    // module loading is no effect of the module's own code (consumers follow
+    // `imports`)
     const barrel = await host.rawFacts.get('/app/barrel.ts', 'client')
     expect(barrel.targetFacts).toMatchObject({
-      effectful: true,
+      imports: ['./c', './a', './b'],
       codeEffects: { client: false, server: false },
     })
     const fx = await host.rawFacts.get('/app/fx.ts', 'client')

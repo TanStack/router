@@ -55,8 +55,6 @@ export interface ImportEntry {
   specifier: string
   /** The specifier literal (quotes included). */
   specifierRange: Range
-  /** The statement node. */
-  declRange: Range
   attributesRange: Range | null
   bare: boolean
   /** `import type …` (the whole declaration). */
@@ -341,8 +339,6 @@ export interface CodeEffects {
 
 /** What a module's own top-level statements do when it is evaluated (`ModuleAnalysis.effects`). */
 export interface ModuleEffects {
-  /** Whether a statement has an effect, module loading included. */
-  own: boolean
   /**
    * Whether the module's own statements have effects, module loading aside
    * (bare imports and re-exports are followed by consumers), per environment
@@ -387,10 +383,6 @@ export class ModuleAnalysis {
   /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
   private readonly builderImports: BuilderImports | null
   private tier1: Tier1 | null = null
-  private readonly markerSpecifiers: Record<
-    string,
-    'server-only' | 'client-only'
-  >
   private readonly importByStatement = new Map<number, number>()
   /**
    * The declaration (declarator or function) of each top-level declared
@@ -414,7 +406,6 @@ export class ModuleAnalysis {
     const pureCalls = opts.recognizer?.pureCalls
     const pureDefaults = opts.recognizer?.pureDefaultNamespaces
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
-    this.markerSpecifiers = markers
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
     const reexports: Array<ReexportEntry> = []
@@ -531,7 +522,6 @@ export class ModuleAnalysis {
             index: imports.length,
             specifier: stmt.source.value,
             specifierRange: { start: stmt.source.start, end: stmt.source.end },
-            declRange: { start: stmt.start, end: stmt.end },
             attributesRange:
               stmt.attributes.length > 0
                 ? {
@@ -781,7 +771,6 @@ export class ModuleAnalysis {
   effects(): ModuleEffects {
     const file = this.file
     const body = file.program.body
-    let own = false
     const code: CodeEffects = { client: false, server: false }
     // the purity of each environment type, with its builder chains
     const envPurity = this.builderImports
@@ -791,17 +780,9 @@ export class ModuleAnalysis {
       : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
-      // module loading counts as an own effect, not as an effect of its own
-      // code; a marker import declares the module's environment and loads
-      // nothing
-      if (
-        stmt.type === 'ImportDeclaration' &&
-        ownEntry(this.markerSpecifiers, stmt.source.value) !== undefined
-      ) {
-        continue
-      }
+      // module loading is no effect of the module's own code (consumers
+      // follow `imports`)
       if (loadsModule(stmt)) {
-        own ||= statementHasEffects(this.ownPurity, stmt)
         continue
       }
       if (code.client && code.server) {
@@ -813,7 +794,6 @@ export class ModuleAnalysis {
           ? stmt.declaration
           : stmt
       if (statementHasEffects(this.ownPurity, stmt)) {
-        own = true
         if (!envPurity) {
           code.client = code.server = true
           continue
@@ -873,7 +853,7 @@ export class ModuleAnalysis {
         erasedImports[p.env] = specifiers
       }
     }
-    return { own, code, erasedImports }
+    return { code, erasedImports }
   }
 
   importIndexOfStatement(stmtStart: number): number | null {

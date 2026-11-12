@@ -15,6 +15,7 @@ import type {
   CompileInput,
   CompileOutput,
   CompilerCaches,
+  EdgeRecord,
   EnvInfo,
   HostServices,
   InvalidateChange,
@@ -694,6 +695,15 @@ export class MemoryHost implements HostServices {
       compileLog.entries.push({ code, out: o })
       return o
     })
+  }
+
+  /** The edges of `out` after policy, in the plan it came from (`EmitPlan.edges`). */
+  edgesOf(out: CompileOutput, env = 'client'): ReadonlyArray<EdgeRecord> {
+    const entry = this.caches.plans.get(env)?.get(out.persisted!.key)
+    if (!entry) {
+      throw new Error(`no plan in ${env} for ${out.output}`)
+    }
+    return entry.plan.edges[out.output] ?? []
   }
 }
 

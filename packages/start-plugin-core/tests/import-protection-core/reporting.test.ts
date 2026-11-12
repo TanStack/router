@@ -669,13 +669,16 @@ describe('dev error', () => {
     })
     const error = devViolationError([report(first), report(second)], ctx)
     expect(error.id).toBe('/app/src/page.mdx')
-    expect(error.at).toEqual({ line: 4, column: 9 })
+    expect(error.reports.map((r) => r.at)).toEqual([
+      { line: 4, column: 9 },
+      undefined,
+    ])
     expect('loc' in error).toBe(false)
     expect(error.stack).toBe(error.message)
     expect(error.message).toContain('src/page.mdx')
     expect(error.message).toContain('src/c.ts')
     const unlocated = devViolationError([report(second)], ctx)
     expect(unlocated.id).toBe('/app/src/c.ts')
-    expect(unlocated.at).toBeUndefined()
+    expect(unlocated.reports[0]!.at).toBeUndefined()
   })
 })

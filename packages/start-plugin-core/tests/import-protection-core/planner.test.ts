@@ -626,8 +626,14 @@ describe('forwarded glue and markers', () => {
       const imp = ctx.analysis.imports.find(
         (i) => i.specifier === './secret.server',
       )!
+      // the import statement
+      const stmt = ctx.analysis.file.program.body.find(
+        (s) =>
+          s.start <= imp.specifierRange.start &&
+          imp.specifierRange.end <= s.end,
+      )!
       ctx.rewrites.edit({
-        range: imp.declRange,
+        range: { start: stmt.start, end: stmt.end },
         body: [],
         by: 'toy-forward',
       })

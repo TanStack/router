@@ -155,8 +155,6 @@ export interface CompileInput {
 export interface CompileOutput {
   code: string
   map: RawSourceMap | null
-  /** This output's surviving edges after policy. */
-  edges: Array<EdgeRecord>
   facts: PlanFacts
   diagnostics: Array<Diagnostic>
   /** Paths to watch / addDependency. */
@@ -267,8 +265,6 @@ export interface PrefetchContext<TName extends string = string> {
     specifier: string,
     importerCanonicalId: string,
   ) => Promise<string | null>
-  /** Target facts (records a target-facts fingerprint). */
-  targetFacts: (canonicalId: string) => Promise<RawFacts['targetFacts']>
   /** Stores this planner's phase A result for `PlanContext.prefetched`. */
   set: (data: PlannerPrefetch<TName>) => void
 }
