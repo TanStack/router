@@ -7555,6 +7555,22 @@ describe('lazy shared modules hold effects (R151)', () => {
     ])
   })
 
+  // the executing property (toy planner, seed 11838): a binding a split
+  // option writes lives with that writer (single-writer rule); unused code
+  // joined with it goes there too, or the shared module would import the
+  // chunk that imports it (a cycle: `w14` read before initialisation)
+  it('puts a joined follower with its binding where the single-writer rule homes it', async () => {
+    const code = route(
+      'let o10 = { v: 6 }\nconst w14 = Object.assign(o10, { p: 8 })\nconst l17 = w14 ? 1 : 0',
+      'component: () => w14, loader: () => { o10 = w14; return 1 }',
+    )
+    const r = await compile(code)
+    for (const m of r.shared) {
+      expect(m).not.toContain('?tsr-split=loader')
+    }
+    expect(r.chunks.loader).toContain('const l17 = w14 ? 1 : 0')
+  })
+
   // (the router-plugin pages: an effectful binding exported under another
   // name or by default, which the component reads: extracted with its
   // effect, R150; never judged as a split option's slot, which pinned it
