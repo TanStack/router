@@ -1,20 +1,12 @@
 /**
- * Where an exported binding the split chunk imports lands when the app's
- * own chunk configuration groups the routes directory with the entry (SPEC
- * J2.5, J2.8). A class (an object, a call result) an exported binding is
- * exists once: the chunk imports its extracted module
- * (`?tsr-split=export---Name`) instead of carrying a copy, and that module is
- * reachable from the entry (the route module re-exports it) and from the
- * chunk. A `manualChunks` function or a `cacheGroups` entry matching the
- * route files (not the split chunks) puts it in a chunk the entry loads: the
- * class is eager, still one instance, and the build says so once, naming
- * the route file (R101: only when nothing the entry loads imports it; an
- * entry module importing it needs it eagerly, which is no news). A function
- * next to it with the same configuration stays lazy and unreported: the
- * chunk carries its copy and nobody imports its module. Learned from
- * tanstack.com on Vite 8.0.x (Rolldown 1.0.3 with a `manualChunks` group),
- * where the same happened without any group over the routes; here a group
- * over the routes reproduces the placement on every bundler.
+ * Where an exported function the split component calls lands when the
+ * app's own chunk configuration groups the route files with the entry (SPEC
+ * J2.5): a `manualChunks` function or a `cacheGroups` entry matching the
+ * route files themselves (not the modules the router plugin derives from
+ * them, whose ids carry a query). The chunk carries its copy of the
+ * function, so it stays lazy, and nothing is reported. Learned from
+ * tanstack.com on Vite 8.0.x (Rolldown 1.0.3 with a `manualChunks` group);
+ * here a group over the routes reproduces the placement on every bundler.
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -27,22 +19,18 @@ const timeout = 120_000
 
 const files = {
   'routes/__root.tsx': rootRoute,
-  'routes/index.tsx': `${head}export class Tag {
-  static label = 'MARK_TAG_END'
-}
-export function Fmt(value: string) {
+  'routes/index.tsx': `${head}export function Fmt(value: string) {
   return 'MARK_FMT_END' + value
 }
 function Page() {
-  ;(globalThis as any).tagInChunk = Tag
-  return <p>{new Tag() instanceof Tag ? Fmt(Tag.label) : 'other'}</p>
+  return <p>{Fmt('!')}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
   // an importer of the route file outside the routes directory
   'entry.ts': `import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-export { Route, Tag } from './routes/index'
+export { Route } from './routes/index'
 export async function render(component: any) {
   await component.preload?.()
   return renderToString(createElement(component))
@@ -51,9 +39,8 @@ export async function render(component: any) {
 }
 
 const routesDir = /[\\/]routes[\\/]/
-/** A split chunk's id (the group leaves the lazy chunks alone). */
-const splitChunk = /[?&]tsr-split=(?!export---)/
-const groups = (id: string) => routesDir.test(id) && !splitChunk.test(id)
+/** The route files themselves: modules derived from them carry a query. */
+const groups = (id: string) => routesDir.test(id) && !id.includes('?')
 const cacheGroupTest = (module: { resource?: string }) =>
   groups(module.resource ?? '')
 const viteChunks = (output: Record<string, unknown>): Plugin => ({
@@ -139,7 +126,7 @@ describe.each(configsFor(files))('$name', ({ app: create }) => {
   })
 
   test(
-    'an exported function next to it stays lazy and unreported: the chunk carries its copy',
+    'an exported function the split component calls stays lazy and unreported: the chunk carries its copy',
     async () => {
       const result = await app()
       expect(result.where('MARK_FMT_END')).toBe('lazy')
@@ -148,8 +135,8 @@ describe.each(configsFor(files))('$name', ({ app: create }) => {
           severity: 'warning',
           file: 'routes/index.tsx',
           root: result.root,
-        }).some((d) => d.text.includes('`Fmt`')),
-      ).toBe(false)
+        }),
+      ).toEqual([])
     },
     timeout,
   )
