@@ -223,11 +223,14 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   (R146 amendment, `Events.statementChanges`): the module bindings it assigns, writes a member of or calls a method
   on, directly or in what it runs (`ReadIndex.runs`), and the objects their values hold (`MutationModel.heldBy`,
   the owner of "the object a binding names"); calling, reading or passing a binding or an import changes nothing
-  (`plugins.push(sentryPlugin())`, `reg.client = createClient()`, in an `if` or not, move with their binding). It
+  (`plugins.push(sentryPlugin())`, `reg.client = createClient()`, in an `if` or not, move with their binding), but a
+  function the module declares shows what it does with what it is handed (`fill(k)` with `function fill(o) { o.v =
+  3 }` changes `k`: `changesAsArgument`). It
   moves into a chunk when everything it changes goes to that chunk, what only it touches following it, in source
   order there (`const table = createTable(); const columns = snapshot(table); table.addColumn('x')`, only the
   component reading `columns`, all move; what it only reads may stay, and the chunk imports it); a statement that
-  changes no binding follows what it reads (`log(client)`). It stays in the route module, keeping what it touches,
+  changes no binding follows what it reads (`log(client)`); where none of that decides, the imports it reads do
+  (their users' one chunk), and an extracted export's module never does (a reader anywhere imports it). It stays in the route module, keeping what it touches,
   when it changes something the rest of the app sees (`OutsideChange`: another module's object, `Sentry.init(cfg)`,
   `i18n.use(x)`; a global, `window.x = …`, `console.log(…)`; `import.meta`; a module it imports dynamically), also
   through a local function it calls, or when what it changes stays or goes to several outputs
