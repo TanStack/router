@@ -355,6 +355,35 @@ export const register = (name: string) => name
     expect(provider).toContain('db.q()')
   })
 
+  // Recheck ruling E (R149 on the server): a top-level write to a binding
+  // only a handler reads goes with that binding, into the provider module
+  // only; the env module, where the handler is a stub, holds neither.
+  it.each([
+    ['a method call', `cache.set('warm', 1)`],
+    ['an assignment', `cache.warm = 1`],
+    ['the server fn stored', `cache.set('warm', fn)`],
+  ])(
+    'writes state only a handler reads with %s in the provider module only',
+    async (_name, write) => {
+      const r = await compile(
+        `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const cache = new Map() as any
+export const fn = createServerFn().handler(() => cache.get('a') ?? db.q())
+${write}
+`,
+        { env: rsc, config, files },
+      )
+      expectValid(r.code)
+      expect(r.out.diagnostics).toEqual([])
+      expect(r.code).not.toContain('cache')
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).toContain('const cache = new Map()')
+      expect(provider).toContain(write)
+    },
+  )
+
   // J4.9, J4.10: a handler that is itself an env-only or isomorphic call is
   // compiled for the server in the provider module, as every other env-only
   // or isomorphic call there: the client-only fn throws, the isomorphic one

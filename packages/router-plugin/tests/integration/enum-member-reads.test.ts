@@ -114,29 +114,37 @@ describe('an enum initialised from a read of an enum member', () => {
     timeout,
   )
 
+  // recheck ruling C: `fx`, the only later writer of `effects`, goes to
+  // the component's chunk, so the member reading it there at load does too,
+  // and the statements calling `fx` follow it (R149): all run in their
+  // order when the chunk loads, none when the route module does
   test(
-    'a member a call computes keeps its evaluation order',
+    'a member a call computes moves with the effects around it, in their order',
     async () => {
       const { app } = await buildRoute(`${head}${effect}fx('before')
 enum E { A = fx('enum') }
 fx('after')
 ${component('E.A')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual(['before', 'enum', 'after'])
+      const { result } = await app.run(
+        'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
+      )
+      expect(result).toEqual([null, ['before', 'enum', 'after']])
     },
     timeout,
   )
 
   test(
-    'a member a call computes keeps its order when another enum reads it',
+    'a member a call computes moves with the effects around it, in their order, when another enum reads it',
     async () => {
       const { app } = await buildRoute(`${head}${effect}fx('before')
 enum A { Y = fx('enum') }
 enum B { X = A.Y }
 fx('after')
 ${component('B.X')}`)
-      const { result } = await app.run('return entry.effects()')
-      expect(result).toEqual(['before', 'enum', 'after'])
+      const { result } = await app.run(
+        'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
+      )
+      expect(result).toEqual([null, ['before', 'enum', 'after']])
     },
     timeout,
   )

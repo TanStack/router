@@ -20,7 +20,7 @@ const entry = `${clientMountEntry}
 export const effects = () => (globalThis as any).__effects
 `
 
-/** Runs the entry and reports the effects its route module ran as it evaluated. */
+/** Runs the entry: the effects its route module ran as it evaluated (null: none), then those after the component's chunk loaded. */
 async function effectsAtLoad(route: string) {
   const app = await build({
     bundler: 'vite',
@@ -28,7 +28,9 @@ async function effectsAtLoad(route: string) {
     minify: false,
     files: routeApp(route, { env: 'client', files: { 'entry.ts': entry } }),
   })
-  const { result } = await app.run('return entry.effects()')
+  const { result } = await app.run(
+    'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
+  )
   return result
 }
 
@@ -42,29 +44,31 @@ fx('before')
 `
 
 test(
-  'control: an impure const a split component reads runs in order when the route module evaluates',
+  'control: an impure const a split component reads moves with the effects around it, in their order',
   async () => {
     expect(
       await effectsAtLoad(`${effect}const value = fx('value')
 fx('after')
 export const Route = createFileRoute('/')({ component: () => <p>{value}</p> })
 `),
-    ).toEqual(['before', 'value', 'after'])
+    ).toEqual([null, ['before', 'value', 'after']])
   },
   timeout,
 )
 
 // A member's initializer runs as the module evaluates: an enum with an impure
-// one doesn't move into the lazy chunk of its only reader.
+// one moves into the lazy chunk of its only reader with the effects around it
+// (recheck ruling C: `fx`, the only later writer of what it reads, goes
+// there too), and they keep their order there.
 test(
-  'a computed enum member a split component reads runs in order when the route module evaluates',
+  'a computed enum member a split component reads moves with the effects around it, in their order',
   async () => {
     expect(
       await effectsAtLoad(`${effect}enum E { A = fx('enum') }
 fx('after')
 export const Route = createFileRoute('/')({ component: () => <p>{E.A}</p> })
 `),
-    ).toEqual(['before', 'enum', 'after'])
+    ).toEqual([null, ['before', 'enum', 'after']])
   },
   timeout,
 )
