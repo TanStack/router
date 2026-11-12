@@ -8,7 +8,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, loadRoute } from './route-app'
 import type { DeletableNodes } from '../src'
 
@@ -166,4 +169,67 @@ export const Route = createFileRoute('/')({
       root: route.host.root,
     })
   })
+})
+
+// Known bugs (oracle/KNOWN-BUGS.md), source: REVIEW-design5-final findings
+// 5 and 6
+describe('known bugs', () => {
+  // Bug: a loader naming an object the compiler cannot read (imported,
+  // returned by a call, spread) is exported from its chunk as it is, and
+  // the route's lazy loader calls it as a function. The text cannot tell it
+  // from an imported loader function (design pending, FOLLOW-UPS).
+  // Impact: the route's loader throws "is not a function".
+  it.fails(
+    'an object-form loader imported from another module returns its data',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { l } from './loaders'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: l,
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
+        {
+          fresh: true,
+          files: {
+            'loaders.ts': `export const l = { handler: () => 'MARK_DATA' }\n`,
+          },
+        },
+      )
+      expect(await route.run('return renderRoute()')).toContain('MARK_DATA')
+    },
+  )
+
+  // Bug: a write to the options object through another name of it
+  // (`const z = options; z.server = …`) is not seen (the mutation model
+  // follows no alias): the literal's `server` is removed, the write stays
+  // in the client, and nothing is reported.
+  // Impact: the server code the write holds ships to the client.
+  it.fails(
+    'route options written through another name ship no server code, or are reported',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { readSecret } from './admin-helper'
+const a: any = {
+  component: () => <p>MARK_PAGE</p>,
+  server: { handlers: { GET: () => 'none' } },
+}
+const z = a
+z.server = { handlers: { GET: () => readSecret() } }
+export const Route = createFileRoute('/x')(a)
+`,
+        { routeId: '/x', files, deleteNodes, fresh: true },
+      )
+      await expectValidModules(route)
+      const shipped = (await route.requested()).includes('/admin-helper.ts')
+      const reported =
+        findDiagnostics(await route.diagnostics(), {
+          severity: ['warning', 'error'],
+          file: 'route.tsx',
+          root: route.host.root,
+        }).length > 0
+      expect(!shipped || reported).toBe(true)
+    },
+  )
 })
