@@ -41,8 +41,7 @@ describe('plan keys by path', () => {
     const plain = key('/app/page.tsx')
     const flavoured = key('/app/page.tsx?flavour=b')
     for (const k of [plain, flavoured]) {
-      cache.noteRevision(k, 'r1')
-      cache.begin(k)
+      cache.begin(k, 'r1')
       expect(
         cache.set({
           key: k,
@@ -69,14 +68,13 @@ describe('plan keys by path', () => {
     expect(cache.stats(false)).toMatchObject({ keyPaths: 0, records: 0 })
   })
 
-  it('an attempt in flight is found at its path until it ends unpublished', () => {
+  it('a request in progress is found at its path until it ends unpublished', () => {
     const cache = new PlanCache('client')
     const k = key('/app/mod.ts')
-    cache.noteRevision(k, 'r1')
-    cache.begin(k)
+    cache.begin(k, 'r1')
     expect(cache.keysAt('/app/mod.ts')).toEqual([k])
-    // a second overlapping attempt keeps the single row
-    cache.begin(k)
+    // a second overlapping request keeps the single row
+    cache.begin(k, 'r1')
     expect(cache.keysAt('/app/mod.ts')).toEqual([k])
     cache.end(k)
     expect(cache.keysAt('/app/mod.ts')).toEqual([k])
