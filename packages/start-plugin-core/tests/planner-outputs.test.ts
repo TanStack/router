@@ -965,20 +965,22 @@ export const o = [own, api]
 `
     const returned = (factory: string, from: string) =>
       `\`${factory}\` is a TanStack Start factory, returned from ${from}, whose result the compiler does not follow, so server code attached to what it creates would ship to the client. Call \`${factory}\` directly where you need what it creates, instead of returning it: the compiler follows each call's chain.`
-    expect(await clientDiagnostics(code)).toEqual([
-      {
-        severity: 'error',
-        at: code.indexOf('createServerFn }'),
-        text: 'createServerFn',
-        message: returned('createServerFn', 'a getter'),
-      },
-      {
-        severity: 'error',
-        at: code.indexOf('createMiddleware }'),
-        text: 'createMiddleware',
-        message: returned('createMiddleware', 'a method'),
-      },
-    ])
+    expect((await clientDiagnostics(code)).sort((a, b) => a.at - b.at)).toEqual(
+      [
+        {
+          severity: 'error',
+          at: code.indexOf('createServerFn }'),
+          text: 'createServerFn',
+          message: returned('createServerFn', 'a getter'),
+        },
+        {
+          severity: 'error',
+          at: code.indexOf('createMiddleware }'),
+          text: 'createMiddleware',
+          message: returned('createMiddleware', 'a method'),
+        },
+      ],
+    )
   })
 
   test('a start instance passed to a function', async () => {

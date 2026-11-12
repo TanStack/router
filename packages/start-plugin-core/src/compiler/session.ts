@@ -8,7 +8,6 @@
  * the bundler wiring: hooks, module graph invalidation, witnesses, virtual
  * modules, and Rspack's `buildInfo` replay.
  */
-import { readFileSync } from 'node:fs'
 import {
   RawFactsCache,
   SourceText,
@@ -43,6 +42,7 @@ import { Locator } from '../import-protection/locate'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
 import { isVueSfc, vueLocator, vueReport } from './vue'
+import { originalText, reprintedLocator } from './reprinted'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -583,10 +583,11 @@ export interface StartDiagnosticSink {
 }
 
 /**
- * Positions in `file` of offsets of `code` through its input map (none where
- * the map covers none or names another file). Without a map (a loader that
- * makes none in production builds), `code`'s own positions when it is the
- * file's text, else none.
+ * Positions in `file` of offsets of `code` through its input map (none
+ * where it names another file). Where there is none (a loader that makes
+ * none in production builds) or it covers none, `code`'s own positions
+ * when it is the file's text, else the line of the offset's statement when
+ * the file has its text once (`reprinted.ts`), else none.
  */
 function mapLocate(
   file: string,
@@ -594,25 +595,19 @@ function mapLocate(
   inputMap: () => InputSourceMap | null,
 ): SfcLocate {
   const locator = new Locator(code, file, inputMap)
+  const text = () => originalText(file, inputMap)
+  const reprinted = reprintedLocator(code, text)
   /** Without a map, whether `code` is the file's text (else its positions are no file's). */
   let ownText: boolean | undefined
   return (offset) => {
-    if (inputMap() === null) {
-      ownText ??= readText(file) === code
-      if (!ownText) {
-        return null
-      }
+    if (inputMap() === null && !(ownText ??= text() === code)) {
+      return reprinted(offset)
     }
     const at = locator.at(offset)
-    return at === null || at.file !== file ? null : at
-  }
-}
-
-function readText(file: string): string | null {
-  try {
-    return readFileSync(file, 'utf8')
-  } catch {
-    return null
+    if (at === null) {
+      return reprinted(offset)
+    }
+    return at.file === file ? at : null
   }
 }
 

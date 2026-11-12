@@ -18,6 +18,7 @@ import {
   isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
+  staticPropertyKey,
 } from '@tanstack/router-utils/compiler'
 import { START_KINDS } from './recognizer'
 import {
@@ -229,6 +230,73 @@ export function startAnalysisOf(
         (p.type === 'Property' &&
           p.value === fn &&
           (p.method || p.kind !== 'init')))
+    )
+  }
+
+  /** `n` with the wrappers around it, and their parent. */
+  const unwrapUp = (n: Node): [Node, Node | null] => {
+    let outer = n
+    let p = parentOf(n)
+    while (p && isExpressionWrapper(p)) {
+      outer = p
+      p = parentOf(p)
+    }
+    return [outer, p]
+  }
+
+  /** Whether `target` (with its wrappers) is written in `p`, its parent: assigned, updated, deleted, a destructuring target. */
+  const isWritten = (p: Node | null, target: Node): boolean => {
+    switch (p?.type) {
+      case 'AssignmentExpression':
+      case 'ForInStatement':
+      case 'ForOfStatement':
+      case 'AssignmentPattern':
+        return p.left === target
+      case 'UnaryExpression':
+        return p.operator === 'delete'
+      case 'UpdateExpression':
+      case 'ArrayPattern':
+      case 'RestElement':
+        return true
+      case 'Property':
+        return p.value === target && parentOf(p)?.type === 'ObjectPattern'
+      default:
+        return false
+    }
+  }
+
+  /**
+   * Whether `member`, the `.options` of a server fn or middleware builder,
+   * only has options read by name (`b.options.method`, `const { method } =
+   * b.options`): nothing attaches server code there. Not the object handed
+   * on or written to (a validator is server code), nor its `middleware`
+   * list (it holds builders server code can still be attached to).
+   */
+  const readsOptionsByName = (
+    member: MemberNode,
+    value: AbstractValue,
+  ): boolean => {
+    if (
+      value.t !== 'builder' ||
+      (value.kind !== START_KINDS.serverFn &&
+        value.kind !== START_KINDS.middleware)
+    ) {
+      return false
+    }
+    const [outer, p] = unwrapUp(member)
+    if (p?.type === 'MemberExpression' && p.object === outer) {
+      const name = memberName(p)
+      const [read, q] = unwrapUp(p)
+      return name !== null && name !== 'middleware' && !isWritten(q, read)
+    }
+    return (
+      p?.type === 'VariableDeclarator' &&
+      p.init === outer &&
+      p.id.type === 'ObjectPattern' &&
+      p.id.properties.every((prop) => {
+        const key = prop.type === 'Property' ? staticPropertyKey(prop) : null
+        return key !== null && key !== 'middleware'
+      })
     )
   }
 
@@ -668,7 +736,11 @@ export function startAnalysisOf(
           value = mv
           continue
         }
-        if (value.t !== 'namespace' && value.t !== 'startInstance') {
+        if (
+          value.t !== 'namespace' &&
+          value.t !== 'startInstance' &&
+          !(name === 'options' && readsOptionsByName(member, value))
+        ) {
           // a detached method (`.handler`), a property of a builder
           escape(member, value, 'member')
         }

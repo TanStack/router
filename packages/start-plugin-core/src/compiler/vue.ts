@@ -16,9 +16,9 @@
  * function, so every server fn there is nested in a function: one that
  * cannot be hoisted is told so, with what the module top level is in an SFC.
  */
-import { readFileSync } from 'node:fs'
 import { START_ENV } from '../planners'
 import { Locator } from '../import-protection/locate'
+import { originalText, reprintedLocator } from './reprinted'
 import type { LateEscape, VueHoist } from '../planners'
 import type {
   CompileOutput,
@@ -91,7 +91,7 @@ export function vueReport(
     if (at === null) {
       return false
     }
-    setupLines ??= scriptSetupLines(sfcText(file, inputMap))
+    setupLines ??= scriptSetupLines(originalText(file, inputMap))
     return setupLines.some(([from, to]) => from <= at.line && at.line <= to)
   }
   const moved = new Map<Diagnostic, number>()
@@ -134,13 +134,13 @@ export type SfcLocate = (
 
 /**
  * Positions in the SFC of offsets of its script's compiled code. Through
- * the input map when there is one, with the column of the offset's
- * statement when the mapped line is that statement's text (a map of whole
+ * the input map when there is one, with the column of the offset in its
+ * statement when the mapped line has the statement's text (a map of whole
  * lines: vue-loader in development). Without one (a production build's
- * Vue plugin makes none unless source maps are on), the statement's own
- * line when the SFC has that text once (Vue keeps a script's statements as
- * written; blanks, quotes and a trailing `;` aside, which a later
- * TypeScript transform may reprint); else no position.
+ * Vue plugin makes none unless source maps are on), the line holding the
+ * offset's statement when the SFC has its text once (`reprinted.ts`: Vue
+ * keeps a script's statements as written, a later TypeScript transform
+ * may reprint them); else no position.
  */
 export function vueLocator(
   file: string,
@@ -148,74 +148,16 @@ export function vueLocator(
   inputMap: () => InputSourceMap | null,
 ): SfcLocate {
   const locator = new Locator(code, file, inputMap)
-  let sfc: Array<string> | undefined
+  const reprinted = reprintedLocator(code, () => originalText(file, inputMap))
   return (offset) => {
-    if (offset < 0 || offset > code.length) {
+    if (inputMap() === null) {
+      return reprinted(offset)
+    }
+    const at = locator.at(offset)
+    if (at === null || at.file !== file) {
       return null
     }
-    sfc ??= sfcText(file, inputMap).split(/\r?\n/)
-    const start = code.lastIndexOf('\n', offset - 1) + 1
-    const end = code.indexOf('\n', offset)
-    const line = code.slice(start, end === -1 ? code.length : end)
-    const statement = squash(line)
-    // the offset's place in its statement: the non-blank characters before it
-    const before = squash(line.slice(0, offset - start)).length
-    /** The 1-based column of the offset in SFC line `n`, its statement's line. */
-    const columnIn = (n: number) => {
-      const text = sfc![n - 1]!
-      let seen = 0
-      for (let i = 0; i < text.length; i++) {
-        if (!/\s/.test(text[i]!)) {
-          if (seen === before) {
-            return i + 1
-          }
-          seen++
-        }
-      }
-      return text.length + 1
-    }
-    const isStatement = (n: number) =>
-      statement !== '' && squash(sfc![n - 1] ?? '') === statement
-    if (inputMap() !== null) {
-      const at = locator.at(offset)
-      if (at === null || at.file !== file) {
-        return null
-      }
-      return isStatement(at.line)
-        ? { line: at.line, column: columnIn(at.line) }
-        : { line: at.line, column: at.column }
-    }
-    const lines: Array<number> = []
-    for (let n = 1; n <= sfc.length; n++) {
-      if (isStatement(n)) {
-        lines.push(n)
-      }
-    }
-    return lines.length === 1
-      ? { line: lines[0]!, column: columnIn(lines[0]!) }
-      : null
-  }
-}
-
-/** A line's text without blanks, quote styles or a trailing `;` (what tools after Vue may reprint). */
-const squash = (text: string) =>
-  text.replace(/\s+/g, '').replace(/"/g, "'").replace(/;$/, '')
-
-/** The SFC's text the input map was made from (else the file's). */
-function sfcText(file: string, inputMap: () => InputSourceMap | null): string {
-  const map = inputMap()
-  const index = map?.sources.findIndex(
-    (s) => typeof s === 'string' && s.split('?')[0]!.endsWith('.vue'),
-  )
-  const content =
-    index === undefined || index < 0 ? null : map?.sourcesContent?.[index]
-  if (typeof content === 'string') {
-    return content
-  }
-  try {
-    return readFileSync(file, 'utf8')
-  } catch {
-    return ''
+    return reprinted(offset, at.line) ?? { line: at.line, column: at.column }
   }
 }
 
