@@ -7524,6 +7524,37 @@ describe('lazy shared modules hold effects (R151)', () => {
     expect(f.env).not.toContain('{ c: 1 }')
   })
 
+  // a follower of one binding whose place grows to several split outputs
+  // (another follower shares it) joins them too, as round 0 would have
+  // (review probes b20, b12): nothing stays; only the unused code that put
+  // the bindings together is reported
+  it('joins a follower whose binding another follower shares', async () => {
+    const body =
+      'const cfg = { n: 0 }\nconst table = make()\ntable.setup(cfg)\nlink(cfg)\ncfg.inc()'
+    const r = await compile(
+      route(body, 'component: () => table.x, loader: () => cfg'),
+    )
+    expect(r.diagnostics).toEqual([])
+    expect(r.env).not.toContain('table.setup(cfg)')
+    expect(r.shared).toHaveLength(1)
+    expect(r.shared[0]).toContain(body)
+  })
+
+  it('reports only the unused code that puts bindings together', async () => {
+    const body =
+      'const a = make()\nconst b = make()\nfunction Unused() { return [a, b] }\nfunction UnusedA() { return a }'
+    const code = route(body, 'component: () => a.x, loader: () => b')
+    const r = await compile(code)
+    expect(r.env).not.toContain('Unused')
+    expect(r.shared[0]).toContain(body)
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'shared-split:unused',
+        range: { start: code.indexOf('function Unused()') },
+      },
+    ])
+  })
+
   // (the router-plugin pages: an effectful binding exported under another
   // name or by default, which the component reads: extracted with its
   // effect, R150; never judged as a split option's slot, which pinned it
