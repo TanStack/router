@@ -493,7 +493,7 @@ async function emitted(requests: Array<string>) {
   const unknown = requests.filter((request) => !emittedAnswers.has(request))
   if (unknown.length > 0) {
     const response = await fetch('${emittedEndpoint}', { method: 'POST', body: JSON.stringify(unknown) })
-    if (!response.ok) throw new Error('the dev server could not tell the emitted modules: ' + (await response.text()))
+    if (!response.ok) { throw new Error('the dev server could not tell the emitted modules: ' + (await response.text())) }
     const answers: Array<boolean> = await response.json()
     unknown.forEach((request, index) => emittedAnswers.set(request, answers[index]!))
   }
@@ -532,14 +532,14 @@ function requestUrls(): Map<string, string> {
   const seen = new Map<string, string>()
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
-    if (url.origin !== location.origin) continue
+    if (url.origin !== location.origin) { continue }
     // Without Vite's HMR timestamp (the t= query, which import analysis adds to
     // imports of a module an edit changed): one request per module
     const actual = url.pathname + url.search
     url.searchParams.delete('t')
     const request = url.pathname + url.search
-    if (url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}' || url.pathname === '${emittedEndpoint}' || url.pathname === '${stampedEndpoint}') continue
-    if (!seen.has(request)) seen.set(request, actual)
+    if (url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}' || url.pathname === '${emittedEndpoint}' || url.pathname === '${stampedEndpoint}') { continue }
+    if (!seen.has(request)) { seen.set(request, actual) }
   }
   return seen
 }
@@ -570,7 +570,7 @@ export async function trigger(route: any, option: string) {
   try {
     if (option === 'loader') {
       const loader = typeof value === 'function' ? value : value?.handler
-      if (typeof loader === 'function') await loader()
+      if (typeof loader === 'function') { await loader() }
       return
     }
     await value?.preload?.()
@@ -591,13 +591,13 @@ export function assertNoFailedRequests() {
     .getEntriesByType('resource')
     .filter((entry: any) => entry.responseStatus >= 400 && new URL(entry.name).pathname !== '/favicon.ico')
     .map((entry: any) => \`\${new URL(entry.name).pathname}\${new URL(entry.name).search} (HTTP \${entry.responseStatus})\`)
-  if (failed.length > 0) throw new Error(\`a module of the app failed to load: \${failed.join(', ')}\`)
+  if (failed.length > 0) { throw new Error(\`a module of the app failed to load: \${failed.join(', ')}\`) }
 }
 
 /** The option as the router uses it, once its module loaded. */
 export async function load(route: any, option: string) {
   const value = route.options[option]
-  if (option !== 'loader') await value?.preload?.()
+  if (option !== 'loader') { await value?.preload?.() }
   assertNoFailedRequests()
   return value
 }
@@ -611,8 +611,7 @@ function settled(el: HTMLElement, isIdle: () => boolean, timeout: number) {
       const now = el.innerHTML
       stable = now === last && isIdle() ? stable + 1 : 0
       last = now
-      if (stable >= 3 || performance.now() > deadline) resolve()
-      else setTimeout(check, 10)
+      if (stable >= 3 || performance.now() > deadline) { resolve() } else { setTimeout(check, 10) }
     }
     setTimeout(check, 0)
   })
@@ -624,7 +623,7 @@ export async function renderComponent(component: any, props: Record<string, unkn
   const el = document.createElement('div')
   document.body.append(el)
   const { errors, unmount } = mount(component, props, el, false)
-  if (errors.length > 0) throw errors[0]
+  if (errors.length > 0) { throw errors[0] }
   await settled(el, () => true, 200)
   const html = el.innerHTML
   unmount()
@@ -652,7 +651,7 @@ export async function renderRoute(at: string, routerOptions: Record<string, unkn
   const el = document.createElement('div')
   document.body.append(el)
   const { errors } = mount(RouterProvider, { router }, el, true)
-  if (errors.length > 0) throw errors[0]
+  if (errors.length > 0) { throw errors[0] }
   await settled(el, () => router.state.status === 'idle' && !router.state.isLoading, 3000)
   return { html: el.innerHTML, router }
 }
@@ -1247,11 +1246,11 @@ for (const request of await compiled()) {
   found.push({ request, label: request === routeUrl ? 'reference' : 'shared' })
 }
 for (const option of ${JSON.stringify(splittableOptions)}) {
-  if (!options || !(option in options)) continue
+  if (!options || !(option in options)) { continue }
   const before = new Set(await compiled())
   await trigger(option)
   for (const request of await compiled()) {
-    if (!before.has(request)) found.push({ request, label: 'lazy ' + option })
+    if (!before.has(request)) { found.push({ request, label: 'lazy ' + option }) }
   }
 }
 return Promise.all(found.map(async (module) => ({ ...module, code: await served(module.request) })))`,
