@@ -7437,6 +7437,156 @@ describe('statements follow the bindings they use (R149)', () => {
   })
 })
 
+// R151 (user + architect): a lazy shared module may hold effects. An
+// effectful cluster several split outputs need (and nothing that stays
+// needs) goes to one lazy shared module those outputs import, evaluated
+// once when the first of them loads; a statement and dead code (R148) whose
+// bindings go to several split outputs join them there.
+describe('lazy shared modules hold effects (R151)', () => {
+  const keys = ['component', 'loader']
+  async function compile(
+    code: string,
+    opts: { extractExports?: boolean } = {},
+  ) {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toySplitPlanner({ keys, extractExports: opts.extractExports }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    const chunks: Record<string, string> = {}
+    const shared = new Set<string>()
+    for (const key of keys) {
+      const c =
+        (await host.compile(`/app/route.tsx?tsr-split=${key}`, planners, env))
+          ?.code ?? ''
+      chunks[key] = c
+      for (const m of c.matchAll(
+        /'(\/app\/route\.tsx\?tsr-split=shared---[^']+)'/g,
+      )) {
+        shared.add(m[1]!)
+      }
+    }
+    const modules: Array<string> = []
+    for (const id of shared) {
+      modules.push((await host.compile(id, planners, env))?.code ?? '')
+    }
+    return {
+      env: out?.code ?? '',
+      chunks,
+      shared: modules,
+      diagnostics: (out?.diagnostics ?? []).filter((d) =>
+        /^(eager|shared)-/.test(d.code ?? ''),
+      ),
+    }
+  }
+  const route = (body: string, options: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make, link } from './lib'
+      ${body.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({ ${options} })
+    `)
+  const lineOf = (code: string, needle: string) =>
+    code.slice(0, code.indexOf(needle)).split('\n').length
+
+  it('puts a statement using bindings of two split options in one shared module with them', async () => {
+    const body = 'const a = { x: 1 }\nconst b = { y: 2 }\nlink(a, b)'
+    const r = await compile(
+      route(body, 'component: () => a.x, loader: () => b.y'),
+    )
+    expect(r.diagnostics).toEqual([])
+    expect(r.env).not.toContain('link(a, b)')
+    expect(r.env).not.toContain('{ x: 1 }')
+    expect(r.shared).toHaveLength(1)
+    expect(r.shared[0]).toContain(body)
+    expect(r.chunks.component).not.toContain('link(a, b)')
+    expect(r.chunks.loader).not.toContain('link(a, b)')
+  })
+
+  it('puts an effectful declaration two split options read in one shared module', async () => {
+    const r = await compile(
+      route('const x = make()', 'component: () => x, loader: () => x'),
+    )
+    expect(r.diagnostics).toEqual([])
+    expect(r.env).not.toContain('make()')
+    expect(r.shared).toHaveLength(1)
+    expect(r.shared[0]).toContain('const x = make()')
+  })
+
+  it('puts unused code reading bindings of two split options in one shared module with them, and says so', async () => {
+    const body =
+      'const a = { x: 1 }\nconst b = { y: 2 }\nfunction debugDump() { return [a, b] }'
+    const options = 'component: () => a.x, loader: () => b.y'
+    const code = route(body, options)
+    const r = await compile(code)
+    expect(r.env).not.toContain('debugDump')
+    expect(r.shared).toHaveLength(1)
+    expect(r.shared[0]).toContain(body)
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'shared-split:unused',
+        range: { start: code.indexOf('function debugDump') },
+      },
+    ])
+    expect(r.diagnostics[0]!.message).toContain(
+      `unused \`debugDump\` (line ${lineOf(code, 'function debugDump')}) puts \`a\` and \`b\` in one shared module the split \`component\` and \`loader\` import; delete \`debugDump\`, so each loads with the split code that needs it`,
+    )
+    // the fix
+    const f = await compile(
+      route('const a = { x: 1 }\nconst b = { y: 2 }', options),
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.shared).toEqual([])
+    expect(f.chunks.component).toContain('const a = { x: 1 }')
+    expect(f.chunks.loader).toContain('const b = { y: 2 }')
+  })
+
+  // careflow: unused code reading an extracted export and a split
+  // option's binding: an extracted module and a chunk share no module, so
+  // it stays, and keeps both in the route module; the warning names what it
+  // keeps together there
+  it('keeps unused code reading an extracted export and a split binding in the route module, and says what it keeps', async () => {
+    const body =
+      "const card = { c: 1 }\nexport function Title() { return 't' }\nfunction CheckStep() { return [card, Title] }"
+    const options = 'component: () => [card, Title]'
+    const code = route(body, options)
+    const r = await compile(code, { extractExports: true })
+    expect(r.env).toContain('function CheckStep()')
+    expect(r.env).toContain('const card = { c: 1 }')
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'eager-split:unused',
+        range: { start: code.indexOf('function CheckStep') },
+      },
+    ])
+    expect(r.diagnostics[0]!.message).toContain(
+      `unused \`CheckStep\` (line ${lineOf(code, 'function CheckStep')}) keeps \`card\` and \`Title\` in the route module; delete \`CheckStep\`, so they can load with the split code that needs them`,
+    )
+    // the fix
+    const f = await compile(
+      route(
+        "const card = { c: 1 }\nexport function Title() { return 't' }",
+        options,
+      ),
+      { extractExports: true },
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.env).not.toContain('{ c: 1 }')
+  })
+
+  it('keeps a statement using a binding the route module keeps', async () => {
+    const r = await compile(
+      route(
+        'const k = make()\nconst d = make()\nlink(k, d)',
+        'component: () => d, loader: () => 1,\n      validateSearch: () => k',
+      ),
+    )
+    expect(r.env).toContain('const k = make()\nconst d = make()\nlink(k, d)')
+    expect(r.shared).toEqual([])
+  })
+})
+
 // Finding 3 (part B) and the fresh review's finding 5: a declaration a
 // statement uses stays with that statement, and the warning says why the
 // statement stays (a binding it also uses that the route module keeps or

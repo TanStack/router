@@ -49,6 +49,16 @@ export function register(store: { value: string }, mark: string) {
   store.value += mark
 }
 `,
+  // what a shared module's effects record (R151)
+  'link.ts': `export function link(a: object, b: object) {
+  ;((globalThis as any).__runs ??= []).push('link')
+  ;(a as any).peer = b
+}
+export function make(mark: string) {
+  ;((globalThis as any).__runs ??= []).push('make')
+  return { mark }
+}
+`,
   'snap.ts': `export function snap(o: { v: number }) {
   return String(o.v)
 }
@@ -257,6 +267,65 @@ export const Route = createFileRoute('/')({
           )
           // (the source patches it when the route module loads)
           expect(result).toEqual(['unpatched', 'patched'])
+        } finally {
+          await app.dispose()
+        }
+      },
+      timeout,
+    )
+
+    // R151: a statement using bindings of two split options, and an
+    // effectful declaration two split options read, go to one lazy shared
+    // module both chunks import: the effect runs once, when the first of
+    // them loads, whichever it is
+    test.each([
+      [
+        'a statement using bindings of two split options',
+        `import { link } from '../link'
+const a = { x: 'MARK_SHARED_A' }
+const b = { y: 'MARK_SHARED_B' }
+link(a, b)
+export const Route = createFileRoute('/')({
+  component: () => <p>{a.x}</p>,
+  errorComponent: () => <p>{b.y}</p>,
+})
+`,
+        'link',
+      ],
+      [
+        'an effectful declaration two split options read',
+        `import { make } from '../link'
+const x = make('MARK_SHARED_X')
+export const Route = createFileRoute('/')({
+  component: () => <p>{x.mark}</p>,
+  errorComponent: () => <p>{x.mark}</p>,
+})
+`,
+        'make',
+      ],
+    ])(
+      '%s runs once, when the first of their chunks loads, whichever',
+      async (_, body, effect) => {
+        const app = await build({
+          bundler,
+          env: 'client',
+          minify: false,
+          files: routeApp(`${head}${body}`, { env: 'client', files: libs }),
+        })
+        try {
+          expect(app.where(/MARK_SHARED_[ABX]/)).toBe('lazy')
+          for (const first of ['component', 'errorComponent']) {
+            const second =
+              first === 'component' ? 'errorComponent' : 'component'
+            const run = await app.run(
+              `const before = [...(globalThis.__runs ?? [])]
+await entry.Route.options.${first}.preload()
+const mid = [...globalThis.__runs]
+await entry.Route.options.${second}.preload()
+return [before, mid, [...globalThis.__runs]]`,
+            )
+            expect(run.result, first).toEqual([[], [effect], [effect]])
+          }
         } finally {
           await app.dispose()
         }
