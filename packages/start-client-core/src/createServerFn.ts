@@ -28,6 +28,7 @@ import type {
   AssignAllServerFnContext,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
+  ReadonlyBuilderOptions,
 } from './createMiddleware'
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
@@ -756,13 +757,15 @@ export interface ServerFnBuilder<
   >(
     options?: ServerFnOptions<TNewMethod, TNewStrict>,
   ): ServerFnBuilder<TRegister, TNewMethod, TNewStrict>
-  options: ServerFnBaseOptions<
-    TRegister,
-    TMethod,
-    unknown,
-    undefined,
-    undefined,
-    TStrict
+  readonly options: ReadonlyBuilderOptions<
+    ServerFnBaseOptions<
+      TRegister,
+      TMethod,
+      unknown,
+      undefined,
+      undefined,
+      TStrict
+    >
   >
 }
 
@@ -782,13 +785,15 @@ export interface ServerFnWithTypes<
     TResponse,
     TStrict
   >
-  options: ServerFnBaseOptions<
-    TRegister,
-    TMethod,
-    unknown,
-    undefined,
-    undefined,
-    TStrict
+  readonly options: ReadonlyBuilderOptions<
+    ServerFnBaseOptions<
+      TRegister,
+      TMethod,
+      unknown,
+      undefined,
+      undefined,
+      TStrict
+    >
   >
   [TSS_SERVER_FUNCTION_FACTORY]: true
 }
