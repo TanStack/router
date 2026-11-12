@@ -137,7 +137,6 @@ export const Route = ${route}
   // cannot be built once code splitting is on.
   test.each<{
     name: string
-    option?: string
     value: string
     declarations?: string
     filename?: string
@@ -147,12 +146,6 @@ export const Route = ${route}
       name: 'a member of a namespace import',
       value: 'Pages.Home',
       expected: 'home',
-    },
-    {
-      name: 'a member of a local object (loader)',
-      option: 'loader',
-      value: 'api.load',
-      expected: 'data',
     },
     {
       name: 'a logical fallback',
@@ -186,22 +179,15 @@ export const Route = ${route}
     },
   ])(
     'an option written as $name is split and works',
-    async ({
-      option = 'component',
-      value,
-      declarations = '',
-      filename,
-      expected,
-    }) => {
+    async ({ value, declarations = '', filename, expected }) => {
       const route = await loadRoute(
         `${head}import * as Pages from './pages'
 import { styled } from './styled'
 ${declarations}const Fallback = () => 'fallback'
-const api = { load: () => 'data' }
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
-  loader: ${option === 'loader' ? value : `() => 'data'`},
-  component: ${option === 'component' ? value : `() => <p>page</p>`},
+  loader: () => 'data',
+  component: ${value},
 })
 `,
         {
@@ -214,16 +200,33 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(await route.isLazy(option)).toBe(true)
-      expect(
-        await route.run(
-          option === 'loader'
-            ? `return (await load('loader'))()`
-            : `return render(${JSON.stringify(option)})`,
-        ),
-      ).toBe(expected)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(expected)
     },
   )
+
+  // A loader written as a member (`api.load`) is a value the compiler does
+  // not read: it may be an object-form loader whose options the router
+  // reads from the route module, so it stays there, reported (SPEC J2.8).
+  test('a loader written as a member of a local object works in the route module, reported', async () => {
+    const route = await loadRoute(
+      `${head}const api = { load: () => 'data' }
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: api.load,
+  component: () => <p>page</p>,
+})
+`,
+      { fresh: true },
+    )
+    expect(await route.isLazy('loader')).toBe(false)
+    expect(await route.run(`return options.loader()`)).toBe('data')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+  })
 
   // Bug: a component option written as a call cannot be split when its
   // printed code does not parse on its own with Babel's default options: the

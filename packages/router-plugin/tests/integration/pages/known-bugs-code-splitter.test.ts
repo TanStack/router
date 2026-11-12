@@ -788,8 +788,9 @@ describe('split route options', () => {
   // J2.8). Only the handler can move; the router reads the other keys
   // (`staleReloadMode`) from the route options. Today the compiler throws
   // first (same root cause as above). A compiler that builds these routes
-  // but keeps a method handler, or a handler next to a spread, in the route
-  // module on purpose still has this bug.
+  // but keeps a method handler, or a handler after a spread, in the route
+  // module on purpose still has this bug. (A spread after the handler may
+  // replace it: that loader stays, reported; code-splitter-route-options.)
   // Impact: the loader's code loads with the entry chunk, or the route
   // cannot be built.
   test.each([
@@ -799,8 +800,8 @@ describe('split route options', () => {
       loader: `{ handler() { return 'MARK_handler' } }`,
     },
     {
-      name: 'a spread after the handler',
-      loader: `{ handler: () => 'MARK_handler', ...defaults }`,
+      name: 'a spread before the handler',
+      loader: `{ ...defaults, handler: () => 'MARK_handler' }`,
     },
   ])(
     'the handler of a split loader in object form with $name loads lazily',

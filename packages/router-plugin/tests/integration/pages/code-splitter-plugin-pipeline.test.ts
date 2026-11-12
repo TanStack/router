@@ -323,7 +323,7 @@ export const Route = createFileRoute('/')({ component: () => <p use:tip>tip</p> 
         const code = `import { createFileRoute, Outlet } from '${routerPackage}'
 import { fetchPosts } from './posts'
 export const Route = createFileRoute('/posts')({
-${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: fetchPosts,
+${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: () => fetchPosts(),
   component: PostsComponent,
 })
 const PostsComponent = () => {
