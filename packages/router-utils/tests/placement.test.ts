@@ -863,22 +863,25 @@ describe('an export whose evaluation runs code reading what a planner moved to t
       }
     },
   }
-  async function compile(value: string) {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { hoisted } from 'toy-start'
-      import { keep } from './lib'
-      function Panel() {
-        const inner = hoisted(1)
-        return typeof inner
-      }
-      function Plain() {
-        return 'plain'
-      }
-      export const x = ${value}
-      export const y = [Plain()]
-      export const Route = createFileRoute('/')({ component: () => [x, y] })
-    `)
+  const compile = (value: string) =>
+    compileRoute(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { hoisted } from 'toy-start'
+        import { keep } from './lib'
+        function Panel() {
+          const inner = hoisted(1)
+          return typeof inner
+        }
+        function Plain() {
+          return 'plain'
+        }
+        export const x = ${value}
+        export const y = [Plain()]
+        export const Route = createFileRoute('/')({ component: () => [x, y] })
+      `),
+    )
+  async function compileRoute(code: string) {
     const host = new MemoryHost({
       files: {
         '/app/route.tsx': code,
@@ -924,6 +927,31 @@ describe('an export whose evaluation runs code reading what a planner moved to t
     expect(r.kept).toHaveLength(1)
     expect(r.kept[0]!.code).toBe('eager-export:reads')
     expect(r.kept[0]!.message).not.toContain('tsrHoisted')
+  })
+
+  // (seed 1514297's shape: unused code following the function into its
+  // module was put back each round after leaving it for that read)
+  it('keeps unused code handing an extracted function that holds the call to a call in the route module, with the function', async () => {
+    const r = await compileRoute(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { hoisted } from 'toy-start'
+        import { keep } from './lib'
+        function Panel() {
+          const inner = hoisted(1)
+          return typeof inner
+        }
+        export { Panel as Alias }
+        const unused = keep(Panel)
+        export const Route = createFileRoute('/')({ component: Panel })
+      `),
+    )
+    expect(r.env).toContain('const unused = keep(Panel)')
+    expect(r.env).toContain('function Panel()')
+    expect(await r.module('Alias')).not.toContain('Panel')
+    expect(r.chunk).toMatch(
+      /import \{[^}]*\bAlias\b[^}]*\} from '\/app\/route\.tsx'/,
+    )
   })
 })
 
