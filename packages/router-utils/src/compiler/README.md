@@ -134,8 +134,7 @@ extends Z`, directly or through what they carry) share the module of the first i
   (reassigned, read by the route module, reading what it keeps) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `written`, changed
-  outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
-  binding the module keeps; `shared`, a value with an identity or state that an extracted export's module and other
+  outside its declaration at load; `state`, reading what the module writes; `shared`, a value with an identity or state that an extracted export's module and other
   split code both read, one instance; `unused`, what unused code keeps there, and `shared-split:unused`, what unused
   code puts in one shared module), once at the cause (a cluster kept only because another kept one reads it is not
   reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
@@ -214,11 +213,12 @@ extends Z`, directly or through what they carry) share the module of the first i
   binding nothing else touches when the module loads, pins neither: it runs only through what that evaluation
   returns, never before it (`ownLate`). An effectful,
   unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
-  preserved) when nothing outside it writes it eagerly, it observes no mutable state, what it reads at load of
-  another effectful cluster evaluates in the same slot (in source order there: `const columnHelper =
+  preserved) when nothing outside it writes it eagerly and it observes no mutable state. What it reads at load
+  of another cluster evaluates first wherever that goes: in the same chunk, in source order (`const columnHelper =
 createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
-  R138) or is a `const` the route module keeps (whatever keeps it there; a `let` pins), imports are read lazily
-  (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
+  R138), or in a module the chunk imports (the route module, an extracted export's, a shared one). A `let` nothing
+  assigns reads like a `const`; an assigned one is judged by its writes. Imports are read lazily (the chunk loads
+  after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
   and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`), and its result is not
   what it was handed (R149 answer F, accepted break): a write through `const store = reactive(settings)` is no write

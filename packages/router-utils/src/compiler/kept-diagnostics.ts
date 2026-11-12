@@ -165,7 +165,8 @@ export function keptDiagnostic(
       because = `an exported binding's split module and other split options (${split}) read ${them}, and ${it} ${names.length === 1 ? 'has' : 'have'} an identity or state (an object, array, class, call result or written binding), which exists once`
       fix = `move ${subject} to ${own} own module, which both import`
       break
-    case 'state':
+    default:
+      // `state`
       because =
         k.read === undefined
           ? `${it} use${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
@@ -177,26 +178,6 @@ export function keptDiagnostic(
           ? `move ${subject}, ${read} and the statements writing them to their own module`
           : `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
       break
-    default: {
-      // a `let` nothing assigns may be a `const`: one the route module
-      // keeps is read from it (R67)
-      const isLet = !symbols.isConst(k.read!)
-      because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${isLet ? 'is a `let`' : 'has side effects'}`
-      const fixes = [
-        ...(isLet && !plan.t1.mutation.isReassigned(k.read!)
-          ? [`declare ${read} with \`const\``]
-          : []),
-        `move ${subject} and ${read} to their own module`,
-        ...(annotatable(plan, [k.read!])
-          ? [
-              `mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects`,
-            ]
-          : []),
-      ]
-      const last = fixes.pop()!
-      fix = fixes.length === 0 ? last : `${fixes.join(', ')}, or ${last}`
-      break
-    }
   }
   return {
     severity: 'warning',
