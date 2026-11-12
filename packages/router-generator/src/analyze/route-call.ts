@@ -70,10 +70,10 @@ export type ForeignRoute =
       constructor: 'createRootRoute' | 'createRootRouteWithContext'
     }
   /**
-   * The initialiser uses a route constructor of the router package, but is
-   * not its call: wrapped, or `Route` declared more than once. (A route
-   * stored in another const, or made by calling a stored constructor call,
-   * does not use it: `other`.)
+   * The initialiser uses a route constructor of the router package (itself
+   * or through the file's own functions and consts), but is not its call:
+   * wrapped, made in a function of the file, stored in another const, or
+   * `Route` declared more than once.
    */
   | { kind: 'wrapped' }
 
@@ -185,17 +185,12 @@ const wrappers: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Whether code inside `nodes` uses a route constructor of the router
- * package: an import of one (`createFileRoute`, any alias), or a member of
- * the package's namespace naming one (`R.createFileRoute`).
+ * Where the file uses a route constructor of the router package: each
+ * reference to an import of one (`createFileRoute`, any alias), or to the
+ * package's namespace naming one (`R.createFileRoute`, through casts).
  */
-function usesConstructorIn(
-  file: SourceFile,
-  nodes: ReadonlyArray<Node>,
-  routerPackage: string,
-): boolean {
-  const inside = (node: Node) =>
-    nodes.some((n) => node.start >= n.start && node.end <= n.end)
+function constructorUses(file: SourceFile, routerPackage: string): Array<Node> {
+  const uses: Array<Node> = []
   for (const imported of file.imports) {
     if (
       imported.specifier !== routerPackage ||
@@ -210,13 +205,13 @@ function usesConstructorIn(
       continue
     }
     for (const reference of imported.local.references) {
-      if (reference.inTypePosition || !inside(reference.node)) {
+      if (reference.inTypePosition) {
         continue
       }
       if (imported.kind === 'named') {
-        return true
+        uses.push(reference.node)
+        continue
       }
-      // `R.createFileRoute`, through casts and parentheses around `R`
       let node: Node = reference.node
       let parent = file.parentOf(node)
       while (parent && wrappers.has(parent.type)) {
@@ -230,7 +225,59 @@ function usesConstructorIn(
         parent.property.type === 'Identifier' &&
         routeConstructors.has(parent.property.name)
       ) {
-        return true
+        uses.push(reference.node)
+      }
+    }
+  }
+  return uses
+}
+
+/**
+ * Whether the code of `nodes` uses a route constructor of the router
+ * package, directly or through the file's own module-level bindings it
+ * reads (a route factory of the file, `function make() { return
+ * createFileRoute(…)(…) }`, a stored call, J2.10); an imported helper is
+ * not followed (R130).
+ */
+function usesConstructorIn(
+  file: SourceFile,
+  nodes: ReadonlyArray<Node>,
+  routerPackage: string,
+): boolean {
+  const uses = constructorUses(file, routerPackage)
+  if (uses.length === 0) {
+    return false
+  }
+  const rootScope = file.rootScope.id
+  const statementOf = (node: Node) =>
+    file.program.body.find((s) => s.start <= node.start && node.end <= s.end)
+  const seen = new Set<Node>(nodes)
+  const queue = [...nodes]
+  for (let n = queue.pop(); n; n = queue.pop()) {
+    const range = n
+    if (uses.some((u) => u.start >= range.start && u.end <= range.end)) {
+      return true
+    }
+    for (const reference of file.references) {
+      const binding = reference.binding
+      if (
+        !binding ||
+        binding.import ||
+        binding.scope.id !== rootScope ||
+        reference.inTypePosition
+      ) {
+        continue
+      }
+      const at = reference.node
+      if (at.start < range.start || at.end > range.end) {
+        continue
+      }
+      for (const declaration of binding.declarations) {
+        const statement = statementOf(declaration)
+        if (statement && !seen.has(statement)) {
+          seen.add(statement)
+          queue.push(statement)
+        }
       }
     }
   }
@@ -269,7 +316,7 @@ export function routeCallOf(
     kind: 'foreign',
     reason,
   })
-  /** Not the constructor's call: wrapped (or declared twice) when the initialiser uses a constructor, else not the router's. */
+  /** Not the constructor's call: wrapped, made or stored in the file when the initialiser uses a constructor, else not the router's. */
   const notTheCall = () =>
     foreign({
       kind: usesConstructorIn(file, declarators, expected.routerPackage)
