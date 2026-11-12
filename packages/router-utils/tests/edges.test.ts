@@ -719,8 +719,7 @@ describe('unresolved resolutions (J6.13)', () => {
   // `imports` and `exports` decide what a specifier resolves to, as a
   // tsconfig's `paths` do, and any file event may hide a creation: the
   // answers of the memo and the plans' resolutions don't outlive a file
-  // event. Each file's creation was seen first (a change of a path nothing
-  // knows is a creation).
+  // event. Each file's creation was seen first.
   it.each([
     ['change', '/app/package.json'],
     ['add', '/app/package.json'],

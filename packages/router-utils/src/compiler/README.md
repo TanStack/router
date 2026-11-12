@@ -373,8 +373,8 @@ text compiles waits for it and emits its own output from the result.
   - **Repeats are harmless.** The raw-facts cache keeps the revision of the text it read of each path (`seen`); the
     event reads the file once, and a change whose text is what the caches read (an echo, a touch, the same event
     through a second hook) marks no fact stale.
-  - **An event is judged by the file as it is.** A removal of a file that reads back is an add, a change of one that
-    reads nothing a removal, and a change of a path the caches hold nothing of that reads as a file an add. An event
+  - **An event is judged by the file as it is.** A removal of a file that reads back is an add, and a change of one that
+    reads nothing a removal. An event
     that reads the file empty reads it again for a moment (an in-place save reported between truncation and write),
     unless an event read it empty and waited in vain and the file's modification time is the same (a repeat of that
     event through another hook; a time of whole seconds counts as unknown: a filesystem of coarse times stamps a save

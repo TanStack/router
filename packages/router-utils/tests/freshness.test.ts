@@ -471,8 +471,8 @@ describe('events that move the file set', () => {
   // the file comes back reported as modified (Rsbuild: another environment's
   // last compilation still lists it; the router's webpack-family host
   // reports every created file so). The caches hold nothing of the path by
-  // then: a change of a path nothing knows that reads as a file is a
-  // creation, and the importer's failed resolution is asked again.
+  // then: the event is applied, and every event asks the failed resolutions
+  // again, the importer's among them.
   // Source: CI failure of property (b), seed 24344.
   it.for([
     { name: 'compiled before the removal too', before: true },
