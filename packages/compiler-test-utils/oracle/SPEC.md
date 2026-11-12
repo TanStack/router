@@ -761,7 +761,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   order, caching, or which env transformed a module first (G4). A denied file whose importers disagree (one needs it
   as it is: an exempt plain importer or an import `allowImport` allows; a checked one reaches the file itself: a
   pattern import or an import another plugin added) fails every build, under both behaviours, whatever the order the
-  bundler compiled them in (R147).
+  bundler compiled them in (R147). With an exempt pattern importer instead, a Vite build reports the shape under
+  `behavior` whatever it served; Rsbuild serves it as it is to both and reports nothing.
 - **J6.12 Wording is free.** The docs' report displays are examples: sections, header text, numbering, quotes,
   spacing, code frames and suggestions are free. What a violation is (environment, importer and location, specifier,
   resolved file, chain) is read from `onViolation` (J6.6); the printed report is checked only for naming the
@@ -953,10 +954,11 @@ A compiler may do any of these and still be correct; tests must not fail on them
   splitter's chunk and shared compiles read state the route-module compile fills; a divergence on a cached rebuild is
   plausible but not shown. A regression test covers it, not a pin.
 - G12 for printer edge cases not yet listed.
-- J6.11 in full generality (pins cover warm-up, pre-transform and entry order). Known order dependence: a Vite build
-  whose only importers of a denied file are exempt (a plain one and a pattern one) serves the file as it compiled it
-  first and reports a mock it served under `behavior` (R142 (2)); a `vite build --watch` rebuild reports a file it
-  compiled real before the edited importer, and the next rebuild mocks it.
+- J6.11 in full generality (pins cover warm-up, pre-transform and entry order). A Vite build whose importers of a
+  denied file are an exempt plain one and an exempt pattern one serves the file as it compiled it first, and reports
+  the shape under `behavior` whichever it served, so the reports do not depend on the order (R142 (2), design 4
+  closing follow-up); what a pattern importer reads does. A `vite build --watch` rebuild reports a file it compiled
+  real before the edited importer, and the next rebuild mocks it.
 - J3.4 webpack stale hot-data id: no reachable scenario shown yet.
 - J1.10 equal-mtime double save: plausible with format-on-save, not reproduced with a real editor.
 - J1.6/J1.10 within one run: a save that lands between the generator's read of a route file and its rename over it

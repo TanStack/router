@@ -214,18 +214,20 @@ export function formatUncheckedImporters(
 }
 
 /**
- * A build's report of a denied file served otherwise than its importers ask
- * for, by a bundler that compiles each module once (a Vite build; design 4's
- * I3): its mock, compiled for the importers the compiler does not read
- * (`others`: a pattern import) before it read the plain import that needs
- * the file as it is (`needers`, exempt or outside the scope; none: an import
- * `allowImport` allowed); or the file as it is, compiled by a watch rebuild
- * while such an import still existed, though none does now.
+ * A Vite build's report of a denied file whose order of compiles decides
+ * what every importer gets (design 4 closing follow-up): an importer needs
+ * it as it is (`needers`, exempt or outside the scope; none: an import
+ * `allowImport` allowed) and others reach it through an import the compiler
+ * does not read (`others`: an exempt pattern import, an import another
+ * plugin added). The build compiles it once, for whichever import came
+ * first, and reports the shape whatever it `served`, so the outcome does not
+ * depend on the order. `stale` (`served: 'real'`, no needer): a watch rebuild
+ * compiled it while an import that needed it still existed.
  */
 export function formatServedMismatch(
   info: ViolationInfo,
   served: 'mock' | 'real',
-  needers: Array<string>,
+  needers: Array<string> | 'stale',
   others: Array<string>,
   ctx: ReportContext,
 ): string {
@@ -233,32 +235,8 @@ export function formatServedMismatch(
   const rel = (p: string) => relativizePath(p, root)
   const denied = identify(info.resolved ?? info.importer).path
   const list = (files: Array<string>) => files.map((f) => `    - ${rel(f)}`)
-  // how each importer that is not a needer reaches the file
-  const sites =
-    served === 'mock' ? others.map((o) => reachOf(ctx, o, denied)) : []
   const lines = [``]
-  if (served === 'mock') {
-    lines.push(
-      `[import-protection] Denied file mocked in ${info.envType} environment, for an importer that needs it as it is`,
-      ``,
-      deniedBy(info, ctx),
-      `  Denied file: ${rel(denied)}`,
-      ...(needers.length > 0
-        ? [
-            `  Needed as it is by (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
-            ...list(needers),
-          ]
-        : [`  Needed as it is by: an import that allowImport allowed`]),
-      ...(sites.length > 0
-        ? [
-            `  Also reached by:`,
-            ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
-          ]
-        : []),
-      ``,
-      `  The build compiles each module once. It compiled this file for an import it does not read (${sites[0]?.cause === 'added' ? 'one another plugin added' : 'a pattern import'}) before it read the import that needs the file as it is, so every importer got the mock.`,
-    )
-  } else {
+  if (needers === 'stale') {
     lines.push(
       `[import-protection] Denied file kept as it is in ${info.envType} environment, though no importer needs it any more`,
       ``,
@@ -267,27 +245,58 @@ export function formatServedMismatch(
       ...(others.length > 0 ? [`  Reached by:`, ...list(others)] : []),
       ``,
       `  The watch rebuild compiled this file while an import that needed it as it is still existed: it ships to the ${info.envType} as it is.`,
-    )
-  }
-  lines.push(``, `  Suggestions:`)
-  if (served === 'real') {
-    lines.push(
+      ``,
+      `  Suggestions:`,
       `    - Save any file this build bundles: the next rebuild compiles the file again, as its mock`,
+      ``,
     )
-  } else {
-    // the fix of the first importer that brought it
-    const site = sites.find((x) => x.found) ?? sites[0] ?? null
-    for (const s of patternSuggestions(
-      denied,
-      site,
-      'build',
-      info.envType,
-      root,
-    )) {
-      lines.push(`    - ${s}`)
-    }
+    return lines.join('\n')
   }
-  lines.push(``)
+  // how each importer that is not a needer reaches the file
+  const sites = others.map((o) => reachOf(ctx, o, denied))
+  const unread =
+    sites[0]?.cause === 'added'
+      ? 'one another plugin added'
+      : 'a pattern import'
+  lines.push(
+    served === 'mock'
+      ? `[import-protection] Denied file mocked in ${info.envType} environment, for an importer that needs it as it is`
+      : `[import-protection] Denied file kept as it is in ${info.envType} environment, for an import that does not ask for it`,
+    ``,
+    deniedBy(info, ctx),
+    `  Denied file: ${rel(denied)}`,
+    ...(needers.length > 0
+      ? [
+          `  Needed as it is by (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
+          ...list(needers),
+        ]
+      : [`  Needed as it is by: an import that allowImport allowed`]),
+    ...(sites.length > 0
+      ? [
+          `  Also reached by:`,
+          ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
+        ]
+      : []),
+    ``,
+    `  The build compiles each module once and serves it to every importer as it compiled it first: for an import it does not read (${unread}), every importer gets the mock; for the import that needs it, every importer gets it as it is.${served === 'mock' ? ' Here every importer got the mock.' : ` Here every importer got it as it is: it ships to the ${info.envType}.`} The build reports this either way, so its outcome does not depend on the order.`,
+    ``,
+    `  Suggestions:`,
+  )
+  // the fix of the first importer that brought it
+  const site = sites.find((x) => x.found) ?? sites[0] ?? null
+  for (const s of patternSuggestions(
+    denied,
+    site,
+    'build',
+    info.envType,
+    root,
+  )) {
+    lines.push(`    - ${s}`)
+  }
+  lines.push(
+    `    - Or, if the file should not ship to the ${info.envType}, narrow ${needers.length > 0 ? `the exemption (exclude/ignoreImporters) so that it no longer covers ${needers.map(rel).join(', ')}` : 'allowImport'}: every importer then gets the mock`,
+    ``,
+  )
   return lines.join('\n')
 }
 

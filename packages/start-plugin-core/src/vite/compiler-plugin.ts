@@ -533,9 +533,10 @@ function envCompilerPlugins(
       const reports = await ipEnv.surviving(
         live,
         rolldownGraphView((id) => this.getModuleInfo(id)),
-        // (a module served otherwise than its importers now ask for is
-        // reported: a build compiles it once)
+        // (a denied file served as it was compiled first is reported: a
+        // build compiles it once)
         (id) => this.getModuleInfo(id) !== null,
+        (id) => renderedIn(bundle, id),
       )
       // every report first: the build fails once, with all of its errors
       const errors: Array<string> = []
@@ -565,4 +566,17 @@ function envCompilerPlugins(
       transform: { filter: state.dependencyFilter, handler: compileTransform },
     },
   ]
+}
+
+/** Whether a module's code is in a chunk of the bundle (tree-shaking kept some of it). */
+function renderedIn(bundle: Record<string, unknown>, id: string): boolean {
+  for (const output of Object.values(bundle)) {
+    const modules = (
+      output as { modules?: Record<string, { renderedLength: number }> }
+    ).modules
+    if ((modules?.[id]?.renderedLength ?? 0) > 0) {
+      return true
+    }
+  }
+  return false
 }

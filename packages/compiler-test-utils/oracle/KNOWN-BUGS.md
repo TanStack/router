@@ -120,13 +120,14 @@ bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' p
   `new URL` gets the mock**, with the same warning (the scope is about importers: a denied file is judged wherever it
   lives). A plain import from there gets the real module. `known-bugs-rejections.test.ts`: "an importer outside the
   source directory reaching a denied file outside it only through a pattern gets the real module".
-- **A Vite build that compiled a denied file for an exempt pattern import before it read the exempt plain import of
-  it serves the mock to both** (a build compiles a module once; Rsbuild and the dev servers compile the file again),
-  and says so under `behavior` (R142 (2)): the build fails with `error`, warns with `mock`, naming the file, the
-  importer that needs it, the pattern import and the fix (leave it out of the pattern); only when the mock survived.
+- **A Vite build serves a denied file reached by an exempt plain importer and an exempt pattern importer as it
+  compiled it first** (a build compiles a module once; Rsbuild and the dev servers compile the file again): both get
+  the mock when the pattern import came first, the real module otherwise. The build reports the shape under
+  `behavior` either way (R142 (2), design 4 closing follow-up): it fails with `error`, warns with `mock`, naming the
+  file, the importer that needs it, the pattern import and the fixes; only when something of the file was kept.
   `start-plugin-core/tests/integration/importProtection/served-verdict.test.ts`: "two exempt importers, the plain one
-  compiled after the denied file: the %s build …" (a user plugin holds the plain importer's `load`). Not a pin: the
-  outcome is the ruled one. With a checked pattern importer (or a checked module another plugin adds an import of the
+  compiled after the denied file: the %s build …" and "… the plain one compiled first: the error build fails …" (a
+  user plugin holds one importer's `load`). Not a pin: the outcome is the ruled one. With a checked pattern importer (or a checked module another plugin adds an import of the
   file to), the importers disagree and every build fails on both hosts, whatever the order (R147; "… R147 > …" in the
   same file).
 - **Vite dev: a denied file stays the real module after an edit removes the last import of the exempt importer that

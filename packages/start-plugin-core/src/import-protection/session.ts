@@ -521,6 +521,13 @@ interface Conflict {
   elsewhere: boolean
   /** The checked importers that reach the file itself (files). */
   checked: Array<string>
+  /**
+   * The unchecked importers that reach the file itself, through an import
+   * the compiler does not read (an exempt pattern import, an import another
+   * plugin added): no conflict, but a Vite build serves the file as it
+   * compiled it first (files).
+   */
+  unread: Array<string>
 }
 
 interface RegisteredModule {
@@ -1420,6 +1427,24 @@ class ImportProtectionEnv {
     graph: ImportGraphView,
     holds?: (id: string) => boolean,
   ): Map<string, Conflict> {
+    const out = this.demanded(graph, holds)
+    for (const [id, c] of out) {
+      if (c.checked.length === 0) {
+        out.delete(id)
+      }
+    }
+    return out
+  }
+
+  /**
+   * The denied files compiled under their own id (`holds`: those the build
+   * holds) with real demand and another importer in `graph` that reaches the
+   * file itself: checked (R147) or not (`Conflict.unread`).
+   */
+  private demanded(
+    graph: ImportGraphView,
+    holds?: (id: string) => boolean,
+  ): Map<string, Conflict> {
     const out = new Map<string, Conflict>()
     for (const [id, entry] of this.served) {
       const self = entry.self
@@ -1436,16 +1461,19 @@ class ImportProtectionEnv {
         continue
       }
       const checked = new Set<string>()
+      const unread = new Set<string>()
       for (const importerId of graph.importers(self.importerId)) {
         const importer = traceFile(importerId)
-        if (
-          this.ip.ids.parse(importerId) === null &&
-          this.ip.inScope(importer)
-        ) {
+        if (this.ip.ids.parse(importerId) !== null) {
+          continue
+        }
+        if (this.ip.inScope(importer)) {
           checked.add(importer)
+        } else if (!needers.includes(importer)) {
+          unread.add(importer)
         }
       }
-      if (checked.size > 0) {
+      if (checked.size > 0 || unread.size > 0) {
         out.set(id, {
           self,
           verdict: entry.verdict,
@@ -1453,6 +1481,7 @@ class ImportProtectionEnv {
           allowed,
           elsewhere,
           checked: [...checked],
+          unread: [...unread],
         })
       }
     }
@@ -1521,15 +1550,20 @@ class ImportProtectionEnv {
    * `onViolation` hears about each with its trace in `graph`, and the reports
    * are returned, formatted (`error` behaviour: the build fails with them;
    * `mock`: warnings). `holds`: the module ids of the build, from a host that
-   * cannot build a module again (a Vite build): a denied file it holds that
-   * was served otherwise than its importers now ask for (`mismatches`) is
-   * reported as such under `behavior`, instead of its other reports (design
-   * 4's I3; the Rspack host builds it again before this runs).
+   * cannot build a module again (a Vite build): a denied file it holds with
+   * real demand and an importer the compiler does not read is reported
+   * under `behavior` whatever it was served as, when something of it was
+   * kept (`rendered`, or its surviving mock), and one a watch rebuild served
+   * as it is that no importer needs any more; instead of its other reports
+   * (design 4's I3; the Rspack host builds it again before this runs and
+   * serves it as it is).
    */
   async surviving(
     liveKeys: ReadonlyArray<string>,
     graph: ImportGraphView,
     holds?: (id: string) => boolean,
+    /** Vite: whether the output kept any code of a module (a denied file served as it is). */
+    rendered?: (id: string) => boolean,
   ): Promise<
     Array<{
       severity: 'error' | 'warning'
@@ -1539,20 +1573,42 @@ class ImportProtectionEnv {
   > {
     this.graph = graph
     // R147 first: it replaces the file's other reports
-    const conflicts = this.served.size > 0 ? this.conflicts(graph, holds) : null
-    const unsettled = new Map<string, Served>()
+    const demanded =
+      this.served.size > 0 ? this.demanded(graph, holds) : new Map()
+    const conflicts = new Map(
+      [...demanded].filter(([, c]) => c.checked.length > 0),
+    )
+    // a build that cannot build a module again (Vite) serves a denied file
+    // with real demand and an unread importer as it compiled it first: the
+    // shape is reported whatever was served, so the outcome does not depend
+    // on the order; and a watch rebuild that compiled it real while the
+    // import that needed it still existed (`stale`)
+    const unsettled = new Map<
+      string,
+      { verdict: 'mock' | 'real'; self: EdgeViolation; order: Conflict | null }
+    >()
     if (holds) {
       const survived = new Set(liveKeys)
+      for (const [id, c] of demanded) {
+        if (
+          c.checked.length === 0 &&
+          // (nothing of the file the build kept harms no importer)
+          (c.verdict === 'mock'
+            ? survived.has(c.self.module!.key)
+            : (rendered?.(id) ?? true))
+        ) {
+          unsettled.set(id, { verdict: c.verdict, self: c.self, order: c })
+        }
+      }
       for (const id of await this.mismatches()) {
         const entry = this.served.get(id)
         if (
           entry?.self &&
+          entry.verdict === 'real' &&
           holds(id) &&
-          !conflicts?.has(id) &&
-          // (a mock nothing of the build kept harms no importer)
-          (entry.verdict === 'real' || survived.has(entry.self.module!.key))
+          !demanded.has(id)
         ) {
-          unsettled.set(id, entry)
+          unsettled.set(id, { verdict: 'real', self: entry.self, order: null })
         }
       }
     }
@@ -1580,7 +1636,7 @@ class ImportProtectionEnv {
         if (
           this.served.get(id)?.verdict !== 'mock' ||
           unsettled.has(id) ||
-          conflicts?.has(id)
+          conflicts.has(id)
         ) {
           continue
         }
@@ -1597,7 +1653,7 @@ class ImportProtectionEnv {
     }
     const reports = []
     // not violations (no `onViolation`), and errors under both behaviors
-    for (const c of conflicts?.values() ?? []) {
+    for (const c of conflicts.values()) {
       reports.push(this.formatConflict(c))
     }
     for (const key of [...live.keys()].sort()) {
@@ -1645,25 +1701,28 @@ class ImportProtectionEnv {
       })
     }
     // not violations either, but the build shipped what no importer asked for
-    for (const { verdict, self } of unsettled.values()) {
-      const v = self!
+    for (const { verdict, self: v, order } of unsettled.values()) {
       const info = violationInfo(v, this.ip.config, () => ({
         steps: [],
         fromEntry: false,
       }))
-      const needers = verdict === 'mock' ? [...this.demanders(v)] : []
-      const others = [...graph.importers(v.importerId)]
-        .filter((i) => this.ip.ids.parse(i) === null)
-        .map(traceFile)
-        .filter((file) => !needers.includes(file))
+      const others = order
+        ? order.unread
+        : [
+            ...new Set(
+              [...graph.importers(v.importerId)]
+                .filter((i) => this.ip.ids.parse(i) === null)
+                .map(traceFile),
+            ),
+          ]
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
         message: formatServedMismatch(
           info,
           verdict,
-          needers,
-          [...new Set(others)],
+          order ? order.needers : 'stale',
+          others,
           this.ip.report,
         ),
         info: info as ViolationInfo,
