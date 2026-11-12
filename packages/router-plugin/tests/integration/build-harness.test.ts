@@ -101,16 +101,10 @@ test(
   timeout,
 )
 
-// Bug: the esbuild adapter never runs the route generator in a build (its
-// generator only initialises in `esbuild.config`; generation happens in
-// `watchChange`), so the code splitter knows no route files and splits
-// nothing. The code splitter's esbuild adapter also never initialises its
-// config (no `esbuild` hook calls `initUserConfig`), so it would throw once
-// it saw a route file.
-// Splitting, or refusing (a build error), are both valid fixes (SPEC §1.3, J2.18);
-// a warning on a successful unsplit build is not a refusal.
-// Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
-// every route component into the entry, without telling the user.
+// esbuild: splitting, or refusing (a build error), are both valid
+// (SPEC §1.3, J2.18); a warning on a successful unsplit build is not a
+// refusal. Today's plugin refuses `autoCodeSplitting` with esbuild when it is
+// created (its message: ../esbuild.test.ts).
 test.each(['ssr', 'client'] as const)(
   'router plugin with esbuild loads a split component lazily and renders it, or refuses the build (%s)',
   async (env) => {
