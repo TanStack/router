@@ -219,24 +219,19 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   (the chunk loads after the route module). Effects have no order of their own (no order rule): what moves keeps
   its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
   and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`). A
-  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block) follows what it changes
-  (R146 amendment, `Events.statementChanges`): the module bindings it assigns, writes a member of or calls a method
-  on, directly or in what it runs (`ReadIndex.runs`), and the objects their values hold (`MutationModel.heldBy`,
-  the owner of "the object a binding names"); calling, reading or passing a binding or an import changes nothing
-  (`plugins.push(sentryPlugin())`, `reg.client = createClient()`, in an `if` or not, move with their binding), but a
-  function the module declares shows what it does with what it is handed (`fill(k)` with `function fill(o) { o.v =
-  3 }` changes `k`: `changesAsArgument`). It
-  moves into a chunk when everything it changes goes to that chunk, what only it touches following it, in source
-  order there (`const table = createTable(); const columns = snapshot(table); table.addColumn('x')`, only the
-  component reading `columns`, all move; what it only reads may stay, and the chunk imports it); a statement that
-  changes no binding follows what it reads (`log(client)`); where none of that decides, the imports it reads do
-  (their users' one chunk), and an extracted export's module never does (a reader anywhere imports it). It stays in the route module, keeping what it touches,
-  when it changes something the rest of the app sees (`OutsideChange`: another module's object, `Sentry.init(cfg)`,
-  `i18n.use(x)`; a global, `window.x = …`, `console.log(…)`; `import.meta`; a module it imports dynamically), also
-  through a local function it calls, or when what it changes stays or goes to several outputs
-  (`placement/settle.ts`, followers); a declaration's own write (`Page.x = …`) is judged the same way, and the
-  warning (`eager-split:written`) names the cause with the statement's line. A call the purity model knows changes
-  nothing (`JSON.parse`, a pure export) is none; inside imported code the compiler sees nothing
+  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block), and dead code (R148),
+  follows the module bindings it uses (R149, `Events.statementChanges`): those it names or runs (`ReadIndex.runs`)
+  and the objects their values hold (`MutationModel.heldBy`, the owner of "the object a binding names"), into the
+  one chunk they all go to, in source order there (`const table = createTable(); const columns = snapshot(table);
+  table.addColumn('x')`, only the component reading `columns`, all move); otherwise it stays, keeping what it uses:
+  a binding it uses stays (the route module needs it, it is exported) or goes to another output. Nothing outside the
+  module keeps it (`Sentry.init(cfg)`, `window.x = cfg`, `console.log(cfg)`, `import()`, `import.meta.hot` move with
+  `cfg`); a statement using no binding that moves stays (`Sentry.init({ dsn })`, `i18n.use(backend)`); a write of
+  an import's member is no write of a declaration of the module (the import is not joined by it). Unused code that
+  runs nothing and uses only imports goes with their users' one chunk. Followers are judged together in settle's
+  round 0 (`placement/settle.ts`); the warning (`eager-split:written`) names the binding that keeps the statement
+  (or the unused code) with its line, `changes` or `uses` as the statement does each (`changesObject`,
+  `changesAsArgument`). Inside imported code the compiler sees nothing
   (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
   are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
   never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while

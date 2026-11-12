@@ -64,6 +64,10 @@ export function keptDeclarations(
       ...(pin.binding !== undefined && { read: pin.binding }),
       ...(pin.in !== undefined && { in: pin.in }),
       ...(pin.uses === true && { uses: true }),
+      ...(pin.bindingChanged === true && { readChanged: true }),
+      ...(pin.split === true && { split: true }),
+      ...(pin.unused !== undefined && { unused: pin.unused }),
+      ...(pin.later !== undefined && { later: pin.later }),
     }
   }
   /** `reassigned`: the binding and its first live assignment (the declaration aside). */
@@ -167,18 +171,44 @@ export function keptDeclarations(
     // (what the env module evaluates with it: a binding whose value holds
     // a claimed option value does not keep that value there)
     const kept = reads.reach('env', [c])
-    const followed = events.statementChanges(c).clusters
+    const changes = events.statementChanges(c)
+    const named: Array<ClusterId> = []
+    const reported = (d: ClusterId) =>
+      !causes.has(d) &&
+      kept.has(d) &&
+      clusters[d]!.kind !== 'import' &&
+      !clusters[d]!.copyable &&
+      derivedNeeds(input, derivedReach, d)
     for (const d of clusters[c]!.declares.size > 0
-      ? [c, ...followed]
-      : followed) {
-      if (
-        d !== blocker &&
-        !causes.has(d) &&
-        kept.has(d) &&
-        clusters[d]!.kind !== 'import' &&
-        derivedNeeds(input, derivedReach, d)
-      ) {
-        causes.set(d, pin)
+      ? [c, ...changes.clusters]
+      : changes.clusters) {
+      if (d !== blocker && reported(d)) {
+        named.push(d)
+        // (the statement changes it, or only uses it)
+        const changed = changes.syms.some((s) => clusters[d]!.declares.has(s))
+        causes.set(d, changed ? pin : { ...pin, uses: true })
+      }
+    }
+    // unused code (R148, R149 answers E) names everything it keeps eager:
+    // the binding that keeps it too, with another one it keeps
+    if (
+      pin.unused !== undefined &&
+      blocker !== undefined &&
+      reported(blocker)
+    ) {
+      const another = changes.reads.find((s) => {
+        const d = clusterOfSym.get(s)
+        return d !== undefined && named.includes(d)
+      })
+      const elsewhere =
+        another === undefined ? [] : lazyNeeders(clusterOfSym.get(another)!)
+      if (another !== undefined) {
+        causes.set(blocker, {
+          ...pin,
+          uses: true,
+          binding: another,
+          in: elsewhere[0],
+        })
       }
     }
   }

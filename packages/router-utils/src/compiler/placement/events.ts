@@ -101,8 +101,16 @@ export interface Pin {
   binding?: SymbolId
   /** `written`: the split output using `binding` (another than the subject's), or the subject's second one. */
   in?: OutputId
-  /** `written`: the statement only uses the subject (it changes no binding of the module). */
+  /** `written`: the statement only uses the subject (it changes none of its bindings). */
   uses?: boolean
+  /** `written`: the statement changes `binding` (else it uses it). */
+  bindingChanged?: boolean
+  /** `written`: the statement is several statements, one of which can change `binding` on its own. */
+  split?: boolean
+  /** `written`: the follower is unused code (R148), this declaration. */
+  unused?: SymbolId
+  /** `written`: code that runs later changes what the statement uses, there (V). */
+  later?: number
 }
 
 export interface Events {
@@ -664,7 +672,16 @@ export function eventTable(
         return false
       }
       noteRead(ref)
-      // what it changes (the warnings word it: `changes` or `uses`)
+      // what it changes (the warnings word it: `changes` or `uses`): in
+      // its text or a function body it runs, not a writer of a name it
+      // reads (`cfg.n = 1` after `table.setup(cfg)`)
+      if (
+        (ref.range.start < unit.range.start ||
+          ref.range.end > unit.range.end) &&
+        !t1.isLazyAt(ref.range.start)
+      ) {
+        return false
+      }
       let changed: ReadonlyArray<SymbolId> = []
       if (ref.kind === 'write') {
         changed = [ref.sym]

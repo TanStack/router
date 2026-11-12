@@ -9,6 +9,7 @@
  * rounds end within the cluster count (past it, an error naming the file);
  * nothing is rooted after it.
  */
+import { statementsIn } from '../units'
 import { isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { Events, Pin } from './events'
@@ -65,7 +66,7 @@ export function settleRoots(
   seeds: Seeds,
 ): Roots {
   const { t1, outputs } = input
-  const { refs } = t1
+  const { refs, symbols } = t1
   const { regions } = input.rewrites
   const { clusters, clusterOfRegion } = graph
   const { envRoots, pinned, derivedRoots, candidates, followers } = seeds
@@ -194,6 +195,7 @@ export function settleRoots(
     c: ClusterId,
     d: ClusterId | null,
     other?: OutputId,
+    later?: number,
   ): Pin => {
     const changes = events.statementChanges(c)
     const sym =
@@ -202,8 +204,14 @@ export function settleRoots(
         : [...changes.syms, ...changes.reads].find(
             (s) => graph.clusterOfSym.get(s) === d,
           )
+    // unused code (R148): a follower with no statement of its own
+    const cl = clusters[c]!
+    const unused = cl.units.every((u) => t1.units[u]!.kind !== 'effect')
+      ? [...cl.declares].find((s) => symbols.isModuleLevel(s))
+      : undefined
     let at: number | undefined
-    for (const u of clusters[c]!.units) {
+    let split = false
+    for (const u of cl.units) {
       const unit = t1.units[u]!
       if (unit.kind !== 'effect' && unit.kind !== 'declaration') {
         continue
@@ -215,6 +223,13 @@ export function settleRoots(
           : one.syms.includes(sym) || one.reads.includes(sym)
       ) {
         at = unit.range.start
+        // a statement of several statements changing the binding can
+        // change it in one of its own (one call cannot be split)
+        split =
+          sym !== undefined &&
+          one.syms.includes(sym) &&
+          unit.node.type !== 'ExpressionStatement' &&
+          statementsIn(unit.node) > 1
         break
       }
     }
@@ -222,8 +237,49 @@ export function settleRoots(
       reason: 'written',
       ...(at !== undefined && { other: { at } }),
       ...(sym !== undefined && { binding: sym }),
+      ...(sym !== undefined &&
+        changes.syms.includes(sym) && { bindingChanged: true }),
       ...(other !== undefined && { in: other }),
-      ...(changes.syms.length === 0 && { uses: true }),
+      ...(split && { split: true }),
+      ...(unused !== undefined && { unused }),
+      ...(later !== undefined && { later }),
+    }
+  }
+  /**
+   * Keeps follower `c` in the env module, recording why for the report
+   * (`kept.ts`): a `written` pin as is, V's (code that runs later writes
+   * what it uses) as `written` with that write's position.
+   */
+  const keepFollower = (c: ClusterId, pin: Pin): void => {
+    envRoots.add(c)
+    if (pin.reason === 'written') {
+      seeds.stayPins.set(c, pin)
+    } else if (pin.reason === 'state' && pin.other !== undefined) {
+      const sym = pin.binding
+      const d = sym === undefined ? undefined : graph.clusterOfSym.get(sym)
+      // the later write another statement makes, if one does (a function
+      // the statement itself hands to a call is its own)
+      const other =
+        sym === undefined
+          ? undefined
+          : graph.writesOfSym
+              .get(sym)
+              ?.find(
+                (w) =>
+                  w.live &&
+                  !w.eager &&
+                  w.owner !== null &&
+                  graph.clusterOfRegion.get(w.owner) !== c,
+              )
+      seeds.stayPins.set(c, {
+        ...stayPin(
+          c,
+          d === undefined || d === c ? null : d,
+          undefined,
+          other?.at ?? pin.other.at,
+        ),
+        binding: undefined,
+      })
     }
   }
   /** `c` and the clusters it follows (`Events.statementChanges`). */
@@ -231,6 +287,10 @@ export function settleRoots(
   function followSlot(c: ClusterId): OutputId | Pin {
     let to: OutputId | null = null
     for (const d of followed(c)) {
+      // (a primitive `const` is copied into every output that reads it)
+      if (d !== c && clusters[d]!.copyable) {
+        continue
+      }
       if (liveEnv.has(d) || envRoots.has(d)) {
         return d === c ? { reason: 'needers' } : stayPin(c, d)
       }
@@ -276,6 +336,9 @@ export function settleRoots(
       return { reason: 'needers' }
     }
     for (const d of events.statementChanges(c).clusters) {
+      if (clusters[d]!.copyable) {
+        continue
+      }
       if (stays(d)) {
         return stayPin(c, d)
       }
@@ -662,10 +725,7 @@ export function settleRoots(
           follows.set(c, to)
           derivedRoots.get(to)!.add(c)
         } else {
-          envRoots.add(c)
-          if (to.reason === 'written') {
-            seeds.stayPins.set(c, to)
-          }
+          keepFollower(c, to)
         }
       }
       derivedStale = true
@@ -686,10 +746,7 @@ export function settleRoots(
         // as an augmented root's write, `kept.ts`)
         follows.delete(c)
         derivedRoots.get(follow)!.delete(c)
-        envRoots.add(c)
-        if (pin.reason === 'written') {
-          seeds.stayPins.set(c, pin)
-        }
+        keepFollower(c, pin)
         derivedStale = true
         changed = true
         continue

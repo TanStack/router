@@ -1347,6 +1347,25 @@ export function callsWhenEvaluated(node: Node): EvaluatedCalls {
   return { calls, callbacks }
 }
 
+/** How many expression statements `node` holds, function bodies aside (a block of several can be split; one call cannot). */
+export function statementsIn(node: Node): number {
+  let n = 0
+  walk(node, {
+    enter: (x, wctx) => {
+      if (
+        x.type === 'FunctionExpression' ||
+        x.type === 'ArrowFunctionExpression' ||
+        x.type === 'FunctionDeclaration'
+      ) {
+        wctx.skip()
+      } else if (x.type === 'ExpressionStatement') {
+        n++
+      }
+    },
+  })
+  return n
+}
+
 /**
  * Whether the reference `node` (an identifier) changes the object it names
  * where it evaluates: the root of a member write

@@ -518,11 +518,20 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   // writes in source order. A unit that writes a member only inside a
   // function (`function set() { cfg.v = 1 }`) is a late writer, not joined
   // (V orders it); a sub-region assigning it is the single-writer rule's.
+  // A write of an import (a member, an augmentation) joins nothing: it is no
+  // declaration of the module (another module evaluates it; every output
+  // imports it itself), and the write table still orders it (R149: a
+  // statement writing one follows the module bindings it uses).
   const writersOfMember = new Map<number, Set<RegionId>>() // declaring member → writer sub-regions
   const regionWrittenSyms = new Set<SymbolId>()
   for (const w of writes) {
     const d = declMember.get(w.sym)
-    if (!w.live || d === undefined || w.owner === null) {
+    if (
+      !w.live ||
+      d === undefined ||
+      w.owner === null ||
+      t1.symbols.isImport(w.sym)
+    ) {
       continue
     }
     const unitOwner = regions.get(w.owner).kind === 'unit'

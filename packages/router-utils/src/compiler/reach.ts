@@ -137,8 +137,16 @@ export interface KeptDeclaration {
   read?: SymbolId
   /** `written`: the split output using `read`, or the subject's second one. */
   in?: OutputId
-  /** `written`: the statement only uses it (it changes no binding of the module). */
+  /** `written`: the statement only uses it (it changes none of its bindings). */
   uses?: boolean
+  /** `written`: the statement changes `read` (else it uses it). */
+  readChanged?: boolean
+  /** `written`: the statement can change `read` in a statement of its own. */
+  split?: boolean
+  /** `written`: the statement is this unused declaration (R148). */
+  unused?: SymbolId
+  /** `written`: code that runs later changes it, there. */
+  later?: number
 }
 
 export interface ExtractedExport {
