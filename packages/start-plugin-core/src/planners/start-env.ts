@@ -644,6 +644,12 @@ function planStartEnv(
       if (role === 'client') {
         rewrites.serverOnly({
           range: rangeOf(link.arg),
+          subject:
+            recv.kind === 'serverFn'
+              ? "the server function's validator"
+              : link.method === 'server'
+                ? "the middleware's server implementation"
+                : "the middleware's validator",
           by,
         })
         // (the link goes with it)
@@ -773,6 +779,7 @@ function planStartEnv(
           // (erased with the rest of the chain, below)
           rewrites.serverOnly({
             range: rangeOf(l.arg),
+            subject: "the isomorphic function's server implementation",
             by,
           })
         }
@@ -848,6 +855,7 @@ function planStartEnv(
         // (the stub below is the call's text)
         rewrites.serverOnly({
           range: rangeOf(c.arg),
+          subject: "the server-only function's body",
           by,
         })
       }
@@ -927,6 +935,7 @@ function planStartEnv(
           : `(${moduleLiteral(id)})`
       rewrites.serverOnly({
         range: rangeOf(h),
+        subject: "the server function's handler",
         placeholder: [text({ sym: rpc, ctx: 'callee' }, args)],
         by,
       })

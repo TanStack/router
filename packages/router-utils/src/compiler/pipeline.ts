@@ -37,6 +37,7 @@ import { registerCompilerStats } from './stats'
 import { exportKeyOf, summaryDigest } from './summary'
 import { SELF_CHECKS, invariantDiagnostic } from './self-checks'
 import { verifyPlan } from './verify'
+import { checkServerCode } from './server-code'
 import type { CacheEntry, Settled } from './cache'
 import type { Diagnostic } from './diagnostics'
 import type {
@@ -713,6 +714,13 @@ async function runAttempt(
         `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
       )
     }
+    checkServerCode(
+      plan.rewrites.serverOnlyText,
+      emitPlan,
+      identity.canonicalId,
+      tagOf(host),
+      displayFile,
+    )
     if (SELF_CHECKS) {
       verifyPlan(plan, emitPlan, input.code, identity)
     }

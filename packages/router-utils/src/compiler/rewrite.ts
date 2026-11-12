@@ -196,6 +196,8 @@ export interface Placeholder extends Edit {
 /** Server-only source text a client compile removes (`RewriteSet.serverOnly`). */
 export interface ServerOnlyText {
   range: Range
+  /** What the text is, for the server-code check's message ("the server function's handler"). */
+  subject: string
 }
 
 /**
@@ -770,16 +772,18 @@ export class RewriteSet {
   }
 
   /**
-   * Server-only text of a client compile: what the server-code check reads,
-   * replaced in every output by `placeholder` when given (else erased by
-   * another edit: an isomorphic call's `.server()` implementation).
+   * Server-only text of a client compile: what the server-code check reads
+   * (`server-code.ts`), replaced in every output by `placeholder` when given
+   * (else erased by another edit: an isomorphic call's `.server()`
+   * implementation).
    */
   serverOnly(text: {
     range: Range
+    subject: string
     by: string
     placeholder?: ReadonlyArray<PlaceFrag>
   }): void {
-    this.serverOnlyText.push({ range: text.range })
+    this.serverOnlyText.push({ range: text.range, subject: text.subject })
     if (text.placeholder !== undefined) {
       this.placeholder({
         range: text.range,
