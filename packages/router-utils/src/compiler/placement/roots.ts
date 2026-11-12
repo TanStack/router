@@ -115,7 +115,9 @@ export function seedRoots(
     }
     const cl = clusters[c]!
     if (
-      cl.kind !== 'declaration' ||
+      // (a declaration, also one an effect of its own writes: its cluster
+      // is then an effect's, and leaves with it, R150 ruling B)
+      (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
       cl.gens.length > 0 ||
       rendersOtherwise(cl) ||
       holdsKept(cl) ||
@@ -256,9 +258,16 @@ export function seedRoots(
           !clusters[c]!.exported
         ) {
           followers.add(c)
-        } else {
+        } else if (
+          u.kind !== 'effect' ||
+          u.node.type === 'TSExportAssignment' ||
+          !candidates.has(c)
+        ) {
           envRoots.add(c)
         }
+        // (an extraction candidate's own statement is decided with it: it
+        // leaves for its module, or is an env root once cancelled, R150
+        // ruling B)
       }
     } else if (
       u.kind === 'export-specifier' ||

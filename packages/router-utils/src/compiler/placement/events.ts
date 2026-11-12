@@ -111,6 +111,8 @@ export interface Pin {
   unused?: SymbolId
   /** `written`: code that runs later changes what the statement uses, there (V). */
   later?: number
+  /** `written`: the binding of the code that uses `binding` when the module loads, which the statement's own code changes later (V). */
+  reader?: SymbolId
 }
 
 export interface Events {
@@ -118,8 +120,13 @@ export interface Events {
   volatile: (c: ClusterId) => Pin | undefined
   /** When V holds nothing: the pair of `c`'s first touch of a binding something outside it writes after it when the module loads (O orders `c` against a write: its slot matters). */
   ordered: (c: ClusterId) => Pin | undefined
-  /** The rules of a lazy slot after N: `written`, then V. */
-  lazyConflict: (c: ClusterId) => Pin | undefined
+  /** The rules of a lazy slot after N: `written`, then V; V holds unless every write it meets runs where `inside` says (in the slot itself: recheck ruling C). */
+  lazyConflict: (
+    c: ClusterId,
+    inside?: (w: Write) => boolean,
+  ) => Pin | undefined
+  /** Another cluster than `c` whose evaluation touches `sym` when the module loads, the first one, if any (who reads what `c`'s own code writes later). */
+  loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
   /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any. */
   readsKept: (
     c: ClusterId,
@@ -239,6 +246,9 @@ export function eventTable(
         return false
       }
     }
+    return touchersOf(sym).every((d) => d === c)
+  }
+  function touchersOf(sym: SymbolId): Array<ClusterId> {
     let touchers = touchersOfSym.get(sym)
     if (touchers === undefined) {
       touchers = []
@@ -249,7 +259,7 @@ export function eventTable(
       }
       touchersOfSym.set(sym, touchers)
     }
-    return touchers.every((d) => d === c)
+    return touchers
   }
 
   const statePin = (t: Touch, w: Write): Pin => ({
@@ -343,7 +353,26 @@ export function eventTable(
     facts(c).late === null ? (facts(c).later ?? undefined) : undefined
   const spans = (c: ClusterId): Spans => facts(c).spans
 
-  function lazyConflict(c: ClusterId): Pin | undefined {
+  /** Every late write (V) of what cluster `c` touches, its own aside. */
+  const lateWritesOf = (c: ClusterId): Array<Write> => {
+    const out: Array<Write> = []
+    const seen = new Set<SymbolId>()
+    touches(c, (t) => {
+      if (!seen.has(t.sym)) {
+        seen.add(t.sym)
+        if (!ownLate(c, t.sym)) {
+          out.push(...graph.lateWrites(t.sym, c))
+        }
+      }
+      return false
+    })
+    return out
+  }
+
+  function lazyConflict(
+    c: ClusterId,
+    inside?: (w: Write) => boolean,
+  ): Pin | undefined {
     const cl = clusters[c]!
     // written: nothing outside the cluster writes it eagerly (its own
     // top-level augmentations, `X.p = …`, travel with it: a binding and its
@@ -363,7 +392,24 @@ export function eventTable(
     }
     // (a unit that is no declaration and no own augmentation makes its
     // cluster an effect, which the lazy slot rules are not asked of)
-    return volatile(c)
+    const late = volatile(c)
+    // (every later writer another cluster's, in the slot: the slot
+    // evaluates the reader before any of its functions run, so V does not
+    // hold, ruling C; a write of `c`'s own text is `c` writing what code
+    // elsewhere reads, which moving it reorders)
+    if (late !== undefined && inside !== undefined) {
+      const writes = lateWritesOf(c)
+      if (
+        writes.length > 0 &&
+        writes.every(
+          (w) =>
+            w.owner !== null && clusterOfRegion.get(w.owner) !== c && inside(w),
+        )
+      ) {
+        return undefined
+      }
+    }
+    return late
   }
 
   function readConflict(
@@ -776,6 +822,7 @@ export function eventTable(
     unitChanges,
     statementChanges,
     lazyConflict,
+    loadToucher: (sym, c) => touchersOf(sym).find((d) => d !== c),
     readsKept,
     readConflict,
     writeConflict,

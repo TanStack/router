@@ -11,7 +11,7 @@
  */
 import { statementsIn } from '../units'
 import { isDuplicable } from './clusters'
-import type { Cluster, ClusterGraph, ClusterId } from './clusters'
+import type { Cluster, ClusterGraph, ClusterId, Write } from './clusters'
 import type { Events, Pin } from './events'
 import type { ReadIndex } from './reads'
 import type { Candidate, Seeds } from './roots'
@@ -39,8 +39,6 @@ export interface Roots {
   pinnedNeeded: Map<ClusterId, Pin>
   /** The followers whose bindings go to several split outputs, rooted in each: they join them in one lazy shared module (R151). */
   joined: Map<ClusterId, Array<OutputId>>
-  /** The joined followers that put their bindings together (their bindings went to several outputs before them), not one that followed a binding already shared. */
-  joining: Set<ClusterId>
   /** What each joined follower follows (`Events.statementChanges`): it goes where they go (homes). */
   joinedWith: Map<ClusterId, ReadonlyArray<ClusterId>>
 }
@@ -139,8 +137,10 @@ export function settleRoots(
     cl.kind === 'declaration' &&
     !cl.exported &&
     !envRoots.has(cl.id) &&
-    // (an extraction candidate's place is its module: R150)
+    // (an extraction candidate's place is its module: R150; so is a
+    // member's)
     !remaining.has(cl.id) &&
+    !members.has(cl.id) &&
     (cl.effectful || cl.writer || readsState(cl.id) !== undefined)
 
   /**
@@ -166,9 +166,39 @@ export function settleRoots(
         : (readsState(cl.id) ??
             (needers.length > 1 ? null : { reason: 'needers' }))
     }
-    return events.lazyConflict(cl.id) ?? needers[0]!
+    return events.lazyConflict(cl.id, writesIn(needers[0]!)) ?? needers[0]!
   }
 
+  /**
+   * Whether a write runs in output `to`: its evaluation (a claimed option
+   * value, a function of the module) goes there and only there (recheck
+   * ruling C: such a later writer cannot run before a reader `to`
+   * evaluates).
+   */
+  const writesIn =
+    (to: OutputId) =>
+    (w: Write): boolean => {
+      if (w.owner === null) {
+        return false
+      }
+      const claim = input.rewrites.claims.get(w.owner)
+      const d =
+        claim === undefined
+          ? graph.clusterOfRegion.get(w.owner)
+          : graph.clusterOfGen.get(claim.owner)
+      // (a writer the env module keeps runs there, whatever reaches it)
+      if (
+        d === undefined ||
+        liveEnv.has(d) ||
+        envRoots.has(d) ||
+        pins.has(d) ||
+        clusters[d]!.envPinned
+      ) {
+        return false
+      }
+      const places = placesOf(d)
+      return places.length === 1 && places[0] === to
+    }
   /** A split chunk or a Hydrate chunk: what a lazy shared module serves. */
   const lazy = (o: OutputId) => {
     const kind = outputs.get(o)?.kind
@@ -198,13 +228,63 @@ export function settleRoots(
    */
   const placesOf = (d: ClusterId): Array<OutputId> => {
     const e = remaining.get(d)
-    return e === undefined ? needersOf(d) : [e.output]
+    if (e !== undefined) {
+      return [e.output]
+    }
+    const m = members.get(d)
+    if (m !== undefined) {
+      return [m]
+    }
+    // (a follower judged already goes where it was rooted: an unused
+    // chain follows what it reads transitively, recheck ruling D)
+    const f = follows.get(d)
+    if (f !== undefined) {
+      return [f]
+    }
+    return joined.get(d) ?? needersOf(d)
+  }
+  /**
+   * What an extracted module holds beside its candidate (recheck ruling A,
+   * R150): a cluster only it and split chunks need, and a follower whose
+   * bindings go there and to split chunks. The chunks import it from there,
+   * as they import the candidate (one instance).
+   */
+  const members = new Map<ClusterId, OutputId>()
+  /** Whether an output is an extracted export's module still extracted. */
+  const extractedOutput = (o: OutputId): boolean => {
+    for (const e of remaining.values()) {
+      if (e.output === o) {
+        return true
+      }
+    }
+    return false
   }
   /** The chunk each follower (`Seeds.followers`) follows, rooted there until it is demoted. */
   const follows = new Map<ClusterId, OutputId>()
+  /** Followers to judge again: their extracted module was cancelled. */
+  const rejudge = new Set<ClusterId>()
+  /** Roots follower `c` where `followSlot` puts it, or keeps it. */
+  const judge = (c: ClusterId): void => {
+    const to = followSlot(c)
+    if (typeof to === 'string' && extractedOutput(to)) {
+      // (it and what it uses that split chunks need: the module's)
+      members.set(c, to)
+    } else if (typeof to === 'string') {
+      follows.set(c, to)
+      derivedRoots.get(to)!.add(c)
+    } else if (Array.isArray(to)) {
+      // rooted in each: they all reach it and what it uses, one cluster
+      // for them (homes: their shared module)
+      joined.set(c, to)
+      for (const o of to) {
+        derivedRoots.get(o)!.add(c)
+      }
+    } else {
+      keepFollower(c, to)
+    }
+  }
   /** The followers joining their bindings in a shared module, rooted in each of their split outputs (R151). */
   const joined = new Map<ClusterId, Array<OutputId>>()
-  const joining = new Set<ClusterId>()
   /**
    * Where follower `c` goes, judged once before it is rooted anywhere: the
    * one chunk the clusters its statements change (`Events.statementChanges`)
@@ -240,7 +320,26 @@ export function settleRoots(
       : undefined
     let at: number | undefined
     let split = false
-    for (const u of cl.units) {
+    // the statement naming the binding: its own, else one of a cluster it
+    // follows (`track(flags)` reaches `base` through `flags.base = base`,
+    // which names it: recheck finding 3), else the first reaching it
+    const statementsOf = (x: ClusterId) =>
+      clusters[x]!.units.filter((u) => {
+        const kind = t1.units[u]!.kind
+        return kind === 'effect' || kind === 'declaration'
+      })
+    const names =
+      sym === undefined
+        ? undefined
+        : [c, ...changes.clusters]
+            .flatMap(statementsOf)
+            .find(
+              (u) =>
+                (events.unitChanges(u).syms.includes(sym) ||
+                  events.unitChanges(u).reads.includes(sym)) &&
+                t1.refs.refsIn(t1.units[u]!.range).some((r) => r.sym === sym),
+            )
+    for (const u of names === undefined ? cl.units : [names]) {
       const unit = t1.units[u]!
       if (unit.kind !== 'effect' && unit.kind !== 'declaration') {
         continue
@@ -300,15 +399,33 @@ export function settleRoots(
                   w.owner !== null &&
                   graph.clusterOfRegion.get(w.owner) !== c,
               )
-      seeds.stayPins.set(c, {
-        ...stayPin(
-          c,
-          d === undefined || d === c ? null : d,
-          undefined,
-          other?.at ?? pin.other.at,
-        ),
-        binding: undefined,
-      })
+      // (the statement's own code writes it later: what keeps it is
+      // another evaluation reading it at load, named with its binding,
+      // recheck finding 5)
+      const reader =
+        other === undefined && sym !== undefined && d !== undefined && d !== c
+          ? events.loadToucher(sym, c)
+          : undefined
+      const readerSym =
+        reader === undefined
+          ? undefined
+          : [...clusters[reader]!.declares].find(
+              (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
+            )
+      seeds.stayPins.set(
+        c,
+        readerSym === undefined
+          ? {
+              ...stayPin(
+                c,
+                d === undefined || d === c ? null : d,
+                undefined,
+                other?.at ?? pin.other.at,
+              ),
+              binding: undefined,
+            }
+          : { ...stayPin(c, d!), binding: sym!, reader: readerSym },
+      )
     }
   }
   /** `c` and the clusters it follows (`Events.statementChanges`). */
@@ -328,9 +445,14 @@ export function settleRoots(
         if (places.includes(n)) {
           continue
         }
-        // several split outputs share a module (R151); an extracted
-        // module or a provider shares none
-        if (to !== null && !(lazy(n) && places.every(lazy))) {
+        // several split outputs share a module (R151); one extracted
+        // module beside them serves them all (they import it, recheck
+        // ruling A); two extracted modules, or a provider, share none
+        const fits = [...places, n].every(lazy)
+          ? true
+          : [...places, n].every((o) => lazy(o) || extractedOutput(o)) &&
+            [...places, n].filter(extractedOutput).length === 1
+        if (to !== null && !fits) {
           return stayPin(c, d === c ? null : d, n)
         }
         to ??= n
@@ -338,7 +460,8 @@ export function settleRoots(
       }
     }
     if (places.length > 1) {
-      return events.lazyConflict(c) ?? places
+      const module = places.find(extractedOutput)
+      return events.lazyConflict(c) ?? module ?? places
     }
     // where none of its bindings decides, the imports it reads do: their
     // users' one chunk (an unused component rendering the page's UI), for
@@ -363,7 +486,7 @@ export function settleRoots(
     if (to === null || kind === 'provider') {
       return { reason: 'needers' }
     }
-    return events.lazyConflict(c) ?? to
+    return events.lazyConflict(c, writesIn(to)) ?? to
   }
   const followConflict = (
     c: ClusterId,
@@ -542,7 +665,7 @@ export function settleRoots(
   /** A candidate with a follower in its module is imported, never copied: the follower runs only where the module does. */
   const copies = (c: ClusterId): boolean => {
     const output = remaining.get(c)?.output ?? candidates.get(c)?.output
-    for (const to of follows.values()) {
+    for (const to of [...follows.values(), ...members.values()]) {
       if (to === output) {
         return false
       }
@@ -725,10 +848,13 @@ export function settleRoots(
   // a cluster a derived output reaches becomes an env root (it then reads
   // what it evaluates in the env module)
   let derivedStale = remaining.size > 0
-  // (a round that goes on demotes a cluster or roots a follower in one more
-  // split output: both only grow)
+  // (a round that goes on demotes a cluster, roots a follower in one more
+  // split output, or judges again the followers of a cancelled extraction:
+  // all only grow)
   const roundCap =
-    clusters.length + followers.size * Math.max(1, derivedRoots.size)
+    clusters.length +
+    followers.size * Math.max(1, derivedRoots.size) +
+    candidates.size
   for (let round = 0; ; round++) {
     if (round > roundCap) {
       throw new Error(
@@ -738,12 +864,16 @@ export function settleRoots(
     if (derivedStale) {
       derivedStale = false
       liveEnv = reach('env', envRoots)
-      const stop = new Set(remaining.keys())
+      const stop = new Set([...remaining.keys(), ...members.keys()])
+      const moduleOf = (c: ClusterId) =>
+        remaining.get(c)?.output ?? members.get(c)
       // a chunk's reach passes through the candidates it copies and stops
       // at the others, which it imports from their extracted module (one
       // instance of state and effects); an extracted module's reach
       // stops at every other candidate (it imports them)
-      const chunkStop = new Set([...stop].filter((c) => !copies(c)))
+      const chunkStop = new Set(
+        [...stop].filter((c) => members.has(c) || !copies(c)),
+      )
       for (const e of candidates.values()) {
         derivedRoots.set(e.output, new Set())
       }
@@ -755,21 +885,24 @@ export function settleRoots(
           pinned.delete(c)
         }
       }
-      // (a follower of an extracted binding is rooted in its module)
+      // (a follower of an extracted binding is rooted in its module, and
+      // so is a member: pinned there, chunks import it)
       for (const [c, to] of follows) {
         derivedRoots.get(to)?.add(c)
       }
+      for (const [c, to] of members) {
+        pinned.set(c, to)
+        derivedRoots.get(to)?.add(c)
+      }
       for (const [id, from] of derivedRoots) {
-        const own = [...from].some((c) => remaining.get(c)?.output === id)
+        const own = [...from].some((c) => moduleOf(c) === id)
         derivedReach.set(
           id,
           reach(
             id,
             from,
             own
-              ? new Set(
-                  [...stop].filter((c) => remaining.get(c)!.output !== id),
-                )
+              ? new Set([...stop].filter((c) => moduleOf(c) !== id))
               : outputs.get(id)?.kind === 'export'
                 ? stop
                 : chunkStop,
@@ -782,26 +915,75 @@ export function settleRoots(
     // chunk (what its statements touch that nothing else needs follows
     // it), or an env root; then derived reach is recomputed
     if (round === 0 && followers.size > 0) {
-      for (const c of followers) {
-        if (envRoots.has(c)) {
-          continue
-        }
-        const to = followSlot(c)
-        if (typeof to === 'string') {
-          follows.set(c, to)
-          derivedRoots.get(to)!.add(c)
-        } else if (Array.isArray(to)) {
-          // rooted in each: they all reach it and what it uses, one
-          // cluster for them (homes: their shared module)
-          joined.set(c, to)
-          joining.add(c)
-          for (const o of to) {
-            derivedRoots.get(o)!.add(c)
-          }
-        } else {
-          keepFollower(c, to)
+      // (one that follows another follower is judged after it: an unused
+      // chain follows what it reads transitively, recheck ruling D)
+      const pending = [...followers].filter((c) => !envRoots.has(c))
+      while (pending.length > 0) {
+        const ready = pending.filter(
+          (c) => !followed(c).some((d) => d !== c && pending.includes(d)),
+        )
+        // (a cycle: judged as they are)
+        for (const c of ready.length > 0 ? ready : [...pending]) {
+          judge(c)
+          pending.splice(pending.indexOf(c), 1)
         }
       }
+      derivedStale = true
+      continue
+    }
+    // a follower whose extracted module was cancelled is judged again
+    if (rejudge.size > 0) {
+      for (const c of rejudge) {
+        judge(c)
+      }
+      rejudge.clear()
+      derivedStale = true
+      continue
+    }
+    // a cluster only one extracted module and split chunks need is that
+    // module's (recheck ruling A: they import it from there), unless it
+    // reads, at load, what the env module keeps, or code that runs later
+    // writes it; a copy serves one that can be copied
+    let joinedModule = false
+    for (const cl of remaining.size > 0 ? clusters : []) {
+      if (
+        cl.kind !== 'declaration' ||
+        cl.exported ||
+        cl.copyable ||
+        members.has(cl.id) ||
+        remaining.has(cl.id) ||
+        liveEnv.has(cl.id) ||
+        envRoots.has(cl.id) ||
+        follows.has(cl.id) ||
+        joined.has(cl.id)
+      ) {
+        continue
+      }
+      const where = needersOf(cl.id).filter(
+        (o) => outputs.get(o)?.kind !== 'provider',
+      )
+      const modules = where.filter(extractedOutput)
+      if (
+        modules.length !== 1 ||
+        where.length < 2 ||
+        !where.every((o) => lazy(o) || extractedOutput(o)) ||
+        duplicable(cl.id) ||
+        readsKept(cl.id) !== undefined ||
+        events.volatile(cl.id) !== undefined ||
+        // (a binding something assigns, or a split option writes, lives
+        // with its writers: the single-writer rule, as for a candidate)
+        [...cl.declares].some(
+          (sym) =>
+            t1.mutation.isReassigned(sym, liveInEnv) ||
+            graph.regionWrittenSyms.has(sym),
+        )
+      ) {
+        continue
+      }
+      members.set(cl.id, modules[0]!)
+      joinedModule = true
+    }
+    if (joinedModule) {
       derivedStale = true
       continue
     }
@@ -810,6 +992,9 @@ export function settleRoots(
     // have rooted it; a joined one gains a new output the same way
     let grew = false
     for (const c of [...follows.keys(), ...joined.keys()]) {
+      if (members.has(c)) {
+        continue
+      }
       const places: Array<OutputId> = []
       for (const d of followed(c)) {
         if (d !== c && clusters[d]!.copyable) {
@@ -908,6 +1093,7 @@ export function settleRoots(
         liveEnv.has(cl.id) ||
         envRoots.has(cl.id) ||
         remaining.has(cl.id) ||
+        members.has(cl.id) ||
         !neededByStaticOutput(cl.id)
       ) {
         continue
@@ -939,11 +1125,21 @@ export function settleRoots(
       for (const k of e.companions) {
         envRoots.add(k)
       }
-      // what followed it into its module stays with it
+      // what followed or joined it there is judged again (a follower,
+      // in the next round, with the module cancelled)
       for (const [f, to] of follows) {
         if (to === e.output) {
           follows.delete(f)
-          keepFollower(f, stayPin(f, c))
+          rejudge.add(f)
+        }
+      }
+      for (const [m, to] of members) {
+        if (to === e.output) {
+          members.delete(m)
+          pinned.delete(m)
+          if (followers.has(m)) {
+            rejudge.add(m)
+          }
         }
       }
       derivedStale = true
@@ -966,7 +1162,6 @@ export function settleRoots(
     movable,
     pinnedNeeded,
     joined,
-    joining,
     joinedWith: new Map(
       [...joined.keys()].map((c) => [c, followed(c).filter((d) => d !== c)]),
     ),
@@ -983,8 +1178,10 @@ export function foldExtractions(reads: ReadIndex, roots: Roots): void {
   for (const [c, e] of roots.remaining) {
     roots.pinned.delete(c)
     roots.envRoots.add(c)
-    // what follows it there (a statement, its slots) stays with it
+    // what follows it there (a statement, its slots, its members) stays
+    // with it
     for (const d of roots.derivedRoots.get(e.output) ?? []) {
+      roots.pinned.delete(d)
       roots.envRoots.add(d)
     }
     for (const k of e.companions) {

@@ -48,13 +48,19 @@ export function keptDiagnostic(
     // shared module several split outputs import (R151)
     const unused = `\`${symbols.name(k.unused!)}\``
     const names = k.syms.map((s) => `\`${symbols.name(s)}\``)
-    const at = `${unused} (${line(k.range.start)})`
+    const more = k.moreUnused ?? []
+    // (several unused declarations joining the same bindings: deleting all
+    // of them separates them)
+    const at = and([
+      `${unused} (${line(k.range.start)})`,
+      ...more.map((m) => `\`${symbols.name(m.sym)}\` (${line(m.at)})`),
+    ])
     const one = names.length === 1
     return {
       severity: 'warning',
       message:
         k.shared === true
-          ? `${tag}In ${file}, unused ${at} puts ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${unused}, so each loads with the split code that needs it.`
+          ? `${tag}In ${file}, unused ${at} ${more.length === 0 ? 'puts' : 'put'} ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${more.length === 0 ? unused : 'them'}, so each loads with the split code that needs it.`
           : `${tag}In ${file}, unused ${at} keeps ${and(names)} in the ${module}; delete ${unused}, so ${one ? 'it' : 'they'} can load with the split code that needs ${one ? 'it' : 'them'}.`,
       range: k.range,
       by: 'core',
@@ -127,22 +133,30 @@ export function keptDiagnostic(
       // or goes to an output no module shares with it (an extracted
       // export's module, R151), or code that runs later changes it
       const stays = `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
+      const reader =
+        k.reader === undefined ? '' : `\`${symbols.name(k.reader)}\``
       because =
         k.later !== undefined
           ? `${stays}: code that runs later changes ${them} too (${line(k.later)})`
-          : k.read !== undefined
-            ? `${stays}: it also ${k.readChanged === true ? 'changes' : 'uses'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
-            : stays
+          : k.reader !== undefined
+            ? `${stays}: it changes ${read} later, which ${reader} uses when the module loads`
+            : k.read !== undefined
+              ? `${stays}: it also ${k.readChanged === true ? 'changes' : 'uses'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
+              : stays
       fix =
+        // (the later writer may be a line of a component: what moves is
+        // what uses it when the module loads, recheck finding 6)
         k.later !== undefined
-          ? `move ${subject} and the statements changing ${them} to their own module`
-          : k.read === undefined
-            ? `move ${subject} and that statement to their own module`
-            : k.split === true
-              ? `change ${read} in a statement of its own`
-              : k.in === undefined
-                ? `run that statement in the code that needs ${them}`
-                : `move ${subject}, ${read} and that statement to their own module`
+          ? `move ${subject} and the statements using ${them} when the module loads to their own module`
+          : k.reader !== undefined
+            ? `use ${read} inside the code that needs ${reader} instead of when the module loads`
+            : k.read === undefined
+              ? `move ${subject} and that statement to their own module`
+              : k.split === true
+                ? `change ${read} in a statement of its own`
+                : k.in === undefined
+                  ? `run that statement in the code that needs ${them}`
+                  : `move ${subject}, ${read} and that statement to their own module`
       break
     }
     case 'shared':

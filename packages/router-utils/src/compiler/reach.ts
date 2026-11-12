@@ -146,10 +146,14 @@ export interface KeptDeclaration {
   split?: boolean
   /** `unused`: the unused declaration (R148), positioned at by `range`. */
   unused?: SymbolId
+  /** `unused`: the other unused declarations joining the same bindings (each with its position): deleting all of them separates them. */
+  moreUnused?: Array<{ sym: SymbolId; at: number }>
   /** `unused`: it puts `syms` in one lazy shared module its `needers` import (R151), not in the env module. */
   shared?: boolean
   /** `written`: code that runs later changes it, there. */
   later?: number
+  /** `written`: the binding of the code using `read` when the module loads, which the statement changes later. */
+  reader?: SymbolId
 }
 
 export interface ExtractedExport {

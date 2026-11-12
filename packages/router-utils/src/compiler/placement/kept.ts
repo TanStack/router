@@ -7,7 +7,9 @@
  * only when the env module does not need them anyway, worded from the
  * violated pair (`Pin`: the other event, the binding).
  */
+import { statementsIn } from '../units'
 import { derivedNeeds } from './settle'
+import { NEED_KINDS } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
@@ -77,6 +79,7 @@ export function keptDeclarations(
       ...(pin.bindingChanged === true && { readChanged: true }),
       ...(pin.split === true && { split: true }),
       ...(pin.later !== undefined && { later: pin.later }),
+      ...(pin.reader !== undefined && { reader: pin.reader }),
     }
   }
   /** `reassigned`: the binding and its first live assignment (the declaration aside). */
@@ -138,7 +141,10 @@ export function keptDeclarations(
       continue
     }
     const cl = clusters[c]!
-    if (cl.kind !== 'declaration' || cl.gens.length > 0) {
+    if (
+      (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
+      cl.gens.length > 0
+    ) {
       continue
     }
     const cause: Pin =
@@ -177,10 +183,18 @@ export function keptDeclarations(
     unused: SymbolId,
     shared: Array<OutputId> | null,
     keeps: (d: ClusterId) => boolean,
+    more: ReadonlyArray<{ c: ClusterId; unused: SymbolId }> = [],
   ): void => {
     const syms: Array<SymbolId> = []
     const needers = new Set<OutputId>(shared ?? [])
-    for (const d of new Set(events.statementChanges(c).clusters)) {
+    for (const d of new Set(
+      [c, ...more.map((m) => m.c)].flatMap(
+        (x) => events.statementChanges(x).clusters,
+      ),
+    )) {
+      if (syms.some((s) => clusters[d]!.declares.has(s))) {
+        continue
+      }
       const cl = clusters[d]!
       if (cl.kind === 'import' || cl.copyable || !keeps(d)) {
         continue
@@ -213,22 +227,94 @@ export function keptDeclarations(
       range: declaringRange(clusters[c]!, unused),
       needers: [...needers],
       unused,
+      ...(more.length > 0 && {
+        moreUnused: more.map((m) => ({
+          sym: m.unused,
+          at: declaringRange(clusters[m.c]!, m.unused).start,
+        })),
+      }),
       ...(shared !== null && { shared: true }),
     })
   }
-  // unused code joining bindings of several split outputs (R151)
-  for (const [c, to] of roots.joined) {
-    const cl = clusters[c]!
-    // (one that only followed a binding already shared puts nothing together)
-    if (!roots.joining.has(c)) {
-      continue
+  /**
+   * Unused code joining bindings of several split outputs (R151), reported
+   * only when deleting it separates them (recheck finding 2): a binding it
+   * uses goes to the shared module only through joined code (one split
+   * output needs it otherwise), and no joined statement uses it (a
+   * statement keeps it there whatever is deleted). Unused code joining the
+   * same such bindings is one report at the first of it, naming all of it:
+   * deleting one of two changes nothing.
+   */
+  if (roots.joined.size > 0) {
+    let bare: Array<Set<ClusterId>> | undefined
+    /** How many split outputs reach `d` without joined code (rooted in each output it joins). */
+    const bareNeeders = (d: ClusterId): number => {
+      bare ??= [...roots.derivedRoots]
+        .filter(([o]) => {
+          const kind = outputs.get(o)?.kind
+          return kind === 'split' || kind === 'hydrate'
+        })
+        .map(([o, from]) =>
+          reads.reach(
+            o,
+            [...from].filter((x) => !roots.joined.has(x)),
+            roots.joined,
+          ),
+        )
+      return bare.filter((set) => set.has(d)).length
     }
-    if (cl.units.some((u) => units[u]!.kind === 'effect')) {
-      continue
+    const unusedOf = new Map<ClusterId, SymbolId>()
+    const joinedStatements: Array<ClusterId> = []
+    for (const c of roots.joined.keys()) {
+      const cl = clusters[c]!
+      const unused = cl.units.some((u) => units[u]!.kind === 'effect')
+        ? undefined
+        : [...cl.declares].find((s) => symbols.isModuleLevel(s))
+      if (unused === undefined) {
+        joinedStatements.push(c)
+      } else {
+        unusedOf.set(c, unused)
+      }
     }
-    const unused = [...cl.declares].find((s) => symbols.isModuleLevel(s))
-    if (unused !== undefined) {
-      unusedReport(c, unused, to, () => true)
+    const separated = (c: ClusterId): Array<ClusterId> =>
+      events.statementChanges(c).clusters.filter((d) => {
+        const cl = clusters[d]!
+        return (
+          cl.kind !== 'import' &&
+          !cl.copyable &&
+          bareNeeders(d) === 1 &&
+          !joinedStatements.some((j) =>
+            events.statementChanges(j).clusters.includes(d),
+          )
+        )
+      })
+    const done = new Set<ClusterId>()
+    const byPosition = [...unusedOf.keys()].sort(
+      (a, b) =>
+        declaringRange(clusters[a]!, unusedOf.get(a)).start -
+        declaringRange(clusters[b]!, unusedOf.get(b)).start,
+    )
+    for (const c of byPosition) {
+      const freed = done.has(c) ? [] : separated(c)
+      if (freed.length === 0) {
+        continue
+      }
+      const more = byPosition.filter(
+        (x) =>
+          x !== c &&
+          !done.has(x) &&
+          events.statementChanges(x).clusters.some((d) => freed.includes(d)),
+      )
+      for (const x of [c, ...more]) {
+        done.add(x)
+      }
+      unusedReport(
+        c,
+        unusedOf.get(c)!,
+        roots.joined.get(c)!,
+        () => true,
+        more.map((x) => ({ c: x, unused: unusedOf.get(x)! })),
+      )
     }
   }
   /**
@@ -260,13 +346,23 @@ export function keptDeclarations(
       clusters[d]!.kind !== 'import' &&
       !clusters[d]!.copyable &&
       derivedNeeds(input, derivedReach, d)
+    // (the statement the pin names: the follower's, or one of a cluster it
+    // follows that names the other binding, `stayPin`)
+    const at = pin.other?.at
+    const statement = [c, ...changes.clusters]
+      .flatMap((x) => clusters[x]!.units)
+      .find((u) => units[u]!.range.start === at)
+    const changesOf =
+      statement === undefined
+        ? changes.syms
+        : events.unitChanges(statement).syms
     for (const d of clusters[c]!.declares.size > 0
       ? [c, ...changes.clusters]
       : changes.clusters) {
       if (d !== blocker && reported(d)) {
         named.push(d)
         // (the statement changes it, or only uses it)
-        const changed = changes.syms.some((s) => clusters[d]!.declares.has(s))
+        const changed = changesOf.some((s) => clusters[d]!.declares.has(s))
         causes.set(d, changed ? pin : { ...pin, uses: true })
       }
     }
@@ -329,7 +425,101 @@ export function keptDeclarations(
       unusedReport(c, unused, null, (d) => reach.has(d) && !own.has(d))
     }
   }
-  const kept: Array<KeptDeclaration> = [...unusedReports]
+  // a statement writing, when the module loads, a binding the env module
+  // uses and one only split code uses joins them (a binding's writers at
+  // load join its cluster, `clusters.ts`): the second stays with the
+  // first, reported at its declaration (recheck finding 4)
+  const writtenTogether: Array<KeptDeclaration> = []
+  let evaluated: Set<ClusterId> | undefined
+  let claimed: Array<{ start: number; end: number }> | undefined
+  for (const cl of clusters) {
+    if (
+      (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
+      cl.exported ||
+      cl.declares.size < 2 ||
+      lazyNeeders(cl.id).length === 0
+    ) {
+      continue
+    }
+    evaluated ??= reads.reach('env', envRoots)
+    if (!evaluated.has(cl.id)) {
+      continue
+    }
+    const ev = evaluated
+    claimed ??= [...input.rewrites.claims.values()].map(
+      (claim) => regions.get(claim.region).range,
+    )
+    const inClaimed = claimed
+    /** Where the code holding `ref` evaluates, outside `cl`: the env module (`env`), split code only (`split`: an option value a split output claims, or code the env module does not evaluate). */
+    const usedAt = (ref: ClassifiedRef): 'env' | 'split' | null => {
+      const u = t1.unitAt(ref.range)
+      const x =
+        u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
+      if (x === undefined || x === cl.id || !NEED_KINDS.has(ref.kind)) {
+        return null
+      }
+      return liveInEnv(ref) &&
+        ev.has(x) &&
+        !inClaimed.some(
+          (r) => ref.range.start >= r.start && ref.range.end <= r.end,
+        )
+        ? 'env'
+        : 'split'
+    }
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (unit.kind !== 'effect') {
+        continue
+      }
+      const written = [
+        ...new Set(
+          graph.writes
+            .filter(
+              (w) =>
+                w.owner === unit.region &&
+                w.live &&
+                w.eager &&
+                cl.declares.has(w.sym) &&
+                symbols.isModuleLevel(w.sym) &&
+                !symbols.isImport(w.sym),
+            )
+            .map((w) => w.sym),
+        ),
+      ]
+      if (written.length < 2) {
+        continue
+      }
+      const uses = written.map((sym) => {
+        const at = t1.refs.refsOf(sym).map(usedAt)
+        return { sym, env: at.includes('env'), split: at.includes('split') }
+      })
+      const keptOne = uses.find((x) => x.env)
+      const free = uses.filter((x) => !x.env && x.split).map((x) => x.sym)
+      if (keptOne === undefined || free.length === 0) {
+        continue
+      }
+      const node = unit.node
+      writtenTogether.push({
+        syms: free,
+        exported: false,
+        reason: 'written',
+        range: declaringRange(cl, free[0]),
+        needers: lazyNeeders(cl.id),
+        at: unit.range.start,
+        read: keptOne.sym,
+        readChanged: true,
+        // (a statement of several writes can change the kept binding in one
+        // of its own)
+        ...((statementsIn(node) > 1 ||
+          (node.type === 'ExpressionStatement' &&
+            node.expression.type === 'SequenceExpression')) && {
+          split: true,
+        }),
+      })
+      break
+    }
+  }
+  const kept: Array<KeptDeclaration> = [...unusedReports, ...writtenTogether]
   if (causes.size === 0) {
     return kept
   }

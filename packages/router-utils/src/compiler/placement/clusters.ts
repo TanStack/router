@@ -135,6 +135,8 @@ export interface ClusterGraph {
    * or after any evaluation, wherever that evaluation is.
    */
   lateWrite: (sym: SymbolId, by: ClusterId) => Write | undefined
+  /** Every write `lateWrite` would answer for `sym` and `by` (recheck ruling C asks where each runs). */
+  lateWrites: (sym: SymbolId, by: ClusterId) => Array<Write>
   /**
    * The eager half (O): a live write of `sym` by another cluster than `by`
    * when the module loads, after a read evaluated at `readAt`. Whether it
@@ -749,6 +751,12 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return undefined
   }
+  const lateWrites = (sym: SymbolId, by: ClusterId): Array<Write> =>
+    lateWritten.has(sym)
+      ? writesOfSym
+          .get(sym)!
+          .filter((w) => w.live && !w.eager && (w.passed || byOther(w, by)))
+      : []
   const laterWrite = (
     sym: SymbolId,
     readAt: number,
@@ -780,6 +788,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     unitSurvives,
     callsOf,
     lateWrite,
+    lateWrites,
     laterWrite,
   }
 }
