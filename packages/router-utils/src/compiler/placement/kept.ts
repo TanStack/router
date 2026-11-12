@@ -150,11 +150,9 @@ export function keptDeclarations(
     ) {
       continue
     }
-    const cause: Pin =
-      t1.mutation.isReassigned(sym, liveInEnv) ||
-      graph.regionWrittenSyms.has(sym)
-        ? reassignment(sym)
-        : (cancelled.get(c) ?? { reason: 'live' })
+    const cause: Pin = graph.regionWrittenSyms.has(sym)
+      ? reassignment(sym)
+      : (cancelled.get(c) ?? { reason: 'live' })
     // (not reported: one no split code reaches, and one kept by a binding a
     // planner generated, which exists in this build only, like a candidate
     // some output renders otherwise: a server fn Start moves out of a

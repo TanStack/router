@@ -1001,13 +1001,10 @@ export function settleRoots(
         duplicable(cl.id) ||
         readsKept(cl.id) !== undefined ||
         events.volatile(cl.id) !== undefined ||
-        // (a binding something assigns, or a split option writes, lives
-        // with its writers: the single-writer rule, as for a candidate)
-        [...cl.declares].some(
-          (sym) =>
-            t1.mutation.isReassigned(sym, liveInEnv) ||
-            graph.regionWrittenSyms.has(sym),
-        )
+        // (a binding a split option assigns lives with its writers: the
+        // single-writer rule, as for a candidate; a unit assigning it is in
+        // its cluster)
+        [...cl.declares].some((sym) => graph.regionWrittenSyms.has(sym))
       ) {
         continue
       }

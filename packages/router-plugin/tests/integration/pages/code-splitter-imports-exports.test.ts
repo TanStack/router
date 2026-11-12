@@ -1487,18 +1487,22 @@ return [await render('component'), other.read()]`),
 })
 
 // J2.8: an exported binding a split component needs that cannot leave the
-// route module (it is reassigned) is reported once in dev, naming the file;
-// a route file exporting only `Route` is not. (A name no other row of a
-// shared dev host uses: its ledger reports a wording once per file.)
+// route module (it reads, when it loads, what the loader keeps there) is
+// reported once in dev, naming the file; a route file exporting only
+// `Route` is not. (A name no other row of a shared dev host uses: its
+// ledger reports a wording once per file.)
 describe('an exported binding kept in the route module', () => {
-  it('is reported once naming the file when it is reassigned, and not when nothing keeps it', async () => {
+  it('is reported once naming the file when it reads what the route module keeps, and not when nothing keeps it', async () => {
     const kept = await loadRoute(
-      `${head}export let keptVisits = 0
+      `${head}const visitLog = { count: 1 }
+export const keptVisits = visitLog.count
 function Page() {
-  keptVisits++
   return <p>{keptVisits}</p>
 }
-export const Route = createFileRoute('/')({ component: Page })
+export const Route = createFileRoute('/')({
+  loader: () => visitLog.count,
+  component: Page,
+})
 `,
     )
     expect(await kept.run(`return render('component')`)).toBe('<p>1</p>')
