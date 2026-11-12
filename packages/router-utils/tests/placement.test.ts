@@ -6271,19 +6271,52 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(eager(r)).toEqual([])
   })
 
-  // control: a `let` the route module keeps still pins (R67)
-  it('keeps a declaration reading a `let` that stays', async () => {
-    const r = await split(
-      route(
-        'let a = make()\nconst b = [a, make()]',
-        'loader: () => a,\ncomponent: () => b,',
-      ),
-    )
-    expect(r.env).toContain('const b = [a, make()]')
-    const reads = eager(r).find((d) => d.code === 'eager-split:reads')
-    expect(reads?.message).toContain('`b` in /app/route.tsx')
-    expect(reads?.message).toContain('reads `a` when the module loads')
-  })
+  // `a` stays (the loader reads it), `b` only the component uses. A `let`
+  // nothing assigns reads like a `const`: the chunk imports the one
+  // instance the route module evaluated first, whether or not `b` has an
+  // effect of its own. An assigned one is judged by the writes, with that
+  // reason: a write after the read would run before it from the chunk.
+  // Source: NOTE-small-items 2d (R67's "a kept `let` still pins" revised;
+  // the first and the fifth row stayed, reported `eager-split:reads`).
+  it.each([
+    ['a `let` nothing assigns', 'let a = make()\nconst b = [a, make()]'],
+    ['a `let` nothing assigns, read alone', 'let a = make()\nconst b = [a]'],
+    ['a `const`', 'const a = make()\nconst b = [a, make()]'],
+    [
+      'a `let` assigned before the read',
+      'let a = make()\na = make()\nconst b = [a, make()]',
+    ],
+  ])(
+    'moves a declaration reading a binding the route module keeps: %s',
+    async (_, decls) => {
+      const r = await split(
+        route(decls, 'loader: () => a,\ncomponent: () => b,'),
+      )
+      expect(r.env).not.toContain('const b =')
+      expect(r.chunks.component).toContain('const b = [a')
+      expect(eager(r)).toEqual([])
+    },
+  )
+  it.each([
+    [
+      'after the read',
+      'let a = make()\nconst b = [a, make()]\na = make()',
+      'loader: () => a,',
+    ],
+    [
+      'by the loader',
+      'let a = make()\nconst b = [a, make()]',
+      'loader: () => (a = make()),',
+    ],
+  ])(
+    'keeps a declaration reading a `let` the route module assigns %s, as reading written state',
+    async (_, decls, loader) => {
+      const r = await split(route(decls, `${loader}\ncomponent: () => b,`))
+      expect(r.env).toContain('const b = [a, make()]')
+      expect(eager(r).map((d) => d.code)).toEqual(['eager-split:state'])
+      expect(eager(r)[0]!.message).toContain('uses `a` when the module loads')
+    },
+  )
 })
 
 describe('declarations only split code needs that stay in the route module', () => {
