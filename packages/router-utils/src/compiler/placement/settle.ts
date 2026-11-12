@@ -41,6 +41,8 @@ export interface Roots {
   joined: Map<ClusterId, Array<OutputId>>
   /** The joined followers that put their bindings together (their bindings went to several outputs before them), not one that followed a binding already shared. */
   joining: Set<ClusterId>
+  /** What each joined follower follows (`Events.statementChanges`): it goes where they go (homes). */
+  joinedWith: Map<ClusterId, ReadonlyArray<ClusterId>>
 }
 
 /**
@@ -965,6 +967,9 @@ export function settleRoots(
     pinnedNeeded,
     joined,
     joining,
+    joinedWith: new Map(
+      [...joined.keys()].map((c) => [c, followed(c).filter((d) => d !== c)]),
+    ),
   }
 }
 

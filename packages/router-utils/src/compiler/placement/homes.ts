@@ -284,6 +284,34 @@ export function assignHomes(
     }
   }
 
+  // a joined follower is one cluster with what it follows (R151): a binding
+  // of it the single-writer rule gave to one of its chunks takes it there
+  // (its shared module may not import a chunk that imports it)
+  const sharedIds = new Set(created.map((o) => o.id))
+  for (const [f, follows] of roots.joinedWith) {
+    const h = home.get(f)
+    if (h === undefined || h === 'duplicate' || h === 'removed') {
+      continue
+    }
+    if (!sharedIds.has(h)) {
+      continue
+    }
+    for (const d of follows) {
+      const dh = home.get(d)
+      if (
+        dh !== undefined &&
+        dh !== h &&
+        dh !== 'env' &&
+        dh !== 'duplicate' &&
+        dh !== 'removed' &&
+        derivedNeeders[f]!.includes(dh)
+      ) {
+        home.set(f, dh)
+        break
+      }
+    }
+  }
+
   // ---- sym roots the env module keeps by their effects (J2.8) -------------
   // A derived output whose root value is a binding declared by an effect the
   // route module keeps (destructured from a call, written at the top level
