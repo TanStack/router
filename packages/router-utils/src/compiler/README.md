@@ -131,7 +131,8 @@ extends Z`, directly or through what they carry) share the module of the first i
   extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
   is imported from the route module in dev. Every decision but these homes is the same, so state and identity
   agree between dev and a build. An exported declaration a chunk needs that stays in the route module
-  (reassigned, read by the route module, reading what it keeps) is reported
+  (assigned by a split option, read by the route module, reading what it keeps; a unit assigning it is in its
+  cluster and leaves with it) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `shared`, a value with an identity or state that an extracted export's module and other

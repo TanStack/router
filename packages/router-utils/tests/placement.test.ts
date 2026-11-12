@@ -1118,18 +1118,49 @@ describe('extracted-export outputs', () => {
       export const Route = createFileRoute('/')({ component: Page })
     `)
     const r = await extract(code)
+    // (the module is named after the cluster's first export)
     expect(r.env).toContain(
-      "export { theme, setTheme } from '/app/route.tsx?tsr-split=export---setTheme'",
+      "export { theme, setTheme } from '/app/route.tsx?tsr-split=export---theme'",
     )
     expect(r.env).not.toContain('let theme')
     expect(r.env).not.toContain('const setTheme')
-    const e = await r.extracted('setTheme')
+    const e = await r.extracted('theme')
     expect(e?.code).toContain("let theme = 'light'")
     expect(e?.code).toContain('const setTheme = (t) => { theme = t }')
     expect(e?.code).toContain('export { theme, setTheme }')
     expect(r.chunk).toContain(
-      "import { theme } from '/app/route.tsx?tsr-split=export---setTheme'",
+      "import { theme } from '/app/route.tsx?tsr-split=export---theme'",
     )
+  })
+
+  // A unit assigning a binding is in its cluster (a setter, a statement
+  // at load), so an exported `let` leaves with every writer, whether or
+  // not the writer is exported (R150): the route module re-exports the live
+  // binding and the chunk imports the setter from the same module.
+  it.each([
+    ['an unexported setter', 'function setMode(m) { mode = m }', 'setMode'],
+    ['a statement assigning it at load', "mode = 'b'", null],
+  ])('extracts an exported let with %s', async (_name, writer, imported) => {
+    const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        export let mode = 'a'
+        ${writer}
+        function Page() { ${imported === null ? '' : `${imported}('c'); `}return mode }
+        export const Route = createFileRoute('/')({ component: Page })
+      `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { mode } from '/app/route.tsx?tsr-split=export---mode'",
+    )
+    expect(r.env).not.toContain('let mode')
+    expect(r.env).not.toContain(writer)
+    const e = await r.extracted('mode')
+    expect(e?.code).toContain("let mode = 'a'")
+    expect(e?.code).toContain(writer)
+    expect(r.chunk).toContain(
+      `import { ${imported === null ? 'mode' : `mode, ${imported}`} } from '/app/route.tsx?tsr-split=export---mode'`,
+    )
+    expect(r.diagnostics).toEqual([])
   })
 
   // The mutation model is read through the env output's liveness. A
@@ -1172,12 +1203,12 @@ describe('extracted-export outputs', () => {
     }
     const server = await host.compile('/app/route.tsx', planners, env)
     expect(server!.code).toContain(
-      "export { hits, bump } from '/app/route.tsx?tsr-split=export---bump'",
+      "export { hits, bump } from '/app/route.tsx?tsr-split=export---hits'",
     )
     expect(server!.code).not.toContain('hits++')
     expect(server!.diagnostics).toEqual([])
     const module = await host.compile(
-      '/app/route.tsx?tsr-split=export---bump',
+      '/app/route.tsx?tsr-split=export---hits',
       planners,
       env,
     )
@@ -2586,19 +2617,27 @@ describe('extracted-export outputs', () => {
   it('reports each exported cause with its own reason, also one another cause reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      export let base = { n: 1 }
-      base = { n: 2 }
+      const kept = { n: 1 }
+      export const base = { n: kept.n }
       export const options = { base }
       function Page() { return [options.base, base] }
-      export const Route = createFileRoute('/')({ component: Page })
+      export const Route = createFileRoute('/')({ loader: () => kept, component: Page })
     `)
     const r = await extract(code)
-    expect(r.diagnostics.map((d) => [d.code, d.range?.start]).sort()).toEqual(
+    expect(
+      r.diagnostics.map((d) => [d.code, d.range?.start, d.message]),
+    ).toEqual([
       [
-        ['eager-export:reassigned', code.indexOf('base = { n: 1 }')],
-        ['eager-export:reads', code.indexOf('options = {')],
-      ].sort(),
-    )
+        'eager-export:reads',
+        code.indexOf('base = {'),
+        expect.stringContaining('it reads `kept` when it loads'),
+      ],
+      [
+        'eager-export:reads',
+        code.indexOf('options = {'),
+        expect.stringContaining('it reads `base` when it loads'),
+      ],
+    ])
   })
 
   // J2.8: an exported declaration a chunk needs that stays in the route
@@ -2607,11 +2646,11 @@ describe('extracted-export outputs', () => {
   it('names the exports of one binding in the plural', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
-      export let value = 1
-      value = 2
+      const kept = { n: 1 }
+      export const value = kept.n
       export { value as alias }
       function Page() { return value }
-      export const Route = createFileRoute('/')({ component: Page })
+      export const Route = createFileRoute('/')({ loader: () => kept, component: Page })
     `)
     const r = await extract(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
@@ -2622,24 +2661,22 @@ describe('extracted-export outputs', () => {
   })
 
   it('reports an exported declaration a chunk needs that stays in the route module, with the reason', async () => {
-    // (an exported writer would leave with its state: "moves an exported
-    // function with the module state it writes"; an unexported one keeps
-    // the cluster in the route module, and the chunk imports it)
-    const reassigned = dedent(`
+    const reads = dedent(`
       import { createFileRoute } from 'toy-router'
-      export let count = 0
-      function bump() { count++ }
-      function Page() { bump(); return count }
-      export const Route = createFileRoute('/')({ component: Page })
+      import { createStore } from './store'
+      export const store = createStore()
+      export const count = store.count
+      function Page() { return count }
+      export const Route = createFileRoute('/')({ loader: () => store, component: Page })
     `)
-    let r = await extract(reassigned)
-    expect(r.chunk).toContain("import { count, bump } from '/app/route.tsx'")
+    let r = await extract(reads)
+    expect(r.chunk).toContain("import { count } from '/app/route.tsx'")
     expect(r.diagnostics).toMatchObject([
       {
         severity: 'warning',
-        code: 'eager-export:reassigned',
+        code: 'eager-export:reads',
         by: 'core',
-        range: { start: reassigned.indexOf('count = 0') },
+        range: { start: reads.indexOf('count = store') },
       },
     ])
     expect(r.diagnostics[0]!.message).toContain('`count`')
@@ -2664,28 +2701,6 @@ describe('extracted-export outputs', () => {
     `)
     r = await extract(unread)
     expect(r.diagnostics).toEqual([])
-  })
-
-  // The binding is what is reassigned, not the export (`export default
-  // items` names it): the warning names it and the reassignment's line.
-  it('names the reassigned binding of an export and where it is reassigned', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      var items = ['a']
-      export default items
-      var items = ['b']
-      export const Route = createFileRoute('/')({ component: () => items })
-    `)
-    const r = await extract(code)
-    expect(r.diagnostics).toMatchObject([
-      {
-        code: 'eager-export:reassigned',
-        range: { start: code.indexOf("items = ['a']") },
-      },
-    ])
-    const message = r.diagnostics[0]!.message
-    expect(message).toContain('`items` is reassigned (line 4)')
-    expect(message).toContain('Move `items` and the code assigning it')
   })
 
   // In dev the same clusters leave nothing: an extracted cluster
@@ -2765,13 +2780,13 @@ describe('extracted-export outputs', () => {
     it('reports a kept export as in a build', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
-        export let count = 0
-        function bump() { count++ }
-        function Page() { bump(); return count }
-        export const Route = createFileRoute('/')({ component: Page })
+        const kept = { n: 1 }
+        export const count = kept.n
+        function Page() { return count }
+        export const Route = createFileRoute('/')({ loader: () => kept, component: Page })
       `)
       const r = await extract(code, ['component'], dev)
-      expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reassigned' }])
+      expect(r.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
     })
   })
 

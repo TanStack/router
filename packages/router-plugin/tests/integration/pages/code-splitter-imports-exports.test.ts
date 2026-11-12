@@ -1412,19 +1412,97 @@ export const see = (value: unknown) => seen.push(value)
   )
 })
 
+// An exported `let` only split code uses leaves with the code assigning
+// it (R150: every writer in its module): an exported setter, a setter only
+// the component calls, a statement assigning it when the module loads. The
+// route module re-exports it, so other modules importing it from the route
+// file read its current value; the build loads it with the component and
+// reports nothing.
+describe('an exported let with every assignment moving with it', () => {
+  it.each([
+    {
+      name: 'an exported setter',
+      code: `export let mode = 'MARK_MODE'
+export function setMode(m: string) {
+  mode = m
+}
+export const Route = createFileRoute('/')({
+  component: () => {
+    setMode('set')
+    return <p>{mode}</p>
+  },
+})
+`,
+      expected: ['<p>set</p>', 'set'],
+    },
+    {
+      name: 'a setter only the component calls',
+      code: `export let mode = 'MARK_MODE'
+function setMode(m: string) {
+  mode = m
+}
+export const Route = createFileRoute('/')({
+  component: () => {
+    setMode('set')
+    return <p>{mode}</p>
+  },
+})
+`,
+      expected: ['<p>set</p>', 'set'],
+    },
+    {
+      name: 'a statement assigning it at load',
+      code: `export let mode = 'MARK_MODE'
+mode = mode.toLowerCase()
+export const Route = createFileRoute('/')({
+  component: () => <p>{mode}</p>,
+})
+`,
+      expected: ['<p>mark_mode</p>', 'mark_mode'],
+    },
+  ])(
+    'loads with the component, other importers read its current value: $name',
+    async ({ code, expected }) => {
+      const route = await loadRoute(`${head}${code}`, {
+        files: {
+          'importer.ts': `import { mode } from './route'
+export const read = () => mode
+`,
+        },
+      })
+      await expectValidModules(route)
+      expect(
+        await route.run(`const other = await app('importer.ts')
+return [await render('component'), other.read()]`),
+      ).toEqual(expected)
+      expect(
+        findDiagnostics(await route.diagnostics(), {
+          file: route.url.slice(1),
+          root: route.host.root,
+        }),
+      ).toEqual([])
+      expect((await route.production()).where('MARK_MODE')).toBe('lazy')
+    },
+  )
+})
+
 // J2.8: an exported binding a split component needs that cannot leave the
-// route module (it is reassigned) is reported once in dev, naming the file;
-// a route file exporting only `Route` is not. (A name no other row of a
-// shared dev host uses: its ledger reports a wording once per file.)
+// route module (it reads, when it loads, what the loader keeps there) is
+// reported once in dev, naming the file; a route file exporting only
+// `Route` is not. (A name no other row of a shared dev host uses: its
+// ledger reports a wording once per file.)
 describe('an exported binding kept in the route module', () => {
-  it('is reported once naming the file when it is reassigned, and not when nothing keeps it', async () => {
+  it('is reported once naming the file when it reads what the route module keeps, and not when nothing keeps it', async () => {
     const kept = await loadRoute(
-      `${head}export let keptVisits = 0
+      `${head}const visitLog = { count: 1 }
+export const keptVisits = visitLog.count
 function Page() {
-  keptVisits++
   return <p>{keptVisits}</p>
 }
-export const Route = createFileRoute('/')({ component: Page })
+export const Route = createFileRoute('/')({
+  loader: () => visitLog.count,
+  component: Page,
+})
 `,
     )
     expect(await kept.run(`return render('component')`)).toBe('<p>1</p>')

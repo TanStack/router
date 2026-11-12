@@ -121,11 +121,11 @@ export function seedRoots(
       cl.gens.length > 0 ||
       rendersOtherwise(cl) ||
       holdsKept(cl) ||
-      // a reassigned export stays: its writers would assign an import
-      t1.mutation.isReassigned(sym, liveInEnv) ||
-      // a binding a sub-region writes (Hydrate children, a split option
+      // a binding a sub-region assigns (Hydrate children, a split option
       // value) must meet the single-writer rule: pinning its cluster to an
-      // extracted output would let the writer assign an import
+      // extracted output would let the writer assign an import. A unit
+      // assigning it is in its cluster and leaves with it: every writer in
+      // its module, which re-exports the live binding (R150)
       [...cl.declares].some((s) => graph.regionWrittenSyms.has(s))
     ) {
       continue

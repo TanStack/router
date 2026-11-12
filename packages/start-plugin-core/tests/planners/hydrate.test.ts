@@ -679,11 +679,12 @@ export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
 `
     const client = await compile(code, { env: buildClientEnv })
     const [b] = client.extracted
+    // (the module is named after the cluster's first export)
     expect(client.chunks[b!.id]).toContain(
-      "import { theme } from '/app/src/page.tsx?tsr-split=export---setTheme'",
+      "import { theme } from '/app/src/page.tsx?tsr-split=export---theme'",
     )
     expect(client.code).toContain(
-      "export { theme, setTheme } from '/app/src/page.tsx?tsr-split=export---setTheme'",
+      "export { theme, setTheme } from '/app/src/page.tsx?tsr-split=export---theme'",
     )
     expect(client.code).not.toContain('let theme')
     const dev = await compile(code)
