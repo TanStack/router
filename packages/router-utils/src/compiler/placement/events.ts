@@ -29,12 +29,11 @@
  *   the read keep their order). An effect never evaluates there (that
  *   module may never evaluate); a write of pure values to a binding is no
  *   effect but a write (R139), ordered against what touches the binding.
- *   An effect reading, at load, another cluster with an effect
- *   (`readConflict`, R29 (c) on both slots, R138) evaluates in that one's
- *   slot (they keep their source order there), or that one stays in the
- *   env module and is a `const` (evaluated before the chunk loads, which
- *   imports that one instance, R67; a `let` still pins, however
- *   unwritten).
+ *   An effect reading, at load, another cluster with an effect has no rule
+ *   of its own either: what it reads evaluates first wherever it goes (the
+ *   env module, an extracted module or a shared module the chunk imports,
+ *   or the same chunk, in source order), and a `let` nothing assigns is
+ *   read like a `const`; an assigned one is judged by its writes (V, O).
  * - **T** (initialised): an extracted module reading, at its evaluation, a
  *   binding the env module keeps would read it before it exists
  *   (`readsKept`).
@@ -50,9 +49,7 @@
  * touches (those of every declaration of a call chain would be most of the
  * module each: quadratic memory): one walk, when a rule first asks, gives
  * V's and `ordered`'s pairs, the span of each written binding it touches,
- * and, for an effectful cluster, the effectful clusters it reads
- * (`factsOf`). A module that writes no module binding asks only of
- * effectful clusters and candidates.
+ * (`factsOf`). A module that writes no module binding asks none of it.
  */
 import { changesAsArgument, changesObject } from '../units'
 import { callChangesNothing } from '../purity'
@@ -132,13 +129,6 @@ export interface Events {
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ) => SymbolId | undefined
-  /** O: the binding of an effectful cluster `c` reads when `c` evaluates in `to`, which neither evaluates there (in `target`) nor is a `const` `kept` says evaluates in a module `c`'s imports first (the env module, an extracted module). */
-  readConflict: (
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-    kept: (d: ClusterId) => boolean,
-  ) => Pin | undefined
   /** O: the pair of a write at load that changes order with `c`'s read when `c` evaluates in `to`, the writer's cluster in `slot`. */
   writeConflict: (
     c: ClusterId,
@@ -259,51 +249,29 @@ export function eventTable(
    * What no round changes of `c`'s evaluation, walked once per cluster,
    * up to the first touch of a binding written outside it at an unknown
    * time (V, which ends the walk): the first one a write at load after it
-   * orders (O's reader);
-   * per written binding, its first and last touch; and, for an effectful
-   * cluster, the first touch of each binding of another effectful cluster
-   * (imports aside: read lazily, the chunk loads after the route module,
-   * whoever else reads them), in the order the walk meets them.
+   * orders (O's reader); and per written binding, its first and last
+   * touch.
    */
   interface Facts {
     late: Pin | null
     later: Pin | null
     spans: Map<SymbolId, { first: number; last: number }>
-    reads: Array<Touch>
   }
-  const NONE: Facts = { late: null, later: null, spans: new Map(), reads: [] }
+  const NONE: Facts = { late: null, later: null, spans: new Map() }
   const factsOf: Array<Facts | undefined> = []
   function facts(c: ClusterId): Facts {
     let hit = factsOf[c]
     if (hit !== undefined) {
       return hit
     }
-    const written = graph.writes.length > 0
-    const effectful = clusters[c]!.effectful
-    if (!written && !effectful) {
+    if (graph.writes.length === 0) {
       return (factsOf[c] = NONE)
     }
-    const found: Facts = {
-      late: null,
-      later: null,
-      spans: new Map(),
-      reads: [],
-    }
-    const read = new Set<SymbolId>()
+    const found: Facts = { late: null, later: null, spans: new Map() }
     // (a walk meets one binding many times in a row: the last span is kept)
     let lastSym: SymbolId | -1 = -1
     let lastSpan: { first: number; last: number } | undefined
     touches(c, (t) => {
-      if (effectful) {
-        const d = clusters[t.cluster]!
-        if (d.effectful && d.kind !== 'import' && !read.has(t.sym)) {
-          read.add(t.sym)
-          found.reads.push(t)
-        }
-      }
-      if (!written) {
-        return false
-      }
       if (t.sym !== lastSym) {
         if (!writesOfSym.has(t.sym)) {
           return false
@@ -320,7 +288,7 @@ export function eventTable(
       const w = graph.lateWrite(t.sym, c)
       if (w !== undefined && !ownLate(c, t.sym)) {
         // V ends the walk: such a cluster takes no slot, so nothing asks
-        // its reads or the rest of its spans
+        // the rest of its spans
         found.late = statePin(t, w)
         return true
       }
@@ -397,33 +365,6 @@ export function eventTable(
       }
     }
     return late
-  }
-
-  function readConflict(
-    c: ClusterId,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-    kept: (d: ClusterId) => boolean,
-  ): Pin | undefined {
-    if (!clusters[c]!.effectful) {
-      return undefined
-    }
-    // the other side is effectful too, so its slot is exact: in `target`
-    // (by N its only needer, which then is `c`'s), or demoted, or kept by
-    // the env module already, or extracted (its module, which `c`'s
-    // imports and so evaluates first, like the env module); never a shared
-    // module homes pick later (a chunk and the shared module it imports
-    // are two modules)
-    for (const t of facts(c).reads) {
-      const there = target.get(t.cluster)
-      if (
-        there !== to &&
-        (there !== undefined || !kept(t.cluster) || !symbols.isConst(t.sym))
-      ) {
-        return { reason: 'reads', binding: t.sym }
-      }
-    }
-    return undefined
   }
 
   function readsKept(
@@ -816,7 +757,6 @@ export function eventTable(
     lazyConflict,
     loadToucher: (sym, c) => touchersOf(sym).find((d) => d !== c),
     readsKept,
-    readConflict,
     writeConflict,
     fallbacks,
   }
