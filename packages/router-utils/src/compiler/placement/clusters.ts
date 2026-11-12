@@ -14,13 +14,7 @@ import { callsWhenEvaluated } from '../units'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type {
-  EvaluatedCalls,
-  RegionId,
-  Unit,
-  UnitEffects,
-  UnitId,
-} from '../units'
+import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
 import type {
   Frag,
   GenFrag,
@@ -125,16 +119,6 @@ export interface ClusterGraph {
   ownAugmentations: ReadonlySet<UnitId>
   /** Whether a unit survives in the env module (its statement is not erased there). */
   unitSurvives: (u: UnitId) => boolean
-  /**
-   * Whether cluster `c` may run code or throw when it evaluates: `effectful`
-   * with its units judged as extraction judges them
-   * (`Tier1.extractionEffects`: every operation that may, rule L's language
-   * operations included). `effectful` is placement's timing (rule L): none
-   * of what may run moves into an extracted export's module (`roots.ts`
-   * candidates, `settle.ts`), which a host may flag side-effect free
-   * whatever it holds, and its report says so (`kept.ts`).
-   */
-  runsCode: (c: ClusterId) => boolean
   /**
    * What evaluating region `r` calls (`callsWhenEvaluated`), null when it
    * calls nothing: a unit's own; a region nested in one, its unit's calls
@@ -586,23 +570,18 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     )
 
   /**
-   * Whether cluster `cl` has an effect, its units judged by `effects`: what
-   * purity calls one, but for a write of pure values to a binding it
+   * Whether cluster `cl` has an effect: what placement's purity calls one, but for a write of pure values to a binding it
    * declares (R139: `Page.displayName = …`, a link on a `const` builder),
    * which is a write (the write table), ordered against what reads the
    * binding.
    */
-  const hasEffects = (
-    cl: Cluster,
-    effects: (unit: Unit) => UnitEffects,
-  ): boolean =>
+  const hasEffects = (cl: Cluster): boolean =>
     cl.units.some((u) => {
       const unit = units[u]!
-      const e = effects(unit)
       return (
-        e.effectful &&
+        unit.effectful &&
         statementSurvives(items[unit.item]!.nodeRange) &&
-        !pureWrite(unit, ownAugmentations.has(u), e.augmentEffects)
+        !pureWrite(unit, ownAugmentations.has(u), unit.augmentEffects)
       )
     })
 
@@ -738,7 +717,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
-    cl.effectful ||= hasEffects(cl, (unit) => unit)
+    cl.effectful ||= hasEffects(cl)
   }
   for (const w of writes) {
     if (w.live && w.eager && w.owner !== null) {
@@ -785,17 +764,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     return undefined
   }
-  const runsCodeOf = new Map<ClusterId, boolean>()
-  const runsCode = (c: ClusterId): boolean => {
-    let hit = runsCodeOf.get(c)
-    if (hit === undefined) {
-      const cl = clusters[c]!
-      hit =
-        cl.effectful || hasEffects(cl, (unit) => t1.extractionEffects(unit.id))
-      runsCodeOf.set(c, hit)
-    }
-    return hit
-  }
   return {
     clusters,
     clusterOfRegion,
@@ -810,7 +778,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     isLive,
     ownAugmentations,
     unitSurvives,
-    runsCode,
     callsOf,
     lateWrite,
     laterWrite,

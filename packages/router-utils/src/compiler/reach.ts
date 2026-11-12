@@ -112,7 +112,6 @@ export interface PlacementInput {
  * (one instance, in the env module).
  */
 export type KeptReason =
-  | 'effects'
   | 'reassigned'
   | 'live'
   | 'reads'

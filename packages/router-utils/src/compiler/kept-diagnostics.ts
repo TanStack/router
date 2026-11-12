@@ -46,25 +46,9 @@ export function keptDiagnostic(
         : [],
     )
     const one = names.length === 1
-    const declaring = (plan.t1.declaringUnits.get(k.syms[0]!) ?? [])[0]
     let why: string
     let fix: string
     switch (k.reason) {
-      case 'effects':
-        // (judged as extraction is: what may run code never moves into an
-        // extracted export's module, rule L aside)
-        if (
-          declaring !== undefined &&
-          plan.t1.extractionEffects(declaring).effectful
-        ) {
-          why = 'its initialiser has side effects'
-          fix = `Move it to its own module and import it from there${annotatable(plan, k.syms, true) ? ', or mark the call `/* @__PURE__ */` if it has none' : ''}.`
-        } else {
-          why = 'a statement setting a property of it has side effects'
-          fix =
-            'Move it and the statements setting its properties to their own module and import it from there.'
-        }
-        break
       case 'reassigned': {
         // the binding the export names is what is assigned (`export default
         // items` after `var items` is declared again)
@@ -256,17 +240,15 @@ function annotationFrees(
 export function annotatable(
   plan: Pick<AnalysisPlan, 't1' | 'analysis'>,
   syms: ReadonlyArray<SymbolId>,
-  /** The report rests on extraction's judgement (an export kept for its effects), not placement's timing (rule L). */
-  extraction = false,
 ): boolean {
   const { t1, analysis } = plan
-  const purity = extraction ? analysis.purity : analysis.effectPurity
+  const purity = analysis.effectPurity
   let any = false
   for (const u of new Set(
     syms.flatMap((s) => t1.declaringUnits.get(s) ?? []),
   )) {
     const unit = t1.units[u]!
-    if (!(extraction ? t1.extractionEffects(u) : unit).effectful) {
+    if (!unit.effectful) {
       continue
     }
     const decl =

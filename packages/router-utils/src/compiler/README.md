@@ -130,7 +130,7 @@ extends Z`, directly or through what they carry) share the module of the first i
   extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
   is imported from the route module in dev. Every decision but these homes is the same, so state and identity
   agree between dev and a build. An exported declaration a chunk needs that stays in the route module
-  (effects, reassigned, read by the route module, reading what it keeps) is reported
+  (reassigned, read by the route module, reading what it keeps) is reported
   once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
   needs that the movable rule below keeps (`eager-split:<reason>`: `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
@@ -235,14 +235,19 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   (or the unused code) with its line, `changes` or `uses` as the statement does each (`changesObject`,
   `changesAsArgument`). Inside imported code the compiler sees nothing
   (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
-  are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). It
-  never moves into an extracted export's module: that module is side-effect free (every bundler may skip it while
-  nothing imports what it exports; every host flags it by its kind, the webpack family by its query, and a test pins
-  that it holds nothing with effects of its own), so an effect stays in the route
-  module, which the extracted module imports it from. An exported binding whose writes at load are pure
-  (`Page.displayName = …`, static props; `Page.x = track()` is an effect and keeps it in the route module) leaves
-  for its extracted module with them, whatever effects surround it (chunks import an augmented export: its
-  augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
+  are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). An
+  extracted export's module is a destination like a chunk (R149, extended): a binding being extracted gives its
+  module as a follower's only place (every reader imports it from there), so `applyOverrides(flags)` goes into
+  `flags`'s module, and an export with effects of its own (`export const store = createStore()`) is extracted
+  like any other, with what only it needs. The module stays flagged side-effect free (every host flags it by its
+  kind, the webpack family by its query): it runs when something uses the export, and a bundler drops it, with
+  its statements, while nothing does, like a chunk that never loads. An export with a follower in its module is
+  imported, never copied (the follower runs only where the module does); in dev the followers stay with their
+  extracted bindings in the route module. An extracted declaration is one identity every output imports: one
+  that some output renders otherwise (a placeholder or claim scoped away from it, a server function's handler
+  where its provider holds it) is no candidate. An exported binding leaves with its writes at load
+  (`Page.displayName = …`, static props, `Page.x = track()`), whatever effects surround it (chunks import an
+  augmented export: its augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
   reader before the write may evaluate there too); several needers give it a shared module, which its readers
   import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
   Every one of these
@@ -317,9 +322,7 @@ directives, never license comments.
   or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
   runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
   is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). Rule L decides
-  when code runs, nothing else: what may move into an extracted export's module (a host may flag it side-effect free
-  whatever it holds: `export const url = new URL(x)` stays, reported `eager-export:effects`) and `effects()` of raw
-  facts count every operation that may run code or throw (`ClusterGraph.runsCode`, `Tier1.extractionEffects`).
+  when code runs, nothing else: `effects()` of raw facts counts every operation that may run code or throw.
 - **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's

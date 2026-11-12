@@ -73,7 +73,7 @@ export interface Unit {
   declares: Array<SymbolId>
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
-  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L); what may be deleted asks `unitEffects` with the planners' purity. */
+  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L). */
   effectful: boolean
   /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
   augments: Array<SymbolId>
@@ -623,8 +623,7 @@ interface UnitBuildResult {
  * computed keys and static parts), an enum's or a namespace's body, an
  * expression statement, an `export default` expression; nothing else a
  * unit holds evaluates code. The one judge of a unit's code: `buildUnits`
- * asks it with placement's purity (`Unit.effectful`), `unitEffects` with
- * the planners'.
+ * asks it with placement's purity (`Unit.effectful`).
  */
 function evaluationHasEffects(purity: PurityContext, node: Node): boolean {
   switch (node.type) {
@@ -647,33 +646,6 @@ function evaluationHasEffects(purity: PurityContext, node: Node): boolean {
     }
     default:
       return false
-  }
-}
-
-/** A unit's effects as one purity judges them (`Unit.effectful`, `Unit.augmentEffects`). */
-export type UnitEffects = Pick<Unit, 'effectful' | 'augmentEffects'>
-
-/**
- * Unit `u`'s effects as `purity` judges them, a purity that counts every
- * operation the unit's own (placement's: rule L, language operations are
- * no effect) counts, and more: the planners', every operation that may run
- * code or throw (`JSON.parse(x)`, `new URL(x)`, a member read). What may
- * move into an extracted export's module asks this
- * (`Tier1.extractionEffects`), never the unit's fields: rule L decides when
- * code runs, nothing else.
- */
-export function unitEffects(purity: PurityContext, u: Unit): UnitEffects {
-  if (u.kind === 'type') {
-    return u
-  }
-  const node = u.node
-  return {
-    effectful: u.effectful || evaluationHasEffects(purity, node),
-    augmentEffects:
-      u.augmentEffects ||
-      (u.augments.length > 0 &&
-        node.type === 'ExpressionStatement' &&
-        !writesOnly(purity, node.expression)),
   }
 }
 

@@ -115,8 +115,8 @@ export function keptDeclarations(
   }
 
   // The causes, reported once each: an exported declaration a chunk
-  // reaches that is not extracted (no candidate: observable effects,
-  // assigned; or cancelled, with its cause), the unexported clusters a
+  // reaches that is not extracted (no candidate: assigned; or cancelled,
+  // with its cause), the unexported clusters a
   // rule kept, and the clusters an augmentation roots up front
   // (`written`). An exported declaration the env module reads (`live`)
   // would stay there without split code: nothing to report.
@@ -132,11 +132,9 @@ export function keptDeclarations(
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    // (no candidate when it may run code, as extraction judges it: `roots.ts`)
-    const cause: Pin = graph.runsCode(c)
-      ? { reason: 'effects' }
-      : t1.mutation.isReassigned(sym, liveInEnv) ||
-          graph.regionWrittenSyms.has(sym)
+    const cause: Pin =
+      t1.mutation.isReassigned(sym, liveInEnv) ||
+      graph.regionWrittenSyms.has(sym)
         ? reassignment(sym)
         : (cancelled.get(c) ?? { reason: 'live' })
     if (cause.reason === 'live' || lazyNeeders(c).length === 0) {

@@ -9,7 +9,7 @@
  * read, from which "orphaned by us" is decided once env liveness is final.
  */
 import { NEED_KINDS, describeCluster } from './clusters'
-import type { ClusterGraph, ClusterId } from './clusters'
+import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Pin } from './events'
 import type { Node } from 'yuku'
@@ -69,15 +69,33 @@ export function seedRoots(
 
   // ---- extracted exports: candidates and their export companions -------
   // Planners allow every local value export out; a candidate is one whose
-  // cluster is an unassigned declaration without effects as extraction judges
-  // them (`runsCode`, not rule L: a host may flag its module side-effect
-  // free whatever it holds, and a bundler then drops it while nothing
-  // imports what it exports, so `new URL(text)` stays). Its pure
-  // augmentations, `Page.p = …`, are writes that travel with it (the
-  // binding's writers at load are its cluster). Its companions are the export-specifier /
+  // cluster is an unassigned declaration, effects or not: its module is a
+  // destination like a chunk (R149, extended), flagged side-effect free, so
+  // what it holds runs when something uses the export (a bundler drops it
+  // while nothing imports what it exports). Its augmentations, `Page.p =
+  // …`, are writes that travel with it (the binding's writers at load are
+  // its cluster). Its companions are the export-specifier /
   // `export default x` clusters that only read it. Neither is an env root
   // for now: the decision (extract, or keep in the env module) is taken once
   // env liveness is known.
+  // an extracted declaration is one identity every output imports: one
+  // that some output renders otherwise (a placeholder or claim scoped away
+  // from it: a server function's handler where its provider holds it)
+  // stays
+  const scopedAway = [
+    ...rewrites.places.flatMap((p) =>
+      p.scope === 'all-outputs' ? [] : [p.range],
+    ),
+    ...[...rewrites.claims.values()].flatMap((c) =>
+      c.scope === undefined ? [] : [rewrites.regions.get(c.region).range],
+    ),
+  ]
+  const rendersOtherwise = (cl: Cluster): boolean =>
+    scopedAway.length > 0 &&
+    cl.units.some((u) => {
+      const { start, end } = units[u]!.range
+      return scopedAway.some((r) => r.start < end && start < r.end)
+    })
   const candidates = new Map<ClusterId, Candidate>()
   for (const [sym, output] of extractions) {
     const c = clusterOfSym.get(sym)
@@ -88,7 +106,7 @@ export function seedRoots(
     if (
       cl.kind !== 'declaration' ||
       cl.gens.length > 0 ||
-      graph.runsCode(c) ||
+      rendersOtherwise(cl) ||
       // a reassigned export stays: its writers would assign an import
       t1.mutation.isReassigned(sym, liveInEnv) ||
       // a binding a sub-region writes (Hydrate children, a split option

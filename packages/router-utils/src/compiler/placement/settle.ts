@@ -155,12 +155,6 @@ export function settleRoots(
         : (readsState(cl.id) ??
             (needers.length > 1 ? null : { reason: 'needers' }))
     }
-    // an extracted export's module is side-effect free (every bundler may
-    // skip it while nothing imports what it exports): an effect never
-    // moves there, it would run late or never
-    if (cl.effectful && outputs.get(needers[0]!)?.kind === 'export') {
-      return { reason: 'effects' }
-    }
     return events.lazyConflict(cl.id) ?? needers[0]!
   }
 
@@ -174,6 +168,14 @@ export function settleRoots(
     }
     return out
   }
+  /**
+   * Where `d` takes a follower: a binding being extracted, its module only
+   * (every reader imports it from there); else the outputs reaching it.
+   */
+  const placesOf = (d: ClusterId): Array<OutputId> => {
+    const e = remaining.get(d)
+    return e === undefined ? needersOf(d) : [e.output]
+  }
   /** The chunk each follower (`Seeds.followers`) follows, rooted there until it is demoted. */
   const follows = new Map<ClusterId, OutputId>()
   /**
@@ -181,9 +183,9 @@ export function settleRoots(
    * one chunk the clusters its statements change (`Events.statementChanges`)
    * and its own declarations go to, none (itself included) evaluated by the
    * env module (what it only reads may stay: the chunk imports it); what
-   * it touches that nothing else needs follows it. Never an extracted
-   * export's module or a provider: one instance of the effect, in a module
-   * that surely evaluates. Then the lazy-slot rules (`written` for what it
+   * it touches that nothing else needs follows it; an extracted export's
+   * module is such a chunk (R149, extended: it runs when something uses
+   * the export). Never a provider. Then the lazy-slot rules (`written` for what it
    * declares, V).
    */
   /**
@@ -294,7 +296,7 @@ export function settleRoots(
       if (liveEnv.has(d) || envRoots.has(d)) {
         return d === c ? { reason: 'needers' } : stayPin(c, d)
       }
-      for (const n of needersOf(d)) {
+      for (const n of placesOf(d)) {
         if (to !== null && n !== to) {
           return stayPin(c, d === c ? null : d, n)
         }
@@ -310,7 +312,7 @@ export function settleRoots(
         const d = graph.clusterOfSym.get(s)
         for (const n of d === undefined ? [] : needersOf(d)) {
           const k = outputs.get(n)?.kind
-          if (k === 'export' || k === 'provider' || n === to) {
+          if (k === 'provider' || n === to) {
             continue
           }
           if (to !== null) {
@@ -321,7 +323,7 @@ export function settleRoots(
       }
     }
     const kind = to === null ? undefined : outputs.get(to)?.kind
-    if (to === null || kind === 'export' || kind === 'provider') {
+    if (to === null || kind === 'provider') {
       return { reason: 'needers' }
     }
     return events.lazyConflict(c) ?? to
@@ -342,7 +344,7 @@ export function settleRoots(
       if (stays(d)) {
         return stayPin(c, d)
       }
-      const needers = needersOf(d)
+      const needers = placesOf(d)
       const elsewhere = needers.find((n) => n !== to)
       if (elsewhere !== undefined || needers.length !== 1) {
         return stayPin(c, d, elsewhere)
@@ -390,7 +392,12 @@ export function settleRoots(
       for (const [c, to] of target) {
         const pin =
           (follows.has(c) ? followConflict(c, to, target, stays) : undefined) ??
-          events.readConflict(c, to, target, stays) ??
+          events.readConflict(
+            c,
+            to,
+            (d) => target.get(d) ?? remaining.get(d)?.output,
+            stays,
+          ) ??
           events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
           target.delete(c)
@@ -492,7 +499,17 @@ export function settleRoots(
   }
   /** A candidate a chunk copies: pure, observing no mutable state, holding no claimed region, and nothing the copy carries (`stopSet`) has an identity or is written. A function of the candidate alone, decided once. */
   const copyDecisions = new Map<ClusterId, boolean>()
+  /** A candidate with a follower in its module is imported, never copied: the follower runs only where the module does. */
   const copies = (c: ClusterId): boolean => {
+    const output = remaining.get(c)?.output ?? candidates.get(c)?.output
+    for (const to of follows.values()) {
+      if (to === output) {
+        return false
+      }
+    }
+    return copiesValue(c)
+  }
+  const copiesValue = (c: ClusterId): boolean => {
     let hit = copyDecisions.get(c)
     if (hit !== undefined) {
       return hit
@@ -693,6 +710,10 @@ export function settleRoots(
           pinned.delete(c)
         }
       }
+      // (a follower of an extracted binding is rooted in its module)
+      for (const [c, to] of follows) {
+        derivedRoots.get(to)?.add(c)
+      }
       for (const [id, from] of derivedRoots) {
         const own = [...from].some((c) => remaining.get(c)?.output === id)
         derivedReach.set(
@@ -786,12 +807,6 @@ export function settleRoots(
       }
       if (readsKept(cl.id) !== undefined) {
         envRoots.add(cl.id)
-      } else if (!cl.effectful && graph.runsCode(cl.id)) {
-        // code that may run or throw never moves there either (`slotFor`
-        // judges an effect so; rule L decides no deletion, and a host may
-        // flag the module side-effect free whatever it holds)
-        envRoots.add(cl.id)
-        pinnedNeeded.set(cl.id, { reason: 'effects' })
       } else if (cl.effectful || duplicable(cl.id) || needers(cl.id) < 2) {
         continue
       } else {
@@ -816,6 +831,13 @@ export function settleRoots(
       envRoots.add(c)
       for (const k of e.companions) {
         envRoots.add(k)
+      }
+      // what followed it into its module stays with it
+      for (const [f, to] of follows) {
+        if (to === e.output) {
+          follows.delete(f)
+          keepFollower(f, stayPin(f, c))
+        }
       }
       derivedStale = true
       changed = true
@@ -849,6 +871,10 @@ export function foldExtractions(reads: ReadIndex, roots: Roots): void {
   for (const [c, e] of roots.remaining) {
     roots.pinned.delete(c)
     roots.envRoots.add(c)
+    // what follows it there (a statement, its slots) stays with it
+    for (const d of roots.derivedRoots.get(e.output) ?? []) {
+      roots.envRoots.add(d)
+    }
     for (const k of e.companions) {
       roots.envRoots.add(k)
     }
