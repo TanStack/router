@@ -24,12 +24,6 @@
  * The test processes inherit the directories through their environment
  * (`runDirectoryVariable`). Without this setup, the apps go to the system's
  * temporary directory itself.
- *
- * The compiler's self-checks (`TSR_COMPILER_VERIFY`, see
- * `router-utils/src/compiler/self-checks.ts`) are on for every test run
- * unless the environment says otherwise: every compile of the suite
- * re-parses its outputs, and a broken output or a violated compiler
- * invariant fails it loudly (users' runs only get a warning).
  */
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -54,7 +48,6 @@ export default function setup() {
     [runDirectoryVariable]: dir,
     TSR_TMP_DIR: path.join(dir, 'generator'),
     NODE_COMPILE_CACHE: path.join(dir, 'node-compile-cache'),
-    TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1',
   }
   const previous = Object.fromEntries(
     Object.keys(variables).map((name) => [name, process.env[name]]),

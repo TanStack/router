@@ -37,21 +37,6 @@
     "test:types": "tsc",
     "test:eslint": "eslint ./src ./tests"
   },
-  "nx": {
-    "targets": {
-      "test:integration": {
-        "dependsOn": [
-          "^build",
-          {
-            "projects": [
-              "@tanstack/history"
-            ],
-            "target": "build"
-          }
-        ]
-      }
-    }
-  },
   "engines": {
     "node": "^22.18.0 || >=24.0.0"
   },

@@ -27,14 +27,14 @@ Shared by the compiler test suites (so far router-plugin's) and this package. Wh
   dangling-name check (SPEC G8).
 - `./dev-server`, `./rsbuild-dev-server`: dev servers on a temp app with `edit`/`settle`; `closeViteServer`.
 - `./browser`: Chromium pages; `runInPage` (bounded run pages, a fresh document per run), `openPage`.
-- `./hmr-sync` (`settlePage`): whether a page reloaded or updated in place, told by the page.
+- `./hmr-sync` (`trackRequests`): a page's requests in flight.
 - `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound.
 - `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoProblems`): every reporting channel merged;
   checks by severity, file and position.
 - `./importers` (`loadMarker`, `loadedModulesExpression`): load markers.
 - `./free-names`, `./known-globals`: a module's free names (Yuku), minus the environment's globals.
 - `./source-maps`: map assertions through `@jridgewell/trace-mapping`.
-- `./determinism`: compare builds across roots and orders (SPEC G4).
+- `./determinism` (`expectRelocatable`): compare builds across roots (SPEC G4).
 - `./dead-code-shapes`: the dependency shapes every removal runs through (SPEC G16); inputs, no judging logic.
 - `./app-directory` (`createAppDirectory`, `servedDirectories`): temp app directories that resolve like the package.
 - `./run-directory` (Vitest `globalSetup`): the run's temp dir (apps, generator temp files, Node's compile cache), removed
