@@ -200,6 +200,135 @@ const granularChunkRow: Row = {
   })),
 }
 
+/** A route like `pureRoute` with a loader grouped with the component, `staleTime: <staleTime>`. */
+const groupedRoute = (
+  loader: (text: string) => { decls: string; option: string },
+  v: number,
+  staleTime: number,
+  pragma = '',
+) => {
+  const { decls, option } = loader(JSON.stringify(dataText(v)))
+  return `${pragma}${head}${signal}import { Data } from '../layouts/data'
+${decls}function Page() ${body('<Data />')}
+export const Route = createFileRoute('/')({ component: Page, ${option}, staleTime: ${staleTime} })
+`
+}
+
+/** `const Page = flag ? Wide : Narrow`, the route with `staleTime: <staleTime>`. */
+const conditionalRoute = (flag: boolean, staleTime: number) =>
+  route(
+    `const flag = ${flag}
+function Wide() {
+  return <p>wide layout</p>
+}
+function Narrow() {
+  return <p>narrow layout</p>
+}
+const Page = flag ? Wide : Narrow`,
+    `component: Page, staleTime: ${staleTime}`,
+  )
+
+const grouped: Partial<Config> = {
+  codeSplittingOptions: { defaultBehavior: [['component', 'loader']] },
+}
+
+// Bug: solid-refresh makes a chunk holding components accept its own
+// updates, and Rspack's lazy-compilation proxy then answers every later
+// `import()` of the chunk with its first module: the route's refresh re-ran
+// the loader of that module (main showed the inline arrow only by accident:
+// solid-refresh wrapped its capitalised `SplitLoader` in a proxy).
+// Impact: an edit of a loader grouped with a component never showed on
+// Rsbuild (the component's own edits did: the chunk hands them over).
+const groupedLoaderRows: Array<Row> = (
+  [
+    ['', (text: string) => ({ decls: '', option: `loader: () => ${text}` })],
+    [
+      ' function of the file',
+      (text: string) => ({
+        decls: `function loadData() {\n  return ${text}\n}\n`,
+        option: 'loader: loadData',
+      }),
+    ],
+    [
+      ' in an object',
+      (text: string) => ({
+        decls: '',
+        option: `loader: { handler: () => ${text}, staleReloadMode: 'blocking' }`,
+      }),
+    ],
+  ] as const
+).map(([shape, loader]) => ({
+  name: `a loader${shape} sharing the route component chunk`,
+  counter: true,
+  pluginOptions: grouped,
+  files: {
+    'layouts/data.tsx': dataModule,
+    'routes/index.tsx': groupedRoute(loader, 1, 1),
+  },
+  ready: dataText(1),
+  edits: [2, 3].map((v) => ({
+    files: { 'routes/index.tsx': groupedRoute(loader, v, 1) },
+    shows: dataText(v),
+    mounts: mounts(1, twice, 1),
+  })),
+}))
+
+/** An inline arrow loader, as in `groupedLoaderRows`. */
+const arrowLoader = (text: string) => ({
+  decls: '',
+  option: `loader: () => ${text}`,
+})
+
+/**
+ * The route module evaluates again with its split chunk unchanged: the
+ * route's lazy wrappers import the chunk again (Rspack's lazy-compilation
+ * proxy answers its first module; see `groupedLoaderRows`).
+ */
+const keptOptionRows: Array<Row> = [
+  {
+    name: 'a conditional, then an option the route module keeps',
+    counter: false,
+    files: { 'routes/index.tsx': conditionalRoute(true, 1) },
+    ready: 'wide layout',
+    edits: [
+      {
+        files: { 'routes/index.tsx': conditionalRoute(false, 1) },
+        shows: 'narrow layout',
+      },
+      {
+        files: { 'routes/index.tsx': conditionalRoute(false, 2) },
+        shows: 'narrow layout',
+      },
+      {
+        files: { 'routes/index.tsx': conditionalRoute(false, 3) },
+        shows: 'narrow layout',
+      },
+    ],
+  },
+  {
+    name: 'a grouped loader edited, then an option the route module keeps',
+    counter: true,
+    pluginOptions: grouped,
+    files: {
+      'layouts/data.tsx': dataModule,
+      'routes/index.tsx': groupedRoute(arrowLoader, 1, 1),
+    },
+    ready: dataText(1),
+    edits: [
+      {
+        files: { 'routes/index.tsx': groupedRoute(arrowLoader, 2, 1) },
+        shows: dataText(2),
+        mounts: mounts(1, twice, 1),
+      },
+      ...[2, 3].map((staleTime) => ({
+        files: { 'routes/index.tsx': groupedRoute(arrowLoader, 2, staleTime) },
+        shows: dataText(2),
+        mounts: mounts(1, twice, 0),
+      })),
+    ],
+  },
+]
+
 export const rows: Array<Row> = [
   versions(
     'a function declaration',
@@ -246,29 +375,7 @@ export const rows: Array<Row> = [
     })),
   },
   granularChunkRow,
-  // Bug: solid-refresh makes a chunk holding components accept its own
-  // updates, so Rspack's lazy-compilation proxy keeps answering the chunk's
-  // first module: the route's refresh re-runs the loader of that module.
-  // Impact: an edit of a loader grouped with a component never shows on
-  // Rsbuild (the component's own edits do: the chunk hands them over).
-  {
-    name: 'a loader sharing the route component chunk',
-    counter: true,
-    pluginOptions: {
-      codeSplittingOptions: { defaultBehavior: [['component', 'loader']] },
-    },
-    files: {
-      'layouts/data.tsx': dataModule,
-      'routes/index.tsx': pureRoute('')(1),
-    },
-    ready: dataText(1),
-    edits: [2, 3].map((v) => ({
-      files: { 'routes/index.tsx': pureRoute('')(v) },
-      shows: dataText(v),
-    })),
-    pinnedFrom: ({ bundler, split }) =>
-      bundler === 'rsbuild' && split ? 0 : undefined,
-  },
+  ...groupedLoaderRows,
   versions(
     '@refresh granular, a body edit',
     (v) =>
@@ -303,6 +410,7 @@ const Page = flag ? Wide : Narrow`,
     {},
     false,
   ),
+  ...keptOptionRows,
   versions(
     "a factory's result",
     (v) =>
