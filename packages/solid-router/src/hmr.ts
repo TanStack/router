@@ -3,6 +3,8 @@ import {
   applyRouteChunkHmr,
   applyRouteHmr,
 } from '@tanstack/router-core/hmr'
+// TEMPORARY WORKAROUND of web-infra-dev/rspack#16594: see the module
+import { forgetChunkExports, recordChunkExports } from './hmr-chunk-importer'
 import type { AnyRoute } from '@tanstack/router-core'
 import type {
   KeptReaderHot,
@@ -37,6 +39,7 @@ const adapter: RouteHmrAdapter = {
   keepPatched: (next, held) =>
     refreshSource(held) !== undefined &&
     refreshSource(held) === refreshSource(next),
+  retire: forgetChunkExports,
 }
 
 /**
@@ -72,6 +75,7 @@ export function __tsrRouteChunkHmr(
   refresh: boolean,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
+    recordChunkExports(routeId, chunk, exports)
     applyRouteChunkHmr(routeId, chunk, { exports, refresh, adapter })
   }
 }
@@ -88,3 +92,5 @@ export function __tsrKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
     applyKeptReaderHmr(routeId, hot)
   }
 }
+
+export { __tsrChunkImporter } from './hmr-chunk-importer'

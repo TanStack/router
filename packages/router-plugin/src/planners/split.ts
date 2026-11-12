@@ -16,7 +16,7 @@ import {
   sameFileSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
-import { identifierSymbol, pascal } from './route'
+import { identifierSymbol, pascal, routerRouteId } from './route'
 import { COMPONENT_KEYS } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
@@ -110,6 +110,9 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     return sym
   }
 
+  // TEMPORARY WORKAROUND of web-infra-dev/rspack#16594: `chunkImporterCall`
+  const importerCall = chunkImporterCall(ctx, round, helperImports)
+
   // each importer right before the statement holding its group's first
   // placeholder (the options object, or an option's object declared by
   // itself): no effects between them, so a minifier inlines it there
@@ -150,9 +153,13 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
     )
     const spec = sameFileSpecifier(derivedId)
+    const [open, close] = importerCall(d.groupKey)
     ctx.rewrites.addGenerated({
       body: [
-        { k: 'text', parts: [`const ${importer.name} = () => import(`] },
+        {
+          k: 'text',
+          parts: [`const ${importer.name} = `, ...open, '() => import('],
+        },
         {
           k: 'spec',
           specifier: spec,
@@ -160,7 +167,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
           provenance: { origin: 'runtime' },
           form: 'dynamic',
         },
-        { k: 'text', parts: [')\n'] },
+        { k: 'text', parts: [`)${close}\n`] },
       ],
       declares: [importer.sym],
       effectful: false,
@@ -321,5 +328,49 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       by: ROUTER_PLANNER,
       imports: helperImports,
     })
+  }
+}
+
+/**
+ * TEMPORARY WORKAROUND of Rspack's lazy compilation,
+ * https://github.com/web-infra-dev/rspack/issues/16594 (the reason and the
+ * scope: `@tanstack/solid-router`'s `src/hmr-chunk-importer.ts`; remove with
+ * it once the issue is fixed). Solid, development on the
+ * client, webpack-style hosts: each group's importer is wrapped,
+ * `__tsrChunkImporter(<route id>, <group>, () => import(…))`, to answer the
+ * chunk's newest evaluation. Otherwise the importer stays as it is.
+ * Returns what opens and closes the wrap around a group's importer.
+ */
+function chunkImporterCall(
+  ctx: PlanContext,
+  round: RouterRound,
+  helperImports: Array<GlueImport>,
+): (groupKey: string) => [open: Array<string | SymRef>, close: string] {
+  const { cfg, route } = round
+  if (!cfg.hmr || cfg.hmr.style === 'vite' || cfg.framework !== 'solid') {
+    return () => [[], '']
+  }
+  let sym: SymbolId | null = null
+  return (groupKey) => {
+    if (sym === null) {
+      sym = ctx.names.alloc('tsrChunkImporter').sym
+      const specifier = `${route.routerPackage}/hmr`
+      helperImports.push({
+        names: [{ imported: '__tsrChunkImporter', local: sym }],
+        spec: {
+          k: 'spec',
+          specifier,
+          edgeKey: ctx.edgeKey(specifier, 'static', 'runtime'),
+          provenance: { origin: 'runtime' },
+        },
+      })
+    }
+    return [
+      [
+        { sym, ctx: 'callee' },
+        `(${stringLiteral(routerRouteId(route.routeId), '"')}, ${stringLiteral(groupKey, '"')}, `,
+      ],
+      ')',
+    ]
   }
 }
