@@ -802,6 +802,131 @@ describe("an extracted export's module is a destination", () => {
   })
 })
 
+// F-PEG-1 (phase-end fuzz seeds 1500250, 1504862, …): Start moves a server
+// fn written in a function body to the module top level on the server, a
+// binding the route module keeps that the body then reads. An extracted
+// export's module evaluates before the route module's body (the route
+// module re-exports it), so an export whose evaluation runs that body (it
+// calls the function, or hands it or a function holding the server fn to
+// a call) reads it before it exists: it stays, like one reading a kept
+// binding in its own text (T), and the report names no generated binding
+describe('an export whose evaluation runs code reading what a planner moved to the top level', () => {
+  /** Start's nested server fn, as a toy: a `hoisted(…)` call in a function moves to a module-level binding only the env module holds, which the function reads. */
+  const hoistPlanner: Planner = {
+    name: 'toy-hoist',
+    tier: 1,
+    gate: (t0) => t0.imports.some((i) => i.specifier === 'toy-start'),
+    plan(ctx) {
+      const { t1 } = ctx
+      const imp = ctx.analysis.imports.find((i) => i.specifier === 'toy-start')
+      const s = imp?.specifiers.find((x) => x.imported === 'hoisted')
+      if (!s) {
+        return
+      }
+      for (const ref of t1.refs.refsOf(s.local)) {
+        const node = t1.nodeAt(ref.range.start)
+        const call = node ? t1.parentOf(node) : null
+        let inFunction = false
+        for (let p = call; p !== null && !inFunction; p = t1.parentOf(p)) {
+          inFunction = /Function/.test(p.type)
+        }
+        if (
+          ref.ctx !== 'callee' ||
+          call?.type !== 'CallExpression' ||
+          !inFunction
+        ) {
+          continue
+        }
+        const region = ctx.region(
+          { start: call.start, end: call.end },
+          'nested-chain',
+        )
+        const name = ctx.names.alloc('tsrHoisted')
+        const owner = ctx.rewrites.addGenerated({
+          body: [
+            { k: 'text', parts: ['const ', { sym: name.sym }, ' = '] },
+            { k: 'region', id: region },
+            { k: 'text', parts: ['\n'] },
+          ],
+          declares: [name.sym],
+          effectful: true,
+          anchor: { k: 'after-header' },
+          home: 'auto',
+          by: 'toy-hoist',
+        })
+        ctx.rewrites.claim({
+          region,
+          owner,
+          placeholder: [{ k: 'text', parts: [{ sym: name.sym }] }],
+          by: 'toy-hoist',
+        })
+      }
+    },
+  }
+  async function compile(value: string) {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { hoisted } from 'toy-start'
+      import { keep } from './lib'
+      function Panel() {
+        const inner = hoisted(1)
+        return typeof inner
+      }
+      function Plain() {
+        return 'plain'
+      }
+      export const x = ${value}
+      export const y = [Plain()]
+      export const Route = createFileRoute('/')({ component: () => [x, y] })
+    `)
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': code,
+        '/app/lib.ts': 'export const keep = <T,>(v: T): T => v\n',
+      },
+    })
+    const planners = [
+      hoistPlanner,
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const main = await host.compile('/app/route.tsx', planners, env)
+    const at = async (id: string) =>
+      (await host.compile(id, planners, env))?.code ?? ''
+    return {
+      env: main?.code ?? '',
+      kept: (main?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-export'),
+      ),
+      chunk: await at('/app/route.tsx?tsr-split=component'),
+      module: (name: string) => at(`/app/route.tsx?tsr-split=export---${name}`),
+    }
+  }
+
+  it.each([
+    ['calls the function', '[Panel()]'],
+    ['hands the function to a call', 'keep(Panel)'],
+    [
+      'hands a function holding the call to a call',
+      'keep(() => typeof hoisted(2))',
+    ],
+    // (kept before too, the report naming the generated binding)
+    ['runs a function holding the call at once', '(() => typeof hoisted(2))()'],
+  ])('stays when it %s', async (_, value) => {
+    const r = await compile(value)
+    expect(r.env).toMatch(/^export const x = /m)
+    expect(await r.module('x')).not.toContain('const x')
+    expect(r.chunk).toMatch(
+      /import \{[^}]*\bx\b[^}]*\} from '\/app\/route\.tsx'/,
+    )
+    // (a control: one running nothing the planner moved leaves)
+    expect(await r.module('y')).toContain('const y = [Plain()]')
+    expect(r.kept).toHaveLength(1)
+    expect(r.kept[0]!.code).toBe('eager-export:reads')
+    expect(r.kept[0]!.message).not.toContain('tsrHoisted')
+  })
+})
+
 describe('extracted-export outputs', () => {
   // extracted-export outputs exist in a build; in dev the same clusters stay
   // in the env module (the last cases of this block)

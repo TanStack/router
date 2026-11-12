@@ -5,7 +5,8 @@
  * bundle run by Start's own server entry inside a real request, the client
  * bundle in a browser). On the server the nested server fn is one binding
  * of the route module; the value reads it when it evaluates (it calls the
- * function, or hands it to an imported function that may call it then), so
+ * function, or hands it, or a function holding the server fn, to an
+ * imported function that may call it then), so
  * it evaluates where that binding exists: the page renders what the source
  * gives, on the server and in the browser alike. Run with the compiler's
  * self-checks on (`start-build-extracted-export-server-fn.test.ts`) and
@@ -46,6 +47,18 @@ export const Route = createFileRoute('/passed')({
   component: () => <p>MARK_PASSED {y()}</p>,
 })
 `,
+  // the value hands a function holding a server fn to an imported function
+  'src/routes/callback.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
+import { keep } from '../keep'
+export const z = keep(() => {
+  const inner = createServerFn().handler(async () => 'srv')
+  return typeof inner
+})
+export const Route = createFileRoute('/callback')({
+  component: () => <p>MARK_CALLBACK {z()}</p>,
+})
+`,
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
@@ -59,11 +72,13 @@ const render = `const { routeTree } = entry.getRouter()
 return {
   called: await entry.renderPath(routeTree, '/called'),
   passed: await entry.renderPath(routeTree, '/passed'),
+  callback: await entry.renderPath(routeTree, '/callback'),
 }`
 
 const expected = {
   called: expect.stringContaining('MARK_CALLED <!-- -->function'),
   passed: expect.stringContaining('MARK_PASSED <!-- -->function'),
+  callback: expect.stringContaining('MARK_CALLBACK <!-- -->function'),
 }
 
 export function extractedExportServerFnTests() {
