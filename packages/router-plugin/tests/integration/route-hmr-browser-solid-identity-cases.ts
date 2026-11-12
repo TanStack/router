@@ -164,24 +164,37 @@ export const Route = createFileRoute('/')({ component: Page, loader: () => ${JSO
 const shell = (text: string) =>
   `export function Shell() {\n  return <p>${text}</p>\n}\n`
 
+/** A route like `pureRoute`, with a pending component showing `pending v<v>`. */
+const pendingRoute = (v: number) =>
+  `${granular}${head}${signal}import { Data } from '../layouts/data'
+function Page() ${body('<Data />')}
+function Pending() {
+  return <p>pending v${v}</p>
+}
+export const Route = createFileRoute('/')({ component: Page, pendingComponent: Pending, loader: () => ${JSON.stringify(dataText(v))} })
+`
+
 /**
- * The loader shares the component's chunk: the chunk evaluates again, and
- * solid-refresh keeps the component only if the chunk carries the file's
- * pragma.
+ * One save edits the loader (its own chunk) and the pending component,
+ * which shares the route component's chunk: that chunk evaluates again with
+ * the route component unchanged, and solid-refresh keeps it only if the
+ * chunk carries the file's `@refresh granular`.
  */
 const granularChunkRow: Row = {
-  name: '@refresh granular, an edit of the loader in the component chunk',
+  name: '@refresh granular, an edit of the loader and of a component sharing the route component chunk',
   counter: true,
   pluginOptions: {
-    codeSplittingOptions: { defaultBehavior: [['component', 'loader']] },
+    codeSplittingOptions: {
+      defaultBehavior: [['component', 'pendingComponent'], ['loader']],
+    },
   },
   files: {
     'layouts/data.tsx': dataModule,
-    'routes/index.tsx': pureRoute(granular)(1),
+    'routes/index.tsx': pendingRoute(1),
   },
   ready: dataText(1),
   edits: [2, 3].map((v) => ({
-    files: { 'routes/index.tsx': pureRoute(granular)(v) },
+    files: { 'routes/index.tsx': pendingRoute(v) },
     shows: dataText(v),
     mounts: mounts(0, twice, 0),
   })),
@@ -233,6 +246,29 @@ export const rows: Array<Row> = [
     })),
   },
   granularChunkRow,
+  // Bug: solid-refresh makes a chunk holding components accept its own
+  // updates, so Rspack's lazy-compilation proxy keeps answering the chunk's
+  // first module: the route's refresh re-runs the loader of that module.
+  // Impact: an edit of a loader grouped with a component never shows on
+  // Rsbuild (the component's own edits do: the chunk hands them over).
+  {
+    name: 'a loader sharing the route component chunk',
+    counter: true,
+    pluginOptions: {
+      codeSplittingOptions: { defaultBehavior: [['component', 'loader']] },
+    },
+    files: {
+      'layouts/data.tsx': dataModule,
+      'routes/index.tsx': pureRoute('')(1),
+    },
+    ready: dataText(1),
+    edits: [2, 3].map((v) => ({
+      files: { 'routes/index.tsx': pureRoute('')(v) },
+      shows: dataText(v),
+    })),
+    pinnedFrom: ({ bundler, split }) =>
+      bundler === 'rsbuild' && split ? 0 : undefined,
+  },
   versions(
     '@refresh granular, a body edit',
     (v) =>
@@ -402,10 +438,18 @@ export const Route = createFileRoute('/')({ component: Page })
       },
     ],
   },
+  // Unsplit: solid-refresh invalidates a module that lost a component,
+  // which nothing above a route module accepts: the page reloads once (SPEC
+  // J3.3).
+  // Bug (Rsbuild, split; this row and the next): solid-refresh keeps a
+  // removed component's name in the registry it stores in `hot.data`; every
+  // later evaluation of the module finds a name the new module lacks and
+  // calls `hot.invalidate()`, which on Rspack, outside an update (the lazy
+  // wrapper's `import()`), leaves the HMR status at `ready`, waiting for an
+  // `apply()` nobody calls. Upstream (oracle/KNOWN-BUGS.md).
+  // Impact: after a rename or a removed component in a split route on
+  // Rsbuild, no later hot update reaches the page until a reload.
   {
-    // unsplit: solid-refresh invalidates a module that lost a component,
-    // which nothing above a route module accepts: the page reloads once
-    // (SPEC J3.3)
     name: 'a rename, then two body edits',
     counter: true,
     files: {
@@ -542,19 +586,13 @@ export function solidIdentitySuite(bundler: Bundler) {
         }
       }
       const pinnedFrom = (row: Row) => row.pinnedFrom?.(cell)
-      test.for(rows)('$name', (row, ctx) =>
-        run(row, row.edits.slice(0, pinnedFrom(row)), ctx),
+      test.for(rows.filter((row) => pinnedFrom(row) !== 0))(
+        '$name',
+        (row, ctx) => run(row, row.edits.slice(0, pinnedFrom(row)), ctx),
       )
       const pinned = rows.filter((row) => pinnedFrom(row) !== undefined)
       if (pinned.length > 0) {
-        // Bug: solid-refresh keeps a removed component's name in the
-        // registry it stores in `hot.data`; every later evaluation of the
-        // module finds a name the new module lacks and calls
-        // `hot.invalidate()`, which on Rspack, outside an update (the lazy
-        // wrapper's `import()`), leaves the HMR status at `ready` waiting
-        // for an `apply()` nobody calls. Upstream (oracle/KNOWN-BUGS.md).
-        // Impact: after a rename or a removed component in a split route on
-        // Rsbuild, no later hot update reaches the page until a reload.
+        // (the bug: the row's comment)
         test.for(pinned)('$name: every edit', { fails: true }, (row, ctx) =>
           run(row, row.edits, ctx),
         )
