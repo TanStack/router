@@ -1,8 +1,8 @@
 /**
  * The server-code check (R132): no output of a compile holds text a planner
  * recorded as server-only (`RewriteSet.serverOnly`: a server fn's handler, a
- * `.server()` implementation, a `createServerOnlyFn` body, a validator, in a
- * client compile). It reads the emitted segments, the derived outputs
+ * `.server()` implementation, a `createServerOnlyFn` body, a validator, a
+ * route option the router planner erases, in a client compile). It reads the emitted segments, the derived outputs
  * included: a slice of the source over a recorded range, or text standing
  * for source inside one (a reference rendered for its output). Positions,
  * not strings, so formatting and identical text elsewhere play no part.

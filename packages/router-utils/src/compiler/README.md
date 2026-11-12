@@ -50,7 +50,7 @@ emits its own output. Nothing depends on transform order.
   handler module. Two edits, or two placeholders (a claim's included), on one range in one output conflict. A route
   option written as a method claims its function; an edit of the property writes the key before the placeholder.
   `serverOnly` records server-only text of a client compile (a handler, a `.server()` implementation, a
-  `createServerOnlyFn` body, a validator), with its placeholder when it has one. The server-code check
+  `createServerOnlyFn` body, a validator; the router's erased route options), with its placeholder when it has one. The server-code check
   (`server-code.ts`, R132) reads the records after freeze: a slice of any output over one, or text mapped into one,
   fails the module (an error in users' runs, a throw under the self-checks). It is a net under the planners, which
   remove what they record; it can go once nothing is left for it to catch. The core's orphan cleanup is the
