@@ -325,6 +325,11 @@ function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
   const { file, header } = ctx.analysis
   const first = file.program.body[header.directiveCount]
   const end = first ? first.start : file.source.length
+  // (most route files have no pragma: no comment list is read for them)
+  const at = file.source.indexOf('@refresh')
+  if (at === -1 || at >= end) {
+    return
+  }
   const pragmas = file.comments
     .filter((c) => c.end <= end && REFRESH_PRAGMA_RE.test(c.value))
     .map((c) => `${file.source.slice(c.start, c.end)}\n`)
