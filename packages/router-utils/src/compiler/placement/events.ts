@@ -127,7 +127,7 @@ export interface Events {
   ) => Pin | undefined
   /** Another cluster than `c` whose evaluation touches `sym` when the module loads, the first one, if any (who reads what `c`'s own code writes later). */
   loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
-  /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any. */
+  /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any (one of the source before a generated one). */
   readsKept: (
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
@@ -430,11 +430,16 @@ export function eventTable(
     c: ClusterId,
     kept: (d: ClusterId) => boolean,
   ): SymbolId | undefined {
+    // (a binding of the source first: one a planner generated exists in
+    // this build only, and is not reported when it is the only one)
     let found: SymbolId | undefined
     touches(c, (t) => {
       if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
-        found = t.sym
-        return true
+        if (symbols.kind(t.sym) === 'source') {
+          found = t.sym
+          return true
+        }
+        found ??= t.sym
       }
       return false
     })
