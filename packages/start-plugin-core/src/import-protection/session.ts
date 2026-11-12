@@ -1423,11 +1423,8 @@ class ImportProtectionEnv {
    * once the graph is complete, so the result does not depend on the order
    * the bundler compiled them in.
    */
-  conflicts(
-    graph: ImportGraphView,
-    holds?: (id: string) => boolean,
-  ): Map<string, Conflict> {
-    const out = this.demanded(graph, holds)
+  conflicts(graph: ImportGraphView): Map<string, Conflict> {
+    const out = this.demanded(graph)
     for (const [id, c] of out) {
       if (c.checked.length === 0) {
         out.delete(id)

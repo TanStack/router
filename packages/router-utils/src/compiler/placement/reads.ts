@@ -18,11 +18,11 @@ import type { Range } from '../header'
 import type { SymbolId } from '../symbols'
 import type { RegionId, UnitId } from '../units'
 import type {
+  Edit,
   Frag,
   GenFrag,
   OutputId,
   OutputView,
-  PlannerEdit,
   RangeNode,
   Region,
   WalkVisitor,
@@ -80,8 +80,6 @@ export interface ReadIndex {
     named?: NameVisitor,
     everyCallRuns?: boolean,
   ) => boolean
-  /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
-  clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
 }
 
 /** A binding generated text names, and where that text stands. */
@@ -120,13 +118,13 @@ interface RegionIndex {
   /** Per unit region: the first marked node holding it whole (none: undefined, the module). */
   aroundNode: Array<RangeNode | undefined>
   text: Array<Array<RangeNode> | undefined>
-  inserts: Array<Array<PlannerEdit> | undefined>
+  inserts: Array<Array<Edit> | undefined>
 }
 
 const NO_REGIONS: ReadonlyArray<RegionId> = []
 const NO_NAMES: ReadonlyArray<GeneratedName> = []
 const NO_NODES: ReadonlyArray<RangeNode> = []
-const NO_INSERTS: ReadonlyArray<PlannerEdit> = []
+const NO_INSERTS: ReadonlyArray<Edit> = []
 
 export function readIndex(
   input: PlacementInput,
@@ -698,14 +696,6 @@ export function readIndex(
     }
     return false
   }
-  function clusterRuns(c: ClusterId, visit: RunVisitor): boolean {
-    for (const r of clusters[c]!.regions) {
-      if (runs(r, visit)) {
-        return true
-      }
-    }
-    return false
-  }
   /**
    * The bindings the generated text of region `r`'s rendering in the env
    * module names (edits, placeholders, inserts; those of the regions nested
@@ -735,6 +725,5 @@ export function readIndex(
     successors,
     reach,
     runs,
-    clusterRuns,
   }
 }

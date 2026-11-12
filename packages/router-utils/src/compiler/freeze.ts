@@ -119,7 +119,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
     const included = placement.included.get(id) ?? new Set()
     const recipeEdges: Array<EdgeRecord> = []
     const importerId = decl.derivedId ?? plan.identity.canonicalId
-    renderer.begin(id, importerId, recipeEdges)
+    renderer.begin(importerId, recipeEdges)
     const segments: Array<Segment> =
       id === 'env'
         ? renderEnv(
@@ -908,7 +908,6 @@ interface SliceLevel {
 class Renderer {
   view!: OutputView
   erasedAt!: (offset: number) => boolean
-  private output!: OutputId
   private importerId!: string
   private edges!: Array<EdgeRecord>
   constructor(
@@ -916,8 +915,7 @@ class Renderer {
     private readonly code: string,
   ) {}
 
-  begin(output: OutputId, importerId: string, edges: Array<EdgeRecord>): void {
-    this.output = output
+  begin(importerId: string, edges: Array<EdgeRecord>): void {
     this.importerId = importerId
     this.edges = edges
   }

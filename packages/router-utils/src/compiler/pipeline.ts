@@ -222,9 +222,7 @@ async function answer(
       // another request of this text is compiling it: its outcome answers this request too
       const settled = await flight.settled.catch(() => null)
       if (settled) {
-        return noted(
-          emitSettled(settled, requested, input, caches, identity, host),
-        )
+        return noted(emitSettled(settled, requested, input, caches))
       }
       // it threw: its request reports the error, this one compiles on its own
       continue
@@ -235,16 +233,7 @@ async function answer(
     }
     cache.fly(key, record)
     try {
-      return noted(
-        emitSettled(
-          await record.settled,
-          requested,
-          input,
-          caches,
-          identity,
-          host,
-        ),
-      )
+      return noted(emitSettled(await record.settled, requested, input, caches))
     } finally {
       cache.land(key, record)
     }
@@ -401,8 +390,6 @@ function emitSettled(
   requested: OutputId,
   input: CompileInput,
   caches: CompilerCaches,
-  identity: SourceIdentity,
-  host: HostServices,
 ): CompileOutput | null {
   if (settled.kind === 'untouched') {
     return null

@@ -236,11 +236,7 @@ function writtenWith(
  * object, a call with an argument that has effects), so a hint to add it
  * would not work. The one gate of every annotation hint.
  */
-function annotationFrees(
-  plan: Pick<AnalysisPlan, 'analysis'>,
-  node: Node | null,
-  purity: PurityContext,
-): boolean {
+function annotationFrees(node: Node | null, purity: PurityContext): boolean {
   const n = node === null ? null : unwrapExpression(node)
   return (
     (n?.type === 'CallExpression' || n?.type === 'NewExpression') &&
@@ -277,7 +273,7 @@ export function annotatable(
       unit.node.type !== 'VariableDeclarator' ||
       (decl?.type === 'VariableDeclaration' &&
         (decl.kind === 'using' || decl.kind === 'await using')) ||
-      !annotationFrees(plan, unit.node.init, purity)
+      !annotationFrees(unit.node.init, purity)
     ) {
       return false
     }

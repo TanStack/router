@@ -163,10 +163,6 @@ export interface ClassifiedRef {
   readsThrough: boolean
 }
 
-/** Whether the reference calls its value (the callee of a call, a `new` or a tagged template): the callee's body runs where the reference evaluates. */
-export const callsValue = (ref: ClassifiedRef): boolean =>
-  ref.ctx === 'callee' || ref.ctx === 'newCallee'
-
 /** Whether the reference observes its value's identity (`newCallee`, `identity`): a copy of a function used so is a second constructor or sentinel. */
 export const observesIdentity = (ref: ClassifiedRef): boolean =>
   ref.ctx === 'newCallee' || ref.ctx === 'identity'

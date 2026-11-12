@@ -19,7 +19,7 @@ import {
 import { keptDeclarations } from './placement/kept'
 import { assignHomes } from './placement/homes'
 import { includeAndImport } from './placement/inclusion'
-import type { Cluster, ClusterId } from './placement/clusters'
+import type { ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
@@ -167,7 +167,6 @@ export interface ExtractedExport {
 }
 
 export interface Placement {
-  clusters: Array<Cluster>
   clusterOfRegion: Map<RegionId, ClusterId>
   clusterOfGen: Map<GenUnitId, ClusterId>
   home: Map<ClusterId, Home>
@@ -242,7 +241,6 @@ export function computePlacement(input: PlacementInput): Placement {
     ...homes.fallbacks,
   ]
   return {
-    clusters: graph.clusters,
     clusterOfRegion: graph.clusterOfRegion,
     clusterOfGen: graph.clusterOfGen,
     home: homes.home,

@@ -83,7 +83,6 @@ export type TextFrag = {
   k: 'text'
   parts: ReadonlyArray<string | SymRef>
   mapTo?: number
-  declares?: ReadonlyArray<SymbolId>
 }
 
 /**
@@ -103,7 +102,7 @@ export type RegionFrag = { k: 'region'; id: RegionId }
  */
 export type GenFrag = Exclude<Frag, { k: 'slice' }> | RegionFrag
 
-interface Edit {
+export interface Edit {
   range: Range
   body: ReadonlyArray<Frag>
   scope: EditScope
@@ -189,20 +188,14 @@ export interface Region {
   unit: UnitId | null
 }
 
-export interface PlannerEdit extends Edit {
-  n: number
-}
-
 /** What a planner puts at a region's place in some outputs (`RewriteSet.placeholder`). */
-export interface Placeholder extends PlannerEdit {
+export interface Placeholder extends Edit {
   body: ReadonlyArray<PlaceFrag>
 }
 
 /** Server-only source text a client compile removes (`RewriteSet.serverOnly`). */
 export interface ServerOnlyText {
   range: Range
-  /** What the text is, in a message's words (`a server function's handler`). */
-  subject: string
 }
 
 /**
@@ -221,7 +214,7 @@ export interface RangeNode {
   /** What first addressed the range (a conflict names it). */
   readonly by: string
   /** The edits of this range's text (a planner's address every output, the core's orphan cleanup some), in call order. */
-  edits: Array<PlannerEdit> | null
+  edits: Array<Edit> | null
   /** The placeholders standing at this range's place in some outputs, in call order. */
   places: Array<Placeholder> | null
   /** The claim of the region on exactly this range (a second one is a conflict). */
@@ -427,12 +420,6 @@ export class RegionTable {
       throw new Error(`reference at ${ref.range.start} is outside every region`)
     }
     return id
-  }
-
-  /** The unit holding a region. */
-  unitOf(id: RegionId): UnitId | null {
-    const r = this.regions[id]!
-    return r.unit ?? this.unitAt(r.range.start, r.range.end)?.unit ?? null
   }
 
   /**
@@ -668,7 +655,7 @@ export interface WalkVisitor {
   /** An active node renders here, whole: its place (`OutputView.placeOf`, else its text). */
   node: (n: RangeNode) => void
   /** An insert renders here. */
-  insert: (e: PlannerEdit) => void
+  insert: (e: Edit) => void
   /**
    * A node on exactly a region (a placement member) the walk would enter or
    * render: true when the visitor takes it (the walk goes past it).
@@ -691,9 +678,9 @@ const NO_OPTIONS: WalkOptions = {}
 
 export class RewriteSet {
   /** The edits of text and the inserts, in call order. */
-  readonly edits: Array<PlannerEdit> = []
+  readonly edits: Array<Edit> = []
   /** The inserts (zero-width edits), by position then call order. */
-  readonly inserts: Array<PlannerEdit> = []
+  readonly inserts: Array<Edit> = []
   /** The placeholders, in call order. */
   readonly places: Array<Placeholder> = []
   readonly generated: Array<GeneratedUnit> = []
@@ -704,7 +691,6 @@ export class RewriteSet {
   readonly claimNodes = new Map<RegionClaim, RangeNode>()
   /** The nodes holding two items or more: edits, placeholders, a claim (`checkConflicts`). */
   private readonly shared: Array<RangeNode> = []
-  private nextEdit = 0
   private changes = 0
   private views = new Map<OutputId, OutputView>()
   private envView: OutputView | undefined
@@ -713,7 +699,7 @@ export class RewriteSet {
   /** The level each insert renders at (`insertLevel`), for one version of the set. */
   private levels: {
     version: number
-    of: Map<PlannerEdit, RangeNode>
+    of: Map<Edit, RangeNode>
   } | null = null
 
   constructor(readonly regions: RegionTable) {}
@@ -769,7 +755,7 @@ export class RewriteSet {
     scope: EditScope
     by: string
   }): void {
-    const p: Placeholder = { ...place, n: this.nextEdit++ }
+    const p: Placeholder = { ...place }
     const node = this.regions.node(place.range, place.by)
     if (node === null) {
       throw new Error(
@@ -790,11 +776,10 @@ export class RewriteSet {
    */
   serverOnly(text: {
     range: Range
-    subject: string
     by: string
     placeholder?: ReadonlyArray<PlaceFrag>
   }): void {
-    this.serverOnlyText.push({ range: text.range, subject: text.subject })
+    this.serverOnlyText.push({ range: text.range })
     if (text.placeholder !== undefined) {
       this.placeholder({
         range: text.range,
@@ -806,7 +791,7 @@ export class RewriteSet {
   }
 
   private add(edit: Edit): void {
-    const e = { ...edit, n: this.nextEdit++ }
+    const e = { ...edit }
     if (edit.range.end <= edit.range.start) {
       if (this.regions.unitAt(edit.range.start, edit.range.start) === null) {
         throw new Error(
@@ -936,7 +921,7 @@ export class RewriteSet {
   }
 
   /** The node whose level renders an insert: its owner's (`RegionTable.insertOwnerAt`). */
-  insertLevel(e: PlannerEdit): RangeNode {
+  insertLevel(e: Edit): RangeNode {
     if (this.levels === null || this.levels.version !== this.version) {
       this.levels = { version: this.version, of: new Map() }
     }
@@ -1157,12 +1142,12 @@ export class OutputView {
   // ---- what a node renders ------------------------------------------------
 
   /** The edit of node `n`'s text in this output (null: its source). Two that differ conflict. */
-  editOf(n: RangeNode): PlannerEdit | null {
+  editOf(n: RangeNode): Edit | null {
     const edits = n.edits
     if (edits === null) {
       return null
     }
-    let found: PlannerEdit | null = null
+    let found: Edit | null = null
     for (const e of edits) {
       if (RewriteSet.inScope(e.scope, this.output)) {
         found = same(found, e, n)
@@ -1315,7 +1300,7 @@ export class OutputView {
         }
         break
       }
-      let ins: PlannerEdit | undefined = inserts[ii]
+      let ins: Edit | undefined = inserts[ii]
       if (ins !== undefined && ins.range.start > b) {
         ins = undefined
       }
@@ -1672,7 +1657,7 @@ export class OutputView {
 }
 
 /** `found`, or `e` when it is the first: two edits of one range that differ conflict. */
-function same<T extends PlannerEdit>(found: T | null, e: T, n: RangeNode): T {
+function same<T extends Edit>(found: T | null, e: T, n: RangeNode): T {
   if (found === null) {
     return e
   }
