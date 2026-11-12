@@ -783,6 +783,57 @@ export const iso = createIsomorphicFn().server(() => db.x()).client(() => 'clien
     expect(provider.code).not.toContain('import(')
   })
 
+  it('names a builder the file re-exports and the module to import it from', async () => {
+    const reExports = `export { base } from './b'
+export * from './c'
+export * as d from './c'
+`
+    const host = new MemoryHost(
+      {
+        [PAGE]: reExports,
+        '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+        '/app/src/c.ts': `import { createMiddleware } from '@tanstack/react-start'
+export const open = createMiddleware({ type: 'function' })
+`,
+      },
+      { recognizer: startRecognizer() },
+    )
+    // (the late pass's planner: it judges the module's exports)
+    const out = await host.compile(PAGE, [startEnvPlanner({ late: true })], {
+      env: clientEnv,
+      config: configOf({ late: true }),
+      lang: 'jsx',
+      inPlace: true,
+    })
+    const late =
+      'and another plugin compiles this module from a file that is not JavaScript (`.mdx`, `.vue`, `.svelte`, …), so the TanStack Start compiler cannot follow it through this module, and server code attached to it would ship to the client.'
+    expect(
+      out!.diagnostics.map((d) => ({
+        severity: d.severity,
+        text: reExports.slice(d.range!.start, d.range!.end),
+        message: d.message,
+      })),
+    ).toEqual([
+      {
+        severity: 'error',
+        text: 'base',
+        message: `This module re-exports \`base\`, a TanStack Start builder or factory, from \`./b\`, ${late} Import \`base\` from \`./b\` where you use it, and remove the re-export from this file.`,
+      },
+      {
+        severity: 'error',
+        text: "export * from './c'",
+        message: `This module re-exports what \`./c\` exports, among it \`open\`, a TanStack Start builder or factory, ${late} Import \`open\` from \`./c\` where you use it, and remove the re-export from this file.`,
+      },
+      {
+        severity: 'error',
+        text: "export * as d from './c'",
+        message: `This module re-exports what \`./c\` exports, among it \`open\`, a TanStack Start builder or factory, ${late} Import \`open\` from \`./c\` where you use it, and remove the re-export from this file.`,
+      },
+    ])
+  })
+
   it('refuses a server fn where the provider is a module derived from the file (RSC)', async () => {
     const { errors } = await late(clientEnv, {
       providerSeparate: true,

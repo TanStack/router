@@ -43,7 +43,11 @@ import {
   moduleLiteral,
   providerExportBase,
 } from '../server-fns/format'
-import type { NamespaceEscape, StartPrefetch } from '../compiler/prefetch'
+import type {
+  LateExport,
+  NamespaceEscape,
+  StartPrefetch,
+} from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ServerFnFact } from '../server-fns/registry'
 import type {
@@ -1075,8 +1079,8 @@ function planStartEnv(
       })
     }
     const prefetched = ctx.prefetched.get(START_ENV)
-    for (const range of prefetched?.lateExports ?? []) {
-      diag(LATE_MESSAGE, range)
+    for (const { range, reExport } of prefetched?.lateExports ?? []) {
+      diag(reExport ? lateReExportMessage(reExport) : LATE_MESSAGE, range)
     }
     // an RSC primitive's argument is server code only a server fn's erasure removes
     for (const { call, kind } of analysis.rscCalls) {
@@ -1224,6 +1228,21 @@ const RSC_APIS = {
 const LATE_MESSAGE =
   'Another plugin compiles this module from a file that is not JavaScript (`.mdx`, `.vue`, `.svelte`, …), so the TanStack Start compiler only sees its output and cannot keep the server code of a TanStack Start builder or factory used here out of the client. Define it in a `.ts`/`.tsx` module and import what it creates.'
 
+/** A late-pass module re-exports an open builder (`LateExport.reExport`): import it from its own module. */
+function lateReExportMessage({
+  from,
+  whole,
+  name,
+}: NonNullable<LateExport['reExport']>): string {
+  const what =
+    name === null
+      ? `what \`${from}\` exports, TanStack Start builders or factories among it`
+      : whole
+        ? `what \`${from}\` exports, among it \`${name}\`, a TanStack Start builder or factory`
+        : `\`${name}\`, a TanStack Start builder or factory, from \`${from}\``
+  return `This module re-exports ${what}, and another plugin compiles this module from a file that is not JavaScript (\`.mdx\`, \`.vue\`, \`.svelte\`, …), so the TanStack Start compiler cannot follow it through this module, and server code attached to it would ship to the client. Import ${name === null ? 'what you use' : `\`${name}\``} from \`${from}\` where you use it, and remove the re-export from this file.`
+}
+
 const FLOW_PLACES =
   'passed to a function, stored in an object, an array, a class field or another variable, awaited, rendered…'
 
@@ -1308,6 +1327,22 @@ function escapeMessage(
     }
     return flowMessage(e)
   }
+  if (
+    e.reason === 'member' &&
+    isOptionsMember(e.node) &&
+    e.value.t === 'builder' &&
+    (e.value.kind === START_KINDS.serverFn ||
+      e.value.kind === START_KINDS.middleware)
+  ) {
+    return optionsMessage(e.node)
+  }
+  if (
+    e.reason === 'return' &&
+    e.value.t === 'factory' &&
+    e.node.type === 'Identifier'
+  ) {
+    return `\`${e.node.name}\` is a TanStack Start factory, returned from ${returningFunction(file, e.node)}, whose result the compiler does not follow, so server code attached to what it creates would ship to the client. Call \`${e.node.name}\` directly where you need what it creates, instead of returning it: the compiler follows each call's chain.`
+  }
   const message = ESCAPE_MESSAGES[e.reason]
   if (e.reason === 'computed' || e.reason === 'member') {
     return message
@@ -1319,6 +1354,59 @@ function escapeMessage(
     return `${message} Or give the isomorphic fn a \`.server()\` implementation where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`
   }
   return message
+}
+
+/** A builder's `.options` (the compile allows reading options by name only: `start-analysis.ts`). */
+function isOptionsMember(
+  node: Node,
+): node is Extract<Node, { type: 'MemberExpression' }> {
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    node.property.name === 'options'
+  )
+}
+
+function optionsMessage(
+  node: Extract<Node, { type: 'MemberExpression' }>,
+): string {
+  const object = unwrapExpression(node.object)
+  const named = object.type === 'Identifier' ? `${object.name}.options` : null
+  return `${named ? `\`${named}\`` : "A builder's `.options`"} is used where the compiler cannot follow it (passed on, stored, written to, or its \`middleware\` list read), so server code attached to the builder through it would ship to the client. Read each option you need by name where you use it (\`${named ?? '.options'}.method\`).`
+}
+
+/** What the function returning `node` is, for a message: why the compiler does not follow its result. */
+function returningFunction(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+): string {
+  for (const fn of file.ancestors(node)) {
+    if (!isFunctionNode(fn)) {
+      continue
+    }
+    const p = file.parentOf(fn)
+    const kind =
+      p?.type === 'MethodDefinition' ||
+      (p?.type === 'Property' && p.value === fn)
+        ? p.kind
+        : null
+    if (kind === 'get') {
+      return 'a getter'
+    }
+    if (kind === 'set') {
+      return 'a setter'
+    }
+    if (kind !== null) {
+      return 'a method'
+    }
+    return fn.async
+      ? 'an async function'
+      : fn.generator
+        ? 'a generator'
+        : 'a function with several `return`s or one under control flow'
+  }
+  return 'a function'
 }
 
 /**
@@ -1404,7 +1492,7 @@ function flowMessage(e: Escape): string {
     // a `.server()` of its own compiles there, but such a list reaching Start throws on the server
     return e.returnedFrom === 'clientOnlyFn'
       ? `${open} \`createClientOnlyFn\` throws when called on the server, and Start reads middleware lists there too: pass the middleware ${direct}.`
-      : `${open} Pass it ${direct}, or end its chain with ${FINISH_MIDDLEWARE}.`
+      : `${open} To attach its server code later, keep it in its own \`const\` (export it to share it) and call \`.server(…)\` on that \`const\`. Otherwise pass it ${direct}, or end its chain with ${FINISH_MIDDLEWARE}.`
   }
   if (isIsoFnWithoutServer(v)) {
     return `${is(describeOpen(v))} ${where}, so the compiler cannot be sure no \`.server()\` implementation is attached to it there, which would ship server code to the client. Give it one where it is defined: ${KEEPS_SERVER_BEHAVIOUR}`

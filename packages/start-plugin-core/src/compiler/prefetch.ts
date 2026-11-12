@@ -42,7 +42,19 @@ export interface StartPrefetch {
   /** Where a project namespace with an open builder among its exports goes where the analysis does not follow it. */
   namespaceEscapes: Array<NamespaceEscape>
   /** A late-pass module's exports of an open builder: an importer reads the file, not this output, so it can't follow them. */
-  lateExports: Array<Range>
+  lateExports: Array<LateExport>
+}
+
+/** An export of an open builder from a late-pass module (`StartPrefetch.lateExports`). */
+export interface LateExport {
+  range: Range
+  /**
+   * A re-export (`export { a } from`, `export *`, an import exported): the
+   * module it comes from as written, whether it re-exports that module's
+   * exports (a star, a namespace) or one of them, and the open export's
+   * name there (null for a Start package's own).
+   */
+  reExport?: { from: string; whole: boolean; name: string | null }
 }
 
 export interface NamespaceEscape {
@@ -383,7 +395,7 @@ export async function prefetchStartValues(
   const { table } = opts
   const values = new Map<string, AbstractValue>()
   const namespaceEscapes: Array<NamespaceEscape> = []
-  const lateExports: Array<Range> = []
+  const lateExports: Array<LateExport> = []
   let relevant = false
   const file = t0.file
   const { exportValue, importedValue, reduce } = startValueReader(ctx, {
@@ -509,10 +521,17 @@ export async function prefetchStartValues(
   const judgeLateExports = async () => {
     const self = ctx.identity.canonicalId
     const summary = buildSummary(t0, table)
-    const open = async (v: AbstractValue) =>
-      takesServerCode(table, v) ||
-      (v.t === 'namespace' &&
-        (await openExport(v.specifier, new Set())) !== null)
+    /** The import of a local the module exports, as written. */
+    const importOf = (local: number | null) => {
+      for (const imp of t0.imports) {
+        for (const spec of imp.specifiers) {
+          if (spec.local === local) {
+            return { from: imp.specifier, imported: spec.imported }
+          }
+        }
+      }
+      return null
+    }
     for (const e of t0.exports) {
       const fact = 'name' in e ? ownEntry(summary.exports, e.name) : undefined
       const start = LookupPath.start()
@@ -528,10 +547,38 @@ export async function prefetchStartValues(
                   start,
                 )
               : UNKNOWN
-      if (await open(v)) {
-        lateExports.push(e.range)
-        relevant = true
+      // the value itself is open, or a namespace with an open export (its
+      // name; null: a Start package's)
+      const isNamespace = !takesServerCode(table, v)
+      let inNamespace: string | null = null
+      if (isNamespace) {
+        const open =
+          v.t === 'namespace' ? await openExport(v.specifier, new Set()) : null
+        if (open === null) {
+          continue
+        }
+        inNamespace = isKnownSpecifier(table, open) ? null : open
       }
+      relevant = true
+      const imported = e.kind === 'local' ? importOf(e.local) : null
+      const from =
+        e.kind === 'local'
+          ? imported?.from
+          : e.kind === 'expression'
+            ? undefined
+            : e.specifier
+      const name = isNamespace
+        ? inNamespace
+        : e.kind === 'reExport'
+          ? e.fromName
+          : imported && imported.imported !== '*'
+            ? imported.imported
+            : null
+      lateExports.push(
+        from === undefined
+          ? { range: e.range }
+          : { range: e.range, reExport: { from, whole: isNamespace, name } },
+      )
     }
   }
 

@@ -202,6 +202,10 @@ const supported: Array<Shape> = [
     code: `${P}const base = createServerFn()\nexport const a = base.handler(async () => db.x())\nexport const b = base.handler(async () => db.y())`,
     body: 'db.y()',
   },
+  {
+    name: "a builder's options read by name",
+    code: `${P}${MW}const base = createServerFn({ method: 'POST' })\nexport const method = base.options.method\nexport const mwType = mw.options.type\nexport const fn = base.handler(async () => db.x())`,
+  },
   // ---- joins
   {
     name: 'a builder chosen by a ternary',
@@ -574,6 +578,16 @@ const refused: Array<Refused> = [
     name: 'a property of a builder',
     code: `${P}const options = createServerFn().options\nexport const fn = createServerFn().handler(async () => db.x())\nexport const o = options`,
     at: 'createServerFn().options',
+  },
+  {
+    name: "a write to a builder's options",
+    code: `${P}const base = createServerFn({ method: 'POST' })\nbase.options.validator = (data: unknown) => db.x()\nexport const fn = base.handler(async () => db.x())`,
+    at: 'base.options.validator',
+  },
+  {
+    name: "a builder's middleware list read off its options",
+    code: `${P}const base = createServerFn().middleware([createMiddleware({ type: 'function' })])\nexport const fn = base.handler(async () => 'x')\nexport const m = (base.options.middleware as any)[0].server(async ({ next }: any) => { db.x(); return next() })`,
+    at: 'base.options.middleware',
   },
   {
     name: 'a builder awaited',
