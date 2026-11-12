@@ -269,8 +269,14 @@ export function settleRoots(
   const judge = (c: ClusterId): void => {
     const to = followSlot(c)
     if (typeof to === 'string' && extractedOutput(to)) {
-      // (it and what it uses that split chunks need: the module's)
-      members.set(c, to)
+      // (it and what it uses that split chunks need: the module's), unless
+      // it reads, at load, what the env module keeps (T: the module
+      // evaluates first; a member doing so leaves, below)
+      if (readsKept(c) === undefined) {
+        members.set(c, to)
+      } else {
+        keepFollower(c, stayPin(c, null))
+      }
     } else if (typeof to === 'string') {
       follows.set(c, to)
       derivedRoots.get(to)!.add(c)
