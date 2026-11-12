@@ -120,13 +120,27 @@ describe.each(startBundlers)('%s build', (bundler) => {
 import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-      at: 'createServerFn()',
+      at: 'base =',
     },
-    { name: 'a re-export of a builder', mdx: `export { base } from './b'\n` },
-    { name: 'a star of a module with a builder', mdx: `export * from './b'\n` },
+    {
+      name: 'a re-export of a builder',
+      mdx: `# Page
+
+export { base } from './b'
+`,
+      at: 'base',
+    },
+    {
+      name: 'a star of a module with a builder',
+      mdx: `# Page
+
+export * from './b'
+`,
+      at: 'export *',
+    },
   ])(
-    'a module exporting $name fails the client build: an importer cannot follow it',
-    async ({ mdx: source, at }: { mdx: string; at?: string }) => {
+    'a module exporting $name fails the client build at the export: an importer cannot follow it',
+    async ({ mdx: source, at }) => {
       const error: unknown = await buildStart({
         bundler,
         files: {
@@ -148,31 +162,62 @@ export const fn = base.handler(async () => 'MARK_MDX_FINISHED')
       if (!(error instanceof StartBuildError)) {
         throw error
       }
+      // at its position in the MDX (also without a map: a loader that makes
+      // none in production), never at a line of the compiled JS
+      const position = diagnosticPosition(source, at)
       expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/page.mdx',
         root: error.root,
+        position,
       })
-      // at its line in the MDX, or at none (a loader that makes no map in
-      // production), never at a line of the compiled JS
-      if (at !== undefined) {
-        const { line } = diagnosticPosition(source, at)
-        // (from line 2: Rsbuild prints `1:1` for a diagnostic without one;
-        // line 1 is the heading)
-        for (let other = 2; other <= 12; other++) {
-          if (other !== line) {
-            expect(
-              findDiagnostics(error.diagnostics, {
-                severity: 'error',
-                file: 'src/page.mdx',
-                root: error.root,
-                position: { line: other },
-              }),
-              `a diagnostic at line ${other}`,
-            ).toEqual([])
-          }
+      // (from line 2: Rsbuild prints `1:1` for a diagnostic without one;
+      // line 1 is the heading)
+      for (let other = 2; other <= 12; other++) {
+        if (other !== position.line) {
+          expect(
+            findDiagnostics(error.diagnostics, {
+              severity: 'error',
+              file: 'src/page.mdx',
+              root: error.root,
+              position: { line: other },
+            }),
+            `a diagnostic at line ${other}`,
+          ).toEqual([])
         }
       }
+    },
+    timeout,
+  )
+
+  // (the fix the refusal of a re-export gives)
+  test(
+    'a builder imported from its own module, not re-exported through the MDX file, builds, and its handler stays on the server',
+    async () => {
+      const fixed = await buildStart({
+        bundler,
+        files: {
+          'src/b.ts': files['src/b.ts'],
+          'src/page.mdx': `# Page
+
+Some *prose*.
+`,
+          'src/entry.ts': `import { base } from './b'
+import Page from './page.mdx'
+export const fn = base.handler(async () => 'MARK_MDX_REEXPORT_FIX')
+export const page = Page
+`,
+          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        ...mdxConfig,
+      })
+      expect(fixed.client.where('MARK_MDX_REEXPORT_FIX')).toBe('nowhere')
+      const url = (await fixed.client.run(`return entry.fn.url`)).result
+      const { result } = await fixed.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_MDX_REEXPORT_FIX')
     },
     timeout,
   )

@@ -699,8 +699,10 @@ describe('start-env: escape messages name the shape and a fix that compiles', ()
 const a = createMiddleware({ type: 'function' }).server(({ next }) => next())
 const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
 `
+  const openMiddlewareFix =
+    "To attach its server code later, keep it in its own `const` (export it to share it) and call `.server(…)` on that `const`. Otherwise pass it to `.middleware([…])` or to `createStart`'s `functionMiddleware` / `requestMiddleware` directly (or in an unexported `const` array only they read), or end its chain with `.server(({ next }) => next())`."
   const openMiddleware = (name: string, places: string) =>
-    `\`${name}\` is a middleware without \`.server()\`, used where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. Pass it to \`.middleware([…])\` or to \`createStart\`'s \`functionMiddleware\` / \`requestMiddleware\` directly (or in an unexported \`const\` array only they read), or end its chain with \`.server(({ next }) => next())\`.`
+    `\`${name}\` is a middleware without \`.server()\`, used where the compiler cannot follow it (${places}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${openMiddlewareFix}`
 
   test('an open middleware returned from an isomorphic implementation', async () => {
     const code = `${mwHead}const mws = createIsomorphicFn().server(() => [a, b]).client(() => [b])
@@ -763,6 +765,20 @@ export const fn = createServerFn().middleware(cfg.list).handler(async () => 'x')
         at: code.indexOf('[b]') + 1,
         text: 'b',
         message: openMiddleware('b', FLOW_PLACES),
+      },
+    ])
+  })
+
+  test('a middleware kept in an object, its server code attached later', async () => {
+    const code = `${mwHead}const mws = { open: createMiddleware({ type: 'function' }) }
+export const m = mws.open.server(({ next }) => next())
+`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf("createMiddleware({ type: 'function' }) }"),
+        text: "createMiddleware({ type: 'function' })",
+        message: `A middleware without \`.server()\` is used where the compiler cannot follow it (${FLOW_PLACES}), so the compiler cannot be sure no \`.server()\` is attached to it there, which would ship server code to the client. ${openMiddlewareFix}`,
       },
     ])
   })
@@ -913,6 +929,54 @@ register(mw)
         at: code.indexOf('mw)'),
         text: 'mw',
         message: `\`mw\` returns a middleware without \`.server()\`, and is used ${where}, so server code attached to what it returns there would ship to the client. Call it directly where you use its result: the compiler follows a call of it like the value it returns.`,
+      },
+    ])
+  })
+
+  test("a builder's options passed on, written to, or their middleware list read", async () => {
+    const code = `${flowHead}const base = createServerFn({ method: 'POST' })
+export const method = base.options.method
+const { validator } = base.options
+register(base.options)
+base.options.validator = (data: unknown) => data
+export const mws = base.options.middleware
+export const fn = base.handler(async () => validator)
+`
+    const options = (builder: string) =>
+      `\`${builder}.options\` is used where the compiler cannot follow it (passed on, stored, written to, or its \`middleware\` list read), so server code attached to the builder through it would ship to the client. Read each option you need by name where you use it (\`${builder}.options.method\`).`
+    expect(await clientDiagnostics(code)).toEqual(
+      [
+        'base.options)',
+        'base.options.validator =',
+        'base.options.middleware',
+      ].map((needle) => ({
+        severity: 'error',
+        at: code.indexOf(needle),
+        text: 'base.options',
+        message: options('base'),
+      })),
+    )
+  })
+
+  test('a factory returned from a getter or a method', async () => {
+    const code = `${flowHead}const own = { get make() { return createServerFn } }
+const api = { make() { return createMiddleware } }
+export const o = [own, api]
+`
+    const returned = (factory: string, from: string) =>
+      `\`${factory}\` is a TanStack Start factory, returned from ${from}, whose result the compiler does not follow, so server code attached to what it creates would ship to the client. Call \`${factory}\` directly where you need what it creates, instead of returning it: the compiler follows each call's chain.`
+    expect(await clientDiagnostics(code)).toEqual([
+      {
+        severity: 'error',
+        at: code.indexOf('createServerFn }'),
+        text: 'createServerFn',
+        message: returned('createServerFn', 'a getter'),
+      },
+      {
+        severity: 'error',
+        at: code.indexOf('createMiddleware }'),
+        text: 'createMiddleware',
+        message: returned('createMiddleware', 'a method'),
       },
     ])
   })

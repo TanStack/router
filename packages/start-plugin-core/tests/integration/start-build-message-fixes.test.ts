@@ -4,7 +4,8 @@
  * production builds of Vite and Rsbuild: a nested server fn the compiler
  * cannot hoist (built on a local builder; an option with a call; a local
  * it reads) and a builder the compiler cannot follow (assigned after its
- * declaration; kept in an object). Each fix builds, the client calls the
+ * declaration; kept in an object; a middleware kept in an object that gets
+ * its server code later). Each fix builds, the client calls the
  * server fn by the id it was given, and the server answers with its
  * handler, which is nowhere in the client.
  */
@@ -95,6 +96,15 @@ export const make = () => builders.authed.handler(async () => 'MARK_SECRET')
 `,
     at: "createServerFn().middleware([auth('admin')]) }",
   },
+  {
+    name: 'a middleware kept in an object, its server code attached later',
+    module: `${head}const mws = { open: createMiddleware({ type: 'function' }) }
+const marked = mws.open.server(({ next }) => next({ context: { mark: 'MARK_SECRET' } }))
+const fn = createServerFn().middleware([marked]).handler(async ({ context }) => context.mark)
+export const make = () => fn
+`,
+    at: "createMiddleware({ type: 'function' }) }",
+  },
 ]
 
 /** The fixes the messages give: `make()` returns a server fn, called with `data`. */
@@ -160,6 +170,15 @@ const fn = authed.handler(async () => 'MARK_FIX_PARTIAL')
 export const make = () => fn
 `,
     mark: 'MARK_FIX_PARTIAL',
+  },
+  {
+    name: 'the middleware in its own const, its server code attached on it',
+    module: `${head}const open = createMiddleware({ type: 'function' })
+const marked = open.server(({ next }) => next({ context: { mark: 'MARK_FIX_MW_LATER' } }))
+const fn = createServerFn().middleware([marked]).handler(async ({ context }) => context.mark)
+export const make = () => fn
+`,
+    mark: 'MARK_FIX_MW_LATER',
   },
 ]
 

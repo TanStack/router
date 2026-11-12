@@ -54,6 +54,12 @@ const getX = base.handler(async () => 'MARK_SERVER_SECRET')`),
 const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET' + props.t)`),
     at: 'props.t',
   },
+  {
+    name: 'a factory the block returns from a getter',
+    sfc: sfc(`const own = { get make() { return createServerFn } }
+const getX = () => own`),
+    at: 'createServerFn } }',
+  },
 ]
 
 /**
@@ -95,7 +101,11 @@ defineExpose({ getX })
   },
 ]
 
-/** The fixes the refusals give: one chain; the value passed in the input. */
+/**
+ * The fixes the refusals give: one chain (also the factory called where
+ * its builder is needed, not returned from a getter); the value passed in
+ * the input.
+ */
 const fixes = [
   {
     name: 'one chain',
