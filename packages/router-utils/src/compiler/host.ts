@@ -411,9 +411,8 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * Every file event, a repeat included, also re-resolves every failed
  * resolution of every env (one may hide a creation: a removal and a
  * re-creation the watcher folded into one change): a plan whose unresolved
- * specifier now resolves is a dependent; a change of a path the caches hold
- * nothing of that reads as a file is an `add`, which also re-resolves the
- * resolutions the new file may take (`shadowTest`). A registry change stales the file in every environment
+ * specifier now resolves is a dependent; an add or a change also
+ * re-resolves the resolutions the file may take (`shadowTest`). A registry change stales the file in every environment
  * that has compiled or whose bundler holds modules. Restored plans (`restorePlans`) are checked like
  * published ones. Each plan's fingerprints are checked with its host
  * (`hosts` of its key: the resolver its module resolves with). A removal
@@ -478,11 +477,6 @@ async function applyChange(
   let repeat = false
   // (a virtual module has no file to read: its event always applies)
   if (kind !== 'registry' && !isVirtualId(path)) {
-    // a change of a path the caches hold nothing of: nothing here tells a
-    // file that was there all along from one that is back (its removal was
-    // applied, and a module compiled meanwhile found nothing), so it is a
-    // creation: what looked for the file asks again
-    const created = kind === 'change' && !resolverFile && !knownAt(caches, path)
     // an event is judged by the file as it is: one delivered late (a
     // removal of a file that is back, a change of one that is gone) is
     // what the file says. A file the compiler has no language for is not
@@ -492,9 +486,6 @@ async function applyChange(
       read = await caches.rawFacts.readChange(path, readable)
       if (readable) {
         kind = read.text === null ? 'unlink' : kind === 'unlink' ? 'add' : kind
-      }
-      if (created && kind === 'change') {
-        kind = 'add'
       }
       if (read.same) {
         // no fact of the file moved. What looked for the file meanwhile,

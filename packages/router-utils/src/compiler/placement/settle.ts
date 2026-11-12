@@ -206,14 +206,6 @@ export function settleRoots(
     const kind = outputs.get(o)?.kind
     return kind === 'split' || kind === 'hydrate'
   }
-  /** Whether `d` goes to a lazy shared module `to` imports (R151): no slot of its own, several split needers, `to` one of them. */
-  const sharedWith = (d: ClusterId, to: OutputId): boolean => {
-    if (slots.has(d) || pins.has(d)) {
-      return false
-    }
-    const needers = needersOf(d)
-    return needers.length > 1 && needers.includes(to) && needers.every(lazy)
-  }
   /** The outputs reaching `d` (a provider's copy counts). */
   const needersOf = (d: ClusterId): Array<OutputId> => {
     const out: Array<OutputId> = []
@@ -535,12 +527,11 @@ export function settleRoots(
 
   /**
    * The slots of this round: each timed cluster's (`slotFor`); then O as a
-   * greatest fixed point over the clusters leaving the env module: one
-   * reading an effectful cluster that evaluates elsewhere (unless the env
-   * module keeps it, a `const`), or that a write when the module loads that
-   * stays (or goes elsewhere) would change order with, is
-   * demoted, which can demote others (a reader and what it reads evaluate
-   * in one slot, or both stay). The pairs of the demoted go to `pins`.
+   * greatest fixed point over the clusters leaving the env module: one that
+   * a write when the module loads that stays (or goes elsewhere) would
+   * change order with, or a follower whose bindings no longer go to its
+   * slot, is demoted, which can demote others. The pairs of the demoted go
+   * to `pins`.
    */
   function solveSlots(): void {
     const target = slots
@@ -568,15 +559,6 @@ export function settleRoots(
       for (const [c, to] of target) {
         const pin =
           (follows.has(c) ? followConflict(c, to, target, stays) : undefined) ??
-          // (an extracted `const`, or one in the shared module `to`
-          // imports, is ordered like a kept one: that module evaluates
-          // first)
-          events.readConflict(
-            c,
-            to,
-            target,
-            (d) => stays(d) || remaining.has(d) || sharedWith(d, to),
-          ) ??
           events.writeConflict(c, to, slotOf)
         if (pin !== undefined) {
           target.delete(c)

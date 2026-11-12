@@ -105,8 +105,7 @@ export interface PlacementInput {
  * unexported effectful one, or an eager reader of state:
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
- * (it reads, at its evaluation, `read`, which something writes), `reads`
- * (it reads `read`, an effectful or `let` binding the env module keeps).
+ * (it reads, at its evaluation, `read`, which something writes).
  * An unexported value with an identity, or a written one, that an
  * extracted export's module and other split code both need: `shared`
  * (one instance, in the env module).

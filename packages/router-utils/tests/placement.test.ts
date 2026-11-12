@@ -3653,7 +3653,6 @@ describe('ordered evaluation and movable effects', () => {
 
   it.each([
     ['reassigned', 'let', 'q = { tv: 1 }'],
-    ['a let', 'let', 'q.tv'],
     ['member-written', 'const', 'q.tv = 1'],
     ['nested-member-written', 'const', 'q.tv.x++'],
     ['member-deleted', 'const', 'delete q.tv'],
@@ -6114,28 +6113,6 @@ describe('the fixes a kept declaration is offered work when applied', () => {
     })
     expect(f.eager).toEqual([])
   })
-
-  // (h) a `let` nothing assigns is read from the route module as a `const`
-  it('offers `const` for a `let` nothing assigns (R67)', async () => {
-    const options = 'loader: () => h,\ncomponent: () => c,'
-    const r = await run(route('let h = box(1)\nconst c = [snap(h)]', options))
-    expect(r.eager.map((d) => d.code)).toEqual(['eager-split:reads'])
-    expect(r.eager[0]!.message).toContain(
-      "declare `h` with `const`, move `c` and `h` to their own module, or mark `h`'s initialiser `/* @__PURE__ */` if it has no side effects",
-    )
-    const f = await run(route('const h = box(1)\nconst c = [snap(h)]', options))
-    expect(f.eager).toEqual([])
-    expect(f.chunks.component).toContain('const c = [snap(h)]')
-    // assigned, it is no `const`: the offer goes
-    const g = await run(
-      route(
-        'let h = box(1)\nconst c = [snap(h)]',
-        options,
-        'export function reset() { h = box(2) }',
-      ),
-    )
-    expect(g.eager[0]?.message ?? '').not.toContain('with `const`')
-  })
 })
 
 describe('effectful declarations reading each other (R138)', () => {
@@ -6271,19 +6248,52 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(eager(r)).toEqual([])
   })
 
-  // control: a `let` the route module keeps still pins (R67)
-  it('keeps a declaration reading a `let` that stays', async () => {
-    const r = await split(
-      route(
-        'let a = make()\nconst b = [a, make()]',
-        'loader: () => a,\ncomponent: () => b,',
-      ),
-    )
-    expect(r.env).toContain('const b = [a, make()]')
-    const reads = eager(r).find((d) => d.code === 'eager-split:reads')
-    expect(reads?.message).toContain('`b` in /app/route.tsx')
-    expect(reads?.message).toContain('reads `a` when the module loads')
-  })
+  // `a` stays (the loader reads it), `b` only the component uses. A `let`
+  // nothing assigns reads like a `const`: the chunk imports the one
+  // instance the route module evaluated first, whether or not `b` has an
+  // effect of its own. An assigned one is judged by the writes, with that
+  // reason: a write after the read would run before it from the chunk.
+  // Source: NOTE-small-items 2d (R67's "a kept `let` still pins" revised;
+  // the first and the fifth row stayed, reported `eager-split:reads`).
+  it.each([
+    ['a `let` nothing assigns', 'let a = make()\nconst b = [a, make()]'],
+    ['a `let` nothing assigns, read alone', 'let a = make()\nconst b = [a]'],
+    ['a `const`', 'const a = make()\nconst b = [a, make()]'],
+    [
+      'a `let` assigned before the read',
+      'let a = make()\na = make()\nconst b = [a, make()]',
+    ],
+  ])(
+    'moves a declaration reading a binding the route module keeps: %s',
+    async (_, decls) => {
+      const r = await split(
+        route(decls, 'loader: () => a,\ncomponent: () => b,'),
+      )
+      expect(r.env).not.toContain('const b =')
+      expect(r.chunks.component).toContain('const b = [a')
+      expect(eager(r)).toEqual([])
+    },
+  )
+  it.each([
+    [
+      'after the read',
+      'let a = make()\nconst b = [a, make()]\na = make()',
+      'loader: () => a,',
+    ],
+    [
+      'by the loader',
+      'let a = make()\nconst b = [a, make()]',
+      'loader: () => (a = make()),',
+    ],
+  ])(
+    'keeps a declaration reading a `let` the route module assigns %s, as reading written state',
+    async (_, decls, loader) => {
+      const r = await split(route(decls, `${loader}\ncomponent: () => b,`))
+      expect(r.env).toContain('const b = [a, make()]')
+      expect(eager(r).map((d) => d.code)).toEqual(['eager-split:state'])
+      expect(eager(r)[0]!.message).toContain('uses `a` when the module loads')
+    },
+  )
 })
 
 describe('declarations only split code needs that stay in the route module', () => {
@@ -6413,73 +6423,6 @@ describe('declarations only split code needs that stay in the route module', () 
         '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 5, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
       ),
     ])
-  })
-
-  // R101: every suggested fix works. `/* @__PURE__ */` frees a call or
-  // `new` with pure arguments only: on any other initialiser (openstory's
-  // `const MCP_URL = \`${SITE_CONFIG.url}/mcp\``) it does nothing, so only
-  // the move is offered
-  describe('offers the annotation only for an initialiser that is a call or `new`', () => {
-    async function report(code: string) {
-      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
-      const planners = [
-        toySplitPlanner({
-          keys: ['component', 'errorComponent'],
-          extractExports: true,
-        }),
-      ]
-      const out = await host.compile('/app/route.tsx', planners, {
-        env: envInfo({ mode: 'build' }),
-      })
-      return (out?.diagnostics ?? []).filter((d) =>
-        d.code?.startsWith('eager-'),
-      )
-    }
-    const route = (body: Array<string>, options: Array<string>) =>
-      [
-        "import { createFileRoute } from 'toy-router'",
-        "import { CONFIG, Link, make } from './lib'",
-        ...body,
-        "export const Route = createFileRoute('/')({",
-        ...options,
-        '})',
-        '',
-      ].join('\n')
-    it.each([
-      {
-        // `BASE` is a `let` the route module keeps (the loader reads it)
-        code: 'eager-split:reads',
-        name: 'LINK',
-        body: (init: string) => [
-          `let BASE = ${init}`,
-          'const LINK = make(BASE)',
-        ],
-        options: ['loader: () => BASE,', 'component: () => LINK,'],
-      },
-    ])('$code', async ({ code, name, body, options }) => {
-      const at = (source: string) => (d: { range?: { start: number } }) =>
-        d.range?.start === source.indexOf(`${name} = `)
-      // a template literal (openstory), or a call the annotation cannot
-      // free (an argument has effects): only the move (rule L: a member
-      // read is none, `CONFIG.url()` is a call)
-      for (const init of ['`${CONFIG.url()}/mcp`', 'make(CONFIG.url())']) {
-        const source = route(body(init), options)
-        const d = (await report(source)).find(at(source))
-        expect(d, source).toMatchObject({ code })
-        expect(d!.message, source).not.toContain('@__PURE__')
-        expect(d!.message, source).toContain('own module')
-      }
-      // a call or `new`: the annotation too, and it works
-      for (const init of ['make()', "new Link('https://x')"]) {
-        const source = route(body(init), options)
-        const d = (await report(source)).find(at(source))
-        expect(d, source).toMatchObject({ code })
-        expect(d!.message, source).toContain('@__PURE__')
-        expect(d!.message, source).toContain('own module')
-        const annotated = route(body(`/* @__PURE__ */ ${init}`), options)
-        expect(await report(annotated), annotated).toEqual([])
-      }
-    })
   })
 
   it('moves a reader of state the module writes at load with that state when only split code reads both', async () => {
@@ -9449,7 +9392,7 @@ function evaluatedNames(
 }
 
 // P4: a kept declaration's message names a binding its evaluation reads,
-// for every `state` and `reads` record this file's compiles report (F1-5b:
+// for every `state` record this file's compiles report (F1-5b:
 // a holder of a function another declaration calls was said to use what
 // that function reads)
 describe('the binding a kept declaration is reported reading', () => {
@@ -9458,7 +9401,7 @@ describe('the binding a kept declaration is reported reading', () => {
     let checked = 0
     for (const { code, out } of compileLog.entries) {
       for (const d of out?.diagnostics ?? []) {
-        if (d.code !== 'eager-split:state' && d.code !== 'eager-split:reads') {
+        if (d.code !== 'eager-split:state') {
           continue
         }
         const read = /(?:uses?|reads?) `([^`]+)` when the module loads/.exec(
