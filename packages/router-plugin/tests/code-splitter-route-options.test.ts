@@ -239,7 +239,7 @@ export const fallback = () => 'fallback'
       code: `import Page, { ErrorView, Pending, loadData } from './page'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
-  loader: loadData,
+  loader: () => loadData(),
   component: Page,
   errorComponent: ErrorView,
   pendingComponent: Pending,
@@ -266,12 +266,12 @@ export const Route = createFileRoute('/')({
       loaded: 'data',
     },
     {
-      name: 'a conditional loader',
+      name: 'a loader calling a conditional',
       code: `import { isEnabled } from './flags'
 import Page, { loadData, fallback } from './page'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
-  loader: isEnabled ? loadData : fallback,
+  loader: () => (isEnabled ? loadData : fallback)(),
   component: Page,
 })`,
       expected: { component: 'page' },
@@ -301,7 +301,7 @@ return { rendered, loaded: await options.loader() }`),
       `${head}import { loadData } from './loader'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
-  loader: loadData,
+  loader: () => loadData(),
   component: () => <p>page</p>,
 })
 `,
@@ -338,6 +338,87 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route)
     expectNoProblems(await route.diagnostics())
   })
+})
+
+// A spread before `handler` in a loader object cannot replace it: the
+// handler splits inside the object, and the router reads the spread's
+// options (`staleReloadMode`) in the route module. A spread after it may
+// replace the handler: the loader stays in the route module, reported, and
+// moving the spread before `handler` (the fix the warning gives) splits it.
+describe('an object-form loader spreading options', () => {
+  const files = {
+    'loader.ts': `export const loadData = () => 'MARK_DATA'\n`,
+  }
+  const options = `const options = { staleReloadMode: 'blocking' as const }`
+
+  it.each([
+    { name: 'before `handler`', loader: '{ ...options, handler: loadData }' },
+    {
+      name: 'before a shorthand `handler`',
+      loader: '{ ...options, handler }',
+      declarations: 'const handler = () => loadData()',
+    },
+  ])(
+    'splits the handler with the spread $name, nothing reported',
+    async ({ loader, declarations = '' }) => {
+      const route = await loadRoute(
+        `${head}import { loadData } from './loader'
+${options}
+${declarations}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: ${loader},
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
+        { files, fresh: true },
+      )
+      await expectValidModules(route)
+      expect(await route.requested()).not.toContain('/loader.ts')
+      expect(await route.isLazy('loader')).toBe(true)
+      expect(
+        await route.run(
+          'return [options.loader.staleReloadMode, await renderRoute()]',
+        ),
+      ).toEqual(['blocking', expect.stringContaining('MARK_DATA')])
+      expectNoProblems(await route.diagnostics())
+    },
+  )
+
+  it.each([
+    { name: 'a spread', loader: '{ handler: loadData, ...options }' },
+    {
+      name: 'a computed key',
+      loader: "{ handler: loadData, ['staleReload' + 'Mode']: 'blocking' }",
+    },
+  ])(
+    'keeps a loader object with $name after `handler` in the route module, reported',
+    async ({ loader }) => {
+      const route = await loadRoute(
+        `${head}import { loadData } from './loader'
+${options}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: ${loader},
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
+        { files, fresh: true },
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('loader')).toBe(false)
+      expect(
+        await route.run(
+          'return [options.loader.staleReloadMode, await renderRoute()]',
+        ),
+      ).toEqual(['blocking', expect.stringContaining('MARK_DATA')])
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: 'route.tsx',
+        root: route.host.root,
+      })
+    },
+  )
 })
 
 describe('route option values', () => {

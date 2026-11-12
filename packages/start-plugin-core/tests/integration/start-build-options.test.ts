@@ -404,9 +404,12 @@ return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ??
 
   // A loader that is a server fn, in a chunk of its own: each build
   // compiles it, and the client's loader calls the server's. Written in
-  // place as the split option's value, the build fails at the server fn
-  // (R3-G7-4): Start moves a server fn written in place to the module top
+  // place as an object-form loader's handler, the build fails at the server
+  // fn (R3-G7-4): Start moves a server fn written in place to the module top
   // level, and the code splitter cannot move the same text into the chunk.
+  // As the loader itself (in place or named), the value is a call, which
+  // the compiler cannot tell from an object-form loader: the loader stays
+  // in the route module, warned at (SPEC J2.8), and runs on the server.
   const routeModule = (declarations: string, loader: string) =>
     `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -436,8 +439,10 @@ ${callByIdExports}`,
         },
       },
     })
-  const splitServerFnLoader = async (declarations: string, loader: string) => {
-    const build = await buildSplitLoader(routeModule(declarations, loader))
+  /** What the server returns to the client's call of the route's loader. */
+  const runServerFnLoader = async (
+    build: Awaited<ReturnType<typeof buildSplitLoader>>,
+  ) => {
     const requests = (
       await build.client.run(
         `${requestsOfPrelude}const route = Object.values(entry.getRouter().routeTree.children).find(
@@ -454,9 +459,11 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       )
     ).result
   }
-  // (the fix the error below gives, for each shape)
+  const splitServerFnLoader = async (declarations: string, loader: string) =>
+    runServerFnLoader(await buildSplitLoader(routeModule(declarations, loader)))
+  // (the fixes the warning and the error below give)
   test.each([
-    { name: 'a loader', loader: 'loaderFn' },
+    { name: 'a loader calling it', loader: '(ctx) => loaderFn(ctx)' },
     {
       name: "an object-form loader's handler",
       loader: '{ handler: loaderFn }',
@@ -475,9 +482,34 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
   )
   test.each([
     {
-      name: 'a loader',
+      name: 'written in place',
+      declarations: '',
       loader: `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
     },
+    {
+      name: 'declared before the route',
+      declarations: `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
+      loader: 'loaderFn',
+    },
+  ])(
+    'router.codeSplittingOptions: a loader that is a server fn $name stays in the route module, warned at, and runs on the server',
+    async ({ declarations, loader }) => {
+      const module = routeModule(declarations, loader)
+      const built = await buildSplitLoader(module)
+      expectDiagnostic(built.diagnostics, {
+        severity: 'warning',
+        file: 'src/routes/index.tsx',
+        root: built.root,
+        position: diagnosticPosition(
+          module,
+          module.indexOf(`loader: ${loader}`) + 'loader: '.length,
+        ),
+      })
+      expect(await runServerFnLoader(built)).toBe('MARK_LOADER_FN')
+    },
+    timeout,
+  )
+  test.each([
     {
       name: "an object-form loader's handler",
       loader: `{ handler: createServerFn().handler(async () => 'MARK_LOADER_FN') }`,

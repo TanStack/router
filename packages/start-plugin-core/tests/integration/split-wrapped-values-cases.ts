@@ -58,7 +58,7 @@ export const Route = createFileRoute('/')({
 })
 `
 
-/** What the route's loader gives where `run` runs (it is split: the call loads its chunk). */
+/** What the route's loader gives where `run` runs (a split one loads its chunk). */
 const runLoader = `const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
@@ -99,14 +99,38 @@ export const getRouter = () => createRouter({ routeTree })
         },
       })
 
-    // A server fn written in place, in a wrapper: Start moves it to the
-    // module top level in the server build, as it does without the wrapper
-    // (R3-G7-4), so the build fails at the server fn, and no file it wrote
-    // holds the server fn's body.
+    // A server fn written in place as the loader, in a wrapper: a call,
+    // which the compiler cannot tell from an object-form loader, so the
+    // loader stays in the route module with a warning at it (SPEC J2.8);
+    // the client ships none of the server fn's body, and the server runs it.
     test.each([
       `createServerFn().handler(async () => '${SECRET}') as any`,
       `createServerFn().handler(async () => '${SECRET}') satisfies unknown`,
       `createServerFn().handler(async () => '${SECRET}')!`,
+    ])(
+      'router.codeSplittingOptions: a loader `%s` stays in the route module, warned at, and runs on the server',
+      async (loader) => {
+        const module = routeModule(loader)
+        const built = await build(module)
+        expectDiagnostic(built.diagnostics, {
+          severity: 'warning',
+          file: 'src/routes/index.tsx',
+          root: built.root,
+          position: diagnosticPosition(module, 'createServerFn().handler'),
+        })
+        expect(await filesWithSecret(built.client.outDir)).toEqual([])
+        expect((await built.ssr.run(runLoader)).result).toEqual({
+          value: SECRET,
+        })
+      },
+      timeout,
+    )
+
+    // An object-form loader's handler that is a server fn written in place,
+    // in a wrapper: Start moves it to the module top level in the server
+    // build, as it does without the wrapper (R3-G7-4), so the build fails at
+    // the server fn, and no file it wrote holds the server fn's body.
+    test.each([
       `{ handler: createServerFn().handler(async () => '${SECRET}') as any }`,
     ])(
       'router.codeSplittingOptions: a split loader `%s` fails the build at the server fn',
@@ -136,8 +160,10 @@ export const getRouter = () => createRouter({ routeTree })
     )
 
     // A value Start compiles per environment, in a wrapper: the client's
-    // chunk holds the client's compile of it (nothing of the server's
-    // implementation), the server's chunk the server's.
+    // build holds the client's compile of it (nothing of the server's
+    // implementation), the server's build the server's. A call stays in
+    // the route module (the compiler cannot tell it from an object-form
+    // loader); a function is split, its chunk compiled for each build.
     test.each([
       {
         loader: `createServerOnlyFn(async () => '${SECRET}') as any`,
@@ -155,7 +181,7 @@ export const getRouter = () => createRouter({ routeTree })
         client: { value: 'client value' },
       },
     ])(
-      'router.codeSplittingOptions: a split loader `$loader` runs as compiled for each build',
+      'router.codeSplittingOptions: a loader `$loader` configured for splitting runs as compiled for each build',
       async ({ loader, client }) => {
         const built = await build(routeModule(loader))
         expect(await filesWithSecret(built.client.outDir)).toEqual([])

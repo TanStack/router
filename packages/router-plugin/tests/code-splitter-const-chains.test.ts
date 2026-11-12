@@ -169,38 +169,43 @@ export const Route = createFileRoute('/')({
       root: route.host.root,
     })
   })
-})
 
-// Known bugs (oracle/KNOWN-BUGS.md), source: REVIEW-design5-final findings
-// 5 and 6
-describe('known bugs', () => {
-  // Bug: a loader naming an object the compiler cannot read (imported,
-  // returned by a call, spread) is exported from its chunk as it is, and
-  // the route's lazy loader calls it as a function. The text cannot tell it
-  // from an imported loader function (design pending, FOLLOW-UPS).
-  // Impact: the route's loader throws "is not a function".
-  it.fails(
-    'an object-form loader imported from another module returns its data',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { l } from './loaders'
+  // Source: REVIEW-design5-final finding 6 (the chunk exported the object
+  // and the route's lazy loader called it). The compiler cannot see whether
+  // an import is a function or an object whose options the router reads
+  // from the route module: the loader stays there, reported.
+  it('imported from another module stays in the route module, returns its data, reported', async () => {
+    const route = await loadRoute(
+      `${head}import { l } from './loaders'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
   loader: l,
   component: () => <p>{Route.useLoaderData()}</p>,
 })
 `,
-        {
-          fresh: true,
-          files: {
-            'loaders.ts': `export const l = { handler: () => 'MARK_DATA' }\n`,
-          },
+      {
+        fresh: true,
+        files: {
+          'loaders.ts': `export const l = { handler: () => 'MARK_DATA', staleReloadMode: 'blocking' }\n`,
         },
-      )
-      expect(await route.run('return renderRoute()')).toContain('MARK_DATA')
-    },
-  )
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(false)
+    expect(await route.run('return options.loader.staleReloadMode')).toBe(
+      'blocking',
+    )
+    expect(await route.run('return renderRoute()')).toContain('MARK_DATA')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+  })
+})
 
+// Known bugs (oracle/KNOWN-BUGS.md), source: REVIEW-design5-final finding 5
+describe('known bugs', () => {
   // Bug: a write to the options object through another name of it
   // (`const z = options; z.server = …`) is not seen (the mutation model
   // follows no alias): the literal's `server` is removed, the write stays

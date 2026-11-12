@@ -414,7 +414,11 @@ dir)` is not a conflict by itself.
   and the run warns once naming the file, in every mode. If our analysis is the obstacle, that is a bug (a goal pin).
   Options the compiler cannot read statically (an options object imported from another module, factory-built
   options, a cast it does not unwrap) fall under this clause: split correctly or report once naming the file (the dev
-  full-reload allowance for factory-built options stands). Under Start, the client build never ships their
+  full-reload allowance for factory-built options stands). A `loader` value it cannot read (an import, a call, a
+  conditional) may be an object-form loader whose options (`staleReloadMode`) the router reads from the route module
+  before a chunk could load: it stays there and the run warns (fix: write the loader in the route options, or call the
+  function from one written there), as does a loader object with a spread or computed key after its `handler` (fix:
+  the spread before `handler`). Under Start, the client build never ships their
   `ssr`/`server`/`headers` silently: a spread, options from a call or an import or written to after their declaration,
   and a computed key build and warn once, saying what isn't split or removed, that server code in it ships, and what
   to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
