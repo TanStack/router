@@ -16,6 +16,7 @@ import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   diagnosticPosition,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
@@ -423,6 +424,55 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
+    // R101: each fix the build error offers for children that assign an
+    // exported `let` (`hydrate-module-write`, the planner rows of
+    // tests/planners/hydrate.test.ts), applied: the build reports nothing
+    // for the page, the children hydrate, and a click's assignment is what
+    // the page's importers read (the live binding, not a snapshot).
+    // `split={false}` keeps the children's code in the page; where the
+    // component declared outside the boundary loads is the bundler's call.
+    test.each([
+      {
+        name: 'split={false}',
+        page: 'moduleWriteSplitFalse',
+        file: 'src/pages/module-write-split-false.tsx',
+        clicks: 'splitFalseClicks',
+        where: ['eager'],
+      },
+      {
+        name: 'the writer in a component declared outside the boundary',
+        page: 'moduleWriteOutside',
+        file: 'src/pages/module-write-outside.tsx',
+        clicks: 'outsideClicks',
+        where: ['eager', 'lazy'],
+      },
+    ])(
+      'an exported let the children assign, fixed with $name, builds and stays live',
+      async ({ page, file, clicks, where }) => {
+        const build = await sharedApp()
+        expect(
+          findDiagnostics(problems(build.diagnostics), {
+            file,
+            root: build.root,
+          }),
+        ).toEqual([])
+        expect(where).toContain(build.client.where(`${page}-marker`))
+        expect(
+          await hydrateShared(
+            page,
+            [`${page}-marker`],
+            `entry.pages.${clicks}`,
+          ),
+        ).toEqual({
+          text: `${page}-marker clicked`,
+          recoverableErrors: [],
+          consoleErrors: [],
+          read: 1,
+        })
+      },
+      timeout,
+    )
+
     // Source maps point at the user's code: a throw in the children, which
     // run from their lazy chunk on the client, maps through the chunk's
     // emitted source map to its line in the page. The column is left out:
@@ -751,6 +801,31 @@ export function UsedPlainWidget() {
     `initialize('widgetCall', ${widgetComponent('widgetCall')})`,
     `<i> widgetCall-boundary-marker</i>`,
   ),
+  'src/pages/module-write-split-false.tsx': `import { useState } from 'react'
+import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
+export let splitFalseClicks = 0
+export function Page() {
+  const [clicked, setClicked] = useState(false)
+  return (
+    <Hydrate when={load()} split={false}>
+      <button onClick={() => { splitFalseClicks++; setClicked(true) }}>moduleWriteSplitFalse-marker{clicked ? ' clicked' : ''}</button>
+    </Hydrate>
+  )
+}
+`,
+  'src/pages/module-write-outside.tsx': `import { useState } from 'react'
+import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
+export let outsideClicks = 0
+function Counter() {
+  const [clicked, setClicked] = useState(false)
+  return <button onClick={() => { outsideClicks++; setClicked(true) }}>moduleWriteOutside-marker{clicked ? ' clicked' : ''}</button>
+}
+export function Page() {
+  return <Hydrate when={load()}><Counter /></Hydrate>
+}
+`,
   'src/pages.ts': `export { Page as chartProject } from './pages/chart-project'
 export { Page as chartPlainWidgets } from './pages/chart-plain-widgets'
 export { Page as chartPureWidgets } from './pages/chart-pure-widgets'
@@ -763,6 +838,8 @@ export { routes } from './route-pages'
 export { UsedHydratedWidget } from './hydrated-widgets'
 export { UsedPlainWidget } from './plain-widgets'
 export { Page as throwing } from './pages/throwing'
+export { Page as moduleWriteSplitFalse, splitFalseClicks } from './pages/module-write-split-false'
+export { Page as moduleWriteOutside, outsideClicks } from './pages/module-write-outside'
 `,
   'src/route-pages.ts': routesPageModule(sharedRoutes),
 }
