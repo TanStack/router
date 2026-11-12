@@ -2963,6 +2963,23 @@ describe('route-module specifics (lane router)', () => {
     expect(r?.diagnostics).toEqual([])
   })
 
+  // an unused declaration with an effect of its own reading only imports
+  // stays where it was written: imports' users place only what runs
+  // nothing (the dead-code page: a namespace calling `track`)
+  it('keeps an unused declaration with an effect of its own reading only imports', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { track } from './track'
+      namespace Unused { export const value = track('namespace') }
+      export const Route = createFileRoute('/')({ component: () => track('component') })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain(
+      "namespace Unused { export const value = track('namespace') }",
+    )
+    expect(r.chunks.component).not.toContain('namespace')
+  })
+
   it('treats a var declared in a for head as a binding of that statement', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -7224,6 +7241,16 @@ describe('statements: what they change (R146 amendment)', () => {
         expect(r.chunks.component).not.toContain(statement)
       },
     )
+
+    // a built-in that changes its argument (`Reflect.set`, as
+    // `Object.assign`) changes that binding, not the global: the statement
+    // follows the enum after the read
+    it('a binding a built-in changes, after a read of it', async () => {
+      const decls =
+        "enum E { A = 'OLD' }\nconst y = E.A\nReflect.set(E, 'A', 'NEW')"
+      const r = await split(route(decls, 'component: () => y,'))
+      moves(r, decls)
+    })
 
     // a declaration's own write that changes another module's object is
     // judged the same way

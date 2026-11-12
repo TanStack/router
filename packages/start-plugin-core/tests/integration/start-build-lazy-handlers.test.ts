@@ -70,17 +70,19 @@ export const addOne = createServerFn().handler(async () => ++calls)
 export const addTen = createServerFn().handler(async () => (calls += 10))
 `,
   // state only handlers read, set by an effect in its declaration or in a
-  // statement after it, and by a pure value (the control)
+  // statement after it, and by a pure value (the control); `seed` is
+  // imported (a method of `globalThis` would be a change of a global, which
+  // keeps a statement and not a declaration: R146 amendment)
   'seed.ts': `;(globalThis as any).seeded = []
-;(globalThis as any).seed = (name: string) => {
+export const seed = (name: string) => {
   ;(globalThis as any).seeded.push(name)
   return 1
 }
 `,
-  'seeded.ts': `${head}import './seed'
-let initialised = globalThis.seed('initialiser')
+  'seeded.ts': `${head}import { seed } from './seed'
+let initialised = seed('initialiser')
 let assigned = 0
-assigned = globalThis.seed('assignment')
+assigned = seed('assignment')
 let pure = 0
 pure = 5
 export const readInitialised = createServerFn().handler(async () => initialised)

@@ -247,11 +247,11 @@ ${source}${component('y')}`,
     timeout,
   )
 
-  // reported (no order rule, rule L): the member read is no effect and
-  // moves with the chunk; the call of an imported function stays (it
-  // touches an import) and writes nothing it is handed, for the compiler
+  // the call of an imported function changes nothing the compiler sees
+  // (R146 amendment) and follows the enum it reads into the chunk, after the
+  // read: the read keeps the first value
   test(
-    'an imported function: a read before the write reads the written value',
+    'an imported function: a read before the write keeps the first value',
     async () => {
       const result = await render(
         `${head}enum E { A = 'MARK_OLD' }
@@ -261,7 +261,7 @@ write(E)
 ${component('y')}`,
         { 'write.ts': `export const write = (o: any) => { o.A = 'NEW' }\n` },
       )
-      expect(result).toBe('<p>NEW</p>')
+      expect(result).toBe('<p>MARK_OLD</p>')
     },
     timeout,
   )
