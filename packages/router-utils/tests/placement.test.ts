@@ -8463,6 +8463,21 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       "Sentry.setContext('flags', flags)",
       'move `flags` and the statements using it when the module loads to their own module',
     )
+    // that fix, applied: the route module re-exports `flags` from its own
+    // module, and nothing is reported
+    const own = await report(
+      route(
+        "import { flags } from './flags'\nconst base = make()\nexport { flags }",
+        'beforeLoad: () => base, component: () => { flags.base = base; return flags }',
+      ),
+      undefined,
+      {
+        '/app/flags.ts': `import * as Sentry from '@sentry/react'\nexport const flags = { beta: false }\nSentry.setContext('flags', flags)\n`,
+      },
+      true,
+    )
+    expect(own.diagnostics).toEqual([])
+    expect(own.chunks.component).toContain('flags.base = base')
   })
 
   // (the statement itself when only a function it calls names the binding,
