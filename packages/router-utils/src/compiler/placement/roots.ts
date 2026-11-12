@@ -96,6 +96,17 @@ export function seedRoots(
       const { start, end } = units[u]!.range
       return scopedAway.some((r) => r.start < end && start < r.end)
     })
+  // an export the planners keep (the route: its chunks import it) stays,
+  // and with it whatever cluster it joins (a route option value writing
+  // another export at load)
+  const holdsKept = (cl: Cluster): boolean =>
+    cl.units.some((u) => {
+      const unit = units[u]!
+      return (
+        unit.exported.length > 0 &&
+        unit.declares.some((s) => !extractions.has(s))
+      )
+    })
   const candidates = new Map<ClusterId, Candidate>()
   for (const [sym, output] of extractions) {
     const c = clusterOfSym.get(sym)
@@ -107,6 +118,7 @@ export function seedRoots(
       cl.kind !== 'declaration' ||
       cl.gens.length > 0 ||
       rendersOtherwise(cl) ||
+      holdsKept(cl) ||
       // a reassigned export stays: its writers would assign an import
       t1.mutation.isReassigned(sym, liveInEnv) ||
       // a binding a sub-region writes (Hydrate children, a split option
