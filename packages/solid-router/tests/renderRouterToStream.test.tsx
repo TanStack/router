@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import {
+  createHydrationSerializer,
+  getLocalHeaderScript,
+} from '@solidjs/web/serialization'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
-import { createMemoryHistory, createRootRoute, createRouter } from '../src'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  createSerializationAdapter,
+} from '../src'
 import type * as SolidWeb from 'solid-js/web'
 
 const solidMocks = vi.hoisted(() => ({
@@ -29,6 +38,9 @@ afterEach(() => {
   solidMocks.renderToStream.mockReset()
   solidMocks.pipeTo.mockReset()
   vi.restoreAllMocks()
+  delete (window as any).$_TSR
+  delete (window as any)._$HY
+  delete (window as any).$R
 })
 
 async function buildRouter() {
@@ -54,6 +66,158 @@ function drainBody(response: Response) {
     }
   })().catch(() => true)
 }
+
+class Money {
+  constructor(public readonly cents: number) {}
+
+  format() {
+    return `$${(this.cents / 100).toFixed(2)}`
+  }
+}
+
+const moneyAdapter = createSerializationAdapter({
+  key: 'Money',
+  test: (value): value is Money => value instanceof Money,
+  toSerializable: (value) => value.cents,
+  fromSerializable: (cents: number) => new Money(cents),
+})
+
+function installPendingTsrBootstrap() {
+  return ((window as any).$_TSR = {
+    initialized: false,
+    buffer: [] as Array<() => void>,
+    p(script: () => void) {
+      !this.initialized ? this.buffer.push(script) : script()
+    },
+  })
+}
+
+function installMoneyTransformer(tsr: {
+  buffer: Array<() => void>
+  t?: Map<string, (value: number) => Money>
+}) {
+  tsr.t = new Map([['Money', (cents: number) => new Money(cents)]])
+  tsr.buffer.splice(0).forEach((script) => script())
+}
+
+async function getMoneyHydrationPayload() {
+  solidMocks.pipeTo.mockImplementationOnce(
+    async (writable: WritableStream<Uint8Array>) => {
+      const writer = writable.getWriter()
+      await writer.write(
+        new TextEncoder().encode('<html><body>solid</body></html>'),
+      )
+      await writer.close()
+    },
+  )
+  solidMocks.renderToStream.mockImplementationOnce(
+    () => ({ pipeTo: solidMocks.pipeTo }) as any,
+  )
+
+  const router = await buildRouter()
+  router.options.serializationAdapters = [moneyAdapter]
+  const abortController = new AbortController()
+
+  const response = unwrapResponse(
+    await renderRouterToStream({
+      request: new Request('http://localhost/', {
+        signal: abortController.signal,
+      }),
+      router,
+      responseHeaders: new Headers(),
+      children: () => null,
+    }),
+  )
+
+  const options = solidMocks.renderToStream.mock.calls[0]![1] as {
+    plugins: Array<any>
+    serializer?: typeof createHydrationSerializer
+  }
+  const payloads: Array<string> = []
+  const serializer = (options.serializer ?? createHydrationSerializer)({
+    plugins: options.plugins,
+    scopeId: '',
+    onData: (payload) => payloads.push(payload),
+  })
+  serializer.write('money', new Money(1234))
+  serializer.flush()
+
+  abortController.abort()
+  await drainBody(response)
+  router.serverSsr?.cleanup()
+
+  return payloads.join(';')
+}
+
+function installSolidSerializationHeader() {
+  new Function(getLocalHeaderScript(''))()
+}
+
+describe('renderRouterToStream - serialization adapters', () => {
+  test('defers adapter payloads until hydration installs the transformer map', async () => {
+    const payload = await getMoneyHydrationPayload()
+    ;(window as any)._$HY = { r: {} }
+    installSolidSerializationHeader()
+
+    expect(() => new Function(payload)()).not.toThrow()
+
+    const earlyTsr = (window as any).$_TSR
+    expect(earlyTsr.buffer).toHaveLength(1)
+    expect((window as any)._$HY.r.money).toBeUndefined()
+
+    installMoneyTransformer(earlyTsr)
+    expect((window as any)._$HY.r.money).toBeInstanceOf(Money)
+    expect((window as any)._$HY.r.money.format()).toBe('$12.34')
+    ;(window as any)._$HY = { r: {} }
+    installSolidSerializationHeader()
+    const pendingTsr = installPendingTsrBootstrap()
+
+    expect(() => new Function(payload)()).not.toThrow()
+    expect(pendingTsr.buffer).toHaveLength(1)
+    expect((window as any)._$HY.r.money).toBeUndefined()
+
+    installMoneyTransformer(pendingTsr)
+    expect((window as any)._$HY.r.money).toBeInstanceOf(Money)
+    expect((window as any)._$HY.r.money.format()).toBe('$12.34')
+    ;(window as any)._$HY = { r: {} }
+    installSolidSerializationHeader()
+    const initializedTsr = installPendingTsrBootstrap()
+    installMoneyTransformer(initializedTsr)
+    initializedTsr.initialized = true
+
+    expect(() => new Function(payload)()).not.toThrow()
+    expect(initializedTsr.buffer).toHaveLength(0)
+    expect((window as any)._$HY.r.money).toBeInstanceOf(Money)
+    expect((window as any)._$HY.r.money.format()).toBe('$12.34')
+  })
+
+  test('uses Solid default serialization when adapters are not configured', async () => {
+    const abortController = new AbortController()
+    solidMocks.renderToStream.mockImplementationOnce(
+      () => ({ pipeTo: () => Promise.resolve() }) as any,
+    )
+    const router = await buildRouter()
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          signal: abortController.signal,
+        }),
+        router,
+        responseHeaders: new Headers(),
+        children: () => null,
+      }),
+    )
+
+    const options = solidMocks.renderToStream.mock.calls[0]![1]
+    expect(options).not.toHaveProperty('serializer')
+    expect(options.plugins).toBeUndefined()
+
+    abortController.abort()
+    await drainBody(response)
+    router.serverSsr?.cleanup()
+  })
+})
 
 describe('renderRouterToStream - bot abort', () => {
   test('request abort during bot wait terminates before rendering starts', async () => {
