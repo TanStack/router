@@ -2,13 +2,12 @@
  * State read or written through another name, real builds (Vite and Rspack
  * client builds, mounted in a DOM). A read through an alias, a holder or a
  * spread reads the object the other name names: it keeps the value the
- * source reads although the write is to the original binding (REVIEW
- * design 2 step 4, finding 1). A call of a method named like an array's
+ * source reads although the write is to the original binding. A call of a method named like an array's
  * mutator (`push`, `set`, `add`) on an object the module defines runs that
- * object's code: it keeps its order with the effects after it (finding 2).
+ * object's code: it keeps its order with the effects after it.
  * A write through another name (an alias, a holder) writes the object that
  * name holds: a read of it through its first name keeps the value the
- * source reads (REVIEW design 2 final, finding 1).
+ * source reads.
  */
 import { describe, expect, test } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'

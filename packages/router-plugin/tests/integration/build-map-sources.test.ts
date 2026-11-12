@@ -1,7 +1,7 @@
 /**
  * The emitted source maps of a split route name the route file once, as the
- * file it is (DECISIONS D3: a map's `sources` is the file's path without the
- * compiler's query): the chunk of the split component, the route module and
+ * file it is (a map's `sources` is the file's path without the compiler's
+ * query): the chunk of the split component, the route module and
  * the module they share each name `routes/index.tsx`, never
  * `routes/index.tsx?tsr-split=…`, hold its text as written, and map a
  * position of the split component's code to its line in the route file. A

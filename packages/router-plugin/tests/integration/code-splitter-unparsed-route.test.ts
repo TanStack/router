@@ -1,6 +1,6 @@
 /**
  * A route module that does not parse never silently drops out of a build
- * (R86, SPEC J2.8): the route generator cannot read it, so a build that
+ * (SPEC J2.8): the route generator cannot read it, so a build that
  * does not watch fails, naming the file, also where the bundler's own
  * transpiler lets it through. The grammar error here
  * (`let label!: string = '…'`: a definite assignment assertion with an

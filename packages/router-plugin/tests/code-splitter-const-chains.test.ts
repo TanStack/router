@@ -1,10 +1,7 @@
 /**
- * Route option values named through module-level `const`s (design 5 I4):
- * naming a value through one or several unwritten `const`s, or wrapping it
- * in `as`, changes neither the split nor what is reported. The options
- * object, a spread in it and an object-form loader read the same through a
- * chain of consts as written inline; a chain whose object is written to, or
- * shared with other code, keeps the warning the inline form gets.
+ * Route option values named through module-level `const`s: a spread in the
+ * options object reads the same through a chain of unwritten consts as
+ * written inline.
  */
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'

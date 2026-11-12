@@ -1,6 +1,5 @@
 /**
- * A split loader whose value the compiler cannot read (SPEC J2.3, J2.8;
- * source: REVIEW-design5-final finding 6): an import, a call or any other
+ * A split loader whose value the compiler cannot read (SPEC J2.3, J2.8): an import, a call or any other
  * value that is no function or object literal through the route file's
  * consts may be a function or an object-form loader (`{ handler,
  * staleReloadMode }`), whose options the router reads from the route module

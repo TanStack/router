@@ -1,16 +1,7 @@
 /**
- * The ids of split modules and the specifiers that import them keep the
- * format of the Babel splitter (main), as an app's build configuration
- * reads them: a compatibility surface, not the freedom of SPEC §5.3. Apps
- * name their webpack and Rspack chunks from `chunkGroup.origins[].request`
- * (`/routes/<file>.tsx?tsr-split=<a>---<b>`) and their Vite chunks from
- * module ids (`manualChunks`), with the default groupings and with
- * `codeSplitGroupings`. A split group's `import()` specifier is the route
- * file's absolute path (forward slashes) with `?tsr-split=` and the group's
- * options sorted and joined by `---`; the modules main had no counterpart
- * for (code several groups share, an extracted export) are named in the
- * same style. Each route file is one module, however its outputs import it.
- * Runs in the integration smoke set (Windows: `C:\` paths).
+ * Split modules are imported through specifiers holding the route file's
+ * absolute path (`…/routes/<file>.tsx?tsr-split=…`), with the default
+ * groupings and with `codeSplitGroupings`.
  */
 import { expect, test } from 'vitest'
 import { build, rootRoute } from '../build-harness'

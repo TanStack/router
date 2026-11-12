@@ -1078,8 +1078,7 @@ function Page() {
     },
   )
 
-  // (R138, design 2 step 5: both evaluate in the component's chunk, in
-  // source order; the row asserted that both stayed in the route module)
+  // (both evaluate in the component's chunk, in source order)
   it('moves one another one reads with it, in source order', async () => {
     expect(
       await observe(

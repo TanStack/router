@@ -3,11 +3,10 @@
  * (`memo(function Page() { didInit = true })`): the write may run at any
  * time, but when nothing else of the module touches that state, it and the
  * state load with the component's chunk, so the option is split, with no
- * warning (REVIEW design 2 step 4, finding 3; the same write at load is
- * split already). Another reader keeps the option in place, wherever it
+ * warning (the same write at load is split already). Another reader keeps the option in place, wherever it
  * evaluates: one in a module two chunks share too, which would otherwise
  * import the state from the component's chunk while that chunk imports it
- * (REVIEW design 2 final, finding 2). Real builds, mounted in a DOM.
+ * Real builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'

@@ -505,7 +505,7 @@ suite(
 
 // ---- where a non-copied export lands ------------------------------------------
 // An exported function over module state is not copied: the chunk imports
-// its extracted module (R77 amendment). That module is reachable from the
+// its extracted module. That module is reachable from the
 // entry (the route module re-exports it) and from the chunk; the copy rule
 // exists because Rolldown < 1.1.5 and a user `manualChunks` group merging
 // into the entry placed such a module with the entry (tanstack.com). Where

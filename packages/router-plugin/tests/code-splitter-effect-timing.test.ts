@@ -1,12 +1,7 @@
 /**
- * When an effect that sets state only the split component reads runs, on
- * the Vite dev server (`route-app.ts`): the same whether the module writes
- * the state in its declaration (`let calls = seed()`) or in a statement
- * after it (`calls = seed()`, `calls += seed()`). Moving an initialiser to
- * a lazy chunk is allowed (G3; DECISIONS R29/R31), so either may run at load
- * or at the first render, but both run at the same time, once, with the
- * value the code gives. A write of a pure value is the control. Builds are
- * in integration/code-splitter-effect-timing.test.ts.
+ * On the Vite dev server (`route-app.ts`): a class only the split component
+ * uses, with a decorator, keeps the order of the decorator's effect and the
+ * effects written after it.
  */
 import { describe, expect, it } from 'vitest'
 import { head, loadRoute } from './route-app'

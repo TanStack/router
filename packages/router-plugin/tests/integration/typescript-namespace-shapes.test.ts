@@ -1,7 +1,7 @@
 /**
- * The TypeScript declarations whose name isn't a plain identifier statement:
- * `namespace A.B` declares `A`, and `export import R = N.v` declares and exports
- * `R`. A split component reading them gets the binding on every bundler.
+ * A TypeScript declaration whose name isn't a plain identifier:
+ * `namespace A.B` declares `A`. A split component reading a value typed
+ * with it renders.
  */
 import { expect, test } from 'vitest'
 import { build, head, rootRoute } from '../build-harness'
@@ -21,7 +21,7 @@ const component = (read: string) =>
   `export const Route = createFileRoute('/')({ component: () => <p>{${read}}</p> })\n`
 
 test(
-  'a namespace of types only stays out of every chunk',
+  'a split component reading a value typed with a namespace of types only renders',
   async () => {
     const app = await build({
       bundler: 'vite',

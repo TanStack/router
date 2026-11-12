@@ -2,7 +2,7 @@
  * A `Route` export sharing its name with a declaration. A type has no runtime
  * value: the route splits and nothing is said. A second value isn't a route
  * the compiler can read: the page lands in the route module and the build warns
- * once, naming the file (R78).
+ * once, naming the file.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
