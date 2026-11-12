@@ -68,6 +68,8 @@ export interface Touch {
   sym: SymbolId
   at: number
   cluster: ClusterId
+  /** The region whose evaluation touches it. */
+  region: RegionId
 }
 
 /** What statements change (`Events.unitChanges`, `Events.statementChanges`). */
@@ -110,6 +112,12 @@ export interface Pin {
   later?: number
   /** `written`: the binding of the code that uses `binding` when the module loads, which the statement's own code changes later (V). */
   reader?: SymbolId
+  /**
+   * `state`: the evaluation touches `binding` only in what it hands to a
+   * call, which may or may not run it then: the callee as written (`''`:
+   * too long to quote).
+   */
+  handedTo?: string
 }
 
 export interface Events {
@@ -176,10 +184,13 @@ export function eventTable(
     r: RegionId,
     c: ClusterId,
     visit: (t: Touch) => boolean,
+    everyCallRuns = false,
   ): boolean => {
     const touch = (sym: SymbolId, at: number): boolean => {
       const d = clusterOfSym.get(sym)
-      return d !== undefined && d !== c && visit({ sym, at, cluster: d })
+      return (
+        d !== undefined && d !== c && visit({ sym, at, cluster: d, region: r })
+      )
     }
     // (and what the generated text of what it runs names: a server fn a
     // planner moved out of a body it calls)
@@ -190,11 +201,17 @@ export function eventTable(
         symbols.isModuleLevel(ref.sym) &&
         touch(ref.sym, at),
       (g, at) => symbols.isModuleLevel(g.sym) && touch(g.sym, at),
+      everyCallRuns,
     )
   }
-  function touches(c: ClusterId, visit: (t: Touch) => boolean): boolean {
+  /** What `c`'s evaluation touches; `everyCallRuns`: as if every call ran what it is handed (the extraction check, R152). */
+  function touches(
+    c: ClusterId,
+    visit: (t: Touch) => boolean,
+    everyCallRuns = false,
+  ): boolean {
     for (const r of clusters[c]!.regions) {
-      if (touchesOfRegion(r, c, visit)) {
+      if (touchesOfRegion(r, c, visit, everyCallRuns)) {
         return true
       }
     }
@@ -239,11 +256,39 @@ export function eventTable(
     return touchers
   }
 
-  const statePin = (t: Touch, w: Write): Pin => ({
-    reason: 'state',
-    other: { at: w.at },
-    binding: t.sym,
-  })
+  /**
+   * The callee of the call a touch is handed to (a function it is handed
+   * holds the touch, or a name handed to it is the touch), if any: what
+   * that call does with it is unknown (R152 holds only what the framework
+   * calls later).
+   */
+  const handedTo = (t: Touch): string | undefined => {
+    const calls = graph.callsOf(t.region)
+    if (calls === null) {
+      return undefined
+    }
+    const call =
+      calls.callbacks.find((f) => f.argument && f.start <= t.at && t.at < f.end)
+        ?.call ?? calls.names.find((n) => n.start === t.at)?.call
+    if (call === undefined) {
+      return undefined
+    }
+    const callee = input.code.slice(call.calleeStart, call.calleeEnd)
+    return callee.length > 40 || callee.includes('\n') ? '' : callee
+  }
+  const statePin = (c: ClusterId, t: Touch, w: Write): Pin => {
+    const handed = handedTo(t)
+    return {
+      reason: 'state',
+      other: { at: w.at },
+      binding: t.sym,
+      // (only through what it hands to calls: no touch of it elsewhere)
+      ...(handed !== undefined &&
+        !touches(c, (u) => u.sym === t.sym && handedTo(u) === undefined) && {
+          handedTo: handed,
+        }),
+    }
+  }
 
   /*
    * What no round changes of `c`'s evaluation, walked once per cluster,
@@ -289,13 +334,13 @@ export function eventTable(
       if (w !== undefined && !ownLate(c, t.sym)) {
         // V ends the walk: such a cluster takes no slot, so nothing asks
         // the rest of its spans
-        found.late = statePin(t, w)
+        found.late = statePin(c, t, w)
         return true
       }
       if (found.later === null) {
         const l = graph.laterWrite(t.sym, t.at, c)
         if (l !== undefined) {
-          found.later = statePin(t, l)
+          found.later = statePin(c, t, l)
         }
       }
       return false
@@ -374,16 +419,23 @@ export function eventTable(
     // (a binding of the source first: one a planner generated exists in
     // this build only, and is not reported when it is the only one)
     let found: SymbolId | undefined
-    touches(c, (t) => {
-      if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
-        if (symbols.kind(t.sym) === 'source') {
-          found = t.sym
-          return true
+    // (every call runs what it is handed: an extracted export evaluates
+    // before the route module, and a call holding a function reading what
+    // that module keeps may run it then, R152)
+    touches(
+      c,
+      (t) => {
+        if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
+          if (symbols.kind(t.sym) === 'source') {
+            found = t.sym
+            return true
+          }
+          found ??= t.sym
         }
-        found ??= t.sym
-      }
-      return false
-    })
+        return false
+      },
+      true,
+    )
     return found
   }
 
@@ -558,8 +610,10 @@ export function eventTable(
       // touches a write after it in the source would run before it
       // (`component: wrap(Page)`, then `Page.displayName = 'P'`). A write
       // at an unknown time that only the value's output runs
-      // (`memo(function Page() { didInit = true })`) pins it only when the
-      // binding is not confined there, as a write at load by the value.
+      // (`wrap(flag ? render : Fallback)`, `render` writing `seen`) pins it
+      // only when another evaluation touches the binding at load (`used`):
+      // one the route module keeps for a later reader is written later
+      // wherever that function runs (small item 2b, R149 answer D).
       touchesOfRegion(r.id, c, (t) => {
         if (!writesOfSym.has(t.sym)) {
           return false
@@ -567,8 +621,10 @@ export function eventTable(
         const late = lateOf(t.sym)
         const later = graph.laterWrite(t.sym, t.at, c) !== undefined
         const why =
-          late === 'inside' && !ownLate(c, t.sym)
-            ? unconfined(c, hr!, t.sym)
+          late === 'inside' &&
+          !ownLate(c, t.sym) &&
+          unconfined(c, hr!, t.sym) === 'used'
+            ? 'used'
             : null
         if ((late === null || (late === 'inside' && why === null)) && !later) {
           return false

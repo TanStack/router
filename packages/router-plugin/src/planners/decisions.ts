@@ -99,7 +99,8 @@ export interface SplitPlan {
   shadowing: ReadonlySet<RouteOption>
 }
 
-const SPLITTABLE_KEYS: ReadonlyArray<string> = splitRouteIdentNodes
+/** The options the router planner splits: the components and the loader, values the router calls later. */
+export const SPLITTABLE_KEYS: ReadonlyArray<string> = splitRouteIdentNodes
 
 /** The splittable options that are components (every one but `loader`). */
 export const COMPONENT_KEYS: ReadonlyArray<string> = SPLITTABLE_KEYS.filter(

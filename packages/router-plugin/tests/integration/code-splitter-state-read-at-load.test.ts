@@ -159,10 +159,12 @@ const shapes: Record<
     component: `wrap((registry.page = 1, () => <p>{String(count)}</p>))`,
     after: `const count = registry.page`,
   },
-  'a write in a function the component option passes to a call, read after the route':
+  // (the same call as the component option's value is held, R152: a
+  // factory running it at once is an accepted break, not a row here)
+  'a write in a function a declaration the component renders passes to a call, read after the route':
     {
-      code: `const seen = { n: 0 }\nfunction wrap(f: () => void) { f(); return () => <p>{String(count)}</p> }`,
-      component: `wrap(function () { seen.n = 1 })`,
+      code: `const seen = { n: 0 }\nfunction wrap(f: () => void) { f(); return () => <p>{String(count)}</p> }\nconst C = wrap(function () { seen.n = 1 })`,
+      component: `() => <C />`,
       after: `const count = seen.n`,
     },
 }

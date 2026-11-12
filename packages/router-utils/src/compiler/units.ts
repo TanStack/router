@@ -1261,51 +1261,144 @@ export function statementRecipe(
   }
 }
 
+/** A call, `new` or tagged template a unit's evaluation makes (`callsWhenEvaluated`). */
+export interface EvaluatedCall extends Range {
+  /** Its callee, wrappers aside (a message names it: "handed to `debounce`"). */
+  calleeStart: number
+  calleeEnd: number
+  /** The call it is handed to directly as an argument, wrappers aside (`withAuth(observer(Page))`), if any. */
+  outer: EvaluatedCall | null
+}
+
 /** Where what a unit evaluates calls something, and the functions those calls receive (`callsWhenEvaluated`). */
 export interface EvaluatedCalls {
   /** The calls, `new`s and tagged templates, in source order. */
-  calls: Array<Range>
-  /** The functions passed to them directly, as an argument or as the callee, in source order, with the call passing each. */
-  callbacks: Array<Range & { call: Range }>
+  calls: Array<EvaluatedCall>
+  /**
+   * The functions passed to them directly, as an argument or as the callee,
+   * in source order, with the call passing each; `argument`: handed to it
+   * (a callee always runs).
+   */
+  callbacks: Array<Range & { call: EvaluatedCall; argument: boolean }>
+  /**
+   * The names handed to them as an argument, directly or inside an object
+   * or array argument (`memo(Page)`, `define({ setup })`), wrappers aside,
+   * with the call: run like any name the evaluation reads, unless the call
+   * holds them (`holdsCall`, R152).
+   */
+  names: Array<Range & { call: EvaluatedCall }>
+}
+
+/**
+ * Whether a call holds what it is handed (R152): its result is called later
+ * by the framework (`PlanContext.calledLater`), so the functions it is
+ * handed do not run when the module loads. Absent: every call may run them
+ * (the extraction check, the verifier).
+ */
+export type HoldsCall = (call: EvaluatedCall) => boolean
+
+/**
+ * Whether code at `at` inside a function the evaluation hands to a call
+ * runs when it evaluates: inside a function passed to a call (`callbacks`),
+ * and inside none that a call holding it is handed (`holds`).
+ */
+export function runsWhenPassed(
+  calls: EvaluatedCalls,
+  at: number,
+  holds: HoldsCall | undefined,
+): boolean {
+  const inside = (f: Range) => f.start <= at && at < f.end
+  return (
+    calls.callbacks.some(inside) &&
+    (holds === undefined ||
+      !calls.callbacks.some((f) => f.argument && inside(f) && holds(f.call)))
+  )
 }
 
 /**
  * What evaluating `node` calls (a call, a `new`, a tagged template), and
  * the functions those calls receive directly as arguments or as callee
- * (they may run then too, with what they call in turn). Other function
- * bodies run only when called: a function declaration evaluates nothing.
- * A walk of the unit's node (phase B), asked for the evaluations placement
- * asks what they run (`ReadIndex.runs`).
+ * (they may run then too, with what they call in turn), and the names they
+ * are handed. Other function bodies run only when called: a function
+ * declaration evaluates nothing. A walk of the unit's node (phase B), asked
+ * for the evaluations placement asks what they run (`ReadIndex.runs`).
  */
 export function callsWhenEvaluated(node: Node): EvaluatedCalls {
-  const calls: Array<Range> = []
+  const calls: EvaluatedCalls['calls'] = []
   const callbacks: EvaluatedCalls['callbacks'] = []
+  const names: EvaluatedCalls['names'] = []
   const runs = new Set<Node>()
-  const passed = (n: Node, call: Range) => {
+  /** The calls handed directly to another, with it (made when one is). */
+  let outerOf: Map<Node, EvaluatedCall> | null = null
+  const passed = (n: Node, call: EvaluatedCall, argument: boolean) => {
     const f = unwrapExpression(n)
     if (
       f.type === 'FunctionExpression' ||
       f.type === 'ArrowFunctionExpression'
     ) {
       runs.add(f)
-      callbacks.push({ start: f.start, end: f.end, call })
+      callbacks.push({ start: f.start, end: f.end, call, argument })
     }
+  }
+  /** The names an argument hands to `call`: itself, or inside an object or array (not inside a call or function there). */
+  const handed = (a: Node, call: EvaluatedCall, direct: boolean) => {
+    const x = unwrapExpression(a)
+    switch (x.type) {
+      case 'Identifier':
+        names.push({ start: x.start, end: x.end, call })
+        return
+      case 'CallExpression':
+      case 'NewExpression':
+        if (direct) {
+          ;(outerOf ??= new Map()).set(x, call)
+        }
+        return
+      case 'ObjectExpression':
+        for (const p of x.properties) {
+          if (p.type === 'Property' && p.kind === 'init') {
+            handed(p.value as Node, call, false)
+          }
+        }
+        return
+      case 'ArrayExpression':
+        for (const e of x.elements) {
+          if (e !== null && e.type !== 'SpreadElement') {
+            handed(e, call, false)
+          }
+        }
+    }
+  }
+  const evaluated = (n: Node, callee: Node): EvaluatedCall => {
+    const c = unwrapExpression(callee)
+    const call: EvaluatedCall = {
+      start: n.start,
+      end: n.end,
+      calleeStart: c.start,
+      calleeEnd: c.end,
+      outer: outerOf?.get(n) ?? null,
+    }
+    calls.push(call)
+    return call
   }
   walk(node, {
     enter: (n, wctx) => {
       switch (n.type) {
         case 'CallExpression':
         case 'NewExpression': {
-          const call = { start: n.start, end: n.end }
-          calls.push(call)
-          passed(n.callee, call)
+          const call = evaluated(n, n.callee)
+          passed(n.callee, call, false)
           for (const a of n.arguments) {
-            passed(a.type === 'SpreadElement' ? a.argument : a, call)
+            if (a.type === 'SpreadElement') {
+              passed(a.argument, call, true)
+            } else {
+              passed(a, call, true)
+              handed(a, call, true)
+            }
           }
           return
         }
         case 'TaggedTemplateExpression':
-          calls.push({ start: n.start, end: n.end })
+          evaluated(n, n.tag)
           return
         case 'FunctionExpression':
         case 'ArrowFunctionExpression':
@@ -1316,7 +1409,7 @@ export function callsWhenEvaluated(node: Node): EvaluatedCalls {
       }
     },
   })
-  return { calls, callbacks }
+  return { calls, callbacks, names }
 }
 
 /** How many expression statements `node` holds, function bodies aside (a block of several can be split; one call cannot). */

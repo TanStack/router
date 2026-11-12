@@ -102,8 +102,16 @@ export function keptDiagnostic(
         // its module may evaluate later than the route module, after code
         // that writes what it reads
         const read = `\`${symbols.name(k.read!)}\``
-        why = `it uses ${read} when it loads, and the ${module} writes ${read}`
-        fix = `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
+        // (only in a function it hands to a call: whether the call runs it
+        // then is unknown, and the read is in a function already, R152)
+        why =
+          k.handedTo === undefined
+            ? `it uses ${read} when it loads, and the ${module} writes ${read}`
+            : `it may use ${read} when it loads (${handed(k.handedTo)}), and the ${module} writes ${read}`
+        fix =
+          k.handedTo === undefined
+            ? `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
+            : 'Move both to their own module and import them from there.'
         break
       }
       default:
@@ -172,13 +180,18 @@ export function keptDiagnostic(
       because =
         k.read === undefined
           ? `${it} use${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
-          : `${it} use${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
+          : k.handedTo !== undefined
+            ? `${it} may use ${read} when the module loads (${handed(k.handedTo)}), and the module writes ${read}`
+            : `${it} use${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
       // a statement writing it that uses the binding (`a.push(b)`) cannot
-      // defer that use: only the move keeps both in order
+      // defer that use: only the move keeps both in order; a use in a
+      // function handed to a call is inside a function already (R152)
       fix =
         k.read !== undefined && writtenWith(plan, k.syms, k.read)
           ? `move ${subject}, ${read} and the statements writing them to their own module`
-          : `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
+          : k.read !== undefined && k.handedTo !== undefined
+            ? 'move both to their own module'
+            : `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
       break
   }
   return {
@@ -188,6 +201,13 @@ export function keptDiagnostic(
     by: 'core',
     code: `eager-split:${k.reason}`,
   }
+}
+
+/** The call a kept declaration hands the function using its binding to (`KeptDeclaration.handedTo`). */
+function handed(callee: string): string {
+  return callee === ''
+    ? 'the function is handed to a call'
+    : `the function is handed to \`${callee}\``
 }
 
 /** Whether a statement writing one of `syms` (not its declaration) uses `read` (`a.push(b)`). */

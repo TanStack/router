@@ -5771,9 +5771,11 @@ describe('readers and writers of state written at load', () => {
     expect(r.chunks.component).toContain('open.page = 1')
   })
 
-  // A function passed to a call runs when the call does (`runs`): its write
-  // is a write of the evaluation passing it, inline as when it is named
-  // (finding 4).
+  // R152: a call whose result is an option value (the router calls it
+  // later) holds the function it is handed, inline or named: its write runs
+  // when the router calls the value, not when the module loads, so the
+  // value splits and the binding stays with the route module's reader
+  // (finding 4 read every call as running its function).
   it.each([
     [
       'inline',
@@ -5786,7 +5788,7 @@ describe('readers and writers of state written at load', () => {
       'function Page() { seen.n = 1; return null }',
     ],
   ])(
-    'keeps an option value whose call runs a function writing a binding the route module reads in place (%s)',
+    'splits an option value whose call holds a function writing a binding the route module reads (%s)',
     async (_, options, decls) => {
       const r = await split(
         route(
@@ -5796,10 +5798,13 @@ describe('readers and writers of state written at load', () => {
         ),
         { files: lib },
       )
-      expect(r.main?.facts.planners['toy-split']).toMatchObject({
-        notSplittable: 'component',
-        reasons: { component: 'ordered-effect' },
-      })
+      const facts = r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+      expect(facts?.notSplittable).toBeUndefined()
+      expect(r.chunks.component).toContain('seen.n = 1')
+      expect(r.env).toContain('const seen = {}')
+      expect(r.main?.diagnostics).toEqual([])
     },
   )
 
@@ -5878,7 +5883,43 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  it('keeps an option value whose call runs a function writing a binding another function writes later in place', async () => {
+  // small item 2b under R152: a write at an unknown time that only the
+  // value's chunk runs pins the value only when another evaluation touches
+  // the binding at load, not because the binding stays in the route module
+  // for a later reader: a function the value reaches other than as a name
+  // handed to its call splits as its inline spelling does
+  it.each([
+    [
+      'inline',
+      'component: f(flag ? function render() { seen.n++; return null } : Fallback),',
+      '',
+    ],
+    [
+      'named',
+      'component: f(flag ? render : Fallback),',
+      'function render() { seen.n++; return null }',
+    ],
+  ])(
+    'splits an option value reaching a function that writes a binding the route module reads later (%s)',
+    async (_, options, decls) => {
+      const r = await split(
+        route(
+          `const seen = { n: 0 }\nconst flag = true\nfunction Fallback() { return null }\n${decls}`,
+          `loader: () => seen,\n${options}`,
+        ),
+        { files: lib },
+      )
+      const facts = r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+      expect(facts?.notSplittable).toBeUndefined()
+      expect(r.chunks.component).toContain('seen.n++')
+      expect(r.env).toContain('const seen = { n: 0 }')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  it('splits an option value whose call holds a function writing a binding another function writes later (R152)', async () => {
     const r = await split(
       route(
         'const seen = { n: 0 }\nexport function reset() { seen.n = 0 }',
@@ -5886,10 +5927,13 @@ describe('readers and writers of state written at load', () => {
       ),
       { files: lib },
     )
-    expect(r.main?.facts.planners['toy-split']).toMatchObject({
-      notSplittable: 'component',
-      reasons: { component: 'ordered-effect' },
-    })
+    const facts = r.main?.facts.planners['toy-split'] as
+      | { notSplittable?: string }
+      | undefined
+    expect(facts?.notSplittable).toBeUndefined()
+    expect(r.chunks.component).toContain('seen.n++')
+    expect(r.env).toContain('export function reset()')
+    expect(r.main?.diagnostics).toEqual([])
   })
 
   // A member write inside a planner's unclaimed region is its declaration's
@@ -9571,6 +9615,247 @@ function evaluatedNames(
   }
   return names
 }
+
+// R152: a call holds (does not run when the module loads) the functions
+// it is handed when its result is called later by the router: a route
+// option's value the planner states, split or not, directly, through
+// `const`s, or handed on to such a call (wrappers of wrappers). Every other
+// call, and the extraction check, read as before. A name inside an object or
+// array handed to a call is held (small item 2c).
+describe('calls whose result the router calls later (R152)', () => {
+  const route = (decls: string, options: string, extra = '') =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { hoc, run, f } from './lib'
+      ${decls.split('\n').join('\n      ')}
+      export const Route = createFileRoute('/')({
+        ${options.split('\n').join('\n        ')}
+      })
+      ${extra}
+    `)
+  const lib = {
+    '/app/lib.ts':
+      'export const hoc = <T,>(x: T) => x\nexport const run = <T,>(g: () => T) => g()\nexport const f = (x: unknown) => x\n',
+  }
+  const notSplit = (r: Awaited<ReturnType<typeof split>>) =>
+    (
+      r.main?.facts.planners['toy-split'] as
+        | { notSplittable?: string }
+        | undefined
+    )?.notSplittable
+  const seen = 'const seen = new Set<number>()'
+  const loader = 'loader: () => { seen.add(1) },'
+
+  it.each([
+    ['inline', '', 'component: hoc(function Page() { return seen.size }),'],
+    ['named', 'function Page() { return seen.size }', 'component: hoc(Page),'],
+    [
+      'in wrappers of wrappers',
+      '',
+      'component: hoc(hoc(function Page() { return seen.size })),',
+    ],
+    [
+      'in a cast',
+      '',
+      'component: hoc(function Page() { return seen.size }) as any,',
+    ],
+    [
+      'through a `const`',
+      'function Page() { return seen.size }\nconst P = hoc(Page)',
+      'component: P,',
+    ],
+    [
+      'through a `const` of wrappers of wrappers',
+      'function Page() { return seen.size }\nconst P = hoc(hoc(Page))',
+      'component: P,',
+    ],
+    [
+      'through a `const` handed to another',
+      'function Page() { return seen.size }\nconst A = hoc(Page)\nconst P = hoc(A)',
+      'component: P,',
+    ],
+    [
+      'through a `const` naming another',
+      'function Page() { return seen.size }\nconst A = hoc(Page)\nconst P = A',
+      'component: P,',
+    ],
+  ])(
+    'splits an option value whose call holds a function reading state the loader writes (%s)',
+    async (_, decls, options) => {
+      const r = await split(
+        route(`${seen}\n${decls}`, `${loader}\n${options}`),
+        {
+          files: lib,
+        },
+      )
+      expect(notSplit(r)).toBeUndefined()
+      expect(r.chunks.component).toContain('return seen.size')
+      expect(r.env).not.toContain('seen.size')
+      expect(r.env).not.toContain('hoc(')
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  // the accepted break (R152, R146's family): a factory that runs its
+  // function at once reads the state when the chunk loads
+  it('splits an option value whose call is handed a function reading a binding the loader writes, whatever the call does with it', async () => {
+    const r = await split(
+      route(
+        'let base = 1',
+        'loader: () => { base = 5 },\ncomponent: run(() => { const b = base; return () => b }),',
+      ),
+      { files: lib },
+    )
+    expect(notSplit(r)).toBeUndefined()
+    expect(r.chunks.component).toContain('run(() => {')
+  })
+
+  // its result is called when the module loads: not a value the router
+  // calls later, the call runs its function as before
+  it('keeps a `const` whose call result is also called when the module loads', async () => {
+    const r = await split(
+      route(
+        `${seen}\nfunction Page() { return seen.size }\nconst P = hoc(Page)\nconst first = P()`,
+        `${loader}\ncomponent: P,`,
+      ),
+      { files: lib },
+    )
+    expect(r.env).toContain('const P = hoc(Page)')
+    expect(r.chunks.component).not.toContain('hoc(Page)')
+  })
+
+  // a value the router calls later that the planner does not split: its
+  // call holds the function, so the route reads nothing at load
+  it('holds the function an unsplit option value hands to its call', async () => {
+    const r = await split(
+      route(
+        'const seen = { n: 0 }\nconst C = f(function Page() { seen.n++; return null })',
+        'loader: hoc(function load() { return seen.n }),\ncomponent: () => C,',
+      ),
+      { files: lib },
+    )
+    expect(r.env).not.toContain('const C =')
+    expect(r.chunks.component).toContain('const C = f(function Page()')
+    expect(r.main?.diagnostics).toEqual([])
+  })
+
+  // small item 2c, with R152: a name inside an object or array handed to
+  // such a call is held, as an inline function there already is
+  it.each([
+    [
+      'an object, inline (control)',
+      'hoc({ render() { return seen.size } })',
+      '',
+    ],
+    [
+      'an object, by name',
+      'hoc({ render })',
+      'function render() { return seen.size }',
+    ],
+    [
+      'an array, by name',
+      'hoc([render])',
+      'function render() { return seen.size }',
+    ],
+    [
+      'a nested object',
+      'hoc({ a: [{ render }] })',
+      'function render() { return seen.size }',
+    ],
+  ])(
+    'moves a `const` the router calls later whose call is handed a function inside %s',
+    async (_, call, decls) => {
+      const r = await split(
+        route(
+          `${seen}\n${decls}\nconst P = ${call}`,
+          `${loader}\ncomponent: P,`,
+        ),
+        { files: lib },
+      )
+      expect(notSplit(r)).toBeUndefined()
+      expect(r.env).not.toContain('const P =')
+      expect(r.chunks.component).toContain(`const P = ${call}`)
+      expect(r.main?.diagnostics).toEqual([])
+    },
+  )
+
+  // the extraction check reads every call as running what it is handed:
+  // an export whose call is handed a function reading what the route
+  // module keeps stays there (`createIcon(() => cfg.path)` would read it
+  // before it exists), so the option naming it is not split
+  it('keeps an exported option value whose call is handed a function reading a binding the route module keeps', async () => {
+    const code = route(
+      'const cfg = { v: 1 }\nexport const W = hoc(function W() { return cfg.v })',
+      'loader: () => cfg,\ncomponent: W,',
+    )
+    const r = await split(code, { files: lib, extractExports: true })
+    expect(r.env).toContain('export const W = hoc(function W()')
+    expect(r.chunks.component).not.toContain('cfg.v')
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { component: 'env-declared' },
+    })
+  })
+
+  // every other call reads as before: a function handed to it may run when
+  // it does, which the message says. A wrapped component used only as a
+  // JSX tag is one of them (R152 holds route option values only)
+  it.each([
+    [
+      'inline',
+      '',
+      'const save = f(() => seen.size)',
+      'save',
+      'f',
+      '() => save',
+    ],
+    [
+      'named',
+      'function compute() { return seen.size }\n',
+      'const save = f(compute)',
+      'save',
+      'f',
+      '() => save',
+    ],
+    [
+      'named inside an object',
+      'function compute() { return seen.size }\n',
+      'const save = f({ compute })',
+      'save',
+      'f',
+      '() => save',
+    ],
+    [
+      'a wrapped component used as a JSX tag',
+      '',
+      'const Card = hoc(function Card() { return <p>{seen.size}</p> })',
+      'Card',
+      'hoc',
+      'function Page() { return <Card /> }',
+    ],
+  ])(
+    'keeps a declaration handing a function reading written state to a call the router does not call later, saying it may use it (%s)',
+    async (_, decls, decl, name, callee, component) => {
+      const code = route(
+        `${seen}\n${decls}${decl}`,
+        `${loader}\ncomponent: ${component},`,
+      )
+      const r = await split(code, { files: lib })
+      expect(r.env).toContain(decl)
+      const kept = (r.main?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      )
+      expect(kept).toMatchObject([
+        {
+          code: 'eager-split:state',
+          range: { start: code.indexOf(`${name} = `) },
+        },
+      ])
+      expect(kept[0]!.message).toBe(
+        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move both to their own module, so \`${name}\` can load with the split \`component\`.`,
+      )
+    },
+  )
+})
 
 // P4: a kept declaration's message names a binding its evaluation reads,
 // for every `state` record this file's compiles report (F1-5b:

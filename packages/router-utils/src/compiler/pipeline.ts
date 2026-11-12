@@ -855,6 +855,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     prefetched: plan.prefetched,
     fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
     region: (range, kind) => plan.region(range, kind),
+    calledLater: (range) => plan.calledLater(range),
     declareOutput: (spec) => plan.declareOutput(spec),
     addRoot: (output, root) => plan.addRoot(output, root),
     extractExport: (sym, exportName) => plan.extractExport(sym, exportName),

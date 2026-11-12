@@ -10,11 +10,19 @@
  */
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
-import { callsWhenEvaluated } from '../units'
+import { callsWhenEvaluated, runsWhenPassed } from '../units'
+import { unwrapExpression } from '../source'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
+import type {
+  EvaluatedCall,
+  EvaluatedCalls,
+  HoldsCall,
+  RegionId,
+  Unit,
+  UnitId,
+} from '../units'
 import type {
   Frag,
   GenFrag,
@@ -127,6 +135,16 @@ export interface ClusterGraph {
    * region evaluates a function, the call around it may run it).
    */
   callsOf: (r: RegionId) => EvaluatedCalls | null
+  /**
+   * Whether a call holds what it is handed (R152): its result is a value
+   * the framework calls later (`PlacementInput.calledLater`, wrappers
+   * aside), the initialiser of a module-level `const` every use of which
+   * is one (such a value, the initialiser of another such `const`, or a
+   * name handed to a call that holds it), or an argument of a call that
+   * holds it (`withAuth(observer(Page))`). What every rule but the
+   * extraction check reads (`Events.readsKept`).
+   */
+  holds: HoldsCall
   /**
    * The late half of the mutation model (V): a live write of `sym` by
    * another cluster than `by` at an unknown time (inside a function, or in
@@ -334,9 +352,10 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
         const all = unitCalls(unit)
         const { start, end } = r.range
         const inside = (x: Range) => x.start >= start && x.end <= end
-        const held = all.callbacks.filter((f) => inside(f) && !inside(f.call))
+        // (a function only a call around the region is handed)
+        const around = all.callbacks.filter((f) => inside(f) && !inside(f.call))
         const own = (x: Range) =>
-          inside(x) && !held.some((f) => x.start >= f.start && x.end <= f.end)
+          inside(x) && !around.some((f) => x.start >= f.start && x.end <= f.end)
         const calls = all.calls.filter(own)
         result =
           calls.length === 0
@@ -346,11 +365,100 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
                 callbacks: all.callbacks.filter(
                   (f) => own(f) && inside(f.call),
                 ),
+                names: all.names.filter((n) => own(n) && inside(n.call)),
               }
       }
     }
     callsOfRegion[id] = result
     return result
+  }
+
+  // ---- R152: the calls whose result the framework calls later ----------
+  const later = input.calledLater
+  const isLater = (r: Range) =>
+    later.some((l) => l.start === r.start && l.end === r.end)
+  /** Module-level `const` declarators of one name: their initialisers (wrappers aside) by start, with the binding (made when first asked). */
+  let constOfInit: Map<number, { end: number; sym: SymbolId }> | null = null
+  const constInitialised = (r: Range): SymbolId | undefined => {
+    if (constOfInit === null) {
+      constOfInit = new Map()
+      for (const u of units) {
+        const d = u.node
+        if (
+          u.kind !== 'declaration' ||
+          u.declares.length !== 1 ||
+          d.type !== 'VariableDeclarator' ||
+          d.id.type !== 'Identifier' ||
+          d.init === null
+        ) {
+          continue
+        }
+        const stmt = items[u.item]!.node
+        const decl =
+          stmt.type === 'ExportNamedDeclaration' ? stmt.declaration : stmt
+        if (decl?.type === 'VariableDeclaration' && decl.kind === 'const') {
+          const init = unwrapExpression(d.init)
+          constOfInit.set(init.start, { end: init.end, sym: u.declares[0]! })
+        }
+      }
+    }
+    const hit = constOfInit.get(r.start)
+    return hit !== undefined && hit.end === r.end ? hit.sym : undefined
+  }
+  /** Per `const`: whether every use is a value called later (false while asked: a cycle holds nothing). */
+  const laterOfSym = new Map<SymbolId, boolean>()
+  const usedLater = (sym: SymbolId): boolean => {
+    const hit = laterOfSym.get(sym)
+    if (hit !== undefined) {
+      return hit
+    }
+    laterOfSym.set(sym, false)
+    const uses = refs.valueRefsOf(sym)
+    let result = uses.length > 0
+    for (const ref of uses) {
+      if (!laterUse(ref)) {
+        result = false
+        break
+      }
+    }
+    laterOfSym.set(sym, result)
+    return result
+  }
+  /** A use, when the module loads, that the framework calls later: such a value, another such `const`'s initialiser, or a name a holding call is handed. */
+  const laterUse = (ref: ClassifiedRef): boolean => {
+    if (ref.kind !== 'value' || !ref.eager) {
+      return false
+    }
+    if (isLater(ref.range)) {
+      return true
+    }
+    const alias = constInitialised(ref.range)
+    if (alias !== undefined) {
+      return usedLater(alias)
+    }
+    const u = t1.unitAt(ref.range)
+    const name =
+      u === null
+        ? undefined
+        : unitCalls(u).names.find((n) => n.start === ref.range.start)
+    return name !== undefined && holds(name.call)
+  }
+  const holdsOf = new Map<EvaluatedCall, boolean>()
+  const holds: HoldsCall = (call) => {
+    if (later.length === 0) {
+      return false
+    }
+    let hit = holdsOf.get(call)
+    if (hit === undefined) {
+      holdsOf.set(call, false)
+      const sym = isLater(call) ? undefined : constInitialised(call)
+      hit =
+        isLater(call) ||
+        (sym !== undefined && usedLater(sym)) ||
+        (call.outer !== null && holds(call.outer))
+      holdsOf.set(call, hit)
+    }
+    return hit
   }
 
   // ---- owner index: refs by owning region --------------------------------
@@ -441,11 +549,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       eager: ref.eager && !t1.runsLaterAt(ref.range.start),
       live: isLive(ref, 'env'),
       owner,
-      passed:
-        calls !== null &&
-        calls.callbacks.some(
-          (f) => f.start <= ref.range.start && ref.range.end <= f.end,
-        ),
+      passed: calls !== null && runsWhenPassed(calls, ref.range.start, holds),
       augment: false,
       member: kind === 'member',
     }
@@ -787,6 +891,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     ownAugmentations,
     unitSurvives,
     callsOf,
+    holds,
     lateWrite,
     lateWrites,
     laterWrite,

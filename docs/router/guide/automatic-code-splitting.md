@@ -161,6 +161,7 @@ What moves runs when its chunk loads, no longer when the route file loads. Keep 
 - a callback registered when the module loads moves with the binding it writes: with `let flags = {}` read only by the component, `loadFlags().then((f) => { flags = f })` starts when the component's chunk loads;
 - in a TanStack Start app, startup work only a server function's handler uses (`queue.process(worker)` with `queue` read by the handler) moves with the handler and runs on the first call of a server function of the file;
 - a read of an object moves past a write made through what a function returned for it: after `const store = reactive(settings)` and `Object.assign(store, { dark: true })`, a `const keys = Object.keys(settings)` only the component uses moves into its chunk and sees `dark`, because the compiler does not know that `store` is `settings`.
+- a call whose result is a component or loader option's value is read as keeping the function it is handed for the router to call later, as `memo`, `observer` or an app's `withAuth` do (directly, wrapped in several calls, or through `const`s): a factory that runs the function at once instead, such as `component: createIcon(() => { const n = seen.size; return () => <p>{n}</p> })`, runs it when the component's chunk loads and sees `seen` as the code that ran before left it.
 
 #### What stays in the route file
 
@@ -207,6 +208,8 @@ export const Route = createFileRoute('/theme')({
 ```
 [tanstack-router] `initialTheme` in src/routes/theme.tsx stays in the route module because it uses `prefs` when the module loads, and the module writes `prefs`; use `prefs` inside the code that needs it, or move both to their own module, so `initialTheme` can load with the split `component`.
 ```
+
+A function handed to any other call may run when that call does, so a declaration such as `const save = debounce(() => prefs.theme)`, or a wrapped component used only as a JSX tag (`const Card = observer(function Card() { … })` rendered as `<Card />`), stays when that function reads such state. The warning then says it _may_ use the state, and the fix is to move both to their own module.
 
 Unused code is never deleted: it moves with what it reads. When it reads bindings of two chunks, it puts them in one shared module, and the build says so:
 

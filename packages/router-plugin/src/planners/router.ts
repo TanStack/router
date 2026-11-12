@@ -5,15 +5,16 @@
  * part moves the others to their chunks and erases `deleteNodes`
  * (`split.ts`), then route HMR appends the dev block.
  */
+import { unwrapExpression } from '@tanstack/router-utils/compiler'
 import { recognizeRoute, reportNotGenerated, routeEntryDigest } from './route'
-import { splitPlanOf } from './decisions'
+import { SPLITTABLE_KEYS, splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'
 import { ROUTER_PLANNER, routerPlannerApplies } from './config'
 import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
 import type { RouterPlannerConfig } from './config'
-import type { Planner } from '@tanstack/router-utils/compiler'
+import type { PlanContext, Planner } from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
 export interface RouterRound {
@@ -76,6 +77,7 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       if (!route) {
         return
       }
+      stateCalledLater(ctx, route)
       const round: RouterRound = {
         cfg,
         route,
@@ -96,5 +98,24 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
         planHmrBlock(ctx, round, cfg.hmr.style)
       }
     },
+  }
+}
+
+/**
+ * The values of the options the router calls later (the components and the
+ * loader), split or not: a call there holds the functions it is handed
+ * (R152), so `component: observer(Page)` does not run `Page` when the
+ * module loads. Other options read as every call does.
+ */
+function stateCalledLater(ctx: PlanContext, route: RouteModuleInfo): void {
+  for (const option of route.props) {
+    if (
+      option.key !== null &&
+      option.value !== null &&
+      SPLITTABLE_KEYS.includes(option.key)
+    ) {
+      const value = unwrapExpression(option.value)
+      ctx.calledLater({ start: value.start, end: value.end })
+    }
   }
 }

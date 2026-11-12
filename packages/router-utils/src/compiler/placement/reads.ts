@@ -10,6 +10,7 @@
  */
 import { visitRuns } from '../analysis'
 import { RewriteSet } from '../rewrite'
+import { runsWhenPassed } from '../units'
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
@@ -69,9 +70,16 @@ export interface ReadIndex {
    * sees each reference with where it runs; `named`, each binding the
    * generated text of what runs names (edits, placeholders, inserts: a
    * server fn a planner moved out of a function body the evaluation
-   * calls), by the same rules; true ends the walk (the result).
+   * calls), by the same rules; true ends the walk (the result). A call
+   * that holds what it is handed runs none of it (`ClusterGraph.holds`,
+   * R152) unless `everyCallRuns` (the extraction check).
    */
-  runs: (r: RegionId, visit: RunVisitor, named?: NameVisitor) => boolean
+  runs: (
+    r: RegionId,
+    visit: RunVisitor,
+    named?: NameVisitor,
+    everyCallRuns?: boolean,
+  ) => boolean
   /** `runs` of every region of cluster `c` (its generated units are the compiler's: they run nothing of the source). */
   clusterRuns: (c: ClusterId, visit: RunVisitor) => boolean
 }
@@ -648,8 +656,14 @@ export function readIndex(
     return text
   }
   const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
-  function runs(id: RegionId, visit: RunVisitor, named?: NameVisitor): boolean {
+  function runs(
+    id: RegionId,
+    visit: RunVisitor,
+    named?: NameVisitor,
+    everyCallRuns = false,
+  ): boolean {
     const calls = graph.callsOf(id)
+    const holds = everyCallRuns ? undefined : graph.holds
     // the generated names of a text the walk enters, filtered as its
     // references are (`visitValues`: eager only without a call, within a
     // write's expression)
@@ -665,7 +679,7 @@ export function readIndex(
                   (!t1.isLazyAt(g.at) && !t1.runsLaterAt(g.at))) &&
                 named(g, at),
             )
-    if (visitRuns(t1, regionText(id), calls, bodyOf, visit, entered)) {
+    if (visitRuns(t1, regionText(id), calls, bodyOf, visit, entered, holds)) {
       return true
     }
     if (named === undefined) {
@@ -676,8 +690,7 @@ export function readIndex(
     for (const g of generatedNames(id)) {
       if (
         (!t1.isLazyAt(g.at) ||
-          (calls !== null &&
-            calls.callbacks.some((f) => f.start <= g.at && g.at < f.end))) &&
+          (calls !== null && runsWhenPassed(calls, g.at, holds))) &&
         named(g, g.at)
       ) {
         return true
