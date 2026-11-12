@@ -7641,15 +7641,16 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       "import { make, link } from './lib'",
     )
     const r = await report(code, keys)
-    written(
-      r,
-      code,
-      'd',
-      statement,
-      'which uses it, stays there: it also uses `e`, which the split `errorComponent` uses',
+    // both bindings it keeps eager, each naming the other
+    const at = (name: string) =>
+      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
+        ?.message
+    expect(r.diagnostics).toHaveLength(2)
+    expect(at('d')).toContain(
+      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also uses \`e\`, which the split \`errorComponent\` uses; move \`d\`, \`e\` and that statement to their own module`,
     )
-    expect(r.diagnostics[0]!.message).toContain(
-      'move `d`, `e` and that statement to their own module',
+    expect(at('e')).toContain(
+      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also uses \`d\`, which the split \`component\` uses; move \`e\`, \`d\` and that statement to their own module`,
     )
     // the fix: both and the call in a module only the two chunks import
     const f = await report(
@@ -7664,7 +7665,38 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(f.env).not.toContain('own')
   })
 
-  // R148 with E still open: unused code reading bindings of two chunks
+  // one statement changing a binding of one chunk and using one of
+  // another (review probe b33): both stay, each reported
+  it('a binding another split option uses, and one the statement changes', async () => {
+    const statement = 'a.connect(b)'
+    const options = 'loader: () => b.y, component: () => a.x'
+    const keys = ['loader', 'component']
+    const code = route(
+      `const a = make()\nconst b = make()\n${statement}`,
+      options,
+    )
+    const r = await report(code, keys)
+    const at = (name: string) =>
+      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
+        ?.message
+    expect(r.diagnostics).toHaveLength(2)
+    expect(at('a')).toContain(
+      `the statement on line ${lineOf(code, statement)}, which changes it, stays there: it also uses \`b\`, which the split \`loader\` uses; move \`a\`, \`b\` and that statement to their own module`,
+    )
+    expect(at('b')).toContain(
+      `the statement on line ${lineOf(code, statement)}, which uses it, stays there: it also changes \`a\`, which the split \`component\` uses; move \`b\`, \`a\` and that statement to their own module`,
+    )
+    // the fix
+    await ownModule(
+      'const a = make()\nexport const b = make()',
+      statement,
+      'a, b',
+      options,
+      keys,
+    )
+  })
+
+  // R148, R149 answers E: unused code reading bindings of two chunks
   // stays; the warning names it and offers to delete it
   it('an unused function reading it and a binding another split option uses', async () => {
     const options = 'loader: () => b, component: () => a.x'
@@ -7774,12 +7806,17 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       `const e = make()\nconst d = make()\n${statement}`,
       options,
     )
-    written(
-      await report(code, keys),
-      code,
-      'd',
-      statement,
-      '`e`, which the split `errorComponent` uses',
+    const r = await report(code, keys)
+    // both bindings it keeps eager, each naming the other
+    const at = (name: string) =>
+      r.diagnostics.find((d) => d.range?.start === code.indexOf(`${name} = `))
+        ?.message
+    expect(r.diagnostics).toHaveLength(2)
+    expect(at('d')).toContain(
+      'it also changes `e`, which the split `errorComponent` uses; change `e` in a statement of its own',
+    )
+    expect(at('e')).toContain(
+      'it also changes `d`, which the split `component` uses; change `d` in a statement of its own',
     )
     const fixed = route(
       'const e = make()\nconst d = make()\nif (on) { d.init() }\nif (on) { e.init() }',
