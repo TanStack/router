@@ -30,7 +30,12 @@ const app = (files: Record<string, string>) => ({
 })
 
 describe.each(startBundlers)('a %s build', (bundler) => {
-  test.each([
+  test.each<{
+    name: string
+    file: string
+    files: Record<string, string>
+    wanted: string
+  }>([
     {
       name: 'createLazyFileRoute in a route file',
       file: 'src/routes/x.tsx',

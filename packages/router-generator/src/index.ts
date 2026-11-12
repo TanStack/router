@@ -28,6 +28,7 @@ export {
 
 export { routeCallOf, propertyKeyName } from './analyze/route-call'
 export type {
+  ForeignRoute,
   RouteCall,
   RouteConstructorName,
   RouteFileKind,

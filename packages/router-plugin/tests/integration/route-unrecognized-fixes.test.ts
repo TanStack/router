@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build } from '../build-harness'
+import { expectValidModules, loadRoute } from '../route-app'
 
 const RP = '@tanstack/react-router'
 const timeout = 60_000
@@ -108,21 +109,6 @@ export const Route = createFileRoute('/')(${page})
     split: true,
   },
   {
-    name: 'a route constructor imported as a type only',
-    file: 'routes/index.tsx',
-    files: {
-      'routes/index.tsx': `import type { createFileRoute } from '${RP}'
-export const Route = createFileRoute('/')(${page})
-`,
-    },
-    fixed: {
-      'routes/index.tsx': `import { createFileRoute } from '${RP}'
-export const Route = createFileRoute('/')(${page})
-`,
-    },
-    split: true,
-  },
-  {
     name: 'a wrapped route call',
     file: 'routes/index.tsx',
     files: {
@@ -194,6 +180,37 @@ describe('a listed route the code splitter does not read', () => {
     },
   )
 })
+
+// (a dev server: the production build of such an app fails on the name
+// the type-only import leaves undeclared)
+it(
+  'a route constructor imported as a type only is reported, and the offered fix is read',
+  { timeout },
+  async () => {
+    const before = await loadRoute(
+      `import type { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/x')(${page})
+`,
+      { routeId: '/x', fresh: true },
+    )
+    await before.transform()
+    expectDiagnostic(await before.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: before.host.root,
+    })
+
+    const after = await loadRoute(
+      `import { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/x')(${page})
+`,
+      { routeId: '/x', fresh: true },
+    )
+    await expectValidModules(after)
+    expect(await after.isLazy('component')).toBe(true)
+    expectNoProblems(await after.diagnostics())
+  },
+)
 
 const helper = {
   'lib/app-route.ts': `import { createFileRoute } from '${RP}'

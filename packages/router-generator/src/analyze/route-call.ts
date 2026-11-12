@@ -36,21 +36,51 @@ const fileConstructors: ReadonlySet<string> = new Set<RouteConstructorName>([
   'createLazyFileRoute',
 ])
 
+/**
+ * Why a file's `Route` is not a call of the router package's route
+ * constructor (`routeCallOf`'s `foreign`), decided by the bindings the
+ * `Route` initialiser uses.
+ */
+export type ForeignRoute =
+  /**
+   * Nothing the router package exports makes it: an app's own helper, a
+   * re-export, an import, a stored route (R130: nothing to report).
+   */
+  | { kind: 'other' }
+  /** `createFileRoute('/id')` without the call taking the options. */
+  | {
+      kind: 'no-options'
+      constructor: RouteConstructorName
+      /** The constructor as called. */
+      callee: Node
+      /** The call taking the route id. */
+      idCall: CallExpression
+    }
+  /** The constructor is imported as a type only (`import type`). */
+  | {
+      kind: 'type-only'
+      constructor: RouteConstructorName
+      callee: Node
+      /** The call taking the route id, when there is one. */
+      idCall: CallExpression | null
+    }
+  /** `createRootRoute()(…)` or `createRootRouteWithContext(…)`. */
+  | {
+      kind: 'root-call'
+      constructor: 'createRootRoute' | 'createRootRouteWithContext'
+    }
+  /**
+   * The initialiser uses a route constructor of the router package, but is
+   * not its call: wrapped, called through a stored call, or `Route`
+   * declared more than once.
+   */
+  | { kind: 'wrapped' }
+
 export type RouteCall =
   /** The file has no value export named `Route`. */
   | { kind: 'none' }
-  /**
-   * The file's `Route` is not a call of the router package's route
-   * constructor (an app's own helper, a re-export, a stored or wrapped
-   * call...). `usesConstructor`: the file imports a route constructor (or
-   * the package's namespace) from the router package as a value. `call`:
-   * the call initialising `Route`, when it is one.
-   */
-  | {
-      kind: 'foreign'
-      usesConstructor: boolean
-      call: CallExpression | null
-    }
+  /** The file's `Route` is not a call of the router package's route constructor. */
+  | { kind: 'foreign'; reason: ForeignRoute }
   | {
       kind: 'ours'
       /** `Route = …` (or the declarator exported as `Route`). */
@@ -86,6 +116,8 @@ function constructorOf(
   name: RouteConstructorName
   specifier: Node | null
   property: Node | null
+  /** Bound to `import type` (or `import { type … }`). */
+  typeOnly: boolean
 } | null {
   if (callee.type === 'Identifier') {
     const binding = file.referenceOf(callee)?.binding ?? null
@@ -96,13 +128,13 @@ function constructorOf(
             name: callee.name as RouteConstructorName,
             specifier: null,
             property: null,
+            typeOnly: false,
           }
         : null
     }
     const imported = binding.import
     return imported &&
       imported.kind === 'named' &&
-      !imported.typeOnly &&
       imported.specifier === routerPackage &&
       imported.name !== null &&
       routeConstructors.has(imported.name)
@@ -110,6 +142,7 @@ function constructorOf(
           name: imported.name as RouteConstructorName,
           specifier: imported.node,
           property: null,
+          typeOnly: imported.typeOnly,
         }
       : null
   }
@@ -126,12 +159,12 @@ function constructorOf(
     const imported = file.referenceOf(object)?.binding?.import
     return imported &&
       imported.kind === 'namespace' &&
-      !imported.typeOnly &&
       imported.specifier === routerPackage
       ? {
           name: property.name as RouteConstructorName,
           specifier: null,
           property,
+          typeOnly: imported.typeOnly,
         }
       : null
   }
@@ -142,17 +175,65 @@ function isStringLiteral(node: Node | undefined): boolean {
   return node?.type === 'Literal' && typeof node.value === 'string'
 }
 
-/** Whether the file imports a route constructor, or the namespace, of the router package as a value. */
-function usesConstructor(file: SourceFile, routerPackage: string) {
-  return file.imports.some(
-    (i) =>
-      !i.typeOnly &&
-      i.specifier === routerPackage &&
-      (i.kind === 'namespace' ||
-        (i.kind === 'named' &&
-          i.name !== null &&
-          routeConstructors.has(i.name))),
-  )
+const wrappers: ReadonlySet<string> = new Set([
+  'ParenthesizedExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+])
+
+/**
+ * Whether code inside `nodes` uses a route constructor of the router
+ * package: an import of one (`createFileRoute`, any alias), or a member of
+ * the package's namespace naming one (`R.createFileRoute`).
+ */
+function usesConstructorIn(
+  file: SourceFile,
+  nodes: ReadonlyArray<Node>,
+  routerPackage: string,
+): boolean {
+  const inside = (node: Node) =>
+    nodes.some((n) => node.start >= n.start && node.end <= n.end)
+  for (const imported of file.imports) {
+    if (
+      imported.specifier !== routerPackage ||
+      !imported.local ||
+      !(
+        imported.kind === 'namespace' ||
+        (imported.kind === 'named' &&
+          imported.name !== null &&
+          routeConstructors.has(imported.name))
+      )
+    ) {
+      continue
+    }
+    for (const reference of imported.local.references) {
+      if (reference.inTypePosition || !inside(reference.node)) {
+        continue
+      }
+      if (imported.kind === 'named') {
+        return true
+      }
+      // `R.createFileRoute`, through casts and parentheses around `R`
+      let node: Node = reference.node
+      let parent = file.parentOf(node)
+      while (parent && wrappers.has(parent.type)) {
+        node = parent
+        parent = file.parentOf(node)
+      }
+      if (
+        parent?.type === 'MemberExpression' &&
+        !parent.computed &&
+        parent.object.start === node.start &&
+        parent.property.type === 'Identifier' &&
+        routeConstructors.has(parent.property.name)
+      ) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 /**
@@ -172,11 +253,6 @@ export function routeCallOf(
   if (!routeExport) {
     return { kind: 'none' }
   }
-  const foreign = (call: CallExpression | null): RouteCall => ({
-    kind: 'foreign',
-    usesConstructor: usesConstructor(file, expected.routerPackage),
-    call,
-  })
   // the one declarator of the binding (a type, interface or type namespace
   // of the same name declares no value)
   const declarators: Array<VariableDeclarator> = []
@@ -188,54 +264,71 @@ export function routeCallOf(
       declarators.push(parent)
     }
   }
+  const foreign = (reason: ForeignRoute): RouteCall => ({
+    kind: 'foreign',
+    reason,
+  })
+  /** Not the constructor's call: wrapped or stored when the initialiser uses a constructor. */
+  const notTheCall = () =>
+    foreign({
+      kind: usesConstructorIn(file, declarators, expected.routerPackage)
+        ? 'wrapped'
+        : 'other',
+    })
   const declarator = declarators.length === 1 ? declarators[0]! : null
   if (!declarator) {
     // re-exported, imported, destructured, a function, declared twice...
-    return foreign(null)
+    return notTheCall()
   }
   const init = declarator.init ? unwrap(declarator.init) : null
   if (init?.type !== 'CallExpression') {
-    return foreign(null)
+    return notTheCall()
   }
 
   // `createFileRoute('/id')(options)`, `createRootRoute(options)`, or the
-  // malformed `createFileRoute(options)`
+  // malformed `createFileRoute(options)` and `createFileRoute('/id')`
   const outer = init
   const innerCallee = unwrap(outer.callee)
-  let found: ReturnType<typeof constructorOf> = null
-  let idCall: CallExpression | null = null
-  let callee: Node = innerCallee
-  if (innerCallee.type === 'CallExpression') {
-    callee = unwrap(innerCallee.callee)
-    found = constructorOf(file, callee, expected.routerPackage)
-    idCall = innerCallee
-  } else if (!isStringLiteral(outer.arguments[0])) {
-    // (`createFileRoute('/id')` alone: no options call)
-    found = constructorOf(file, callee, expected.routerPackage)
-  }
+  const curried = innerCallee.type === 'CallExpression'
+  const idCall = curried ? innerCallee : null
+  const callee = curried ? unwrap(innerCallee.callee) : innerCallee
+  const found = constructorOf(file, callee, expected.routerPackage)
   if (!found) {
-    return foreign(outer)
+    return notTheCall()
   }
-  const curried = idCall !== null
   const name = found.name
+  // (a string as the only call's argument is an id: no options call)
+  const idOnly = !curried && isStringLiteral(outer.arguments[0])
+  if (found.typeOnly) {
+    return foreign({
+      kind: 'type-only',
+      constructor: name,
+      callee,
+      idCall: idCall ?? (idOnly ? outer : null),
+    })
+  }
+  if (name === 'createRootRoute' || name === 'createRootRouteWithContext') {
+    if (curried !== curriedConstructors.has(name) || idOnly) {
+      return foreign({ kind: 'root-call', constructor: name })
+    }
+  } else if (idOnly) {
+    return foreign({
+      kind: 'no-options',
+      constructor: name,
+      callee,
+      idCall: outer,
+    })
+  }
   let repair: 'none' | 'import' | 'curry' | 'constructor'
   if (expected.kind === 'root') {
-    if (name === 'createRootRoute' || name === 'createRootRouteWithContext') {
-      // (`createRootRoute()(…)` and `createRootRouteWithContext(…)` make no route)
-      if (curried !== curriedConstructors.has(name)) {
-        return foreign(outer)
-      }
-      repair = 'none'
-    } else {
-      repair = 'constructor'
-    }
+    repair =
+      name === 'createRootRoute' || name === 'createRootRouteWithContext'
+        ? 'none'
+        : 'constructor'
   } else if (
     name === 'createRootRoute' ||
     name === 'createRootRouteWithContext'
   ) {
-    if (curried !== curriedConstructors.has(name)) {
-      return foreign(outer)
-    }
     repair = 'constructor'
   } else if (!curried) {
     repair = 'curry'

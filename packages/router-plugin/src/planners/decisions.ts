@@ -16,6 +16,7 @@ import { ROUTER_PLANNER } from './config'
 import {
   boundValueOf,
   chainSoleUse,
+  chainWritten,
   identifierSymbol,
   isAlreadyLazy,
   isFallbackLiteral,
@@ -229,7 +230,7 @@ function splitTarget(
         ? handlerPropertyOf(init)
         : null
     if (init.type === 'ObjectExpression' && handler) {
-      if (init.properties.length === 1) {
+      if (init.properties.length === 1 && !chainWritten(ctx, syms)) {
         member = 'handler'
       } else if (chainSoleUse(ctx, syms)) {
         // the object holds other options (`staleReloadMode`) the router
@@ -373,15 +374,25 @@ export function splitPlanOf(
             ? 'returned by a call'
             : route.options.reason === 'written'
               ? 'written to after their declaration'
-              : 'not an object literal'
+              : route.options.reason === 'reassigned'
+                ? 'in a variable that is reassigned'
+                : 'not an object literal'
+      const call =
+        route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'
+      const fix =
+        route.options.reason === 'reassigned'
+          ? `Declare them with \`const\` and never reassign them (\`const options = { component${deleteNodes.size > 0 ? ', server' : ', …'} }\`).`
+          : deleteNodes.size > 0
+            ? `Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${call}({ component, server })\`).`
+            : `Write them as an object literal in the call (\`${call}({ component, … })\`).`
       warnings.push({
         severity: 'warning',
         code: 'options-opaque',
         by: ROUTER_PLANNER,
         message:
           deleteNodes.size > 0
-            ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. Write the route options as an object literal in the route file, with what to split or remove as its properties (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, server })\`).`
-            : `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them and the route is not code-split. Write them as an object literal in the call (\`${route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'}({ component, … })\`).`,
+            ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. ${fix}`
+            : `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them and the route is not code-split. ${fix}`,
         range: {
           start: route.optionsCall.start,
           end: route.optionsCall.end,
