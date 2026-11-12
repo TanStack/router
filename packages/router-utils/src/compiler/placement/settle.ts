@@ -226,6 +226,12 @@ export function settleRoots(
       ...(changes.syms.length === 0 && { uses: true }),
     }
   }
+  /**
+   * The outputs `d` decides a follower's place by: its needers but an
+   * extracted export's module (a reader anywhere imports it from there).
+   */
+  const placers = (d: ClusterId) =>
+    needersOf(d).filter((n) => outputs.get(n)?.kind !== 'export')
   /** `c` and the clusters it follows (`Events.statementChanges`). */
   const followed = (c: ClusterId) => [c, ...events.statementChanges(c).clusters]
   function followSlot(c: ClusterId): OutputId | Pin {
@@ -234,7 +240,7 @@ export function settleRoots(
       if (liveEnv.has(d) || envRoots.has(d)) {
         return d === c ? { reason: 'needers' } : stayPin(c, d)
       }
-      for (const n of needersOf(d)) {
+      for (const n of placers(d)) {
         if (to !== null && n !== to) {
           return stayPin(c, d === c ? null : d, n)
         }
@@ -277,7 +283,7 @@ export function settleRoots(
       if (stays(d)) {
         return stayPin(c, d)
       }
-      const needers = needersOf(d)
+      const needers = placers(d)
       const elsewhere = needers.find((n) => n !== to)
       if (elsewhere !== undefined || needers.length !== 1) {
         return stayPin(c, d, elsewhere)
