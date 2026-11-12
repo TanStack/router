@@ -694,6 +694,105 @@ describe("an extracted export's module is a destination", () => {
     expect(module?.code).toContain(decls.replace('export const', 'const'))
   })
 
+  // (a member that comes to read, at load, an export the route module keeps
+  // once that export's extraction is cancelled leaves the module: else the
+  // module reads the route module as it evaluates; placement-exec seed
+  // 10112)
+  it("keeps a binding of the export's module that reads an export the route module comes to keep", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { snap } from './lib'
+          const on = true
+          const F0 = () => 2
+          export const r2 = 'p' in F0
+          const r3 = snap(r2)
+          const l5 = on ? F0 : null
+          F0.v = [12]
+          export const Route = createFileRoute('/')({
+            loader: () => r3,
+            component: () => [r2, r3, l5, r9],
+          })
+          export const r9 = [r3]
+        `),
+      },
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component', 'loader'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    expect(out?.code).toContain('const r3 = snap(r2)')
+    expect(out?.code).toContain('export const r9 = [r3]')
+    // the export the rest stays for is reported at its own cause, though the
+    // route module evaluates it (for `r3`, kept because of it)
+    const r2 = (out?.diagnostics ?? []).filter((d) =>
+      d.message.includes('The export `r2`'),
+    )
+    expect(r2).toMatchObject([{ code: 'eager-export:state' }])
+    expect(r2[0]!.message).toContain(
+      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0`, so it loads with the route module instead of with that code. Use `F0` inside the code that needs it, or move both to their own module and import them from there.',
+    )
+    // the fix: `F0`, its write and `r2` in a module of their own
+    const fixed = new MemoryHost({
+      files: {
+        '/app/own.ts': dedent(`
+          export const F0 = () => 2
+          export const r2 = 'p' in F0
+          F0.v = [12]
+        `),
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { snap } from './lib'
+          import { F0, r2 } from './own'
+          const on = true
+          const r3 = snap(r2)
+          const l5 = on ? F0 : null
+          export const Route = createFileRoute('/')({
+            loader: () => r3,
+            component: () => [r2, r3, l5, r9],
+          })
+          export const r9 = [r3]
+        `),
+      },
+    })
+    const f = await fixed.compile('/app/route.tsx', planners, env)
+    expect(f?.diagnostics.map((d) => d.message).join('\n')).not.toMatch(
+      /`r2`|`F0`/,
+    )
+  })
+
+  // (a member a declaration pinned in the route module reads at load stays
+  // there with it: in the export's module, its later write would run before
+  // that read; placement-exec seed 12263)
+  it("keeps a binding of the export's module that a declaration the route module keeps reads at load", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { box } from './lib'
+          const h6 = [box(2)]
+          const r8 = h6[0].v
+          export function W13() { h6[0].v = 4 }
+          h6[0].v = 17
+          export const Route = createFileRoute('/')({
+            loader: () => W13(),
+            component: () => r8,
+          })
+        `),
+      },
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component', 'loader'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    expect(out?.code).toContain(
+      'const h6 = [box(2)]\nconst r8 = h6[0].v\nh6[0].v = 17',
+    )
+  })
+
   it('keeps all of it in the route module as written in dev', async () => {
     const r = await compile('dev', 'client')
     expect(r.diagnostics).toEqual([])
@@ -7688,6 +7787,25 @@ describe('lazy shared modules hold effects (R151)', () => {
     expect(r.diagnostics).toEqual([])
   })
 
+  // (unused code using that code is named with it: deleting `inner` alone
+  // would leave `outer` calling nothing, m12)
+  it('names an unused chain putting the bindings of two split options together in one report', async () => {
+    const body =
+      'const a = make()\nconst b = make()\nfunction inner() { return [a, b] }\nfunction outer() { return inner() }'
+    const options = 'component: () => a.x, loader: () => b'
+    const code = route(body, options)
+    const r = await compile(code)
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'shared-split:unused',
+        range: { start: code.indexOf('function inner') },
+      },
+    ])
+    expect(r.diagnostics[0]!.message).toContain(
+      `unused \`inner\` (line ${lineOf(code, 'function inner')}) and \`outer\` (line ${lineOf(code, 'function outer')}) put \`a\` and \`b\` in one shared module the split \`component\` and \`loader\` import; delete them`,
+    )
+  })
+
   // (several unused declarations joining the same bindings: deleting one
   // changes nothing, so one report names them all, m09)
   it('names every unused declaration joining the same bindings in one report', async () => {
@@ -8183,6 +8301,36 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       'move `flags` and the statements using it when the module loads to their own module',
     )
   })
+
+  // (the statement itself when only a function it calls names the binding,
+  // x04; not a statement of the binding's own cluster, which need not use
+  // the subject, x14)
+  it.each([
+    [
+      'a function the statement calls',
+      'const base = make()\nfunction getBase() { return base }\nexport const flags = { beta: false }\nmake(() => { flags.base = getBase() })',
+      'make(() => { flags.base = getBase() })',
+      'beforeLoad: () => base, component: () => flags',
+      ['component'],
+      'flags',
+      'it also uses `base`, which the route module keeps',
+    ],
+    [
+      "the binding's own statements",
+      "export class Store { static items = [] }\nStore.items.push(make())\nexport const store = new Store()\nSentry.setContext('store', store)",
+      "Sentry.setContext('store', store)",
+      'component: () => [Store.items, store], loader: () => Store.items',
+      ['component', 'loader'],
+      'store',
+      'it also uses `Store`',
+    ],
+  ])(
+    'names the statement that stays for an export, past %s',
+    async (_, decls, statement, options, keys, name, cause) => {
+      const code = route(decls, options)
+      written(await report(code, keys, {}, true), code, name, statement, cause)
+    },
+  )
 
   // a later writer in another split option: the fix moves what uses the
   // binding when the module loads, not a line of that option (recheck
