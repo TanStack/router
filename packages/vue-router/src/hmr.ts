@@ -15,7 +15,7 @@ import type {
 const keep = (next: any, held: any) =>
   next?.__hmrId !== undefined && next.__hmrId === held?.__hmrId
 
-const adapter: RouteHmrAdapter = { keep, keepUnsplit: keep }
+const adapter: RouteHmrAdapter = { keep, keepPatched: keep }
 
 /**
  * Dev-only route HMR entry point called by the router plugin's output at the

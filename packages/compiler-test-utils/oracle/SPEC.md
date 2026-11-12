@@ -453,7 +453,9 @@ dir)` is not a conflict by itself.
   effective decision: a pragma the transform ignores in the untouched file (Oxc and esbuild honour leading comments
   only; Babel any) must not become effective in a chunk. Warning and leaving the file unsplit is also acceptable
   (J2.8). Tests assert the rendered outcome only, compiling the untouched and the compiled module with the project's
-  real JSX transform and defaults, never comment placement or the runtime import's spelling.
+  real JSX transform and defaults, never comment placement or the runtime import's spelling. In development, a chunk
+  holding components carries the file's leading `@refresh` pragmas (solid-refresh's `granular`, `skip`, `reload`;
+  React Refresh's `reset`), which the refresh plugins read per module: its components refresh as the file asks.
 - **J2.17 Deprecated `assert` attributes.** An import written with `assert` in a route module (`import data from
 './data.json' assert { type: 'json' }`) keeps working wherever it lands, and its attribute keeps its meaning where
   the bundler honours attributes. The printed keyword (`assert` or `with`) is free: no public host observes it.
@@ -495,7 +497,8 @@ dir)` is not a conflict by itself.
 - **J3.3 Every edit takes effect.** After an edit the page shows the new code: a new component body, a renamed
   component (a new Refresh family), a new split loader (even when only the chunk changed), an added or removed option
   (including a removed split option the page had loaded), with or without the framework's refresh plugin. A full
-  reload is acceptable only for factory-built options (§2.2).
+  reload is acceptable only for factory-built options (§2.2), and on Solid for a rename or a removed component in an
+  unsplit route file (solid-refresh invalidates a module that lost a component): one reload, later edits in place.
 - **J3.4 Correct target.** The update applies to the route whose id the current tree assigns, not to a stale id kept
   in hot data.
 - **J3.5 Root route.** Root route edits, including adding, editing or removing `shellComponent`, hot-update.

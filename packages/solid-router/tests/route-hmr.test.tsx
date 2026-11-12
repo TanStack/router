@@ -19,7 +19,6 @@ import {
 } from '../src'
 import { __tsrRouteHmr } from '../src/hmr'
 import type { AnyRoute } from '@tanstack/router-core'
-import type { RouteHmrMeta } from '@tanstack/router-core/hmr'
 
 // Each test uses its own route id: route HMR remembers routes by id for the
 // lifetime of the page, as it does in a real dev session.
@@ -43,22 +42,19 @@ function makeComponent(label: string) {
   }
 }
 
-function setup(
-  firstOptions: () => Record<string, any>,
-  firstMeta: RouteHmrMeta = {},
-) {
+function setup(firstOptions: () => Record<string, any>) {
   const path = `/page${nextRouteId++}`
   const rootRoute = createRootRoute()
-  const evaluate = (options: Record<string, any>, meta: RouteHmrMeta = {}) => {
+  const evaluate = (options: Record<string, any>) => {
     const Route = createRoute({
       getParentRoute: () => rootRoute,
       path,
       ...options,
     } as any)
-    __tsrRouteHmr(path, Route, meta)
+    __tsrRouteHmr(path, Route, {})
     return Route
   }
-  const route = evaluate(firstOptions(), firstMeta)
+  const route = evaluate(firstOptions())
   const router = createRouter({
     routeTree: rootRoute.addChildren([route]),
     history: createMemoryHistory({ initialEntries: [path] }),
@@ -125,6 +121,17 @@ describe('route HMR (Solid)', () => {
     ).toBeInTheDocument()
   })
 
+  /** A solid-refresh proxy of `name` declared at `location` (`<file>:<line>:<column>`), showing `label`. */
+  const proxy = (
+    label: string,
+    name = 'Page',
+    location = 'src/routes/page.tsx:3:0',
+  ) =>
+    Object.defineProperties(makeComponent(label), {
+      name: { value: `[solid-refresh]${name}` },
+      location: { value: location },
+    })
+
   test('an unsplit component is replaced by the new one', async () => {
     const { router, evaluate } = setup(() => ({
       component: makeComponent('v1'),
@@ -132,28 +139,20 @@ describe('route HMR (Solid)', () => {
     render(() => <RouterProvider router={router} />)
     await screen.findByRole('button', { name: 'v1 0' })
 
-    evaluate(
-      { component: makeComponent('v2') },
-      { unsplit: { component: 'Page' } },
-    )
+    evaluate({ component: makeComponent('v2') })
     expect(
       await screen.findByRole('button', { name: 'v2 0' }),
     ).toBeInTheDocument()
   })
 
-  test('an unsplit solid-refresh component with the same binding is kept', async () => {
-    const proxy = (label: string) =>
-      Object.defineProperty(makeComponent(label), 'name', {
-        value: '[solid-refresh]Page',
-      })
+  test('an unsplit solid-refresh proxy of the same name and file is kept', async () => {
     const first = proxy('v1')
-    const { router, evaluate, path } = setup(() => ({ component: first }), {
-      unsplit: { component: 'Page' },
-    })
+    const { router, evaluate, path } = setup(() => ({ component: first }))
     render(() => <RouterProvider router={router} />)
     fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
 
-    evaluate({ component: proxy('v2') }, { unsplit: { component: 'Page' } })
+    // another line of the same file: the same component to solid-refresh
+    evaluate({ component: proxy('v2', 'Page', 'src/routes/page.tsx:7:2') })
     expect(
       (router.routesById as Record<string, AnyRoute>)[path]!.options.component,
     ).toBe(first)
@@ -161,9 +160,39 @@ describe('route HMR (Solid)', () => {
     // solid-refresh (absent here) patches the kept proxy in place.
     expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
 
-    evaluate({ component: proxy('v3') }, { unsplit: { component: 'Renamed' } })
+    evaluate({ component: proxy('v3', 'Renamed') })
     expect(
       await screen.findByRole('button', { name: 'v3 0' }),
+    ).toBeInTheDocument()
+  })
+
+  test('a solid-refresh proxy of the same name from another file is replaced', async () => {
+    const { router, evaluate } = setup(() => ({
+      component: proxy('classic', 'Shell', 'src/layouts/classic.tsx:1:7'),
+    }))
+    render(() => <RouterProvider router={router} />)
+    await screen.findByRole('button', { name: 'classic 0' })
+
+    evaluate({
+      component: proxy('modern', 'Shell', 'src/layouts/modern.tsx:1:7'),
+    })
+    expect(
+      await screen.findByRole('button', { name: 'modern 0' }),
+    ).toBeInTheDocument()
+  })
+
+  test('a solid-refresh proxy without a location is replaced', async () => {
+    const bare = (label: string) =>
+      Object.defineProperty(makeComponent(label), 'name', {
+        value: '[solid-refresh]Page',
+      })
+    const { router, evaluate } = setup(() => ({ component: bare('v1') }))
+    render(() => <RouterProvider router={router} />)
+    await screen.findByRole('button', { name: 'v1 0' })
+
+    evaluate({ component: bare('v2') })
+    expect(
+      await screen.findByRole('button', { name: 'v2 0' }),
     ).toBeInTheDocument()
   })
 

@@ -10,10 +10,8 @@
  * options (a claim, so the original body is relocated, not reprinted),
  * lowercase module-level components are renamed module-wide (the runtime
  * takes the new component after React Refresh's pass; a family is what
- * keeps its state). For Solid and Vue, it records the refresh identity of
- * each such option (`unsplit`: a binding's name, an import's module and
- * export); any other value (a conditional, a member) has none: an edit
- * swaps it.
+ * keeps its state). Solid and Vue need nothing: their refresh runtimes'
+ * values say what they patch (the runtime's `keepPatched`).
  * A lazy route file (`createLazyFileRoute`, never split) gets both; its
  * options are the ones the route loads with its chunk (`lazy: true` in the
  * block's meta).
@@ -28,7 +26,6 @@ import {
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import {
-  bindingIdentity,
   identifierSymbol,
   isAlreadyLazy,
   isFallbackLiteral,
@@ -60,12 +57,11 @@ function isCapitalised(name: string): boolean {
 
 /**
  * Before the split part: React, makes every component option that stays in
- * the route module a binding React Refresh registers where it can; Solid
- * and Vue, records its refresh identity (`round.unsplit`).
+ * the route module a binding React Refresh registers where it can.
  */
 export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
   const { cfg, route, plan } = round
-  if (route.options.kind !== 'object') {
+  if (cfg.framework !== 'react' || route.options.kind !== 'object') {
     return
   }
   const split = new Set(plan.decisions.map((d) => d.key))
@@ -105,12 +101,6 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     }
     const sym = option.kind === 'method' ? null : identifierSymbol(ctx, value)
     if (sym !== null) {
-      if (cfg.framework !== 'react') {
-        if (!isSplit) {
-          round.unsplit[key] = bindingIdentity(ctx, sym)
-        }
-        continue
-      }
       // a module binding: registrable by its own declaration when
       // capitalised; a lowercase local one is renamed module-wide, split
       // or not (React Refresh registers it wherever it is declared); an
@@ -134,11 +124,7 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       ctx.renameRefs(sym, { sym: next.sym }, ROUTER_PLANNER, splitRegions)
       continue
     }
-    if (
-      cfg.framework !== 'react' ||
-      isSplit ||
-      (option.kind !== 'method' && !refreshRegisters(value))
-    ) {
+    if (isSplit || (option.kind !== 'method' && !refreshRegisters(value))) {
       // (a value React Refresh registers no family for stays inline: an
       // edit remounts it)
       continue
@@ -191,7 +177,8 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
 
 /**
  * After the split part: the dev block of the route module and, on
- * webpack-style hosts, of its split chunks holding a non-component option.
+ * webpack-style hosts, of its split chunks holding a non-component option
+ * (Solid: of every split chunk).
  */
 export function planHmrBlock(
   ctx: PlanContext,
@@ -213,14 +200,6 @@ export function planHmrBlock(
   // a lazy route file's `Route` holds the options the route loads with its
   // chunk: the runtime applies them to the route of its id
   const metaParts: Array<string> = route.kind === 'lazy' ? ['lazy: true'] : []
-  const unsplitKeys = Object.keys(round.unsplit)
-  if (unsplitKeys.length > 0) {
-    metaParts.push(
-      `unsplit: { ${unsplitKeys
-        .map((k) => `${k}: ${stringLiteral(round.unsplit[k]!, '"')}`)
-        .join(', ')} }`,
-    )
-  }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it
   const hmrSpecifier = `${route.routerPackage}/hmr`
@@ -306,9 +285,73 @@ export function planHmrBlock(
       },
     ],
   })
+  const groups = splitGroups(round)
+  refreshPragmas(ctx, groups)
   if (!vite) {
-    chunkHmr(ctx, round, route.routeId)
+    chunkHmr(ctx, round, groups)
     keptReaderHmr(ctx, round, route.routeId)
+  }
+}
+
+/** Per split group (its key): whether it holds a component option, and a non-component one. */
+type SplitGroups = Map<string, { component: boolean; nonComponent: boolean }>
+
+function splitGroups(round: RouterRound): SplitGroups {
+  const groups: SplitGroups = new Map()
+  for (const d of round.plan.decisions) {
+    let g = groups.get(d.groupKey)
+    if (!g) {
+      g = { component: false, nonComponent: false }
+      groups.set(d.groupKey, g)
+    }
+    if (HMR_COMPONENT_KEYS.includes(d.key)) {
+      g.component = true
+    } else {
+      g.nonComponent = true
+    }
+  }
+  return groups
+}
+
+/** solid-refresh's `@refresh granular|skip|reload`, React Refresh's `@refresh reset`: a whole comment. */
+const REFRESH_PRAGMA_RE = /^\s*@refresh\s+\S+\s*$/
+
+/**
+ * The refresh plugins read a `@refresh` pragma per module: a split chunk
+ * holding components carries the route file's leading ones, as written
+ * (SPEC J2.16), so its components refresh as the file asks.
+ */
+function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
+  const { file, header } = ctx.analysis
+  const first = file.program.body[header.directiveCount]
+  const end = first ? first.start : file.source.length
+  // (most route files have no pragma: no comment list is read for them)
+  const at = file.source.indexOf('@refresh')
+  if (at === -1 || at >= end) {
+    return
+  }
+  const pragmas = file.comments
+    .filter((c) => c.end <= end && REFRESH_PRAGMA_RE.test(c.value))
+    .map((c) => `${file.source.slice(c.start, c.end)}\n`)
+  if (pragmas.length === 0) {
+    return
+  }
+  for (const [groupKey, g] of groups) {
+    if (!g.component) {
+      continue
+    }
+    ctx.rewrites.addGenerated({
+      body: [{ k: 'text', parts: pragmas }],
+      declares: [],
+      effectful: false,
+      anchor: { k: 'after-header' },
+      home: ctx.declareOutput({
+        kind: 'split',
+        key: groupKey,
+        derived: { kind: 'split', value: groupKey },
+      }),
+      by: ROUTER_PLANNER,
+    })
   }
 }
 
@@ -320,18 +363,21 @@ export function planHmrBlock(
  * refreshes the route when it evaluates again; Rspack's lazy-compilation
  * proxy re-resolves the chunk alone, whose evaluation then refreshes the
  * route (`applyRouteChunkHmr`). Vite re-runs the dynamic importer itself.
- * Component-only chunks are the framework refresh runtime's.
+ * React's and Vue's component-only chunks are their refresh runtime's.
+ * Every Solid chunk reports too, with its exports and whether it holds a
+ * non-component option: solid-refresh makes a chunk holding components
+ * accept its own updates, so nothing imports it again, and the chunk hands
+ * its exports to the route's lazy wrappers itself.
  */
-function chunkHmr(ctx: PlanContext, round: RouterRound, routeId: string): void {
-  const groups = new Map<string, boolean>()
-  for (const d of round.plan.decisions) {
-    groups.set(
-      d.groupKey,
-      (groups.get(d.groupKey) ?? false) || !HMR_COMPONENT_KEYS.includes(d.key),
-    )
-  }
-  for (const [groupKey, hasNonComponent] of groups) {
-    if (!hasNonComponent) {
+function chunkHmr(
+  ctx: PlanContext,
+  round: RouterRound,
+  groups: SplitGroups,
+): void {
+  const routeId = round.route.routeId
+  const solid = round.cfg.framework === 'solid'
+  for (const [groupKey, { nonComponent }] of groups) {
+    if (!nonComponent && !solid) {
       continue
     }
     const output = ctx.declareOutput({
@@ -348,7 +394,7 @@ function chunkHmr(ctx: PlanContext, round: RouterRound, routeId: string): void {
           parts: [
             'if (import.meta.webpackHot) {\n  ',
             { sym: helper.sym, ctx: 'callee' },
-            `(${stringLiteral(routerRouteId(routeId), '"')}, ${stringLiteral(groupKey, '"')})\n}\n`,
+            `(${stringLiteral(routerRouteId(routeId), '"')}, ${stringLiteral(groupKey, '"')}${solid ? `, __webpack_module__.exports, ${nonComponent}` : ''})\n}\n`,
           ],
         },
       ],

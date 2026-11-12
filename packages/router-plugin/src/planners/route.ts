@@ -592,25 +592,6 @@ export function refreshRegisters(init: Node): boolean {
   }
 }
 
-/**
- * What a component option's identity is for Solid's and Vue's refresh
- * runtimes, recorded per evaluation for the route HMR runtime (`unsplit`):
- * an import is the module's export (`<specifier>#<imported name>`, a
- * same-named import from another module is another component), a module
- * binding its name.
- */
-export function bindingIdentity(ctx: PlanContext, sym: SymbolId): string {
-  if (ctx.symbols.isImport(sym)) {
-    for (const imp of ctx.analysis.imports) {
-      const s = imp.specifiers.find((x) => x.local === sym)
-      if (s) {
-        return `${imp.specifier}#${s.imported}`
-      }
-    }
-  }
-  return ctx.symbols.name(sym)
-}
-
 /** The module-level symbol an identifier value denotes, or null. */
 export function identifierSymbol(
   ctx: PlanContext,

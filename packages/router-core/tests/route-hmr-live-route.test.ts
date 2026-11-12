@@ -19,7 +19,7 @@ describe('applyRouteHmr after a route tree rebuild', () => {
 
   const adapter: RouteHmrAdapter = {
     keep: () => false,
-    keepUnsplit: () => false,
+    keepPatched: () => false,
   }
 
   const root = new BaseRootRoute({})
