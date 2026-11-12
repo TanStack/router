@@ -809,7 +809,9 @@ describe("an extracted export's module is a destination", () => {
 // module re-exports it), so an export whose evaluation runs that body (it
 // calls the function, or hands it or a function holding the server fn to
 // a call) reads it before it exists: it stays, like one reading a kept
-// binding in its own text (T), and the report names no generated binding
+// binding in its own text (T); a cause only that build has is not reported
+// (architect, like the extraction-identity rule), and a report never names
+// a generated binding
 describe('an export whose evaluation runs code reading what a planner moved to the top level', () => {
   /** Start's nested server fn, as a toy: a `hoisted(…)` call in a function moves to a module-level binding only the env module holds, which the function reads. */
   const hoistPlanner: Planner = {
@@ -885,7 +887,8 @@ describe('an export whose evaluation runs code reading what a planner moved to t
     const host = new MemoryHost({
       files: {
         '/app/route.tsx': code,
-        '/app/lib.ts': 'export const keep = <T,>(v: T): T => v\n',
+        '/app/lib.ts':
+          'export const keep = <T,>(v: T): T => v\nexport const make = () => ({})\n',
       },
     })
     const planners = [
@@ -924,8 +927,33 @@ describe('an export whose evaluation runs code reading what a planner moved to t
     )
     // (a control: one running nothing the planner moved leaves)
     expect(await r.module('y')).toContain('const y = [Plain()]')
+    expect(r.kept).toEqual([])
+  })
+
+  // the source binding is reported, the moved one never named: the body
+  // reads the moved binding first
+  it('reports a binding of the source the route module keeps that the same evaluation reads', async () => {
+    const r = await compileRoute(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { hoisted } from 'toy-start'
+        import { make } from './lib'
+        const shared = make()
+        function Panel() {
+          const inner = hoisted(1)
+          return [typeof inner, shared]
+        }
+        export const x = [Panel()]
+        export const Route = createFileRoute('/')({
+          loader: () => shared,
+          component: () => x,
+        })
+      `),
+    )
+    expect(r.env).toMatch(/^export const x = /m)
     expect(r.kept).toHaveLength(1)
     expect(r.kept[0]!.code).toBe('eager-export:reads')
+    expect(r.kept[0]!.message).toContain('`shared`')
     expect(r.kept[0]!.message).not.toContain('tsrHoisted')
   })
 

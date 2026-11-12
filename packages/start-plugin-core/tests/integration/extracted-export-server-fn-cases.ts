@@ -8,7 +8,8 @@
  * function, or hands it, or a function holding the server fn, to an
  * imported function that may call it then), so
  * it evaluates where that binding exists: the page renders what the source
- * gives, on the server and in the browser alike. Run with the compiler's
+ * gives, on the server and in the browser alike, and the build reports
+ * nothing (the cause exists in the server build only). Run with the compiler's
  * self-checks on (`start-build-extracted-export-server-fn.test.ts`) and
  * off, as in users' builds (`…-unchecked.test.ts`), where a compile the
  * self-checks would refuse builds and the page shows the result.
@@ -16,6 +17,7 @@
  * 1509681 1510216 1514297 1515610 1516178 1519063).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
@@ -105,6 +107,19 @@ export function extractedExportServerFnTests() {
       },
       timeout,
     )
+
+    // (the value stays in the route module only in the server build, for a
+    // binding only that build has: not reported)
+    test('reports nothing for the route files', () => {
+      for (const file of ['called', 'passed', 'callback']) {
+        expect(
+          findDiagnostics(build.diagnostics, {
+            file: `src/routes/${file}.tsx`,
+            root: build.root,
+          }),
+        ).toEqual([])
+      }
+    })
 
     test(
       'client: an exported value running a function that declares a server fn renders what the source gives',
