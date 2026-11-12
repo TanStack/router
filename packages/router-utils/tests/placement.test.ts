@@ -5273,7 +5273,9 @@ describe('readers and writers of state written at load', () => {
     )
     expect(r.env).toContain('export const snap = [/* @__PURE__ */ get()]')
     expect(r.env).toContain('const y = /* @__PURE__ */ f(open.x = 1)')
-    expect(eager(r)).toMatchObject([{ code: 'eager-export:reads' }])
+    // (the declaration writing the import is no longer joined to it: the
+    // export reads state the module writes at load)
+    expect(eager(r)).toMatchObject([{ code: 'eager-export:state' }])
   })
 
   // A claimed option value's evaluation writes `seen` when the module loads
@@ -6261,7 +6263,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the statement on line 7, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them, so `homeUrl`, `docsUrl` can load with the split `component`.',
+        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the statement on line 6, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them, so `homeUrl`, `docsUrl` can load with the split `component`.',
       ),
     ])
   })
@@ -6272,7 +6274,7 @@ describe('declarations only split code needs that stay in the route module', () 
       import { make } from './lib'
       const k = make()
       const [registry, index] = make()
-      registry.add(k)
+      if (k.ready) { registry.start() }
       const [one, two] = make()
       export const Route = createFileRoute('/')({
         loader: () => k,
@@ -6283,7 +6285,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code, ['component', 'errorComponent'])
     const byCode = Object.fromEntries(r.diagnostics.map((d) => [d.code, d]))
     expect(byCode['eager-split:written']!.message).toContain(
-      '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 6, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
+      '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 5, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
     )
     expect(byCode['eager-split:needers']!.message).toContain(
       'because several split options read them (`component`, `errorComponent`) and their initialiser has side effects, which run once; move `one`, `two` to their own module, or mark their initialiser `/* @__PURE__ */` if it has none',
@@ -7644,9 +7646,14 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       options,
     )
     const r = await report(code, keys)
+    // both bindings it keeps eager, each naming it (R149 answers E)
     expect(r.diagnostics).toMatchObject([
       { code: 'eager-split:written', range: { start: code.indexOf('a = ') } },
+      { code: 'eager-split:written', range: { start: code.indexOf('b = ') } },
     ])
+    expect(r.diagnostics[1]!.message).toContain(
+      'which nothing uses, stays there: it also uses `a`, which the split `component` uses; delete `debugDump`',
+    )
     expect(r.diagnostics[0]!.message).toContain(
       `\`debugDump\` (line ${lineOf(code, 'function debugDump')}), which nothing uses, stays there: it also uses \`b\`, which the split \`loader\` uses; delete \`debugDump\``,
     )
@@ -8569,11 +8576,11 @@ describe('a comment after a statement, before code on the same line', () => {
   })
 
   it('a statement ended by its brace keeps the annotation on the next code', async () => {
-    // (the call follows what it reads into the chunk: R146 amendment)
-    const { chunk } = await outputs(
+    // (R149: the call uses no binding that moves, so it stays)
+    const { env } = await outputs(
       moved('', 'function f() { return a } /* @__PURE__ */ mk(f)'),
     )
-    expect(chunk).toMatch(/\/\* @__PURE__ \*\/ mk\(f\)/)
+    expect(env).toMatch(/\/\* @__PURE__ \*\/ mk\(f\)/)
   })
 })
 
