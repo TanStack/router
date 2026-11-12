@@ -219,6 +219,10 @@ export function keptDeclarations(
   // unused code joining bindings of several split outputs (R151)
   for (const [c, to] of roots.joined) {
     const cl = clusters[c]!
+    // (one that only followed a binding already shared puts nothing together)
+    if (!roots.joining.has(c)) {
+      continue
+    }
     if (cl.units.some((u) => units[u]!.kind === 'effect')) {
       continue
     }

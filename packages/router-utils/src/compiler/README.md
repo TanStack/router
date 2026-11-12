@@ -264,7 +264,9 @@ createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both nee
   evaluation-order condition is a greatest fixed point over them), demotes the effectful clusters and the readers
   of mutable state that stay and that some output needs to env roots, then cancels extraction candidates the env
   module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
-  observe mutable state. Each round that goes on demotes a cluster, so the rounds end within the cluster count;
+  observe mutable state. Each round that goes on demotes a cluster or roots a follower in one more split output (a
+  follower whose bindings' places grew to several joins them, R151), so the rounds end within the cluster count plus
+  the followers' outputs;
   past it the compile fails naming the file. Nothing is rooted after homes are assigned. The time model is checked
   by running modules: the cases the executing placement property (a development tool kept outside the repository)
   found, running random modules and their outputs as ES modules, are static tests (`tests/placement.test.ts`). When a split would break single-writer or evaluation-order

@@ -39,6 +39,8 @@ export interface Roots {
   pinnedNeeded: Map<ClusterId, Pin>
   /** The followers whose bindings go to several split outputs, rooted in each: they join them in one lazy shared module (R151). */
   joined: Map<ClusterId, Array<OutputId>>
+  /** The joined followers that put their bindings together (their bindings went to several outputs before them), not one that followed a binding already shared. */
+  joining: Set<ClusterId>
 }
 
 /**
@@ -200,6 +202,7 @@ export function settleRoots(
   const follows = new Map<ClusterId, OutputId>()
   /** The followers joining their bindings in a shared module, rooted in each of their split outputs (R151). */
   const joined = new Map<ClusterId, Array<OutputId>>()
+  const joining = new Set<ClusterId>()
   /**
    * Where follower `c` goes, judged once before it is rooted anywhere: the
    * one chunk the clusters its statements change (`Events.statementChanges`)
@@ -711,7 +714,8 @@ export function settleRoots(
   // identity two outputs share. Once nothing else changes, a candidate
   // with a violated rule is cancelled: it and its export companions are env
   // roots. Every round that goes on demotes a cluster (roots only grow,
-  // candidates only cancel), so the rounds end within the cluster count
+  // candidates only cancel) or roots a follower in one more split output,
+  // so the rounds end within the cluster count plus the followers' outputs
   // (P5), and every decision was taken over the final env roots.
   const pinnedNeeded = new Map<ClusterId, Pin>()
   const cancelled = new Map<ClusterId, Pin>()
@@ -719,10 +723,14 @@ export function settleRoots(
   // a cluster a derived output reaches becomes an env root (it then reads
   // what it evaluates in the env module)
   let derivedStale = remaining.size > 0
+  // (a round that goes on demotes a cluster or roots a follower in one more
+  // split output: both only grow)
+  const roundCap =
+    clusters.length + followers.size * Math.max(1, derivedRoots.size)
   for (let round = 0; ; round++) {
-    if (round > clusters.length) {
+    if (round > roundCap) {
       throw new Error(
-        `placement of ${input.canonicalId} did not settle within ${clusters.length + 1} rounds (a compiler bug: please report it with this file)`,
+        `placement of ${input.canonicalId} did not settle within ${roundCap + 1} rounds (a compiler bug: please report it with this file)`,
       )
     }
     if (derivedStale) {
@@ -784,6 +792,7 @@ export function settleRoots(
           // rooted in each: they all reach it and what it uses, one
           // cluster for them (homes: their shared module)
           joined.set(c, to)
+          joining.add(c)
           for (const o of to) {
             derivedRoots.get(o)!.add(c)
           }
@@ -791,6 +800,41 @@ export function settleRoots(
           keepFollower(c, to)
         }
       }
+      derivedStale = true
+      continue
+    }
+    // a follower whose bindings' places grew to several split outputs
+    // joins them (one cluster with what it uses, R151), as round 0 would
+    // have rooted it; a joined one gains a new output the same way
+    let grew = false
+    for (const c of [...follows.keys(), ...joined.keys()]) {
+      const places: Array<OutputId> = []
+      for (const d of followed(c)) {
+        if (d !== c && clusters[d]!.copyable) {
+          continue
+        }
+        for (const n of placesOf(d)) {
+          if (!places.includes(n)) {
+            places.push(n)
+          }
+        }
+      }
+      const was = joined.get(c) ?? [follows.get(c)!]
+      if (
+        places.length < 2 ||
+        !places.every(lazy) ||
+        places.every((o) => was.includes(o))
+      ) {
+        continue
+      }
+      follows.delete(c)
+      joined.set(c, places)
+      for (const o of places) {
+        derivedRoots.get(o)!.add(c)
+      }
+      grew = true
+    }
+    if (grew) {
       derivedStale = true
       continue
     }
@@ -920,6 +964,7 @@ export function settleRoots(
     movable,
     pinnedNeeded,
     joined,
+    joining,
   }
 }
 
