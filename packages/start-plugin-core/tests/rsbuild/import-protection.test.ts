@@ -121,6 +121,7 @@ describe('registerImportProtection loader registration', () => {
       context: { action: 'build' },
       onBeforeBuild() {},
       onBeforeDevCompile() {},
+      onBeforeEnvironmentCompile() {},
       modifyRspackConfig(handler) {
         modifyRspackConfig = handler
       },
@@ -204,6 +205,7 @@ describe('registerImportProtection marker scope', () => {
         beforeBuild = handler
       },
       onBeforeDevCompile() {},
+      onBeforeEnvironmentCompile() {},
       modifyRspackConfig() {},
       processAssets(_options, handler) {
         processAssetsHandler = handler
