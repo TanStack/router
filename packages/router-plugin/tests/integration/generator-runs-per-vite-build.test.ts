@@ -47,16 +47,22 @@ interface Watcher {
 
 /**
  * Builds every environment of `builder` in watch mode (closed when the test
- * finishes); `ended(env)` resolves at the next build of `env` that ends.
+ * finishes, or by `close`); `ended(env)` resolves at the next build of `env`
+ * that ends.
  */
 async function watchBuild(builder: ViteModule.ViteBuilder) {
   const waiting = new Map<string, Array<() => void>>()
+  const watchers: Array<Watcher> = []
+  const close = async () => {
+    await Promise.all(watchers.map((watcher) => watcher.close()))
+  }
+  onTestFinished(close)
   const watch = async (
     name: string,
     environment: ViteModule.BuildEnvironment,
   ) => {
     const watcher = (await builder.build(environment)) as unknown as Watcher
-    onTestFinished(() => watcher.close())
+    watchers.push(watcher)
     watcher.on('event', (event) => {
       if (event.code === 'END' || event.code === 'ERROR') {
         for (const resolve of waiting.get(name)?.splice(0) ?? []) {
@@ -74,7 +80,7 @@ async function watchBuild(builder: ViteModule.ViteBuilder) {
     await watch(name, environment)
     await first
   }
-  return { ended }
+  return { ended, close }
 }
 
 /** The text of the files of `dir` (recursively). */
@@ -234,20 +240,30 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
   // bundle only: the created route file never joined the tree, not even at
   // a later rebuild)
   test.each([
-    { plugins: 'the config file', inline: false },
-    { plugins: 'inline plugins', inline: true },
+    { plugins: 'the config file', watch: 'the top level', inline: false },
+    { plugins: 'the config file', watch: 'each environment', inline: false },
+    { plugins: 'inline plugins', watch: 'the top level', inline: true },
   ])(
-    'round 2 F3-1: a watch build with $plugins follows a route file created while it watches',
-    async ({ inline }) => {
+    'round 2 F3-1: a watch build with $plugins, watching at $watch, follows a route file created while it watches',
+    async ({ watch, inline }) => {
       const { createBuilder } = await vite()
       const app = await routerApp(major)
-      const builder = await createBuilder(
-        app.buildConfig({
-          build: { watch: {}, rollupOptions: { external: [/^@tanstack\//] } },
-          ...(inline && { configFile: false, plugins: app.plugins() }),
-        }),
-      )
-      const { ended } = await watchBuild(builder)
+      const config = app.buildConfig({
+        build: {
+          ...(watch === 'the top level' && { watch: {} }),
+          rollupOptions: { external: [/^@tanstack\//] },
+        },
+        ...(inline && { configFile: false, plugins: app.plugins() }),
+      })
+      if (watch === 'each environment') {
+        for (const environment of Object.values(config.environments!)) {
+          environment.build!.watch = {}
+        }
+      }
+      const { ended } = await watchBuild(await createBuilder(config))
+      if (!inline) {
+        expect(app.generations()).toBe(1)
+      }
       const rebuilt = Promise.all([ended('client'), ended('ssr')])
       await writeFile(
         path.join(app.root, 'routes/later.tsx'),
@@ -268,6 +284,23 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     },
     60_000,
   )
+
+  test('round 2 F3-1: a watch build whose watchers closed no longer generates the route tree', async () => {
+    const { createBuilder } = await vite()
+    const app = await routerApp(major)
+    const { close } = await watchBuild(
+      await createBuilder(
+        app.buildConfig({
+          build: { watch: {}, rollupOptions: { external: [/^@tanstack\//] } },
+        }),
+      ),
+    )
+    await close()
+    await writeFile(path.join(app.root, 'routes/later.tsx'), route('/later'))
+    // (a watcher still open reports the file well within this)
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
+    expect(await treeRoutes(app.root)).toEqual(['/'])
+  }, 60_000)
 
   test('a dev server generates the route tree once', async () => {
     const { createServer } = await vite()

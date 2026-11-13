@@ -51,8 +51,18 @@ test.each([
     const build = await buildStart({
       bundler: 'vite',
       viteConfigFile,
-      files: { 'src/entry.ts': `export {}\n` },
-      entry: 'src/entry.ts',
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+        'src/entry.ts': `export { getRouter } from './router'\n`,
+      },
+      // (both bundle the route tree)
+      entry: { client: 'src/entry.ts', ssr: 'src/entry.ts' },
       start: { importProtection: { enabled: false } },
       watchEdits: { 'src/routes/later.tsx': later },
     })
