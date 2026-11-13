@@ -2747,6 +2747,78 @@ describe('extracted-export outputs', () => {
     ])
   })
 
+  // The move a `reads` report offers is what the export and the binding it
+  // reads touch when the module loads, with the code writing them then
+  // (`Events.movedWith`): left in the route module, the new module would
+  // import it back, a cycle (Vite reads `undefined`, Rspack throws a TDZ
+  // error). When that needs `Route`, no module of its own can take it.
+  it.each([
+    [
+      'a binding the read one reads',
+      'const cfg = { k: 2 }\nconst kept = { n: cfg.k }\nexport const count = kept.n',
+      'count',
+      'kept',
+      'Move it, `kept` and `cfg` to their own module and import them from there.',
+    ],
+    [
+      'a holder',
+      'const o0 = { v: 1 }\nconst h6 = { c: o0 }\nexport const count = h6.c.v',
+      'count',
+      'h6',
+      'Move it, `h6` and `o0` to their own module and import them from there.',
+    ],
+    [
+      'a function it calls',
+      'const unit = 2\nconst kept = { n: 1 }\nfunction total() { return kept.n * unit }\nexport const count = total()',
+      'count',
+      'kept',
+      'Move it, `kept`, `unit` and `total` to their own module and import them from there.',
+    ],
+    [
+      'a write when the module loads',
+      'const kept = { n: 1 }\nkept.n = 3\nexport const count = kept.n',
+      'count',
+      'kept',
+      'Move it, `kept` and the statements writing them when the module loads to their own module and import them from there.',
+    ],
+    [
+      'nothing else',
+      "import { loadSettings } from './settings'\nconst kept = loadSettings()\nexport const count = kept.pageSize * 2",
+      'count',
+      'kept',
+      'Move it and `kept` to their own module and import them from there.',
+    ],
+    [
+      '`Route`',
+      'export const count = String(Route.options)',
+      'count',
+      'Route',
+      "It can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
+    ],
+  ])(
+    'offers, for an export reading what the route module keeps, the move of what it reads when it loads: %s',
+    async (_, decls, name, read, fix) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({
+          loader: () => ${read === 'Route' ? 'null' : read === 'h6' ? 'o0' : read},
+          component: () => ${name},
+        })
+      `)
+      const r = await extract(code)
+      expect(
+        r.diagnostics.map((d) => [d.code, d.range?.start, d.message]),
+      ).toEqual([
+        [
+          'eager-export:reads',
+          code.indexOf(`${name} = `),
+          `[tanstack-router] The export \`${name}\` of /app/route.tsx is used only by the split \`component\`, but stays in the route module because it reads \`${read}\` when it loads, which the route module keeps, so it loads with the route module instead of with that code. ${fix}`,
+        ],
+      ])
+    },
+  )
+
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
   // declaration; a route file exporting only `Route` reports nothing

@@ -9,8 +9,10 @@
  * offers names what the moved code reads when the module loads (a holder, a
  * function it calls and what that reads) and what reads a moved binding
  * before a moved write (round tools class A): what stays would otherwise be
- * imported back from the route module, a cycle. Vite and Rspack client
- * builds, mounted in a DOM.
+ * imported back from the route module, a cycle. So does the move offered for
+ * an export that stays because it reads what the route module keeps (a
+ * binding that one reads, a holder, a function it calls, a write at load).
+ * Vite and Rspack client builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -325,6 +327,107 @@ o0.v = 5
         },
       )
       expect(fixed.text).toBe('1 2')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // an export only split code uses reads, when it loads, `kept`, which the
+  // loader keeps in the route module: the move takes what the two read
+  // then, and the statements writing them (left behind, the new module
+  // would import it back from the route module)
+  test.each([
+    [
+      'a binding the read one reads',
+      `const cfg = { k: 2 }
+const kept = { n: cfg.k }
+export const count = kept.n
+`,
+      'kept',
+      'count = kept.n',
+      '2',
+      `const cfg = { k: 2 }
+export const kept = { n: cfg.k }
+export const count = kept.n
+`,
+    ],
+    [
+      'a holder',
+      `const o0 = { v: 1 }
+const h6 = { c: o0 }
+export const count = h6.c.v
+`,
+      'o0',
+      'count = h6.c.v',
+      '1',
+      `export const o0 = { v: 1 }
+const h6 = { c: o0 }
+export const count = h6.c.v
+`,
+    ],
+    [
+      'a function it calls',
+      `const unit = 2
+const kept = { n: 1 }
+function total() {
+  return kept.n * unit
+}
+export const count = total()
+`,
+      'kept',
+      'count = total()',
+      '2',
+      `const unit = 2
+export const kept = { n: 1 }
+function total() {
+  return kept.n * unit
+}
+export const count = total()
+`,
+    ],
+    [
+      'a write when the module loads',
+      `const kept = { n: 1 }
+kept.n = 3
+export const count = kept.n
+`,
+      'kept',
+      'count = kept.n',
+      '3',
+      `export const kept = { n: 1 }
+kept.n = 3
+export const count = kept.n
+`,
+    ],
+  ])(
+    'warns once at an export reading what the route module keeps through %s, and its fix moves what they read when the module loads',
+    async (_, declarations, loaded, at, value, own) => {
+      const options = (
+        imports: string,
+      ) => `${head}${imports}export const Route = createFileRoute('/')({
+  loader: () => ${loaded},
+  component: () => <p>{String(count)}</p>,
+})
+`
+      const route = options(declarations)
+      const r = await mounted(bundler, route)
+      expect(r.text).toBe(value)
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, at),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      // the fix: the export, the binding it reads and what the warning
+      // names with them in a module of their own
+      const fixed = await mounted(
+        bundler,
+        options(`import { count, ${loaded} } from '../own'
+export { count }
+`),
+        { 'own.ts': own },
+      )
+      expect(fixed.text).toBe(value)
       expect(fixed.diagnostics).toEqual([])
     },
     timeout,
