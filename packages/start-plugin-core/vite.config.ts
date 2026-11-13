@@ -46,6 +46,10 @@ const smokeTests = [
   'integration/importProtection/build.test.ts',
   'integration/start-compose-project-path.test.ts',
   'integration/start-build-unparsed-module.test.ts',
+  // dev on macOS and Windows (phase 6 decision): a file removed and written
+  // back on an Rsbuild dev server. `start-dev-freshness.test.ts` is not here:
+  // one of its tests opens a page, and this list runs without a browser
+  'integration/rsbuild/dev-file-back.test.ts',
 ]
 if (process.env.VITEST) {
   const testsDir = path.join(
