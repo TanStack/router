@@ -1080,8 +1080,9 @@ async function buildWithVite(
  * reported, every environment that reported a file ended such a build, the
  * environments the step rebuilds by cause did (`WatchStep.rebuilds`: what
  * each environment's builds emit tells which builds moved its output), and
- * no watcher reported anything or began a build for `quietMs` (a file a
- * build writes reaches another environment's watcher a moment later).
+ * no watcher reported anything, began or ended a build for `quietMs` (a
+ * file a build writes, e.g. Start's in `generateBundle`, reaches another
+ * environment's watcher a moment after the build ended).
  */
 function trackViteWatch() {
   interface EnvironmentBuilds {
@@ -1107,7 +1108,7 @@ function trackViteWatch() {
   let edited = new Map<string, boolean>()
   /** The environments that read a file since the last settle. */
   const readers = new Set<EnvironmentBuilds>()
-  /** When a watcher last reported a file or began a build. */
+  /** When a watcher last reported a file, or began or ended a build. */
   let lastActivity = 0
   let changed = () => {}
   const builds = (name: string) => {
@@ -1161,7 +1162,7 @@ function trackViteWatch() {
             output.on('event', (event) => {
               if (event.code === 'BUNDLE_END' || event.code === 'ERROR') {
                 state.ended = true
-                state.endedAt = performance.now()
+                state.endedAt = lastActivity = performance.now()
                 state.reading = false
                 state.error = event.code === 'ERROR' ? event.error : null
                 changed()
