@@ -116,6 +116,28 @@ function diagnosticAt(
   return { message, line, column: column + 1 }
 }
 
+/**
+ * A diagnostic at `offset` of `source`, positioned in `output`, `source` with
+ * `splices` applied (the text the generator writes, which the user then
+ * sees): the offset moved by the splices before it, its line and column
+ * counted as the parser counts them (every ECMAScript line terminator).
+ */
+function diagnosticInOutput(
+  output: string,
+  splices: ReadonlyArray<Splice>,
+  offset: number,
+  message: string,
+): FileDiagnostic {
+  let at = offset
+  for (const splice of splices) {
+    if (splice.end <= offset) {
+      at += splice.text.length - (splice.end - splice.start)
+    }
+  }
+  const lines = output.slice(0, at).split(/\r\n|[\n\r\u2028\u2029]/)
+  return { message, line: lines.length, column: lines.at(-1)!.length + 1 }
+}
+
 /** The option keys of a route's options argument (SPEC J1.9). */
 function propsOf(options: Node | undefined): RouteProps {
   if (!options) {
@@ -229,7 +251,8 @@ export function analyzeRouteFile(
 
   const props = propsOf(call.options)
   const splices: Array<Splice> = []
-  const diagnostics: Array<FileDiagnostic> = []
+  /** Diagnostics at offsets of `source`, positioned in the output once its splices are known. */
+  const problems: Array<{ offset: number; message: string }> = []
   const quoteOf = (node: Node) => {
     const first = source[node.start]
     return first === '"' || first === "'" ? first : expected.style.quote
@@ -276,16 +299,13 @@ export function analyzeRouteFile(
         })
       }
     } else {
-      // An id computed at runtime: left as it is, and reported (the
-      // constructor below is still the generator's to keep up: a route
-      // compiler waits for that repair)
-      diagnostics.push(
-        diagnosticAt(
-          file,
-          idArg.start,
-          `The route id is not a string literal, so the generator cannot keep it in sync with the file's path: write ${lit(expected.routeId)}.`,
-        ),
-      )
+      // An id computed at runtime: left as it is, and reported where it is
+      // in the file the generator writes (the constructor below is still the
+      // generator's to keep up: a route compiler waits for that repair)
+      problems.push({
+        offset: idArg.start,
+        message: `The route id is not a string literal, so the generator cannot keep it in sync with the file's path: write ${lit(expected.routeId)}.`,
+      })
     }
   }
 
@@ -344,12 +364,17 @@ export function analyzeRouteFile(
     }
   }
 
+  const output = splices.length ? applySplices(source, splices) : null
   return {
     kind: 'route',
-    output: splices.length ? applySplices(source, splices) : null,
+    output,
     props,
     foreign: false,
-    diagnostics,
+    diagnostics: problems.map(({ offset, message }) =>
+      output === null
+        ? diagnosticAt(file, offset, message)
+        : diagnosticInOutput(output, splices, offset, message),
+    ),
   }
 }
 
