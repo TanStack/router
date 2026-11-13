@@ -616,9 +616,9 @@ function describeReason(
   const inObject = `\`state.${binding ?? 'count'}\``
   switch (reason) {
     case 'shared-writer':
-      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
+      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}), or in a module of its own that also exports the functions writing it.`
     case 'multi-writer':
-      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}) or in its own module.`
+      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}), or in a module of its own that also exports the functions writing it.`
     case 'ordered-effect':
       if (writes === 'used') {
         // (when it loads, or in a function its call runs, which may run at
@@ -636,7 +636,7 @@ function describeReason(
       }
       return `it uses ${written} when the module loads, and other code of the module changes it later or reads it after the option, so a split would change what one of them sees. Use ${written} only inside the option's functions, or move what writes it out of the option, before the route.`
     case 'hydrate-writer':
-      return 'it writes a binding a hydration boundary also uses. Keep that state in an object or in its own module.'
+      return 'it writes a binding a hydration boundary also uses. Keep that state in an object, or in a module of its own that also exports the functions writing it.'
     case 'env-declared':
       return 'its value is created by a statement the route module keeps (a call or a destructuring, or one writing an exported binding), so a split chunk could only import it. Declare the value on its own (`function Component() { … }`) to have it split.'
     case 'exhausted':
