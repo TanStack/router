@@ -224,7 +224,7 @@ export interface CodeFrame {
 
 const CONTEXT_LINES = 2
 
-function codeFrame(
+export function codeFrame(
   text: string,
   loc: OriginalLocation,
   lineBreaks: RegExp,
