@@ -6,7 +6,7 @@ import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
 } from '../import-protection/defaults'
-import { normalizePath } from '../utils'
+import { escapeRegExp, normalizePath } from '../utils'
 import { ExtensionlessAbsoluteIdResolver } from '../import-protection/extensionlessAbsoluteIdResolver'
 import { compileMatchers } from '../import-protection/matchers'
 import {
@@ -31,11 +31,6 @@ import {
   formatViolation,
 } from '../import-protection/trace'
 import {
-  loadMockEdgeModule,
-  loadMockRuntimeModule,
-  loadSilentMockModule,
-} from '../import-protection/virtualModules'
-import {
   buildSourceCandidates,
   clearNormalizeFilePathCache,
   dedupePatterns,
@@ -43,6 +38,8 @@ import {
   isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
+import { MOCK_MODULE_PATH, getMockEdgePayload } from './mock-module'
+import type { MockEdgePayload } from './mock-module'
 import type {
   ImportProtectionBehavior,
   ImportProtectionOptions,
@@ -64,10 +61,6 @@ import type {
 } from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
-type RspackVirtualModulesPlugin = Pick<
-  InstanceType<RspackNamespace['experiments']['VirtualModulesPlugin']>,
-  'writeModule'
->
 type ProcessAssetsContext = Parameters<
   Parameters<RsbuildPluginAPI['processAssets']>[1]
 >[0]
@@ -75,17 +68,9 @@ type ModifyRspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type ModifyRspackConfigUtils = Parameters<ModifyRspackConfigFn>[1]
 type ImportProtectionRspackConfig = {
   module: Pick<ModifyRspackConfig['module'], 'rules'>
-  plugins: Array<Rspack.Plugin | RspackVirtualModulesPlugin>
 }
 type ImportProtectionModifyRspackConfigUtils = {
   environment: Pick<ModifyRspackConfigUtils['environment'], 'name'>
-  rspack: {
-    experiments: {
-      VirtualModulesPlugin: new (
-        modules: Record<string, string>,
-      ) => RspackVirtualModulesPlugin
-    }
-  }
 }
 type ImportProtectionRsbuildPluginAPI = {
   context: Pick<RsbuildPluginAPI['context'], 'action'>
@@ -234,14 +219,6 @@ export interface EnvRuntimeState {
   seenViolations: Set<string>
 }
 
-export interface SharedState {
-  root: string
-  virtualModules: Map<string, string>
-  vmPlugins: Record<string, RspackVirtualModulesPlugin>
-  readyVmPlugins: Record<string, boolean>
-  pendingWrites: Map<string, Map<string, string>>
-}
-
 interface CompilationEdge {
   importerModule: RspackModule
   specifier?: string
@@ -278,19 +255,6 @@ interface RspackModuleGraphNode {
   imports: Array<CompilationImport>
 }
 
-interface MockEdgePayload {
-  exports: Array<string>
-  runtimeId: string
-  violation: {
-    env: string
-    envType: 'client' | 'server'
-    importer: string
-    specifier: string
-    resolved?: string
-    patternText: string
-  }
-}
-
 interface ModuleGraphEdge {
   importer: RspackModule
   module: RspackModule
@@ -318,23 +282,11 @@ type ResolvedImportProtectionCheck =
   | { type: 'file'; fileMatch: FileMatchers['files'][number] }
   | { type: 'marker' }
 
-const IMPORT_PROTECTION_VIRTUAL_DIR = 'node_modules/.virtual/import-protection'
-const MOCK_EDGE_FILE_PREFIX = 'mock-edge-'
-const MOCK_RUNTIME_FILE_PREFIX = 'mock-runtime-'
-const MOCK_SILENT_FILE = 'mock-silent.mjs'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const importProtectionLoader = resolvePath(
   currentDir,
   'import-protection-loader.js',
 )
-
-function toBase64Url(input: unknown): string {
-  return Buffer.from(JSON.stringify(input), 'utf8').toString('base64url')
-}
-
-function fromBase64Url<T>(input: string): T {
-  return JSON.parse(Buffer.from(input, 'base64url').toString('utf8')) as T
-}
 
 export function getRulesForEnvironment(
   config: PluginConfig,
@@ -407,144 +359,6 @@ export function shouldCheckImporterWithCache(opts: {
   return result
 }
 
-function getVirtualModulePath(
-  root: string,
-  envName: string,
-  filename: string,
-): string {
-  return normalizePath(
-    resolvePath(root, IMPORT_PROTECTION_VIRTUAL_DIR, envName, filename),
-  )
-}
-
-function queuePendingWrite(
-  shared: SharedState,
-  envName: string,
-  filePath: string,
-  code: string,
-): void {
-  let writes = shared.pendingWrites.get(envName)
-  if (!writes) {
-    writes = new Map()
-    shared.pendingWrites.set(envName, writes)
-  }
-
-  writes.set(filePath, code)
-}
-
-function tryWriteVirtualModule(
-  shared: SharedState,
-  envName: string,
-  filePath: string,
-  code: string,
-): string {
-  const current = shared.virtualModules.get(filePath)
-  if (current === code) {
-    return filePath
-  }
-
-  shared.virtualModules.set(filePath, code)
-
-  const vmPlugin = shared.vmPlugins[envName]
-  if (!vmPlugin || !shared.readyVmPlugins[envName]) {
-    queuePendingWrite(shared, envName, filePath, code)
-    return filePath
-  }
-
-  vmPlugin.writeModule(filePath, code)
-  return filePath
-}
-
-function flushPendingWrites(shared: SharedState, envName: string): void {
-  const writes = shared.pendingWrites.get(envName)
-  if (!writes?.size || !shared.readyVmPlugins[envName]) {
-    return
-  }
-
-  for (const [filePath, code] of writes) {
-    shared.vmPlugins[envName]?.writeModule(filePath, code)
-    writes.delete(filePath)
-  }
-
-  if (writes.size === 0) {
-    shared.pendingWrites.delete(envName)
-  }
-}
-
-export function ensureSilentMockModule(
-  shared: SharedState,
-  envName: string,
-): string {
-  return tryWriteVirtualModule(
-    shared,
-    envName,
-    getVirtualModulePath(shared.root, envName, MOCK_SILENT_FILE),
-    loadSilentMockModule().code,
-  )
-}
-
-export function ensureRuntimeMockModule(opts: {
-  shared: SharedState
-  envName: string
-  mode: 'error' | 'warn' | 'off'
-  env: string
-  importer: string
-  specifier: string
-}): string {
-  const encoded = toBase64Url({
-    mode: opts.mode,
-    env: opts.env,
-    importer: opts.importer,
-    specifier: opts.specifier,
-    trace: [],
-  })
-
-  return tryWriteVirtualModule(
-    opts.shared,
-    opts.envName,
-    getVirtualModulePath(
-      opts.shared.root,
-      opts.envName,
-      `${MOCK_RUNTIME_FILE_PREFIX}${encoded}.mjs`,
-    ),
-    loadMockRuntimeModule(encoded).code,
-  )
-}
-
-export function ensureMockEdgeModule(opts: {
-  shared: SharedState
-  envName: string
-  payload: MockEdgePayload
-}): string {
-  const encoded = toBase64Url(opts.payload)
-
-  return tryWriteVirtualModule(
-    opts.shared,
-    opts.envName,
-    getVirtualModulePath(
-      opts.shared.root,
-      opts.envName,
-      `${MOCK_EDGE_FILE_PREFIX}${encoded}.mjs`,
-    ),
-    loadMockEdgeModule(encoded).code,
-  )
-}
-
-function getMockEdgePayloadFromFile(
-  filePath: string,
-): MockEdgePayload | undefined {
-  const match = /(?:^|[\\/])mock-edge-([^/\\]+)\.mjs$/.exec(filePath)
-  if (!match) {
-    return undefined
-  }
-
-  try {
-    return fromBase64Url<MockEdgePayload>(match[1]!)
-  } catch {
-    return undefined
-  }
-}
-
 function getModuleResource(module: RspackModule): string {
   const resourceResolveData = (
     module as RspackModule & {
@@ -552,11 +366,16 @@ function getModuleResource(module: RspackModule): string {
     }
   ).resourceResolveData
 
-  return normalizeFilePath(
+  const file = normalizeFilePath(
     resourceResolveData?.path ??
       resourceResolveData?.resource ??
       module.identifier(),
   )
+  // Mock queries carry both module identity and per-import diagnostic metadata.
+  if (file === MOCK_MODULE_PATH && resourceResolveData?.resource) {
+    return normalizePath(resourceResolveData.resource)
+  }
+  return file
 }
 
 const IMPORT_PROTECTION_PARSEABLE_EXTENSIONS = new Set([
@@ -822,7 +641,7 @@ function createCompilationViolationScanner(opts: {
       return cached ?? undefined
     }
 
-    const payload = getMockEdgePayloadFromFile(getModuleResource(module))
+    const payload = getMockEdgePayload(getModuleResource(module))
     mockPayloadByModule.set(module, payload ?? null)
     return payload
   }
@@ -1376,20 +1195,11 @@ export function registerImportProtection(
     onViolation: undefined,
   }
 
-  const shared: SharedState = {
-    root: '',
-    virtualModules: new Map(),
-    vmPlugins: {},
-    readyVmPlugins: {},
-    pendingWrites: new Map(),
-  }
-
   function applyUserConfig(): void {
     const { startConfig, resolvedStartConfig } = opts.getConfig()
 
     config.root = resolvedStartConfig.root
     config.srcDirectory = resolvedStartConfig.srcDirectory
-    shared.root = resolvedStartConfig.root
 
     const userOpts: ImportProtectionOptions | undefined =
       startConfig.importProtection
@@ -1514,15 +1324,18 @@ export function registerImportProtection(
       return
     }
 
-    const VMP = utils.rspack.experiments.VirtualModulesPlugin
-    const vmPlugin = new VMP({})
-
-    shared.vmPlugins[envName] = vmPlugin
-    shared.readyVmPlugins[envName] = false
-
     const rules = rspackConfig.module.rules ?? []
+    const mockResource = new RegExp(
+      `^${escapeRegExp(MOCK_MODULE_PATH).replaceAll('/', '[\\\\/]')}$`,
+    )
+    rules.push({
+      test: mockResource,
+      type: 'javascript/esm',
+      use: [{ loader: resolvePath(currentDir, 'mock-loader.js') }],
+    })
     rules.push({
       test: /\.[cm]?[tj]sx?$/,
+      exclude: mockResource,
       enforce: 'post',
       use: [
         {
@@ -1533,7 +1346,6 @@ export function registerImportProtection(
             envStates,
             extensionlessResolver,
             perf,
-            shared,
             shouldCheckImporterCache,
           },
         },
@@ -1541,18 +1353,6 @@ export function registerImportProtection(
     })
     rspackConfig.module.rules = rules
 
-    rspackConfig.plugins.push(vmPlugin)
-    rspackConfig.plugins.push({
-      apply(compiler: Rspack.Compiler) {
-        compiler.hooks.thisCompilation.tap(
-          'TanStackStartImportProtectionVirtualModulesReady',
-          () => {
-            shared.readyVmPlugins[envName] = true
-            flushPendingWrites(shared, envName)
-          },
-        )
-      },
-    })
     if (perf) {
       perf.time('modifyRspackConfig', startedAt)
     }
