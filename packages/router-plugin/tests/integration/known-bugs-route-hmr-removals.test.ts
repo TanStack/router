@@ -185,6 +185,9 @@ export { MyRoute as Route }
         files: { 'routes/index.tsx': aliasedRoute('v1') },
         ready: 'page data v1',
       })
+      if (bundler === 'vite') {
+        expect(app.splitOutputs()).toBeGreaterThan(0)
+      }
       expect(
         await app.edit(
           { 'routes/index.tsx': aliasedRoute('v2') },

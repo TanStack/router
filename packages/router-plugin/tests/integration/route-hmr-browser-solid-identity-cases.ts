@@ -557,6 +557,12 @@ export const Route = createFileRoute('/')({ component: Page })
   // `apply()` nobody calls. Upstream (oracle/KNOWN-BUGS.md).
   // Impact: after a rename or a removed component in a split route on
   // Rsbuild, no later hot update reaches the page until a reload.
+  // (Solid's `keepPatched` decides the rename only in the Rsbuild split
+  // cell, where the chunk evaluates on its own: the rename reloads an
+  // unsplit route, a Vite split chunk re-imported after a route update is
+  // decided by the core's same-object rule, and the body edits after it
+  // keep the name. So a `keepPatched` that always keeps turns only that
+  // cell red.)
   {
     name: 'a rename, then two body edits',
     counter: true,

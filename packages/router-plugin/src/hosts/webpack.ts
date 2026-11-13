@@ -386,6 +386,8 @@ export function createRouterCompilerWebpackPlugin(
       // then): their plans are checked, a stale one's modules are built
       // again with the others of the set, and the environment has plans the
       // registry's changes reach from then on
+      // the first compilation only: the persistent cache restores modules
+      // there alone (undocumented bundler behaviour, `restorePlans`)
       let restoring = persisted !== null
       compiler.hooks.finishMake.tapPromise(PLUGIN_NAME, async (compilation) => {
         if (compilation.compiler === compiler) {

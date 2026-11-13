@@ -258,8 +258,9 @@ export const init = (value: number) => {
    * `component` and the loader, which stays in the route module, reads it.
    * Renders the component, then the not-found component (or the component
    * again). `page` counts its renders in a module-level `let` initialized by
-   * `init` from `./state`. Returns both renders and how many times `init`
-   * ran.
+   * `init` from `./state`. Returns both renders, how many times `init`
+   * ran, and whether each split option it is (`component`, and
+   * `notFoundComponent` when shared with it) loads on demand.
    */
   async function renderSharedComponent(
     declaration: string,
@@ -275,11 +276,17 @@ export const Route = createFileRoute('/')({
 })`,
       { hmr: true, files: state },
     )
-    return route.run(`return [
+    // (before the renders: an option whose chunk loaded is not observed lazy)
+    const lazy = [await route.isLazy('component')]
+    if (sharedWith === 'notFoundComponent') {
+      lazy.push(await route.isLazy('notFoundComponent'))
+    }
+    const rendered = await route.run<Array<unknown>>(`return [
   await render('component'),
   await render(${JSON.stringify(sharedWith === 'loader' ? 'component' : 'notFoundComponent')}),
   (await app('state.ts')).inits,
 ]`)
+    return [...rendered, ...lazy]
   }
 
   // Control for the lowercase shared component pin below (same harness).
@@ -289,7 +296,7 @@ export const Route = createFileRoute('/')({
   renders++
   return <p>{renders}</p>
 }`),
-    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1, true, true])
   })
 
   // Bug: React HMR renames a lowercase `function` component in its split
@@ -303,7 +310,7 @@ export const Route = createFileRoute('/')({
   renders++
   return <p>{renders}</p>
 }`),
-    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1, true, true])
   })
 
   // SPEC J2.4, G1: the same, for a lowercase component that the split
@@ -317,7 +324,7 @@ export const Route = createFileRoute('/')({
 }`,
         'loader',
       ),
-    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1, true])
   })
 
   // Bug: same root cause as the pin above, for a lowercase component that
@@ -332,7 +339,7 @@ export const Route = createFileRoute('/')({
 }`,
         'loader',
       ),
-    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1, true])
   })
 
   // Bug: same root cause as the pin above, for a lowercase component that

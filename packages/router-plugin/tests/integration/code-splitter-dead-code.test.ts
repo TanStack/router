@@ -11,7 +11,7 @@ import { build, clientMountEntry, head, routeApp } from '../build-harness'
  */
 type BundlerName = 'vite' | 'rspack' | 'webpack'
 
-const unusedFunctions = `${head}function helper() { return 'helper' }
+const unusedFunctions = `${head}function helper() { return 'MARK_HELPER' }
 function unused() { return 'MARK_UNUSED_END' + helper() }
 function ping(): number { return pong() + ('MARK_PING_END' + Math.random()).length }
 function pong(): number { return ping() }
@@ -64,6 +64,7 @@ const otherRoutes: Record<BundlerName, Record<string, string>> = {
 }
 
 const markers = [
+  'MARK_HELPER',
   'MARK_UNUSED_END',
   'MARK_PING_END',
   'MARK_ANNOTATED_UNUSED_CALL',
@@ -153,11 +154,14 @@ describe('the reference module only drops code that splitting left unused', () =
       expect({
         unused: where.MARK_UNUSED_END,
         ping: where.MARK_PING_END,
+        // (split: the helper moves with the component)
+        helper: where.MARK_HELPER,
         html: html.index,
       }).toEqual({
         unused: 'nowhere',
         ping: 'nowhere',
-        html: '<div id="root"><p>helper</p></div>',
+        helper: 'lazy',
+        html: '<div id="root"><p>MARK_HELPER</p></div>',
       })
     },
     60_000,

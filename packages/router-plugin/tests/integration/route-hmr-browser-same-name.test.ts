@@ -94,6 +94,10 @@ export const Route = createFileRoute('/')({})
           },
           ready: 'classic shell',
         })
+        // (a root route is not split, R60)
+        expect(app.splitOutputs() > 0, 'split').toBe(
+          autoCodeSplitting && file === 'routes/index.tsx',
+        )
         expect(
           await app.edit({ [file]: route('modern') }, 'modern shell'),
         ).toEqual(inPlace)

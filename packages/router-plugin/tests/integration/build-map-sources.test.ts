@@ -84,6 +84,8 @@ test.each(builds)(
       sourcemap: true,
       files,
     })
+    // (split: the component's chunk is one of the maps)
+    expect(app.where('MARK_PAGE ')).toBe('lazy')
     await expectRouteFileNamedOnce(app.root, app.outDir)
   },
   timeout,

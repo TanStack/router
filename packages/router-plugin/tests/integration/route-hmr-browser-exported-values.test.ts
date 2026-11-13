@@ -49,6 +49,8 @@ export function Nav() {
       },
       ready: 'label-v1',
     })
+    // (split: the route's component loads from its chunk)
+    expect(app.splitOutputs()).toBeGreaterThan(0)
     const { errors } = await app.edit(
       { 'routes/index.tsx': route('label-v2') },
       'label-v2',

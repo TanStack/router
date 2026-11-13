@@ -207,6 +207,8 @@ export const Route = createFileRoute('/')({
   pendingComponent: () => <p css={{ color: 'red' }}>pending</p>,
 })`
     const route = await loadWithUntouched(code)
+    // (the code calling the factory is split: the component loads on demand)
+    expect(await route.isLazy('component')).toBe(true)
     const [expected, rendered] = await route.run<
       [Array<string>, Array<string>]
     >(`const control = ${untouched}

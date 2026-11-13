@@ -46,13 +46,14 @@ import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { getConfig, tanstackRouter } from '../src/vite'
+import { emittedKey, observeEmitted } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { PluginOption } from 'vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { Config } from '../src/vite'
-import type { TargetFramework } from './route-app'
+import type { EmittedModules, TargetFramework } from './route-app'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -235,6 +236,14 @@ export interface RouteHmrPage {
    * the served module).
    */
   warnings: () => Array<Diagnostic>
+  /**
+   * Vite only: how many client modules the router plugin's own `load` hook
+   * gave code so far, the outputs it derives from a route file (split
+   * chunks, the modules they share), told by provenance (route-app's
+   * `observeEmitted`), never by id. A route split as configured: at least
+   * one once the page rendered it; none when nothing is split.
+   */
+  splitOutputs: () => number
 }
 
 /**
@@ -337,6 +346,8 @@ interface AppServer {
   idle: () => Promise<void>
   /** Full reloads the server sent the page so far. */
   fullReloads: () => number
+  /** `RouteHmrPage.splitOutputs` (Vite only). */
+  splitOutputs?: () => number
 }
 
 const defaultEditTimeout = 15_000
@@ -471,6 +482,12 @@ export const Route = createRootRoute({})
         }
       })(),
     evaluate: (script) => page.page.evaluate(script),
+    splitOutputs: () => {
+      if (!server.splitOutputs) {
+        throw new Error('splitOutputs: a Vite page only')
+      }
+      return server.splitOutputs()
+    },
     warnings: () => [
       ...diagnosticsOf(appWarnings(server.diagnostics(), printed()), 'warning'),
       ...diagnosticsOf(
@@ -503,6 +520,7 @@ async function viteServer(
   files: Record<string, string>,
   options: RouteHmrPageOptions,
 ): Promise<AppServer> {
+  const emitted: EmittedModules = new Map()
   const server = await createDevServer({
     dir: harnessDir,
     prefix: '.route-hmr-page-',
@@ -521,14 +539,16 @@ async function viteServer(
     },
     config: { optimizeDeps: { include: prebundled[target] } },
     plugins: ({ root }) => {
-      const router =
+      const router = observeEmitted(
         options.pluginOptions === null
           ? tanstackRouter()
           : options.pluginOptionsAsFunction
             ? tanstackRouter(() =>
                 getConfig(routerPluginOptions(target, root, options), root),
               )
-            : tanstackRouter(routerPluginOptions(target, root, options))
+            : tanstackRouter(routerPluginOptions(target, root, options)),
+        emitted,
+      )
       const framework =
         options.frameworkPlugin === false
           ? []
@@ -552,6 +572,12 @@ async function viteServer(
     fullReloads,
     root: server.root,
     diagnostics: () => server.diagnostics,
+    splitOutputs: () =>
+      [...emitted].filter(
+        ([key, hooks]) =>
+          key.startsWith(emittedKey('client', '')) &&
+          [...hooks].some((hook) => hook.endsWith(' load')),
+      ).length,
   }
 }
 

@@ -35,6 +35,7 @@ describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
       shows,
       path,
       autoCodeSplitting,
+      splits,
     }: {
       file: string
       files?: Record<string, string>
@@ -42,6 +43,8 @@ describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
       shows: (version: string) => string
       path?: string
       autoCodeSplitting: boolean
+      /** Whether the route file is split (a file route with splitting on). */
+      splits?: boolean
     },
     { expect, onTestFinished }: TestContext,
   ) {
@@ -56,6 +59,9 @@ describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
         `void window.__APP_ROUTER__.navigate({ to: '${path}' })`,
       )
       await app.page.waitForText(shows('v1'), { selector: '#app' })
+    }
+    if (splits !== undefined) {
+      expect(app.splitOutputs() > 0, 'split').toBe(splits)
     }
     const mounts = await mountsOf(app)
     expect(Object.keys(mounts)).not.toEqual([])
@@ -104,6 +110,7 @@ export const Route = createFileRoute('/')({
           route: inlineRoute(component),
           shows: (version) => `inline ${version}`,
           autoCodeSplitting,
+          splits: autoCodeSplitting,
         },
         context,
       )

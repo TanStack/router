@@ -87,11 +87,12 @@ export const getRouter = () => ({ routeTree })
     const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
     files[`src/deps/${slug(name)}.ts`] =
       `export const handle = () => '${marker}'\n`
+    // (a page: a route with only server handlers is pruned from the client
+    // route tree, its handlers with it, whatever `deleteNodes` does)
     files[`src/routes/cast-${slug(name)}.tsx`] =
-      `import { createFileRoute } from '@tanstack/react-router'
-import { handle } from '../deps/${slug(name)}'
+      `${routeHead}import { handle } from '../deps/${slug(name)}'
 export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
-        `{ server: { handlers: { GET: () => handle() } } }`,
+        `{ server: { handlers: { GET: () => handle() } }, component: Page }`,
       )})
 `
   }
@@ -182,6 +183,10 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // to the client bundle.
   // Real apps wrap route options in `as never` / `as any`.
   describe.each(casts)('options wrapped in $name', ({ name }) => {
+    test('a route with server handlers and a component is in the client route tree', () => {
+      expect(clientRoutes).toContain(`/cast-${slug(name)}`)
+    })
+
     test('the server handler code of the route is not in the client bundle', () => {
       const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
       expect(build.client.where(marker)).toBe('nowhere')

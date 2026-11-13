@@ -32,6 +32,7 @@ test(
       files: { 'routes/index.tsx': route('text-v1') },
       ready: 'text-v1 cfg',
     })
+    expect(app.splitOutputs()).toBeGreaterThan(0)
     expect(
       await app.edit({ 'routes/index.tsx': route('text-v2') }, 'text-v2 cfg'),
     ).toEqual(inPlace)

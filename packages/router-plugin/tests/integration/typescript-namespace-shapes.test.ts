@@ -17,8 +17,9 @@ export async function render(component: any) {
 }
 `
 
+/** The route; `MARK_PAGE` marks the component's own code (split: lazy). */
 const component = (read: string) =>
-  `export const Route = createFileRoute('/')({ component: () => <p>{${read}}</p> })\n`
+  `export const Route = createFileRoute('/')({ component: () => <p title="MARK_PAGE">{${read}}</p> })\n`
 
 const shapes: Array<[string, string, string]> = [
   [
@@ -92,7 +93,8 @@ describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
         const { result } = await app.run(
           'return entry.render(entry.Route.options.component)',
         )
-        expect(result).toBe('<p>MARK_NS_END</p>')
+        expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
+        expect(app.where('MARK_PAGE')).toBe('lazy')
       } finally {
         await app.dispose()
       }
@@ -175,7 +177,7 @@ ${component('value')}`,
       const { result } = await app.run(
         'return entry.render(entry.Route.options.component)',
       )
-      expect(result).toBe('<p>MARK_NS_END</p>')
+      expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
     } finally {
       await app.dispose()
     }

@@ -77,6 +77,10 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })
         },
         ready: 'home',
       })
+      if (host.bundler === 'vite') {
+        // (the index route's component loads from its chunk when split)
+        expect(app.splitOutputs() > 0, 'split').toBe(host.autoCodeSplitting)
+      }
       for (const cell of cells) {
         await app.evaluate(
           `void window.__APP_ROUTER__.navigate({ to: '${cell.path}' })`,

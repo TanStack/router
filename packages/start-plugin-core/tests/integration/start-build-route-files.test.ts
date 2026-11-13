@@ -77,21 +77,37 @@ export const Route = createFileRoute(id as any)(${options} as any)
     timeout,
   )
 
+  // (one build: an unlisted file beside the linked route) R145: a file the
+  // generator does not list that exports a router-made `Route` is served as
+  // written: not split, its `server` option kept
   test(
-    'a route file that is a symbolic link is split, with its server options out of the client',
+    'a route file that is a symbolic link is split, with its server options out of the client, and a file the generator does not list is served as written',
     async () => {
       const build = await buildStart({
         bundler,
-        files: app({
-          'linked/x.tsx': `import { createFileRoute } from '${RP}'
+        files: {
+          ...app({
+            'linked/x.tsx': `import { createFileRoute } from '${RP}'
 export const Route = createFileRoute('/x')(${options})
 `,
-        }),
+            'src/widgets/w.tsx': `import { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/w')({
+  component: () => <p>MARK_W_PAGE</p>,
+  server: { handlers: { GET: () => new Response('MARK_W_SERVER') } },
+})
+`,
+          }),
+          'src/entry.ts': `export { routeTree } from './routeTree.gen'
+export { Route as Widget } from './widgets/w'
+`,
+        },
         symlinks: { 'src/routes/x.tsx': 'linked/x.tsx' },
         entry: 'src/entry.ts',
       })
       expect(build.client.where('MARK_SERVER')).toBe('nowhere')
       expect(build.client.where('MARK_PAGE')).toBe('lazy')
+      expect(build.client.where('MARK_W_PAGE')).toBe('eager')
+      expect(build.client.where('MARK_W_SERVER')).toBe('eager')
     },
     timeout,
   )

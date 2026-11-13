@@ -1,11 +1,16 @@
 /**
- * Tripwire of the batched rebuild in `rebuildModules` (router-utils
- * `hosts/rebuild.ts`, HACK(rspack#16567)) on the Rspack that Rsbuild runs:
- * `compilation.rebuildModule` calls of one tick are one native pass, answered
- * once with the modules that kept their identifier and paired with the
- * callbacks by position. Goes red when Rspack changes either (the hack is
- * then wrong) or fixes #16567 (set `RSPACK_REBUILD_CALLBACKS_FIXED_IN` to the
- * fixed version, then delete the batch).
+ * Assumption test (no tripwire: R136 superseded, "Assumption tests",
+ * 2026-11-13). The assumption, of the Rspack that Rsbuild runs:
+ * `compilation.rebuildModule` calls of one tick are one native pass,
+ * answered once with the modules that kept their identifier and paired with
+ * the callbacks by position. The code relying on it: the batched rebuild in
+ * `rebuildModules` (router-utils `hosts/rebuild.ts`, HACK(rspack#16567)),
+ * the workaround of https://github.com/web-infra-dev/rspack/issues/16567
+ * (a `rebuildModule` callback is never called when the module's rule match
+ * changes or another rebuild removes it). Fails when Rspack changes the
+ * pass (the workaround is then wrong) or fixes #16567 (set
+ * `RSPACK_REBUILD_CALLBACKS_FIXED_IN` to the fixed version, then delete the
+ * batch).
  */
 import fs from 'node:fs'
 import path from 'node:path'

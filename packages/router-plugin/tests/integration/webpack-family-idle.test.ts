@@ -1,12 +1,14 @@
 /**
- * Tripwire of what the webpack-family hosts' stale-set drain relies on of
- * the compiler (router-utils `hosts/rebuild.ts`, `StaleSetDrain.wake`),
- * which neither bundler documents: a watching compiler is not idle in its
- * `done` hook and is idle in `afterDone`, and `watching.invalidate()` asked
- * there starts one more compilation. The drain asks an idle compiler for a
- * compilation when a stale set fills between compilations (another
- * environment's event, a registry change). Goes red on the Rspack Rsbuild
- * runs, or on webpack, when either changes.
+ * Assumption test (no tripwire: R136 superseded, "Assumption tests",
+ * 2026-11-13). The assumption, which neither webpack nor Rspack documents: a
+ * watching compiler is not idle in its `done` hook and is idle in
+ * `afterDone`, and `watching.invalidate()` asked there starts one more
+ * compilation. The code relying on it: the webpack-family hosts' stale-set
+ * drain (router-utils `hosts/rebuild.ts`, `StaleSetDrain.wake`), which asks
+ * an idle compiler for a compilation when a stale set fills between
+ * compilations (another environment's event, a registry change). Fails on
+ * the Rspack Rsbuild runs, or on webpack, when either changes. No upstream
+ * issue (private behaviour).
  */
 import fs from 'node:fs'
 import path from 'node:path'

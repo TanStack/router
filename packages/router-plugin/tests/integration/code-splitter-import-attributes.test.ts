@@ -5,7 +5,8 @@
  * them), so this is judged with webpack, which honours `type: 'json'`: a
  * `.txt` file holding JSON loads as JSON only through the attribute (without
  * it, the build fails parsing the file as JavaScript). The deprecated
- * `assert` form keeps working too. Fast-tier counterpart (the moved import
+ * `assert` form keeps working too. A client build: the import is in the
+ * component's chunk, which loads on demand. Fast-tier counterpart (the moved import
  * keeps working in Vite): tests/code-splitter-imports-exports.test.ts.
  */
 import { describe, expect, it } from 'vitest'
@@ -19,7 +20,7 @@ describe('the attribute of an import moved into the chunk still applies (webpack
   ])('$name', async ({ attribute }) => {
     const app = await build({
       bundler: 'webpack',
-      env: 'ssr',
+      env: 'client',
       minify: false,
       files: routeApp(
         `${head}import data from '../data.txt' ${attribute}
@@ -28,17 +29,17 @@ export const Route = createFileRoute('/')({
   component: () => <p>{data.title}</p>,
 })
 `,
-        { files: { 'data.txt': '{ "title": "from json" }' } },
+        { env: 'client', files: { 'data.txt': '{ "title": "MARK_JSON" }' } },
       ),
     })
     try {
-      expect(
-        (
-          await app.run(
-            `return [entry.Route.options.loader(), await entry.render(entry.Route.options.component)]`,
-          )
-        ).result,
-      ).toEqual(['data', '<p>from json</p>'])
+      const run = await app.run(
+        `await entry.mount(entry.Route.options.component)\nreturn entry.Route.options.loader()`,
+      )
+      expect(run.result).toBe('data')
+      expect(run.html).toContain('<p>MARK_JSON</p>')
+      // the import moved: the data loads with the component's chunk
+      expect(app.where('MARK_JSON')).toBe('lazy')
     } finally {
       await app.dispose()
     }

@@ -279,8 +279,8 @@ test.for([
 ] as const)(
   'vite: a frozen component given as %s renders',
   { timeout: 60_000 },
-  async ([, imports, value], { onTestFinished }: TestContext) => {
-    await openRouteHmrPage({
+  async ([, imports, value], { expect, onTestFinished }: TestContext) => {
+    const app = await openRouteHmrPage({
       onTestFinished,
       files: {
         'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
@@ -291,5 +291,7 @@ export const Route = createFileRoute('/')({ component: ${value} })
       },
       ready: 'frozen page',
     })
+    // (split: the chunk reads the frozen component)
+    expect(app.splitOutputs()).toBeGreaterThan(0)
   },
 )

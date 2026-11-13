@@ -153,8 +153,8 @@ export const Route = createFileRoute('/')({ component: Shell })
       },
     ],
   },
-  // State rows (controls, and the tripwire of the refresh signals the
-  // runtime waits for): React Refresh patches these in place.
+  // State rows (controls, and the assumption test of the refresh signals
+  // the runtime waits for): React Refresh patches these in place.
   versions(
     'a function declaration',
     (v) => route(`function Page() ${body(bodyText(v))}`, 'component: Page'),

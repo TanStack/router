@@ -446,11 +446,13 @@ describe('the split decision in dev and in a production build', () => {
   )
 
   test.each(['vite', 'rsbuild'])(
-    '%s: the dev server splits, groups and deletes like the production build',
+    '%s: the dev server splits, groups and deletes like the production build, as configured',
     (bundler) => {
       expect(observations[`${bundler}Dev`]).toEqual(
         observations[`${bundler}Build`],
       )
+      // (two builds that split nothing are equal too)
+      expect(observations[`${bundler}Dev`]).toEqual(expectedObservation())
     },
   )
 })

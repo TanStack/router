@@ -426,6 +426,8 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route)
+    // (split: the helpers move into the component's chunk)
+    expect(await route.isLazy('component')).toBe(true)
     expect(
       await route.run(`return [options.loader(), await render('component')]`),
     ).toEqual(['shared', '<p>var,function,class,enum,shared</p>'])

@@ -769,6 +769,12 @@ function shadowTest(added: string): (resolved: string) => boolean {
  * invalidation finds it stale like a plan compiled now); the keys of the
  * others are returned, their modules are to be compiled again. Each plan
  * is checked with its host (`hosts` of its key).
+ * The hosts call it in a compiler's first compilation only, relying on
+ * undocumented bundler behaviour: Rspack and webpack restore modules from
+ * their persistent cache in a compiler's first compilation only (Rspack
+ * loads the cache's module graph in a build, never in a rebuild). A later
+ * compilation that restored modules would serve them without this check.
+ * No upstream issue (private behaviour).
  */
 export async function restorePlans(
   caches: CompilerCaches,

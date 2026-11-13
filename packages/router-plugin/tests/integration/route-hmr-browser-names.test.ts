@@ -160,6 +160,8 @@ function component() {
         files: { [file]: route('v1') },
         ready: 'component v1',
       })
+      // (split: the component loads from its chunk)
+      expect(app.splitOutputs()).toBeGreaterThan(0)
       let version = 1
       for (const [option, mode] of [
         ['component', undefined],
