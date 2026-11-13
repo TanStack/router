@@ -10,16 +10,33 @@ import {
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 
+type ReactRenderOnError = NonNullable<
+  ReactDOMServer.RenderToPipeableStreamOptions['onError']
+>
+
 export const renderRouterToStream = async ({
   request,
   router,
   responseHeaders,
   children,
+  onError: reportError,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: ReactNode
+  /**
+   * Called for each error React reports while rendering, with the same
+   * arguments and return value as the `onError` option of React's streaming
+   * renderers: return a string to send it to the client as the error's
+   * `digest`. React 18 passes only the error, so `errorInfo` can be
+   * undefined. Not called for errors caused by the request being aborted.
+   * Without it, errors are written with `console.error`.
+   */
+  onError?: (
+    error: unknown,
+    errorInfo: Parameters<ReactRenderOnError>[1] | undefined,
+  ) => ReturnType<ReactRenderOnError>
 }) => {
   const signal = request.signal
   if (signal.aborted) {
@@ -33,9 +50,13 @@ export const renderRouterToStream = async ({
       renderer: string,
     ): ReactDOMServer.RenderToPipeableStreamOptions['onError'] =>
     (error, info) => {
-      if (!rendererTeardown && !signal.aborted) {
-        console.error(`Error in ${renderer}:`, error, info)
+      if (rendererTeardown || signal.aborted) {
+        return
       }
+      if (reportError) {
+        return reportError(error, info)
+      }
+      console.error(`Error in ${renderer}:`, error, info)
     }
 
   try {
