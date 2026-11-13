@@ -197,12 +197,18 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
       if (!(error instanceof StartBuildError)) {
         throw error
       }
+      const position = diagnosticPosition(module, at)
       expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/fns.ts',
         root: error.root,
-        position: diagnosticPosition(module, at),
+        position,
       })
+      // the column the user reads is 1-based (R101): the matcher above also
+      // takes a 0-based one, which a bundler's own location field may print
+      expect(error.diagnostics.map((d) => d.text).join('\n')).toContain(
+        `src/fns.ts:${position.line}:${position.column}`,
+      )
     },
     timeout,
   )

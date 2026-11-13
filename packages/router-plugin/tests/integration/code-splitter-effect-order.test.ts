@@ -59,6 +59,14 @@ export function make(mark: string) {
   return { mark }
 }
 `,
+  // what an imported function does to what it is handed (B1)
+  'prefs.ts': `export function createPrefs() {
+  return { theme: 'light' }
+}
+export function mutate(prefs: { theme: string }) {
+  prefs.theme = 'dark'
+}
+`,
   'snap.ts': `export function snap(o: { v: number }) {
   return String(o.v)
 }
@@ -150,6 +158,31 @@ export const Route = createFileRoute('/')({
 `,
       )
       expect(r.text).toBe('1')
+    },
+    timeout,
+  )
+
+  // B1 (an accepted break, R146 amendment): the compiler assumes an
+  // imported function changes nothing it is handed, so a read of what it
+  // is handed moves with the component past the call, which stays
+  test(
+    'a read of an object an imported function is handed after it loads with the component, after the call (B1)',
+    async () => {
+      const r = await mounted(
+        bundler,
+        `${head}import { createPrefs, mutate } from '../prefs'
+const prefs = createPrefs()
+const initial = prefs.theme + ':MARK_INITIAL'
+mutate(prefs)
+export const Route = createFileRoute('/')({
+  loader: () => prefs.theme,
+  component: () => <p>{initial}</p>,
+})
+`,
+      )
+      // (as written, the page would show `light`)
+      expect(r.text).toBe('dark:MARK_INITIAL')
+      expect(r.where('MARK_INITIAL')).toBe('lazy')
     },
     timeout,
   )

@@ -5,6 +5,7 @@
  * file so that the tier runs it in parallel with the rest.
  */
 import { describe, expect, it } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   expectValidModules,
   head,
@@ -303,4 +304,43 @@ return {
       it.each(cases)('$name', assertReads)
     },
   )
+
+  // guarantee 6 (R149): a statement that changes a binding the route module
+  // keeps stays there, and so does a binding it uses that only the
+  // component reads, with one warning at the cause (guarantee 7)
+  it('a statement changing a kept binding keeps the binding it uses that only the component reads, with one warning', async () => {
+    const route = await loadRoute(
+      `${head}import { make } from './lib'
+const table = make('table')
+const d = make('MARK_D')
+table.link(d)
+export const Route = createFileRoute('/')({
+  beforeLoad: () => table.peers.length,
+  component: () => <p>{d.name}</p>,
+})
+`,
+      {
+        files: {
+          'lib.ts': `export const make = (name: string) => ({
+  name,
+  peers: [] as Array<object>,
+  link(peer: object) {
+    this.peers.push(peer)
+  },
+})
+`,
+        },
+        fresh: true,
+      },
+    )
+    const built = await route.production()
+    expect(built.where('MARK_D')).toBe('eager')
+    expect(
+      findDiagnostics(built.warnings, {
+        severity: 'warning',
+        file: 'route.tsx',
+        root: built.root,
+      }),
+    ).toHaveLength(1)
+  })
 })
