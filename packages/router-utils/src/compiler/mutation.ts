@@ -501,13 +501,14 @@ export class MutationModel {
       for (
         let parent = file.parentOf(p);
         parent !== null;
-        p = parent, parent = file.parentOf(p)
+        parent = file.parentOf(p)
       ) {
         if (
           isExpressionWrapper(parent) ||
           HOLDING.has(parent.type) ||
           (parent.type === 'MemberExpression' && parent.object === p)
         ) {
+          p = parent
           continue
         }
         if (parent.type === 'ClassDeclaration') {
@@ -534,6 +535,7 @@ export class MutationModel {
             }
           }
           // (its result may hold it: `set.bind(null, cfg)`, `new Store()`)
+          p = parent
           continue
         } else if (parent.type === 'VariableDeclarator' && parent.init === p) {
           followName(parent.id)
