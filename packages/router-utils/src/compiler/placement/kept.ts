@@ -19,7 +19,7 @@ import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { OutputId } from '../rewrite'
 import type { KeptDeclaration, PlacementInput } from '../reach'
-import type { RegionId } from '../units'
+import type { RegionId, UnitId } from '../units'
 
 export function keptDeclarations(
   input: PlacementInput,
@@ -610,6 +610,7 @@ export function keptDeclarations(
     // (the statements of `cl` writing its bindings when the module loads,
     // with them)
     const joined: Array<{
+      id: UnitId
       unit: (typeof units)[number]
       written: Array<SymbolId>
     }> = []
@@ -633,7 +634,7 @@ export function keptDeclarations(
         ),
       ]
       if (written.length > 0) {
-        joined.push({ unit, written })
+        joined.push({ id: u, unit, written })
       }
     }
     // (a statement writing two of its bindings, or using a binding of
@@ -641,20 +642,16 @@ export function keptDeclarations(
     // module's reach is walked)
     if (
       !joined.some(
-        ({ unit, written }) =>
+        ({ id, written }) =>
           (written.length > 1 && !cl.exported) ||
-          t1.refs.refsIn(unit.range).some((r) => {
-            const x = symbols.isModuleLevel(r.sym)
-              ? clusterOfSym.get(r.sym)
-              : undefined
-            return (
-              x !== undefined &&
-              x !== cl.id &&
-              !clusters[x]!.copyable &&
-              clusters[x]!.kind !== 'import' &&
-              lazyNeeders(x).length > 0
-            )
-          }),
+          events
+            .unitChanges(id)
+            .clusters.some(
+              (x) =>
+                x !== cl.id &&
+                !clusters[x]!.copyable &&
+                lazyNeeders(x).length > 0,
+            ),
       )
     ) {
       continue
@@ -692,7 +689,7 @@ export function keptDeclarations(
         ? 'env'
         : 'split'
     }
-    for (const { unit, written } of joined) {
+    for (const { id, unit, written } of joined) {
       const uses = written.map((sym) => {
         const at = t1.refs.refsOf(sym).map((ref) => usedAt(ref))
         return { sym, env: at.includes('env'), split: at.includes('split') }
@@ -739,44 +736,59 @@ export function keptDeclarations(
             ref.range.start >= j.unit.range.start &&
             ref.range.end <= j.unit.range.end,
         )
-      const used = t1.refs.refsIn(unit.range).find((r) => {
-        const x = symbols.isModuleLevel(r.sym)
-          ? clusterOfSym.get(r.sym)
-          : undefined
-        if (x === undefined || x === cl.id) {
-          return false
-        }
+      const clusterOfRef = (ref: ClassifiedRef) => {
+        const v = t1.unitAt(ref.range)
+        return v === null
+          ? undefined
+          : graph.clusterOfRegion.get(units[v]!.region)
+      }
+      // what the statement uses (`Events.unitChanges`: what it names, runs,
+      // and the objects those hold), its own cluster aside
+      const changes = events.unitChanges(id)
+      const followed = new Set(changes.clusters)
+      /** Whether nothing the env module evaluates uses `y`'s bindings but the statement and what it follows. */
+      const onlyFollowed = (y: ClusterId) =>
+        [...clusters[y]!.declares].every((s) =>
+          t1.refs.refsOf(s).every((ref) => {
+            const z = clusterOfRef(ref)
+            return (
+              inJoined(ref) ||
+              (z !== undefined && followed.has(z)) ||
+              usedAt(ref, y) !== 'env'
+            )
+          }),
+        )
+      const reported: Array<KeptDeclaration> = []
+      for (const x of changes.clusters) {
         const xc = clusters[x]!
         if (
+          x === cl.id ||
           (xc.kind !== 'declaration' && xc.kind !== 'effect') ||
-          xc.exported ||
           xc.copyable ||
           xc.gens.length > 0 ||
           causes.has(x) ||
           !ev.has(x) ||
-          lazyNeeders(x).length === 0
+          lazyNeeders(x).length === 0 ||
+          // (another binding the statement follows that the env module
+          // uses keeps it there anyway)
+          ![...xc.declares].every((s) =>
+            t1.refs.refsOf(s).every((ref) => {
+              const z = clusterOfRef(ref)
+              return (
+                inJoined(ref) ||
+                z === x ||
+                (z !== undefined && followed.has(z) && onlyFollowed(z)) ||
+                usedAt(ref, x) !== 'env'
+              )
+            }),
+          )
         ) {
-          return false
+          continue
         }
-        let split = false
-        for (const s of xc.declares) {
-          for (const ref of t1.refs.refsOf(s)) {
-            const at = inJoined(ref) ? null : usedAt(ref, x)
-            if (at === 'env') {
-              return false
-            }
-            split ||= at === 'split'
-          }
-        }
-        return split
-      })
-      if (used !== undefined) {
-        const x = clusterOfSym.get(used.sym)!
-        const xc = clusters[x]!
         const syms = [...xc.declares].filter(
           (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
         )
-        writtenTogether.push({
+        reported.push({
           syms,
           exported: false,
           reason: 'written',
@@ -785,8 +797,14 @@ export function keptDeclarations(
           at: unit.range.start,
           read: keptOne.sym,
           readChanged: true,
-          uses: true,
+          // (the statement changes it, or only uses it)
+          ...(!changes.syms.some((s) => xc.declares.has(s)) && {
+            uses: true,
+          }),
         })
+      }
+      if (reported.length > 0) {
+        writtenTogether.push(...reported)
         break
       }
     }
