@@ -421,7 +421,7 @@ export const Route = createFileRoute('/counter')({
     )
     expect(warnings).toEqual([
       expect.stringContaining(
-        '[tanstack-router] The `component` option of src/routes/counter.tsx is not code-split: it writes `count`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.count`) or in its own module.',
+        '[tanstack-router] The `component` option of src/routes/counter.tsx is not code-split: it writes `count`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.count`), or in a module of its own that also exports the functions writing it.',
       ),
     ])
     expect(built.where('Add one')).toBe('eager')

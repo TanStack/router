@@ -15,7 +15,11 @@
  * and the move offered for a binding a statement that stays changes or uses
  * (what the binding reads at load; the code writing a moved binding then).
  * A statement a known method makes a writer of a kept binding (`Set.add`)
- * keeps a binding it uses with one warning, as an unknown call does.
+ * keeps a binding it uses with one warning, as an unknown call does, and so
+ * does an unused declaration making that call (`const n = table.add(d).size`).
+ * When code the route module keeps reads that binding (`beforeLoad`), no move
+ * keeps what it sees (`d` must be in `table` before the split component
+ * loads): the warning offers none, and the values are the source's.
  * Vite and Rspack client builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
@@ -28,11 +32,12 @@ import { build, head, routeApp } from '../build-harness'
 
 const timeout = 120_000
 
-/** The client build of `route` (`routes/index.tsx`) with `files`: what its component shows, and the diagnostics about the route file. */
+/** The client build of `route` (`routes/index.tsx`) with `files`: what its component shows, the result of `before` (a script run before it mounts), and the diagnostics about the route file. */
 async function mounted(
   bundler: 'vite' | 'rspack',
   route: string,
   files: Record<string, string> = {},
+  before = 'const seen = null',
 ) {
   const app = await build({
     bundler,
@@ -42,10 +47,11 @@ async function mounted(
   })
   try {
     const run = await app.run(
-      'await entry.mount(entry.Route.options.component)\nreturn null',
+      `${before}\nawait entry.mount(entry.Route.options.component)\nreturn seen`,
     )
     return {
       text: (run.html as string).replace(/<[^>]*>/g, ''),
+      seen: run.result,
       diagnostics: findDiagnostics([...app.warnings, ...app.consoleMessages], {
         file: 'routes/index.tsx',
         root: app.root,
@@ -589,24 +595,31 @@ log('T5', count, Title)
   // phase 6 step 3 (P04b written with the bindings file's `init()`):
   // `table.add(d)` changes `table`, which `beforeLoad` keeps, so it stays,
   // and so does `d`, which only the component reads: one warning, as with
-  // `table.link(d)`
-  test(
-    'warns once at a binding a known method call on a kept binding uses, and its fix splits it',
-    async () => {
-      const files = {
-        'state.ts': `export const init = <T,>(value: T): T => value
-`,
-      }
-      const route = `${head}import { init } from '../state'
+  // `table.link(d)`. `beforeLoad` runs before the component and sees `d` in
+  // `table`: no move keeps that, and none is offered
+  const p04b = (statement: string) => `${head}import { init } from '../state'
 const table = init(new Set<object>())
 const d = init({ name: 'MARK_D' })
-table.add(d)
+${statement}
 export const Route = createFileRoute('/')({
   beforeLoad: () => table.size,
   component: () => <p>{d.name}</p>,
 })
 `
-      const r = await mounted(bundler, route, files)
+  test.each([
+    ['a statement', 'table.add(d)'],
+    ['an unused declaration', 'const n = table.add(d).size'],
+  ])(
+    'warns once at a binding %s calling a known method on a kept binding uses, and keeps what beforeLoad sees',
+    async (_, statement) => {
+      const route = p04b(statement)
+      const r = await mounted(
+        bundler,
+        route,
+        { 'state.ts': 'export const init = <T,>(value: T): T => value\n' },
+        'const seen = entry.Route.options.beforeLoad()',
+      )
+      expect(r.seen).toBe(1)
       expect(r.text).toBe('MARK_D')
       expectDiagnostic(r.diagnostics, {
         severity: 'warning',
@@ -614,24 +627,6 @@ export const Route = createFileRoute('/')({
         times: 1,
       })
       expect(r.diagnostics).toHaveLength(1)
-      // the fix: that statement in the code that needs `d`
-      const fixed = await mounted(
-        bundler,
-        `${head}import { init } from '../state'
-const table = init(new Set<object>())
-const d = init({ name: 'MARK_D' })
-export const Route = createFileRoute('/')({
-  beforeLoad: () => table.size,
-  component: () => {
-    table.add(d)
-    return <p>{d.name}</p>
-  },
-})
-`,
-        files,
-      )
-      expect(fixed.text).toBe('MARK_D')
-      expect(fixed.diagnostics).toEqual([])
     },
     timeout,
   )

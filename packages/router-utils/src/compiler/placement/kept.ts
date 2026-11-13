@@ -15,11 +15,19 @@ import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
 import type { Events, Pin } from './events'
 import type { Roots } from './settle'
-import type { ClassifiedRef } from '../analysis'
+import type { ClassifiedRef, RefContext } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { OutputId } from '../rewrite'
 import type { KeptDeclaration, PlacementInput } from '../reach'
 import type { RegionId, UnitId } from '../units'
+
+/** Where a reference may keep the value it reads (an alias, an argument, an export): it sees what changes in it later. */
+const KEEPS_VALUE: ReadonlySet<RefContext> = new Set<RefContext>([
+  'plain',
+  'shorthandProp',
+  'exportSpec',
+  'exportDecl',
+])
 
 export function keptDeclarations(
   input: PlacementInput,
@@ -65,6 +73,60 @@ export function keptDeclarations(
         ? regions.get(cl.regions[0]!).range
         : units[declaring]!.range
     return { start: range.start, end: range.end }
+  }
+  let evaluated: Set<ClusterId> | undefined
+  /** What the env module evaluates (walked once, when asked). */
+  const evaluatedInEnv = () => (evaluated ??= reads.reach('env', envRoots))
+  let claimed: Array<{ start: number; end: number }> | undefined
+  /** Whether `range` is in an option value an output claims (split code). */
+  const inClaimed = (range: { start: number; end: number }) =>
+    (claimed ??= [...input.rewrites.claims.values()].map(
+      (claim) => regions.get(claim.region).range,
+    )).some((r) => range.start >= r.start && range.end <= r.end)
+  /** Whether `range` holds an option value an output claims. */
+  const claimedIn = (range: { start: number; end: number }) =>
+    (claimed ??= [...input.rewrites.claims.values()].map(
+      (claim) => regions.get(claim.region).range,
+    )).some((r) => r.start >= range.start && r.end <= range.end)
+  const clusterOfRef = (ref: ClassifiedRef) => {
+    const u = t1.unitAt(ref.range)
+    return u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
+  }
+  /**
+   * Where code the env module keeps uses `read`, which `statement` changes
+   * when the module loads: the first such use, if any. Moved into the code
+   * that needs what the statement uses, or deleted, the statement would
+   * change what that code sees, so no move is offered (the statement puts
+   * `d` in `table`, which `beforeLoad` reads). Not such a use: one in
+   * `moving` (it moves with the statement), and one reading `read`'s
+   * contents when the module loads before the statement (`n = table.size`
+   * above it: it reads them before the change, wherever the statement runs).
+   */
+  const seenBy = (
+    read: SymbolId,
+    statement: { start: number; end: number },
+    moving: (x: ClusterId) => boolean,
+  ): number | undefined => {
+    const ev = evaluatedInEnv()
+    for (const ref of t1.refs.refsOf(read)) {
+      if (
+        !NEED_KINDS.has(ref.kind) ||
+        (ref.range.start >= statement.start &&
+          ref.range.end <= statement.end) ||
+        !liveInEnv(ref) ||
+        inClaimed(ref.range) ||
+        (ref.eager &&
+          ref.range.end <= statement.start &&
+          (ref.readsThrough || ref.memberWrite || !KEEPS_VALUE.has(ref.ctx)))
+      ) {
+        continue
+      }
+      const x = clusterOfRef(ref)
+      if (x !== undefined && ev.has(x) && !moving(x)) {
+        return ref.range.start
+      }
+    }
+    return undefined
   }
   /**
    * The clusters that stay in the env module whatever moves: the route
@@ -183,7 +245,25 @@ export function keptDeclarations(
       (pin.later !== undefined || pin.binding === undefined)
         ? [...clusters[c]!.declares].find((s) => symbols.isModuleLevel(s))
         : pin.binding
+    // (`written`, changing the binding the env module keeps: whether code
+    // there sees that change, `seenBy`)
+    const statement =
+      pin.reason === 'written' &&
+      pin.bindingChanged === true &&
+      pin.binding !== undefined &&
+      other !== undefined &&
+      pin.in === undefined &&
+      pin.later === undefined &&
+      pin.reader === undefined &&
+      pin.split !== true
+        ? t1.unitAt({ start: other.at, end: other.at })
+        : null
+    const seen =
+      statement === null
+        ? undefined
+        : seenBy(pin.binding!, units[statement]!.range, (x) => x === c)
     return {
+      ...(seen !== undefined && { seen }),
       ...((pin.reason === 'state' ||
         pin.reason === 'reads' ||
         pin.reason === 'written') &&
@@ -308,17 +388,37 @@ export function keptDeclarations(
   const statements = new Set<ClusterId>()
   /** What unused code keeps in the env module or puts in a shared module: one report at it, naming all of it. */
   const unusedReports: Array<KeptDeclaration> = []
+  /** The `written` reports of statements (and unused code) the env module keeps with what they change (below, and `unusedReport`). */
+  const writtenTogether: Array<KeptDeclaration> = []
   /** Unused code that stays, reported once the env module's own needs are known (`envOwn`). */
-  const unusedStays: Array<{ c: ClusterId; unused: SymbolId }> = []
+  const unusedStays: Array<{ c: ClusterId; unused: SymbolId; pin: Pin }> = []
   const unusedReport = (
     c: ClusterId,
     unused: SymbolId,
     shared: Array<OutputId> | null,
     keeps: (d: ClusterId) => boolean,
     more: ReadonlyArray<{ c: ClusterId; unused: SymbolId }> = [],
+    pin?: Pin,
   ): void => {
     const syms: Array<SymbolId> = []
     const needers = new Set<OutputId>(shared ?? [])
+    // unused code changing a binding code the env module keeps uses
+    // (`seenBy`: deleted, it would change what that code sees) is reported
+    // as a statement doing so, at each binding it keeps, deleting nothing
+    const statement =
+      pin?.bindingChanged === true &&
+      pin.binding !== undefined &&
+      pin.other !== undefined
+        ? t1.unitAt({ start: pin.other.at, end: pin.other.at })
+        : null
+    const seen =
+      statement === null
+        ? undefined
+        : seenBy(
+            pin!.binding!,
+            units[statement]!.range,
+            (x) => x === c || keeps(x),
+          )
     for (const d of new Set(
       [c, ...more.map((m) => m.c)].flatMap(
         (x) => events.statementChanges(x).clusters,
@@ -344,11 +444,27 @@ export function keptDeclarations(
       for (const o of shared === null ? lazy : []) {
         needers.add(o)
       }
-      for (const s of cl.declares) {
-        if (symbols.isModuleLevel(s) && !symbols.isImport(s)) {
-          syms.push(s)
-        }
+      const own = [...cl.declares].filter(
+        (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
+      )
+      if (seen !== undefined && own.length > 0) {
+        writtenTogether.push({
+          syms: own,
+          exported: false,
+          reason: 'written',
+          range: declaringRange(cl, own[0]),
+          needers: lazy,
+          at: pin!.other!.at,
+          read: pin!.binding!,
+          readChanged: true,
+          seen,
+          ...(!events
+            .statementChanges(c)
+            .syms.some((s) => cl.declares.has(s)) && { uses: true }),
+        })
+        continue
       }
+      syms.push(...own)
     }
     if (syms.length === 0) {
       return
@@ -481,7 +597,7 @@ export function keptDeclarations(
     statements.add(c)
     // unused code that stays (R148): one report at it, naming what it keeps
     if (pin.unused !== undefined) {
-      unusedStays.push({ c, unused: pin.unused })
+      unusedStays.push({ c, unused: pin.unused, pin })
       continue
     }
     const blocker =
@@ -577,9 +693,9 @@ export function keptDeclarations(
           !gluesCauses(c),
       ),
     )
-    for (const { c, unused } of unusedStays) {
+    for (const { c, unused, pin } of unusedStays) {
       const reach = reads.reach('env', [c])
-      unusedReport(c, unused, null, (d) => reach.has(d) && !own.has(d))
+      unusedReport(c, unused, null, (d) => reach.has(d) && !own.has(d), [], pin)
     }
   }
   // a statement writing, when the module loads, a binding the env module
@@ -589,8 +705,9 @@ export function keptDeclarations(
   // joined so (a method the mutation model knows writes only its receiver:
   // `table.add(d)`) that uses a binding of another cluster only split code
   // needs keeps it too, as a statement following both does (`seeds`
-  // `stayPins`): reported the same way (phase 6 step 3, P04b)
-  const writtenTogether: Array<KeptDeclaration> = []
+  // `stayPins`): reported the same way (phase 6 step 3, P04b). So does a
+  // declaration joined so that the env module does not use
+  // (`const n = table.add(d).size`)
   /** What the env module evaluates for its own needs: not for a cause, a statement reported, or an export statement re-exporting causes. */
   const ownOfEnv = () =>
     reads.reach(
@@ -602,12 +719,12 @@ export function keptDeclarations(
   let ownCache: Set<ClusterId> | undefined
   /** The write table by owner, once a cluster has a statement. */
   let writesByOwner: Map<RegionId, Array<Write>> | undefined
-  let evaluated: Set<ClusterId> | undefined
-  let claimed: Array<{ start: number; end: number }> | undefined
   for (const cl of clusters) {
+    // (a declaration joined as a writer is a second unit of the cluster)
     if (
       (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
-      !cl.units.some((u) => units[u]!.kind === 'effect')
+      (cl.units.length < 2 &&
+        !cl.units.some((u) => units[u]!.kind === 'effect'))
     ) {
       continue
     }
@@ -634,7 +751,7 @@ export function keptDeclarations(
     }> = []
     for (const u of cl.units) {
       const unit = units[u]!
-      if (unit.kind !== 'effect') {
+      if (unit.kind !== 'effect' && unit.kind !== 'declaration') {
         continue
       }
       const written = [
@@ -645,6 +762,7 @@ export function keptDeclarations(
                 w.live &&
                 w.eager &&
                 cl.declares.has(w.sym) &&
+                !unit.declares.includes(w.sym) &&
                 symbols.isModuleLevel(w.sym) &&
                 !symbols.isImport(w.sym),
             )
@@ -674,15 +792,10 @@ export function keptDeclarations(
     ) {
       continue
     }
-    evaluated ??= reads.reach('env', envRoots)
-    if (!evaluated.has(cl.id)) {
+    const ev = evaluatedInEnv()
+    if (!ev.has(cl.id)) {
       continue
     }
-    const ev = evaluated
-    claimed ??= [...input.rewrites.claims.values()].map(
-      (claim) => regions.get(claim.region).range,
-    )
-    const inClaimed = claimed
     /** Where the code holding `ref` evaluates, outside `cl` and `outside`: the env module (`env`), split code only (`split`: an option value a split output claims, or code the env module does not evaluate). */
     const usedAt = (
       ref: ClassifiedRef,
@@ -699,15 +812,32 @@ export function keptDeclarations(
       ) {
         return null
       }
-      return liveInEnv(ref) &&
-        ev.has(x) &&
-        !inClaimed.some(
-          (r) => ref.range.start >= r.start && ref.range.end <= r.end,
-        )
+      return liveInEnv(ref) && ev.has(x) && !inClaimed(ref.range)
         ? 'env'
         : 'split'
     }
+    /** Whether the env module needs declaration `unit` for itself: it exports a binding (`Route`, holding the option values), holds an option value an output claims, or the env module uses a binding it declares (outside it). It keeps what the declaration uses. */
+    const declaresUsed = (unit: (typeof units)[number]) =>
+      unit.exported.length > 0 ||
+      claimedIn(unit.range) ||
+      unit.declares.some((s) =>
+        t1.refs
+          .refsOf(s)
+          .some(
+            (ref) =>
+              !(
+                ref.range.start >= unit.range.start &&
+                ref.range.end <= unit.range.end
+              ) &&
+              (clusterOfRef(ref) === cl.id
+                ? NEED_KINDS.has(ref.kind)
+                : usedAt(ref) === 'env'),
+          ),
+      )
     for (const { id, unit, written } of joined) {
+      if (unit.kind === 'declaration' && declaresUsed(unit)) {
+        continue
+      }
       const uses = written.map((sym) => {
         const at = t1.refs.refsOf(sym).map((ref) => usedAt(ref))
         return { sym, env: at.includes('env'), split: at.includes('split') }
@@ -718,7 +848,14 @@ export function keptDeclarations(
       }
       const free = uses.filter((x) => !x.env && x.split).map((x) => x.sym)
       const node = unit.node
+      const several =
+        statementsIn(node) > 1 ||
+        (node.type === 'ExpressionStatement' &&
+          node.expression.type === 'SequenceExpression')
       if (free.length > 0 && lazyNeeders(cl.id).length > 0) {
+        const seen = several
+          ? undefined
+          : seenBy(keptOne.sym, unit.range, () => false)
         writtenTogether.push({
           syms: free,
           exported: false,
@@ -728,13 +865,10 @@ export function keptDeclarations(
           at: unit.range.start,
           read: keptOne.sym,
           readChanged: true,
+          ...(seen !== undefined && { seen }),
           // (a statement of several writes can change the kept binding in
           // one of its own)
-          ...((statementsIn(node) > 1 ||
-            (node.type === 'ExpressionStatement' &&
-              node.expression.type === 'SequenceExpression')) && {
-            split: true,
-          }),
+          ...(several && { split: true }),
         })
         break
       }
@@ -752,12 +886,6 @@ export function keptDeclarations(
             ref.range.start >= j.unit.range.start &&
             ref.range.end <= j.unit.range.end,
         )
-      const clusterOfRef = (ref: ClassifiedRef) => {
-        const v = t1.unitAt(ref.range)
-        return v === null
-          ? undefined
-          : graph.clusterOfRegion.get(units[v]!.region)
-      }
       // what the statement uses (`Events.unitChanges`: what it names, runs,
       // and the objects those hold), its own cluster aside
       const changes = events.unitChanges(id)
@@ -812,6 +940,7 @@ export function keptDeclarations(
         const syms = [...xc.declares].filter(
           (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
         )
+        const seen = seenBy(keptOne.sym, unit.range, (z) => z === x)
         reported.push({
           syms,
           exported: false,
@@ -821,6 +950,7 @@ export function keptDeclarations(
           at: unit.range.start,
           read: keptOne.sym,
           readChanged: true,
+          ...(seen !== undefined && { seen }),
           // (the statement changes it, or only uses it)
           ...(!changes.syms.some((s) => xc.declares.has(s)) && {
             uses: true,

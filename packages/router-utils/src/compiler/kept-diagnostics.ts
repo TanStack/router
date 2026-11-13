@@ -190,6 +190,17 @@ export function keptDiagnostic(
       // or goes to an output no module shares with it (an extracted
       // export's module, R151), or code that runs later changes it
       const stays = `the statement on ${line(k.at!)}, which ${k.uses === true ? 'uses' : 'changes'} ${them}, stays there`
+      // (code the module keeps sees what the statement changes, `seen`:
+      // moving or deleting it would change that, no move is offered)
+      if (k.seen !== undefined) {
+        return {
+          severity: 'warning',
+          message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${stays}: it also changes ${read}, which the ${module}'s code uses on ${line(k.seen)}; moving or deleting that statement would change what that code sees.`,
+          range: k.range,
+          by: 'core',
+          code: `eager-split:${k.reason}`,
+        }
+      }
       const reader =
         k.reader === undefined ? '' : `\`${symbols.name(k.reader)}\``
       because =
