@@ -14922,7 +14922,7 @@ importers:
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.10 || ^3.0.0-0
-        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -15443,6 +15443,30 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+
+  packages/start-openapi:
+    devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      zod:
+        specifier: ^4.4.3
+        version: 4.6.6
 
   packages/start-plugin-core:
     dependencies:
@@ -29031,6 +29055,16 @@ packages:
     resolution: {integrity: sha512-YMZCXsLw9kyuvQFEdwLP27fuTQJLmjNoHy90AOJnbRuJ6DwShUxKFo38gdFrWn9v11hnGicKCZEaeI/TFs6JKw==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
+      solid-js: 1.9.12
+      vite: ^8.3.4
+    peerDependenciesMeta:
+      '@testing-library/jest-dom':
+        optional: true
+
+  vite-plugin-solid@2.11.16:
+    resolution: {integrity: sha512-qguFUmqY2ICuoGHrZjm+cWpvKkqVyWDMptipC/BIEGr9q6wEzwTWYOjM9pEWJ+yoTuF6T5OpysI2Okdy7rsVlQ==}
+    peerDependencies:
+      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.0.0 || ^7.0.0
       solid-js: 1.9.12
       vite: ^8.3.4
     peerDependenciesMeta:
@@ -43987,6 +44021,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  vite-plugin-solid@2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@10.2.2)
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
+      merge-anything: 5.1.7
+      solid-js: 1.9.12
+      solid-refresh: 0.6.3(solid-js@1.9.12)(supports-color@10.2.2)
+      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vitefu: 1.1.3(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.6.3
+    transitivePeerDependencies:
+      - supports-color
+
   vite-tsconfig-paths@6.1.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
@@ -44221,6 +44270,30 @@ snapshots:
       '@types/node': 25.0.9
       '@vitest/ui': 5.0.4(vitest@5.0.4)
       jsdom: 27.0.0(supports-color@10.2.2)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
+    dependencies:
+      '@types/chai': 5.2.2
+      '@vitest/mocker': 5.0.4(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      chai: 6.3.0
+      es-module-lexer: 2.3.2
+      expect-type: 1.4.0
+      magic-string: 1.4.3
+      obug: 3.0.0
+      picomatch: 4.0.7
+      std-env: 4.3.0
+      tinybench: 6.2.2
+      tinyexec: 1.3.1
+      tinyglobby: 0.2.17
+      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      why-is-node-running: 3.2.1
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.1
+      '@types/node': 25.0.9
+      '@vitest/ui': 5.0.4(vitest@5.0.4)
+      jsdom: 29.1.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - msw
 
