@@ -356,9 +356,7 @@ export class MutationModel {
         if (
           r.sym === sym ||
           r.kind !== 'value' ||
-          r.ctx === 'callee' ||
-          r.ctx === 'newCallee' ||
-          inFunctionOf(file, r, source)
+          !flowsInto(file, r, source)
         ) {
           continue
         }
@@ -692,20 +690,61 @@ function assignedBy(file: SourceFile, site: ClassifiedRef): Node | null {
   }
 }
 
-/** Whether reference `r` is inside a function nested in `source` (it evaluates when that function runs, not with `source`). */
-function inFunctionOf(
-  file: SourceFile,
-  r: ClassifiedRef,
-  source: Node,
-): boolean {
-  for (
-    let n = file.nodeAt(r.range.start);
-    n !== null && n !== source;
-    n = file.parentOf(n)
-  ) {
-    if (FUNCTIONS.has(n.type)) {
-      return true
+/**
+ * Whether the value of reference `r` is part of what expression `source`
+ * evaluates to: it climbs to `source` only through expressions handing a
+ * value on (a wrapper, a conditional's branch, `??`/`||`/`&&`, a
+ * sequence's last expression, `await`, an assignment's value) or holding it
+ * (an array or object literal, a spread, a member read of it: what it
+ * holds). Not through a call (its result is not what it is handed, R149
+ * answer F), a function (it runs later) or any other operator.
+ */
+function flowsInto(file: SourceFile, r: ClassifiedRef, source: Node): boolean {
+  let n = file.nodeAt(r.range.start)
+  while (n !== null && n !== source) {
+    const parent = file.parentOf(n)
+    if (parent === null) {
+      return false
     }
+    switch (parent.type) {
+      case 'ConditionalExpression':
+        if (parent.test === n) {
+          return false
+        }
+        break
+      case 'SequenceExpression':
+        if (parent.expressions.at(-1) !== n) {
+          return false
+        }
+        break
+      case 'MemberExpression':
+        if (parent.object !== n) {
+          return false
+        }
+        break
+      case 'AssignmentExpression':
+        if (parent.right !== n) {
+          return false
+        }
+        break
+      case 'Property':
+        if (parent.value !== n) {
+          return false
+        }
+        break
+      case 'LogicalExpression':
+      case 'AwaitExpression':
+      case 'ArrayExpression':
+      case 'ObjectExpression':
+      case 'SpreadElement':
+      case 'JSXExpressionContainer':
+        break
+      default:
+        if (!isExpressionWrapper(parent)) {
+          return false
+        }
+    }
+    n = parent
   }
-  return false
+  return n !== null
 }
